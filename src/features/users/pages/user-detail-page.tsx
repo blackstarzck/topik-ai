@@ -332,6 +332,7 @@ export default function UserDetailPage(): JSX.Element {
             column={2}
             items={[
               { key: 'id', label: '사용자 ID', children: user.id },
+              { key: 'realName', label: '이름', children: user.realName },
               { key: 'email', label: '이메일', children: user.email },
               { key: 'nickname', label: '닉네임', children: user.nickname },
               { key: 'joinedAt', label: '가입일', children: user.joinedAt },
@@ -450,7 +451,7 @@ export default function UserDetailPage(): JSX.Element {
         <div>
           <PageTitle title="사용자 상세" />
           <Paragraph className="page-description">
-            {user.nickname} ({user.email}) / 사용자 ID: {user.id}
+            {user.realName} ({user.nickname}) / {user.email} / 사용자 ID: {user.id}
           </Paragraph>
         </div>
 

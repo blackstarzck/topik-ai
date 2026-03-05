@@ -4,6 +4,7 @@ export type SubscriptionStatus = '구독' | '미구독';
 
 export type UserSummary = {
   id: string;
+  realName: string;
   email: string;
   nickname: string;
   joinedAt: string;

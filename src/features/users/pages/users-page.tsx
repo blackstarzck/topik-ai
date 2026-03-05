@@ -125,6 +125,7 @@ function filterUsers(users: UserSummary[], query: UsersQuery): UserSummary[] {
 
     return (
       item.id.toLowerCase().includes(keyword) ||
+      item.realName.toLowerCase().includes(keyword) ||
       item.email.toLowerCase().includes(keyword) ||
       item.nickname.toLowerCase().includes(keyword)
     );
@@ -319,6 +320,11 @@ export default function UsersPage(): JSX.Element {
         width: 220
       },
       {
+        title: '이름',
+        dataIndex: 'realName',
+        width: 120
+      },
+      {
         title: '닉네임',
         dataIndex: 'nickname',
         width: 160
@@ -458,7 +464,7 @@ export default function UsersPage(): JSX.Element {
           allowClear
           value={query.keyword}
           onChange={handleKeywordChange}
-          placeholder="이메일/ 닉네임/ 사용자 ID"
+          placeholder="이름/ 이메일/ 닉네임/ 사용자 ID"
           style={{ width: 280 }}
         />
         <Select
@@ -493,7 +499,7 @@ export default function UsersPage(): JSX.Element {
           columns={columns}
           dataSource={pagedUsers}
           loading={usersState.status === 'pending'}
-          scroll={{ x: 1500, y: 560 }}
+          scroll={{ x: 1620, y: 560 }}
           pagination={{
             current: query.page,
             pageSize: query.pageSize,

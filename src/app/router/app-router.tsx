@@ -49,6 +49,9 @@ const SystemAuditLogsPage = lazy(
 const SystemLogsPage = lazy(
   () => import('../../features/system/pages/system-logs-page')
 );
+const NotFoundPage = lazy(
+  () => import('../../shared/ui/not-found/not-found-page')
+);
 
 export function AppRouter(): JSX.Element {
   return (
@@ -71,8 +74,8 @@ export function AppRouter(): JSX.Element {
         <Route path="/system/permissions" element={<SystemPermissionsPage />} />
         <Route path="/system/audit-logs" element={<SystemAuditLogsPage />} />
         <Route path="/system/logs" element={<SystemLogsPage />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 }
