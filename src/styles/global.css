@@ -1,0 +1,151 @@
+@font-face {
+  font-family: 'Freesentation';
+  src: url('../assets/fonts/Freesentation-1Thin.ttf') format('truetype');
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Freesentation';
+  src: url('../assets/fonts/Freesentation-2ExtraLight.ttf') format('truetype');
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Freesentation';
+  src: url('../assets/fonts/Freesentation-3Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Freesentation';
+  src: url('../assets/fonts/Freesentation-4Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Freesentation';
+  src: url('../assets/fonts/Freesentation-5Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Freesentation';
+  src: url('../assets/fonts/Freesentation-6SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Freesentation';
+  src: url('../assets/fonts/Freesentation-7Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Freesentation';
+  src: url('../assets/fonts/Freesentation-8ExtraBold.ttf') format('truetype');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Freesentation';
+  src: url('../assets/fonts/Freesentation-9Black.ttf') format('truetype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  font-family: 'Freesentation', 'Noto Sans KR', 'Segoe UI', sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #10233c;
+  background-color: #f5f7fb;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: 'Freesentation', 'Noto Sans KR', 'Segoe UI', sans-serif;
+  background:
+    radial-gradient(1200px 400px at 0% -20%, #e6eefb 0%, transparent 50%),
+    radial-gradient(800px 500px at 110% -20%, #f5f9ff 0%, transparent 50%),
+    #f5f7fb;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.page-title {
+  margin: 0;
+}
+
+.page-title-block {
+  margin: 0 0 16px;
+}
+
+.page-breadcrumb {
+  margin: 0 0 6px;
+}
+
+.page-description {
+  margin: 0 0 20px;
+  color: #4f5f78;
+}
+
+.filter-bar {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid #e8edf5;
+}
+
+.route-transition-container {
+  animation: route-fade-in 220ms ease-out;
+  transform-origin: 50% 0;
+}
+
+.route-loading-fallback {
+  min-height: 50vh;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, #f7f9fd 0%, #f5f7fb 100%);
+  border: 1px solid #e8edf5;
+  border-radius: 12px;
+}
+
+@keyframes route-fade-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+    filter: blur(1.5px);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+    filter: blur(0);
+  }
+}

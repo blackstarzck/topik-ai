@@ -1,0 +1,28 @@
+﻿# Admin MD Update Log
+
+## 목적
+- 코드/설정/플로우 변경으로 문서 수정이 발생했을 때, 변경 배경과 범위를 추적한다.
+
+## 기록 규칙
+- MD 문서를 수정한 작업마다 1건 이상 기록한다.
+- 동일 요청에서 여러 MD를 수정했다면 한 항목으로 묶어 기록할 수 있다.
+
+## 로그 형식
+| Date | Request/Task | Updated MD Files | Why Updated | Summary |
+|---|---|---|---|---|
+| 2026-03-04 | 규칙 강화: MD 영향 시 즉시 수정 + 로그 기록 | `AGENTS.md`, `docs/checklists/admin-essential-checklist.md`, `logs/admin-doc-update-log.md` | 문서 영향 업데이트를 작업 종료 조건으로 강제하기 위해 | AGENTS 절차에 MD 영향 평가/즉시 수정/로그 기록 의무 추가, 체크리스트 P0-10/P0-11 추가 |
+| 2026-03-04 | 로그 파일을 전용 디렉터리로 이동 | `AGENTS.md`, `docs/checklists/admin-essential-checklist.md`, `logs/admin-doc-update-log.md` | 로그 누적 증가에 대비해 경로를 고정하고 관리성을 높이기 위해 | `logs/` 디렉터리 생성, 로그 파일 이동, 참조 경로를 `logs/admin-doc-update-log.md`로 일괄 변경 |
+| 2026-03-04 | TypeScript/주석 규칙 문서 SoT 편입 | `AGENTS.md`, `docs/checklists/admin-essential-checklist.md`, `docs/guidelines/admin-coding-guidelines-antigravity.md`, `logs/admin-doc-update-log.md` | 신규 문서(`docs/guidelines/typescript-essential-checklist.md`, `docs/guidelines/comments-rule.md`)를 고아 문서로 두지 않고 충돌 우선순위 체계에 편입하기 위해 | 기준 문서 맵과 충돌 우선순위에 두 문서를 추가하고, 코딩 가이드 근거 문서에도 연결 |
+| 2026-03-04 | MD 문서 구조 폴더링 정리 | `AGENTS.md`, `docs/**`, `logs/admin-doc-update-log.md` | 루트 문서 증가로 탐색/유지보수 비용이 커져 성격별 폴더로 분류 관리하기 위해 | 문서를 `guidelines/architecture/specs/checklists`로 이동하고 내부 참조 경로를 새 구조로 일괄 갱신, `docs/README.md` 인덱스 추가 |
+| 2026-03-04 | 문서 이동 안내 스텁 + 인덱스/로그 동기화 규칙 고정 | `MOVED_DOCS.md`, `AGENTS.md`, `docs/checklists/admin-essential-checklist.md`, `docs/README.md`, `logs/admin-doc-update-log.md` | 문서 구조 전환 시 접근 경로 안내를 제공하고, 향후 문서 추가/이동 시 인덱스/로그 누락을 방지하기 위해 | 루트 안내 문서(`MOVED_DOCS.md`) 추가, AGENTS 절차와 체크리스트(P0-12)에 `docs/README.md` 및 로그 동시 갱신 규칙을 반영 |
+| 2026-03-04 | System 권한 관리 기능 구현에 따른 스펙 보강 | `docs/specs/admin-page-tables.md`, `logs/admin-doc-update-log.md` | `System > 권한 관리`의 UI/액션/로그 규칙이 기존 페이지 테이블 스펙에 명시되지 않아 구현 기준과 문서 기준을 일치시키기 위해 | 관리자 권한 부여/수정/회수, 권한 범위 설명 노출, 권한 변경 감사로그 역추적 규칙을 `admin-page-tables.md`에 추가하고 감사 로그 섹션 번호를 조정 |
+| 2026-03-05 | 네트워크 상태 기반 UX + fail-safe 개발 규칙 명문화 | `AGENTS.md`, `docs/guidelines/admin-coding-guidelines-antigravity.md`, `docs/checklists/admin-essential-checklist.md`, `logs/admin-doc-update-log.md` | 통신 안정성을 `try-catch` 단일 패턴이 아닌 프레임워크 fail-safe와 상태 기반 UX로 강제해 서비스 중단 위험을 줄이기 위해 | 공통 원칙/품질 게이트에 `pending/success/empty/error` 상태 노출과 복구 경로를 추가하고, fail-safe 적용 여부를 P0/P1 체크 항목으로 확장 |
+| 2026-03-05 | axios 도입 및 fail-safe 공통 레이어 구현 반영 | `docs/architecture/admin-dev-stack.md`, `logs/admin-doc-update-log.md` | 실제 의존성/구현(axios, Error Boundary, 상태 기반 로딩/오류 처리)과 스택 문서 간 불일치를 제거하기 위해 | 개발 스택에 axios를 추가하고 통신 복원력 기준(상태 구분, fallback, timeout/cancel/retry, 마지막 성공 상태 유지)을 문서에 명시 |
+| 2026-03-05 | 완료 보고 누락(남은 작업 미표기) 재발 방지 규칙 추가 | `docs/checklists/codex-response-completion-checklist.md`, `docs/README.md`, `logs/admin-doc-update-log.md` | 완료처럼 보이는 보고로 인한 오해를 방지하고, 미완료/후속 작업을 항상 가시화하기 위해 | 완료 응답 필수 형식에 `남은 작업`을 추가하고, 남은 작업이 없을 때도 `없음` 명시를 강제하는 체크리스트 문서를 신설 |
+| 2026-03-05 | Users 상세 조치 피드백 UI 전환 + CRUD 피드백 가이드 명문화 | `src/features/users/pages/user-detail-page.tsx`, `docs/guidelines/admin-coding-guidelines-antigravity.md`, `logs/admin-doc-update-log.md` | Users 상세 페이지에서 조치 완료 시 상단 고정 섹션이 남아 UX 일관성을 해치고, CRUD 상황별 피드백 컴포넌트 선택 기준이 문서에 없어 재발 위험이 있었기 때문 | 조치 완료 표시를 `Alert` 고정 노출에서 `notification`으로 전환하고, 가이드 문서에 `message/notification/popconfirm/modal` 선택 기준을 추가 |
+| 2026-03-05 | 탭/버튼 영문 문구 한글화 및 탭 용어 문서 동기화 | `src/features/users/pages/user-detail-page.tsx`, `src/shared/ui/table/table-action-menu.tsx`, `AGENTS.md`, `docs/architecture/admin-information-architecture.md`, `docs/architecture/admin-dev-stack.md`, `docs/architecture/admin-frontend-architecture.md`, `docs/guidelines/admin-coding-guidelines-antigravity.md`, `docs/guidelines/admin-design-guide-antigravity.md`, `docs/guidelines/admin-ux-ui-design.md`, `docs/specs/admin-page-analysis.md`, `docs/specs/admin-page-flows-mermaid.md`, `docs/specs/admin-page-tables.md`, `docs/specs/admin-user-detail-page-structure.md`, `logs/admin-doc-update-log.md` | UI 탭/버튼에 남아 있던 영문을 한글로 통일하면서 기존 문서의 탭 고정 용어와 불일치가 발생하지 않도록 기준 문서를 함께 갱신하기 위해 | Users 상세 탭 라벨을 `프로필/활동/결제/커뮤니티/로그/관리자 메모`로 변경하고, 공통 액션 메뉴 버튼 기본 문구를 `더보기`로 변경. 관련 아키텍처/가이드/스펙 문서의 탭 용어를 동일 기준으로 일괄 정렬 |
+| 2026-03-05 | 한글+영문 병기 UI 문구 전면 한글화 | `src/**`, `AGENTS.md`, `docs/**`, `logs/admin-doc-update-log.md` | 사용자 요청에 따라 컴포넌트 내 한글+영문 병기 문구와 영문 UI 라벨을 모두 한글로 통일해 읽기 일관성을 높이기 위해 | `감사 로그 (Admin Action Logs)`/`System Logs` 표기를 각각 `감사 로그`/`시스템 로그`로 통일하고, `Target Type/Target ID`, `Push/Email` 등 사용자 노출 문구를 한글로 변경. 대상 유형 값(`Users`, `Admin` 등)은 공통 라벨 매핑으로 한글 표시 |
+| 2026-03-05 | notification 정책/UX/감사로그 연계 규칙 문서화 | `docs/guidelines/admin-coding-guidelines-antigravity.md`, `docs/guidelines/admin-ux-ui-design.md`, `docs/specs/admin-action-log.md`, `logs/admin-doc-update-log.md` | notification의 구성과 작동 시점, 감사 로그 정합성 기준이 문서별로 분리 명시되어 있지 않아 구현 불일치 가능성이 있었기 때문 | 코딩 가이드에 `notification` 단일 채널/중복 금지 정책을 추가하고, UX 문서에 노출 위치/시점/중복 방지 규칙을 추가, 감사로그 스펙에 notification-감사로그 필드 매핑 및 `auditLogId` 우선 딥링크 계약을 명시 |
+| 2026-03-05 | message 기본 규칙 + popconfirm(Delete) 예시 추가 | `docs/guidelines/admin-coding-guidelines-antigravity.md`, `docs/guidelines/admin-ux-ui-design.md`, `logs/admin-doc-update-log.md` | CRUD 완료 피드백 기본 채널과 Delete 확인 컴포넌트 기준을 명확히 하고, 실제 구현 시 참고 가능한 예시를 제공하기 위해 | `message.success`를 CRUD 완료 기본 규칙으로 명시하고 `notification`은 맥락 정보 필요 시 예외로 정리. Delete 확인 기본을 `Popconfirm`으로 정의하고 사유 입력 필요 시 `Modal/ConfirmAction` 전환 규칙 및 코드 예시 추가 |
+| 2026-03-05 | 인터랙션 후 UI 응답 필수 규칙을 머지 게이트로 승격 | `docs/checklists/admin-essential-checklist.md`, `logs/admin-doc-update-log.md` | 저장/수정/삭제/확인 같은 사용자 인터랙션 후 피드백 누락을 빌드/리뷰 단계에서 차단하기 위해 | 하드 게이트에 P0-15를 추가해 인터랙션별 `message/notification/상태 반영/오류 안내` 존재를 필수 증빙 항목으로 강제 |
+
