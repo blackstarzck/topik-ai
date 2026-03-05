@@ -117,7 +117,7 @@ const menuItems: ItemType[] = [
 ];
 
 function resolveSelectedKey(pathname: string): string {
-  if (pathname.startsWith('/users/')) {
+  if (pathname === '/users' || pathname.startsWith('/users/')) {
     return '/users';
   }
   if (pathname.startsWith('/community')) {
