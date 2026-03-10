@@ -15,7 +15,7 @@ import { useMemo } from 'react';
 
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 
-const { Paragraph, Text } = Typography;
+const { Text } = Typography;
 
 type NotificationSendForm = {
   title: string;
@@ -50,9 +50,6 @@ export default function NotificationSendPage(): JSX.Element {
     <div>
       {contextHolder}
       <PageTitle title="알림 발송" />
-      <Paragraph className="page-description">
-        알림 제목, 내용, 발송 대상, 채널, 즉시/예약 발송을 설정합니다.
-      </Paragraph>
 
       <Card>
         <Form

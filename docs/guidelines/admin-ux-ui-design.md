@@ -2,7 +2,7 @@
 
 ## 문서 계약
 
-- 고정 8개 모듈: Dashboard, Users, Community, Notification, Operation, Billing, Analytics, System
+- 고정 8개 모듈: Dashboard, Users, Community, Message, Operation, Billing, Analytics, System
 - 메뉴명은 `Users`(복수형)로 표기하며, `User` 단수형 사용을 금지합니다. (참조: `docs/architecture/admin-information-architecture.md:63`)
 - 감사 로그 용어는 `감사 로그`로 통일합니다. (참조: `docs/architecture/admin-information-architecture.md:64`, `docs/specs/admin-action-log.md:4`)
 - `시스템 로그`는 기술 로그로 감사 로그와 구분합니다. (참조: `docs/architecture/admin-information-architecture.md:65`)
@@ -20,10 +20,12 @@
 ## UX 원칙
 
 - 운영 기본축은 `검색 -> 상세 -> 조치 -> 감사 로그 확인`으로 고정합니다. (참조: `docs/architecture/admin-information-architecture.md`)
-- 메뉴/탭 명명은 IA 고정값을 그대로 사용합니다: 8개 모듈(`Dashboard`, `Users`, `Community`, `Notification`, `Operation`, `Billing`, `Analytics`, `System`)과 `Users` 상세 6탭(`프로필`, `활동`, `결제`, `커뮤니티`, `로그`, `관리자 메모`). (참조: `docs/architecture/admin-information-architecture.md`, `docs/specs/admin-user-detail-page-structure.md`)
+- 메뉴/탭 명명은 IA 고정값을 그대로 사용합니다: 8개 모듈(`Dashboard`, `Users`, `Community`, `Message`, `Operation`, `Billing`, `Analytics`, `System`)과 `Users` 상세 6탭(`프로필`, `활동`, `결제`, `커뮤니티`, `로그`, `관리자 메모`). (참조: `docs/architecture/admin-information-architecture.md`, `docs/specs/admin-user-detail-page-structure.md`)
 - 조치 가능 화면에서는 "판단 정보"와 "실행 액션"을 같은 뷰에서 제공합니다. 단, 파괴적 조치 전에는 확인 단계와 영향 범위를 반드시 노출합니다.
 - 감사 가능성(Auditability)을 UX의 1급 목표로 둡니다. 모든 변경 조치 후에는 해당 대상의 `감사 로그` 진입 경로를 즉시 제공합니다. (참조: `docs/specs/admin-action-log.md`)
 - `시스템 로그`는 장애/기술 분석 용도이며 운영 조치 확인 용도의 `감사 로그`와 시각적으로도 분리합니다. (참조: `docs/architecture/admin-information-architecture.md`, `docs/specs/admin-action-log.md`)
+- 상세 페이지에서는 `PageTitle` 하단 상세 정보 영역에 식별 가능한 핵심 값(예: 이름/이메일/ID)을 우선 노출합니다.
+- 테이블 상세 확인 규칙: 연결 가능한 식별자(ID/작성자 등)는 링크 스타일 텍스트로 해당 페이지 이동을 우선 제공하고, 그 외 케이스는 행 클릭 시 `Descriptions` 기반 상세 모달을 표시합니다.
 
 ## 핵심 사용자 여정
 
@@ -51,7 +53,7 @@
 
 2) 게시글 숨김/삭제 여정 (`Community > 게시글 관리`)
 - 검색: 제목/작성자/게시판/신고 여부로 문제 게시글을 찾습니다.
-- 상세: 게시글 보기 패널에서 본문과 신고 맥락을 확인합니다.
+- 상세: 게시글 행 클릭으로 상세보기 패널을 열어 본문과 신고 맥락을 확인합니다.
 - 조치: 정책 위반 시 `게시글 숨김` 또는 `게시글 삭제`를 실행합니다.
 - 감사 로그 확인: `감사 로그`에서 관리자 계정, Action, Time을 검증합니다.
 
@@ -61,11 +63,11 @@
 - 조치: `회원 정지` 또는 `회원 정지 해제`를 실행합니다.
 - 감사 로그 확인: `System > 감사 로그`에서 USER 단위 Target ID로 조치 이력을 확인합니다.
 
-4) 알림 발송/예약 여정 (`Notification > 알림 발송`)
-- 검색: 발송 대상 세그먼트 조건을 선택해 대상군을 확정합니다.
-- 상세: 미리보기(제목/본문/채널)로 오발송 위험을 점검합니다.
-- 조치: `즉시 발송` 또는 `예약 발송`을 실행합니다.
-- 감사 로그 확인: 발송 설정 변경/실행 이벤트를 `감사 로그`와 `Notification > 발송 이력`에서 교차 확인합니다. (참조: `docs/specs/admin-page-analysis.md`)
+4) 메시지 발송 여정 (`Message > 메일` / `Message > 푸시`)
+- 검색: 채널(메일/푸시), 자동/수동 탭, 대상 그룹으로 대상을 좁힙니다.
+- 상세: 템플릿 미리보기(제목/본문/발송 그룹)로 오발송 위험을 점검합니다.
+- 조치: `즉시 발송`, `예약 발송`, `나에게 보내기`, `자동 발송 활성화/비활성화`를 실행합니다.
+- 감사 로그 확인: 발송 설정 변경/실행 이벤트를 `감사 로그`와 `Message > 발송 이력`의 상세 Drawer에서 교차 확인합니다. (참조: `docs/specs/admin-page-analysis.md`)
 
 5) 결제 확인 여정 (`Users > 회원 상세 > 결제` / `Billing > 결제 내역`)
 - 검색: `Users > 회원 목록` 또는 `Billing > 결제 내역`에서 회원/결제 ID를 찾습니다.
@@ -102,13 +104,25 @@
 - 우측 상세: 신고 사유, 대상 게시글, 신고자 정보, 유사 신고 이력
 - 하단 액션 바: `게시글 숨김`, `사용자 정지`, `처리 완료`, `감사 로그` 확인 버튼
 
-### 5) Notification > 알림 발송
-- 상단: 발송 목적 선택(운영 공지/캠페인/긴급)
-- 본문 2열: 좌측 입력(제목/본문/채널/대상), 우측 실시간 미리보기
-- 예약 블록: 즉시/예약 토글, 예약 시간, 타임존, 검증 메시지
+### 5) Message > 메일 / 푸시
+- 상단: 채널 선택(메일/푸시)과 자동/수동 탭
+- 본문: 템플릿 목록, 필터 바, 액션 메뉴(수정/미리보기/나에게 보내기/발송)
+- 편집 모달: 기본 정보, 발송 그룹, HTML 본문, JSON 본문
 - 완료 섹션: 발송 결과 요약, `발송 이력` 이동, 관련 감사 로그 링크
 
-### 6) System > 감사 로그
+### 6) Message > 대상 그룹
+- 상단: 검색과 정의 방식 필터, 신규 그룹 추가 버튼
+- 본문: 그룹 리스트, 조건 요약, 예상 대상 수, 상태, 빠른 액션(수정/재계산/삭제)
+- 우측 Drawer: 그룹명/설명/정의 방식/적용 채널/운영 상태와 세그먼트 편집, `조회하기` 기반 예상 발송 인원 계산
+- 액션 영역: 저장/삭제 후 `메일`, `푸시`, `발송 이력`으로 이어지는 후속 이동 경로
+
+### 7) Message > 발송 이력
+- 상단: 채널 탭(메일/푸시), 보조 탭(전체/자동/수동), CSV 내보내기
+- 본문: 발송건 리스트, 상태 필터, 검색, 발송 성공/실패 집계
+- 우측 Drawer: 발송 기본 정보와 수신자 샘플 테이블, 수신자 검색, 재시도/복제 발송 버튼
+- 액션 영역: `재시도`, `복제 발송`, `감사 로그` 확인 링크
+
+### 8) System > 감사 로그
 - 상단: 감사 로그 타이틀 + 필터 칩 + 기간 프리셋
 - 본문 테이블: 관리자, Action, Target Type/ID, Time, Before/After 진입
 - 상세 패널: 변경 전/후 비교, 관련 원본 페이지 딥링크
@@ -165,9 +179,9 @@
 - [ ] 메뉴명은 `Users`(복수형)을 사용했고 단수 `User`를 사용하지 않았다.
 - [ ] `감사 로그`와 `시스템 로그`를 명확히 구분했다.
 - [ ] 핵심 여정 `검색 -> 상세 -> 조치 -> 감사 로그 확인`을 명시했다.
-- [ ] 변형 여정에 신고 처리, 게시글 숨김/삭제, 회원 정지/해제, 알림 발송/예약, 결제 확인(환불 참조)을 포함했다.
+- [ ] 변형 여정에 신고 처리, 게시글 숨김/삭제, 회원 정지/해제, 메시지 발송/예약, 결제 확인(환불 참조)을 포함했다.
 - [ ] `Users` 상세의 6탭(`프로필`, `활동`, `결제`, `커뮤니티`, `로그`, `관리자 메모`)을 고정값으로 명시했다.
-- [ ] `Users > 회원 목록`, `Users > 회원 상세`, `Community > 게시글 관리`, `Community > 신고 관리`, `Notification > 알림 발송`, `System > 감사 로그`의 블록 레이아웃을 포함했다.
+- [ ] `Users > 회원 목록`, `Users > 회원 상세`, `Community > 게시글 관리`, `Community > 신고 관리`, `Message > 메일/푸시`, `System > 감사 로그`의 블록 레이아웃을 포함했다.
 - [ ] URL 파라미터/필터 유지, 대량 테이블(server-side + 가상 스크롤), 권한 기반 버튼 제어 규칙을 포함했다.
 - [ ] 컬럼/필터 표는 본문에 복붙하지 않고 `docs/specs/admin-page-tables.md` 등 근거 문서를 참조했다.
 

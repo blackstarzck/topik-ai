@@ -110,17 +110,18 @@ body {
   margin: 0 0 6px;
 }
 
-.page-description {
-  margin: 0 0 20px;
-  color: #4f5f78;
+.table-navigation-link {
+  color: #1677ff;
+  text-decoration: underline;
+  font-weight: 500;
+}
+
+.table-navigation-link:hover {
+  color: #4096ff;
 }
 
 .filter-bar {
   margin: 0 0 16px;
-  padding: 12px 14px;
-  border-radius: 10px;
-  background: #ffffff;
-  border: 1px solid #e8edf5;
 }
 
 .route-transition-container {

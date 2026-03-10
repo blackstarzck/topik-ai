@@ -60,7 +60,7 @@ export const permissionCatalog: PermissionDefinition[] = [
     key: 'users.read',
     name: '사용자 조회',
     module: 'Users',
-    scopeDescription: 'Users 목록/상세 조회, 검색, 필터 사용이 가능합니다.',
+    scopeDescription: 'Users 목록과 상세, 검색/필터를 사용할 수 있습니다.',
     risk: 'low'
   },
   {
@@ -74,14 +74,14 @@ export const permissionCatalog: PermissionDefinition[] = [
     key: 'users.memo.write',
     name: '관리자 메모 작성',
     module: 'Users',
-    scopeDescription: '회원 상세의 Admin Memo 탭에서 운영 메모를 작성/수정할 수 있습니다.',
+    scopeDescription: 'Users 상세의 관리자 메모 탭에서 운영 메모를 작성하거나 수정할 수 있습니다.',
     risk: 'medium'
   },
   {
     key: 'community.posts.hide',
     name: '게시글 숨김',
     module: 'Community',
-    scopeDescription: '커뮤니티 게시글을 숨김 처리하여 노출을 중단할 수 있습니다.',
+    scopeDescription: '커뮤니티 게시글을 숨김 처리해 노출을 중단할 수 있습니다.',
     risk: 'high'
   },
   {
@@ -95,21 +95,42 @@ export const permissionCatalog: PermissionDefinition[] = [
     key: 'community.reports.resolve',
     name: '신고 처리',
     module: 'Community',
-    scopeDescription: '신고를 처리 완료로 변경하고 연계 조치를 수행할 수 있습니다.',
+    scopeDescription: '신고를 처리 완료로 변경하고 후속 조치를 수행할 수 있습니다.',
     risk: 'medium'
   },
   {
-    key: 'notification.send',
-    name: '알림 발송',
-    module: 'Notification',
-    scopeDescription: '즉시 발송/예약 발송을 실행할 수 있습니다.',
+    key: 'message.mail.manage',
+    name: '메일 발송 관리',
+    module: 'Message',
+    scopeDescription: '메일 자동/수동 발송 템플릿을 관리하고 실제 발송을 실행할 수 있습니다.',
     risk: 'high'
+  },
+  {
+    key: 'message.push.manage',
+    name: '푸시 발송 관리',
+    module: 'Message',
+    scopeDescription: '푸시 자동/수동 발송 템플릿을 관리하고 실제 발송을 실행할 수 있습니다.',
+    risk: 'high'
+  },
+  {
+    key: 'message.groups.manage',
+    name: '대상 그룹 관리',
+    module: 'Message',
+    scopeDescription: '메일/푸시 공용 대상 그룹을 생성, 수정, 삭제할 수 있습니다.',
+    risk: 'medium'
+  },
+  {
+    key: 'message.history.read',
+    name: '발송 이력 조회',
+    module: 'Message',
+    scopeDescription: '메일/푸시 채널별 발송 이력을 조회하고 재시도 및 복제 발송을 실행할 수 있습니다.',
+    risk: 'medium'
   },
   {
     key: 'operation.notices.manage',
     name: '공지 관리',
     module: 'Operation',
-    scopeDescription: '공지 등록/수정/숨김/삭제를 수행할 수 있습니다.',
+    scopeDescription: '공지 등록, 수정, 숨김, 삭제를 수행할 수 있습니다.',
     risk: 'medium'
   },
   {
@@ -123,28 +144,28 @@ export const permissionCatalog: PermissionDefinition[] = [
     key: 'billing.refunds.approve',
     name: '환불 처리',
     module: 'Billing',
-    scopeDescription: '환불 승인/취소 등 결제 상태 변경을 수행할 수 있습니다.',
+    scopeDescription: '환불 승인 또는 취소로 결제 상태를 변경할 수 있습니다.',
     risk: 'high'
   },
   {
     key: 'analytics.read',
     name: '분석 조회',
     module: 'Analytics',
-    scopeDescription: '분석 대시보드의 통계 리포트를 조회할 수 있습니다.',
+    scopeDescription: '분석 대시보드와 리포트를 조회할 수 있습니다.',
     risk: 'low'
   },
   {
     key: 'system.admins.manage',
     name: '관리자 계정 관리',
     module: 'System',
-    scopeDescription: '관리자 계정 활성/비활성 및 계정 정보 변경을 수행할 수 있습니다.',
+    scopeDescription: '관리자 계정 생성, 비활성화, 계정 정보 변경을 수행할 수 있습니다.',
     risk: 'high'
   },
   {
     key: 'system.permissions.manage',
     name: '권한 관리',
     module: 'System',
-    scopeDescription: '관리자 권한 부여/수정/회수 및 역할 변경을 수행할 수 있습니다.',
+    scopeDescription: '관리자 권한 부여, 수정, 회수와 역할 변경을 수행할 수 있습니다.',
     risk: 'high'
   },
   {
@@ -176,7 +197,7 @@ export const roleCatalog: RoleDefinition[] = [
     key: 'OPS_ADMIN',
     name: '운영 관리자',
     description:
-      '운영 액션(사용자/커뮤니티/공지/환불)을 수행하며 시스템 권한 변경은 제외됩니다.',
+      '운영 액션(사용자, 커뮤니티, 메시지, 공지, 환불)을 수행하며 시스템 권한 변경은 제외됩니다.',
     defaultPermissions: [
       'dashboard.read',
       'users.read',
@@ -185,7 +206,10 @@ export const roleCatalog: RoleDefinition[] = [
       'community.posts.hide',
       'community.posts.delete',
       'community.reports.resolve',
-      'notification.send',
+      'message.mail.manage',
+      'message.push.manage',
+      'message.groups.manage',
+      'message.history.read',
       'operation.notices.manage',
       'billing.payments.read',
       'billing.refunds.approve',
@@ -198,13 +222,15 @@ export const roleCatalog: RoleDefinition[] = [
     key: 'CS_MANAGER',
     name: 'CS 담당자',
     description:
-      '사용자 조회/메모와 신고 처리 권한을 가지며 고위험 결제 액션은 제한됩니다.',
+      '사용자 조회/메모, 신고 처리, 메시지 발송 이력 확인 권한을 가지며 고위험 결제 액션은 제한됩니다.',
     defaultPermissions: [
       'dashboard.read',
       'users.read',
       'users.memo.write',
       'community.reports.resolve',
-      'notification.send',
+      'message.mail.manage',
+      'message.push.manage',
+      'message.history.read',
       'billing.payments.read',
       'system.audit.read'
     ]
@@ -218,6 +244,7 @@ export const roleCatalog: RoleDefinition[] = [
       'users.read',
       'billing.payments.read',
       'analytics.read',
+      'message.history.read',
       'system.audit.read',
       'system.logs.read'
     ]

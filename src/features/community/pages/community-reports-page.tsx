@@ -1,16 +1,21 @@
-﻿import { Card, Space, Table, Typography, message, notification } from 'antd';
+import { Card, Space, Table, Typography, notification } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
+import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
-import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
+import {
+  createColumnFilterProps,
+  createTextSorter
+} from '../../../shared/ui/table/table-column-utils';
+import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
 
-const { Paragraph, Text } = Typography;
+const { Text } = Typography;
 
 type ProcessStatus = '처리 대기' | '처리 완료';
 
@@ -59,39 +64,36 @@ const initialRows: ReportRow[] = [
   }
 ];
 
+const detailLabelMap: Record<string, string> = {
+  id: '신고 ID',
+  targetPostId: '대상 게시글 ID',
+  targetUserId: '대상 사용자 ID',
+  reporter: '신고자',
+  reason: '신고 사유',
+  createdAt: '신고일',
+  processStatus: '처리 상태'
+};
+
 export default function CommunityReportsPage(): JSX.Element {
-  const navigate = useNavigate();
   const [rows, setRows] = useState<ReportRow[]>(initialRows);
   const [actionState, setActionState] = useState<ReportActionState>(null);
-  const [messageApi, contextHolder] = message.useMessage();
+  const [selectedRow, setSelectedRow] = useState<ReportRow | null>(null);
   const [notificationApi, notificationContextHolder] = notification.useNotification();
-  const processedStatus = useMemo<ProcessStatus>(() => {
-    const baseStatus = initialRows[0]?.processStatus;
-    const completedRow = initialRows.find((row) => row.processStatus !== baseStatus);
-    return completedRow?.processStatus ?? (baseStatus as ProcessStatus);
-  }, []);
+  const processedStatus = useMemo<ProcessStatus>(
+    () =>
+      initialRows.find((row) => row.processStatus === '처리 완료')?.processStatus ??
+      '처리 완료',
+    []
+  );
 
   const closeAction = useCallback(() => setActionState(null), []);
-
-  const moveToUser = useCallback(
-    (userId: string) => {
-      navigate(`/users/${userId}?tab=profile`);
-    },
-    [navigate]
-  );
-
-  const showPostDetail = useCallback(
-    (postId: string) => {
-      messageApi.info(`게시글 보기: ${postId}`);
-    },
-    [messageApi]
-  );
+  const closeDetailModal = useCallback(() => setSelectedRow(null), []);
 
   const markProcessed = useCallback(
     (row: ReportRow) => {
       setRows((prev) =>
         prev.map((item) =>
-            item.id === row.id ? { ...item, processStatus: '처리 완료' } : item
+          item.id === row.id ? { ...item, processStatus: '처리 완료' } : item
         )
       );
       notificationApi.success({
@@ -115,14 +117,13 @@ export default function CommunityReportsPage(): JSX.Element {
         return;
       }
 
+      setRows((prev) =>
+        prev.map((item) =>
+          item.id === actionState.row.id ? { ...item, processStatus: '처리 완료' } : item
+        )
+      );
+
       if (actionState.type === 'hide-post') {
-        setRows((prev) =>
-          prev.map((item) =>
-            item.id === actionState.row.id
-              ? { ...item, processStatus: '처리 완료' }
-              : item
-          )
-        );
         notificationApi.success({
           message: '게시글 숨김 완료',
           description: (
@@ -135,13 +136,6 @@ export default function CommunityReportsPage(): JSX.Element {
           )
         });
       } else {
-        setRows((prev) =>
-          prev.map((item) =>
-            item.id === actionState.row.id
-              ? { ...item, processStatus: '처리 완료' }
-              : item
-          )
-        );
         notificationApi.success({
           message: '사용자 정지 완료',
           description: (
@@ -162,29 +156,77 @@ export default function CommunityReportsPage(): JSX.Element {
 
   const columns = useMemo<TableColumnsType<ReportRow>>(
     () => [
-      { title: '신고 ID', dataIndex: 'id', width: 110 },
-      { title: '게시글', dataIndex: 'targetPostId', width: 130 },
-      { title: '신고자', dataIndex: 'reporter', width: 130 },
-      { title: '신고 사유', dataIndex: 'reason', width: 220 },
-      { title: '신고일', dataIndex: 'createdAt', width: 180 },
+      {
+        title: '신고 ID',
+        dataIndex: 'id',
+        width: 110,
+        ...createColumnFilterProps(rows, (record) => record.id),
+        sorter: createTextSorter((record) => record.id)
+      },
+      {
+        title: '게시글',
+        dataIndex: 'targetPostId',
+        width: 130,
+        ...createColumnFilterProps(rows, (record) => record.targetPostId),
+        sorter: createTextSorter((record) => record.targetPostId)
+      },
+      {
+        title: '대상 사용자 ID',
+        dataIndex: 'targetUserId',
+        width: 140,
+        ...createColumnFilterProps(rows, (record) => record.targetUserId),
+        sorter: createTextSorter((record) => record.targetUserId),
+        render: (targetUserId: string) => (
+          <Link
+            className="table-navigation-link"
+            to={`/users/${targetUserId}?tab=profile`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            {targetUserId}
+          </Link>
+        )
+      },
+      {
+        title: '신고자',
+        dataIndex: 'reporter',
+        width: 130,
+        ...createColumnFilterProps(rows, (record) => record.reporter),
+        sorter: createTextSorter((record) => record.reporter)
+      },
+      {
+        title: '신고 사유',
+        dataIndex: 'reason',
+        width: 220,
+        ...createColumnFilterProps(rows, (record) => record.reason),
+        sorter: createTextSorter((record) => record.reason)
+      },
+      {
+        title: '신고일',
+        dataIndex: 'createdAt',
+        width: 180,
+        ...createColumnFilterProps(rows, (record) => record.createdAt),
+        sorter: createTextSorter((record) => record.createdAt)
+      },
       {
         title: '처리 상태',
         dataIndex: 'processStatus',
         width: 120,
+        ...createColumnFilterProps(rows, (record) => record.processStatus),
+        sorter: createTextSorter((record) => record.processStatus),
         render: (status: ProcessStatus) => <StatusBadge status={status} />
       },
       {
         title: '액션',
         key: 'actions',
         width: 140,
+        onCell: () => ({
+          onClick: (event) => {
+            event.stopPropagation();
+          }
+        }),
         render: (_, record) => (
           <TableActionMenu
             items={[
-              {
-                key: `view-${record.id}`,
-                label: '게시글 보기',
-                onClick: () => showPostDetail(record.targetPostId)
-              },
               {
                 key: `hide-${record.id}`,
                 label: '게시글 숨김',
@@ -201,29 +243,27 @@ export default function CommunityReportsPage(): JSX.Element {
                 label: '신고 처리 완료',
                 disabled: record.processStatus === processedStatus,
                 onClick: () => markProcessed(record)
-              },
-              {
-                key: `user-${record.id}`,
-                label: '사용자 이동',
-                onClick: () => moveToUser(record.targetUserId)
               }
             ]}
           />
         )
       }
     ],
-    [markProcessed, moveToUser, processedStatus, showPostDetail]
+    [markProcessed, processedStatus, rows]
+  );
+
+  const handleRowClick = useCallback(
+    (record: ReportRow) => ({
+      onClick: () => setSelectedRow(record),
+      style: { cursor: 'pointer' }
+    }),
+    []
   );
 
   return (
     <div>
-      {contextHolder}
       {notificationContextHolder}
       <PageTitle title="신고 관리" />
-      <Paragraph className="page-description">
-        신고 관리 액션(게시글 보기, 게시글 숨김, 사용자 정지, 신고 처리 완료)을
-        제공합니다.
-      </Paragraph>
 
       <Card>
         <Table
@@ -233,6 +273,7 @@ export default function CommunityReportsPage(): JSX.Element {
           scroll={{ x: 1400 }}
           columns={columns}
           dataSource={rows}
+          onRow={handleRowClick}
         />
       </Card>
 
@@ -256,8 +297,14 @@ export default function CommunityReportsPage(): JSX.Element {
           onConfirm={handleConfirmAction}
         />
       ) : null}
+
+      <TableRowDetailModal
+        open={Boolean(selectedRow)}
+        title="신고 상세 (더미)"
+        record={selectedRow}
+        labelMap={detailLabelMap}
+        onClose={closeDetailModal}
+      />
     </div>
   );
 }
-
-

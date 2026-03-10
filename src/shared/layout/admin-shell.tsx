@@ -1,8 +1,8 @@
 import {
   BarChartOutlined,
-  BellOutlined,
   DashboardOutlined,
   DollarOutlined,
+  MessageOutlined,
   NotificationOutlined,
   SettingOutlined,
   TeamOutlined
@@ -24,7 +24,7 @@ const menuItems: ItemType[] = [
   {
     key: '/users',
     icon: <TeamOutlined />,
-    label: <Link to="/users">사용자</Link>
+    label: <Link to="/users">Users</Link>
   },
   {
     key: '/community',
@@ -42,17 +42,25 @@ const menuItems: ItemType[] = [
     ]
   },
   {
-    key: '/notification',
-    icon: <BellOutlined />,
-    label: '알림',
+    key: '/messages',
+    icon: <MessageOutlined />,
+    label: '메시지',
     children: [
       {
-        key: '/notification/send',
-        label: <Link to="/notification/send">알림 발송</Link>
+        key: '/messages/mail',
+        label: <Link to="/messages/mail?tab=auto">메일</Link>
       },
       {
-        key: '/notification/history',
-        label: <Link to="/notification/history">발송 이력</Link>
+        key: '/messages/push',
+        label: <Link to="/messages/push?tab=auto">푸시</Link>
+      },
+      {
+        key: '/messages/groups',
+        label: <Link to="/messages/groups">대상 그룹</Link>
+      },
+      {
+        key: '/messages/history',
+        label: <Link to="/messages/history?channel=mail">발송 이력</Link>
       }
     ]
   },
@@ -125,10 +133,17 @@ function resolveSelectedKey(pathname: string): string {
       ? '/community/reports'
       : '/community/posts';
   }
-  if (pathname.startsWith('/notification')) {
-    return pathname.startsWith('/notification/history')
-      ? '/notification/history'
-      : '/notification/send';
+  if (pathname.startsWith('/messages')) {
+    if (pathname.startsWith('/messages/push')) {
+      return '/messages/push';
+    }
+    if (pathname.startsWith('/messages/groups')) {
+      return '/messages/groups';
+    }
+    if (pathname.startsWith('/messages/history')) {
+      return '/messages/history';
+    }
+    return '/messages/mail';
   }
   if (pathname.startsWith('/operation')) {
     return pathname.startsWith('/operation/faq')
@@ -162,8 +177,8 @@ function resolveOpenKeys(selectedKey: string): string[] {
   if (selectedKey.startsWith('/community')) {
     return ['/community'];
   }
-  if (selectedKey.startsWith('/notification')) {
-    return ['/notification'];
+  if (selectedKey.startsWith('/messages')) {
+    return ['/messages'];
   }
   if (selectedKey.startsWith('/operation')) {
     return ['/operation'];
@@ -235,13 +250,12 @@ export function AdminShell(): JSX.Element {
             gap: 20
           }}
         >
-          <Text type="secondary">운영 흐름: 검색 → 상세 → 조치 → 감사 로그 확인</Text>
+          <Text type="secondary">
+            운영 기본 흐름: 검색 - 상세 - 조치 - 감사 로그 확인
+          </Text>
         </Header>
         <Content style={{ padding: 20 }}>
-          <div
-            key={location.pathname}
-            className="route-transition-container"
-          >
+          <div key={location.pathname} className="route-transition-container">
             <Suspense
               fallback={
                 <div className="route-loading-fallback">

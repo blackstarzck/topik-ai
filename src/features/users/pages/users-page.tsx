@@ -33,11 +33,15 @@ import { FilterBar } from '../../../shared/ui/filter-bar/filter-bar';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
+import {
+  createColumnFilterProps,
+  createTextSorter
+} from '../../../shared/ui/table/table-column-utils';
 import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
 import type { AsyncState } from '../../../shared/model/async-state';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 
-const { Paragraph, Text } = Typography;
+const { Text } = Typography;
 
 const pageSizeOptions = ['20', '50', '100'];
 
@@ -216,12 +220,6 @@ export default function UsersPage(): JSX.Element {
     [usersState.data, query]
   );
 
-  const pagedUsers = useMemo(() => {
-    const startIndex = (query.page - 1) * query.pageSize;
-    const endIndex = startIndex + query.pageSize;
-    return filteredUsers.slice(startIndex, endIndex);
-  }, [filteredUsers, query.page, query.pageSize]);
-
   const handleSuspend = useCallback((user: UserSummary) => {
     setActionState({ type: 'suspend', user });
   }, []);
@@ -312,61 +310,79 @@ export default function UsersPage(): JSX.Element {
       {
         title: '사용자 ID',
         dataIndex: 'id',
-        width: 110
+        width: 110,
+        ...createColumnFilterProps(filteredUsers, (record) => record.id),
+        sorter: createTextSorter((record) => record.id)
       },
       {
         title: '이메일',
         dataIndex: 'email',
-        width: 220
+        width: 220,
+        ...createColumnFilterProps(filteredUsers, (record) => record.email),
+        sorter: createTextSorter((record) => record.email)
       },
       {
         title: '이름',
         dataIndex: 'realName',
-        width: 120
+        width: 120,
+        ...createColumnFilterProps(filteredUsers, (record) => record.realName),
+        sorter: createTextSorter((record) => record.realName)
       },
       {
         title: '닉네임',
         dataIndex: 'nickname',
-        width: 160
+        width: 160,
+        ...createColumnFilterProps(filteredUsers, (record) => record.nickname),
+        sorter: createTextSorter((record) => record.nickname)
       },
       {
         title: '가입일',
         dataIndex: 'joinedAt',
-        width: 120
+        width: 120,
+        ...createColumnFilterProps(filteredUsers, (record) => record.joinedAt),
+        sorter: createTextSorter((record) => record.joinedAt)
       },
       {
         title: '최근 접속',
         dataIndex: 'lastLoginAt',
-        width: 120
+        width: 120,
+        ...createColumnFilterProps(filteredUsers, (record) => record.lastLoginAt),
+        sorter: createTextSorter((record) => record.lastLoginAt)
       },
       {
         title: '등급',
         dataIndex: 'tier',
-        width: 120
+        width: 120,
+        ...createColumnFilterProps(filteredUsers, (record) => record.tier),
+        sorter: createTextSorter((record) => record.tier)
       },
       {
         title: '구독 상태',
         dataIndex: 'subscriptionStatus',
-        width: 120
+        width: 120,
+        ...createColumnFilterProps(filteredUsers, (record) => record.subscriptionStatus),
+        sorter: createTextSorter((record) => record.subscriptionStatus)
       },
       {
         title: '회원 상태',
         dataIndex: 'status',
         width: 120,
+        ...createColumnFilterProps(filteredUsers, (record) => record.status),
+        sorter: createTextSorter((record) => record.status),
         render: (status: UserStatus) => <StatusBadge status={status} />
       },
       {
         title: '액션',
         key: 'actions',
         width: 140,
+        onCell: () => ({
+          onClick: (event) => {
+            event.stopPropagation();
+          }
+        }),
         render: (_, record) => (
           <TableActionMenu
             items={[
-              {
-                key: `detail-${record.id}`,
-                label: '회원 상세 보기',
-                onClick: () => handleOpenDetail(record.id)
-              },
               {
                 key: `suspend-${record.id}`,
                 label: '회원 정지',
@@ -390,7 +406,15 @@ export default function UsersPage(): JSX.Element {
         )
       }
     ],
-    [handleMemoOpen, handleOpenDetail, handleSuspend, handleUnsuspend]
+    [filteredUsers, handleMemoOpen, handleSuspend, handleUnsuspend]
+  );
+
+  const handleRowClick = useCallback(
+    (record: UserSummary) => ({
+      onClick: () => handleOpenDetail(record.id),
+      style: { cursor: 'pointer' }
+    }),
+    [handleOpenDetail]
   );
 
   const handleKeywordChange = useCallback(
@@ -436,9 +460,6 @@ export default function UsersPage(): JSX.Element {
     <div>
       {notificationContextHolder}
       <PageTitle title="사용자" />
-      <Paragraph className="page-description">
-        액션 메뉴를 통해 회원 상세 보기, 회원 정지/해제, 관리자 메모 작성을 수행할 수 있습니다.
-      </Paragraph>
 
       {usersState.status === 'error' ? (
         <Alert
@@ -497,13 +518,13 @@ export default function UsersPage(): JSX.Element {
           rowKey="id"
           virtual
           columns={columns}
-          dataSource={pagedUsers}
+          dataSource={filteredUsers}
+          onRow={handleRowClick}
           loading={usersState.status === 'pending'}
           scroll={{ x: 1620, y: 560 }}
           pagination={{
             current: query.page,
             pageSize: query.pageSize,
-            total: filteredUsers.length,
             pageSizeOptions,
             showSizeChanger: true,
             showTotal: (total) => `Total ${total.toLocaleString()}`,

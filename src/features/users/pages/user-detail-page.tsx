@@ -18,11 +18,18 @@ import type { UserStatus } from '../model/types';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
+import {
+  createColumnFilterProps,
+  createNumberSorter,
+  createNumericTextSorter,
+  createTextSorter
+} from '../../../shared/ui/table/table-column-utils';
+import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
 
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 
-const { Paragraph, Text } = Typography;
+const { Text } = Typography;
 
 type UsersDetailTabKey =
   | 'profile'
@@ -40,6 +47,11 @@ type ActionMeta = {
   description: string;
   nextStatus: UserStatus;
 };
+
+type DetailModalState = {
+  title: string;
+  record: Record<string, unknown>;
+} | null;
 
 const allowedTabs: readonly UsersDetailTabKey[] = [
   'profile',
@@ -86,6 +98,7 @@ export default function UserDetailPage(): JSX.Element {
 
   const user = useMemo(() => getMockUserById(userId), [userId]);
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
+  const [detailModalState, setDetailModalState] = useState<DetailModalState>(null);
   const [currentStatus, setCurrentStatus] = useState<UserStatus>(
     user?.status ?? '정상'
   );
@@ -103,6 +116,7 @@ export default function UserDetailPage(): JSX.Element {
   }, [searchParams]);
 
   const actionMeta = useMemo(() => buildActionMeta(currentStatus), [currentStatus]);
+  const isAccountSuspended = currentStatus === '정지';
 
   const handleTabChange = useCallback(
     (nextTab: string) => {
@@ -117,6 +131,18 @@ export default function UserDetailPage(): JSX.Element {
   );
 
   const closeActionModal = useCallback(() => setPendingAction(null), []);
+  const closeDetailModal = useCallback(() => setDetailModalState(null), []);
+
+  const openDetailModal = useCallback(
+    (title: string, record: Record<string, unknown>) => {
+      setDetailModalState({ title, record });
+    },
+    []
+  );
+
+  const handleToggleSuspend = useCallback(() => {
+    setPendingAction(isAccountSuspended ? 'unsuspend' : 'suspend');
+  }, [isAccountSuspended]);
 
   const handleConfirmAction = useCallback(
     async (reason: string) => {
@@ -246,79 +272,241 @@ export default function UserDetailPage(): JSX.Element {
 
   const activityColumns = useMemo<TableColumnsType<(typeof activityRows)[number]>>(
     () => [
-      { title: '활동 ID', dataIndex: 'id', width: 160 },
-      { title: '활동 유형', dataIndex: 'type', width: 120 },
-      { title: '콘텐츠', dataIndex: 'content' },
-      { title: '활동 시각', dataIndex: 'createdAt', width: 180 },
-      { title: 'IP', dataIndex: 'ip', width: 160 }
+      {
+        title: '활동 ID',
+        dataIndex: 'id',
+        width: 160,
+        ...createColumnFilterProps(activityRows, (record) => record.id),
+        sorter: createTextSorter((record) => record.id)
+      },
+      {
+        title: '활동 유형',
+        dataIndex: 'type',
+        width: 120,
+        ...createColumnFilterProps(activityRows, (record) => record.type),
+        sorter: createTextSorter((record) => record.type)
+      },
+      {
+        title: '콘텐츠',
+        dataIndex: 'content',
+        ...createColumnFilterProps(activityRows, (record) => record.content),
+        sorter: createTextSorter((record) => record.content)
+      },
+      {
+        title: '활동 시각',
+        dataIndex: 'createdAt',
+        width: 180,
+        ...createColumnFilterProps(activityRows, (record) => record.createdAt),
+        sorter: createTextSorter((record) => record.createdAt)
+      },
+      {
+        title: 'IP',
+        dataIndex: 'ip',
+        width: 160,
+        ...createColumnFilterProps(activityRows, (record) => record.ip),
+        sorter: createTextSorter((record) => record.ip)
+      }
     ],
-    []
+    [activityRows]
   );
 
   const paymentColumns = useMemo<TableColumnsType<(typeof paymentRows)[number]>>(
     () => [
-      { title: '결제 ID', dataIndex: 'id', width: 150 },
-      { title: '상품', dataIndex: 'product' },
-      { title: '결제 금액', dataIndex: 'amount', width: 130, align: 'right' },
-      { title: '결제 수단', dataIndex: 'method', width: 120 },
-      { title: '결제일', dataIndex: 'paidAt', width: 130 },
+      {
+        title: '결제 ID',
+        dataIndex: 'id',
+        width: 150,
+        ...createColumnFilterProps(paymentRows, (record) => record.id),
+        sorter: createTextSorter((record) => record.id),
+        render: (id: string) => (
+          <Link
+            className="table-navigation-link"
+            to="/billing/payments"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {id}
+          </Link>
+        )
+      },
+      {
+        title: '상품',
+        dataIndex: 'product',
+        ...createColumnFilterProps(paymentRows, (record) => record.product),
+        sorter: createTextSorter((record) => record.product)
+      },
+      {
+        title: '결제 금액',
+        dataIndex: 'amount',
+        width: 130,
+        align: 'right',
+        ...createColumnFilterProps(paymentRows, (record) => record.amount),
+        sorter: createNumericTextSorter((record) => record.amount)
+      },
+      {
+        title: '결제 수단',
+        dataIndex: 'method',
+        width: 120,
+        ...createColumnFilterProps(paymentRows, (record) => record.method),
+        sorter: createTextSorter((record) => record.method)
+      },
+      {
+        title: '결제일',
+        dataIndex: 'paidAt',
+        width: 130,
+        ...createColumnFilterProps(paymentRows, (record) => record.paidAt),
+        sorter: createTextSorter((record) => record.paidAt)
+      },
       {
         title: '상태',
         dataIndex: 'status',
         width: 100,
+        ...createColumnFilterProps(paymentRows, (record) => record.status),
+        sorter: createTextSorter((record) => record.status),
         render: (status: string) => <StatusBadge status={status} />
-      },
-      {
-        title: '액션',
-        key: 'action',
-        width: 180,
-        render: (_, record) => (
-          <Space size={8}>
-            <Text>{record.id}</Text>
-            <Link to="/billing/payments">결제 페이지로 이동</Link>
-          </Space>
-        )
       }
     ],
-    []
+    [paymentRows]
   );
 
   const communityColumns = useMemo<TableColumnsType<(typeof communityRows)[number]>>(
     () => [
-      { title: '게시글 ID', dataIndex: 'id', width: 160 },
-      { title: '제목', dataIndex: 'title' },
-      { title: '게시판', dataIndex: 'board', width: 120 },
-      { title: '작성일', dataIndex: 'createdAt', width: 120 },
-      { title: '신고 수', dataIndex: 'reports', width: 90, align: 'right' },
+      {
+        title: '게시글 ID',
+        dataIndex: 'id',
+        width: 160,
+        ...createColumnFilterProps(communityRows, (record) => record.id),
+        sorter: createTextSorter((record) => record.id),
+        render: (id: string) => (
+          <Link
+            className="table-navigation-link"
+            to="/community/posts"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {id}
+          </Link>
+        )
+      },
+      {
+        title: '제목',
+        dataIndex: 'title',
+        ...createColumnFilterProps(communityRows, (record) => record.title),
+        sorter: createTextSorter((record) => record.title)
+      },
+      {
+        title: '게시판',
+        dataIndex: 'board',
+        width: 120,
+        ...createColumnFilterProps(communityRows, (record) => record.board),
+        sorter: createTextSorter((record) => record.board)
+      },
+      {
+        title: '작성일',
+        dataIndex: 'createdAt',
+        width: 120,
+        ...createColumnFilterProps(communityRows, (record) => record.createdAt),
+        sorter: createTextSorter((record) => record.createdAt)
+      },
+      {
+        title: '신고 수',
+        dataIndex: 'reports',
+        width: 90,
+        align: 'right',
+        ...createColumnFilterProps(communityRows, (record) => record.reports),
+        sorter: createNumberSorter((record) => record.reports)
+      },
       {
         title: '상태',
         dataIndex: 'status',
         width: 110,
+        ...createColumnFilterProps(communityRows, (record) => record.status),
+        sorter: createTextSorter((record) => record.status),
         render: (status: string) => <StatusBadge status={status} />
       }
     ],
-    []
+    [communityRows]
   );
 
   const logsColumns = useMemo<TableColumnsType<(typeof logRows)[number]>>(
     () => [
-      { title: '로그 ID', dataIndex: 'id', width: 150 },
-      { title: '로그 유형', dataIndex: 'type', width: 120 },
-      { title: 'IP', dataIndex: 'ip', width: 160 },
-      { title: '기기', dataIndex: 'device', width: 170 },
-      { title: '시각', dataIndex: 'createdAt', width: 190 }
+      {
+        title: '로그 ID',
+        dataIndex: 'id',
+        width: 150,
+        ...createColumnFilterProps(logRows, (record) => record.id),
+        sorter: createTextSorter((record) => record.id)
+      },
+      {
+        title: '로그 유형',
+        dataIndex: 'type',
+        width: 120,
+        ...createColumnFilterProps(logRows, (record) => record.type),
+        sorter: createTextSorter((record) => record.type)
+      },
+      {
+        title: 'IP',
+        dataIndex: 'ip',
+        width: 160,
+        ...createColumnFilterProps(logRows, (record) => record.ip),
+        sorter: createTextSorter((record) => record.ip)
+      },
+      {
+        title: '기기',
+        dataIndex: 'device',
+        width: 170,
+        ...createColumnFilterProps(logRows, (record) => record.device),
+        sorter: createTextSorter((record) => record.device)
+      },
+      {
+        title: '시각',
+        dataIndex: 'createdAt',
+        width: 190,
+        ...createColumnFilterProps(logRows, (record) => record.createdAt),
+        sorter: createTextSorter((record) => record.createdAt)
+      }
     ],
-    []
+    [logRows]
   );
 
   const memoColumns = useMemo<TableColumnsType<(typeof memoRows)[number]>>(
     () => [
-      { title: '메모 ID', dataIndex: 'id', width: 150 },
-      { title: '관리자', dataIndex: 'admin', width: 130 },
-      { title: '내용', dataIndex: 'content' },
-      { title: '작성일', dataIndex: 'createdAt', width: 130 }
+      {
+        title: '메모 ID',
+        dataIndex: 'id',
+        width: 150,
+        ...createColumnFilterProps(memoRows, (record) => record.id),
+        sorter: createTextSorter((record) => record.id)
+      },
+      {
+        title: '관리자',
+        dataIndex: 'admin',
+        width: 130,
+        ...createColumnFilterProps(memoRows, (record) => record.admin),
+        sorter: createTextSorter((record) => record.admin),
+        render: (admin: string) => (
+          <Link
+            className="table-navigation-link"
+            to="/system/admins"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {admin}
+          </Link>
+        )
+      },
+      {
+        title: '내용',
+        dataIndex: 'content',
+        ...createColumnFilterProps(memoRows, (record) => record.content),
+        sorter: createTextSorter((record) => record.content)
+      },
+      {
+        title: '작성일',
+        dataIndex: 'createdAt',
+        width: 130,
+        ...createColumnFilterProps(memoRows, (record) => record.createdAt),
+        sorter: createTextSorter((record) => record.createdAt)
+      }
     ],
-    []
+    [memoRows]
   );
 
   const tabs = useMemo<NonNullable<TabsProps['items']>>(
@@ -362,6 +550,10 @@ export default function UserDetailPage(): JSX.Element {
             pagination={false}
             dataSource={activityRows}
             columns={activityColumns}
+            onRow={(record) => ({
+              onClick: () => openDetailModal('활동 상세 (더미)', record),
+              style: { cursor: 'pointer' }
+            })}
           />
         )
       },
@@ -375,6 +567,10 @@ export default function UserDetailPage(): JSX.Element {
             pagination={false}
             dataSource={paymentRows}
             columns={paymentColumns}
+            onRow={(record) => ({
+              onClick: () => openDetailModal('결제 상세 (더미)', record),
+              style: { cursor: 'pointer' }
+            })}
           />
         )
       },
@@ -388,6 +584,10 @@ export default function UserDetailPage(): JSX.Element {
             pagination={false}
             dataSource={communityRows}
             columns={communityColumns}
+            onRow={(record) => ({
+              onClick: () => openDetailModal('커뮤니티 상세 (더미)', record),
+              style: { cursor: 'pointer' }
+            })}
           />
         )
       },
@@ -401,6 +601,10 @@ export default function UserDetailPage(): JSX.Element {
             pagination={false}
             dataSource={logRows}
             columns={logsColumns}
+            onRow={(record) => ({
+              onClick: () => openDetailModal('로그 상세 (더미)', record),
+              style: { cursor: 'pointer' }
+            })}
           />
         )
       },
@@ -414,6 +618,10 @@ export default function UserDetailPage(): JSX.Element {
             pagination={false}
             dataSource={memoRows}
             columns={memoColumns}
+            onRow={(record) => ({
+              onClick: () => openDetailModal('관리자 메모 상세 (더미)', record),
+              style: { cursor: 'pointer' }
+            })}
           />
         )
       }
@@ -430,6 +638,7 @@ export default function UserDetailPage(): JSX.Element {
       memoRows,
       paymentColumns,
       paymentRows,
+      openDetailModal,
       user
     ]
   );
@@ -449,23 +658,31 @@ export default function UserDetailPage(): JSX.Element {
       {notificationContextHolder}
       <Space direction="vertical" size={14} style={{ width: '100%' }}>
         <div>
-          <PageTitle title="사용자 상세" />
-          <Paragraph className="page-description">
-            {user.realName} ({user.nickname}) / {user.email} / 사용자 ID: {user.id}
-          </Paragraph>
+          <PageTitle title="Users 상세" />
         </div>
 
         <Card>
-          <Space size={10} wrap style={{ marginBottom: 12 }}>
-            <Button danger onClick={() => setPendingAction('suspend')}>
-              계정 정지
-            </Button>
-            <Button onClick={() => setPendingAction('unsuspend')}>정지 해제</Button>
-            <Button danger onClick={() => setPendingAction('withdraw')}>
-              탈퇴 처리
-            </Button>
-            <AuditLogLink targetType="Users" targetId={user.id} />
-          </Space>
+          <section
+            style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              marginBottom: 12
+            }}
+          >
+            <Space size={10} wrap>
+              <Button
+                danger={!isAccountSuspended}
+                disabled={currentStatus === '탈퇴' || pendingAction !== null}
+                onClick={handleToggleSuspend}
+              >
+                {isAccountSuspended ? '정지 해제' : '계정 정지'}
+              </Button>
+              <Button danger onClick={() => setPendingAction('withdraw')}>
+                탈퇴 처리
+              </Button>
+              <AuditLogLink targetType="Users" targetId={user.id} />
+            </Space>
+          </section>
           <Tabs activeKey={activeTab} items={tabs} onChange={handleTabChange} />
         </Card>
       </Space>
@@ -482,6 +699,12 @@ export default function UserDetailPage(): JSX.Element {
           onConfirm={handleConfirmAction}
         />
       ) : null}
+      <TableRowDetailModal
+        open={Boolean(detailModalState)}
+        title={detailModalState?.title ?? ''}
+        record={detailModalState?.record ?? null}
+        onClose={closeDetailModal}
+      />
     </div>
   );
 }

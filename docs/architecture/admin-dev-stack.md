@@ -2,7 +2,7 @@
 
 ## 문서 계약
 
-- 고정 8개 모듈: Dashboard, Users, Community, Notification, Operation, Billing, Analytics, System
+- 고정 8개 모듈: Dashboard, Users, Community, Message, Operation, Billing, Analytics, System
 - 메뉴명은 `Users`(복수형)로 표기하며, `User` 단수형 사용을 금지합니다. (참조: `docs/architecture/admin-information-architecture.md:63`)
 - 감사 로그 용어는 `감사 로그`로 통일합니다. (참조: `docs/architecture/admin-information-architecture.md:64`, `docs/specs/admin-action-log.md:4`)
 - `시스템 로그`는 기술 로그로 감사 로그와 구분합니다. (참조: `docs/architecture/admin-information-architecture.md:65`)
@@ -33,7 +33,7 @@ TOPIK AI Admin은 운영 효율이 핵심인 B2B 관리자 도구이며, `docs/s
 
 ## 라우팅 및 화면 경계 원칙
 
-- 라우트는 IA의 8개 모듈(`Dashboard`, `Users`, `Community`, `Notification`, `Operation`, `Billing`, `Analytics`, `System`)을 1차 경계로 구성합니다.
+- 라우트는 IA의 8개 모듈(`Dashboard`, `Users`, `Community`, `Message`, `Operation`, `Billing`, `Analytics`, `System`)을 1차 경계로 구성합니다.
 - `Users` 표기는 복수형으로 고정하며, 상세 진입 시 탭은 `프로필`, `활동`, `결제`, `커뮤니티`, `로그`, `관리자 메모` 6개를 고정합니다.
 - `System` 모듈의 로그는 `감사 로그`와 `시스템 로그`를 구분해 라우트/메뉴 명세에서 혼용하지 않습니다.
 - 페이지 단위 코드 스플리팅은 모듈 경계 기준으로 적용하고, 상세 탭은 필요 시 지연 로딩합니다.

@@ -64,7 +64,7 @@ System
 - 감사 로그의 `Target ID`로 원본 화면 역추적 가능해야 함
 - 시스템 로그(기술 로그)와 목적이 다르므로 화면/권한을 분리 운영
 
-## 8) Notification 연계 계약
+## 8) notification 피드백 연계 계약
 
 - 조치 성공 직후 노출되는 `notification`은 감사 로그 레코드와 동일한 사실을 표시해야 합니다.
 - notification 필드와 감사 로그 필드 매핑:

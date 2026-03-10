@@ -1,11 +1,17 @@
-import { Card, Table, Typography } from 'antd';
+import { Card, Table } from 'antd';
 import type { TableColumnsType } from 'antd';
-
-import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
+import { useCallback, useMemo, useState } from 'react';
 
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
+import {
+  createColumnFilterProps,
+  createNumberSorter,
+  createTextSorter
+} from '../../../shared/ui/table/table-column-utils';
+import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
 
-const { Paragraph } = Typography;
+type NotificationSendStatus = '성공' | '부분 실패' | '실패';
 
 type NotificationHistoryRow = {
   id: string;
@@ -14,7 +20,7 @@ type NotificationHistoryRow = {
   sentAt: string;
   successCount: number;
   failureCount: number;
-  status: '성공' | '부분 실패' | '실패';
+  status: NotificationSendStatus;
 };
 
 const rows: NotificationHistoryRow[] = [
@@ -47,30 +53,92 @@ const rows: NotificationHistoryRow[] = [
   }
 ];
 
-const columns: TableColumnsType<NotificationHistoryRow> = [
-  { title: '발송 ID', dataIndex: 'id', width: 110 },
-  { title: '제목', dataIndex: 'title', width: 240 },
-  { title: '발송 대상', dataIndex: 'target', width: 160 },
-  { title: '발송 시각', dataIndex: 'sentAt', width: 180 },
-  { title: '성공 수', dataIndex: 'successCount', width: 100, align: 'right' },
-  { title: '실패 수', dataIndex: 'failureCount', width: 100, align: 'right' },
-  {
-    title: '상태',
-    dataIndex: 'status',
-    width: 110,
-    render: (status: NotificationHistoryRow['status']) => (
-      <StatusBadge status={status} />
-    )
-  }
-];
+const detailLabelMap: Record<string, string> = {
+  id: '발송 ID',
+  title: '제목',
+  target: '발송 대상',
+  sentAt: '발송 시각',
+  successCount: '성공 수',
+  failureCount: '실패 수',
+  status: '상태'
+};
 
 export default function NotificationHistoryPage(): JSX.Element {
+  const [selectedRow, setSelectedRow] = useState<NotificationHistoryRow | null>(
+    null
+  );
+
+  const columns = useMemo<TableColumnsType<NotificationHistoryRow>>(
+    () => [
+      {
+        title: '발송 ID',
+        dataIndex: 'id',
+        width: 110,
+        ...createColumnFilterProps(rows, (record) => record.id),
+        sorter: createTextSorter((record) => record.id)
+      },
+      {
+        title: '제목',
+        dataIndex: 'title',
+        width: 240,
+        ...createColumnFilterProps(rows, (record) => record.title),
+        sorter: createTextSorter((record) => record.title)
+      },
+      {
+        title: '발송 대상',
+        dataIndex: 'target',
+        width: 160,
+        ...createColumnFilterProps(rows, (record) => record.target),
+        sorter: createTextSorter((record) => record.target)
+      },
+      {
+        title: '발송 시각',
+        dataIndex: 'sentAt',
+        width: 180,
+        ...createColumnFilterProps(rows, (record) => record.sentAt),
+        sorter: createTextSorter((record) => record.sentAt)
+      },
+      {
+        title: '성공 수',
+        dataIndex: 'successCount',
+        width: 100,
+        align: 'right',
+        ...createColumnFilterProps(rows, (record) => record.successCount),
+        sorter: createNumberSorter((record) => record.successCount)
+      },
+      {
+        title: '실패 수',
+        dataIndex: 'failureCount',
+        width: 100,
+        align: 'right',
+        ...createColumnFilterProps(rows, (record) => record.failureCount),
+        sorter: createNumberSorter((record) => record.failureCount)
+      },
+      {
+        title: '상태',
+        dataIndex: 'status',
+        width: 110,
+        ...createColumnFilterProps(rows, (record) => record.status),
+        sorter: createTextSorter((record) => record.status),
+        render: (status: NotificationSendStatus) => <StatusBadge status={status} />
+      }
+    ],
+    []
+  );
+
+  const handleRow = useCallback(
+    (record: NotificationHistoryRow) => ({
+      onClick: () => setSelectedRow(record),
+      style: { cursor: 'pointer' }
+    }),
+    []
+  );
+
+  const closeDetailModal = useCallback(() => setSelectedRow(null), []);
+
   return (
     <div>
       <PageTitle title="발송 이력" />
-      <Paragraph className="page-description">
-        발송 이력, 성공/실패 건수, 상태를 조회합니다.
-      </Paragraph>
       <Card>
         <Table
           rowKey="id"
@@ -79,8 +147,16 @@ export default function NotificationHistoryPage(): JSX.Element {
           scroll={{ x: 1200 }}
           columns={columns}
           dataSource={rows}
+          onRow={handleRow}
         />
       </Card>
+      <TableRowDetailModal
+        open={Boolean(selectedRow)}
+        title="알림 발송 상세 (더미)"
+        record={selectedRow}
+        labelMap={detailLabelMap}
+        onClose={closeDetailModal}
+      />
     </div>
   );
 }

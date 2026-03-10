@@ -7,20 +7,25 @@
   Space,
   Table,
   Typography,
-  message,
   notification
 } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
+import {
+  createColumnFilterProps,
+  createTextSorter
+} from '../../../shared/ui/table/table-column-utils';
+import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 
-const { Paragraph, Text } = Typography;
+const { Text } = Typography;
 
 type NoticeStatus = '게시' | '숨김';
 
@@ -63,12 +68,20 @@ const initialRows: NoticeRow[] = [
   }
 ];
 
+const detailLabelMap: Record<string, string> = {
+  id: '공지 ID',
+  title: '제목',
+  author: '작성자',
+  createdAt: '작성일',
+  status: '상태'
+};
+
 export default function OperationNoticesPage(): JSX.Element {
   const [rows, setRows] = useState<NoticeRow[]>(initialRows);
   const [modalState, setModalState] = useState<EditModalState>(null);
   const [dangerState, setDangerState] = useState<DangerActionState>(null);
+  const [selectedRow, setSelectedRow] = useState<NoticeRow | null>(null);
   const [form] = Form.useForm<NoticeFormValue>();
-  const [messageApi, contextHolder] = message.useMessage();
   const [notificationApi, notificationContextHolder] = notification.useNotification();
 
   const openCreateModal = useCallback(() => {
@@ -86,6 +99,7 @@ export default function OperationNoticesPage(): JSX.Element {
 
   const closeModal = useCallback(() => setModalState(null), []);
   const closeDangerModal = useCallback(() => setDangerState(null), []);
+  const closeDetailModal = useCallback(() => setSelectedRow(null), []);
 
   const handleSaveNotice = useCallback(async () => {
     const values = await form.validateFields();
@@ -182,20 +196,60 @@ export default function OperationNoticesPage(): JSX.Element {
 
   const columns = useMemo<TableColumnsType<NoticeRow>>(
     () => [
-      { title: '공지 ID', dataIndex: 'id', width: 130 },
-      { title: '제목', dataIndex: 'title', width: 320 },
-      { title: '작성자', dataIndex: 'author', width: 130 },
-      { title: '작성일', dataIndex: 'createdAt', width: 120 },
+      {
+        title: '공지 ID',
+        dataIndex: 'id',
+        width: 130,
+        ...createColumnFilterProps(rows, (record) => record.id),
+        sorter: createTextSorter((record) => record.id)
+      },
+      {
+        title: '제목',
+        dataIndex: 'title',
+        width: 320,
+        ...createColumnFilterProps(rows, (record) => record.title),
+        sorter: createTextSorter((record) => record.title)
+      },
+      {
+        title: '작성자',
+        dataIndex: 'author',
+        width: 130,
+        ...createColumnFilterProps(rows, (record) => record.author),
+        sorter: createTextSorter((record) => record.author),
+        render: (author: string) => (
+          <Link
+            className="table-navigation-link"
+            to="/system/admins"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {author}
+          </Link>
+        )
+      },
+      {
+        title: '작성일',
+        dataIndex: 'createdAt',
+        width: 120,
+        ...createColumnFilterProps(rows, (record) => record.createdAt),
+        sorter: createTextSorter((record) => record.createdAt)
+      },
       {
         title: '상태',
         dataIndex: 'status',
         width: 100,
+        ...createColumnFilterProps(rows, (record) => record.status),
+        sorter: createTextSorter((record) => record.status),
         render: (status: NoticeStatus) => <StatusBadge status={status} />
       },
       {
         title: '액션',
         key: 'action',
         width: 140,
+        onCell: () => ({
+          onClick: (event) => {
+            event.stopPropagation();
+          }
+        }),
         render: (_, record) => (
           <TableActionMenu
             items={[
@@ -221,17 +275,21 @@ export default function OperationNoticesPage(): JSX.Element {
         )
       }
     ],
-    [openEditModal]
+    [openEditModal, rows]
+  );
+
+  const handleRowClick = useCallback(
+    (record: NoticeRow) => ({
+      onClick: () => setSelectedRow(record),
+      style: { cursor: 'pointer' }
+    }),
+    []
   );
 
   return (
     <div>
-      {contextHolder}
       {notificationContextHolder}
       <PageTitle title="공지사항" />
-      <Paragraph className="page-description">
-        공지 등록, 수정, 삭제, 숨김 액션을 제공합니다.
-      </Paragraph>
 
       <Card
         extra={
@@ -247,6 +305,7 @@ export default function OperationNoticesPage(): JSX.Element {
           scroll={{ x: 1200 }}
           columns={columns}
           dataSource={rows}
+          onRow={handleRowClick}
         />
       </Card>
 
@@ -286,6 +345,13 @@ export default function OperationNoticesPage(): JSX.Element {
           onConfirm={handleDangerAction}
         />
       ) : null}
+      <TableRowDetailModal
+        open={Boolean(selectedRow)}
+        title="공지 상세 (더미)"
+        record={selectedRow}
+        labelMap={detailLabelMap}
+        onClose={closeDetailModal}
+      />
     </div>
   );
 }

@@ -23,7 +23,7 @@ export function buildAdminBreadcrumbItems(
   }
 
   if (pathname === '/users') {
-    return [breadcrumbTextItem('사용자')];
+    return [breadcrumbTextItem('Users')];
   }
 
   if (pathname.startsWith('/users/')) {
@@ -40,11 +40,11 @@ export function buildAdminBreadcrumbItems(
     const detailItem = breadcrumbTextItem(`상세 (${userId})`);
 
     if (!tab || !tabMap[tab]) {
-      return [breadcrumbLinkItem('사용자', '/users'), detailItem];
+      return [breadcrumbLinkItem('Users', '/users'), detailItem];
     }
 
     return [
-      breadcrumbLinkItem('사용자', '/users'),
+      breadcrumbLinkItem('Users', '/users'),
       detailItem,
       breadcrumbTextItem(tabMap[tab])
     ];
@@ -64,17 +64,37 @@ export function buildAdminBreadcrumbItems(
     ];
   }
 
-  if (pathname.startsWith('/notification/send')) {
+  if (pathname.startsWith('/messages/mail')) {
+    const tab = new URLSearchParams(search).get('tab');
     return [
-      breadcrumbLinkItem('알림', '/notification/send'),
-      breadcrumbTextItem('알림 발송')
+      breadcrumbLinkItem('메시지', '/messages/mail?tab=auto'),
+      breadcrumbTextItem('메일'),
+      breadcrumbTextItem(tab === 'manual' ? '수동 발송' : '자동 발송')
     ];
   }
 
-  if (pathname.startsWith('/notification/history')) {
+  if (pathname.startsWith('/messages/push')) {
+    const tab = new URLSearchParams(search).get('tab');
     return [
-      breadcrumbLinkItem('알림', '/notification/send'),
-      breadcrumbTextItem('발송 이력')
+      breadcrumbLinkItem('메시지', '/messages/mail?tab=auto'),
+      breadcrumbTextItem('푸시'),
+      breadcrumbTextItem(tab === 'manual' ? '수동 발송' : '자동 발송')
+    ];
+  }
+
+  if (pathname.startsWith('/messages/groups')) {
+    return [
+      breadcrumbLinkItem('메시지', '/messages/mail?tab=auto'),
+      breadcrumbTextItem('대상 그룹')
+    ];
+  }
+
+  if (pathname.startsWith('/messages/history')) {
+    const channel = new URLSearchParams(search).get('channel');
+    return [
+      breadcrumbLinkItem('메시지', '/messages/mail?tab=auto'),
+      breadcrumbTextItem('발송 이력'),
+      breadcrumbTextItem(channel === 'push' ? '푸시' : '메일')
     ];
   }
 

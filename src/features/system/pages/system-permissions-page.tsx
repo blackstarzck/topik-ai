@@ -16,6 +16,7 @@ import {
 } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
@@ -30,6 +31,12 @@ import type {
 } from '../model/permission-types';
 
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import {
+  createColumnFilterProps,
+  createNumberSorter,
+  createTextSorter
+} from '../../../shared/ui/table/table-column-utils';
+import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -45,6 +52,11 @@ type PermissionFormValues = {
   permissionKeys: string[];
   reason: string;
 };
+
+type DetailModalState = {
+  title: string;
+  record: Record<string, unknown>;
+} | null;
 
 const CURRENT_ACTOR = 'admin_park';
 
@@ -66,6 +78,7 @@ export default function SystemPermissionsPage(): JSX.Element {
   const revokePermissions = usePermissionStore((state) => state.revokePermissions);
 
   const [modalState, setModalState] = useState<PermissionModalState>(null);
+  const [detailModalState, setDetailModalState] = useState<DetailModalState>(null);
   const [messageApi, contextHolder] = message.useMessage();
   const [notificationApi, notificationContextHolder] = notification.useNotification();
   const [form] = Form.useForm<PermissionFormValues>();
@@ -160,6 +173,15 @@ export default function SystemPermissionsPage(): JSX.Element {
     form.setFieldValue('permissionKeys', roleDef.defaultPermissions);
   }, [form]);
 
+  const openDetailModal = useCallback(
+    (title: string, record: Record<string, unknown>) => {
+      setDetailModalState({ title, record });
+    },
+    []
+  );
+
+  const closeDetailModal = useCallback(() => setDetailModalState(null), []);
+
   const handleSubmit = useCallback(async () => {
     if (!modalState || !selectedAdmin) {
       return;
@@ -229,26 +251,68 @@ export default function SystemPermissionsPage(): JSX.Element {
 
   const adminColumns = useMemo<TableColumnsType<AdminPermissionAssignment>>(
     () => [
-      { title: '관리자 ID', dataIndex: 'adminId', width: 150 },
-      { title: '이름', dataIndex: 'name', width: 120 },
+      {
+        title: '관리자 ID',
+        dataIndex: 'adminId',
+        width: 150,
+        ...createColumnFilterProps(admins, (record) => record.adminId),
+        sorter: createTextSorter((record) => record.adminId),
+        render: (adminId: string) => (
+          <Link
+            className="table-navigation-link"
+            to="/system/admins"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {adminId}
+          </Link>
+        )
+      },
+      {
+        title: '이름',
+        dataIndex: 'name',
+        width: 120,
+        ...createColumnFilterProps(admins, (record) => record.name),
+        sorter: createTextSorter((record) => record.name)
+      },
       {
         title: '상태',
         dataIndex: 'status',
         width: 90,
+        ...createColumnFilterProps(admins, (record) => record.status),
+        sorter: createTextSorter((record) => record.status),
         render: (status: string) => <StatusBadge status={status} />
       },
-      { title: '역할', dataIndex: 'role', width: 120 },
+      {
+        title: '역할',
+        dataIndex: 'role',
+        width: 120,
+        ...createColumnFilterProps(admins, (record) => record.role),
+        sorter: createTextSorter((record) => record.role)
+      },
       {
         title: '권한 수',
         width: 90,
         align: 'right',
+        ...createColumnFilterProps(admins, (record) => record.permissions.length),
+        sorter: createNumberSorter((record) => record.permissions.length),
         render: (_, record) => record.permissions.length
       },
-      { title: '최근 수정', dataIndex: 'updatedAt', width: 170 },
+      {
+        title: '최근 수정',
+        dataIndex: 'updatedAt',
+        width: 170,
+        ...createColumnFilterProps(admins, (record) => record.updatedAt),
+        sorter: createTextSorter((record) => record.updatedAt)
+      },
       {
         title: '액션',
         key: 'actions',
         width: 140,
+        onCell: () => ({
+          onClick: (event) => {
+            event.stopPropagation();
+          }
+        }),
         render: (_, record) => (
           <TableActionMenu
             items={[
@@ -273,18 +337,40 @@ export default function SystemPermissionsPage(): JSX.Element {
         )
       }
     ],
-    [openModal]
+    [admins, openModal]
   );
 
   const roleColumns = useMemo<TableColumnsType<(typeof roleCatalog)[number]>>(
     () => [
-      { title: '역할 코드', dataIndex: 'key', width: 140 },
-      { title: '역할명', dataIndex: 'name', width: 140 },
-      { title: '설명', dataIndex: 'description' },
+      {
+        title: '역할 코드',
+        dataIndex: 'key',
+        width: 140,
+        ...createColumnFilterProps(roleCatalog, (record) => record.key),
+        sorter: createTextSorter((record) => record.key)
+      },
+      {
+        title: '역할명',
+        dataIndex: 'name',
+        width: 140,
+        ...createColumnFilterProps(roleCatalog, (record) => record.name),
+        sorter: createTextSorter((record) => record.name)
+      },
+      {
+        title: '설명',
+        dataIndex: 'description',
+        ...createColumnFilterProps(roleCatalog, (record) => record.description),
+        sorter: createTextSorter((record) => record.description)
+      },
       {
         title: '기본 권한 수',
         width: 120,
         align: 'right',
+        ...createColumnFilterProps(
+          roleCatalog,
+          (record) => record.defaultPermissions.length
+        ),
+        sorter: createNumberSorter((record) => record.defaultPermissions.length),
         render: (_, role) => role.defaultPermissions.length
       }
     ],
@@ -293,18 +379,104 @@ export default function SystemPermissionsPage(): JSX.Element {
 
   const permissionColumns = useMemo<TableColumnsType<(typeof permissionCatalog)[number]>>(
     () => [
-      { title: '권한 코드', dataIndex: 'key', width: 220 },
-      { title: '권한명', dataIndex: 'name', width: 160 },
-      { title: '모듈', dataIndex: 'module', width: 100 },
-      { title: '권한 범위 설명', dataIndex: 'scopeDescription' },
+      {
+        title: '권한 코드',
+        dataIndex: 'key',
+        width: 220,
+        ...createColumnFilterProps(permissionCatalog, (record) => record.key),
+        sorter: createTextSorter((record) => record.key)
+      },
+      {
+        title: '권한명',
+        dataIndex: 'name',
+        width: 160,
+        ...createColumnFilterProps(permissionCatalog, (record) => record.name),
+        sorter: createTextSorter((record) => record.name)
+      },
+      {
+        title: '모듈',
+        dataIndex: 'module',
+        width: 100,
+        ...createColumnFilterProps(permissionCatalog, (record) => record.module),
+        sorter: createTextSorter((record) => record.module)
+      },
+      {
+        title: '권한 범위 설명',
+        dataIndex: 'scopeDescription',
+        ...createColumnFilterProps(
+          permissionCatalog,
+          (record) => record.scopeDescription
+        ),
+        sorter: createTextSorter((record) => record.scopeDescription)
+      },
       {
         title: '위험도',
         dataIndex: 'risk',
         width: 100,
+        ...createColumnFilterProps(permissionCatalog, (record) => record.risk),
+        sorter: createTextSorter((record) => record.risk),
         render: (risk: string) => formatRiskTag(risk)
       }
     ],
     []
+  );
+
+  const recentAuditRows = useMemo(() => audits.slice(0, 8), [audits]);
+
+  const auditColumns = useMemo<TableColumnsType<(typeof recentAuditRows)[number]>>(
+    () => [
+      {
+        title: '로그 ID',
+        dataIndex: 'id',
+        width: 130,
+        ...createColumnFilterProps(recentAuditRows, (record) => record.id),
+        sorter: createTextSorter((record) => record.id)
+      },
+      {
+        title: '대상',
+        dataIndex: 'targetId',
+        width: 140,
+        ...createColumnFilterProps(recentAuditRows, (record) => record.targetId),
+        sorter: createTextSorter((record) => record.targetId),
+        render: (targetId: string) => (
+          <Link
+            className="table-navigation-link"
+            to="/system/admins"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {targetId}
+          </Link>
+        )
+      },
+      {
+        title: '액션',
+        dataIndex: 'action',
+        width: 100,
+        ...createColumnFilterProps(recentAuditRows, (record) => record.action),
+        sorter: createTextSorter((record) => record.action)
+      },
+      {
+        title: '사유',
+        dataIndex: 'reason',
+        ...createColumnFilterProps(recentAuditRows, (record) => record.reason),
+        sorter: createTextSorter((record) => record.reason)
+      },
+      {
+        title: '수행자',
+        dataIndex: 'changedBy',
+        width: 120,
+        ...createColumnFilterProps(recentAuditRows, (record) => record.changedBy),
+        sorter: createTextSorter((record) => record.changedBy)
+      },
+      {
+        title: '시각',
+        dataIndex: 'createdAt',
+        width: 170,
+        ...createColumnFilterProps(recentAuditRows, (record) => record.createdAt),
+        sorter: createTextSorter((record) => record.createdAt)
+      }
+    ],
+    [recentAuditRows]
   );
 
   const modalTitle = useMemo(() => {
@@ -325,10 +497,6 @@ export default function SystemPermissionsPage(): JSX.Element {
       {contextHolder}
       {notificationContextHolder}
       <PageTitle title="권한 관리" />
-      <Paragraph className="page-description">
-        관리자 권한은 부여/수정/회수할 수 있으며, 모든 변경은 사유와 함께 감사 로그로
-        추적됩니다.
-      </Paragraph>
 
       <Card style={{ marginBottom: 12 }}>
         <Title level={5} style={{ marginTop: 0 }}>
@@ -341,6 +509,10 @@ export default function SystemPermissionsPage(): JSX.Element {
           scroll={{ x: 1200 }}
           columns={adminColumns}
           dataSource={admins}
+          onRow={(record) => ({
+            onClick: () => openDetailModal('관리자 권한 상세 (더미)', record),
+            style: { cursor: 'pointer' }
+          })}
         />
       </Card>
 
@@ -354,6 +526,10 @@ export default function SystemPermissionsPage(): JSX.Element {
           pagination={false}
           columns={roleColumns}
           dataSource={roleCatalog}
+          onRow={(record) => ({
+            onClick: () => openDetailModal('역할 템플릿 상세 (더미)', record),
+            style: { cursor: 'pointer' }
+          })}
         />
       </Card>
 
@@ -362,7 +538,8 @@ export default function SystemPermissionsPage(): JSX.Element {
           권한별 범위 설명
         </Title>
         <Paragraph type="secondary">
-          각 권한마다 접근 가능한 화면과 액션 범위를 확인하고, 부여 시 운영 영향을 검토하세요.
+          각 권한마다 접근 가능한 화면과 액션 범위를 확인하고, 부여 시 운영 영향을
+          검토하세요.
         </Paragraph>
         <Table
           rowKey="key"
@@ -371,6 +548,10 @@ export default function SystemPermissionsPage(): JSX.Element {
           scroll={{ x: 1400 }}
           columns={permissionColumns}
           dataSource={permissionCatalog}
+          onRow={(record) => ({
+            onClick: () => openDetailModal('권한 정의 상세 (더미)', record),
+            style: { cursor: 'pointer' }
+          })}
         />
       </Card>
 
@@ -382,17 +563,21 @@ export default function SystemPermissionsPage(): JSX.Element {
           rowKey="id"
           size="small"
           pagination={false}
-          columns={[
-            { title: '로그 ID', dataIndex: 'id', width: 130 },
-            { title: '대상', dataIndex: 'targetId', width: 140 },
-            { title: '액션', dataIndex: 'action', width: 100 },
-            { title: '사유', dataIndex: 'reason' },
-            { title: '수행자', dataIndex: 'changedBy', width: 120 },
-            { title: '시각', dataIndex: 'createdAt', width: 170 }
-          ]}
-          dataSource={audits.slice(0, 8)}
+          columns={auditColumns}
+          dataSource={recentAuditRows}
+          onRow={(record) => ({
+            onClick: () => openDetailModal('권한 변경 이력 상세 (더미)', record),
+            style: { cursor: 'pointer' }
+          })}
         />
       </Card>
+
+      <TableRowDetailModal
+        open={Boolean(detailModalState)}
+        title={detailModalState?.title ?? ''}
+        record={detailModalState?.record ?? null}
+        onClose={closeDetailModal}
+      />
 
       <Modal
         open={Boolean(modalState && selectedAdmin)}
@@ -497,7 +682,7 @@ export default function SystemPermissionsPage(): JSX.Element {
                 <Space direction="vertical">
                   {selectedPermissionDescriptions.map((permission) => (
                     <Text key={permission.key}>
-                      • {permission.name}: {permission.scopeDescription}
+                      - {permission.name}: {permission.scopeDescription}
                     </Text>
                   ))}
                 </Space>

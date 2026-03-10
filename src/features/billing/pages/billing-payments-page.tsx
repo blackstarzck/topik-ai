@@ -1,26 +1,35 @@
-import { Card, Table, Typography } from 'antd';
+import { Card, Table } from 'antd';
 import type { TableColumnsType } from 'antd';
-
-import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
+import { useCallback, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
+import {
+  createColumnFilterProps,
+  createNumericTextSorter,
+  createTextSorter
+} from '../../../shared/ui/table/table-column-utils';
+import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
 
-const { Paragraph } = Typography;
+type PaymentStatus = '완료' | '취소' | '환불';
 
 type PaymentRow = {
   id: string;
-  user: string;
+  userId: string;
+  userNickname: string;
   product: string;
   amount: string;
   method: string;
   paidAt: string;
-  status: '완료' | '취소' | '환불';
+  status: PaymentStatus;
 };
 
 const rows: PaymentRow[] = [
   {
     id: 'PAY-1001',
-    user: 'U00001 / member_1',
+    userId: 'U00001',
+    userNickname: 'member_1',
     product: 'TOPIK Premium Monthly',
     amount: '₩9,000',
     method: '카드',
@@ -29,37 +38,115 @@ const rows: PaymentRow[] = [
   },
   {
     id: 'PAY-1002',
-    user: 'U00008 / member_8',
+    userId: 'U00008',
+    userNickname: 'member_8',
     product: 'TOPIK Mock Test',
     amount: '₩5,000',
-    method: '계좌',
+    method: '계좌이체',
     paidAt: '2026-02-22',
     status: '환불'
   }
 ];
 
-const columns: TableColumnsType<PaymentRow> = [
-  { title: '결제 ID', dataIndex: 'id', width: 120 },
-  { title: '회원', dataIndex: 'user', width: 200 },
-  { title: '상품', dataIndex: 'product', width: 240 },
-  { title: '금액', dataIndex: 'amount', width: 120, align: 'right' },
-  { title: '결제 수단', dataIndex: 'method', width: 120 },
-  { title: '결제일', dataIndex: 'paidAt', width: 120 },
-  {
-    title: '상태',
-    dataIndex: 'status',
-    width: 100,
-    render: (status: PaymentRow['status']) => <StatusBadge status={status} />
-  }
-];
+const detailLabelMap: Record<string, string> = {
+  id: '결제 ID',
+  userId: '사용자 ID',
+  userNickname: '닉네임',
+  product: '상품',
+  amount: '결제 금액',
+  method: '결제 수단',
+  paidAt: '결제일',
+  status: '상태'
+};
 
 export default function BillingPaymentsPage(): JSX.Element {
+  const [selectedRow, setSelectedRow] = useState<PaymentRow | null>(null);
+
+  const columns = useMemo<TableColumnsType<PaymentRow>>(
+    () => [
+      {
+        title: '결제 ID',
+        dataIndex: 'id',
+        width: 120,
+        ...createColumnFilterProps(rows, (record) => record.id),
+        sorter: createTextSorter((record) => record.id)
+      },
+      {
+        title: '회원',
+        key: 'user',
+        width: 220,
+        ...createColumnFilterProps(rows, (record) => [
+          record.userId,
+          record.userNickname
+        ]),
+        sorter: createTextSorter((record) => record.userId),
+        render: (_, record) => (
+          <>
+            <Link
+              className="table-navigation-link"
+              to={`/users/${record.userId}?tab=profile`}
+              onClick={(event) => event.stopPropagation()}
+            >
+              {record.userId}
+            </Link>{' '}
+            / {record.userNickname}
+          </>
+        )
+      },
+      {
+        title: '상품',
+        dataIndex: 'product',
+        width: 240,
+        ...createColumnFilterProps(rows, (record) => record.product),
+        sorter: createTextSorter((record) => record.product)
+      },
+      {
+        title: '금액',
+        dataIndex: 'amount',
+        width: 120,
+        align: 'right',
+        ...createColumnFilterProps(rows, (record) => record.amount),
+        sorter: createNumericTextSorter((record) => record.amount)
+      },
+      {
+        title: '결제 수단',
+        dataIndex: 'method',
+        width: 120,
+        ...createColumnFilterProps(rows, (record) => record.method),
+        sorter: createTextSorter((record) => record.method)
+      },
+      {
+        title: '결제일',
+        dataIndex: 'paidAt',
+        width: 120,
+        ...createColumnFilterProps(rows, (record) => record.paidAt),
+        sorter: createTextSorter((record) => record.paidAt)
+      },
+      {
+        title: '상태',
+        dataIndex: 'status',
+        width: 100,
+        ...createColumnFilterProps(rows, (record) => record.status),
+        sorter: createTextSorter((record) => record.status),
+        render: (status: PaymentStatus) => <StatusBadge status={status} />
+      }
+    ],
+    []
+  );
+
+  const handleRow = useCallback(
+    (record: PaymentRow) => ({
+      onClick: () => setSelectedRow(record),
+      style: { cursor: 'pointer' }
+    }),
+    []
+  );
+
+  const closeDetailModal = useCallback(() => setSelectedRow(null), []);
+
   return (
     <div>
       <PageTitle title="결제 내역" />
-      <Paragraph className="page-description">
-        결제 내역을 조회하고 상태를 관리합니다.
-      </Paragraph>
       <Card>
         <Table
           rowKey="id"
@@ -68,8 +155,16 @@ export default function BillingPaymentsPage(): JSX.Element {
           scroll={{ x: 1200 }}
           columns={columns}
           dataSource={rows}
+          onRow={handleRow}
         />
       </Card>
+      <TableRowDetailModal
+        open={Boolean(selectedRow)}
+        title="결제 상세 (더미)"
+        record={selectedRow}
+        labelMap={detailLabelMap}
+        onClose={closeDetailModal}
+      />
     </div>
   );
 }

@@ -1,9 +1,13 @@
-﻿import { Card, Table, Typography } from 'antd';
+import { Card, Table } from 'antd';
 import type { TableColumnsType } from 'antd';
+import { useCallback, useMemo, useState } from 'react';
 
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
-
-const { Paragraph } = Typography;
+import {
+  createColumnFilterProps,
+  createTextSorter
+} from '../../../shared/ui/table/table-column-utils';
+import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
 
 type SystemLogRow = {
   id: string;
@@ -37,21 +41,70 @@ const rows: SystemLogRow[] = [
   }
 ];
 
-const columns: TableColumnsType<SystemLogRow> = [
-  { title: '로그 ID', dataIndex: 'id', width: 120 },
-  { title: '레벨', dataIndex: 'level', width: 100 },
-  { title: '컴포넌트', dataIndex: 'component', width: 190 },
-  { title: '메시지', dataIndex: 'message' },
-  { title: '시각', dataIndex: 'createdAt', width: 190 }
-];
+const detailLabelMap: Record<string, string> = {
+  id: '로그 ID',
+  level: '레벨',
+  component: '컴포넌트',
+  message: '메시지',
+  createdAt: '시각'
+};
 
 export default function SystemLogsPage(): JSX.Element {
+  const [selectedRow, setSelectedRow] = useState<SystemLogRow | null>(null);
+
+  const columns = useMemo<TableColumnsType<SystemLogRow>>(
+    () => [
+      {
+        title: '로그 ID',
+        dataIndex: 'id',
+        width: 120,
+        ...createColumnFilterProps(rows, (record) => record.id),
+        sorter: createTextSorter((record) => record.id)
+      },
+      {
+        title: '레벨',
+        dataIndex: 'level',
+        width: 100,
+        ...createColumnFilterProps(rows, (record) => record.level),
+        sorter: createTextSorter((record) => record.level)
+      },
+      {
+        title: '컴포넌트',
+        dataIndex: 'component',
+        width: 190,
+        ...createColumnFilterProps(rows, (record) => record.component),
+        sorter: createTextSorter((record) => record.component)
+      },
+      {
+        title: '메시지',
+        dataIndex: 'message',
+        ...createColumnFilterProps(rows, (record) => record.message),
+        sorter: createTextSorter((record) => record.message)
+      },
+      {
+        title: '시각',
+        dataIndex: 'createdAt',
+        width: 190,
+        ...createColumnFilterProps(rows, (record) => record.createdAt),
+        sorter: createTextSorter((record) => record.createdAt)
+      }
+    ],
+    []
+  );
+
+  const handleRowClick = useCallback(
+    (record: SystemLogRow) => ({
+      onClick: () => setSelectedRow(record),
+      style: { cursor: 'pointer' }
+    }),
+    []
+  );
+
+  const closeDetailModal = useCallback(() => setSelectedRow(null), []);
+
   return (
     <div>
       <PageTitle title="시스템 로그" />
-      <Paragraph className="page-description">
-        시스템 로그는 기술 로그이며, 감사 로그와 별도로 관리됩니다.
-      </Paragraph>
       <Card>
         <Table
           rowKey="id"
@@ -59,10 +112,16 @@ export default function SystemLogsPage(): JSX.Element {
           pagination={false}
           columns={columns}
           dataSource={rows}
+          onRow={handleRowClick}
         />
       </Card>
+      <TableRowDetailModal
+        open={Boolean(selectedRow)}
+        title="시스템 로그 상세 (더미)"
+        record={selectedRow}
+        labelMap={detailLabelMap}
+        onClose={closeDetailModal}
+      />
     </div>
   );
 }
-
-

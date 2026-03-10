@@ -32,15 +32,9 @@ type RevokePermissionPayload = {
 type PermissionStore = {
   admins: AdminPermissionAssignment[];
   audits: PermissionAuditEvent[];
-  grantPermissions: (
-    payload: GrantPermissionPayload
-  ) => PermissionAuditEvent | null;
-  updatePermissions: (
-    payload: UpdatePermissionPayload
-  ) => PermissionAuditEvent | null;
-  revokePermissions: (
-    payload: RevokePermissionPayload
-  ) => PermissionAuditEvent | null;
+  grantPermissions: (payload: GrantPermissionPayload) => PermissionAuditEvent | null;
+  updatePermissions: (payload: UpdatePermissionPayload) => PermissionAuditEvent | null;
+  revokePermissions: (payload: RevokePermissionPayload) => PermissionAuditEvent | null;
 };
 
 function getRole(role: RoleKey) {
@@ -55,7 +49,6 @@ function formatNow(): string {
   const hh = String(now.getHours()).padStart(2, '0');
   const mi = String(now.getMinutes()).padStart(2, '0');
   const ss = String(now.getSeconds()).padStart(2, '0');
-
   return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
 }
 
@@ -94,7 +87,7 @@ function buildAuditEvent(params: {
 const initialAdmins: AdminPermissionAssignment[] = [
   {
     adminId: 'admin_park',
-    name: '박지민',
+    name: '박수민',
     status: '활성',
     lastLoginAt: '2026-03-04 10:20',
     role: 'SUPER_ADMIN',
@@ -106,17 +99,19 @@ const initialAdmins: AdminPermissionAssignment[] = [
   },
   {
     adminId: 'admin_kim',
-    name: '김나영',
+    name: '김하영',
     status: '활성',
     lastLoginAt: '2026-03-04 09:42',
     role: 'OPS_ADMIN',
-    permissions: normalizePermissionKeys(getRole('OPS_ADMIN')?.defaultPermissions ?? []),
+    permissions: normalizePermissionKeys(
+      getRole('OPS_ADMIN')?.defaultPermissions ?? []
+    ),
     updatedAt: '2026-03-04 09:42:00',
     updatedBy: 'system_seed'
   },
   {
     adminId: 'admin_choi',
-    name: '최민수',
+    name: '최민재',
     status: '활성',
     lastLoginAt: '2026-03-03 18:11',
     role: 'CS_MANAGER',
@@ -146,7 +141,7 @@ const initialAudits: PermissionAuditEvent[] = [
     targetType: 'Admin',
     targetId: 'admin_kim',
     action: '권한 수정',
-    reason: '운영 권한 범위 조정',
+    reason: '메시지 권한 범위 조정',
     changedBy: 'admin_park',
     beforeRole: 'CS_MANAGER',
     afterRole: 'OPS_ADMIN',
@@ -179,19 +174,16 @@ export const usePermissionStore = create<PermissionStore>((set, get) => ({
       return null;
     }
 
-    const beforeRole = target.role;
-    const afterRole = target.role;
-    const nextSequence = get().audits.length + 1;
     const audit = buildAuditEvent({
       adminId: payload.adminId,
       action: '권한 부여',
       reason: payload.reason,
       changedBy: payload.changedBy,
-      beforeRole,
-      afterRole,
+      beforeRole: target.role,
+      afterRole: target.role,
       beforePermissions,
       afterPermissions,
-      sequence: nextSequence
+      sequence: get().audits.length + 1
     });
 
     set((state) => ({
@@ -221,15 +213,13 @@ export const usePermissionStore = create<PermissionStore>((set, get) => ({
     const afterRole = payload.role;
     const afterPermissions = normalizePermissionKeys(payload.permissionKeys);
 
-    const unchanged =
+    if (
       beforeRole === afterRole &&
-      beforePermissions.join('|') === afterPermissions.join('|');
-
-    if (unchanged) {
+      beforePermissions.join('|') === afterPermissions.join('|')
+    ) {
       return null;
     }
 
-    const nextSequence = get().audits.length + 1;
     const audit = buildAuditEvent({
       adminId: payload.adminId,
       action: '권한 수정',
@@ -239,7 +229,7 @@ export const usePermissionStore = create<PermissionStore>((set, get) => ({
       afterRole,
       beforePermissions,
       afterPermissions,
-      sequence: nextSequence
+      sequence: get().audits.length + 1
     });
 
     set((state) => ({
@@ -265,7 +255,6 @@ export const usePermissionStore = create<PermissionStore>((set, get) => ({
       return null;
     }
 
-    const beforeRole = target.role;
     const beforePermissions = target.permissions;
     const removeSet = new Set(payload.permissionKeys);
     const afterPermissions = beforePermissions.filter((key) => !removeSet.has(key));
@@ -274,17 +263,16 @@ export const usePermissionStore = create<PermissionStore>((set, get) => ({
       return null;
     }
 
-    const nextSequence = get().audits.length + 1;
     const audit = buildAuditEvent({
       adminId: payload.adminId,
       action: '권한 회수',
       reason: payload.reason,
       changedBy: payload.changedBy,
-      beforeRole,
-      afterRole: beforeRole,
+      beforeRole: target.role,
+      afterRole: target.role,
       beforePermissions,
       afterPermissions,
-      sequence: nextSequence
+      sequence: get().audits.length + 1
     });
 
     set((state) => ({

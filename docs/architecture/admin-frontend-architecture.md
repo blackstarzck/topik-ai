@@ -2,7 +2,7 @@
 
 ## 문서 계약
 
-- 고정 8개 모듈: Dashboard, Users, Community, Notification, Operation, Billing, Analytics, System
+- 고정 8개 모듈: Dashboard, Users, Community, Message, Operation, Billing, Analytics, System
 - 메뉴명은 `Users`(복수형)로 표기하며, `User` 단수형 사용을 금지합니다. (참조: `docs/architecture/admin-information-architecture.md:63`)
 - 감사 로그 용어는 `감사 로그`로 통일합니다. (참조: `docs/architecture/admin-information-architecture.md:64`, `docs/specs/admin-action-log.md:4`)
 - `시스템 로그`는 기술 로그로 감사 로그와 구분합니다. (참조: `docs/architecture/admin-information-architecture.md:65`)
@@ -22,7 +22,7 @@
 이 문서는 **프론트엔드 한정** 아키텍처 blueprint를 정의합니다. 목표는 IA 기준 8개 모듈의 화면 구조를 일관되게 운영하고, 테이블 중심 업무 흐름(검색 -> 상세 -> 조치 -> 로그 확인)을 안정적으로 구현하는 것입니다.
 
 - 범위 기준: 라우팅, 화면 모듈 경계, 상태 관리, API 호출 레이어, 공통 UI 패턴, 운영 추적(권한/로그), 성능/a11y
-- 운영 흐름 귀결: Users/Community/Operation/Billing의 데이터 변경 액션은 `감사 로그`로 추적 가능해야 함
+- 운영 흐름 귀결: Users/Community/Message/Operation/Billing의 데이터 변경 액션은 `감사 로그`로 추적 가능해야 함
 - 로그 분리 원칙: `감사 로그`는 관리자 조치 이력, `시스템 로그`는 기술 로그
 
 ## 설계 원칙
@@ -42,7 +42,7 @@
 | Dashboard | `/dashboard` | 서비스 현황, Work Queue, Alerts |
 | Users | `/users`, `/users/:userId` | 회원 목록, 회원 상세(6개 탭) |
 | Community | `/community/posts`, `/community/reports` | 게시글 관리, 신고 관리 |
-| Notification | `/notification/send`, `/notification/history` | 알림 발송, 발송 이력 |
+| Message | `/messages/mail`, `/messages/push`, `/messages/groups`, `/messages/history` | 메일, 푸시, 대상 그룹, 발송 이력 |
 | Operation | `/operation/notices`, `/operation/faq` | 공지사항, FAQ, 배너/이벤트 |
 | Billing | `/billing/payments`, `/billing/refunds` | 결제 내역, 환불 관리 |
 | Analytics | `/analytics/*` | 사용자/커뮤니티/알림/매출 통계 |
@@ -93,7 +93,7 @@ src/
       model/
       api/
       ui/
-    notification/
+    message/
       pages/
       model/
       api/

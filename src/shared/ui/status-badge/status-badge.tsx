@@ -13,9 +13,12 @@ const colorMap: Record<string, string> = {
   '처리 완료': 'blue',
   활성: 'green',
   비활성: 'default',
+  사용중: 'green',
+  초안: 'gold',
   성공: 'green',
   '부분 실패': 'orange',
   실패: 'volcano',
+  예약: 'cyan',
   대기: 'gold'
 };
 

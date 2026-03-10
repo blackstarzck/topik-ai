@@ -6,7 +6,7 @@
 - 충돌 시 우선순위: 사용자 직접 요청 > 본 문서 > 기타 일반 규칙
 
 ## 2. 적용 범위
-- 대상 모듈: `Dashboard`, `Users`, `Community`, `Notification`, `Operation`, `Billing`, `Analytics`, `System`
+- 대상 모듈: `Dashboard`, `Users`, `Community`, `Message`, `Operation`, `Billing`, `Analytics`, `System`
 - 대상 작업: 프론트엔드 구현/리팩토링/코드리뷰/테스트 보강
 - 제외 범위: 백엔드 아키텍처, 배포/인프라, DB 스키마 설계
 - 금지 범위 재유입: `Learning`, `Content/Course`

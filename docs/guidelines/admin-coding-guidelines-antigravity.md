@@ -2,7 +2,7 @@
 
 ## 문서 계약
 
-- 고정 8개 모듈: Dashboard, Users, Community, Notification, Operation, Billing, Analytics, System
+- 고정 8개 모듈: Dashboard, Users, Community, Message, Operation, Billing, Analytics, System
 - 메뉴명은 `Users`(복수형)로 표기하며, `User` 단수형 사용을 금지합니다. (참조: `docs/architecture/admin-information-architecture.md:63`)
 - 감사 로그 용어는 `감사 로그`로 통일합니다. (참조: `docs/architecture/admin-information-architecture.md:64`, `docs/specs/admin-action-log.md:4`)
 - `시스템 로그`는 기술 로그로 감사 로그와 구분합니다. (참조: `docs/architecture/admin-information-architecture.md:65`)
@@ -22,7 +22,7 @@
 ## 적용 범위
 
 - 본 문서는 TOPIK AI Admin 프론트엔드 구현 시 Antigravity 실행 지침으로 사용합니다.
-- 대상 범위는 `Users`, `Community`, `Notification`, `Operation`, `Billing`, `Analytics`, `System`, `Dashboard` 모듈입니다.
+- 대상 범위는 `Users`, `Community`, `Message`, `Operation`, `Billing`, `Analytics`, `System`, `Dashboard` 모듈입니다.
 - 메뉴명/로그 용어는 문서 계약을 우선합니다: `Users`, `감사 로그`, `시스템 로그`.
 
 ## 공통 원칙

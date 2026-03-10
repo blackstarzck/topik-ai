@@ -1,8 +1,7 @@
-﻿import { Card, Collapse, Typography } from 'antd';
+﻿import { Card, Collapse } from 'antd';
 
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 
-const { Paragraph } = Typography;
 
 const faqItems = [
   {
@@ -22,14 +21,12 @@ export default function OperationFaqPage(): JSX.Element {
   return (
     <div>
       <PageTitle title="자주 묻는 질문" />
-      <Paragraph className="page-description">
-        운영 정책 문서와 FAQ를 관리합니다.
-      </Paragraph>
       <Card>
         <Collapse items={faqItems} />
       </Card>
     </div>
   );
 }
+
 
 

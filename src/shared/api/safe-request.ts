@@ -1,4 +1,5 @@
-import { AppApiError, toAppApiError } from './api-error';
+import { toAppApiError } from './api-error';
+import type { AppApiError } from './api-error';
 
 export type SafeResult<T> =
   | { ok: true; data: T }
@@ -13,9 +14,7 @@ export async function withRetry<T>(
   options?: RetryOptions
 ): Promise<T> {
   const maxRetries = options?.maxRetries ?? 0;
-  let attempt = 0;
-
-  while (true) {
+  for (let attempt = 0; ; attempt += 1) {
     try {
       return await request();
     } catch (error) {
@@ -24,7 +23,6 @@ export async function withRetry<T>(
       if (!shouldRetry) {
         throw mappedError;
       }
-      attempt += 1;
     }
   }
 }

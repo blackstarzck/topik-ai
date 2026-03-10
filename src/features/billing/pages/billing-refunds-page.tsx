@@ -1,16 +1,23 @@
-import { Alert, Card, Table, Typography } from 'antd';
+import { Alert, Card, Table } from 'antd';
 import type { TableColumnsType } from 'antd';
+import { useCallback, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import {
+  createColumnFilterProps,
+  createTextSorter
+} from '../../../shared/ui/table/table-column-utils';
+import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
 
-const { Paragraph } = Typography;
+type RefundStatus = '대기' | '완료';
 
 type RefundRow = {
   id: string;
   paymentId: string;
   userId: string;
   reason: string;
-  status: '대기' | '완료';
+  status: RefundStatus;
   requestedAt: string;
 };
 
@@ -33,28 +40,102 @@ const rows: RefundRow[] = [
   }
 ];
 
-const columns: TableColumnsType<RefundRow> = [
-  { title: '환불 ID', dataIndex: 'id', width: 120 },
-  { title: '결제 ID', dataIndex: 'paymentId', width: 120 },
-  { title: '사용자 ID', dataIndex: 'userId', width: 120 },
-  { title: '사유', dataIndex: 'reason' },
-  { title: '상태', dataIndex: 'status', width: 100 },
-  { title: '요청 시각', dataIndex: 'requestedAt', width: 180 }
-];
+const detailLabelMap: Record<string, string> = {
+  id: '환불 ID',
+  paymentId: '결제 ID',
+  userId: '사용자 ID',
+  reason: '환불 사유',
+  status: '처리 상태',
+  requestedAt: '요청 시각'
+};
 
 export default function BillingRefundsPage(): JSX.Element {
+  const [selectedRow, setSelectedRow] = useState<RefundRow | null>(null);
+
+  const columns = useMemo<TableColumnsType<RefundRow>>(
+    () => [
+      {
+        title: '환불 ID',
+        dataIndex: 'id',
+        width: 120,
+        ...createColumnFilterProps(rows, (record) => record.id),
+        sorter: createTextSorter((record) => record.id)
+      },
+      {
+        title: '결제 ID',
+        dataIndex: 'paymentId',
+        width: 130,
+        ...createColumnFilterProps(rows, (record) => record.paymentId),
+        sorter: createTextSorter((record) => record.paymentId),
+        render: (paymentId: string) => (
+          <Link
+            className="table-navigation-link"
+            to="/billing/payments"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {paymentId}
+          </Link>
+        )
+      },
+      {
+        title: '사용자 ID',
+        dataIndex: 'userId',
+        width: 130,
+        ...createColumnFilterProps(rows, (record) => record.userId),
+        sorter: createTextSorter((record) => record.userId),
+        render: (userId: string) => (
+          <Link
+            className="table-navigation-link"
+            to={`/users/${userId}?tab=profile`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            {userId}
+          </Link>
+        )
+      },
+      {
+        title: '사유',
+        dataIndex: 'reason',
+        ...createColumnFilterProps(rows, (record) => record.reason),
+        sorter: createTextSorter((record) => record.reason)
+      },
+      {
+        title: '상태',
+        dataIndex: 'status',
+        width: 100,
+        ...createColumnFilterProps(rows, (record) => record.status),
+        sorter: createTextSorter((record) => record.status)
+      },
+      {
+        title: '요청 시각',
+        dataIndex: 'requestedAt',
+        width: 180,
+        ...createColumnFilterProps(rows, (record) => record.requestedAt),
+        sorter: createTextSorter((record) => record.requestedAt)
+      }
+    ],
+    []
+  );
+
+  const handleRow = useCallback(
+    (record: RefundRow) => ({
+      onClick: () => setSelectedRow(record),
+      style: { cursor: 'pointer' }
+    }),
+    []
+  );
+
+  const closeDetailModal = useCallback(() => setSelectedRow(null), []);
+
   return (
     <div>
       <PageTitle title="환불 관리" />
-      <Paragraph className="page-description">
-        환불 승인/거절 액션은 대상 유형/대상 ID와 함께 추적합니다.
-      </Paragraph>
       <Alert
         showIcon
         type="info"
         style={{ marginBottom: 12 }}
-        message="파괴적 액션 가이드"
-        description="환불 처리(승인/거절)는 사유 입력이 필수입니다."
+        message="환불 조치 가이드"
+        description="환불 처리(승인/거절) 시 사유 기록이 필요합니다."
       />
       <Card>
         <Table
@@ -63,8 +144,16 @@ export default function BillingRefundsPage(): JSX.Element {
           pagination={false}
           columns={columns}
           dataSource={rows}
+          onRow={handleRow}
         />
       </Card>
+      <TableRowDetailModal
+        open={Boolean(selectedRow)}
+        title="환불 상세 (더미)"
+        record={selectedRow}
+        labelMap={detailLabelMap}
+        onClose={closeDetailModal}
+      />
     </div>
   );
 }

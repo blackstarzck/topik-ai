@@ -1,12 +1,17 @@
 import { Card, Table, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
-import { useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useCallback, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 
 import { usePermissionStore } from '../model/permission-store';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import {
+  createColumnFilterProps,
+  createTextSorter
+} from '../../../shared/ui/table/table-column-utils';
+import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
 
 const { Paragraph, Text } = Typography;
 
@@ -19,6 +24,47 @@ type AuditLogRow = {
   reason: string;
   createdAt: string;
 };
+
+const detailLabelMap: Record<string, string> = {
+  logId: '로그 ID',
+  targetType: '대상 유형',
+  targetId: '대상 ID',
+  action: '조치',
+  actor: '수행자',
+  reason: '사유/근거',
+  createdAt: '시각'
+};
+
+function getTargetRoute(targetType: string, targetId: string): string | null {
+  if (targetType === 'Users') {
+    return `/users/${targetId}?tab=profile`;
+  }
+  if (targetType === 'Community') {
+    return '/community/posts';
+  }
+  if (targetType === 'Billing') {
+    return '/billing/payments';
+  }
+  if (targetType === 'Notification' || targetType === 'Message') {
+    if (targetId.startsWith('MAIL-')) {
+      return '/messages/mail?tab=auto';
+    }
+    if (targetId.startsWith('PUSH-')) {
+      return '/messages/push?tab=auto';
+    }
+    if (targetId.startsWith('GRP-')) {
+      return '/messages/groups';
+    }
+    return '/messages/history?channel=mail';
+  }
+  if (targetType === 'Operation') {
+    return '/operation/notices';
+  }
+  if (targetType === 'Admin' || targetType === 'System') {
+    return '/system/admins';
+  }
+  return null;
+}
 
 const staticRows: AuditLogRow[] = [
   {
@@ -50,23 +96,9 @@ const staticRows: AuditLogRow[] = [
   }
 ];
 
-const columns: TableColumnsType<AuditLogRow> = [
-  { title: '로그 ID', dataIndex: 'logId', width: 120 },
-  {
-    title: '대상 유형',
-    dataIndex: 'targetType',
-    width: 130,
-    render: (value: string) => getTargetTypeLabel(value)
-  },
-  { title: '대상 ID', dataIndex: 'targetId', width: 140 },
-  { title: '조치', dataIndex: 'action', width: 160 },
-  { title: '수행자', dataIndex: 'actor', width: 120 },
-  { title: '사유/근거', dataIndex: 'reason' },
-  { title: '시각', dataIndex: 'createdAt', width: 190 }
-];
-
 export default function SystemAuditLogsPage(): JSX.Element {
   const [searchParams] = useSearchParams();
+  const [selectedRow, setSelectedRow] = useState<AuditLogRow | null>(null);
   const targetType = searchParams.get('targetType');
   const targetId = searchParams.get('targetId');
   const permissionAudits = usePermissionStore((state) => state.audits);
@@ -99,12 +131,91 @@ export default function SystemAuditLogsPage(): JSX.Element {
     });
   }, [mergedRows, targetId, targetType]);
 
+  const columns = useMemo<TableColumnsType<AuditLogRow>>(
+    () => [
+      {
+        title: '로그 ID',
+        dataIndex: 'logId',
+        width: 120,
+        ...createColumnFilterProps(filteredRows, (record) => record.logId),
+        sorter: createTextSorter((record) => record.logId)
+      },
+      {
+        title: '대상 유형',
+        dataIndex: 'targetType',
+        width: 130,
+        ...createColumnFilterProps(filteredRows, (record) =>
+          getTargetTypeLabel(record.targetType)
+        ),
+        sorter: createTextSorter((record) => getTargetTypeLabel(record.targetType)),
+        render: (value: string) => getTargetTypeLabel(value)
+      },
+      {
+        title: '대상 ID',
+        dataIndex: 'targetId',
+        width: 140,
+        ...createColumnFilterProps(filteredRows, (record) => record.targetId),
+        sorter: createTextSorter((record) => record.targetId),
+        render: (targetId: string, record) => {
+          const route = getTargetRoute(record.targetType, targetId);
+          if (!route) {
+            return targetId;
+          }
+          return (
+            <Link
+              className="table-navigation-link"
+              to={route}
+              onClick={(event) => event.stopPropagation()}
+            >
+              {targetId}
+            </Link>
+          );
+        }
+      },
+      {
+        title: '조치',
+        dataIndex: 'action',
+        width: 160,
+        ...createColumnFilterProps(filteredRows, (record) => record.action),
+        sorter: createTextSorter((record) => record.action)
+      },
+      {
+        title: '수행자',
+        dataIndex: 'actor',
+        width: 120,
+        ...createColumnFilterProps(filteredRows, (record) => record.actor),
+        sorter: createTextSorter((record) => record.actor)
+      },
+      {
+        title: '사유/근거',
+        dataIndex: 'reason',
+        ...createColumnFilterProps(filteredRows, (record) => record.reason),
+        sorter: createTextSorter((record) => record.reason)
+      },
+      {
+        title: '시각',
+        dataIndex: 'createdAt',
+        width: 190,
+        ...createColumnFilterProps(filteredRows, (record) => record.createdAt),
+        sorter: createTextSorter((record) => record.createdAt)
+      }
+    ],
+    [filteredRows]
+  );
+
+  const handleRowClick = useCallback(
+    (record: AuditLogRow) => ({
+      onClick: () => setSelectedRow(record),
+      style: { cursor: 'pointer' }
+    }),
+    []
+  );
+
+  const closeDetailModal = useCallback(() => setSelectedRow(null), []);
+
   return (
     <div>
       <PageTitle title="감사 로그" />
-      <Paragraph className="page-description">
-        운영 조치 이력을 `대상 유형`, `대상 ID` 기준으로 조회합니다.
-      </Paragraph>
       <Card>
         <Paragraph>
           <Text type="secondary">현재 필터:</Text>{' '}
@@ -120,8 +231,16 @@ export default function SystemAuditLogsPage(): JSX.Element {
           scroll={{ x: 1200 }}
           columns={columns}
           dataSource={filteredRows}
+          onRow={handleRowClick}
         />
       </Card>
+      <TableRowDetailModal
+        open={Boolean(selectedRow)}
+        title="감사 로그 상세 (더미)"
+        record={selectedRow}
+        labelMap={detailLabelMap}
+        onClose={closeDetailModal}
+      />
     </div>
   );
 }

@@ -16,11 +16,17 @@ const CommunityPostsPage = lazy(
 const CommunityReportsPage = lazy(
   () => import('../../features/community/pages/community-reports-page')
 );
-const NotificationSendPage = lazy(
-  () => import('../../features/notification/pages/notification-send-page')
+const MessageMailPage = lazy(
+  () => import('../../features/message/pages/message-mail-page')
 );
-const NotificationHistoryPage = lazy(
-  () => import('../../features/notification/pages/notification-history-page')
+const MessagePushPage = lazy(
+  () => import('../../features/message/pages/message-push-page')
+);
+const MessageGroupsPage = lazy(
+  () => import('../../features/message/pages/message-groups-page')
+);
+const MessageHistoryPage = lazy(
+  () => import('../../features/message/pages/message-history-page')
 );
 const OperationNoticesPage = lazy(
   () => import('../../features/operation/pages/operation-notices-page')
@@ -63,8 +69,18 @@ export function AppRouter(): JSX.Element {
         <Route path="/users/:userId" element={<UserDetailPage />} />
         <Route path="/community/posts" element={<CommunityPostsPage />} />
         <Route path="/community/reports" element={<CommunityReportsPage />} />
-        <Route path="/notification/send" element={<NotificationSendPage />} />
-        <Route path="/notification/history" element={<NotificationHistoryPage />} />
+        <Route path="/messages/mail" element={<MessageMailPage />} />
+        <Route path="/messages/push" element={<MessagePushPage />} />
+        <Route path="/messages/groups" element={<MessageGroupsPage />} />
+        <Route path="/messages/history" element={<MessageHistoryPage />} />
+        <Route
+          path="/notification/send"
+          element={<Navigate to="/messages/mail?tab=manual" replace />}
+        />
+        <Route
+          path="/notification/history"
+          element={<Navigate to="/messages/history?channel=mail" replace />}
+        />
         <Route path="/operation/notices" element={<OperationNoticesPage />} />
         <Route path="/operation/faq" element={<OperationFaqPage />} />
         <Route path="/billing/payments" element={<BillingPaymentsPage />} />
