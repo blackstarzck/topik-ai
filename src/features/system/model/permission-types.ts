@@ -80,9 +80,9 @@ export const permissionCatalog: PermissionDefinition[] = [
   },
   {
     key: 'users.groups.manage',
-    name: 'B2B 그룹 관리',
+    name: '강사 관리',
     module: 'Users',
-    scopeDescription: '강사, 제휴사, B2B 그룹을 생성하고 운영 상태를 조정합니다.',
+    scopeDescription: '강사 목록, 소속 정보, 담당 과정과 운영 상태를 관리합니다.',
     risk: 'medium'
   },
   {

@@ -4,7 +4,7 @@ export const adminMenuLabels = {
   dashboard: '대시보드',
   users: '회원 관리',
   usersList: '회원 목록',
-  usersGroups: 'B2B 그룹 관리',
+  usersGroups: '강사 관리',
   usersReferrals: '추천인 관리',
   community: '커뮤니티',
   communityPosts: '게시글 관리',

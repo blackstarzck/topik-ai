@@ -75,14 +75,14 @@ export function AppRouter(): JSX.Element {
           path="/users/groups"
           element={
             <AdminPlaceholderPage
-              title="B2B 그룹 관리"
-              summary="강사, 제휴사, 기관 단위의 B2B 그룹과 접근 범위를 관리하는 자리입니다."
+              title="강사 관리"
+              summary="강사 목록과 소속, 담당 과정, 운영 상태를 관리하는 자리입니다."
               ownerRole="OPS_ADMIN"
               supportingRoles={['SUPER_ADMIN']}
               capabilities={[
-                '강사/기관 그룹 생성 및 상태 관리',
-                '회원-그룹 매핑 조회와 일괄 변경',
-                '그룹별 메시지/커머스 정책 연결'
+                '강사 목록 조회와 상태 관리',
+                '소속/담당 과정 연결 확인',
+                '강사 대상 메시지 발송 정책 연결'
               ]}
             />
           }
