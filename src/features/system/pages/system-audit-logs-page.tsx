@@ -3,15 +3,14 @@ import type { TableColumnsType } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
-import { usePermissionStore } from '../model/permission-store';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
-
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
   createColumnFilterProps,
   createTextSorter
 } from '../../../shared/ui/table/table-column-utils';
 import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
+import { usePermissionStore } from '../model/permission-store';
 
 const { Paragraph, Text } = Typography;
 
@@ -42,8 +41,8 @@ function getTargetRoute(targetType: string, targetId: string): string | null {
   if (targetType === 'Community') {
     return '/community/posts';
   }
-  if (targetType === 'Billing') {
-    return '/billing/payments';
+  if (targetType === 'Billing' || targetType === 'Commerce') {
+    return '/commerce/payments';
   }
   if (targetType === 'Notification' || targetType === 'Message') {
     if (targetId.startsWith('MAIL-')) {
@@ -59,6 +58,33 @@ function getTargetRoute(targetType: string, targetId: string): string | null {
   }
   if (targetType === 'Operation') {
     return '/operation/notices';
+  }
+  if (targetType === 'Assessment') {
+    if (targetId.startsWith('EPS-')) {
+      return '/assessment/question-bank/eps-topik';
+    }
+    if (targetId.startsWith('LVT-')) {
+      return '/assessment/level-tests';
+    }
+    return '/assessment/question-bank';
+  }
+  if (targetType === 'Content') {
+    if (targetId.startsWith('VOC-SON-')) {
+      return '/content/vocabulary/sonagi';
+    }
+    if (targetId.startsWith('VOC-MC-')) {
+      return '/content/vocabulary/multiple-choice';
+    }
+    if (targetId.startsWith('VOC-')) {
+      return '/content/vocabulary';
+    }
+    if (targetId.startsWith('BADGE-')) {
+      return '/content/badges';
+    }
+    if (targetId.startsWith('MISSION-')) {
+      return '/content/missions';
+    }
+    return '/content/library';
   }
   if (targetType === 'Admin' || targetType === 'System') {
     return '/system/admins';
@@ -78,7 +104,7 @@ const staticRows: AuditLogRow[] = [
   },
   {
     logId: 'AL-10002',
-    targetType: 'Billing',
+    targetType: 'Commerce',
     targetId: 'PAY-1002',
     action: '환불 승인',
     actor: 'admin_kim',
@@ -93,6 +119,15 @@ const staticRows: AuditLogRow[] = [
     actor: 'admin_lee',
     reason: '정책 위반 콘텐츠',
     createdAt: '2026-03-04 10:33:51'
+  },
+  {
+    logId: 'AL-10004',
+    targetType: 'Content',
+    targetId: 'VOC-SON-001',
+    action: '콘텐츠 초안 저장',
+    actor: 'admin_han',
+    reason: '소나기 콘텐츠 구조 초안 저장',
+    createdAt: '2026-03-10 17:15:00'
   }
 ];
 
@@ -119,17 +154,19 @@ export default function SystemAuditLogsPage(): JSX.Element {
     );
   }, [permissionAudits]);
 
-  const filteredRows = useMemo(() => {
-    return mergedRows.filter((item) => {
-      if (targetType && item.targetType !== targetType) {
-        return false;
-      }
-      if (targetId && item.targetId !== targetId) {
-        return false;
-      }
-      return true;
-    });
-  }, [mergedRows, targetId, targetType]);
+  const filteredRows = useMemo(
+    () =>
+      mergedRows.filter((item) => {
+        if (targetType && item.targetType !== targetType) {
+          return false;
+        }
+        if (targetId && item.targetId !== targetId) {
+          return false;
+        }
+        return true;
+      }),
+    [mergedRows, targetId, targetType]
+  );
 
   const columns = useMemo<TableColumnsType<AuditLogRow>>(
     () => [
@@ -143,7 +180,7 @@ export default function SystemAuditLogsPage(): JSX.Element {
       {
         title: '대상 유형',
         dataIndex: 'targetType',
-        width: 130,
+        width: 140,
         ...createColumnFilterProps(filteredRows, (record) =>
           getTargetTypeLabel(record.targetType)
         ),
@@ -153,21 +190,22 @@ export default function SystemAuditLogsPage(): JSX.Element {
       {
         title: '대상 ID',
         dataIndex: 'targetId',
-        width: 140,
+        width: 160,
         ...createColumnFilterProps(filteredRows, (record) => record.targetId),
         sorter: createTextSorter((record) => record.targetId),
-        render: (targetId: string, record) => {
-          const route = getTargetRoute(record.targetType, targetId);
+        render: (value: string, record) => {
+          const route = getTargetRoute(record.targetType, value);
           if (!route) {
-            return targetId;
+            return value;
           }
+
           return (
             <Link
               className="table-navigation-link"
               to={route}
               onClick={(event) => event.stopPropagation()}
             >
-              {targetId}
+              {value}
             </Link>
           );
         }
@@ -236,7 +274,7 @@ export default function SystemAuditLogsPage(): JSX.Element {
       </Card>
       <TableRowDetailModal
         open={Boolean(selectedRow)}
-        title="감사 로그 상세 (더미)"
+        title="감사 로그 상세 (모킹)"
         record={selectedRow}
         labelMap={detailLabelMap}
         onClose={closeDetailModal}

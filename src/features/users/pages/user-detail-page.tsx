@@ -321,7 +321,7 @@ export default function UserDetailPage(): JSX.Element {
         render: (id: string) => (
           <Link
             className="table-navigation-link"
-            to="/billing/payments"
+            to="/commerce/payments"
             onClick={(event) => event.stopPropagation()}
           >
             {id}

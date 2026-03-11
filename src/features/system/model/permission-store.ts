@@ -30,8 +30,10 @@ type RevokePermissionPayload = {
 };
 
 type PermissionStore = {
+  currentAdminId: string;
   admins: AdminPermissionAssignment[];
   audits: PermissionAuditEvent[];
+  setCurrentAdminId: (adminId: string) => void;
   grantPermissions: (payload: GrantPermissionPayload) => PermissionAuditEvent | null;
   updatePermissions: (payload: UpdatePermissionPayload) => PermissionAuditEvent | null;
   revokePermissions: (payload: RevokePermissionPayload) => PermissionAuditEvent | null;
@@ -87,38 +89,46 @@ function buildAuditEvent(params: {
 const initialAdmins: AdminPermissionAssignment[] = [
   {
     adminId: 'admin_park',
-    name: '박수민',
+    name: '박수미',
     status: '활성',
-    lastLoginAt: '2026-03-04 10:20',
+    lastLoginAt: '2026-03-11 09:10',
     role: 'SUPER_ADMIN',
     permissions: normalizePermissionKeys(
       getRole('SUPER_ADMIN')?.defaultPermissions ?? []
     ),
-    updatedAt: '2026-03-04 10:20:00',
+    updatedAt: '2026-03-11 09:10:00',
     updatedBy: 'system_seed'
   },
   {
     adminId: 'admin_kim',
-    name: '김하영',
+    name: '김혜영',
     status: '활성',
-    lastLoginAt: '2026-03-04 09:42',
+    lastLoginAt: '2026-03-11 08:42',
     role: 'OPS_ADMIN',
+    permissions: normalizePermissionKeys(getRole('OPS_ADMIN')?.defaultPermissions ?? []),
+    updatedAt: '2026-03-11 08:42:00',
+    updatedBy: 'system_seed'
+  },
+  {
+    adminId: 'admin_han',
+    name: '한지우',
+    status: '활성',
+    lastLoginAt: '2026-03-10 16:27',
+    role: 'CONTENT_MANAGER',
     permissions: normalizePermissionKeys(
-      getRole('OPS_ADMIN')?.defaultPermissions ?? []
+      getRole('CONTENT_MANAGER')?.defaultPermissions ?? []
     ),
-    updatedAt: '2026-03-04 09:42:00',
+    updatedAt: '2026-03-10 16:27:00',
     updatedBy: 'system_seed'
   },
   {
     adminId: 'admin_choi',
-    name: '최민재',
+    name: '최민서',
     status: '활성',
-    lastLoginAt: '2026-03-03 18:11',
+    lastLoginAt: '2026-03-10 11:18',
     role: 'CS_MANAGER',
-    permissions: normalizePermissionKeys(
-      getRole('CS_MANAGER')?.defaultPermissions ?? []
-    ),
-    updatedAt: '2026-03-03 18:11:00',
+    permissions: normalizePermissionKeys(getRole('CS_MANAGER')?.defaultPermissions ?? []),
+    updatedAt: '2026-03-10 11:18:00',
     updatedBy: 'system_seed'
   },
   {
@@ -127,9 +137,7 @@ const initialAdmins: AdminPermissionAssignment[] = [
     status: '비활성',
     lastLoginAt: '2026-02-27 18:11',
     role: 'READ_ONLY',
-    permissions: normalizePermissionKeys(
-      getRole('READ_ONLY')?.defaultPermissions ?? []
-    ),
+    permissions: normalizePermissionKeys(getRole('READ_ONLY')?.defaultPermissions ?? []),
     updatedAt: '2026-02-27 18:11:00',
     updatedBy: 'system_seed'
   }
@@ -139,25 +147,33 @@ const initialAudits: PermissionAuditEvent[] = [
   {
     id: 'AL-PERM-00001',
     targetType: 'Admin',
-    targetId: 'admin_kim',
+    targetId: 'admin_han',
     action: '권한 수정',
-    reason: '메시지 권한 범위 조정',
+    reason: 'Assessment와 Content 전용 역할 부여',
     changedBy: 'admin_park',
-    beforeRole: 'CS_MANAGER',
-    afterRole: 'OPS_ADMIN',
+    beforeRole: 'OPS_ADMIN',
+    afterRole: 'CONTENT_MANAGER',
     beforePermissions: normalizePermissionKeys(
-      getRole('CS_MANAGER')?.defaultPermissions ?? []
-    ),
-    afterPermissions: normalizePermissionKeys(
       getRole('OPS_ADMIN')?.defaultPermissions ?? []
     ),
-    createdAt: '2026-03-03 15:30:00'
+    afterPermissions: normalizePermissionKeys(
+      getRole('CONTENT_MANAGER')?.defaultPermissions ?? []
+    ),
+    createdAt: '2026-03-10 16:30:00'
   }
 ];
 
 export const usePermissionStore = create<PermissionStore>((set, get) => ({
+  currentAdminId: 'admin_park',
   admins: initialAdmins,
   audits: initialAudits,
+  setCurrentAdminId: (adminId) => {
+    const exists = get().admins.some((item) => item.adminId === adminId);
+    if (!exists) {
+      return;
+    }
+    set({ currentAdminId: adminId });
+  },
   grantPermissions: (payload) => {
     const target = get().admins.find((item) => item.adminId === payload.adminId);
     if (!target) {

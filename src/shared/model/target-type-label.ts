@@ -1,12 +1,15 @@
 const targetTypeLabelMap: Record<string, string> = {
   Users: 'Users',
   User: 'Users',
-  Community: '커뮤니티',
-  Operation: '운영',
-  Billing: '결제',
-  Notification: '메시지',
-  Message: '메시지',
-  System: '시스템',
+  Community: 'Community',
+  Operation: 'Operation',
+  Billing: 'Commerce',
+  Commerce: 'Commerce',
+  Notification: 'Message',
+  Message: 'Message',
+  Assessment: 'Assessment',
+  Content: 'Content',
+  System: 'System',
   Admin: '관리자'
 };
 

@@ -70,7 +70,7 @@ export default function BillingRefundsPage(): JSX.Element {
         render: (paymentId: string) => (
           <Link
             className="table-navigation-link"
-            to="/billing/payments"
+            to="/commerce/payments"
             onClick={(event) => event.stopPropagation()}
           >
             {paymentId}

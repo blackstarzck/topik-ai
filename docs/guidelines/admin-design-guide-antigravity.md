@@ -1,11 +1,11 @@
 ﻿# Antigravity 디자인 가이드 (Admin)
 
 ## 문서 계약
-- **고정 8개 모듈**: Dashboard, Users, Community, Message, Operation, Billing, Analytics, System
+- **기준 모듈**: Dashboard, Users, Community, Message, Operation, Commerce, Assessment, Content, Analytics, System
 - **메뉴명 고정**: `Users`(복수형)로 표기하며, `User` 단수형 사용을 금지합니다. (참조: `docs/architecture/admin-information-architecture.md:63`)
 - **감사 로그 용어**: `감사 로그`로 통일하며, `시스템 로그`(기술 로그)와 엄격히 구분합니다. (참조: `docs/architecture/admin-information-architecture.md:64`, `docs/specs/admin-action-log.md:4`)
 - **회원 상세 탭 고정**: `프로필`, `활동`, `결제`, `커뮤니티`, `로그`, `관리자 메모` 순서를 유지합니다. (참조: `docs/architecture/admin-information-architecture.md:66`)
-- **금지 범위**: `Learning`, `Content/Course` 관련 용어 및 UI는 포함하지 않습니다. (참조: `docs/architecture/admin-information-architecture.md:67`)
+- **확장 범위 포함**: `Commerce`, `Assessment`, `Content` 모듈을 포함합니다. (참조: `docs/architecture/admin-information-architecture.md`)
 
 ## 근거 문서
 - [docs/architecture/admin-information-architecture.md](../architecture/admin-information-architecture.md)

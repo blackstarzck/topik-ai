@@ -2,12 +2,12 @@
 
 ## 문서 계약
 
-- 고정 8개 모듈: Dashboard, Users, Community, Message, Operation, Billing, Analytics, System
+- 기준 모듈: Dashboard, Users, Community, Message, Operation, Commerce, Assessment, Content, Analytics, System
 - 메뉴명은 `Users`(복수형)로 표기하며, `User` 단수형 사용을 금지합니다. (참조: `docs/architecture/admin-information-architecture.md:63`)
 - 감사 로그 용어는 `감사 로그`로 통일합니다. (참조: `docs/architecture/admin-information-architecture.md:64`, `docs/specs/admin-action-log.md:4`)
 - `시스템 로그`는 기술 로그로 감사 로그와 구분합니다. (참조: `docs/architecture/admin-information-architecture.md:65`)
 - Users 상세 탭 고정: `프로필`, `활동`, `결제`, `커뮤니티`, `로그`, `관리자 메모` (참조: `docs/architecture/admin-information-architecture.md:66`)
-- 금지 범위 및 용어: `Learning`, `Content/Course` (참조: `docs/architecture/admin-information-architecture.md:67`)
+- 확장 모듈 포함: `Commerce`, `Assessment`, `Content` (참조: `docs/architecture/admin-information-architecture.md`)
 
 ## 근거 문서
 
@@ -22,7 +22,7 @@
 ## 적용 범위
 
 - 본 문서는 TOPIK AI Admin 프론트엔드 구현 시 Antigravity 실행 지침으로 사용합니다.
-- 대상 범위는 `Users`, `Community`, `Message`, `Operation`, `Billing`, `Analytics`, `System`, `Dashboard` 모듈입니다.
+- 대상 범위는 `Users`, `Community`, `Message`, `Operation`, `Commerce`, `Assessment`, `Content`, `Analytics`, `System`, `Dashboard` 모듈입니다.
 - 메뉴명/로그 용어는 문서 계약을 우선합니다: `Users`, `감사 로그`, `시스템 로그`.
 
 ## 공통 원칙
@@ -113,7 +113,7 @@ messageApi.success('게시글 숨김 완료');
 ## 영향도
 
 ### Do
-- 변경 전 영향을 받는 모듈을 명시합니다(예: `Users` 조치가 `System > 감사 로그`와 `Billing`에 미치는 영향).
+- 변경 전 영향을 받는 모듈을 명시합니다(예: `Users` 조치가 `System > 감사 로그`와 `Commerce`에 미치는 영향).
 - 파괴적 액션은 확인 모달에서 영향 범위(노출 중단, 권한 제한, 결제 상태 변경 가능성)를 안내합니다.
 - 변경 후 운영자가 검증할 경로(감사 로그 딥링크)를 함께 제공합니다.
 
@@ -147,7 +147,7 @@ messageApi.success('게시글 숨김 완료');
 ## 확장성
 
 ### Do
-- 기능 추가 시 IA 8모듈 경계를 유지하고 feature 단위로 폴더/책임을 분리합니다.
+- 기능 추가 시 현재 IA 모듈 경계를 유지하고 feature 단위로 폴더/책임을 분리합니다.
 - 탭/필터/액션 증설 시 기존 인터페이스를 깨지 않는 확장 포인트를 사용합니다.
 - 권한 정책/상태값/컬럼 구성을 하드코딩 대신 선언형 설정으로 관리합니다.
 
@@ -168,14 +168,13 @@ messageApi.success('게시글 숨김 완료');
 
 ## Do Not
 
-- `Learning`, `Content/Course` 범위를 코드/문서/컴포넌트에 재유입하지 않습니다.
 - `Users`를 `User`로 표기하거나 `감사 로그`와 `시스템 로그`를 혼용하지 않습니다.
 
 ## Checklist
 
 - [ ] 5대 품질 축(최적화/데이터 정합성/영향도/재활용/확장성)이 모두 반영되었는가?
 - [ ] 각 축의 Do/Do Not/Checklist를 코드리뷰 체크리스트로 전환했는가?
-- [ ] 관리자 도메인 예시(`Users`, `Community`, `Billing`, `감사 로그`)가 각 축에 포함되었는가?
+- [ ] 관리자 도메인 예시(`Users`, `Community`, `Commerce`, `Assessment`, `Content`, `감사 로그`)가 각 축에 포함되었는가?
 - [ ] 네트워크 상태(`pending/success/empty/error`)별 UX와 fail-safe(재시도/취소/타임아웃/fallback/격리)가 확인 가능한가?
 
 ## 제외 범위

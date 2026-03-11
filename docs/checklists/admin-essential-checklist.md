@@ -22,12 +22,13 @@
 | P0-02 | `AGENTS.md` 6.2 React 최적화 게이트 통과 | FE | Yes | 체크 결과 + 코드 위치 |
 | P0-03 | 조치성 기능은 `Target Type`, `Target ID`, 감사 로그 확인 경로 제공 | FE | Yes (해당 시) | 화면/코드 캡처 또는 링크 |
 | P0-04 | URL 복원 시 동일 목록/필터/정렬/탭 결과 재현 | FE | Yes (해당 시) | 재현 절차 + 결과 기록 |
-| P0-05 | 용어/범위 계약(`Users`, `감사 로그`, `시스템 로그`, 제외 범위) 위반 없음 | FE | Yes | 변경 파일 grep/검토 결과 |
+| P0-05 | 용어/범위 계약(`Users`, `감사 로그`, `시스템 로그`, Commerce/Assessment/Content 포함 IA, 사용자 노출 라벨 한글 기본값) 위반 없음 | FE | Yes | 변경 파일 grep/검토 결과 |
 | P0-06 | `lint` 통과 | FE | Yes | 실행 명령 + 결과 로그 |
 | P0-07 | `typecheck` 통과 | FE | Yes | 실행 명령 + 결과 로그 |
 | P0-08 | `build` 통과 | FE | Yes | 실행 명령 + 결과 로그 |
 | P0-09 | 변경 영향 핵심 플로우 1개 이상 검증(자동 테스트 우선) | FE/QA | Yes | 테스트 결과 또는 수동 시나리오 결과 |
 | P0-10 | 변경 영향 MD 문서 평가 완료, 필요 문서 수정 반영 완료 | FE | Yes | 영향 판단 근거 + 수정된 MD 목록 |
+| P0-10A | 관리자 테이블/정책/B2C 노출 위치 변경 시 `docs/specs/admin-data-usage-map.md` 평가 및 반영 완료 | FE | Yes (해당 시) | 수정 diff 또는 N/A 근거 |
 | P0-11 | MD를 수정한 경우 `logs/admin-doc-update-log.md`에 기록 완료 | FE | Yes (해당 시) | 로그 항목 링크 |
 | P0-12 | 문서 파일(`docs/**`) 추가/삭제/이동 시 `docs/README.md` 인덱스와 로그 동시 반영 | FE | Yes (해당 시) | 인덱스 diff + 로그 항목 링크 |
 | P0-13 | 네트워크 상태(`pending/success/empty/error`)별 UX와 복구 경로(재시도/fallback/가이드) 제공 | FE | Yes (해당 시) | 화면 상태별 캡처 + 코드 위치 |
