@@ -1,12 +1,21 @@
-import { Button, Card, Col, Input, Row, Select, Statistic, Typography } from 'antd';
+import { Card, Col, Row, Select, Statistic, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import { useCommerceStore } from '../model/commerce-store';
 import type { PaymentMethod, PaymentRow, PaymentStatus } from '../model/commerce-store';
-import { FilterBar } from '../../../shared/ui/filter-bar/filter-bar';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import {
+  SearchBar,
+  SearchBarDateRange,
+  SearchBarDetailField
+} from '../../../shared/ui/search-bar/search-bar';
+import {
+  matchesSearchDateRange,
+  matchesSearchField,
+  parseSearchDate
+} from '../../../shared/ui/search-bar/search-bar-utils';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import {
@@ -50,6 +59,9 @@ export default function BillingPaymentsPage(): JSX.Element {
   const payments = useCommerceStore((state) => state.payments);
   const refunds = useCommerceStore((state) => state.refunds);
   const [searchParams, setSearchParams] = useSearchParams();
+  const searchField = searchParams.get('searchField') ?? 'all';
+  const startDate = parseSearchDate(searchParams.get('startDate'));
+  const endDate = parseSearchDate(searchParams.get('endDate'));
   const keyword = searchParams.get('keyword') ?? '';
   const statusFilter = parseStatus(searchParams.get('status'));
   const methodFilter = parseMethod(searchParams.get('method'));
@@ -65,18 +77,21 @@ export default function BillingPaymentsPage(): JSX.Element {
       if (methodFilter !== 'all' && record.method !== methodFilter) {
         return false;
       }
+      if (!matchesSearchDateRange(record.paidAt, startDate, endDate)) {
+        return false;
+      }
       if (!normalizedKeyword) {
         return true;
       }
 
-      return (
-        record.id.toLowerCase().includes(normalizedKeyword) ||
-        record.userId.toLowerCase().includes(normalizedKeyword) ||
-        record.userNickname.toLowerCase().includes(normalizedKeyword) ||
-        record.product.toLowerCase().includes(normalizedKeyword)
-      );
+      return matchesSearchField(normalizedKeyword, searchField, {
+        id: record.id,
+        userId: record.userId,
+        userNickname: record.userNickname,
+        product: record.product
+      });
     });
-  }, [keyword, methodFilter, payments, statusFilter]);
+  }, [endDate, keyword, methodFilter, payments, searchField, startDate, statusFilter]);
 
   const completedAmount = useMemo(
     () =>
@@ -89,7 +104,11 @@ export default function BillingPaymentsPage(): JSX.Element {
   const pendingRefundCount = refunds.filter((row) => row.status === '처리 대기').length;
 
   const commitParams = useCallback(
-    (next: Partial<Record<'keyword' | 'status' | 'method', string>>) => {
+    (
+      next: Partial<
+        Record<'keyword' | 'searchField' | 'startDate' | 'endDate' | 'status' | 'method', string>
+      >
+    ) => {
       const merged = new URLSearchParams(searchParams);
 
       Object.entries(next).forEach(([key, value]) => {
@@ -213,39 +232,65 @@ export default function BillingPaymentsPage(): JSX.Element {
       </Row>
 
       <Card>
-        <FilterBar>
-          <Input.Search
-            allowClear
-            placeholder="결제 ID, 회원 ID, 닉네임, 상품명 검색"
-            value={keyword}
-            onChange={(event) => commitParams({ keyword: event.target.value })}
-            style={{ width: 280 }}
-          />
-          <Select
-            value={statusFilter}
-            style={{ width: 160 }}
-            options={[
-              { label: '전체 상태', value: 'all' },
-              { label: '완료', value: '완료' },
-              { label: '취소', value: '취소' },
-              { label: '환불', value: '환불' }
-            ]}
-            onChange={(value) => commitParams({ status: value })}
-          />
-          <Select
-            value={methodFilter}
-            style={{ width: 160 }}
-            options={[
-              { label: '전체 수단', value: 'all' },
-              { label: '카드', value: '카드' },
-              { label: '계좌이체', value: '계좌이체' },
-              { label: '간편결제', value: '간편결제' }
-            ]}
-            onChange={(value) => commitParams({ method: value })}
-          />
-          <Button onClick={() => setSearchParams({}, { replace: true })}>필터 초기화</Button>
-          <Text type="secondary">총 {filteredRows.length.toLocaleString()}건</Text>
-        </FilterBar>
+        <SearchBar
+          searchField={searchField}
+          searchFieldOptions={[
+            { label: '전체', value: 'all' },
+            { label: '결제 ID', value: 'id' },
+            { label: '회원 ID', value: 'userId' },
+            { label: '닉네임', value: 'userNickname' },
+            { label: '상품명', value: 'product' }
+          ]}
+          keyword={keyword}
+          onSearchFieldChange={(value) => commitParams({ searchField: value })}
+          onKeywordChange={(event) => commitParams({ keyword: event.target.value })}
+          keywordPlaceholder="검색..."
+          detailTitle="상세 검색"
+          detailContent={
+            <>
+              <SearchBarDetailField label="결제 상태">
+                <Select
+                  value={statusFilter}
+                  options={[
+                    { label: '전체', value: 'all' },
+                    { label: '완료', value: '완료' },
+                    { label: '취소', value: '취소' },
+                    { label: '환불', value: '환불' }
+                  ]}
+                  onChange={(value) => commitParams({ status: value })}
+                />
+              </SearchBarDetailField>
+              <SearchBarDetailField label="결제 수단">
+                <Select
+                  value={methodFilter}
+                  options={[
+                    { label: '전체', value: 'all' },
+                    { label: '카드', value: '카드' },
+                    { label: '계좌이체', value: '계좌이체' },
+                    { label: '간편결제', value: '간편결제' }
+                  ]}
+                  onChange={(value) => commitParams({ method: value })}
+                />
+              </SearchBarDetailField>
+              <SearchBarDetailField label="결제일">
+                <SearchBarDateRange
+                  startDate={startDate}
+                  endDate={endDate}
+                  onChange={(nextStartDate, nextEndDate) =>
+                    commitParams({
+                      startDate: nextStartDate,
+                      endDate: nextEndDate
+                    })
+                  }
+                />
+              </SearchBarDetailField>
+            </>
+          }
+          onReset={() => setSearchParams({}, { replace: true })}
+          summary={
+            <Text type="secondary">총 {filteredRows.length.toLocaleString()}건</Text>
+          }
+        />
 
         <Paragraph type="secondary" style={{ marginBottom: 16 }}>
           환불 관리에서 승인된 요청은 같은 원본 데이터를 공유하므로 이 페이지의 결제 상태에도 즉시 반영됩니다.{' '}

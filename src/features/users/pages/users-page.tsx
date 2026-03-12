@@ -4,7 +4,6 @@ import {
   Alert,
   Button,
   Form,
-  Input,
   Modal,
   notification,
   Select,
@@ -23,14 +22,24 @@ import type {
   UserStatus,
   UserSummary,
   UsersQuery,
+  UsersSearchField,
   UsersSort,
   UsersStatusFilter
 } from '../model/types';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
-import { FilterBar } from '../../../shared/ui/filter-bar/filter-bar';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import {
+  SearchBar,
+  SearchBarDateRange,
+  SearchBarDetailField
+} from '../../../shared/ui/search-bar/search-bar';
+import {
+  matchesSearchDateRange,
+  matchesSearchField,
+  parseSearchDate
+} from '../../../shared/ui/search-bar/search-bar-utils';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import {
@@ -55,6 +64,14 @@ const statusOptions: { label: string; value: UsersStatusFilter }[] = [
 const sortOptions: { label: string; value: UsersSort }[] = [
   { label: '최신 가입순', value: 'latest' },
   { label: '오래된 가입순', value: 'oldest' }
+];
+
+const searchFieldOptions: { label: string; value: UsersSearchField }[] = [
+  { label: '전체', value: 'all' },
+  { label: '사용자 ID', value: 'id' },
+  { label: '이름', value: 'realName' },
+  { label: '이메일', value: 'email' },
+  { label: '닉네임', value: 'nickname' }
 ];
 
 type ListActionState =
@@ -88,6 +105,18 @@ function parseSort(value: string | null): UsersSort {
   return defaultUsersQuery.sort;
 }
 
+function parseSearchField(value: string | null): UsersSearchField {
+  if (
+    value === 'id' ||
+    value === 'realName' ||
+    value === 'email' ||
+    value === 'nickname'
+  ) {
+    return value;
+  }
+  return defaultUsersQuery.searchField;
+}
+
 function parseUsersQuery(searchParams: URLSearchParams): UsersQuery {
   return {
     page: parsePositiveNumber(searchParams.get('page'), defaultUsersQuery.page),
@@ -97,6 +126,9 @@ function parseUsersQuery(searchParams: URLSearchParams): UsersQuery {
     ),
     status: parseStatus(searchParams.get('status')),
     sort: parseSort(searchParams.get('sort')),
+    searchField: parseSearchField(searchParams.get('searchField')),
+    startDate: parseSearchDate(searchParams.get('startDate')),
+    endDate: parseSearchDate(searchParams.get('endDate')),
     keyword: searchParams.get('keyword') ?? ''
   };
 }
@@ -108,6 +140,15 @@ function buildUsersSearchParams(query: UsersQuery): URLSearchParams {
   params.set('sort', query.sort);
   if (query.status !== 'all') {
     params.set('status', query.status);
+  }
+  if (query.searchField !== 'all') {
+    params.set('searchField', query.searchField);
+  }
+  if (query.startDate) {
+    params.set('startDate', query.startDate);
+  }
+  if (query.endDate) {
+    params.set('endDate', query.endDate);
   }
   if (query.keyword.trim()) {
     params.set('keyword', query.keyword.trim());
@@ -122,17 +163,20 @@ function filterUsers(users: UserSummary[], query: UsersQuery): UserSummary[] {
     if (query.status !== 'all' && item.status !== query.status) {
       return false;
     }
+    if (!matchesSearchDateRange(item.joinedAt, query.startDate, query.endDate)) {
+      return false;
+    }
 
     if (!keyword) {
       return true;
     }
 
-    return (
-      item.id.toLowerCase().includes(keyword) ||
-      item.realName.toLowerCase().includes(keyword) ||
-      item.email.toLowerCase().includes(keyword) ||
-      item.nickname.toLowerCase().includes(keyword)
-    );
+    return matchesSearchField(keyword, query.searchField, {
+      id: item.id,
+      realName: item.realName,
+      email: item.email,
+      nickname: item.nickname
+    });
   });
 
   const sorted = [...filtered].sort((left, right) => {
@@ -427,6 +471,27 @@ export default function UsersPage(): JSX.Element {
     [commitQuery]
   );
 
+  const handleSearchFieldChange = useCallback(
+    (value: string) => {
+      commitQuery({
+        searchField: value as UsersSearchField,
+        page: 1
+      });
+    },
+    [commitQuery]
+  );
+
+  const handleDateRangeChange = useCallback(
+    (startDate: string, endDate: string) => {
+      commitQuery({
+        startDate,
+        endDate,
+        page: 1
+      });
+    },
+    [commitQuery]
+  );
+
   const handleStatusChange = useCallback(
     (value: UsersStatusFilter) => {
       commitQuery({
@@ -482,29 +547,44 @@ export default function UsersPage(): JSX.Element {
 
       <AdminListCard
         toolbar={
-          <FilterBar>
-            <Input
-              allowClear
-              value={query.keyword}
-              onChange={handleKeywordChange}
-              placeholder="이름 / 이메일 / 닉네임 / 사용자 ID"
-              style={{ width: 280 }}
-            />
-            <Select
-              value={query.status}
-              options={statusOptions}
-              onChange={handleStatusChange}
-              style={{ width: 150 }}
-            />
-            <Select
-              value={query.sort}
-              options={sortOptions}
-              onChange={handleSortChange}
-              style={{ width: 160 }}
-            />
-            <Button onClick={handleReset}>필터 초기화</Button>
-            <Text type="secondary">총 {filteredUsers.length.toLocaleString()}건</Text>
-          </FilterBar>
+          <SearchBar
+            searchField={query.searchField}
+            searchFieldOptions={searchFieldOptions}
+            keyword={query.keyword}
+            onSearchFieldChange={handleSearchFieldChange}
+            onKeywordChange={handleKeywordChange}
+            keywordPlaceholder="검색..."
+            detailTitle="상세 검색"
+            detailContent={
+              <>
+                <SearchBarDetailField label="회원 상태">
+                  <Select
+                    value={query.status}
+                    options={statusOptions}
+                    onChange={handleStatusChange}
+                  />
+                </SearchBarDetailField>
+                <SearchBarDetailField label="정렬">
+                  <Select
+                    value={query.sort}
+                    options={sortOptions}
+                    onChange={handleSortChange}
+                  />
+                </SearchBarDetailField>
+                <SearchBarDetailField label="가입일">
+                  <SearchBarDateRange
+                    startDate={query.startDate}
+                    endDate={query.endDate}
+                    onChange={handleDateRangeChange}
+                  />
+                </SearchBarDetailField>
+              </>
+            }
+            onReset={handleReset}
+            summary={
+              <Text type="secondary">총 {filteredUsers.length.toLocaleString()}건</Text>
+            }
+          />
         }
       >
         {usersState.status === 'empty' ? (

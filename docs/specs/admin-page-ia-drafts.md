@@ -59,7 +59,7 @@
 - 기본 레이아웃:
   - `PageTitle`
   - 요약 카드 3~4개
-  - `FilterBar`
+  - `SearchBar`
   - `Table`
   - 행 클릭 `Drawer`
   - 우측 상단 주요 액션 버튼

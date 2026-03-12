@@ -1,8 +1,6 @@
 import {
-  Button,
   Card,
   Col,
-  Input,
   Row,
   Select,
   Space,
@@ -16,10 +14,14 @@ import { Link, useSearchParams } from 'react-router-dom';
 
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
-import { FilterBar } from '../../../shared/ui/filter-bar/filter-bar';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import {
+  SearchBar,
+  SearchBarDetailField
+} from '../../../shared/ui/search-bar/search-bar';
+import { matchesSearchField } from '../../../shared/ui/search-bar/search-bar-utils';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
@@ -100,6 +102,7 @@ export default function CommunityReportsPage(): JSX.Element {
   const [actionState, setActionState] = useState<ReportActionState>(null);
   const [selectedRow, setSelectedRow] = useState<ReportRow | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
+  const searchField = searchParams.get('searchField') ?? 'all';
   const keyword = searchParams.get('keyword') ?? '';
   const statusFilter = parseStatus(searchParams.get('status'));
   const [notificationApi, notificationContextHolder] = notification.useNotification();
@@ -112,7 +115,7 @@ export default function CommunityReportsPage(): JSX.Element {
   );
 
   const commitParams = useCallback(
-    (next: Partial<Record<'keyword' | 'status', string>>) => {
+    (next: Partial<Record<'keyword' | 'searchField' | 'status', string>>) => {
       const merged = new URLSearchParams(searchParams);
 
       Object.entries(next).forEach(([key, value]) => {
@@ -139,15 +142,15 @@ export default function CommunityReportsPage(): JSX.Element {
         return true;
       }
 
-      return (
-        record.id.toLowerCase().includes(normalizedKeyword) ||
-        record.targetPostId.toLowerCase().includes(normalizedKeyword) ||
-        record.targetUserId.toLowerCase().includes(normalizedKeyword) ||
-        record.reporter.toLowerCase().includes(normalizedKeyword) ||
-        record.reason.toLowerCase().includes(normalizedKeyword)
-      );
+      return matchesSearchField(normalizedKeyword, searchField, {
+        id: record.id,
+        targetPostId: record.targetPostId,
+        targetUserId: record.targetUserId,
+        reporter: record.reporter,
+        reason: record.reason
+      });
     });
-  }, [keyword, rows, statusFilter]);
+  }, [keyword, rows, searchField, statusFilter]);
 
   const markProcessed = useCallback(
     (row: ReportRow) => {
@@ -349,34 +352,52 @@ export default function CommunityReportsPage(): JSX.Element {
 
       <AdminListCard
         toolbar={
-          <FilterBar>
-            <Input.Search
-              allowClear
-              placeholder="신고 ID, 게시글 ID, 사용자 ID, 신고자 검색"
-              value={keyword}
-              onChange={(event) =>
-                commitParams({
-                  keyword: event.target.value,
-                  status: statusFilter
-                })
-              }
-              style={{ width: 320 }}
-            />
-            <Select
-              value={statusFilter}
-              style={{ width: 160 }}
-              options={[
-                { label: '전체 상태', value: 'all' },
-                { label: '처리 대기', value: '처리 대기' },
-                { label: '처리 완료', value: '처리 완료' }
-              ]}
-              onChange={(value: ProcessStatus | 'all') =>
-                commitParams({ status: value, keyword })
-              }
-            />
-            <Button onClick={() => setSearchParams({}, { replace: true })}>필터 초기화</Button>
-            <Text type="secondary">총 {visibleRows.length.toLocaleString()}건</Text>
-          </FilterBar>
+          <SearchBar
+            searchField={searchField}
+            searchFieldOptions={[
+              { label: '전체', value: 'all' },
+              { label: '신고 ID', value: 'id' },
+              { label: '게시글 ID', value: 'targetPostId' },
+              { label: '사용자 ID', value: 'targetUserId' },
+              { label: '신고자', value: 'reporter' },
+              { label: '신고 사유', value: 'reason' }
+            ]}
+            keyword={keyword}
+            onSearchFieldChange={(value) =>
+              commitParams({
+                searchField: value,
+                status: statusFilter
+              })
+            }
+            onKeywordChange={(event) =>
+              commitParams({
+                keyword: event.target.value,
+                searchField,
+                status: statusFilter
+              })
+            }
+            keywordPlaceholder="검색..."
+            detailTitle="상세 검색"
+            detailContent={
+              <SearchBarDetailField label="처리 상태">
+                <Select
+                  value={statusFilter}
+                  options={[
+                    { label: '전체', value: 'all' },
+                    { label: '처리 대기', value: '처리 대기' },
+                    { label: '처리 완료', value: '처리 완료' }
+                  ]}
+                  onChange={(value: ProcessStatus | 'all') =>
+                    commitParams({ status: value, keyword, searchField })
+                  }
+                />
+              </SearchBarDetailField>
+            }
+            onReset={() => setSearchParams({}, { replace: true })}
+            summary={
+              <Text type="secondary">총 {visibleRows.length.toLocaleString()}건</Text>
+            }
+          />
         }
       >
         <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>

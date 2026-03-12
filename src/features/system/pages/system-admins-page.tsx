@@ -1,4 +1,4 @@
-import { Button, Card, Col, Input, Row, Select, Statistic, Typography } from 'antd';
+import { Card, Col, Row, Select, Statistic, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -6,8 +6,12 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { usePermissionStore } from '../model/permission-store';
 import { roleCatalog } from '../model/permission-types';
 import type { AdminPermissionAssignment, AdminStatus, RoleKey } from '../model/permission-types';
-import { FilterBar } from '../../../shared/ui/filter-bar/filter-bar';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import {
+  SearchBar,
+  SearchBarDetailField
+} from '../../../shared/ui/search-bar/search-bar';
+import { matchesSearchField } from '../../../shared/ui/search-bar/search-bar-utils';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import {
@@ -61,6 +65,7 @@ function parseStatus(value: string | null): StatusFilter {
 export default function SystemAdminsPage(): JSX.Element {
   const admins = usePermissionStore((state) => state.admins);
   const [searchParams, setSearchParams] = useSearchParams();
+  const searchField = searchParams.get('searchField') ?? 'all';
   const keyword = searchParams.get('keyword') ?? '';
   const roleFilter = parseRole(searchParams.get('role'));
   const statusFilter = parseStatus(searchParams.get('status'));
@@ -80,13 +85,13 @@ export default function SystemAdminsPage(): JSX.Element {
         return true;
       }
 
-      return (
-        record.adminId.toLowerCase().includes(normalizedKeyword) ||
-        record.name.toLowerCase().includes(normalizedKeyword) ||
-        roleNameMap[record.role].toLowerCase().includes(normalizedKeyword)
-      );
+      return matchesSearchField(normalizedKeyword, searchField, {
+        adminId: record.adminId,
+        name: record.name,
+        role: roleNameMap[record.role]
+      });
     });
-  }, [admins, keyword, roleFilter, statusFilter]);
+  }, [admins, keyword, roleFilter, searchField, statusFilter]);
 
   const activeCount = admins.filter((admin) => admin.status === '활성').length;
   const inactiveCount = admins.filter((admin) => admin.status === '비활성').length;
@@ -95,7 +100,7 @@ export default function SystemAdminsPage(): JSX.Element {
   ).length;
 
   const commitParams = useCallback(
-    (next: Partial<Record<'keyword' | 'role' | 'status', string>>) => {
+    (next: Partial<Record<'keyword' | 'searchField' | 'role' | 'status', string>>) => {
       const merged = new URLSearchParams(searchParams);
 
       Object.entries(next).forEach(([key, value]) => {
@@ -215,36 +220,62 @@ export default function SystemAdminsPage(): JSX.Element {
       </Row>
 
       <Card>
-        <FilterBar>
-          <Input.Search
-            allowClear
-            placeholder="관리자 ID, 이름, 역할 검색"
-            value={keyword}
-            onChange={(event) => commitParams({ keyword: event.target.value })}
-            style={{ width: 280 }}
-          />
-          <Select
-            value={roleFilter}
-            style={{ width: 180 }}
-            options={[
-              { label: '전체 역할', value: 'all' },
-              ...roleCatalog.map((role) => ({ label: role.name, value: role.key }))
-            ]}
-            onChange={(value) => commitParams({ role: value })}
-          />
-          <Select
-            value={statusFilter}
-            style={{ width: 140 }}
-            options={[
-              { label: '전체 상태', value: 'all' },
-              { label: '활성', value: '활성' },
-              { label: '비활성', value: '비활성' }
-            ]}
-            onChange={(value) => commitParams({ status: value })}
-          />
-          <Button onClick={() => setSearchParams({}, { replace: true })}>필터 초기화</Button>
-          <Text type="secondary">총 {filteredRows.length.toLocaleString()}건</Text>
-        </FilterBar>
+        <SearchBar
+          searchField={searchField}
+          searchFieldOptions={[
+            { label: '전체', value: 'all' },
+            { label: '관리자 ID', value: 'adminId' },
+            { label: '이름', value: 'name' },
+            { label: '역할', value: 'role' }
+          ]}
+          keyword={keyword}
+          onSearchFieldChange={(value) =>
+            commitParams({ searchField: value, role: roleFilter, status: statusFilter })
+          }
+          onKeywordChange={(event) =>
+            commitParams({
+              keyword: event.target.value,
+              searchField,
+              role: roleFilter,
+              status: statusFilter
+            })
+          }
+          keywordPlaceholder="검색..."
+          detailTitle="상세 검색"
+          detailContent={
+            <>
+              <SearchBarDetailField label="역할">
+                <Select
+                  value={roleFilter}
+                  options={[
+                    { label: '전체', value: 'all' },
+                    ...roleCatalog.map((role) => ({ label: role.name, value: role.key }))
+                  ]}
+                  onChange={(value) =>
+                    commitParams({ role: value, keyword, searchField, status: statusFilter })
+                  }
+                />
+              </SearchBarDetailField>
+              <SearchBarDetailField label="상태">
+                <Select
+                  value={statusFilter}
+                  options={[
+                    { label: '전체', value: 'all' },
+                    { label: '활성', value: '활성' },
+                    { label: '비활성', value: '비활성' }
+                  ]}
+                  onChange={(value) =>
+                    commitParams({ status: value, keyword, searchField, role: roleFilter })
+                  }
+                />
+              </SearchBarDetailField>
+            </>
+          }
+          onReset={() => setSearchParams({}, { replace: true })}
+          summary={
+            <Text type="secondary">총 {filteredRows.length.toLocaleString()}건</Text>
+          }
+        />
 
         <Paragraph type="secondary" style={{ marginBottom: 16 }}>
           관리자 계정과 권한 변경은 동일한 권한 원본을 공유합니다. 상세 조치 이력은 감사 로그

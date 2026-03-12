@@ -42,8 +42,12 @@ import type { AsyncState } from '../../../shared/model/async-state';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
-import { FilterBar } from '../../../shared/ui/filter-bar/filter-bar';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import {
+  SearchBar,
+  SearchBarDetailField
+} from '../../../shared/ui/search-bar/search-bar';
+import { matchesSearchField } from '../../../shared/ui/search-bar/search-bar-utils';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import {
@@ -220,6 +224,7 @@ function buildPayload(
 
 export default function MessageGroupsPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
+  const searchField = searchParams.get('searchField') ?? 'all';
   const keyword = searchParams.get('keyword') ?? '';
   const definitionFilter = parseGroupType(searchParams.get('definition'));
 
@@ -294,16 +299,16 @@ export default function MessageGroupsPage(): JSX.Element {
         return true;
       }
 
-      return (
-        group.name.toLowerCase().includes(normalizedKeyword) ||
-        group.description.toLowerCase().includes(normalizedKeyword) ||
-        group.ruleSummary.toLowerCase().includes(normalizedKeyword)
-      );
+      return matchesSearchField(normalizedKeyword, searchField, {
+        name: group.name,
+        description: group.description,
+        ruleSummary: group.ruleSummary
+      });
     });
-  }, [definitionFilter, groups, keyword]);
+  }, [definitionFilter, groups, keyword, searchField]);
 
   const commitParams = useCallback(
-    (next: Partial<Record<'keyword' | 'definition', string>>) => {
+    (next: Partial<Record<'keyword' | 'searchField' | 'definition', string>>) => {
       const merged = new URLSearchParams(searchParams);
 
       Object.entries(next).forEach(([key, value]) => {
@@ -543,28 +548,47 @@ export default function MessageGroupsPage(): JSX.Element {
           }}
         >
           <div style={{ flex: 1 }}>
-            <FilterBar>
-              <Input.Search
-                allowClear
-                value={keyword}
-                onChange={(event) =>
-                  commitParams({ keyword: event.target.value, definition: definitionFilter })
-                }
-                placeholder="그룹 이름 또는 설명 검색"
-                style={{ width: 280 }}
-              />
-              <Select
-                value={definitionFilter}
-                style={{ width: 180 }}
-                options={[
-                  { label: '전체 방식', value: 'all' },
-                  { label: '정적 그룹', value: '정적 그룹' },
-                  { label: '조건 기반 그룹', value: '조건 기반 그룹' }
-                ]}
-                onChange={(value: GroupTypeFilter) => commitParams({ definition: value, keyword })}
-              />
-              <Text type="secondary">총 {visibleGroups.length.toLocaleString()}건</Text>
-            </FilterBar>
+            <SearchBar
+              searchField={searchField}
+              searchFieldOptions={[
+                { label: '전체', value: 'all' },
+                { label: '그룹 이름', value: 'name' },
+                { label: '설명', value: 'description' },
+                { label: '조건 요약', value: 'ruleSummary' }
+              ]}
+              keyword={keyword}
+              onSearchFieldChange={(value) =>
+                commitParams({ searchField: value, definition: definitionFilter })
+              }
+              onKeywordChange={(event) =>
+                commitParams({
+                  keyword: event.target.value,
+                  searchField,
+                  definition: definitionFilter
+                })
+              }
+              keywordPlaceholder="검색..."
+              detailTitle="상세 검색"
+              detailContent={
+                <SearchBarDetailField label="정의 방식">
+                  <Select
+                    value={definitionFilter}
+                    options={[
+                      { label: '전체', value: 'all' },
+                      { label: '정적 그룹', value: '정적 그룹' },
+                      { label: '조건 기반 그룹', value: '조건 기반 그룹' }
+                    ]}
+                    onChange={(value: GroupTypeFilter) =>
+                      commitParams({ definition: value, keyword, searchField })
+                    }
+                  />
+                </SearchBarDetailField>
+              }
+              onReset={() => setSearchParams({}, { replace: true })}
+              summary={
+                <Text type="secondary">총 {visibleGroups.length.toLocaleString()}건</Text>
+              }
+            />
           </div>
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreateDrawer}>
             그룹 추가

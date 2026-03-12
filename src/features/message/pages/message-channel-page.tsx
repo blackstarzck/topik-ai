@@ -27,9 +27,13 @@ import type { AsyncState } from '../../../shared/model/async-state';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
-import { FilterBar } from '../../../shared/ui/filter-bar/filter-bar';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import {
+  SearchBar,
+  SearchBarDetailField
+} from '../../../shared/ui/search-bar/search-bar';
+import { matchesSearchField } from '../../../shared/ui/search-bar/search-bar-utils';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
@@ -152,6 +156,7 @@ export function MessageChannelPage({
   const meta = useMemo(() => getChannelMeta(channel), [channel]);
   const [searchParams, setSearchParams] = useSearchParams();
   const activeMode = parseMode(searchParams.get('tab'));
+  const searchField = searchParams.get('searchField') ?? 'all';
   const statusFilter = parseStatus(searchParams.get('status'));
   const keyword = searchParams.get('keyword') ?? '';
 
@@ -237,17 +242,17 @@ export function MessageChannelPage({
           return true;
         }
 
-        return (
-          template.id.toLowerCase().includes(normalizedKeyword) ||
-          template.name.toLowerCase().includes(normalizedKeyword) ||
-          template.subject.toLowerCase().includes(normalizedKeyword) ||
-          template.summary.toLowerCase().includes(normalizedKeyword)
-        );
+        return matchesSearchField(normalizedKeyword, searchField, {
+          id: template.id,
+          name: template.name,
+          subject: template.subject,
+          summary: template.summary
+        });
       });
-  }, [activeMode, keyword, statusFilter, templates]);
+  }, [activeMode, keyword, searchField, statusFilter, templates]);
 
   const commitParams = useCallback(
-    (next: Partial<Record<'tab' | 'status' | 'keyword', string>>) => {
+    (next: Partial<Record<'tab' | 'searchField' | 'status' | 'keyword', string>>) => {
       const merged = new URLSearchParams(searchParams);
 
       Object.entries(next).forEach(([key, value]) => {
@@ -676,41 +681,54 @@ export function MessageChannelPage({
           </Button>
         }
         toolbar={
-          <FilterBar>
-            <Input
-              allowClear
-              value={keyword}
-              onChange={(event) =>
-                commitParams({ keyword: event.target.value, status: statusFilter, tab: activeMode })
-              }
-              placeholder={`${meta.title} 템플릿명 / 제목 / 템플릿 ID`}
-              style={{ width: 280 }}
-            />
-            <Select
-              value={statusFilter}
-              style={{ width: 140 }}
-              options={[
-                { label: '전체 상태', value: 'all' },
-                { label: '활성', value: '활성' },
-                { label: '비활성', value: '비활성' },
-                { label: '초안', value: '초안' }
-              ]}
-              onChange={(value: TemplateStatusFilter) =>
-                commitParams({ status: value, keyword, tab: activeMode })
-              }
-            />
-            <Button
-              onClick={() =>
-                setSearchParams(
-                  new URLSearchParams({ tab: activeMode }),
-                  { replace: true }
-                )
-              }
-            >
-              필터 초기화
-            </Button>
-            <Text type="secondary">총 {visibleTemplates.length.toLocaleString()}건</Text>
-          </FilterBar>
+          <SearchBar
+            searchField={searchField}
+            searchFieldOptions={[
+              { label: '전체', value: 'all' },
+              { label: '템플릿 ID', value: 'id' },
+              { label: '템플릿명', value: 'name' },
+              { label: '제목', value: 'subject' },
+              { label: '요약', value: 'summary' }
+            ]}
+            keyword={keyword}
+            onSearchFieldChange={(value) =>
+              commitParams({ searchField: value, status: statusFilter, tab: activeMode })
+            }
+            onKeywordChange={(event) =>
+              commitParams({
+                keyword: event.target.value,
+                searchField,
+                status: statusFilter,
+                tab: activeMode
+              })
+            }
+            keywordPlaceholder="검색..."
+            detailTitle="상세 검색"
+            detailContent={
+              <SearchBarDetailField label="상태">
+                <Select
+                  value={statusFilter}
+                  options={[
+                    { label: '전체', value: 'all' },
+                    { label: '활성', value: '활성' },
+                    { label: '비활성', value: '비활성' },
+                    { label: '초안', value: '초안' }
+                  ]}
+                  onChange={(value: TemplateStatusFilter) =>
+                    commitParams({ status: value, keyword, searchField, tab: activeMode })
+                  }
+                />
+              </SearchBarDetailField>
+            }
+            onReset={() =>
+              setSearchParams(new URLSearchParams({ tab: activeMode }), {
+                replace: true
+              })
+            }
+            summary={
+              <Text type="secondary">총 {visibleTemplates.length.toLocaleString()}건</Text>
+            }
+          />
         }
       >
         <Paragraph type="secondary" style={{ marginTop: 0 }}>

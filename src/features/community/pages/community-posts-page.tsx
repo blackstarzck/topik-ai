@@ -1,9 +1,7 @@
 import {
-  Button,
   Card,
   Col,
   Descriptions,
-  Input,
   Modal,
   Row,
   Select,
@@ -18,10 +16,14 @@ import { Link, useSearchParams } from 'react-router-dom';
 
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
-import { FilterBar } from '../../../shared/ui/filter-bar/filter-bar';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import {
+  SearchBar,
+  SearchBarDetailField
+} from '../../../shared/ui/search-bar/search-bar';
+import { matchesSearchField } from '../../../shared/ui/search-bar/search-bar-utils';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
@@ -111,13 +113,14 @@ export default function CommunityPostsPage(): JSX.Element {
   const [actionState, setActionState] = useState<PostActionState>(null);
   const [selectedPost, setSelectedPost] = useState<CommunityPost | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
+  const searchField = searchParams.get('searchField') ?? 'all';
   const keyword = searchParams.get('keyword') ?? '';
   const boardFilter = searchParams.get('board') ?? 'all';
   const statusFilter = parseStatus(searchParams.get('status'));
   const [notificationApi, notificationContextHolder] = notification.useNotification();
 
   const commitParams = useCallback(
-    (next: Partial<Record<'keyword' | 'board' | 'status', string>>) => {
+    (next: Partial<Record<'keyword' | 'searchField' | 'board' | 'status', string>>) => {
       const merged = new URLSearchParams(searchParams);
 
       Object.entries(next).forEach(([key, value]) => {
@@ -147,14 +150,14 @@ export default function CommunityPostsPage(): JSX.Element {
         return true;
       }
 
-      return (
-        record.id.toLowerCase().includes(normalizedKeyword) ||
-        record.title.toLowerCase().includes(normalizedKeyword) ||
-        record.authorName.toLowerCase().includes(normalizedKeyword) ||
-        record.content.toLowerCase().includes(normalizedKeyword)
-      );
+      return matchesSearchField(normalizedKeyword, searchField, {
+        id: record.id,
+        title: record.title,
+        authorName: record.authorName,
+        content: record.content
+      });
     });
-  }, [boardFilter, keyword, rows, statusFilter]);
+  }, [boardFilter, keyword, rows, searchField, statusFilter]);
 
   const handleConfirmAction = useCallback(
     async (reason: string) => {
@@ -376,41 +379,74 @@ export default function CommunityPostsPage(): JSX.Element {
 
       <AdminListCard
         toolbar={
-          <FilterBar>
-            <Input.Search
-              allowClear
-              placeholder="게시글 ID, 제목, 작성자, 본문 검색"
-              value={keyword}
-              onChange={(event) =>
-                commitParams({
-                  keyword: event.target.value,
-                  board: boardFilter,
-                  status: statusFilter
-                })
-              }
-              style={{ width: 320 }}
-            />
-            <Select
-              value={boardFilter}
-              style={{ width: 140 }}
-              options={[{ label: '전체 게시판', value: 'all' }, ...boardOptions]}
-              onChange={(value) => commitParams({ board: value, keyword, status: statusFilter })}
-            />
-            <Select
-              value={statusFilter}
-              style={{ width: 140 }}
-              options={[
-                { label: '전체 상태', value: 'all' },
-                { label: '게시', value: '게시' },
-                { label: '숨김', value: '숨김' }
-              ]}
-              onChange={(value: PostStatus | 'all') =>
-                commitParams({ status: value, keyword, board: boardFilter })
-              }
-            />
-            <Button onClick={() => setSearchParams({}, { replace: true })}>필터 초기화</Button>
-            <Text type="secondary">총 {visibleRows.length.toLocaleString()}건</Text>
-          </FilterBar>
+          <SearchBar
+            searchField={searchField}
+            searchFieldOptions={[
+              { label: '전체', value: 'all' },
+              { label: '게시글 ID', value: 'id' },
+              { label: '제목', value: 'title' },
+              { label: '작성자', value: 'authorName' },
+              { label: '본문', value: 'content' }
+            ]}
+            keyword={keyword}
+            onSearchFieldChange={(value) =>
+              commitParams({
+                searchField: value,
+                board: boardFilter,
+                status: statusFilter
+              })
+            }
+            onKeywordChange={(event) =>
+              commitParams({
+                keyword: event.target.value,
+                searchField,
+                board: boardFilter,
+                status: statusFilter
+              })
+            }
+            keywordPlaceholder="검색..."
+            detailTitle="상세 검색"
+            detailContent={
+              <>
+                <SearchBarDetailField label="게시판">
+                  <Select
+                    value={boardFilter}
+                    options={[{ label: '전체', value: 'all' }, ...boardOptions]}
+                    onChange={(value) =>
+                      commitParams({
+                        board: value,
+                        keyword,
+                        searchField,
+                        status: statusFilter
+                      })
+                    }
+                  />
+                </SearchBarDetailField>
+                <SearchBarDetailField label="상태">
+                  <Select
+                    value={statusFilter}
+                    options={[
+                      { label: '전체', value: 'all' },
+                      { label: '게시', value: '게시' },
+                      { label: '숨김', value: '숨김' }
+                    ]}
+                    onChange={(value: PostStatus | 'all') =>
+                      commitParams({
+                        status: value,
+                        keyword,
+                        searchField,
+                        board: boardFilter
+                      })
+                    }
+                  />
+                </SearchBarDetailField>
+              </>
+            }
+            onReset={() => setSearchParams({}, { replace: true })}
+            summary={
+              <Text type="secondary">총 {visibleRows.length.toLocaleString()}건</Text>
+            }
+          />
         }
       >
         <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>

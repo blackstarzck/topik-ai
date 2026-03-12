@@ -130,7 +130,7 @@ messageApi.success('게시글 숨김 완료');
 ## 재활용
 
 ### Do
-- 공통 패턴(`AdminDataTable`, `FilterBar`, `ActionConfirm`, `AuditLogLink`)을 우선 재사용합니다.
+- 공통 패턴(`AdminDataTable`, `SearchBar`, `ActionConfirm`, `AuditLogLink`)을 우선 재사용합니다.
 - 모듈별 구현은 공통 컴포넌트 위에 도메인 옵션만 얹는 방식으로 구성합니다.
 - 동일한 상태 배지/오류 메시지/확인 모달 문구 템플릿을 재사용합니다.
 

@@ -5,7 +5,6 @@ import {
   Col,
   Descriptions,
   Drawer,
-  Input,
   List,
   Row,
   Select,
@@ -35,6 +34,7 @@ import type {
   InstructorDetail,
   InstructorOrganizationFilter,
   InstructorQuery,
+  InstructorSearchField,
   InstructorSort,
   InstructorStatusFilter,
   InstructorStatus
@@ -42,9 +42,18 @@ import type {
 import type { AsyncState } from '../../../shared/model/async-state';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
-import { FilterBar } from '../../../shared/ui/filter-bar/filter-bar';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import {
+  SearchBar,
+  SearchBarDateRange,
+  SearchBarDetailField
+} from '../../../shared/ui/search-bar/search-bar';
+import {
+  matchesSearchDateRange,
+  matchesSearchField,
+  parseSearchDate
+} from '../../../shared/ui/search-bar/search-bar-utils';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import {
@@ -92,6 +101,15 @@ const sortOptions: { label: string; value: InstructorSort }[] = [
   { label: '최근 활동순', value: 'recent-activity' },
   { label: '담당 학습자 많은 순', value: 'students-desc' },
   { label: '담당 과정 많은 순', value: 'courses-desc' }
+];
+
+const searchFieldOptions: { label: string; value: InstructorSearchField }[] = [
+  { label: '전체', value: 'all' },
+  { label: '강사 ID', value: 'id' },
+  { label: '이름', value: 'realName' },
+  { label: '이메일', value: 'email' },
+  { label: '소속', value: 'organization' },
+  { label: '대상 그룹', value: 'messageGroupName' }
 ];
 
 type ActionState =
@@ -154,6 +172,19 @@ function parseSort(value: string | null): InstructorSort {
   return defaultInstructorQuery.sort;
 }
 
+function parseSearchField(value: string | null): InstructorSearchField {
+  if (
+    value === 'id' ||
+    value === 'realName' ||
+    value === 'email' ||
+    value === 'organization' ||
+    value === 'messageGroupName'
+  ) {
+    return value;
+  }
+  return defaultInstructorQuery.searchField;
+}
+
 function parseInstructorQuery(searchParams: URLSearchParams): InstructorQuery {
   return {
     page: parsePositiveNumber(
@@ -169,6 +200,9 @@ function parseInstructorQuery(searchParams: URLSearchParams): InstructorQuery {
     activityStatus: parseActivityStatus(searchParams.get('activityStatus')),
     country: parseCountry(searchParams.get('country')),
     organization: parseOrganization(searchParams.get('organization')),
+    searchField: parseSearchField(searchParams.get('searchField')),
+    startDate: parseSearchDate(searchParams.get('startDate')),
+    endDate: parseSearchDate(searchParams.get('endDate')),
     keyword: searchParams.get('keyword') ?? ''
   };
 }
@@ -193,6 +227,15 @@ function buildInstructorSearchParams(
   }
   if (query.organization !== 'all') {
     params.set('organization', query.organization);
+  }
+  if (query.searchField !== 'all') {
+    params.set('searchField', query.searchField);
+  }
+  if (query.startDate) {
+    params.set('startDate', query.startDate);
+  }
+  if (query.endDate) {
+    params.set('endDate', query.endDate);
   }
   if (query.keyword.trim()) {
     params.set('keyword', query.keyword.trim());
@@ -226,17 +269,22 @@ function filterInstructors(
     if (query.organization !== 'all' && item.organization !== query.organization) {
       return false;
     }
+    if (
+      !matchesSearchDateRange(item.lastActivityAt, query.startDate, query.endDate)
+    ) {
+      return false;
+    }
     if (!keyword) {
       return true;
     }
 
-    return (
-      item.id.toLowerCase().includes(keyword) ||
-      item.realName.toLowerCase().includes(keyword) ||
-      item.email.toLowerCase().includes(keyword) ||
-      item.organization.toLowerCase().includes(keyword) ||
-      item.messageGroupName.toLowerCase().includes(keyword)
-    );
+    return matchesSearchField(keyword, query.searchField, {
+      id: item.id,
+      realName: item.realName,
+      email: item.email,
+      organization: item.organization,
+      messageGroupName: item.messageGroupName
+    });
   });
 
   return [...filtered].sort((left, right) => {
@@ -501,6 +549,16 @@ export default function InstructorManagementPage(): JSX.Element {
     [commitQuery]
   );
 
+  const handleSearchFieldChange = useCallback(
+    (value: string) => {
+      commitQuery({
+        searchField: value as InstructorSearchField,
+        page: 1
+      });
+    },
+    [commitQuery]
+  );
+
   const handleStatusChange = useCallback(
     (value: InstructorStatusFilter) => {
       commitQuery({ status: value, page: 1 });
@@ -532,6 +590,13 @@ export default function InstructorManagementPage(): JSX.Element {
   const handleSortChange = useCallback(
     (value: InstructorSort) => {
       commitQuery({ sort: value, page: 1 });
+    },
+    [commitQuery]
+  );
+
+  const handleDateRangeChange = useCallback(
+    (startDate: string, endDate: string) => {
+      commitQuery({ startDate, endDate, page: 1 });
     },
     [commitQuery]
   );
@@ -781,49 +846,67 @@ export default function InstructorManagementPage(): JSX.Element {
 
       <AdminListCard
         toolbar={
-          <FilterBar>
-            <Input
-              allowClear
-              value={query.keyword}
-              onChange={handleKeywordChange}
-              placeholder="강사명 / 강사 ID / 이메일 / 대상 그룹"
-              style={{ width: 280 }}
-            />
-            <Select
-              value={query.organization}
-              options={organizationOptions}
-              onChange={handleOrganizationChange}
-              style={{ width: 180 }}
-            />
-            <Select
-              value={query.country}
-              options={countryOptions}
-              onChange={handleCountryChange}
-              style={{ width: 140 }}
-            />
-            <Select
-              value={query.status}
-              options={statusOptions}
-              onChange={handleStatusChange}
-              style={{ width: 140 }}
-            />
-            <Select
-              value={query.activityStatus}
-              options={activityOptions}
-              onChange={handleActivityChange}
-              style={{ width: 140 }}
-            />
-            <Select
-              value={query.sort}
-              options={sortOptions}
-              onChange={handleSortChange}
-              style={{ width: 180 }}
-            />
-            <Button onClick={handleReset}>필터 초기화</Button>
-            <Text type="secondary">
-              총 {visibleInstructors.length.toLocaleString()}건
-            </Text>
-          </FilterBar>
+          <SearchBar
+            searchField={query.searchField}
+            searchFieldOptions={searchFieldOptions}
+            keyword={query.keyword}
+            onSearchFieldChange={handleSearchFieldChange}
+            onKeywordChange={handleKeywordChange}
+            keywordPlaceholder="검색..."
+            detailTitle="상세 검색"
+            detailContent={
+              <>
+                <SearchBarDetailField label="소속">
+                  <Select
+                    value={query.organization}
+                    options={organizationOptions}
+                    onChange={handleOrganizationChange}
+                  />
+                </SearchBarDetailField>
+                <SearchBarDetailField label="담당 국가">
+                  <Select
+                    value={query.country}
+                    options={countryOptions}
+                    onChange={handleCountryChange}
+                  />
+                </SearchBarDetailField>
+                <SearchBarDetailField label="계정 상태">
+                  <Select
+                    value={query.status}
+                    options={statusOptions}
+                    onChange={handleStatusChange}
+                  />
+                </SearchBarDetailField>
+                <SearchBarDetailField label="활동 상태">
+                  <Select
+                    value={query.activityStatus}
+                    options={activityOptions}
+                    onChange={handleActivityChange}
+                  />
+                </SearchBarDetailField>
+                <SearchBarDetailField label="정렬">
+                  <Select
+                    value={query.sort}
+                    options={sortOptions}
+                    onChange={handleSortChange}
+                  />
+                </SearchBarDetailField>
+                <SearchBarDetailField label="최근 활동일">
+                  <SearchBarDateRange
+                    startDate={query.startDate}
+                    endDate={query.endDate}
+                    onChange={handleDateRangeChange}
+                  />
+                </SearchBarDetailField>
+              </>
+            }
+            onReset={handleReset}
+            summary={
+              <Text type="secondary">
+                총 {visibleInstructors.length.toLocaleString()}건
+              </Text>
+            }
+          />
         }
       >
         {instructorsState.status !== 'pending' && visibleInstructors.length === 0 ? (

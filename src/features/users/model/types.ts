@@ -16,12 +16,16 @@ export type UserSummary = {
 
 export type UsersSort = 'latest' | 'oldest';
 export type UsersStatusFilter = 'all' | UserStatus;
+export type UsersSearchField = 'all' | 'id' | 'realName' | 'email' | 'nickname';
 
 export type UsersQuery = {
   page: number;
   pageSize: number;
   sort: UsersSort;
   status: UsersStatusFilter;
+  searchField: UsersSearchField;
+  startDate: string;
+  endDate: string;
   keyword: string;
 };
 
@@ -109,6 +113,13 @@ export type InstructorStatusFilter = 'all' | InstructorStatus;
 export type InstructorActivityFilter = 'all' | InstructorActivityStatus;
 export type InstructorCountryFilter = 'all' | InstructorCountry;
 export type InstructorOrganizationFilter = 'all' | InstructorOrganization;
+export type InstructorSearchField =
+  | 'all'
+  | 'id'
+  | 'realName'
+  | 'email'
+  | 'organization'
+  | 'messageGroupName';
 
 export type InstructorQuery = {
   page: number;
@@ -118,6 +129,9 @@ export type InstructorQuery = {
   activityStatus: InstructorActivityFilter;
   country: InstructorCountryFilter;
   organization: InstructorOrganizationFilter;
+  searchField: InstructorSearchField;
+  startDate: string;
+  endDate: string;
   keyword: string;
 };
 

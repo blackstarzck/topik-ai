@@ -18,10 +18,14 @@ import { useSearchParams } from 'react-router-dom';
 
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
-import { FilterBar } from '../../../shared/ui/filter-bar/filter-bar';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import {
+  SearchBar,
+  SearchBarDetailField
+} from '../../../shared/ui/search-bar/search-bar';
+import { matchesSearchField } from '../../../shared/ui/search-bar/search-bar-utils';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
@@ -122,6 +126,7 @@ function buildDetailLabelMap(row: FaqRow | null): Record<string, string> | undef
 
 export default function OperationFaqPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
+  const searchField = searchParams.get('searchField') ?? 'all';
   const keyword = searchParams.get('keyword') ?? '';
   const statusFilter = parseStatus(searchParams.get('status'));
   const categoryFilter = parseCategory(searchParams.get('category'));
@@ -149,16 +154,16 @@ export default function OperationFaqPage(): JSX.Element {
         return true;
       }
 
-      return (
-        row.id.toLowerCase().includes(normalizedKeyword) ||
-        row.question.toLowerCase().includes(normalizedKeyword) ||
-        row.answer.toLowerCase().includes(normalizedKeyword)
-      );
+      return matchesSearchField(normalizedKeyword, searchField, {
+        id: row.id,
+        question: row.question,
+        answer: row.answer
+      });
     });
-  }, [categoryFilter, keyword, rows, statusFilter]);
+  }, [categoryFilter, keyword, rows, searchField, statusFilter]);
 
   const commitParams = useCallback(
-    (next: Partial<Record<'keyword' | 'status' | 'category', string>>) => {
+    (next: Partial<Record<'keyword' | 'searchField' | 'status' | 'category', string>>) => {
       const merged = new URLSearchParams(searchParams);
 
       Object.entries(next).forEach(([key, value]) => {
@@ -422,49 +427,79 @@ export default function OperationFaqPage(): JSX.Element {
           </Button>
         }
         toolbar={
-          <FilterBar>
-            <Input.Search
-              allowClear
-              value={keyword}
-              onChange={(event) =>
-                commitParams({
-                  keyword: event.target.value,
-                  category: categoryFilter,
-                  status: statusFilter
-                })
-              }
-              placeholder="FAQ 질문 또는 답변 검색"
-              style={{ width: 280 }}
-            />
-            <Select
-              value={categoryFilter}
-              style={{ width: 140 }}
-              options={[
-                { label: '전체 카테고리', value: 'all' },
-                { label: '계정', value: '계정' },
-                { label: '결제', value: '결제' },
-                { label: '커뮤니티', value: '커뮤니티' },
-                { label: '메시지', value: '메시지' }
-              ]}
-              onChange={(value: FaqCategory | 'all') =>
-                commitParams({ category: value, status: statusFilter, keyword })
-              }
-            />
-            <Select
-              value={statusFilter}
-              style={{ width: 140 }}
-              options={[
-                { label: '전체 상태', value: 'all' },
-                { label: '공개', value: '공개' },
-                { label: '비공개', value: '비공개' }
-              ]}
-              onChange={(value: FaqStatus | 'all') =>
-                commitParams({ status: value, category: categoryFilter, keyword })
-              }
-            />
-            <Button onClick={() => setSearchParams({}, { replace: true })}>필터 초기화</Button>
-            <Text type="secondary">총 {visibleRows.length.toLocaleString()}건</Text>
-          </FilterBar>
+          <SearchBar
+            searchField={searchField}
+            searchFieldOptions={[
+              { label: '전체', value: 'all' },
+              { label: 'FAQ ID', value: 'id' },
+              { label: '질문', value: 'question' },
+              { label: '답변', value: 'answer' }
+            ]}
+            keyword={keyword}
+            onSearchFieldChange={(value) =>
+              commitParams({
+                searchField: value,
+                category: categoryFilter,
+                status: statusFilter
+              })
+            }
+            onKeywordChange={(event) =>
+              commitParams({
+                keyword: event.target.value,
+                searchField,
+                category: categoryFilter,
+                status: statusFilter
+              })
+            }
+            keywordPlaceholder="검색..."
+            detailTitle="상세 검색"
+            detailContent={
+              <>
+                <SearchBarDetailField label="카테고리">
+                  <Select
+                    value={categoryFilter}
+                    options={[
+                      { label: '전체', value: 'all' },
+                      { label: '계정', value: '계정' },
+                      { label: '결제', value: '결제' },
+                      { label: '커뮤니티', value: '커뮤니티' },
+                      { label: '메시지', value: '메시지' }
+                    ]}
+                    onChange={(value: FaqCategory | 'all') =>
+                      commitParams({
+                        category: value,
+                        status: statusFilter,
+                        keyword,
+                        searchField
+                      })
+                    }
+                  />
+                </SearchBarDetailField>
+                <SearchBarDetailField label="공개 상태">
+                  <Select
+                    value={statusFilter}
+                    options={[
+                      { label: '전체', value: 'all' },
+                      { label: '공개', value: '공개' },
+                      { label: '비공개', value: '비공개' }
+                    ]}
+                    onChange={(value: FaqStatus | 'all') =>
+                      commitParams({
+                        status: value,
+                        category: categoryFilter,
+                        keyword,
+                        searchField
+                      })
+                    }
+                  />
+                </SearchBarDetailField>
+              </>
+            }
+            onReset={() => setSearchParams({}, { replace: true })}
+            summary={
+              <Text type="secondary">총 {visibleRows.length.toLocaleString()}건</Text>
+            }
+          />
         }
       >
         <AdminDataTable<FaqRow>

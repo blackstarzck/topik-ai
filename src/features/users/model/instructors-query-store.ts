@@ -10,6 +10,9 @@ export const defaultInstructorQuery: InstructorQuery = {
   activityStatus: 'all',
   country: 'all',
   organization: 'all',
+  searchField: 'all',
+  startDate: '',
+  endDate: '',
   keyword: ''
 };
 

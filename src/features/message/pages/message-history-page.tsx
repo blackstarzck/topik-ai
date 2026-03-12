@@ -36,8 +36,12 @@ import type { AsyncState } from '../../../shared/model/async-state';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
-import { FilterBar } from '../../../shared/ui/filter-bar/filter-bar';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import {
+  SearchBar,
+  SearchBarDetailField
+} from '../../../shared/ui/search-bar/search-bar';
+import { matchesSearchField } from '../../../shared/ui/search-bar/search-bar-utils';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import {
@@ -106,6 +110,7 @@ function downloadCsvFile(filename: string, content: string): void {
 export default function MessageHistoryPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeChannel = parseChannel(searchParams.get('channel'));
+  const searchField = searchParams.get('searchField') ?? 'all';
   const statusFilter = parseStatus(searchParams.get('status'));
   const modeFilter = parseMode(searchParams.get('mode'));
   const keyword = searchParams.get('keyword') ?? '';
@@ -180,13 +185,13 @@ export default function MessageHistoryPage(): JSX.Element {
         return true;
       }
 
-      return (
-        history.id.toLowerCase().includes(normalizedKeyword) ||
-        history.templateName.toLowerCase().includes(normalizedKeyword) ||
-        history.groupName.toLowerCase().includes(normalizedKeyword)
-      );
+      return matchesSearchField(normalizedKeyword, searchField, {
+        id: history.id,
+        templateName: history.templateName,
+        groupName: history.groupName
+      });
     });
-  }, [activeChannel, histories, keyword, modeFilter, statusFilter]);
+  }, [activeChannel, histories, keyword, modeFilter, searchField, statusFilter]);
 
   const filteredRecipients = useMemo(() => {
     if (!detailRow) {
@@ -208,7 +213,11 @@ export default function MessageHistoryPage(): JSX.Element {
   }, [detailRow, recipientKeyword]);
 
   const commitParams = useCallback(
-    (next: Partial<Record<'channel' | 'status' | 'mode' | 'keyword', string>>) => {
+    (
+      next: Partial<
+        Record<'channel' | 'searchField' | 'status' | 'mode' | 'keyword', string>
+      >
+    ) => {
       const merged = new URLSearchParams(searchParams);
 
       Object.entries(next).forEach(([key, value]) => {
@@ -486,37 +495,66 @@ export default function MessageHistoryPage(): JSX.Element {
           ]}
         />
 
-        <FilterBar>
-          <Input.Search
-            allowClear
-            value={keyword}
-            onChange={(event) =>
-              commitParams({
-                keyword: event.target.value,
-                channel: activeChannel,
-                mode: modeFilter,
-                status: statusFilter
-              })
-            }
-            placeholder="템플릿 이름 또는 그룹 이름 검색"
-            style={{ width: 280 }}
-          />
-          <Select
-            value={statusFilter}
-            style={{ width: 160 }}
-            options={[
-              { label: '전체 상태', value: 'all' },
-              { label: '완료', value: '완료' },
-              { label: '부분 실패', value: '부분 실패' },
-              { label: '실패', value: '실패' },
-              { label: '예약', value: '예약' }
-            ]}
-            onChange={(value: HistoryStatusFilter) =>
-              commitParams({ status: value, channel: activeChannel, mode: modeFilter, keyword })
-            }
-          />
-          <Text type="secondary">총 {visibleRows.length.toLocaleString()}건</Text>
-        </FilterBar>
+        <SearchBar
+          searchField={searchField}
+          searchFieldOptions={[
+            { label: '전체', value: 'all' },
+            { label: '발송 ID', value: 'id' },
+            { label: '템플릿 이름', value: 'templateName' },
+            { label: '그룹 이름', value: 'groupName' }
+          ]}
+          keyword={keyword}
+          onSearchFieldChange={(value) =>
+            commitParams({
+              searchField: value,
+              channel: activeChannel,
+              mode: modeFilter,
+              status: statusFilter
+            })
+          }
+          onKeywordChange={(event) =>
+            commitParams({
+              keyword: event.target.value,
+              searchField,
+              channel: activeChannel,
+              mode: modeFilter,
+              status: statusFilter
+            })
+          }
+          keywordPlaceholder="검색..."
+          detailTitle="상세 검색"
+          detailContent={
+            <SearchBarDetailField label="상태">
+              <Select
+                value={statusFilter}
+                options={[
+                  { label: '전체', value: 'all' },
+                  { label: '완료', value: '완료' },
+                  { label: '부분 실패', value: '부분 실패' },
+                  { label: '실패', value: '실패' },
+                  { label: '예약', value: '예약' }
+                ]}
+                onChange={(value: HistoryStatusFilter) =>
+                  commitParams({
+                    status: value,
+                    channel: activeChannel,
+                    mode: modeFilter,
+                    keyword,
+                    searchField
+                  })
+                }
+              />
+            </SearchBarDetailField>
+          }
+          onReset={() =>
+            setSearchParams(new URLSearchParams({ channel: activeChannel }), {
+              replace: true
+            })
+          }
+          summary={
+            <Text type="secondary">총 {visibleRows.length.toLocaleString()}건</Text>
+          }
+        />
 
         {loadState.status !== 'pending' && visibleRows.length === 0 ? (
           <Alert

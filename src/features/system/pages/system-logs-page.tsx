@@ -1,10 +1,14 @@
-import { Button, Card, Col, Input, Row, Select, Statistic, Typography } from 'antd';
+import { Card, Col, Row, Select, Statistic, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
-import { FilterBar } from '../../../shared/ui/filter-bar/filter-bar';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import {
+  SearchBar,
+  SearchBarDetailField
+} from '../../../shared/ui/search-bar/search-bar';
+import { matchesSearchField } from '../../../shared/ui/search-bar/search-bar-utils';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import { createTextSorter } from '../../../shared/ui/table/table-column-utils';
@@ -79,6 +83,7 @@ function getComponentRoute(component: string): string | null {
 
 export default function SystemLogsPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
+  const searchField = searchParams.get('searchField') ?? 'all';
   const keyword = searchParams.get('keyword') ?? '';
   const levelFilter = searchParams.get('level') ?? 'all';
   const componentFilter = searchParams.get('component') ?? 'all';
@@ -107,16 +112,16 @@ export default function SystemLogsPage(): JSX.Element {
         return true;
       }
 
-      return (
-        row.id.toLowerCase().includes(normalizedKeyword) ||
-        row.component.toLowerCase().includes(normalizedKeyword) ||
-        row.message.toLowerCase().includes(normalizedKeyword)
-      );
+      return matchesSearchField(normalizedKeyword, searchField, {
+        id: row.id,
+        component: row.component,
+        message: row.message
+      });
     });
-  }, [componentFilter, keyword, levelFilter]);
+  }, [componentFilter, keyword, levelFilter, searchField]);
 
   const commitParams = useCallback(
-    (next: Partial<Record<'keyword' | 'level' | 'component', string>>) => {
+    (next: Partial<Record<'keyword' | 'searchField' | 'level' | 'component', string>>) => {
       const merged = new URLSearchParams(searchParams);
 
       Object.entries(next).forEach(([key, value]) => {
@@ -211,34 +216,70 @@ export default function SystemLogsPage(): JSX.Element {
       </Row>
 
       <Card>
-        <FilterBar>
-          <Input.Search
-            allowClear
-            placeholder="로그 ID, 컴포넌트, 메시지 검색"
-            value={keyword}
-            onChange={(event) => commitParams({ keyword: event.target.value })}
-            style={{ width: 320 }}
-          />
-          <Select
-            value={levelFilter}
-            style={{ width: 160 }}
-            options={[
-              { label: '전체 레벨', value: 'all' },
-              { label: 'INFO', value: 'INFO' },
-              { label: 'WARN', value: 'WARN' },
-              { label: 'ERROR', value: 'ERROR' }
-            ]}
-            onChange={(value) => commitParams({ level: value })}
-          />
-          <Select
-            value={componentFilter}
-            style={{ width: 180 }}
-            options={[{ label: '전체 컴포넌트', value: 'all' }, ...componentOptions]}
-            onChange={(value) => commitParams({ component: value })}
-          />
-          <Button onClick={() => setSearchParams({}, { replace: true })}>필터 초기화</Button>
-          <Text type="secondary">총 {filteredRows.length.toLocaleString()}건</Text>
-        </FilterBar>
+        <SearchBar
+          searchField={searchField}
+          searchFieldOptions={[
+            { label: '전체', value: 'all' },
+            { label: '로그 ID', value: 'id' },
+            { label: '컴포넌트', value: 'component' },
+            { label: '메시지', value: 'message' }
+          ]}
+          keyword={keyword}
+          onSearchFieldChange={(value) =>
+            commitParams({ searchField: value, level: levelFilter, component: componentFilter })
+          }
+          onKeywordChange={(event) =>
+            commitParams({
+              keyword: event.target.value,
+              searchField,
+              level: levelFilter,
+              component: componentFilter
+            })
+          }
+          keywordPlaceholder="검색..."
+          detailTitle="상세 검색"
+          detailContent={
+            <>
+              <SearchBarDetailField label="레벨">
+                <Select
+                  value={levelFilter}
+                  options={[
+                    { label: '전체', value: 'all' },
+                    { label: 'INFO', value: 'INFO' },
+                    { label: 'WARN', value: 'WARN' },
+                    { label: 'ERROR', value: 'ERROR' }
+                  ]}
+                  onChange={(value) =>
+                    commitParams({
+                      level: value,
+                      keyword,
+                      searchField,
+                      component: componentFilter
+                    })
+                  }
+                />
+              </SearchBarDetailField>
+              <SearchBarDetailField label="컴포넌트">
+                <Select
+                  value={componentFilter}
+                  options={[{ label: '전체', value: 'all' }, ...componentOptions]}
+                  onChange={(value) =>
+                    commitParams({
+                      component: value,
+                      keyword,
+                      searchField,
+                      level: levelFilter
+                    })
+                  }
+                />
+              </SearchBarDetailField>
+            </>
+          }
+          onReset={() => setSearchParams({}, { replace: true })}
+          summary={
+            <Text type="secondary">총 {filteredRows.length.toLocaleString()}건</Text>
+          }
+        />
 
         <Paragraph type="secondary" style={{ marginBottom: 16 }}>
           컴포넌트 링크를 누르면 해당 오류가 주로 영향을 주는 운영 화면으로 이동합니다.{' '}

@@ -1,8 +1,6 @@
 import {
-  Button,
   Card,
   Col,
-  Input,
   Row,
   Select,
   Space,
@@ -18,8 +16,17 @@ import { useCommerceStore } from '../model/commerce-store';
 import type { RefundRow, RefundStatus } from '../model/commerce-store';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
-import { FilterBar } from '../../../shared/ui/filter-bar/filter-bar';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import {
+  SearchBar,
+  SearchBarDateRange,
+  SearchBarDetailField
+} from '../../../shared/ui/search-bar/search-bar';
+import {
+  matchesSearchDateRange,
+  matchesSearchField,
+  parseSearchDate
+} from '../../../shared/ui/search-bar/search-bar-utils';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import {
@@ -28,7 +35,7 @@ import {
 } from '../../../shared/ui/table/table-column-utils';
 import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
 
-const { Paragraph } = Typography;
+const { Paragraph, Text } = Typography;
 
 type PendingAction =
   | { type: 'approve'; refund: RefundRow }
@@ -65,10 +72,14 @@ export default function BillingRefundsPage(): JSX.Element {
   const approveRefund = useCommerceStore((state) => state.approveRefund);
   const rejectRefund = useCommerceStore((state) => state.rejectRefund);
   const [searchParams, setSearchParams] = useSearchParams();
+  const searchField = searchParams.get('searchField') ?? 'all';
   const keyword = searchParams.get('keyword') ?? '';
   const statusFilter = parseStatus(searchParams.get('status'));
   const [selectedRow, setSelectedRow] = useState<RefundRow | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
+
+  const startDate = parseSearchDate(searchParams.get('startDate'));
+  const endDate = parseSearchDate(searchParams.get('endDate'));
 
   const filteredRows = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
@@ -77,19 +88,22 @@ export default function BillingRefundsPage(): JSX.Element {
       if (statusFilter !== 'all' && record.status !== statusFilter) {
         return false;
       }
+      if (!matchesSearchDateRange(record.requestedAt, startDate, endDate)) {
+        return false;
+      }
       if (!normalizedKeyword) {
         return true;
       }
 
-      return (
-        record.id.toLowerCase().includes(normalizedKeyword) ||
-        record.paymentId.toLowerCase().includes(normalizedKeyword) ||
-        record.userId.toLowerCase().includes(normalizedKeyword) ||
-        record.userNickname.toLowerCase().includes(normalizedKeyword) ||
-        record.reason.toLowerCase().includes(normalizedKeyword)
-      );
+      return matchesSearchField(normalizedKeyword, searchField, {
+        id: record.id,
+        paymentId: record.paymentId,
+        userId: record.userId,
+        userNickname: record.userNickname,
+        reason: record.reason
+      });
     });
-  }, [keyword, refunds, statusFilter]);
+  }, [endDate, keyword, refunds, searchField, startDate, statusFilter]);
 
   const pendingCount = refunds.filter((row) => row.status === '처리 대기').length;
   const approvedAmount = refunds
@@ -98,7 +112,11 @@ export default function BillingRefundsPage(): JSX.Element {
   const rejectedCount = refunds.filter((row) => row.status === '거절').length;
 
   const commitParams = useCallback(
-    (next: Partial<Record<'keyword' | 'status', string>>) => {
+    (
+      next: Partial<
+        Record<'keyword' | 'searchField' | 'startDate' | 'endDate' | 'status', string>
+      >
+    ) => {
       const merged = new URLSearchParams(searchParams);
 
       Object.entries(next).forEach(([key, value]) => {
@@ -288,26 +306,54 @@ export default function BillingRefundsPage(): JSX.Element {
       </Row>
 
       <Card>
-        <FilterBar>
-          <Input.Search
-            allowClear
-            placeholder="환불 ID, 결제 ID, 회원 ID, 닉네임 검색"
-            value={keyword}
-            onChange={(event) => commitParams({ keyword: event.target.value })}
-            style={{ width: 320 }}
-          />
-          <Select
-            value={statusFilter}
-            style={{ width: 160 }}
-            options={[
-              { label: '전체 상태', value: 'all' },
-              { label: '처리 대기', value: '처리 대기' },
-              { label: '승인', value: '승인' },
-              { label: '거절', value: '거절' }
-            ]}
-            onChange={(value) => commitParams({ status: value })}
-          />
-        </FilterBar>
+        <SearchBar
+          searchField={searchField}
+          searchFieldOptions={[
+            { label: '전체', value: 'all' },
+            { label: '환불 ID', value: 'id' },
+            { label: '결제 ID', value: 'paymentId' },
+            { label: '회원 ID', value: 'userId' },
+            { label: '닉네임', value: 'userNickname' },
+            { label: '사유', value: 'reason' }
+          ]}
+          keyword={keyword}
+          onSearchFieldChange={(value) => commitParams({ searchField: value })}
+          onKeywordChange={(event) => commitParams({ keyword: event.target.value })}
+          keywordPlaceholder="검색..."
+          detailTitle="상세 검색"
+          detailContent={
+            <>
+              <SearchBarDetailField label="처리 상태">
+                <Select
+                  value={statusFilter}
+                  options={[
+                    { label: '전체', value: 'all' },
+                    { label: '처리 대기', value: '처리 대기' },
+                    { label: '승인', value: '승인' },
+                    { label: '거절', value: '거절' }
+                  ]}
+                  onChange={(value) => commitParams({ status: value })}
+                />
+              </SearchBarDetailField>
+              <SearchBarDetailField label="요청일">
+                <SearchBarDateRange
+                  startDate={startDate}
+                  endDate={endDate}
+                  onChange={(nextStartDate, nextEndDate) =>
+                    commitParams({
+                      startDate: nextStartDate,
+                      endDate: nextEndDate
+                    })
+                  }
+                />
+              </SearchBarDetailField>
+            </>
+          }
+          onReset={() => setSearchParams({}, { replace: true })}
+          summary={
+            <Text type="secondary">총 {filteredRows.length.toLocaleString()}건</Text>
+          }
+        />
 
         <Paragraph type="secondary" style={{ marginBottom: 16 }}>
           환불 승인/거절은 결제 내역과 동일한 원본을 갱신합니다. 승인 시 결제 상태는 즉시

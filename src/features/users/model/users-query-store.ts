@@ -7,6 +7,9 @@ export const defaultUsersQuery: UsersQuery = {
   pageSize: 20,
   sort: 'latest',
   status: 'all',
+  searchField: 'all',
+  startDate: '',
+  endDate: '',
   keyword: ''
 };
 

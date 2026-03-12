@@ -48,7 +48,7 @@
 
 ## 공통 UI 패턴
 
-- 목록 화면: FilterBar + Table + 후속 액션
+- 목록 화면: SearchBar + Table + 후속 액션
 - 상세형 화면: 링크 이동 또는 Drawer/Modal 기반 drill-down
 - 파괴적 액션: 확인 단계 + 사유 입력 + 감사 로그 진입 경로
 - placeholder 화면: role 후보, 예정 기능, 메모를 담은 공용 `AdminPlaceholderPage` 사용

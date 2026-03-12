@@ -120,8 +120,52 @@ body {
   color: #4096ff;
 }
 
-.filter-bar {
+.search-bar {
   margin: 0 0 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.search-bar-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.search-bar-compact .ant-select-selector,
+.search-bar-compact .ant-input-affix-wrapper,
+.search-bar-detail-trigger {
+  min-height: 40px;
+}
+
+.search-bar-detail-trigger {
+  min-width: 76px;
+}
+
+.search-bar-summary {
+  color: #667085;
+}
+
+.search-bar-detail-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.search-bar-detail-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.search-bar-detail-label {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .admin-list-card-toolbar {
