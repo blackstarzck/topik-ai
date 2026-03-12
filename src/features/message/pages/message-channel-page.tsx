@@ -1,7 +1,6 @@
 import {
   Alert,
   Button,
-  Card,
   Form,
   Input,
   Modal,
@@ -29,6 +28,7 @@ import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
 import { FilterBar } from '../../../shared/ui/filter-bar/filter-bar';
+import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
@@ -669,35 +669,48 @@ export function MessageChannelPage({
         style={{ marginBottom: 12 }}
       />
 
-      <FilterBar>
-        <Input
-          allowClear
-          value={keyword}
-          onChange={(event) => commitParams({ keyword: event.target.value, status: statusFilter, tab: activeMode })}
-          placeholder={`${meta.title} 템플릿명 / 제목 / 템플릿 ID`}
-          style={{ width: 280 }}
-        />
-        <Select
-          value={statusFilter}
-          style={{ width: 140 }}
-          options={[
-            { label: '전체 상태', value: 'all' },
-            { label: '활성', value: '활성' },
-            { label: '비활성', value: '비활성' },
-            { label: '초안', value: '초안' }
-          ]}
-          onChange={(value: TemplateStatusFilter) =>
-            commitParams({ status: value, keyword, tab: activeMode })
-          }
-        />
-        <Text type="secondary">총 {visibleTemplates.length.toLocaleString()}건</Text>
-      </FilterBar>
-
-      <Card
+      <AdminListCard
         extra={
           <Button type="primary" onClick={openCreateModal}>
             {activeMode === 'auto' ? '자동 발송 등록' : '수동 발송 등록'}
           </Button>
+        }
+        toolbar={
+          <FilterBar>
+            <Input
+              allowClear
+              value={keyword}
+              onChange={(event) =>
+                commitParams({ keyword: event.target.value, status: statusFilter, tab: activeMode })
+              }
+              placeholder={`${meta.title} 템플릿명 / 제목 / 템플릿 ID`}
+              style={{ width: 280 }}
+            />
+            <Select
+              value={statusFilter}
+              style={{ width: 140 }}
+              options={[
+                { label: '전체 상태', value: 'all' },
+                { label: '활성', value: '활성' },
+                { label: '비활성', value: '비활성' },
+                { label: '초안', value: '초안' }
+              ]}
+              onChange={(value: TemplateStatusFilter) =>
+                commitParams({ status: value, keyword, tab: activeMode })
+              }
+            />
+            <Button
+              onClick={() =>
+                setSearchParams(
+                  new URLSearchParams({ tab: activeMode }),
+                  { replace: true }
+                )
+              }
+            >
+              필터 초기화
+            </Button>
+            <Text type="secondary">총 {visibleTemplates.length.toLocaleString()}건</Text>
+          </FilterBar>
         }
       >
         <Paragraph type="secondary" style={{ marginTop: 0 }}>
@@ -723,7 +736,7 @@ export function MessageChannelPage({
           pagination={false}
           scroll={{ x: 1600 }}
         />
-      </Card>
+      </AdminListCard>
 
       <Modal
         open={Boolean(editorState)}

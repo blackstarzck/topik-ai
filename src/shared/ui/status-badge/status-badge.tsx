@@ -19,7 +19,14 @@ const colorMap: Record<string, string> = {
   '부분 실패': 'orange',
   실패: 'volcano',
   예약: 'cyan',
-  대기: 'gold'
+  대기: 'gold',
+  공개: 'green',
+  비공개: 'default',
+  승인: 'blue',
+  거절: 'volcano',
+  INFO: 'blue',
+  WARN: 'gold',
+  ERROR: 'volcano'
 };
 
 type StatusBadgeProps = {

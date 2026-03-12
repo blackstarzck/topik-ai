@@ -124,6 +124,10 @@ body {
   margin: 0 0 16px;
 }
 
+.admin-list-card-toolbar {
+  margin: 0 0 16px;
+}
+
 .route-transition-container {
   animation: route-fade-in 220ms ease-out;
   transform-origin: 50% 0;

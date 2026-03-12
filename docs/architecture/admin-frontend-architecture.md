@@ -21,7 +21,7 @@
 | 모듈 | 대표 라우트 | 주요 페이지 |
 | --- | --- | --- |
 | Dashboard | `/dashboard` | 운영 현황 |
-| Users | `/users`, `/users/:userId`, `/users/groups`, `/users/referrals` | 회원 목록, 회원 상세, B2B 그룹 관리, 추천인 관리 |
+| Users | `/users`, `/users/:userId`, `/users/groups`, `/users/referrals` | 회원 목록, 회원 상세, 강사 관리, 추천인 관리 |
 | Community | `/community/posts`, `/community/reports` | 게시글 관리, 신고 관리 |
 | Message | `/messages/mail`, `/messages/push`, `/messages/groups`, `/messages/history` | 메일, 푸시, 대상 그룹, 발송 이력 |
 | Operation | `/operation/notices`, `/operation/faq`, `/operation/events`, `/operation/chatbot` | 공지사항, FAQ, 이벤트, 챗봇 설정 |

@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Button,
-  Card,
   Form,
   Input,
   Modal,
@@ -30,6 +29,7 @@ import type {
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
 import { FilterBar } from '../../../shared/ui/filter-bar/filter-bar';
+import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
@@ -480,31 +480,33 @@ export default function UsersPage(): JSX.Element {
         />
       ) : null}
 
-      <FilterBar>
-        <Input
-          allowClear
-          value={query.keyword}
-          onChange={handleKeywordChange}
-          placeholder="이름/ 이메일/ 닉네임/ 사용자 ID"
-          style={{ width: 280 }}
-        />
-        <Select
-          value={query.status}
-          options={statusOptions}
-          onChange={handleStatusChange}
-          style={{ width: 150 }}
-        />
-        <Select
-          value={query.sort}
-          options={sortOptions}
-          onChange={handleSortChange}
-          style={{ width: 160 }}
-        />
-        <Button onClick={handleReset}>필터 초기화</Button>
-        <Text type="secondary">총 {filteredUsers.length.toLocaleString()}건</Text>
-      </FilterBar>
-
-      <Card>
+      <AdminListCard
+        toolbar={
+          <FilterBar>
+            <Input
+              allowClear
+              value={query.keyword}
+              onChange={handleKeywordChange}
+              placeholder="이름 / 이메일 / 닉네임 / 사용자 ID"
+              style={{ width: 280 }}
+            />
+            <Select
+              value={query.status}
+              options={statusOptions}
+              onChange={handleStatusChange}
+              style={{ width: 150 }}
+            />
+            <Select
+              value={query.sort}
+              options={sortOptions}
+              onChange={handleSortChange}
+              style={{ width: 160 }}
+            />
+            <Button onClick={handleReset}>필터 초기화</Button>
+            <Text type="secondary">총 {filteredUsers.length.toLocaleString()}건</Text>
+          </FilterBar>
+        }
+      >
         {usersState.status === 'empty' ? (
           <Alert
             type="info"
@@ -536,7 +538,7 @@ export default function UsersPage(): JSX.Element {
             }
           }}
         />
-      </Card>
+      </AdminListCard>
 
       {actionState ? (
         <ConfirmAction

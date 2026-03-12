@@ -1,13 +1,27 @@
-import { Card, Space, Table, Typography, notification } from 'antd';
+import {
+  Button,
+  Card,
+  Col,
+  Input,
+  Row,
+  Select,
+  Space,
+  Statistic,
+  Typography,
+  notification
+} from 'antd';
 import type { TableColumnsType } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
+import { FilterBar } from '../../../shared/ui/filter-bar/filter-bar';
+import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
+import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
 import {
   createColumnFilterProps,
@@ -74,11 +88,22 @@ const detailLabelMap: Record<string, string> = {
   processStatus: '처리 상태'
 };
 
+function parseStatus(value: string | null): ProcessStatus | 'all' {
+  if (value === '처리 대기' || value === '처리 완료') {
+    return value;
+  }
+  return 'all';
+}
+
 export default function CommunityReportsPage(): JSX.Element {
   const [rows, setRows] = useState<ReportRow[]>(initialRows);
   const [actionState, setActionState] = useState<ReportActionState>(null);
   const [selectedRow, setSelectedRow] = useState<ReportRow | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const keyword = searchParams.get('keyword') ?? '';
+  const statusFilter = parseStatus(searchParams.get('status'));
   const [notificationApi, notificationContextHolder] = notification.useNotification();
+
   const processedStatus = useMemo<ProcessStatus>(
     () =>
       initialRows.find((row) => row.processStatus === '처리 완료')?.processStatus ??
@@ -86,8 +111,43 @@ export default function CommunityReportsPage(): JSX.Element {
     []
   );
 
-  const closeAction = useCallback(() => setActionState(null), []);
-  const closeDetailModal = useCallback(() => setSelectedRow(null), []);
+  const commitParams = useCallback(
+    (next: Partial<Record<'keyword' | 'status', string>>) => {
+      const merged = new URLSearchParams(searchParams);
+
+      Object.entries(next).forEach(([key, value]) => {
+        if (!value || value === 'all') {
+          merged.delete(key);
+          return;
+        }
+        merged.set(key, value);
+      });
+
+      setSearchParams(merged, { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
+
+  const visibleRows = useMemo(() => {
+    const normalizedKeyword = keyword.trim().toLowerCase();
+
+    return rows.filter((record) => {
+      if (statusFilter !== 'all' && record.processStatus !== statusFilter) {
+        return false;
+      }
+      if (!normalizedKeyword) {
+        return true;
+      }
+
+      return (
+        record.id.toLowerCase().includes(normalizedKeyword) ||
+        record.targetPostId.toLowerCase().includes(normalizedKeyword) ||
+        record.targetUserId.toLowerCase().includes(normalizedKeyword) ||
+        record.reporter.toLowerCase().includes(normalizedKeyword) ||
+        record.reason.toLowerCase().includes(normalizedKeyword)
+      );
+    });
+  }, [keyword, rows, statusFilter]);
 
   const markProcessed = useCallback(
     (row: ReportRow) => {
@@ -160,21 +220,30 @@ export default function CommunityReportsPage(): JSX.Element {
         title: '신고 ID',
         dataIndex: 'id',
         width: 110,
-        ...createColumnFilterProps(rows, (record) => record.id),
+        ...createColumnFilterProps(visibleRows, (record) => record.id),
         sorter: createTextSorter((record) => record.id)
       },
       {
         title: '게시글',
         dataIndex: 'targetPostId',
         width: 130,
-        ...createColumnFilterProps(rows, (record) => record.targetPostId),
-        sorter: createTextSorter((record) => record.targetPostId)
+        ...createColumnFilterProps(visibleRows, (record) => record.targetPostId),
+        sorter: createTextSorter((record) => record.targetPostId),
+        render: (value: string) => (
+          <Link
+            className="table-navigation-link"
+            to={`/community/posts?keyword=${value}`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            {value}
+          </Link>
+        )
       },
       {
         title: '대상 사용자 ID',
         dataIndex: 'targetUserId',
         width: 140,
-        ...createColumnFilterProps(rows, (record) => record.targetUserId),
+        ...createColumnFilterProps(visibleRows, (record) => record.targetUserId),
         sorter: createTextSorter((record) => record.targetUserId),
         render: (targetUserId: string) => (
           <Link
@@ -190,28 +259,28 @@ export default function CommunityReportsPage(): JSX.Element {
         title: '신고자',
         dataIndex: 'reporter',
         width: 130,
-        ...createColumnFilterProps(rows, (record) => record.reporter),
+        ...createColumnFilterProps(visibleRows, (record) => record.reporter),
         sorter: createTextSorter((record) => record.reporter)
       },
       {
         title: '신고 사유',
         dataIndex: 'reason',
         width: 220,
-        ...createColumnFilterProps(rows, (record) => record.reason),
+        ...createColumnFilterProps(visibleRows, (record) => record.reason),
         sorter: createTextSorter((record) => record.reason)
       },
       {
         title: '신고일',
         dataIndex: 'createdAt',
         width: 180,
-        ...createColumnFilterProps(rows, (record) => record.createdAt),
+        ...createColumnFilterProps(visibleRows, (record) => record.createdAt),
         sorter: createTextSorter((record) => record.createdAt)
       },
       {
         title: '처리 상태',
         dataIndex: 'processStatus',
         width: 120,
-        ...createColumnFilterProps(rows, (record) => record.processStatus),
+        ...createColumnFilterProps(visibleRows, (record) => record.processStatus),
         sorter: createTextSorter((record) => record.processStatus),
         render: (status: ProcessStatus) => <StatusBadge status={status} />
       },
@@ -249,33 +318,86 @@ export default function CommunityReportsPage(): JSX.Element {
         )
       }
     ],
-    [markProcessed, processedStatus, rows]
+    [markProcessed, processedStatus, visibleRows]
   );
 
-  const handleRowClick = useCallback(
-    (record: ReportRow) => ({
-      onClick: () => setSelectedRow(record),
-      style: { cursor: 'pointer' }
-    }),
-    []
-  );
+  const pendingCount = rows.filter((row) => row.processStatus === '처리 대기').length;
+  const completedCount = rows.filter((row) => row.processStatus === '처리 완료').length;
 
   return (
     <div>
       {notificationContextHolder}
       <PageTitle title="신고 관리" />
 
-      <Card>
-        <Table
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+        <Col xs={24} md={8}>
+          <Card>
+            <Statistic title="전체 신고" value={rows.length} suffix="건" />
+          </Card>
+        </Col>
+        <Col xs={24} md={8}>
+          <Card>
+            <Statistic title="처리 대기" value={pendingCount} suffix="건" />
+          </Card>
+        </Col>
+        <Col xs={24} md={8}>
+          <Card>
+            <Statistic title="처리 완료" value={completedCount} suffix="건" />
+          </Card>
+        </Col>
+      </Row>
+
+      <AdminListCard
+        toolbar={
+          <FilterBar>
+            <Input.Search
+              allowClear
+              placeholder="신고 ID, 게시글 ID, 사용자 ID, 신고자 검색"
+              value={keyword}
+              onChange={(event) =>
+                commitParams({
+                  keyword: event.target.value,
+                  status: statusFilter
+                })
+              }
+              style={{ width: 320 }}
+            />
+            <Select
+              value={statusFilter}
+              style={{ width: 160 }}
+              options={[
+                { label: '전체 상태', value: 'all' },
+                { label: '처리 대기', value: '처리 대기' },
+                { label: '처리 완료', value: '처리 완료' }
+              ]}
+              onChange={(value: ProcessStatus | 'all') =>
+                commitParams({ status: value, keyword })
+              }
+            />
+            <Button onClick={() => setSearchParams({}, { replace: true })}>필터 초기화</Button>
+            <Text type="secondary">총 {visibleRows.length.toLocaleString()}건</Text>
+          </FilterBar>
+        }
+      >
+        <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
+          원본 게시글 흐름은{' '}
+          <Link className="table-navigation-link" to="/community/posts">
+            게시글 관리
+          </Link>
+          에서 함께 확인할 수 있습니다.
+        </Text>
+        <AdminDataTable<ReportRow>
           rowKey="id"
-          size="small"
           pagination={false}
           scroll={{ x: 1400 }}
           columns={columns}
-          dataSource={rows}
-          onRow={handleRowClick}
+          dataSource={visibleRows}
+          onRow={(record) => ({
+            onClick: () => setSelectedRow(record),
+            style: { cursor: 'pointer' }
+          })}
         />
-      </Card>
+      </AdminListCard>
 
       {actionState ? (
         <ConfirmAction
@@ -293,17 +415,17 @@ export default function CommunityReportsPage(): JSX.Element {
               : actionState.row.targetUserId
           }
           confirmText={actionState.type === 'hide-post' ? '숨김 실행' : '정지 실행'}
-          onCancel={closeAction}
+          onCancel={() => setActionState(null)}
           onConfirm={handleConfirmAction}
         />
       ) : null}
 
       <TableRowDetailModal
         open={Boolean(selectedRow)}
-        title="신고 상세 (더미)"
+        title="신고 상세"
         record={selectedRow}
         labelMap={detailLabelMap}
-        onClose={closeDetailModal}
+        onClose={() => setSelectedRow(null)}
       />
     </div>
   );

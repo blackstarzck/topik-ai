@@ -7,6 +7,9 @@ const DashboardPage = lazy(
   () => import('../../features/dashboard/pages/dashboard-page')
 );
 const UsersPage = lazy(() => import('../../features/users/pages/users-page'));
+const InstructorManagementPage = lazy(
+  () => import('../../features/users/pages/instructor-management-page')
+);
 const UserDetailPage = lazy(
   () => import('../../features/users/pages/user-detail-page')
 );
@@ -71,22 +74,7 @@ export function AppRouter(): JSX.Element {
 
         <Route path="/users" element={<UsersPage />} />
         <Route path="/users/:userId" element={<UserDetailPage />} />
-        <Route
-          path="/users/groups"
-          element={
-            <AdminPlaceholderPage
-              title="강사 관리"
-              summary="강사 목록과 소속, 담당 과정, 운영 상태를 관리하는 자리입니다."
-              ownerRole="OPS_ADMIN"
-              supportingRoles={['SUPER_ADMIN']}
-              capabilities={[
-                '강사 목록 조회와 상태 관리',
-                '소속/담당 과정 연결 확인',
-                '강사 대상 메시지 발송 정책 연결'
-              ]}
-            />
-          }
-        />
+        <Route path="/users/groups" element={<InstructorManagementPage />} />
         <Route
           path="/users/referrals"
           element={

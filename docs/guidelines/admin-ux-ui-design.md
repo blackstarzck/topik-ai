@@ -29,11 +29,13 @@
 - 목적: 대량 데이터 조회, 필터링, 상태 조치
 - 기본 구성:
   - `PageTitle`
-  - 요약 카드 3~4개
-  - `FilterBar`
+  - 필요 시 요약 카드 3~4개
+  - `Card(extra=선택적 주요 액션 버튼)`
+  - `Card body` 첫 줄의 `FilterBar`
+  - `FilterBar` 내부 총 건수/필터 초기화
+  - `FilterBar` 내부 순서: 검색 -> 상태/카테고리 필터 -> 필터 초기화 -> 총 건수
   - 메인 `Table`
-  - 행 클릭 `Drawer`
-  - 상단 우측 주요 액션 버튼
+  - 행 클릭 `Drawer` 또는 상세 모달
 - 추천 컴포넌트:
   - `Card`, `Statistic`, `Input.Search`, `Select`, `DatePicker`, `Table`, `Drawer`, `Tag`, `Popconfirm`
 - 적합한 페이지:
@@ -97,7 +99,10 @@
 
 ## 레이아웃 배치 규칙
 
-- 목록형 페이지: `PageTitle -> Summary Cards -> FilterBar -> Table -> 후속 액션`
+- 목록형 페이지: `PageTitle -> Summary Cards(선택) -> Card(extra=선택적 주요 버튼, body=FilterBar -> 안내 문구 -> Table)`
+- 우측 상단 버튼은 `등록/생성`, `내보내기`, `즉시 실행`처럼 해당 페이지의 핵심 액션이 분명할 때만 둡니다. 단순 페이지 이동 버튼은 안내 문구나 테이블 링크로 내립니다.
+- `필터 초기화`는 우측 상단 `extra`로 올리지 않고, 같은 `FilterBar` 안에서 마지막 필터 바로 뒤에 둡니다.
+- 동일한 목록형이라면 검색/필터/버튼 위치를 페이지마다 바꾸지 않습니다. `메시지 > 메일/푸시`, `커뮤니티 > 게시글 관리/신고 관리`, `운영 > FAQ`는 동일한 카드 내부 목록 패턴을 기준으로 맞춥니다.
 - 상세 drill-down: 링크 이동 또는 `Drawer`
 - 편집형 페이지: `PageTitle -> Status Bar -> Editor -> Action Bar`
 - placeholder 페이지: `PageTitle -> 정보 Alert -> 권한 안내 -> 예정 기능 리스트`

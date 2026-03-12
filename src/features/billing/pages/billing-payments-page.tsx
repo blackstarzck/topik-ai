@@ -1,56 +1,25 @@
-import { Card, Table } from 'antd';
+import { Button, Card, Col, Input, Row, Select, Statistic, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
+import { useCommerceStore } from '../model/commerce-store';
+import type { PaymentMethod, PaymentRow, PaymentStatus } from '../model/commerce-store';
+import { FilterBar } from '../../../shared/ui/filter-bar/filter-bar';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
+import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import {
-  createColumnFilterProps,
-  createNumericTextSorter,
+  createNumberSorter,
   createTextSorter
 } from '../../../shared/ui/table/table-column-utils';
 import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
 
-type PaymentStatus = '완료' | '취소' | '환불';
-
-type PaymentRow = {
-  id: string;
-  userId: string;
-  userNickname: string;
-  product: string;
-  amount: string;
-  method: string;
-  paidAt: string;
-  status: PaymentStatus;
-};
-
-const rows: PaymentRow[] = [
-  {
-    id: 'PAY-1001',
-    userId: 'U00001',
-    userNickname: 'member_1',
-    product: 'TOPIK Premium Monthly',
-    amount: '₩9,000',
-    method: '카드',
-    paidAt: '2026-03-01',
-    status: '완료'
-  },
-  {
-    id: 'PAY-1002',
-    userId: 'U00008',
-    userNickname: 'member_8',
-    product: 'TOPIK Mock Test',
-    amount: '₩5,000',
-    method: '계좌이체',
-    paidAt: '2026-02-22',
-    status: '환불'
-  }
-];
+const { Paragraph, Text } = Typography;
 
 const detailLabelMap: Record<string, string> = {
   id: '결제 ID',
-  userId: '사용자 ID',
+  userId: '회원 ID',
   userNickname: '닉네임',
   product: '상품',
   amount: '결제 금액',
@@ -59,8 +28,93 @@ const detailLabelMap: Record<string, string> = {
   status: '상태'
 };
 
+function parseStatus(value: string | null): PaymentStatus | 'all' {
+  if (value === '완료' || value === '취소' || value === '환불') {
+    return value;
+  }
+  return 'all';
+}
+
+function parseMethod(value: string | null): PaymentMethod | 'all' {
+  if (value === '카드' || value === '계좌이체' || value === '간편결제') {
+    return value;
+  }
+  return 'all';
+}
+
+function formatCurrency(value: number): string {
+  return `₩${value.toLocaleString('ko-KR')}`;
+}
+
 export default function BillingPaymentsPage(): JSX.Element {
+  const payments = useCommerceStore((state) => state.payments);
+  const refunds = useCommerceStore((state) => state.refunds);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const keyword = searchParams.get('keyword') ?? '';
+  const statusFilter = parseStatus(searchParams.get('status'));
+  const methodFilter = parseMethod(searchParams.get('method'));
   const [selectedRow, setSelectedRow] = useState<PaymentRow | null>(null);
+
+  const filteredRows = useMemo(() => {
+    const normalizedKeyword = keyword.trim().toLowerCase();
+
+    return payments.filter((record) => {
+      if (statusFilter !== 'all' && record.status !== statusFilter) {
+        return false;
+      }
+      if (methodFilter !== 'all' && record.method !== methodFilter) {
+        return false;
+      }
+      if (!normalizedKeyword) {
+        return true;
+      }
+
+      return (
+        record.id.toLowerCase().includes(normalizedKeyword) ||
+        record.userId.toLowerCase().includes(normalizedKeyword) ||
+        record.userNickname.toLowerCase().includes(normalizedKeyword) ||
+        record.product.toLowerCase().includes(normalizedKeyword)
+      );
+    });
+  }, [keyword, methodFilter, payments, statusFilter]);
+
+  const completedAmount = useMemo(
+    () =>
+      payments
+        .filter((row) => row.status === '완료')
+        .reduce((sum, row) => sum + row.amount, 0),
+    [payments]
+  );
+  const refundedCount = payments.filter((row) => row.status === '환불').length;
+  const pendingRefundCount = refunds.filter((row) => row.status === '처리 대기').length;
+
+  const commitParams = useCallback(
+    (next: Partial<Record<'keyword' | 'status' | 'method', string>>) => {
+      const merged = new URLSearchParams(searchParams);
+
+      Object.entries(next).forEach(([key, value]) => {
+        if (!value || value === 'all') {
+          merged.delete(key);
+          return;
+        }
+        merged.set(key, value);
+      });
+
+      setSearchParams(merged, { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
+
+  const selectedDetailRecord = useMemo(
+    () =>
+      selectedRow
+        ? {
+            ...selectedRow,
+            amount: formatCurrency(selectedRow.amount)
+          }
+        : null,
+    [selectedRow]
+  );
 
   const columns = useMemo<TableColumnsType<PaymentRow>>(
     () => [
@@ -68,17 +122,21 @@ export default function BillingPaymentsPage(): JSX.Element {
         title: '결제 ID',
         dataIndex: 'id',
         width: 120,
-        ...createColumnFilterProps(rows, (record) => record.id),
-        sorter: createTextSorter((record) => record.id)
+        sorter: createTextSorter((record) => record.id),
+        render: (value: string, record) => (
+          <Link
+            className="table-navigation-link"
+            to={`/commerce/refunds?keyword=${record.id}`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            {value}
+          </Link>
+        )
       },
       {
         title: '회원',
         key: 'user',
         width: 220,
-        ...createColumnFilterProps(rows, (record) => [
-          record.userId,
-          record.userNickname
-        ]),
         sorter: createTextSorter((record) => record.userId),
         render: (_, record) => (
           <>
@@ -97,48 +155,36 @@ export default function BillingPaymentsPage(): JSX.Element {
         title: '상품',
         dataIndex: 'product',
         width: 240,
-        ...createColumnFilterProps(rows, (record) => record.product),
         sorter: createTextSorter((record) => record.product)
       },
       {
         title: '금액',
         dataIndex: 'amount',
-        width: 120,
+        width: 140,
         align: 'right',
-        ...createColumnFilterProps(rows, (record) => record.amount),
-        sorter: createNumericTextSorter((record) => record.amount)
+        sorter: createNumberSorter((record) => record.amount),
+        render: (value: number) => formatCurrency(value)
       },
       {
         title: '결제 수단',
         dataIndex: 'method',
         width: 120,
-        ...createColumnFilterProps(rows, (record) => record.method),
         sorter: createTextSorter((record) => record.method)
       },
       {
         title: '결제일',
         dataIndex: 'paidAt',
         width: 120,
-        ...createColumnFilterProps(rows, (record) => record.paidAt),
         sorter: createTextSorter((record) => record.paidAt)
       },
       {
         title: '상태',
         dataIndex: 'status',
         width: 100,
-        ...createColumnFilterProps(rows, (record) => record.status),
         sorter: createTextSorter((record) => record.status),
         render: (status: PaymentStatus) => <StatusBadge status={status} />
       }
     ],
-    []
-  );
-
-  const handleRow = useCallback(
-    (record: PaymentRow) => ({
-      onClick: () => setSelectedRow(record),
-      style: { cursor: 'pointer' }
-    }),
     []
   );
 
@@ -147,21 +193,85 @@ export default function BillingPaymentsPage(): JSX.Element {
   return (
     <div>
       <PageTitle title="결제 내역" />
+
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+        <Col xs={24} md={8}>
+          <Card>
+            <Statistic title="전체 결제 건수" value={payments.length} suffix="건" />
+          </Card>
+        </Col>
+        <Col xs={24} md={8}>
+          <Card>
+            <Statistic title="결제 완료 금액" value={completedAmount} prefix="₩" />
+          </Card>
+        </Col>
+        <Col xs={24} md={8}>
+          <Card>
+            <Statistic title="환불 관련 건수" value={refundedCount + pendingRefundCount} suffix="건" />
+          </Card>
+        </Col>
+      </Row>
+
       <Card>
-        <Table
+        <FilterBar>
+          <Input.Search
+            allowClear
+            placeholder="결제 ID, 회원 ID, 닉네임, 상품명 검색"
+            value={keyword}
+            onChange={(event) => commitParams({ keyword: event.target.value })}
+            style={{ width: 280 }}
+          />
+          <Select
+            value={statusFilter}
+            style={{ width: 160 }}
+            options={[
+              { label: '전체 상태', value: 'all' },
+              { label: '완료', value: '완료' },
+              { label: '취소', value: '취소' },
+              { label: '환불', value: '환불' }
+            ]}
+            onChange={(value) => commitParams({ status: value })}
+          />
+          <Select
+            value={methodFilter}
+            style={{ width: 160 }}
+            options={[
+              { label: '전체 수단', value: 'all' },
+              { label: '카드', value: '카드' },
+              { label: '계좌이체', value: '계좌이체' },
+              { label: '간편결제', value: '간편결제' }
+            ]}
+            onChange={(value) => commitParams({ method: value })}
+          />
+          <Button onClick={() => setSearchParams({}, { replace: true })}>필터 초기화</Button>
+          <Text type="secondary">총 {filteredRows.length.toLocaleString()}건</Text>
+        </FilterBar>
+
+        <Paragraph type="secondary" style={{ marginBottom: 16 }}>
+          환불 관리에서 승인된 요청은 같은 원본 데이터를 공유하므로 이 페이지의 결제 상태에도 즉시 반영됩니다.{' '}
+          <Link className="table-navigation-link" to="/commerce/refunds">
+            환불 관리
+          </Link>
+          에서 처리 흐름을 이어서 확인할 수 있습니다.
+        </Paragraph>
+
+        <AdminDataTable<PaymentRow>
           rowKey="id"
-          size="small"
           pagination={false}
-          scroll={{ x: 1200 }}
+          scroll={{ x: 1100 }}
           columns={columns}
-          dataSource={rows}
-          onRow={handleRow}
+          dataSource={filteredRows}
+          onRow={(record) => ({
+            onClick: () => setSelectedRow(record),
+            style: { cursor: 'pointer' }
+          })}
         />
       </Card>
+
       <TableRowDetailModal
-        open={Boolean(selectedRow)}
-        title="결제 상세 (더미)"
-        record={selectedRow}
+        open={Boolean(selectedDetailRecord)}
+        title="결제 상세"
+        record={selectedDetailRecord}
         labelMap={detailLabelMap}
         onClose={closeDetailModal}
       />

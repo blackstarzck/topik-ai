@@ -1,14 +1,13 @@
-import { Card, Table, Typography } from 'antd';
+import { Button, Card, Col, Input, Row, Select, Statistic, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
+import { FilterBar } from '../../../shared/ui/filter-bar/filter-bar';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
-import {
-  createColumnFilterProps,
-  createTextSorter
-} from '../../../shared/ui/table/table-column-utils';
+import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
+import { createTextSorter } from '../../../shared/ui/table/table-column-utils';
 import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
 import { usePermissionStore } from '../model/permission-store';
 
@@ -34,15 +33,69 @@ const detailLabelMap: Record<string, string> = {
   createdAt: '시각'
 };
 
+const staticRows: AuditLogRow[] = [
+  {
+    logId: 'AL-10001',
+    targetType: 'Users',
+    targetId: 'U00001',
+    action: '회원 정지',
+    actor: 'admin_park',
+    reason: '정책 위반 반복',
+    createdAt: '2026-03-11 09:42:10'
+  },
+  {
+    logId: 'AL-10002',
+    targetType: 'Commerce',
+    targetId: 'RF-002',
+    action: '환불 승인',
+    actor: 'admin_kim',
+    reason: '서비스 미이용 확인',
+    createdAt: '2026-03-11 10:15:02'
+  },
+  {
+    logId: 'AL-10003',
+    targetType: 'Community',
+    targetId: 'POST-002',
+    action: '게시글 숨김',
+    actor: 'admin_lee',
+    reason: '정책 위반 콘텐츠',
+    createdAt: '2026-03-11 10:33:51'
+  },
+  {
+    logId: 'AL-10004',
+    targetType: 'Message',
+    targetId: 'MAIL-001',
+    action: '메일 발송',
+    actor: 'admin_han',
+    reason: '수동 뉴스레터 발송',
+    createdAt: '2026-03-11 17:15:00'
+  },
+  {
+    logId: 'AL-10005',
+    targetType: 'Instructor',
+    targetId: 'INS-0007',
+    action: '강사 정지',
+    actor: 'admin_park',
+    reason: '운영 정책 위반 확인',
+    createdAt: '2026-03-12 10:05:14'
+  }
+];
+
 function getTargetRoute(targetType: string, targetId: string): string | null {
   if (targetType === 'Users') {
     return `/users/${targetId}?tab=profile`;
+  }
+  if (targetType === 'Instructor') {
+    return `/users/groups?selected=${targetId}`;
   }
   if (targetType === 'Community') {
     return '/community/posts';
   }
   if (targetType === 'Billing' || targetType === 'Commerce') {
-    return '/commerce/payments';
+    if (targetId.startsWith('RF-')) {
+      return `/commerce/refunds?keyword=${targetId}`;
+    }
+    return `/commerce/payments?keyword=${targetId}`;
   }
   if (targetType === 'Notification' || targetType === 'Message') {
     if (targetId.startsWith('MAIL-')) {
@@ -87,56 +140,20 @@ function getTargetRoute(targetType: string, targetId: string): string | null {
     return '/content/library';
   }
   if (targetType === 'Admin' || targetType === 'System') {
-    return '/system/admins';
+    return `/system/admins?keyword=${targetId}`;
   }
   return null;
 }
 
-const staticRows: AuditLogRow[] = [
-  {
-    logId: 'AL-10001',
-    targetType: 'Users',
-    targetId: 'U00001',
-    action: '회원 정지',
-    actor: 'admin_park',
-    reason: '정책 위반 반복',
-    createdAt: '2026-03-04 09:42:10'
-  },
-  {
-    logId: 'AL-10002',
-    targetType: 'Commerce',
-    targetId: 'PAY-1002',
-    action: '환불 승인',
-    actor: 'admin_kim',
-    reason: '중복 결제 확인',
-    createdAt: '2026-03-04 10:15:02'
-  },
-  {
-    logId: 'AL-10003',
-    targetType: 'Community',
-    targetId: 'POST-002',
-    action: '게시글 숨김',
-    actor: 'admin_lee',
-    reason: '정책 위반 콘텐츠',
-    createdAt: '2026-03-04 10:33:51'
-  },
-  {
-    logId: 'AL-10004',
-    targetType: 'Content',
-    targetId: 'VOC-SON-001',
-    action: '콘텐츠 초안 저장',
-    actor: 'admin_han',
-    reason: '소나기 콘텐츠 구조 초안 저장',
-    createdAt: '2026-03-10 17:15:00'
-  }
-];
-
 export default function SystemAuditLogsPage(): JSX.Element {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedRow, setSelectedRow] = useState<AuditLogRow | null>(null);
-  const targetType = searchParams.get('targetType');
-  const targetId = searchParams.get('targetId');
   const permissionAudits = usePermissionStore((state) => state.audits);
+  const keyword = searchParams.get('keyword') ?? '';
+  const targetTypeFilter = searchParams.get('targetType') ?? 'all';
+  const targetIdFilter = searchParams.get('targetId') ?? '';
+  const actorFilter = searchParams.get('actor') ?? 'all';
+  const actionFilter = searchParams.get('action') ?? 'all';
 
   const mergedRows = useMemo(() => {
     const permissionRows: AuditLogRow[] = permissionAudits.map((audit) => ({
@@ -154,36 +171,92 @@ export default function SystemAuditLogsPage(): JSX.Element {
     );
   }, [permissionAudits]);
 
-  const filteredRows = useMemo(
+  const actorOptions = useMemo(
     () =>
-      mergedRows.filter((item) => {
-        if (targetType && item.targetType !== targetType) {
-          return false;
-        }
-        if (targetId && item.targetId !== targetId) {
-          return false;
-        }
-        return true;
-      }),
-    [mergedRows, targetId, targetType]
+      Array.from(new Set(mergedRows.map((row) => row.actor))).map((actor) => ({
+        label: actor,
+        value: actor
+      })),
+    [mergedRows]
   );
+
+  const actionOptions = useMemo(
+    () =>
+      Array.from(new Set(mergedRows.map((row) => row.action))).map((action) => ({
+        label: action,
+        value: action
+      })),
+    [mergedRows]
+  );
+
+  const filteredRows = useMemo(() => {
+    const normalizedKeyword = keyword.trim().toLowerCase();
+
+    return mergedRows.filter((item) => {
+      if (targetTypeFilter !== 'all' && item.targetType !== targetTypeFilter) {
+        return false;
+      }
+      if (targetIdFilter && item.targetId !== targetIdFilter) {
+        return false;
+      }
+      if (actorFilter !== 'all' && item.actor !== actorFilter) {
+        return false;
+      }
+      if (actionFilter !== 'all' && item.action !== actionFilter) {
+        return false;
+      }
+      if (!normalizedKeyword) {
+        return true;
+      }
+
+      return (
+        item.logId.toLowerCase().includes(normalizedKeyword) ||
+        item.targetId.toLowerCase().includes(normalizedKeyword) ||
+        item.reason.toLowerCase().includes(normalizedKeyword) ||
+        item.actor.toLowerCase().includes(normalizedKeyword) ||
+        item.action.toLowerCase().includes(normalizedKeyword)
+      );
+    });
+  }, [actionFilter, actorFilter, keyword, mergedRows, targetIdFilter, targetTypeFilter]);
+
+  const commitParams = useCallback(
+    (
+      next: Partial<Record<'keyword' | 'targetType' | 'targetId' | 'actor' | 'action', string>>
+    ) => {
+      const merged = new URLSearchParams(searchParams);
+
+      Object.entries(next).forEach(([key, value]) => {
+        if (!value || value === 'all') {
+          merged.delete(key);
+          return;
+        }
+        merged.set(key, value);
+      });
+
+      setSearchParams(merged, { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
+
+  const todayPrefix = new Date().toISOString().slice(0, 10);
+  const todayCount = filteredRows.filter((row) =>
+    row.createdAt.startsWith(todayPrefix)
+  ).length;
+  const adminAuditCount = filteredRows.filter((row) => row.targetType === 'Admin').length;
+  const commerceAuditCount = filteredRows.filter((row) => row.targetType === 'Commerce').length;
 
   const columns = useMemo<TableColumnsType<AuditLogRow>>(
     () => [
       {
         title: '로그 ID',
         dataIndex: 'logId',
-        width: 120,
-        ...createColumnFilterProps(filteredRows, (record) => record.logId),
+        width: 130,
         sorter: createTextSorter((record) => record.logId)
       },
       {
         title: '대상 유형',
         dataIndex: 'targetType',
-        width: 140,
-        ...createColumnFilterProps(filteredRows, (record) =>
-          getTargetTypeLabel(record.targetType)
-        ),
+        width: 130,
         sorter: createTextSorter((record) => getTargetTypeLabel(record.targetType)),
         render: (value: string) => getTargetTypeLabel(value)
       },
@@ -191,7 +264,6 @@ export default function SystemAuditLogsPage(): JSX.Element {
         title: '대상 ID',
         dataIndex: 'targetId',
         width: 160,
-        ...createColumnFilterProps(filteredRows, (record) => record.targetId),
         sorter: createTextSorter((record) => record.targetId),
         render: (value: string, record) => {
           const route = getTargetRoute(record.targetType, value);
@@ -213,71 +285,130 @@ export default function SystemAuditLogsPage(): JSX.Element {
       {
         title: '조치',
         dataIndex: 'action',
-        width: 160,
-        ...createColumnFilterProps(filteredRows, (record) => record.action),
+        width: 150,
         sorter: createTextSorter((record) => record.action)
       },
       {
         title: '수행자',
         dataIndex: 'actor',
-        width: 120,
-        ...createColumnFilterProps(filteredRows, (record) => record.actor),
+        width: 130,
         sorter: createTextSorter((record) => record.actor)
       },
       {
         title: '사유/근거',
         dataIndex: 'reason',
-        ...createColumnFilterProps(filteredRows, (record) => record.reason),
         sorter: createTextSorter((record) => record.reason)
       },
       {
         title: '시각',
         dataIndex: 'createdAt',
-        width: 190,
-        ...createColumnFilterProps(filteredRows, (record) => record.createdAt),
+        width: 180,
         sorter: createTextSorter((record) => record.createdAt)
       }
     ],
-    [filteredRows]
-  );
-
-  const handleRowClick = useCallback(
-    (record: AuditLogRow) => ({
-      onClick: () => setSelectedRow(record),
-      style: { cursor: 'pointer' }
-    }),
     []
   );
-
-  const closeDetailModal = useCallback(() => setSelectedRow(null), []);
 
   return (
     <div>
       <PageTitle title="감사 로그" />
+
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+        <Col xs={24} md={8}>
+          <Card>
+            <Statistic title="현재 결과" value={filteredRows.length} suffix="건" />
+          </Card>
+        </Col>
+        <Col xs={24} md={8}>
+          <Card>
+            <Statistic title="권한 변경 로그" value={adminAuditCount} suffix="건" />
+          </Card>
+        </Col>
+        <Col xs={24} md={8}>
+          <Card>
+            <Statistic title="오늘 생성 로그" value={todayCount} suffix="건" />
+          </Card>
+        </Col>
+      </Row>
+
       <Card>
-        <Paragraph>
-          <Text type="secondary">현재 필터:</Text>{' '}
-          <Text>
-            대상 유형={targetType ? getTargetTypeLabel(targetType) : '전체'}, 대상 ID=
-            {targetId ?? '전체'}
-          </Text>
+        <FilterBar>
+          <Input.Search
+            allowClear
+            placeholder="로그 ID, 대상 ID, 사유, 수행자 검색"
+            value={keyword}
+            onChange={(event) => commitParams({ keyword: event.target.value })}
+            style={{ width: 320 }}
+          />
+          <Select
+            value={targetTypeFilter}
+            style={{ width: 160 }}
+            options={[
+              { label: '전체 대상', value: 'all' },
+              ...Array.from(new Set(mergedRows.map((row) => row.targetType))).map((value) => ({
+                label: getTargetTypeLabel(value),
+                value
+              }))
+            ]}
+            onChange={(value) => commitParams({ targetType: value })}
+          />
+          <Select
+            value={actionFilter}
+            style={{ width: 160 }}
+            options={[{ label: '전체 조치', value: 'all' }, ...actionOptions]}
+            onChange={(value) => commitParams({ action: value })}
+          />
+          <Select
+            value={actorFilter}
+            style={{ width: 160 }}
+            options={[{ label: '전체 수행자', value: 'all' }, ...actorOptions]}
+            onChange={(value) => commitParams({ actor: value })}
+          />
+          <Button
+            onClick={() =>
+              setSearchParams(
+                targetIdFilter
+                  ? new URLSearchParams({ targetId: targetIdFilter })
+                  : new URLSearchParams(),
+                { replace: true }
+              )
+            }
+          >
+            필터 초기화
+          </Button>
+          <Text type="secondary">총 {filteredRows.length.toLocaleString()}건</Text>
+        </FilterBar>
+
+        <Paragraph type="secondary" style={{ marginBottom: 16 }}>
+          대상 ID 링크를 누르면 원본 운영 화면으로 이동합니다.
+          {targetIdFilter ? (
+            <>
+              {' '}
+              현재는 <Text strong>{targetIdFilter}</Text>에 대한 이력만 보고 있습니다.
+            </>
+          ) : null}
+          {commerceAuditCount > 0 ? ' 커머스 환불/결제 처리 이력도 같은 표에서 함께 추적됩니다.' : null}
         </Paragraph>
-        <Table
+
+        <AdminDataTable<AuditLogRow>
           rowKey="logId"
-          size="small"
           pagination={false}
           scroll={{ x: 1200 }}
           columns={columns}
           dataSource={filteredRows}
-          onRow={handleRowClick}
+          onRow={(record) => ({
+            onClick: () => setSelectedRow(record),
+            style: { cursor: 'pointer' }
+          })}
         />
       </Card>
+
       <TableRowDetailModal
         open={Boolean(selectedRow)}
-        title="감사 로그 상세 (모킹)"
+        title="감사 로그 상세"
         record={selectedRow}
         labelMap={detailLabelMap}
-        onClose={closeDetailModal}
+        onClose={() => setSelectedRow(null)}
       />
     </div>
   );

@@ -1,34 +1,126 @@
-import { Card, Space, Table } from 'antd';
+import { Button, Card, Col, Input, Row, Select, Statistic, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
-import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { usePermissionStore } from '../model/permission-store';
-import type { AdminPermissionAssignment } from '../model/permission-types';
-
+import { roleCatalog } from '../model/permission-types';
+import type { AdminPermissionAssignment, AdminStatus, RoleKey } from '../model/permission-types';
+import { FilterBar } from '../../../shared/ui/filter-bar/filter-bar';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
+import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import {
-  createColumnFilterProps,
   createNumberSorter,
   createTextSorter
 } from '../../../shared/ui/table/table-column-utils';
 import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
 
+const { Paragraph, Text } = Typography;
+
+type RoleFilter = RoleKey | 'all';
+type StatusFilter = AdminStatus | 'all';
+
+const roleNameMap = Object.fromEntries(roleCatalog.map((role) => [role.key, role.name])) as Record<
+  RoleKey,
+  string
+>;
+
 const detailLabelMap: Record<string, string> = {
   adminId: '관리자 ID',
   name: '이름',
-  role: '역할',
+  roleName: '역할',
+  permissionsCount: '권한 수',
   permissions: '권한 목록',
   lastLoginAt: '최근 로그인',
   status: '상태',
-  updatedAt: '최근 수정'
+  updatedAt: '최근 수정',
+  updatedBy: '수정 관리자'
 };
+
+function parseRole(value: string | null): RoleFilter {
+  if (
+    value === 'SUPER_ADMIN' ||
+    value === 'OPS_ADMIN' ||
+    value === 'CONTENT_MANAGER' ||
+    value === 'CS_MANAGER' ||
+    value === 'READ_ONLY'
+  ) {
+    return value;
+  }
+  return 'all';
+}
+
+function parseStatus(value: string | null): StatusFilter {
+  if (value === '활성' || value === '비활성') {
+    return value;
+  }
+  return 'all';
+}
 
 export default function SystemAdminsPage(): JSX.Element {
   const admins = usePermissionStore((state) => state.admins);
-  const [selectedRow, setSelectedRow] = useState<AdminPermissionAssignment | null>(
-    null
+  const [searchParams, setSearchParams] = useSearchParams();
+  const keyword = searchParams.get('keyword') ?? '';
+  const roleFilter = parseRole(searchParams.get('role'));
+  const statusFilter = parseStatus(searchParams.get('status'));
+  const [selectedRow, setSelectedRow] = useState<AdminPermissionAssignment | null>(null);
+
+  const filteredRows = useMemo(() => {
+    const normalizedKeyword = keyword.trim().toLowerCase();
+
+    return admins.filter((record) => {
+      if (roleFilter !== 'all' && record.role !== roleFilter) {
+        return false;
+      }
+      if (statusFilter !== 'all' && record.status !== statusFilter) {
+        return false;
+      }
+      if (!normalizedKeyword) {
+        return true;
+      }
+
+      return (
+        record.adminId.toLowerCase().includes(normalizedKeyword) ||
+        record.name.toLowerCase().includes(normalizedKeyword) ||
+        roleNameMap[record.role].toLowerCase().includes(normalizedKeyword)
+      );
+    });
+  }, [admins, keyword, roleFilter, statusFilter]);
+
+  const activeCount = admins.filter((admin) => admin.status === '활성').length;
+  const inactiveCount = admins.filter((admin) => admin.status === '비활성').length;
+  const contentManagerCount = admins.filter(
+    (admin) => admin.role === 'CONTENT_MANAGER'
+  ).length;
+
+  const commitParams = useCallback(
+    (next: Partial<Record<'keyword' | 'role' | 'status', string>>) => {
+      const merged = new URLSearchParams(searchParams);
+
+      Object.entries(next).forEach(([key, value]) => {
+        if (!value || value === 'all') {
+          merged.delete(key);
+          return;
+        }
+        merged.set(key, value);
+      });
+
+      setSearchParams(merged, { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
+
+  const selectedDetailRecord = useMemo(
+    () =>
+      selectedRow
+        ? {
+            ...selectedRow,
+            roleName: roleNameMap[selectedRow.role],
+            permissionsCount: selectedRow.permissions.length
+          }
+        : null,
+    [selectedRow]
   );
 
   const columns = useMemo<TableColumnsType<AdminPermissionAssignment>>(
@@ -37,12 +129,11 @@ export default function SystemAdminsPage(): JSX.Element {
         title: '관리자 ID',
         dataIndex: 'adminId',
         width: 150,
-        ...createColumnFilterProps(admins, (record) => record.adminId),
         sorter: createTextSorter((record) => record.adminId),
         render: (adminId: string) => (
           <Link
             className="table-navigation-link"
-            to="/system/permissions"
+            to={`/system/audit-logs?targetType=Admin&targetId=${adminId}`}
             onClick={(event) => event.stopPropagation()}
           >
             {adminId}
@@ -53,93 +144,140 @@ export default function SystemAdminsPage(): JSX.Element {
         title: '이름',
         dataIndex: 'name',
         width: 120,
-        ...createColumnFilterProps(admins, (record) => record.name),
         sorter: createTextSorter((record) => record.name)
       },
       {
-        title: '권한',
+        title: '역할',
         dataIndex: 'role',
         width: 150,
-        ...createColumnFilterProps(admins, (record) => record.role),
-        sorter: createTextSorter((record) => record.role)
+        sorter: createTextSorter((record) => roleNameMap[record.role]),
+        render: (role: RoleKey) => roleNameMap[role]
       },
       {
-        title: '보유 권한 수',
+        title: '권한 수',
+        key: 'permissionCount',
         width: 110,
         align: 'right',
-        ...createColumnFilterProps(admins, (record) => record.permissions.length),
         sorter: createNumberSorter((record) => record.permissions.length),
         render: (_, record) => record.permissions.length
       },
       {
         title: '최근 로그인',
         dataIndex: 'lastLoginAt',
-        width: 180,
-        ...createColumnFilterProps(admins, (record) => record.lastLoginAt),
+        width: 170,
         sorter: createTextSorter((record) => record.lastLoginAt)
       },
       {
         title: '상태',
         dataIndex: 'status',
         width: 110,
-        ...createColumnFilterProps(admins, (record) => record.status),
         sorter: createTextSorter((record) => record.status),
-        render: (status: string) => <StatusBadge status={status} />
+        render: (status: AdminStatus) => <StatusBadge status={status} />
       },
       {
         title: '권한 관리',
         key: 'manage',
         width: 180,
-        onCell: () => ({
-          onClick: (event) => {
-            event.stopPropagation();
-          }
-        }),
-        render: () => (
-          <Link className="table-navigation-link" to="/system/permissions">
-            권한 부여/수정/회수
+        render: (_, record) => (
+          <Link
+            className="table-navigation-link"
+            to={`/system/audit-logs?targetType=Admin&targetId=${record.adminId}`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            변경 이력 보기
           </Link>
         )
       }
     ],
-    [admins]
-  );
-
-  const handleRowClick = useCallback(
-    (record: AdminPermissionAssignment) => ({
-      onClick: () => setSelectedRow(record),
-      style: { cursor: 'pointer' }
-    }),
     []
   );
-
-  const closeDetailModal = useCallback(() => setSelectedRow(null), []);
 
   return (
     <div>
       <PageTitle title="관리자 계정" />
+
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+        <Col xs={24} md={8}>
+          <Card>
+            <Statistic title="전체 관리자" value={admins.length} suffix="명" />
+          </Card>
+        </Col>
+        <Col xs={24} md={8}>
+          <Card>
+            <Statistic title="활성 계정" value={activeCount} suffix="명" />
+          </Card>
+        </Col>
+        <Col xs={24} md={8}>
+          <Card>
+            <Statistic title="콘텐츠 관리자" value={contentManagerCount} suffix="명" />
+          </Card>
+        </Col>
+      </Row>
+
       <Card>
-        <Table
+        <FilterBar>
+          <Input.Search
+            allowClear
+            placeholder="관리자 ID, 이름, 역할 검색"
+            value={keyword}
+            onChange={(event) => commitParams({ keyword: event.target.value })}
+            style={{ width: 280 }}
+          />
+          <Select
+            value={roleFilter}
+            style={{ width: 180 }}
+            options={[
+              { label: '전체 역할', value: 'all' },
+              ...roleCatalog.map((role) => ({ label: role.name, value: role.key }))
+            ]}
+            onChange={(value) => commitParams({ role: value })}
+          />
+          <Select
+            value={statusFilter}
+            style={{ width: 140 }}
+            options={[
+              { label: '전체 상태', value: 'all' },
+              { label: '활성', value: '활성' },
+              { label: '비활성', value: '비활성' }
+            ]}
+            onChange={(value) => commitParams({ status: value })}
+          />
+          <Button onClick={() => setSearchParams({}, { replace: true })}>필터 초기화</Button>
+          <Text type="secondary">총 {filteredRows.length.toLocaleString()}건</Text>
+        </FilterBar>
+
+        <Paragraph type="secondary" style={{ marginBottom: 16 }}>
+          관리자 계정과 권한 변경은 동일한 권한 원본을 공유합니다. 상세 조치 이력은 감사 로그
+          화면에서 바로 역추적할 수 있고,{' '}
+          <Link className="table-navigation-link" to="/system/permissions">
+            권한 관리
+          </Link>
+          에서 역할별 설정을 확인할 수 있습니다.
+        </Paragraph>
+
+        <AdminDataTable<AdminPermissionAssignment>
           rowKey="adminId"
-          size="small"
           pagination={false}
           scroll={{ x: 1200 }}
           columns={columns}
-          dataSource={admins}
-          onRow={handleRowClick}
+          dataSource={filteredRows}
+          onRow={(record) => ({
+            onClick: () => setSelectedRow(record),
+            style: { cursor: 'pointer' }
+          })}
         />
-        <Space size={14} style={{ marginTop: 12 }}>
-          <Link to="/system/permissions">권한 관리</Link>
-          <Link to="/system/audit-logs">감사 로그</Link>
-          <Link to="/system/logs">시스템 로그</Link>
-        </Space>
+
+        <Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0 }}>
+          비활성 계정 {inactiveCount}명은 로그인만 차단되며, 이력은 감사 로그에서 유지됩니다.
+        </Paragraph>
       </Card>
+
       <TableRowDetailModal
-        open={Boolean(selectedRow)}
-        title="관리자 계정 상세 (더미)"
-        record={selectedRow}
+        open={Boolean(selectedDetailRecord)}
+        title="관리자 계정 상세"
+        record={selectedDetailRecord}
         labelMap={detailLabelMap}
-        onClose={closeDetailModal}
+        onClose={() => setSelectedRow(null)}
       />
     </div>
   );

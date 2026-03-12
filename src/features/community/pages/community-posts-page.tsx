@@ -1,21 +1,29 @@
 import {
+  Button,
   Card,
+  Col,
   Descriptions,
+  Input,
   Modal,
+  Row,
+  Select,
   Space,
-  Table,
+  Statistic,
   Typography,
   notification
 } from 'antd';
 import type { DescriptionsProps, TableColumnsType } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
+import { FilterBar } from '../../../shared/ui/filter-bar/filter-bar';
+import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
+import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
 import {
   createColumnFilterProps,
@@ -91,22 +99,62 @@ const initialRows: CommunityPost[] = [
   }
 ];
 
+function parseStatus(value: string | null): PostStatus | 'all' {
+  if (value === '게시' || value === '숨김') {
+    return value;
+  }
+  return 'all';
+}
+
 export default function CommunityPostsPage(): JSX.Element {
   const [rows, setRows] = useState<CommunityPost[]>(initialRows);
   const [actionState, setActionState] = useState<PostActionState>(null);
   const [selectedPost, setSelectedPost] = useState<CommunityPost | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const keyword = searchParams.get('keyword') ?? '';
+  const boardFilter = searchParams.get('board') ?? 'all';
+  const statusFilter = parseStatus(searchParams.get('status'));
   const [notificationApi, notificationContextHolder] = notification.useNotification();
 
-  const openHideAction = useCallback((post: CommunityPost) => {
-    setActionState({ type: 'hide', post });
-  }, []);
+  const commitParams = useCallback(
+    (next: Partial<Record<'keyword' | 'board' | 'status', string>>) => {
+      const merged = new URLSearchParams(searchParams);
 
-  const openDeleteAction = useCallback((post: CommunityPost) => {
-    setActionState({ type: 'delete', post });
-  }, []);
+      Object.entries(next).forEach(([key, value]) => {
+        if (!value || value === 'all') {
+          merged.delete(key);
+          return;
+        }
+        merged.set(key, value);
+      });
 
-  const closeAction = useCallback(() => setActionState(null), []);
-  const closeDetailModal = useCallback(() => setSelectedPost(null), []);
+      setSearchParams(merged, { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
+
+  const visibleRows = useMemo(() => {
+    const normalizedKeyword = keyword.trim().toLowerCase();
+
+    return rows.filter((record) => {
+      if (boardFilter !== 'all' && record.board !== boardFilter) {
+        return false;
+      }
+      if (statusFilter !== 'all' && record.status !== statusFilter) {
+        return false;
+      }
+      if (!normalizedKeyword) {
+        return true;
+      }
+
+      return (
+        record.id.toLowerCase().includes(normalizedKeyword) ||
+        record.title.toLowerCase().includes(normalizedKeyword) ||
+        record.authorName.toLowerCase().includes(normalizedKeyword) ||
+        record.content.toLowerCase().includes(normalizedKeyword)
+      );
+    });
+  }, [boardFilter, keyword, rows, statusFilter]);
 
   const handleConfirmAction = useCallback(
     async (reason: string) => {
@@ -157,21 +205,21 @@ export default function CommunityPostsPage(): JSX.Element {
         title: '게시글 ID',
         dataIndex: 'id',
         width: 110,
-        ...createColumnFilterProps(rows, (record) => record.id),
+        ...createColumnFilterProps(visibleRows, (record) => record.id),
         sorter: createTextSorter((record) => record.id)
       },
       {
         title: '제목',
         dataIndex: 'title',
         width: 260,
-        ...createColumnFilterProps(rows, (record) => record.title),
+        ...createColumnFilterProps(visibleRows, (record) => record.title),
         sorter: createTextSorter((record) => record.title)
       },
       {
         title: '작성자',
         dataIndex: 'authorName',
         width: 140,
-        ...createColumnFilterProps(rows, (record) => record.authorName),
+        ...createColumnFilterProps(visibleRows, (record) => record.authorName),
         sorter: createTextSorter((record) => record.authorName),
         render: (_, record) => (
           <Link
@@ -187,14 +235,14 @@ export default function CommunityPostsPage(): JSX.Element {
         title: '게시판',
         dataIndex: 'board',
         width: 120,
-        ...createColumnFilterProps(rows, (record) => record.board),
+        ...createColumnFilterProps(visibleRows, (record) => record.board),
         sorter: createTextSorter((record) => record.board)
       },
       {
         title: '작성일',
         dataIndex: 'createdAt',
         width: 120,
-        ...createColumnFilterProps(rows, (record) => record.createdAt),
+        ...createColumnFilterProps(visibleRows, (record) => record.createdAt),
         sorter: createTextSorter((record) => record.createdAt)
       },
       {
@@ -202,7 +250,7 @@ export default function CommunityPostsPage(): JSX.Element {
         dataIndex: 'views',
         width: 90,
         align: 'right',
-        ...createColumnFilterProps(rows, (record) => record.views),
+        ...createColumnFilterProps(visibleRows, (record) => record.views),
         sorter: createNumberSorter((record) => record.views)
       },
       {
@@ -210,7 +258,7 @@ export default function CommunityPostsPage(): JSX.Element {
         dataIndex: 'comments',
         width: 90,
         align: 'right',
-        ...createColumnFilterProps(rows, (record) => record.comments),
+        ...createColumnFilterProps(visibleRows, (record) => record.comments),
         sorter: createNumberSorter((record) => record.comments)
       },
       {
@@ -218,14 +266,14 @@ export default function CommunityPostsPage(): JSX.Element {
         dataIndex: 'reports',
         width: 90,
         align: 'right',
-        ...createColumnFilterProps(rows, (record) => record.reports),
+        ...createColumnFilterProps(visibleRows, (record) => record.reports),
         sorter: createNumberSorter((record) => record.reports)
       },
       {
         title: '상태',
         dataIndex: 'status',
         width: 100,
-        ...createColumnFilterProps(rows, (record) => record.status),
+        ...createColumnFilterProps(visibleRows, (record) => record.status),
         sorter: createTextSorter((record) => record.status),
         render: (status: PostStatus) => <StatusBadge status={status} />
       },
@@ -245,20 +293,20 @@ export default function CommunityPostsPage(): JSX.Element {
                 key: `hide-${record.id}`,
                 label: '게시글 숨김',
                 disabled: record.status === '숨김',
-                onClick: () => openHideAction(record)
+                onClick: () => setActionState({ type: 'hide', post: record })
               },
               {
                 key: `delete-${record.id}`,
                 label: '게시글 삭제',
                 danger: true,
-                onClick: () => openDeleteAction(record)
+                onClick: () => setActionState({ type: 'delete', post: record })
               }
             ]}
           />
         )
       }
     ],
-    [openDeleteAction, openHideAction, rows]
+    [visibleRows]
   );
 
   const detailItems = useMemo<DescriptionsProps['items']>(() => {
@@ -296,30 +344,94 @@ export default function CommunityPostsPage(): JSX.Element {
     ];
   }, [selectedPost]);
 
-  const handleRowClick = useCallback(
-    (record: CommunityPost) => ({
-      onClick: () => setSelectedPost(record),
-      style: { cursor: 'pointer' }
-    }),
-    []
-  );
+  const hiddenCount = rows.filter((row) => row.status === '숨김').length;
+  const reportedCount = rows.filter((row) => row.reports > 0).length;
+  const boardOptions = Array.from(new Set(rows.map((row) => row.board))).map((board) => ({
+    label: board,
+    value: board
+  }));
 
   return (
     <div>
       {notificationContextHolder}
       <PageTitle title="게시글 관리" />
 
-      <Card>
-        <Table
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+        <Col xs={24} md={8}>
+          <Card>
+            <Statistic title="전체 게시글" value={rows.length} suffix="건" />
+          </Card>
+        </Col>
+        <Col xs={24} md={8}>
+          <Card>
+            <Statistic title="숨김 게시글" value={hiddenCount} suffix="건" />
+          </Card>
+        </Col>
+        <Col xs={24} md={8}>
+          <Card>
+            <Statistic title="신고 누적 게시글" value={reportedCount} suffix="건" />
+          </Card>
+        </Col>
+      </Row>
+
+      <AdminListCard
+        toolbar={
+          <FilterBar>
+            <Input.Search
+              allowClear
+              placeholder="게시글 ID, 제목, 작성자, 본문 검색"
+              value={keyword}
+              onChange={(event) =>
+                commitParams({
+                  keyword: event.target.value,
+                  board: boardFilter,
+                  status: statusFilter
+                })
+              }
+              style={{ width: 320 }}
+            />
+            <Select
+              value={boardFilter}
+              style={{ width: 140 }}
+              options={[{ label: '전체 게시판', value: 'all' }, ...boardOptions]}
+              onChange={(value) => commitParams({ board: value, keyword, status: statusFilter })}
+            />
+            <Select
+              value={statusFilter}
+              style={{ width: 140 }}
+              options={[
+                { label: '전체 상태', value: 'all' },
+                { label: '게시', value: '게시' },
+                { label: '숨김', value: '숨김' }
+              ]}
+              onChange={(value: PostStatus | 'all') =>
+                commitParams({ status: value, keyword, board: boardFilter })
+              }
+            />
+            <Button onClick={() => setSearchParams({}, { replace: true })}>필터 초기화</Button>
+            <Text type="secondary">총 {visibleRows.length.toLocaleString()}건</Text>
+          </FilterBar>
+        }
+      >
+        <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
+          신고 건은{' '}
+          <Link className="table-navigation-link" to="/community/reports">
+            신고 관리
+          </Link>
+          에서 이어서 확인할 수 있습니다.
+        </Text>
+        <AdminDataTable<CommunityPost>
           rowKey="id"
-          size="small"
           pagination={false}
           scroll={{ x: 1500 }}
           columns={columns}
-          dataSource={rows}
-          onRow={handleRowClick}
+          dataSource={visibleRows}
+          onRow={(record) => ({
+            onClick: () => setSelectedPost(record),
+            style: { cursor: 'pointer' }
+          })}
         />
-      </Card>
+      </AdminListCard>
 
       {actionState ? (
         <ConfirmAction
@@ -333,7 +445,7 @@ export default function CommunityPostsPage(): JSX.Element {
           targetType="Community"
           targetId={actionState.post.id}
           confirmText={actionState.type === 'hide' ? '숨김 실행' : '삭제 실행'}
-          onCancel={closeAction}
+          onCancel={() => setActionState(null)}
           onConfirm={handleConfirmAction}
         />
       ) : null}
@@ -341,7 +453,7 @@ export default function CommunityPostsPage(): JSX.Element {
       <Modal
         open={Boolean(selectedPost)}
         title="게시글 상세"
-        onCancel={closeDetailModal}
+        onCancel={() => setSelectedPost(null)}
         footer={null}
         destroyOnClose
         width={720}
