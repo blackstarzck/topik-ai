@@ -4,7 +4,7 @@ import type {
   TableProps
 } from 'antd';
 
-export const DRAWER_SECTION_GAP = 32;
+export const DRAWER_SECTION_GAP = 16;
 export const DRAWER_TABLE_BODY_MAX_HEIGHT = 280;
 export const DRAWER_TABLE_PAGINATION: TablePaginationConfig = {
   pageSize: 5,
