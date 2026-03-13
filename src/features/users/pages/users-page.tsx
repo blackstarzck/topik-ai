@@ -4,6 +4,7 @@ import {
   Alert,
   Button,
   Form,
+  Input,
   Modal,
   notification,
   Space,
@@ -402,13 +403,13 @@ export default function UsersPage(): JSX.Element {
                 key: `suspend-${record.id}`,
                 label: '회원 정지',
                 danger: true,
-                disabled: record.status !== statusOptions[1].value,
+                disabled: record.status !== '정상',
                 onClick: () => handleSuspend(record)
               },
               {
                 key: `unsuspend-${record.id}`,
                 label: '회원 정지 해제',
-                disabled: record.status !== statusOptions[2].value,
+                disabled: record.status !== '정지',
                 onClick: () => handleUnsuspend(record)
               },
               {
@@ -474,7 +475,7 @@ export default function UsersPage(): JSX.Element {
   return (
     <div>
       {notificationContextHolder}
-      <PageTitle title="사용자" />
+      <PageTitle title="회원 목록" />
 
       {usersState.status === 'error' ? (
         <Alert
