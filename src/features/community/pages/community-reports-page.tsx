@@ -2,7 +2,6 @@ import {
   Card,
   Col,
   Row,
-  Select,
   Space,
   Statistic,
   Typography,
@@ -19,9 +18,15 @@ import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
   SearchBar,
+  SearchBarDateRange,
   SearchBarDetailField
 } from '../../../shared/ui/search-bar/search-bar';
-import { matchesSearchField } from '../../../shared/ui/search-bar/search-bar-utils';
+import { useSearchBarDateDraft } from '../../../shared/ui/search-bar/use-search-bar-date-draft';
+import {
+  matchesSearchDateRange,
+  matchesSearchField,
+  parseSearchDate
+} from '../../../shared/ui/search-bar/search-bar-utils';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
@@ -90,21 +95,22 @@ const detailLabelMap: Record<string, string> = {
   processStatus: '처리 상태'
 };
 
-function parseStatus(value: string | null): ProcessStatus | 'all' {
-  if (value === '처리 대기' || value === '처리 완료') {
-    return value;
-  }
-  return 'all';
-}
-
 export default function CommunityReportsPage(): JSX.Element {
   const [rows, setRows] = useState<ReportRow[]>(initialRows);
   const [actionState, setActionState] = useState<ReportActionState>(null);
   const [selectedRow, setSelectedRow] = useState<ReportRow | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const searchField = searchParams.get('searchField') ?? 'all';
+  const startDate = parseSearchDate(searchParams.get('startDate'));
+  const endDate = parseSearchDate(searchParams.get('endDate'));
   const keyword = searchParams.get('keyword') ?? '';
-  const statusFilter = parseStatus(searchParams.get('status'));
+  const {
+    draftStartDate,
+    draftEndDate,
+    handleDraftDateChange,
+    handleDraftReset,
+    handleDetailOpenChange
+  } = useSearchBarDateDraft(startDate, endDate);
   const [notificationApi, notificationContextHolder] = notification.useNotification();
 
   const processedStatus = useMemo<ProcessStatus>(
@@ -115,8 +121,13 @@ export default function CommunityReportsPage(): JSX.Element {
   );
 
   const commitParams = useCallback(
-    (next: Partial<Record<'keyword' | 'searchField' | 'status', string>>) => {
+    (
+      next: Partial<
+        Record<'keyword' | 'searchField' | 'startDate' | 'endDate', string>
+      >
+    ) => {
       const merged = new URLSearchParams(searchParams);
+      merged.delete('status');
 
       Object.entries(next).forEach(([key, value]) => {
         if (!value || value === 'all') {
@@ -131,11 +142,20 @@ export default function CommunityReportsPage(): JSX.Element {
     [searchParams, setSearchParams]
   );
 
+  const handleApplyDateRange = useCallback(() => {
+    commitParams({
+      startDate: draftStartDate,
+      endDate: draftEndDate,
+      keyword,
+      searchField
+    });
+  }, [commitParams, draftEndDate, draftStartDate, keyword, searchField]);
+
   const visibleRows = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
 
     return rows.filter((record) => {
-      if (statusFilter !== 'all' && record.processStatus !== statusFilter) {
+      if (!matchesSearchDateRange(record.createdAt, startDate, endDate)) {
         return false;
       }
       if (!normalizedKeyword) {
@@ -150,7 +170,7 @@ export default function CommunityReportsPage(): JSX.Element {
         reason: record.reason
       });
     });
-  }, [keyword, rows, searchField, statusFilter]);
+  }, [endDate, keyword, rows, searchField, startDate]);
 
   const markProcessed = useCallback(
     (row: ReportRow) => {
@@ -365,35 +385,29 @@ export default function CommunityReportsPage(): JSX.Element {
             keyword={keyword}
             onSearchFieldChange={(value) =>
               commitParams({
-                searchField: value,
-                status: statusFilter
+                searchField: value
               })
             }
             onKeywordChange={(event) =>
               commitParams({
                 keyword: event.target.value,
-                searchField,
-                status: statusFilter
+                searchField
               })
             }
             keywordPlaceholder="검색..."
-            detailTitle="상세 검색"
-            detailContent={
-              <SearchBarDetailField label="처리 상태">
-                <Select
-                  value={statusFilter}
-                  options={[
-                    { label: '전체', value: 'all' },
-                    { label: '처리 대기', value: '처리 대기' },
-                    { label: '처리 완료', value: '처리 완료' }
-                  ]}
-                  onChange={(value: ProcessStatus | 'all') =>
-                    commitParams({ status: value, keyword, searchField })
-                  }
-                />
-              </SearchBarDetailField>
-            }
-            onReset={() => setSearchParams({}, { replace: true })}
+          detailTitle="상세 검색"
+          detailContent={
+            <SearchBarDetailField label="신고일">
+              <SearchBarDateRange
+                startDate={draftStartDate}
+                endDate={draftEndDate}
+                onChange={handleDraftDateChange}
+              />
+            </SearchBarDetailField>
+          }
+            onApply={handleApplyDateRange}
+            onDetailOpenChange={handleDetailOpenChange}
+            onReset={handleDraftReset}
             summary={
               <Text type="secondary">총 {visibleRows.length.toLocaleString()}건</Text>
             }

@@ -45,9 +45,15 @@ import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action'
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
   SearchBar,
+  SearchBarDateRange,
   SearchBarDetailField
 } from '../../../shared/ui/search-bar/search-bar';
-import { matchesSearchField } from '../../../shared/ui/search-bar/search-bar-utils';
+import { useSearchBarDateDraft } from '../../../shared/ui/search-bar/use-search-bar-date-draft';
+import {
+  matchesSearchDateRange,
+  matchesSearchField,
+  parseSearchDate
+} from '../../../shared/ui/search-bar/search-bar-utils';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import {
@@ -58,8 +64,6 @@ import {
 
 const { Paragraph, Text, Title } = Typography;
 const { RangePicker } = DatePicker;
-
-type GroupTypeFilter = 'all' | MessageGroupDefinitionType;
 
 type GroupEditorState =
   | { type: 'create' }
@@ -130,13 +134,6 @@ const activityOptions: CheckboxGroupProps<'활동' | '비활동'>['options'] = [
   { label: '활동', value: '활동' },
   { label: '비활동', value: '비활동' }
 ];
-
-function parseGroupType(value: string | null): GroupTypeFilter {
-  if (value === '정적 그룹' || value === '조건 기반 그룹') {
-    return value;
-  }
-  return 'all';
-}
 
 function buildDefaultFormValues(): GroupFormValues {
   return {
@@ -225,8 +222,16 @@ function buildPayload(
 export default function MessageGroupsPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
   const searchField = searchParams.get('searchField') ?? 'all';
+  const startDate = parseSearchDate(searchParams.get('startDate'));
+  const endDate = parseSearchDate(searchParams.get('endDate'));
   const keyword = searchParams.get('keyword') ?? '';
-  const definitionFilter = parseGroupType(searchParams.get('definition'));
+  const {
+    draftStartDate,
+    draftEndDate,
+    handleDraftDateChange,
+    handleDraftReset,
+    handleDetailOpenChange
+  } = useSearchBarDateDraft(startDate, endDate);
 
   const groups = useMessageStore((state) => state.groups);
   const previewGroupCount = useMessageStore((state) => state.previewGroupCount);
@@ -291,7 +296,7 @@ export default function MessageGroupsPage(): JSX.Element {
     const normalizedKeyword = keyword.trim().toLowerCase();
 
     return groups.filter((group) => {
-      if (definitionFilter !== 'all' && group.definitionType !== definitionFilter) {
+      if (!matchesSearchDateRange(group.lastCalculatedAt, startDate, endDate)) {
         return false;
       }
 
@@ -305,11 +310,16 @@ export default function MessageGroupsPage(): JSX.Element {
         ruleSummary: group.ruleSummary
       });
     });
-  }, [definitionFilter, groups, keyword, searchField]);
+  }, [endDate, groups, keyword, searchField, startDate]);
 
   const commitParams = useCallback(
-    (next: Partial<Record<'keyword' | 'searchField' | 'definition', string>>) => {
+    (
+      next: Partial<
+        Record<'keyword' | 'searchField' | 'startDate' | 'endDate', string>
+      >
+    ) => {
       const merged = new URLSearchParams(searchParams);
+      merged.delete('definition');
 
       Object.entries(next).forEach(([key, value]) => {
         if (!value || value === 'all') {
@@ -323,6 +333,15 @@ export default function MessageGroupsPage(): JSX.Element {
     },
     [searchParams, setSearchParams]
   );
+
+  const handleApplyDateRange = useCallback(() => {
+    commitParams({
+      startDate: draftStartDate,
+      endDate: draftEndDate,
+      keyword,
+      searchField
+    });
+  }, [commitParams, draftEndDate, draftStartDate, keyword, searchField]);
 
   const openCreateDrawer = useCallback(() => {
     form.setFieldsValue(buildDefaultFormValues());
@@ -557,34 +576,27 @@ export default function MessageGroupsPage(): JSX.Element {
                 { label: '조건 요약', value: 'ruleSummary' }
               ]}
               keyword={keyword}
-              onSearchFieldChange={(value) =>
-                commitParams({ searchField: value, definition: definitionFilter })
-              }
+              onSearchFieldChange={(value) => commitParams({ searchField: value })}
               onKeywordChange={(event) =>
                 commitParams({
                   keyword: event.target.value,
-                  searchField,
-                  definition: definitionFilter
+                  searchField
                 })
               }
               keywordPlaceholder="검색..."
               detailTitle="상세 검색"
               detailContent={
-                <SearchBarDetailField label="정의 방식">
-                  <Select
-                    value={definitionFilter}
-                    options={[
-                      { label: '전체', value: 'all' },
-                      { label: '정적 그룹', value: '정적 그룹' },
-                      { label: '조건 기반 그룹', value: '조건 기반 그룹' }
-                    ]}
-                    onChange={(value: GroupTypeFilter) =>
-                      commitParams({ definition: value, keyword, searchField })
-                    }
+                <SearchBarDetailField label="마지막 계산일">
+                  <SearchBarDateRange
+                    startDate={draftStartDate}
+                    endDate={draftEndDate}
+                    onChange={handleDraftDateChange}
                   />
                 </SearchBarDetailField>
               }
-              onReset={() => setSearchParams({}, { replace: true })}
+              onApply={handleApplyDateRange}
+              onDetailOpenChange={handleDetailOpenChange}
+              onReset={handleDraftReset}
               summary={
                 <Text type="secondary">총 {visibleGroups.length.toLocaleString()}건</Text>
               }

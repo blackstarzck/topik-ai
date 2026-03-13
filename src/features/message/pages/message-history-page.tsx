@@ -5,7 +5,6 @@ import {
   Descriptions,
   Drawer,
   Input,
-  Select,
   Space,
   Tabs,
   Tag,
@@ -39,9 +38,15 @@ import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action'
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
   SearchBar,
+  SearchBarDateRange,
   SearchBarDetailField
 } from '../../../shared/ui/search-bar/search-bar';
-import { matchesSearchField } from '../../../shared/ui/search-bar/search-bar-utils';
+import { useSearchBarDateDraft } from '../../../shared/ui/search-bar/use-search-bar-date-draft';
+import {
+  matchesSearchDateRange,
+  matchesSearchField,
+  parseSearchDate
+} from '../../../shared/ui/search-bar/search-bar-utils';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import {
@@ -51,8 +56,6 @@ import {
 } from '../../../shared/ui/table/table-column-utils';
 
 const { Paragraph, Text } = Typography;
-
-type HistoryStatusFilter = MessageHistoryStatus | 'all';
 type HistoryModeFilter = MessageTemplateMode | 'all';
 
 type HistoryDangerState =
@@ -62,13 +65,6 @@ type HistoryDangerState =
 
 function parseChannel(value: string | null): MessageChannel {
   return value === 'push' ? 'push' : 'mail';
-}
-
-function parseStatus(value: string | null): HistoryStatusFilter {
-  if (value === '완료' || value === '부분 실패' || value === '실패' || value === '예약') {
-    return value;
-  }
-  return 'all';
 }
 
 function parseMode(value: string | null): HistoryModeFilter {
@@ -111,9 +107,17 @@ export default function MessageHistoryPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeChannel = parseChannel(searchParams.get('channel'));
   const searchField = searchParams.get('searchField') ?? 'all';
-  const statusFilter = parseStatus(searchParams.get('status'));
+  const startDate = parseSearchDate(searchParams.get('startDate'));
+  const endDate = parseSearchDate(searchParams.get('endDate'));
   const modeFilter = parseMode(searchParams.get('mode'));
   const keyword = searchParams.get('keyword') ?? '';
+  const {
+    draftStartDate,
+    draftEndDate,
+    handleDraftDateChange,
+    handleDraftReset,
+    handleDetailOpenChange
+  } = useSearchBarDateDraft(startDate, endDate);
 
   const histories = useMessageStore((state) => state.histories);
   const retryHistory = useMessageStore((state) => state.retryHistory);
@@ -178,7 +182,7 @@ export default function MessageHistoryPage(): JSX.Element {
       if (modeFilter !== 'all' && history.mode !== modeFilter) {
         return false;
       }
-      if (statusFilter !== 'all' && history.status !== statusFilter) {
+      if (!matchesSearchDateRange(history.sentAt, startDate, endDate)) {
         return false;
       }
       if (!normalizedKeyword) {
@@ -191,7 +195,7 @@ export default function MessageHistoryPage(): JSX.Element {
         groupName: history.groupName
       });
     });
-  }, [activeChannel, histories, keyword, modeFilter, searchField, statusFilter]);
+  }, [activeChannel, endDate, histories, keyword, modeFilter, searchField, startDate]);
 
   const filteredRecipients = useMemo(() => {
     if (!detailRow) {
@@ -215,10 +219,14 @@ export default function MessageHistoryPage(): JSX.Element {
   const commitParams = useCallback(
     (
       next: Partial<
-        Record<'channel' | 'searchField' | 'status' | 'mode' | 'keyword', string>
+        Record<
+          'channel' | 'searchField' | 'startDate' | 'endDate' | 'mode' | 'keyword',
+          string
+        >
       >
     ) => {
       const merged = new URLSearchParams(searchParams);
+      merged.delete('status');
 
       Object.entries(next).forEach(([key, value]) => {
         if (!value || value === 'all') {
@@ -236,6 +244,25 @@ export default function MessageHistoryPage(): JSX.Element {
     },
     [activeChannel, searchParams, setSearchParams]
   );
+
+  const handleApplyDateRange = useCallback(() => {
+    commitParams({
+      startDate: draftStartDate,
+      endDate: draftEndDate,
+      channel: activeChannel,
+      mode: modeFilter,
+      keyword,
+      searchField
+    });
+  }, [
+    activeChannel,
+    commitParams,
+    draftEndDate,
+    draftStartDate,
+    keyword,
+    modeFilter,
+    searchField
+  ]);
 
   const handleDangerConfirm = useCallback(
     async (reason: string) => {
@@ -450,7 +477,7 @@ export default function MessageHistoryPage(): JSX.Element {
       <Tabs
         activeKey={activeChannel}
         onChange={(nextChannel) =>
-          commitParams({ channel: nextChannel, mode: modeFilter, status: statusFilter, keyword })
+          commitParams({ channel: nextChannel, mode: modeFilter, keyword })
         }
         items={[
           {
@@ -480,7 +507,7 @@ export default function MessageHistoryPage(): JSX.Element {
         <Tabs
           activeKey={modeFilter}
           onChange={(value) =>
-            commitParams({ mode: value, channel: activeChannel, status: statusFilter, keyword })
+            commitParams({ mode: value, channel: activeChannel, keyword })
           }
           items={[
             { key: 'all', label: `전체 (${histories.filter((history) => history.channel === activeChannel).length})` },
@@ -508,8 +535,7 @@ export default function MessageHistoryPage(): JSX.Element {
             commitParams({
               searchField: value,
               channel: activeChannel,
-              mode: modeFilter,
-              status: statusFilter
+              mode: modeFilter
             })
           }
           onKeywordChange={(event) =>
@@ -517,40 +543,23 @@ export default function MessageHistoryPage(): JSX.Element {
               keyword: event.target.value,
               searchField,
               channel: activeChannel,
-              mode: modeFilter,
-              status: statusFilter
+              mode: modeFilter
             })
           }
           keywordPlaceholder="검색..."
           detailTitle="상세 검색"
           detailContent={
-            <SearchBarDetailField label="상태">
-              <Select
-                value={statusFilter}
-                options={[
-                  { label: '전체', value: 'all' },
-                  { label: '완료', value: '완료' },
-                  { label: '부분 실패', value: '부분 실패' },
-                  { label: '실패', value: '실패' },
-                  { label: '예약', value: '예약' }
-                ]}
-                onChange={(value: HistoryStatusFilter) =>
-                  commitParams({
-                    status: value,
-                    channel: activeChannel,
-                    mode: modeFilter,
-                    keyword,
-                    searchField
-                  })
-                }
+            <SearchBarDetailField label="발송일">
+              <SearchBarDateRange
+                startDate={draftStartDate}
+                endDate={draftEndDate}
+                onChange={handleDraftDateChange}
               />
             </SearchBarDetailField>
           }
-          onReset={() =>
-            setSearchParams(new URLSearchParams({ channel: activeChannel }), {
-              replace: true
-            })
-          }
+          onApply={handleApplyDateRange}
+          onDetailOpenChange={handleDetailOpenChange}
+          onReset={handleDraftReset}
           summary={
             <Text type="secondary">총 {visibleRows.length.toLocaleString()}건</Text>
           }

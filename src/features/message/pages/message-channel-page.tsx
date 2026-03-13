@@ -31,9 +31,15 @@ import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
   SearchBar,
+  SearchBarDateRange,
   SearchBarDetailField
 } from '../../../shared/ui/search-bar/search-bar';
-import { matchesSearchField } from '../../../shared/ui/search-bar/search-bar-utils';
+import { useSearchBarDateDraft } from '../../../shared/ui/search-bar/use-search-bar-date-draft';
+import {
+  matchesSearchDateRange,
+  matchesSearchField,
+  parseSearchDate
+} from '../../../shared/ui/search-bar/search-bar-utils';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
@@ -47,8 +53,6 @@ const { Paragraph, Text } = Typography;
 type MessageChannelPageProps = {
   channel: MessageChannel;
 };
-
-type TemplateStatusFilter = MessageTemplateStatus | 'all';
 
 type TemplateFormValues = {
   category: string;
@@ -90,13 +94,6 @@ type DangerState =
 
 function parseMode(value: string | null): MessageTemplateMode {
   return value === 'manual' ? 'manual' : 'auto';
-}
-
-function parseStatus(value: string | null): TemplateStatusFilter {
-  if (value === '활성' || value === '비활성' || value === '초안') {
-    return value;
-  }
-  return 'all';
 }
 
 function getChannelMeta(channel: MessageChannel) {
@@ -157,8 +154,16 @@ export function MessageChannelPage({
   const [searchParams, setSearchParams] = useSearchParams();
   const activeMode = parseMode(searchParams.get('tab'));
   const searchField = searchParams.get('searchField') ?? 'all';
-  const statusFilter = parseStatus(searchParams.get('status'));
+  const startDate = parseSearchDate(searchParams.get('startDate'));
+  const endDate = parseSearchDate(searchParams.get('endDate'));
   const keyword = searchParams.get('keyword') ?? '';
+  const {
+    draftStartDate,
+    draftEndDate,
+    handleDraftDateChange,
+    handleDraftReset,
+    handleDetailOpenChange
+  } = useSearchBarDateDraft(startDate, endDate);
 
   const templates = useMessageStore((state) =>
     state.templates.filter((template) => template.channel === channel)
@@ -234,7 +239,9 @@ export function MessageChannelPage({
     return templates
       .filter((template) => template.mode === activeMode)
       .filter((template) => {
-        if (statusFilter !== 'all' && template.status !== statusFilter) {
+        const targetDate =
+          activeMode === 'auto' ? template.lastSentAt ?? '' : template.updatedAt;
+        if (!matchesSearchDateRange(targetDate, startDate, endDate)) {
           return false;
         }
 
@@ -249,11 +256,16 @@ export function MessageChannelPage({
           summary: template.summary
         });
       });
-  }, [activeMode, keyword, searchField, statusFilter, templates]);
+  }, [activeMode, endDate, keyword, searchField, startDate, templates]);
 
   const commitParams = useCallback(
-    (next: Partial<Record<'tab' | 'searchField' | 'status' | 'keyword', string>>) => {
+    (
+      next: Partial<
+        Record<'tab' | 'searchField' | 'startDate' | 'endDate' | 'keyword', string>
+      >
+    ) => {
       const merged = new URLSearchParams(searchParams);
+      merged.delete('status');
 
       Object.entries(next).forEach(([key, value]) => {
         if (!value || value === 'all') {
@@ -271,6 +283,23 @@ export function MessageChannelPage({
     },
     [activeMode, searchParams, setSearchParams]
   );
+
+  const handleApplyDateRange = useCallback(() => {
+    commitParams({
+      startDate: draftStartDate,
+      endDate: draftEndDate,
+      keyword,
+      searchField,
+      tab: activeMode
+    });
+  }, [
+    activeMode,
+    commitParams,
+    draftEndDate,
+    draftStartDate,
+    keyword,
+    searchField
+  ]);
 
   const openCreateModal = useCallback(() => {
     templateForm.setFieldsValue(createTemplateDefaults(channel, activeMode, groups));
@@ -670,7 +699,7 @@ export function MessageChannelPage({
       <Tabs
         activeKey={activeMode}
         items={tabItems}
-        onChange={(nextTab) => commitParams({ tab: nextTab, status: statusFilter, keyword })}
+            onChange={(nextTab) => commitParams({ tab: nextTab, keyword })}
         style={{ marginBottom: 12 }}
       />
 
@@ -692,39 +721,31 @@ export function MessageChannelPage({
             ]}
             keyword={keyword}
             onSearchFieldChange={(value) =>
-              commitParams({ searchField: value, status: statusFilter, tab: activeMode })
+              commitParams({ searchField: value, tab: activeMode })
             }
             onKeywordChange={(event) =>
               commitParams({
                 keyword: event.target.value,
                 searchField,
-                status: statusFilter,
                 tab: activeMode
               })
             }
             keywordPlaceholder="검색..."
             detailTitle="상세 검색"
             detailContent={
-              <SearchBarDetailField label="상태">
-                <Select
-                  value={statusFilter}
-                  options={[
-                    { label: '전체', value: 'all' },
-                    { label: '활성', value: '활성' },
-                    { label: '비활성', value: '비활성' },
-                    { label: '초안', value: '초안' }
-                  ]}
-                  onChange={(value: TemplateStatusFilter) =>
-                    commitParams({ status: value, keyword, searchField, tab: activeMode })
-                  }
+              <SearchBarDetailField
+                label={activeMode === 'auto' ? '최근 발송일' : '최근 수정일'}
+              >
+                <SearchBarDateRange
+                  startDate={draftStartDate}
+                  endDate={draftEndDate}
+                  onChange={handleDraftDateChange}
                 />
               </SearchBarDetailField>
             }
-            onReset={() =>
-              setSearchParams(new URLSearchParams({ tab: activeMode }), {
-                replace: true
-              })
-            }
+            onApply={handleApplyDateRange}
+            onDetailOpenChange={handleDetailOpenChange}
+            onReset={handleDraftReset}
             summary={
               <Text type="secondary">총 {visibleTemplates.length.toLocaleString()}건</Text>
             }

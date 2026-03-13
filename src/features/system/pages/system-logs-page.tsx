@@ -1,4 +1,4 @@
-import { Card, Col, Row, Select, Statistic, Typography } from 'antd';
+import { Card, Col, Row, Statistic, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -6,9 +6,15 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
   SearchBar,
+  SearchBarDateRange,
   SearchBarDetailField
 } from '../../../shared/ui/search-bar/search-bar';
-import { matchesSearchField } from '../../../shared/ui/search-bar/search-bar-utils';
+import { useSearchBarDateDraft } from '../../../shared/ui/search-bar/use-search-bar-date-draft';
+import {
+  matchesSearchDateRange,
+  matchesSearchField,
+  parseSearchDate
+} from '../../../shared/ui/search-bar/search-bar-utils';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import { createTextSorter } from '../../../shared/ui/table/table-column-utils';
@@ -84,28 +90,23 @@ function getComponentRoute(component: string): string | null {
 export default function SystemLogsPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
   const searchField = searchParams.get('searchField') ?? 'all';
+  const startDate = parseSearchDate(searchParams.get('startDate'));
+  const endDate = parseSearchDate(searchParams.get('endDate'));
   const keyword = searchParams.get('keyword') ?? '';
-  const levelFilter = searchParams.get('level') ?? 'all';
-  const componentFilter = searchParams.get('component') ?? 'all';
+  const {
+    draftStartDate,
+    draftEndDate,
+    handleDraftDateChange,
+    handleDraftReset,
+    handleDetailOpenChange
+  } = useSearchBarDateDraft(startDate, endDate);
   const [selectedRow, setSelectedRow] = useState<SystemLogRow | null>(null);
-
-  const componentOptions = useMemo(
-    () =>
-      Array.from(new Set(rows.map((row) => row.component))).map((component) => ({
-        label: component,
-        value: component
-      })),
-    []
-  );
 
   const filteredRows = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
 
     return rows.filter((row) => {
-      if (levelFilter !== 'all' && row.level !== levelFilter) {
-        return false;
-      }
-      if (componentFilter !== 'all' && row.component !== componentFilter) {
+      if (!matchesSearchDateRange(row.createdAt, startDate, endDate)) {
         return false;
       }
       if (!normalizedKeyword) {
@@ -118,11 +119,17 @@ export default function SystemLogsPage(): JSX.Element {
         message: row.message
       });
     });
-  }, [componentFilter, keyword, levelFilter, searchField]);
+  }, [endDate, keyword, searchField, startDate]);
 
   const commitParams = useCallback(
-    (next: Partial<Record<'keyword' | 'searchField' | 'level' | 'component', string>>) => {
+    (
+      next: Partial<
+        Record<'keyword' | 'searchField' | 'startDate' | 'endDate', string>
+      >
+    ) => {
       const merged = new URLSearchParams(searchParams);
+      merged.delete('level');
+      merged.delete('component');
 
       Object.entries(next).forEach(([key, value]) => {
         if (!value || value === 'all') {
@@ -136,6 +143,15 @@ export default function SystemLogsPage(): JSX.Element {
     },
     [searchParams, setSearchParams]
   );
+
+  const handleApplyDateRange = useCallback(() => {
+    commitParams({
+      startDate: draftStartDate,
+      endDate: draftEndDate,
+      keyword,
+      searchField
+    });
+  }, [commitParams, draftEndDate, draftStartDate, keyword, searchField]);
 
   const errorCount = rows.filter((row) => row.level === 'ERROR').length;
   const warningCount = rows.filter((row) => row.level === 'WARN').length;
@@ -225,57 +241,27 @@ export default function SystemLogsPage(): JSX.Element {
             { label: '메시지', value: 'message' }
           ]}
           keyword={keyword}
-          onSearchFieldChange={(value) =>
-            commitParams({ searchField: value, level: levelFilter, component: componentFilter })
-          }
+          onSearchFieldChange={(value) => commitParams({ searchField: value })}
           onKeywordChange={(event) =>
             commitParams({
               keyword: event.target.value,
-              searchField,
-              level: levelFilter,
-              component: componentFilter
+              searchField
             })
           }
           keywordPlaceholder="검색..."
           detailTitle="상세 검색"
           detailContent={
-            <>
-              <SearchBarDetailField label="레벨">
-                <Select
-                  value={levelFilter}
-                  options={[
-                    { label: '전체', value: 'all' },
-                    { label: 'INFO', value: 'INFO' },
-                    { label: 'WARN', value: 'WARN' },
-                    { label: 'ERROR', value: 'ERROR' }
-                  ]}
-                  onChange={(value) =>
-                    commitParams({
-                      level: value,
-                      keyword,
-                      searchField,
-                      component: componentFilter
-                    })
-                  }
-                />
-              </SearchBarDetailField>
-              <SearchBarDetailField label="컴포넌트">
-                <Select
-                  value={componentFilter}
-                  options={[{ label: '전체', value: 'all' }, ...componentOptions]}
-                  onChange={(value) =>
-                    commitParams({
-                      component: value,
-                      keyword,
-                      searchField,
-                      level: levelFilter
-                    })
-                  }
-                />
-              </SearchBarDetailField>
-            </>
+            <SearchBarDetailField label="발생 시각">
+              <SearchBarDateRange
+                startDate={draftStartDate}
+                endDate={draftEndDate}
+                onChange={handleDraftDateChange}
+              />
+            </SearchBarDetailField>
           }
-          onReset={() => setSearchParams({}, { replace: true })}
+          onApply={handleApplyDateRange}
+          onDetailOpenChange={handleDetailOpenChange}
+          onReset={handleDraftReset}
           summary={
             <Text type="secondary">총 {filteredRows.length.toLocaleString()}건</Text>
           }

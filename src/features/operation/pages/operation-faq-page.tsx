@@ -23,9 +23,15 @@ import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
   SearchBar,
+  SearchBarDateRange,
   SearchBarDetailField
 } from '../../../shared/ui/search-bar/search-bar';
-import { matchesSearchField } from '../../../shared/ui/search-bar/search-bar-utils';
+import { useSearchBarDateDraft } from '../../../shared/ui/search-bar/use-search-bar-date-draft';
+import {
+  matchesSearchDateRange,
+  matchesSearchField,
+  parseSearchDate
+} from '../../../shared/ui/search-bar/search-bar-utils';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
@@ -95,20 +101,6 @@ const initialRows: FaqRow[] = [
   }
 ];
 
-function parseStatus(value: string | null): FaqStatus | 'all' {
-  if (value === '공개' || value === '비공개') {
-    return value;
-  }
-  return 'all';
-}
-
-function parseCategory(value: string | null): FaqCategory | 'all' {
-  if (value === '계정' || value === '결제' || value === '커뮤니티' || value === '메시지') {
-    return value;
-  }
-  return 'all';
-}
-
 function buildDetailLabelMap(row: FaqRow | null): Record<string, string> | undefined {
   if (!row) {
     return undefined;
@@ -127,9 +119,16 @@ function buildDetailLabelMap(row: FaqRow | null): Record<string, string> | undef
 export default function OperationFaqPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
   const searchField = searchParams.get('searchField') ?? 'all';
+  const startDate = parseSearchDate(searchParams.get('startDate'));
+  const endDate = parseSearchDate(searchParams.get('endDate'));
   const keyword = searchParams.get('keyword') ?? '';
-  const statusFilter = parseStatus(searchParams.get('status'));
-  const categoryFilter = parseCategory(searchParams.get('category'));
+  const {
+    draftStartDate,
+    draftEndDate,
+    handleDraftDateChange,
+    handleDraftReset,
+    handleDetailOpenChange
+  } = useSearchBarDateDraft(startDate, endDate);
 
   const [rows, setRows] = useState<FaqRow[]>(initialRows);
   const [editorState, setEditorState] = useState<FaqEditorState>(null);
@@ -142,11 +141,7 @@ export default function OperationFaqPage(): JSX.Element {
     const normalizedKeyword = keyword.trim().toLowerCase();
 
     return rows.filter((row) => {
-      if (statusFilter !== 'all' && row.status !== statusFilter) {
-        return false;
-      }
-
-      if (categoryFilter !== 'all' && row.category !== categoryFilter) {
+      if (!matchesSearchDateRange(row.updatedAt, startDate, endDate)) {
         return false;
       }
 
@@ -160,11 +155,20 @@ export default function OperationFaqPage(): JSX.Element {
         answer: row.answer
       });
     });
-  }, [categoryFilter, keyword, rows, searchField, statusFilter]);
+  }, [endDate, keyword, rows, searchField, startDate]);
 
   const commitParams = useCallback(
-    (next: Partial<Record<'keyword' | 'searchField' | 'status' | 'category', string>>) => {
+    (
+      next: Partial<
+        Record<
+          'keyword' | 'searchField' | 'startDate' | 'endDate',
+          string
+        >
+      >
+    ) => {
       const merged = new URLSearchParams(searchParams);
+      merged.delete('status');
+      merged.delete('category');
 
       Object.entries(next).forEach(([key, value]) => {
         if (!value || value === 'all') {
@@ -178,6 +182,15 @@ export default function OperationFaqPage(): JSX.Element {
     },
     [searchParams, setSearchParams]
   );
+
+  const handleApplyDateRange = useCallback(() => {
+    commitParams({
+      startDate: draftStartDate,
+      endDate: draftEndDate,
+      keyword,
+      searchField
+    });
+  }, [commitParams, draftEndDate, draftStartDate, keyword, searchField]);
 
   const openCreateModal = useCallback(() => {
     form.setFieldsValue({
@@ -438,64 +451,29 @@ export default function OperationFaqPage(): JSX.Element {
             keyword={keyword}
             onSearchFieldChange={(value) =>
               commitParams({
-                searchField: value,
-                category: categoryFilter,
-                status: statusFilter
+                searchField: value
               })
             }
             onKeywordChange={(event) =>
               commitParams({
                 keyword: event.target.value,
-                searchField,
-                category: categoryFilter,
-                status: statusFilter
+                searchField
               })
             }
             keywordPlaceholder="검색..."
             detailTitle="상세 검색"
             detailContent={
-              <>
-                <SearchBarDetailField label="카테고리">
-                  <Select
-                    value={categoryFilter}
-                    options={[
-                      { label: '전체', value: 'all' },
-                      { label: '계정', value: '계정' },
-                      { label: '결제', value: '결제' },
-                      { label: '커뮤니티', value: '커뮤니티' },
-                      { label: '메시지', value: '메시지' }
-                    ]}
-                    onChange={(value: FaqCategory | 'all') =>
-                      commitParams({
-                        category: value,
-                        status: statusFilter,
-                        keyword,
-                        searchField
-                      })
-                    }
-                  />
-                </SearchBarDetailField>
-                <SearchBarDetailField label="공개 상태">
-                  <Select
-                    value={statusFilter}
-                    options={[
-                      { label: '전체', value: 'all' },
-                      { label: '공개', value: '공개' },
-                      { label: '비공개', value: '비공개' }
-                    ]}
-                    onChange={(value: FaqStatus | 'all') =>
-                      commitParams({
-                        status: value,
-                        category: categoryFilter,
-                        keyword,
-                        searchField
-                      })
-                    }
-                  />
-                </SearchBarDetailField>
-              </>
+              <SearchBarDetailField label="최종 수정일">
+                <SearchBarDateRange
+                  startDate={draftStartDate}
+                  endDate={draftEndDate}
+                  onChange={handleDraftDateChange}
+                />
+              </SearchBarDetailField>
             }
-            onReset={() => setSearchParams({}, { replace: true })}
+            onApply={handleApplyDateRange}
+            onDetailOpenChange={handleDetailOpenChange}
+            onReset={handleDraftReset}
             summary={
               <Text type="secondary">총 {visibleRows.length.toLocaleString()}건</Text>
             }

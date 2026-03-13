@@ -156,6 +156,20 @@ body {
   gap: 16px;
 }
 
+.search-bar-popover .ant-popover-inner {
+  width: 420px;
+}
+
+.search-bar-detail-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.search-bar-detail-reset {
+  flex: 1;
+}
+
 .search-bar-detail-field {
   display: flex;
   flex-direction: column;

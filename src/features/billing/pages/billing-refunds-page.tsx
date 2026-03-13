@@ -2,7 +2,6 @@ import {
   Card,
   Col,
   Row,
-  Select,
   Space,
   Statistic,
   Typography,
@@ -22,6 +21,7 @@ import {
   SearchBarDateRange,
   SearchBarDetailField
 } from '../../../shared/ui/search-bar/search-bar';
+import { useSearchBarDateDraft } from '../../../shared/ui/search-bar/use-search-bar-date-draft';
 import {
   matchesSearchDateRange,
   matchesSearchField,
@@ -56,13 +56,6 @@ const detailLabelMap: Record<string, string> = {
   reviewReason: '처리 사유'
 };
 
-function parseStatus(value: string | null): RefundStatus | 'all' {
-  if (value === '처리 대기' || value === '승인' || value === '거절') {
-    return value;
-  }
-  return 'all';
-}
-
 function formatCurrency(value: number): string {
   return `₩${value.toLocaleString('ko-KR')}`;
 }
@@ -74,20 +67,23 @@ export default function BillingRefundsPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
   const searchField = searchParams.get('searchField') ?? 'all';
   const keyword = searchParams.get('keyword') ?? '';
-  const statusFilter = parseStatus(searchParams.get('status'));
   const [selectedRow, setSelectedRow] = useState<RefundRow | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
 
   const startDate = parseSearchDate(searchParams.get('startDate'));
   const endDate = parseSearchDate(searchParams.get('endDate'));
+  const {
+    draftStartDate,
+    draftEndDate,
+    handleDraftDateChange,
+    handleDraftReset,
+    handleDetailOpenChange
+  } = useSearchBarDateDraft(startDate, endDate);
 
   const filteredRows = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
 
     return refunds.filter((record) => {
-      if (statusFilter !== 'all' && record.status !== statusFilter) {
-        return false;
-      }
       if (!matchesSearchDateRange(record.requestedAt, startDate, endDate)) {
         return false;
       }
@@ -103,7 +99,7 @@ export default function BillingRefundsPage(): JSX.Element {
         reason: record.reason
       });
     });
-  }, [endDate, keyword, refunds, searchField, startDate, statusFilter]);
+  }, [endDate, keyword, refunds, searchField, startDate]);
 
   const pendingCount = refunds.filter((row) => row.status === '처리 대기').length;
   const approvedAmount = refunds
@@ -114,10 +110,11 @@ export default function BillingRefundsPage(): JSX.Element {
   const commitParams = useCallback(
     (
       next: Partial<
-        Record<'keyword' | 'searchField' | 'startDate' | 'endDate' | 'status', string>
+        Record<'keyword' | 'searchField' | 'startDate' | 'endDate', string>
       >
     ) => {
       const merged = new URLSearchParams(searchParams);
+      merged.delete('status');
 
       Object.entries(next).forEach(([key, value]) => {
         if (!value || value === 'all') {
@@ -131,6 +128,13 @@ export default function BillingRefundsPage(): JSX.Element {
     },
     [searchParams, setSearchParams]
   );
+
+  const handleApplyDateRange = useCallback(() => {
+    commitParams({
+      startDate: draftStartDate,
+      endDate: draftEndDate
+    });
+  }, [commitParams, draftEndDate, draftStartDate]);
 
   const selectedDetailRecord = useMemo(
     () =>
@@ -322,34 +326,17 @@ export default function BillingRefundsPage(): JSX.Element {
           keywordPlaceholder="검색..."
           detailTitle="상세 검색"
           detailContent={
-            <>
-              <SearchBarDetailField label="처리 상태">
-                <Select
-                  value={statusFilter}
-                  options={[
-                    { label: '전체', value: 'all' },
-                    { label: '처리 대기', value: '처리 대기' },
-                    { label: '승인', value: '승인' },
-                    { label: '거절', value: '거절' }
-                  ]}
-                  onChange={(value) => commitParams({ status: value })}
-                />
-              </SearchBarDetailField>
-              <SearchBarDetailField label="요청일">
-                <SearchBarDateRange
-                  startDate={startDate}
-                  endDate={endDate}
-                  onChange={(nextStartDate, nextEndDate) =>
-                    commitParams({
-                      startDate: nextStartDate,
-                      endDate: nextEndDate
-                    })
-                  }
-                />
-              </SearchBarDetailField>
-            </>
+            <SearchBarDetailField label="요청일">
+              <SearchBarDateRange
+                startDate={draftStartDate}
+                endDate={draftEndDate}
+                onChange={handleDraftDateChange}
+              />
+            </SearchBarDetailField>
           }
-          onReset={() => setSearchParams({}, { replace: true })}
+          onApply={handleApplyDateRange}
+          onDetailOpenChange={handleDetailOpenChange}
+          onReset={handleDraftReset}
           summary={
             <Text type="secondary">총 {filteredRows.length.toLocaleString()}건</Text>
           }

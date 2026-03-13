@@ -1,4 +1,4 @@
-import { Card, Col, Input, Row, Select, Statistic, Typography } from 'antd';
+import { Card, Col, Row, Statistic, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -8,9 +8,15 @@ import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import {
   SearchBar,
+  SearchBarDateRange,
   SearchBarDetailField
 } from '../../../shared/ui/search-bar/search-bar';
-import { matchesSearchField } from '../../../shared/ui/search-bar/search-bar-utils';
+import { useSearchBarDateDraft } from '../../../shared/ui/search-bar/use-search-bar-date-draft';
+import {
+  matchesSearchDateRange,
+  matchesSearchField,
+  parseSearchDate
+} from '../../../shared/ui/search-bar/search-bar-utils';
 import { createTextSorter } from '../../../shared/ui/table/table-column-utils';
 import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
 import { usePermissionStore } from '../model/permission-store';
@@ -154,12 +160,16 @@ export default function SystemAuditLogsPage(): JSX.Element {
   const [selectedRow, setSelectedRow] = useState<AuditLogRow | null>(null);
   const permissionAudits = usePermissionStore((state) => state.audits);
   const searchField = searchParams.get('searchField') ?? 'all';
+  const startDate = parseSearchDate(searchParams.get('startDate'));
+  const endDate = parseSearchDate(searchParams.get('endDate'));
   const keyword = searchParams.get('keyword') ?? '';
-  const targetTypeFilter = searchParams.get('targetType') ?? 'all';
-  const targetIdFilter = searchParams.get('targetId') ?? '';
-  const actorFilter = searchParams.get('actor') ?? 'all';
-  const actionFilter = searchParams.get('action') ?? 'all';
-
+  const {
+    draftStartDate,
+    draftEndDate,
+    handleDraftDateChange,
+    handleDraftReset,
+    handleDetailOpenChange
+  } = useSearchBarDateDraft(startDate, endDate);
   const mergedRows = useMemo(() => {
     const permissionRows: AuditLogRow[] = permissionAudits.map((audit) => ({
       logId: audit.id,
@@ -176,38 +186,11 @@ export default function SystemAuditLogsPage(): JSX.Element {
     );
   }, [permissionAudits]);
 
-  const actorOptions = useMemo(
-    () =>
-      Array.from(new Set(mergedRows.map((row) => row.actor))).map((actor) => ({
-        label: actor,
-        value: actor
-      })),
-    [mergedRows]
-  );
-
-  const actionOptions = useMemo(
-    () =>
-      Array.from(new Set(mergedRows.map((row) => row.action))).map((action) => ({
-        label: action,
-        value: action
-      })),
-    [mergedRows]
-  );
-
   const filteredRows = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
 
     return mergedRows.filter((item) => {
-      if (targetTypeFilter !== 'all' && item.targetType !== targetTypeFilter) {
-        return false;
-      }
-      if (targetIdFilter && item.targetId !== targetIdFilter) {
-        return false;
-      }
-      if (actorFilter !== 'all' && item.actor !== actorFilter) {
-        return false;
-      }
-      if (actionFilter !== 'all' && item.action !== actionFilter) {
+      if (!matchesSearchDateRange(item.createdAt, startDate, endDate)) {
         return false;
       }
       if (!normalizedKeyword) {
@@ -222,26 +205,25 @@ export default function SystemAuditLogsPage(): JSX.Element {
         action: item.action
       });
     });
-  }, [
-    actionFilter,
-    actorFilter,
-    keyword,
-    mergedRows,
-    searchField,
-    targetIdFilter,
-    targetTypeFilter
-  ]);
+  }, [keyword, mergedRows, searchField, startDate, endDate]);
 
   const commitParams = useCallback(
     (
       next: Partial<
         Record<
-          'keyword' | 'searchField' | 'targetType' | 'targetId' | 'actor' | 'action',
+          | 'keyword'
+          | 'searchField'
+          | 'startDate'
+          | 'endDate',
           string
         >
       >
     ) => {
       const merged = new URLSearchParams(searchParams);
+      merged.delete('targetType');
+      merged.delete('targetId');
+      merged.delete('actor');
+      merged.delete('action');
 
       Object.entries(next).forEach(([key, value]) => {
         if (!value || value === 'all') {
@@ -255,6 +237,15 @@ export default function SystemAuditLogsPage(): JSX.Element {
     },
     [searchParams, setSearchParams]
   );
+
+  const handleApplyDateRange = useCallback(() => {
+    commitParams({
+      startDate: draftStartDate,
+      endDate: draftEndDate,
+      keyword,
+      searchField
+    });
+  }, [commitParams, draftEndDate, draftStartDate, keyword, searchField]);
 
   const todayPrefix = new Date().toISOString().slice(0, 10);
   const todayCount = filteredRows.filter((row) =>
@@ -361,110 +352,27 @@ export default function SystemAuditLogsPage(): JSX.Element {
             { label: '사유', value: 'reason' }
           ]}
           keyword={keyword}
-          onSearchFieldChange={(value) =>
-            commitParams({
-              searchField: value,
-              targetType: targetTypeFilter,
-              targetId: targetIdFilter,
-              actor: actorFilter,
-              action: actionFilter
-            })
-          }
+          onSearchFieldChange={(value) => commitParams({ searchField: value })}
           onKeywordChange={(event) =>
             commitParams({
               keyword: event.target.value,
-              searchField,
-              targetType: targetTypeFilter,
-              targetId: targetIdFilter,
-              actor: actorFilter,
-              action: actionFilter
+              searchField
             })
           }
           keywordPlaceholder="검색..."
           detailTitle="상세 검색"
           detailContent={
-            <>
-              <SearchBarDetailField label="대상 유형">
-                <Select
-                  value={targetTypeFilter}
-                  options={[
-                    { label: '전체', value: 'all' },
-                    ...Array.from(new Set(mergedRows.map((row) => row.targetType))).map((value) => ({
-                      label: getTargetTypeLabel(value),
-                      value
-                    }))
-                  ]}
-                  onChange={(value) =>
-                    commitParams({
-                      targetType: value,
-                      keyword,
-                      searchField,
-                      targetId: targetIdFilter,
-                      actor: actorFilter,
-                      action: actionFilter
-                    })
-                  }
-                />
-              </SearchBarDetailField>
-              <SearchBarDetailField label="대상 ID">
-                <Input
-                  allowClear
-                  value={targetIdFilter}
-                  placeholder="예: U00001"
-                  onChange={(event) =>
-                    commitParams({
-                      targetId: event.target.value,
-                      keyword,
-                      searchField,
-                      targetType: targetTypeFilter,
-                      actor: actorFilter,
-                      action: actionFilter
-                    })
-                  }
-                />
-              </SearchBarDetailField>
-              <SearchBarDetailField label="조치">
-                <Select
-                  value={actionFilter}
-                  options={[{ label: '전체', value: 'all' }, ...actionOptions]}
-                  onChange={(value) =>
-                    commitParams({
-                      action: value,
-                      keyword,
-                      searchField,
-                      targetType: targetTypeFilter,
-                      targetId: targetIdFilter,
-                      actor: actorFilter
-                    })
-                  }
-                />
-              </SearchBarDetailField>
-              <SearchBarDetailField label="수행자">
-                <Select
-                  value={actorFilter}
-                  options={[{ label: '전체', value: 'all' }, ...actorOptions]}
-                  onChange={(value) =>
-                    commitParams({
-                      actor: value,
-                      keyword,
-                      searchField,
-                      targetType: targetTypeFilter,
-                      targetId: targetIdFilter,
-                      action: actionFilter
-                    })
-                  }
-                />
-              </SearchBarDetailField>
-            </>
+            <SearchBarDetailField label="시각">
+              <SearchBarDateRange
+                startDate={draftStartDate}
+                endDate={draftEndDate}
+                onChange={handleDraftDateChange}
+              />
+            </SearchBarDetailField>
           }
-          onReset={() =>
-            setSearchParams(
-              targetIdFilter
-                ? new URLSearchParams({ targetId: targetIdFilter })
-                : new URLSearchParams(),
-              { replace: true }
-            )
-          }
+          onApply={handleApplyDateRange}
+          onDetailOpenChange={handleDetailOpenChange}
+          onReset={handleDraftReset}
           summary={
             <Text type="secondary">총 {filteredRows.length.toLocaleString()}건</Text>
           }

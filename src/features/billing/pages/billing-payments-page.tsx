@@ -1,16 +1,17 @@
-import { Card, Col, Row, Select, Statistic, Typography } from 'antd';
+import { Card, Col, Row, Statistic, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import { useCommerceStore } from '../model/commerce-store';
-import type { PaymentMethod, PaymentRow, PaymentStatus } from '../model/commerce-store';
+import type { PaymentRow, PaymentStatus } from '../model/commerce-store';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
   SearchBar,
   SearchBarDateRange,
   SearchBarDetailField
 } from '../../../shared/ui/search-bar/search-bar';
+import { useSearchBarDateDraft } from '../../../shared/ui/search-bar/use-search-bar-date-draft';
 import {
   matchesSearchDateRange,
   matchesSearchField,
@@ -37,20 +38,6 @@ const detailLabelMap: Record<string, string> = {
   status: '상태'
 };
 
-function parseStatus(value: string | null): PaymentStatus | 'all' {
-  if (value === '완료' || value === '취소' || value === '환불') {
-    return value;
-  }
-  return 'all';
-}
-
-function parseMethod(value: string | null): PaymentMethod | 'all' {
-  if (value === '카드' || value === '계좌이체' || value === '간편결제') {
-    return value;
-  }
-  return 'all';
-}
-
 function formatCurrency(value: number): string {
   return `₩${value.toLocaleString('ko-KR')}`;
 }
@@ -63,20 +50,19 @@ export default function BillingPaymentsPage(): JSX.Element {
   const startDate = parseSearchDate(searchParams.get('startDate'));
   const endDate = parseSearchDate(searchParams.get('endDate'));
   const keyword = searchParams.get('keyword') ?? '';
-  const statusFilter = parseStatus(searchParams.get('status'));
-  const methodFilter = parseMethod(searchParams.get('method'));
+  const {
+    draftStartDate,
+    draftEndDate,
+    handleDraftDateChange,
+    handleDraftReset,
+    handleDetailOpenChange
+  } = useSearchBarDateDraft(startDate, endDate);
   const [selectedRow, setSelectedRow] = useState<PaymentRow | null>(null);
 
   const filteredRows = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
 
     return payments.filter((record) => {
-      if (statusFilter !== 'all' && record.status !== statusFilter) {
-        return false;
-      }
-      if (methodFilter !== 'all' && record.method !== methodFilter) {
-        return false;
-      }
       if (!matchesSearchDateRange(record.paidAt, startDate, endDate)) {
         return false;
       }
@@ -91,7 +77,7 @@ export default function BillingPaymentsPage(): JSX.Element {
         product: record.product
       });
     });
-  }, [endDate, keyword, methodFilter, payments, searchField, startDate, statusFilter]);
+  }, [endDate, keyword, payments, searchField, startDate]);
 
   const completedAmount = useMemo(
     () =>
@@ -106,10 +92,12 @@ export default function BillingPaymentsPage(): JSX.Element {
   const commitParams = useCallback(
     (
       next: Partial<
-        Record<'keyword' | 'searchField' | 'startDate' | 'endDate' | 'status' | 'method', string>
+        Record<'keyword' | 'searchField' | 'startDate' | 'endDate', string>
       >
     ) => {
       const merged = new URLSearchParams(searchParams);
+      merged.delete('status');
+      merged.delete('method');
 
       Object.entries(next).forEach(([key, value]) => {
         if (!value || value === 'all') {
@@ -123,6 +111,13 @@ export default function BillingPaymentsPage(): JSX.Element {
     },
     [searchParams, setSearchParams]
   );
+
+  const handleApplyDateRange = useCallback(() => {
+    commitParams({
+      startDate: draftStartDate,
+      endDate: draftEndDate
+    });
+  }, [commitParams, draftEndDate, draftStartDate]);
 
   const selectedDetailRecord = useMemo(
     () =>
@@ -247,46 +242,17 @@ export default function BillingPaymentsPage(): JSX.Element {
           keywordPlaceholder="검색..."
           detailTitle="상세 검색"
           detailContent={
-            <>
-              <SearchBarDetailField label="결제 상태">
-                <Select
-                  value={statusFilter}
-                  options={[
-                    { label: '전체', value: 'all' },
-                    { label: '완료', value: '완료' },
-                    { label: '취소', value: '취소' },
-                    { label: '환불', value: '환불' }
-                  ]}
-                  onChange={(value) => commitParams({ status: value })}
-                />
-              </SearchBarDetailField>
-              <SearchBarDetailField label="결제 수단">
-                <Select
-                  value={methodFilter}
-                  options={[
-                    { label: '전체', value: 'all' },
-                    { label: '카드', value: '카드' },
-                    { label: '계좌이체', value: '계좌이체' },
-                    { label: '간편결제', value: '간편결제' }
-                  ]}
-                  onChange={(value) => commitParams({ method: value })}
-                />
-              </SearchBarDetailField>
-              <SearchBarDetailField label="결제일">
-                <SearchBarDateRange
-                  startDate={startDate}
-                  endDate={endDate}
-                  onChange={(nextStartDate, nextEndDate) =>
-                    commitParams({
-                      startDate: nextStartDate,
-                      endDate: nextEndDate
-                    })
-                  }
-                />
-              </SearchBarDetailField>
-            </>
+            <SearchBarDetailField label="결제일">
+              <SearchBarDateRange
+                startDate={draftStartDate}
+                endDate={draftEndDate}
+                onChange={handleDraftDateChange}
+              />
+            </SearchBarDetailField>
           }
-          onReset={() => setSearchParams({}, { replace: true })}
+          onApply={handleApplyDateRange}
+          onDetailOpenChange={handleDetailOpenChange}
+          onReset={handleDraftReset}
           summary={
             <Text type="secondary">총 {filteredRows.length.toLocaleString()}건</Text>
           }

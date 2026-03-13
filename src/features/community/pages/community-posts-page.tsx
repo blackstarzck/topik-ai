@@ -4,7 +4,6 @@ import {
   Descriptions,
   Modal,
   Row,
-  Select,
   Space,
   Statistic,
   Typography,
@@ -21,9 +20,15 @@ import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
   SearchBar,
+  SearchBarDateRange,
   SearchBarDetailField
 } from '../../../shared/ui/search-bar/search-bar';
-import { matchesSearchField } from '../../../shared/ui/search-bar/search-bar-utils';
+import { useSearchBarDateDraft } from '../../../shared/ui/search-bar/use-search-bar-date-draft';
+import {
+  matchesSearchDateRange,
+  matchesSearchField,
+  parseSearchDate
+} from '../../../shared/ui/search-bar/search-bar-utils';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
@@ -101,27 +106,33 @@ const initialRows: CommunityPost[] = [
   }
 ];
 
-function parseStatus(value: string | null): PostStatus | 'all' {
-  if (value === '게시' || value === '숨김') {
-    return value;
-  }
-  return 'all';
-}
-
 export default function CommunityPostsPage(): JSX.Element {
   const [rows, setRows] = useState<CommunityPost[]>(initialRows);
   const [actionState, setActionState] = useState<PostActionState>(null);
   const [selectedPost, setSelectedPost] = useState<CommunityPost | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const searchField = searchParams.get('searchField') ?? 'all';
+  const startDate = parseSearchDate(searchParams.get('startDate'));
+  const endDate = parseSearchDate(searchParams.get('endDate'));
   const keyword = searchParams.get('keyword') ?? '';
-  const boardFilter = searchParams.get('board') ?? 'all';
-  const statusFilter = parseStatus(searchParams.get('status'));
+  const {
+    draftStartDate,
+    draftEndDate,
+    handleDraftDateChange,
+    handleDraftReset,
+    handleDetailOpenChange
+  } = useSearchBarDateDraft(startDate, endDate);
   const [notificationApi, notificationContextHolder] = notification.useNotification();
 
   const commitParams = useCallback(
-    (next: Partial<Record<'keyword' | 'searchField' | 'board' | 'status', string>>) => {
+    (
+      next: Partial<
+        Record<'keyword' | 'searchField' | 'startDate' | 'endDate', string>
+      >
+    ) => {
       const merged = new URLSearchParams(searchParams);
+      merged.delete('status');
+      merged.delete('board');
 
       Object.entries(next).forEach(([key, value]) => {
         if (!value || value === 'all') {
@@ -136,14 +147,20 @@ export default function CommunityPostsPage(): JSX.Element {
     [searchParams, setSearchParams]
   );
 
+  const handleApplyDateRange = useCallback(() => {
+    commitParams({
+      startDate: draftStartDate,
+      endDate: draftEndDate,
+      keyword,
+      searchField
+    });
+  }, [commitParams, draftEndDate, draftStartDate, keyword, searchField]);
+
   const visibleRows = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
 
     return rows.filter((record) => {
-      if (boardFilter !== 'all' && record.board !== boardFilter) {
-        return false;
-      }
-      if (statusFilter !== 'all' && record.status !== statusFilter) {
+      if (!matchesSearchDateRange(record.createdAt, startDate, endDate)) {
         return false;
       }
       if (!normalizedKeyword) {
@@ -157,7 +174,7 @@ export default function CommunityPostsPage(): JSX.Element {
         content: record.content
       });
     });
-  }, [boardFilter, keyword, rows, searchField, statusFilter]);
+  }, [endDate, keyword, rows, searchField, startDate]);
 
   const handleConfirmAction = useCallback(
     async (reason: string) => {
@@ -349,10 +366,6 @@ export default function CommunityPostsPage(): JSX.Element {
 
   const hiddenCount = rows.filter((row) => row.status === '숨김').length;
   const reportedCount = rows.filter((row) => row.reports > 0).length;
-  const boardOptions = Array.from(new Set(rows.map((row) => row.board))).map((board) => ({
-    label: board,
-    value: board
-  }));
 
   return (
     <div>
@@ -391,58 +404,29 @@ export default function CommunityPostsPage(): JSX.Element {
             keyword={keyword}
             onSearchFieldChange={(value) =>
               commitParams({
-                searchField: value,
-                board: boardFilter,
-                status: statusFilter
+                searchField: value
               })
             }
             onKeywordChange={(event) =>
               commitParams({
                 keyword: event.target.value,
-                searchField,
-                board: boardFilter,
-                status: statusFilter
+                searchField
               })
             }
             keywordPlaceholder="검색..."
             detailTitle="상세 검색"
             detailContent={
-              <>
-                <SearchBarDetailField label="게시판">
-                  <Select
-                    value={boardFilter}
-                    options={[{ label: '전체', value: 'all' }, ...boardOptions]}
-                    onChange={(value) =>
-                      commitParams({
-                        board: value,
-                        keyword,
-                        searchField,
-                        status: statusFilter
-                      })
-                    }
-                  />
-                </SearchBarDetailField>
-                <SearchBarDetailField label="상태">
-                  <Select
-                    value={statusFilter}
-                    options={[
-                      { label: '전체', value: 'all' },
-                      { label: '게시', value: '게시' },
-                      { label: '숨김', value: '숨김' }
-                    ]}
-                    onChange={(value: PostStatus | 'all') =>
-                      commitParams({
-                        status: value,
-                        keyword,
-                        searchField,
-                        board: boardFilter
-                      })
-                    }
-                  />
-                </SearchBarDetailField>
-              </>
+              <SearchBarDetailField label="작성일">
+                <SearchBarDateRange
+                  startDate={draftStartDate}
+                  endDate={draftEndDate}
+                  onChange={handleDraftDateChange}
+                />
+              </SearchBarDetailField>
             }
-            onReset={() => setSearchParams({}, { replace: true })}
+            onApply={handleApplyDateRange}
+            onDetailOpenChange={handleDetailOpenChange}
+            onReset={handleDraftReset}
             summary={
               <Text type="secondary">총 {visibleRows.length.toLocaleString()}건</Text>
             }

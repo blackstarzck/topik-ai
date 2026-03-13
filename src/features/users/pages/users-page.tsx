@@ -6,7 +6,6 @@ import {
   Form,
   Modal,
   notification,
-  Select,
   Space,
   Typography
 } from 'antd';
@@ -22,9 +21,7 @@ import type {
   UserStatus,
   UserSummary,
   UsersQuery,
-  UsersSearchField,
-  UsersSort,
-  UsersStatusFilter
+  UsersSearchField
 } from '../model/types';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
@@ -35,6 +32,7 @@ import {
   SearchBarDateRange,
   SearchBarDetailField
 } from '../../../shared/ui/search-bar/search-bar';
+import { useSearchBarDateDraft } from '../../../shared/ui/search-bar/use-search-bar-date-draft';
 import {
   matchesSearchDateRange,
   matchesSearchField,
@@ -53,18 +51,6 @@ import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 const { Text } = Typography;
 
 const pageSizeOptions = ['20', '50', '100'];
-
-const statusOptions: { label: string; value: UsersStatusFilter }[] = [
-  { label: '전체', value: 'all' },
-  { label: '정상', value: '정상' },
-  { label: '정지', value: '정지' },
-  { label: '탈퇴', value: '탈퇴' }
-];
-
-const sortOptions: { label: string; value: UsersSort }[] = [
-  { label: '최신 가입순', value: 'latest' },
-  { label: '오래된 가입순', value: 'oldest' }
-];
 
 const searchFieldOptions: { label: string; value: UsersSearchField }[] = [
   { label: '전체', value: 'all' },
@@ -90,21 +76,6 @@ function parsePositiveNumber(value: string | null, fallback: number): number {
   return parsed;
 }
 
-function parseStatus(value: string | null): UsersStatusFilter {
-  const allowed = new Set<UsersStatusFilter>(['all', '정상', '정지', '탈퇴']);
-  if (value && allowed.has(value as UsersStatusFilter)) {
-    return value as UsersStatusFilter;
-  }
-  return defaultUsersQuery.status;
-}
-
-function parseSort(value: string | null): UsersSort {
-  if (value === 'latest' || value === 'oldest') {
-    return value;
-  }
-  return defaultUsersQuery.sort;
-}
-
 function parseSearchField(value: string | null): UsersSearchField {
   if (
     value === 'id' ||
@@ -124,8 +95,8 @@ function parseUsersQuery(searchParams: URLSearchParams): UsersQuery {
       searchParams.get('pageSize'),
       defaultUsersQuery.pageSize
     ),
-    status: parseStatus(searchParams.get('status')),
-    sort: parseSort(searchParams.get('sort')),
+    status: defaultUsersQuery.status,
+    sort: defaultUsersQuery.sort,
     searchField: parseSearchField(searchParams.get('searchField')),
     startDate: parseSearchDate(searchParams.get('startDate')),
     endDate: parseSearchDate(searchParams.get('endDate')),
@@ -137,10 +108,6 @@ function buildUsersSearchParams(query: UsersQuery): URLSearchParams {
   const params = new URLSearchParams();
   params.set('page', String(query.page));
   params.set('pageSize', String(query.pageSize));
-  params.set('sort', query.sort);
-  if (query.status !== 'all') {
-    params.set('status', query.status);
-  }
   if (query.searchField !== 'all') {
     params.set('searchField', query.searchField);
   }
@@ -160,9 +127,6 @@ function filterUsers(users: UserSummary[], query: UsersQuery): UserSummary[] {
   const keyword = query.keyword.trim().toLowerCase();
 
   const filtered = users.filter((item) => {
-    if (query.status !== 'all' && item.status !== query.status) {
-      return false;
-    }
     if (!matchesSearchDateRange(item.joinedAt, query.startDate, query.endDate)) {
       return false;
     }
@@ -206,6 +170,13 @@ export default function UsersPage(): JSX.Element {
   const [memoForm] = Form.useForm<{ memo: string }>();
   const [memoTarget, setMemoTarget] = useState<UserSummary | null>(null);
   const [notificationApi, notificationContextHolder] = notification.useNotification();
+  const {
+    draftStartDate,
+    draftEndDate,
+    handleDraftDateChange,
+    handleDraftReset,
+    handleDetailOpenChange
+  } = useSearchBarDateDraft(query.startDate, query.endDate);
 
   useEffect(() => {
     const parsed = parseUsersQuery(searchParams);
@@ -492,30 +463,9 @@ export default function UsersPage(): JSX.Element {
     [commitQuery]
   );
 
-  const handleStatusChange = useCallback(
-    (value: UsersStatusFilter) => {
-      commitQuery({
-        status: value,
-        page: 1
-      });
-    },
-    [commitQuery]
-  );
-
-  const handleSortChange = useCallback(
-    (value: UsersSort) => {
-      commitQuery({
-        sort: value,
-        page: 1
-      });
-    },
-    [commitQuery]
-  );
-
-  const handleReset = useCallback(() => {
-    replaceQuery(defaultUsersQuery);
-    setSearchParams(buildUsersSearchParams(defaultUsersQuery), { replace: true });
-  }, [replaceQuery, setSearchParams]);
+  const handleApplyDateRange = useCallback(() => {
+    handleDateRangeChange(draftStartDate, draftEndDate);
+  }, [draftEndDate, draftStartDate, handleDateRangeChange]);
 
   const handleRetryLoad = useCallback(() => {
     setReloadKey((prev) => prev + 1);
@@ -556,31 +506,17 @@ export default function UsersPage(): JSX.Element {
             keywordPlaceholder="검색..."
             detailTitle="상세 검색"
             detailContent={
-              <>
-                <SearchBarDetailField label="회원 상태">
-                  <Select
-                    value={query.status}
-                    options={statusOptions}
-                    onChange={handleStatusChange}
-                  />
-                </SearchBarDetailField>
-                <SearchBarDetailField label="정렬">
-                  <Select
-                    value={query.sort}
-                    options={sortOptions}
-                    onChange={handleSortChange}
-                  />
-                </SearchBarDetailField>
-                <SearchBarDetailField label="가입일">
-                  <SearchBarDateRange
-                    startDate={query.startDate}
-                    endDate={query.endDate}
-                    onChange={handleDateRangeChange}
-                  />
-                </SearchBarDetailField>
-              </>
+              <SearchBarDetailField label="가입일">
+                <SearchBarDateRange
+                  startDate={draftStartDate}
+                  endDate={draftEndDate}
+                  onChange={handleDraftDateChange}
+                />
+              </SearchBarDetailField>
             }
-            onReset={handleReset}
+            onApply={handleApplyDateRange}
+            onDetailOpenChange={handleDetailOpenChange}
+            onReset={handleDraftReset}
             summary={
               <Text type="secondary">총 {filteredUsers.length.toLocaleString()}건</Text>
             }

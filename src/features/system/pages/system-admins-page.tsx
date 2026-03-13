@@ -1,4 +1,4 @@
-import { Card, Col, Row, Select, Statistic, Typography } from 'antd';
+import { Card, Col, Row, Statistic, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -9,9 +9,15 @@ import type { AdminPermissionAssignment, AdminStatus, RoleKey } from '../model/p
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
   SearchBar,
+  SearchBarDateRange,
   SearchBarDetailField
 } from '../../../shared/ui/search-bar/search-bar';
-import { matchesSearchField } from '../../../shared/ui/search-bar/search-bar-utils';
+import { useSearchBarDateDraft } from '../../../shared/ui/search-bar/use-search-bar-date-draft';
+import {
+  matchesSearchDateRange,
+  matchesSearchField,
+  parseSearchDate
+} from '../../../shared/ui/search-bar/search-bar-utils';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import {
@@ -21,9 +27,6 @@ import {
 import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
 
 const { Paragraph, Text } = Typography;
-
-type RoleFilter = RoleKey | 'all';
-type StatusFilter = AdminStatus | 'all';
 
 const roleNameMap = Object.fromEntries(roleCatalog.map((role) => [role.key, role.name])) as Record<
   RoleKey,
@@ -42,43 +45,27 @@ const detailLabelMap: Record<string, string> = {
   updatedBy: '수정 관리자'
 };
 
-function parseRole(value: string | null): RoleFilter {
-  if (
-    value === 'SUPER_ADMIN' ||
-    value === 'OPS_ADMIN' ||
-    value === 'CONTENT_MANAGER' ||
-    value === 'CS_MANAGER' ||
-    value === 'READ_ONLY'
-  ) {
-    return value;
-  }
-  return 'all';
-}
-
-function parseStatus(value: string | null): StatusFilter {
-  if (value === '활성' || value === '비활성') {
-    return value;
-  }
-  return 'all';
-}
-
 export default function SystemAdminsPage(): JSX.Element {
   const admins = usePermissionStore((state) => state.admins);
   const [searchParams, setSearchParams] = useSearchParams();
   const searchField = searchParams.get('searchField') ?? 'all';
+  const startDate = parseSearchDate(searchParams.get('startDate'));
+  const endDate = parseSearchDate(searchParams.get('endDate'));
   const keyword = searchParams.get('keyword') ?? '';
-  const roleFilter = parseRole(searchParams.get('role'));
-  const statusFilter = parseStatus(searchParams.get('status'));
+  const {
+    draftStartDate,
+    draftEndDate,
+    handleDraftDateChange,
+    handleDraftReset,
+    handleDetailOpenChange
+  } = useSearchBarDateDraft(startDate, endDate);
   const [selectedRow, setSelectedRow] = useState<AdminPermissionAssignment | null>(null);
 
   const filteredRows = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
 
     return admins.filter((record) => {
-      if (roleFilter !== 'all' && record.role !== roleFilter) {
-        return false;
-      }
-      if (statusFilter !== 'all' && record.status !== statusFilter) {
+      if (!matchesSearchDateRange(record.lastLoginAt, startDate, endDate)) {
         return false;
       }
       if (!normalizedKeyword) {
@@ -91,7 +78,7 @@ export default function SystemAdminsPage(): JSX.Element {
         role: roleNameMap[record.role]
       });
     });
-  }, [admins, keyword, roleFilter, searchField, statusFilter]);
+  }, [admins, endDate, keyword, searchField, startDate]);
 
   const activeCount = admins.filter((admin) => admin.status === '활성').length;
   const inactiveCount = admins.filter((admin) => admin.status === '비활성').length;
@@ -100,8 +87,14 @@ export default function SystemAdminsPage(): JSX.Element {
   ).length;
 
   const commitParams = useCallback(
-    (next: Partial<Record<'keyword' | 'searchField' | 'role' | 'status', string>>) => {
+    (
+      next: Partial<
+        Record<'keyword' | 'searchField' | 'startDate' | 'endDate', string>
+      >
+    ) => {
       const merged = new URLSearchParams(searchParams);
+      merged.delete('status');
+      merged.delete('role');
 
       Object.entries(next).forEach(([key, value]) => {
         if (!value || value === 'all') {
@@ -115,6 +108,15 @@ export default function SystemAdminsPage(): JSX.Element {
     },
     [searchParams, setSearchParams]
   );
+
+  const handleApplyDateRange = useCallback(() => {
+    commitParams({
+      startDate: draftStartDate,
+      endDate: draftEndDate,
+      keyword,
+      searchField
+    });
+  }, [commitParams, draftEndDate, draftStartDate, keyword, searchField]);
 
   const selectedDetailRecord = useMemo(
     () =>
@@ -229,49 +231,27 @@ export default function SystemAdminsPage(): JSX.Element {
             { label: '역할', value: 'role' }
           ]}
           keyword={keyword}
-          onSearchFieldChange={(value) =>
-            commitParams({ searchField: value, role: roleFilter, status: statusFilter })
-          }
+          onSearchFieldChange={(value) => commitParams({ searchField: value })}
           onKeywordChange={(event) =>
             commitParams({
               keyword: event.target.value,
-              searchField,
-              role: roleFilter,
-              status: statusFilter
+              searchField
             })
           }
           keywordPlaceholder="검색..."
           detailTitle="상세 검색"
           detailContent={
-            <>
-              <SearchBarDetailField label="역할">
-                <Select
-                  value={roleFilter}
-                  options={[
-                    { label: '전체', value: 'all' },
-                    ...roleCatalog.map((role) => ({ label: role.name, value: role.key }))
-                  ]}
-                  onChange={(value) =>
-                    commitParams({ role: value, keyword, searchField, status: statusFilter })
-                  }
-                />
-              </SearchBarDetailField>
-              <SearchBarDetailField label="상태">
-                <Select
-                  value={statusFilter}
-                  options={[
-                    { label: '전체', value: 'all' },
-                    { label: '활성', value: '활성' },
-                    { label: '비활성', value: '비활성' }
-                  ]}
-                  onChange={(value) =>
-                    commitParams({ status: value, keyword, searchField, role: roleFilter })
-                  }
-                />
-              </SearchBarDetailField>
-            </>
+            <SearchBarDetailField label="최근 로그인">
+              <SearchBarDateRange
+                startDate={draftStartDate}
+                endDate={draftEndDate}
+                onChange={handleDraftDateChange}
+              />
+            </SearchBarDetailField>
           }
-          onReset={() => setSearchParams({}, { replace: true })}
+          onApply={handleApplyDateRange}
+          onDetailOpenChange={handleDetailOpenChange}
+          onReset={handleDraftReset}
           summary={
             <Text type="secondary">총 {filteredRows.length.toLocaleString()}건</Text>
           }

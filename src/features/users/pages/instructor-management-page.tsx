@@ -7,7 +7,6 @@ import {
   Drawer,
   List,
   Row,
-  Select,
   Space,
   Tag,
   Typography,
@@ -23,20 +22,11 @@ import {
   defaultInstructorQuery,
   useInstructorsQueryStore
 } from '../model/instructors-query-store';
-import {
-  instructorCountries,
-  instructorOrganizations
-} from '../model/types';
 import type {
-  InstructorActivityFilter,
   InstructorActivityStatus,
-  InstructorCountryFilter,
   InstructorDetail,
-  InstructorOrganizationFilter,
   InstructorQuery,
   InstructorSearchField,
-  InstructorSort,
-  InstructorStatusFilter,
   InstructorStatus
 } from '../model/types';
 import type { AsyncState } from '../../../shared/model/async-state';
@@ -49,6 +39,7 @@ import {
   SearchBarDateRange,
   SearchBarDetailField
 } from '../../../shared/ui/search-bar/search-bar';
+import { useSearchBarDateDraft } from '../../../shared/ui/search-bar/use-search-bar-date-draft';
 import {
   matchesSearchDateRange,
   matchesSearchField,
@@ -66,42 +57,6 @@ import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
 const { Paragraph, Text, Title } = Typography;
 
 const pageSizeOptions = ['20', '50', '100'];
-
-const statusOptions: { label: string; value: InstructorStatusFilter }[] = [
-  { label: '전체 상태', value: 'all' },
-  { label: '정상', value: '정상' },
-  { label: '정지', value: '정지' },
-  { label: '탈퇴', value: '탈퇴' }
-];
-
-const activityOptions: { label: string; value: InstructorActivityFilter }[] = [
-  { label: '전체 활동', value: 'all' },
-  { label: '활성', value: '활성' },
-  { label: '주의', value: '주의' },
-  { label: '휴면', value: '휴면' }
-];
-
-const countryOptions: { label: string; value: InstructorCountryFilter }[] = [
-  { label: '전체 국가', value: 'all' },
-  ...instructorCountries.map((country) => ({ label: country, value: country }))
-];
-
-const organizationOptions: {
-  label: string;
-  value: InstructorOrganizationFilter;
-}[] = [
-  { label: '전체 소속', value: 'all' },
-  ...instructorOrganizations.map((organization) => ({
-    label: organization,
-    value: organization
-  }))
-];
-
-const sortOptions: { label: string; value: InstructorSort }[] = [
-  { label: '최근 활동순', value: 'recent-activity' },
-  { label: '담당 학습자 많은 순', value: 'students-desc' },
-  { label: '담당 과정 많은 순', value: 'courses-desc' }
-];
 
 const searchFieldOptions: { label: string; value: InstructorSearchField }[] = [
   { label: '전체', value: 'all' },
@@ -130,48 +85,6 @@ function parsePositiveNumber(value: string | null, fallback: number): number {
   return parsed;
 }
 
-function parseStatus(value: string | null): InstructorStatusFilter {
-  if (value === '정상' || value === '정지' || value === '탈퇴') {
-    return value;
-  }
-  return defaultInstructorQuery.status;
-}
-
-function parseActivityStatus(value: string | null): InstructorActivityFilter {
-  if (value === '활성' || value === '주의' || value === '휴면') {
-    return value;
-  }
-  return defaultInstructorQuery.activityStatus;
-}
-
-function parseCountry(value: string | null): InstructorCountryFilter {
-  if (value && instructorCountries.includes(value as InstructorCountryFilter)) {
-    return value as InstructorCountryFilter;
-  }
-  return defaultInstructorQuery.country;
-}
-
-function parseOrganization(value: string | null): InstructorOrganizationFilter {
-  if (
-    value &&
-    instructorOrganizations.includes(value as InstructorOrganizationFilter)
-  ) {
-    return value as InstructorOrganizationFilter;
-  }
-  return defaultInstructorQuery.organization;
-}
-
-function parseSort(value: string | null): InstructorSort {
-  if (
-    value === 'recent-activity' ||
-    value === 'students-desc' ||
-    value === 'courses-desc'
-  ) {
-    return value;
-  }
-  return defaultInstructorQuery.sort;
-}
-
 function parseSearchField(value: string | null): InstructorSearchField {
   if (
     value === 'id' ||
@@ -195,11 +108,11 @@ function parseInstructorQuery(searchParams: URLSearchParams): InstructorQuery {
       searchParams.get('pageSize'),
       defaultInstructorQuery.pageSize
     ),
-    sort: parseSort(searchParams.get('sort')),
-    status: parseStatus(searchParams.get('status')),
-    activityStatus: parseActivityStatus(searchParams.get('activityStatus')),
-    country: parseCountry(searchParams.get('country')),
-    organization: parseOrganization(searchParams.get('organization')),
+    sort: defaultInstructorQuery.sort,
+    status: defaultInstructorQuery.status,
+    activityStatus: defaultInstructorQuery.activityStatus,
+    country: defaultInstructorQuery.country,
+    organization: defaultInstructorQuery.organization,
     searchField: parseSearchField(searchParams.get('searchField')),
     startDate: parseSearchDate(searchParams.get('startDate')),
     endDate: parseSearchDate(searchParams.get('endDate')),
@@ -214,20 +127,6 @@ function buildInstructorSearchParams(
   const params = new URLSearchParams();
   params.set('page', String(query.page));
   params.set('pageSize', String(query.pageSize));
-  params.set('sort', query.sort);
-
-  if (query.status !== 'all') {
-    params.set('status', query.status);
-  }
-  if (query.activityStatus !== 'all') {
-    params.set('activityStatus', query.activityStatus);
-  }
-  if (query.country !== 'all') {
-    params.set('country', query.country);
-  }
-  if (query.organization !== 'all') {
-    params.set('organization', query.organization);
-  }
   if (query.searchField !== 'all') {
     params.set('searchField', query.searchField);
   }
@@ -254,21 +153,6 @@ function filterInstructors(
   const keyword = query.keyword.trim().toLowerCase();
 
   const filtered = instructors.filter((item) => {
-    if (query.status !== 'all' && item.status !== query.status) {
-      return false;
-    }
-    if (
-      query.activityStatus !== 'all' &&
-      item.activityStatus !== query.activityStatus
-    ) {
-      return false;
-    }
-    if (query.country !== 'all' && item.country !== query.country) {
-      return false;
-    }
-    if (query.organization !== 'all' && item.organization !== query.organization) {
-      return false;
-    }
     if (
       !matchesSearchDateRange(item.lastActivityAt, query.startDate, query.endDate)
     ) {
@@ -375,6 +259,13 @@ export default function InstructorManagementPage(): JSX.Element {
   const [actionState, setActionState] = useState<ActionState>(null);
   const [notificationApi, notificationContextHolder] =
     notification.useNotification();
+  const {
+    draftStartDate,
+    draftEndDate,
+    handleDraftDateChange,
+    handleDraftReset,
+    handleDetailOpenChange
+  } = useSearchBarDateDraft(query.startDate, query.endDate);
 
   useEffect(() => {
     replaceQuery(parseInstructorQuery(searchParams));
@@ -535,13 +426,6 @@ export default function InstructorManagementPage(): JSX.Element {
     setReloadKey((prev) => prev + 1);
   }, []);
 
-  const handleReset = useCallback(() => {
-    replaceQuery(defaultInstructorQuery);
-    setSearchParams(buildInstructorSearchParams(defaultInstructorQuery), {
-      replace: true
-    });
-  }, [replaceQuery, setSearchParams]);
-
   const handleKeywordChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       commitQuery({ keyword: event.target.value, page: 1 });
@@ -559,47 +443,16 @@ export default function InstructorManagementPage(): JSX.Element {
     [commitQuery]
   );
 
-  const handleStatusChange = useCallback(
-    (value: InstructorStatusFilter) => {
-      commitQuery({ status: value, page: 1 });
-    },
-    [commitQuery]
-  );
-
-  const handleActivityChange = useCallback(
-    (value: InstructorActivityFilter) => {
-      commitQuery({ activityStatus: value, page: 1 });
-    },
-    [commitQuery]
-  );
-
-  const handleCountryChange = useCallback(
-    (value: InstructorCountryFilter) => {
-      commitQuery({ country: value, page: 1 });
-    },
-    [commitQuery]
-  );
-
-  const handleOrganizationChange = useCallback(
-    (value: InstructorOrganizationFilter) => {
-      commitQuery({ organization: value, page: 1 });
-    },
-    [commitQuery]
-  );
-
-  const handleSortChange = useCallback(
-    (value: InstructorSort) => {
-      commitQuery({ sort: value, page: 1 });
-    },
-    [commitQuery]
-  );
-
   const handleDateRangeChange = useCallback(
     (startDate: string, endDate: string) => {
       commitQuery({ startDate, endDate, page: 1 });
     },
     [commitQuery]
   );
+
+  const handleApplyDateRange = useCallback(() => {
+    handleDateRangeChange(draftStartDate, draftEndDate);
+  }, [draftEndDate, draftStartDate, handleDateRangeChange]);
 
   const columns = useMemo<TableColumnsType<InstructorDetail>>(
     () => [
@@ -855,52 +708,17 @@ export default function InstructorManagementPage(): JSX.Element {
             keywordPlaceholder="검색..."
             detailTitle="상세 검색"
             detailContent={
-              <>
-                <SearchBarDetailField label="소속">
-                  <Select
-                    value={query.organization}
-                    options={organizationOptions}
-                    onChange={handleOrganizationChange}
-                  />
-                </SearchBarDetailField>
-                <SearchBarDetailField label="담당 국가">
-                  <Select
-                    value={query.country}
-                    options={countryOptions}
-                    onChange={handleCountryChange}
-                  />
-                </SearchBarDetailField>
-                <SearchBarDetailField label="계정 상태">
-                  <Select
-                    value={query.status}
-                    options={statusOptions}
-                    onChange={handleStatusChange}
-                  />
-                </SearchBarDetailField>
-                <SearchBarDetailField label="활동 상태">
-                  <Select
-                    value={query.activityStatus}
-                    options={activityOptions}
-                    onChange={handleActivityChange}
-                  />
-                </SearchBarDetailField>
-                <SearchBarDetailField label="정렬">
-                  <Select
-                    value={query.sort}
-                    options={sortOptions}
-                    onChange={handleSortChange}
-                  />
-                </SearchBarDetailField>
-                <SearchBarDetailField label="최근 활동일">
-                  <SearchBarDateRange
-                    startDate={query.startDate}
-                    endDate={query.endDate}
-                    onChange={handleDateRangeChange}
-                  />
-                </SearchBarDetailField>
-              </>
+              <SearchBarDetailField label="최근 활동일">
+                <SearchBarDateRange
+                  startDate={draftStartDate}
+                  endDate={draftEndDate}
+                  onChange={handleDraftDateChange}
+                />
+              </SearchBarDetailField>
             }
-            onReset={handleReset}
+            onApply={handleApplyDateRange}
+            onDetailOpenChange={handleDetailOpenChange}
+            onReset={handleDraftReset}
             summary={
               <Text type="secondary">
                 총 {visibleInstructors.length.toLocaleString()}건
