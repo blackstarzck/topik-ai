@@ -35,6 +35,7 @@ import {
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
+import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
 import {
   createTextSorter
 } from '../../../shared/ui/table/table-column-utils';
@@ -360,7 +361,7 @@ export default function OperationFaqPage(): JSX.Element {
         sorter: createTextSorter((record) => record.updatedAt)
       },
       {
-        title: '상태',
+        title: createStatusColumnTitle('상태', ['공개', '비공개']),
         dataIndex: 'status',
         width: 100,
         sorter: createTextSorter((record) => record.status),

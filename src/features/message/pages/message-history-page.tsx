@@ -50,6 +50,13 @@ import {
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import {
+  createDrawerTableScroll,
+  DRAWER_SECTION_GAP,
+  DRAWER_TABLE_PAGINATION,
+  fixDrawerTableFirstColumn
+} from '../../../shared/ui/table/drawer-table';
+import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
+import {
   createColumnFilterProps,
   createNumberSorter,
   createTextSorter
@@ -364,7 +371,7 @@ export default function MessageHistoryPage(): JSX.Element {
         render: (value: number) => `${value.toLocaleString()}명`
       },
       {
-        title: '상태',
+        title: createStatusColumnTitle('상태', ['완료', '부분 실패', '실패', '예약']),
         dataIndex: 'status',
         width: 110,
         ...createColumnFilterProps(visibleRows, (record) => record.status),
@@ -399,53 +406,56 @@ export default function MessageHistoryPage(): JSX.Element {
   );
 
   const recipientColumns = useMemo<TableColumnsType<MessageHistory['recipients'][number]>>(
-    () => [
-      {
-        title: '사용자 ID',
-        dataIndex: 'userId',
-        width: 110,
-        sorter: createTextSorter((record) => record.userId)
-      },
-      {
-        title: '사용자명',
-        dataIndex: 'userName',
-        width: 100,
-        sorter: createTextSorter((record) => record.userName)
-      },
-      {
-        title: activeChannel === 'mail' ? '이메일' : '디바이스 ID',
-        dataIndex: 'destination',
-        ellipsis: true,
-        sorter: createTextSorter((record) => record.destination)
-      },
-      {
-        title: '유형',
-        dataIndex: 'mode',
-        width: 90,
-        render: (mode: MessageTemplateMode) => getModeLabel(mode),
-        sorter: createTextSorter((record) => record.mode)
-      },
-      {
-        title: '템플릿 이름',
-        dataIndex: 'templateName',
-        width: 140,
-        ellipsis: true,
-        sorter: createTextSorter((record) => record.templateName)
-      },
-      {
-        title: '수신 상태',
-        dataIndex: 'status',
-        width: 100,
-        render: (status: MessageRecipientStatus) => <Tag color={getRecipientStatusColor(status)}>{status}</Tag>,
-        sorter: createTextSorter((record) => record.status)
-      },
-      {
-        title: '발송일',
-        dataIndex: 'sentAt',
-        width: 150,
-        sorter: createTextSorter((record) => record.sentAt)
-      }
-    ],
+    () =>
+      fixDrawerTableFirstColumn([
+        {
+          title: '사용자 ID',
+          dataIndex: 'userId',
+          width: 110,
+          sorter: createTextSorter((record) => record.userId)
+        },
+        {
+          title: '사용자명',
+          dataIndex: 'userName',
+          width: 100,
+          sorter: createTextSorter((record) => record.userName)
+        },
+        {
+          title: activeChannel === 'mail' ? '이메일' : '디바이스 ID',
+          dataIndex: 'destination',
+          ellipsis: true,
+          sorter: createTextSorter((record) => record.destination)
+        },
+        {
+          title: '유형',
+          dataIndex: 'mode',
+          width: 90,
+          render: (mode: MessageTemplateMode) => getModeLabel(mode),
+          sorter: createTextSorter((record) => record.mode)
+        },
+        {
+          title: '템플릿 이름',
+          dataIndex: 'templateName',
+          width: 140,
+          ellipsis: true,
+          sorter: createTextSorter((record) => record.templateName)
+        },
+        {
+          title: createStatusColumnTitle('수신 상태', ['성공', '실패', '예약']),
+          dataIndex: 'status',
+          width: 100,
+          render: (status: MessageRecipientStatus) => (
+            <Tag color={getRecipientStatusColor(status)}>{status}</Tag>
+          ),
+          sorter: createTextSorter((record) => record.status)
+        },
+        {
+          title: '발송일',
+          dataIndex: 'sentAt',
+          width: 150,
+          sorter: createTextSorter((record) => record.sentAt)
+        }
+      ]),
     [activeChannel]
   );
 
@@ -630,7 +640,11 @@ export default function MessageHistoryPage(): JSX.Element {
         }
       >
         {detailRow ? (
-          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+          <Space
+            direction="vertical"
+            size={DRAWER_SECTION_GAP}
+            style={{ width: '100%' }}
+          >
             <Descriptions
               bordered
               size="small"
@@ -663,11 +677,8 @@ export default function MessageHistoryPage(): JSX.Element {
               rowKey="id"
               columns={recipientColumns}
               dataSource={filteredRecipients}
-              pagination={{
-                pageSize: 10,
-                showSizeChanger: false
-              }}
-              scroll={{ x: 980 }}
+              pagination={DRAWER_TABLE_PAGINATION}
+              scroll={createDrawerTableScroll(980)}
             />
           </Space>
         ) : null}

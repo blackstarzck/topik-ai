@@ -32,6 +32,8 @@
 - 코드 주석 정책 원문: `docs/guidelines/comments-rule.md`
 - React 최적화 원문: `docs/guidelines/react-optimization-rule.md`
 - 상태/아키텍처 원문: `docs/architecture/admin-dev-stack.md`, `docs/architecture/admin-frontend-architecture.md`
+- 페이지별 상세 IA 템플릿 원문: `docs/templates/admin-page-ia-template.md`
+- 페이지별 상세 IA 변경 로그: `docs/specs/admin-page-ia-change-log.md`
 - 관리 데이터/B2C 노출 추적 원문: `docs/specs/admin-data-usage-map.md`
 - 운영 점검 요약 허브: `docs/checklists/admin-essential-checklist.md`
 - 본 문서는 실행 지침과 리뷰 게이트만 유지하며, 상세 기술 규칙은 원문에서 단일 관리한다.
@@ -62,6 +64,7 @@
 - 작업 시작 전: 영향 모듈, 품질 축(최소 1개), 파괴적 액션 여부를 먼저 식별한다.
 - 구현 후: 코드/설정/플로우 변경에 따른 MD 문서 영향 평가를 반드시 수행한다.
 - MD 수정이 필요하면 동일 작업에서 즉시 반영하고, 미반영 상태로 작업을 종료하지 않는다.
+- 페이지별 상세 IA 문서(`docs/specs/page-ia/*.md`) 또는 IA 템플릿(`docs/templates/admin-page-ia-template.md`)을 수정한 경우 `docs/specs/admin-page-ia-change-log.md`에도 변경 요약을 같은 작업에서 반드시 기록한다.
 - 관리자 테이블/폼/정적 데이터/정책 데이터가 변경되거나, 해당 데이터의 B2C 노출 위치/사용 맥락이 바뀌면 `docs/specs/admin-data-usage-map.md`를 같은 작업에서 반드시 평가하고 반영한다.
 - `docs/specs/admin-data-usage-map.md`에는 B2C 노출 위치를 `확인됨/운영상 추정/내부 전용/노출 예정` 중 하나로 명시해 추정과 확정을 혼합하지 않는다.
 - 문서 파일(`docs/**`)을 추가/삭제/이동한 경우 `docs/README.md` 인덱스를 같은 작업에서 반드시 갱신한다.
@@ -74,6 +77,7 @@ DO
 - 문서 계약의 용어/범위를 코드 규칙보다 우선 적용한다.
 - 조치 후 검증 가능성(감사 로그 확인 가능)을 항상 보장한다.
 - 변경 영향이 문서에 미치면 관련 MD를 같은 작업에서 함께 업데이트한다.
+- 페이지별 상세 IA 문서나 IA 템플릿을 수정하면 `docs/specs/admin-page-ia-change-log.md`와 `logs/admin-doc-update-log.md`를 함께 갱신한다.
 - 운영 데이터가 B2C 어디에 노출되고 어떻게 사용되는지 `docs/specs/admin-data-usage-map.md`로 추적 가능하게 유지한다.
 - 사용자 노출 UI 라벨은 기본 한글 표기를 유지하고, 동일 개념을 영어/한글로 혼용하지 않는다.
 

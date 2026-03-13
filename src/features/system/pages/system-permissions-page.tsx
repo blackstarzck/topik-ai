@@ -21,6 +21,7 @@ import { Link } from 'react-router-dom';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
+import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 import { usePermissionStore } from '../model/permission-store';
 import { permissionCatalog, roleCatalog } from '../model/permission-types';
@@ -275,7 +276,7 @@ export default function SystemPermissionsPage(): JSX.Element {
         sorter: createTextSorter((record) => record.name)
       },
       {
-        title: '상태',
+        title: createStatusColumnTitle('상태', ['활성', '비활성']),
         dataIndex: 'status',
         width: 90,
         ...createColumnFilterProps(admins, (record) => record.status),
@@ -504,6 +505,7 @@ export default function SystemPermissionsPage(): JSX.Element {
         </Title>
         <Table
           rowKey="adminId"
+          showSorterTooltip={false}
           size="small"
           pagination={false}
           scroll={{ x: 1200 }}
@@ -522,6 +524,7 @@ export default function SystemPermissionsPage(): JSX.Element {
         </Title>
         <Table
           rowKey="key"
+          showSorterTooltip={false}
           size="small"
           pagination={false}
           columns={roleColumns}
@@ -543,6 +546,7 @@ export default function SystemPermissionsPage(): JSX.Element {
         </Paragraph>
         <Table
           rowKey="key"
+          showSorterTooltip={false}
           size="small"
           pagination={false}
           scroll={{ x: 1400 }}
@@ -561,6 +565,7 @@ export default function SystemPermissionsPage(): JSX.Element {
         </Title>
         <Table
           rowKey="id"
+          showSorterTooltip={false}
           size="small"
           pagination={false}
           columns={auditColumns}

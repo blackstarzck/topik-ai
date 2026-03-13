@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from 'react';
 
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
+import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
 import {
   createColumnFilterProps,
   createNumberSorter,
@@ -115,7 +116,7 @@ export default function NotificationHistoryPage(): JSX.Element {
         sorter: createNumberSorter((record) => record.failureCount)
       },
       {
-        title: '상태',
+        title: createStatusColumnTitle('상태', ['성공', '부분 실패', '실패']),
         dataIndex: 'status',
         width: 110,
         ...createColumnFilterProps(rows, (record) => record.status),
@@ -142,6 +143,7 @@ export default function NotificationHistoryPage(): JSX.Element {
       <Card>
         <Table
           rowKey="id"
+          showSorterTooltip={false}
           size="small"
           pagination={false}
           scroll={{ x: 1200 }}

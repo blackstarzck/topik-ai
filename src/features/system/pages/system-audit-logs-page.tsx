@@ -88,6 +88,24 @@ const staticRows: AuditLogRow[] = [
     actor: 'admin_park',
     reason: '운영 정책 위반 확인',
     createdAt: '2026-03-12 10:05:14'
+  },
+  {
+    logId: 'AL-10006',
+    targetType: 'Referral',
+    targetId: 'REF-0001',
+    action: '추천 코드 비활성화',
+    actor: 'admin_kim',
+    reason: '이상치 검토 전 임시 비활성화',
+    createdAt: '2026-03-12 13:22:09'
+  },
+  {
+    logId: 'AL-10007',
+    targetType: 'Referral',
+    targetId: 'REF-0007',
+    action: '보상 수동 조정',
+    actor: 'admin_park',
+    reason: '운영 검토 후 수동 보정',
+    createdAt: '2026-03-12 17:48:33'
   }
 ];
 
@@ -97,6 +115,9 @@ function getTargetRoute(targetType: string, targetId: string): string | null {
   }
   if (targetType === 'Instructor') {
     return `/users/groups?selected=${targetId}`;
+  }
+  if (targetType === 'Referral') {
+    return `/users/referrals?selected=${targetId}`;
   }
   if (targetType === 'Community') {
     return '/community/posts';
@@ -159,6 +180,8 @@ export default function SystemAuditLogsPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedRow, setSelectedRow] = useState<AuditLogRow | null>(null);
   const permissionAudits = usePermissionStore((state) => state.audits);
+  const targetTypeFilter = searchParams.get('targetType') ?? '';
+  const targetIdFilter = searchParams.get('targetId') ?? '';
   const searchField = searchParams.get('searchField') ?? 'all';
   const startDate = parseSearchDate(searchParams.get('startDate'));
   const endDate = parseSearchDate(searchParams.get('endDate'));
@@ -190,6 +213,12 @@ export default function SystemAuditLogsPage(): JSX.Element {
     const normalizedKeyword = keyword.trim().toLowerCase();
 
     return mergedRows.filter((item) => {
+      if (targetTypeFilter && item.targetType !== targetTypeFilter) {
+        return false;
+      }
+      if (targetIdFilter && item.targetId !== targetIdFilter) {
+        return false;
+      }
       if (!matchesSearchDateRange(item.createdAt, startDate, endDate)) {
         return false;
       }
@@ -205,7 +234,15 @@ export default function SystemAuditLogsPage(): JSX.Element {
         action: item.action
       });
     });
-  }, [keyword, mergedRows, searchField, startDate, endDate]);
+  }, [
+    endDate,
+    keyword,
+    mergedRows,
+    searchField,
+    startDate,
+    targetIdFilter,
+    targetTypeFilter
+  ]);
 
   const commitParams = useCallback(
     (

@@ -184,8 +184,8 @@ export const mockInstructors: InstructorDetail[] = Array.from(
           adminName: 'admin_park',
           content:
             assignmentStatus === '조정 필요'
-              ? '담당 학습자 재배정 여부를 다음 운영 회의에서 확인 예정'
-              : '월간 운영 점검 완료',
+              ? '담당 학습자 재배정 여부를 다음 운영 회의에서 확인 예정입니다. 현재 휴면 또는 정지 가능성을 함께 검토하고 있어, 대체 강사 풀 확인과 학습자 안내 문안 준비가 필요합니다.'
+              : '월간 운영 점검 완료. 출결, 과제 회수율, 피드백 SLA를 확인했으며 현재 추가 조치가 필요한 항목은 없습니다.',
           createdAt: formatDateTime((index % 20) + 3, 4)
         },
         {
@@ -193,8 +193,8 @@ export const mockInstructors: InstructorDetail[] = Array.from(
           adminName: 'admin_kim',
           content:
             activityStatus === '휴면'
-              ? '최근 활동이 없어 재참여 안내 메시지 발송 필요'
-              : '학습자 만족도 피드백 정상 수집 중',
+              ? '최근 활동이 없어 재참여 안내 메시지 발송이 필요합니다. 다음 점검일까지 응답이 없으면 담당 과정 정리와 메시지 그룹 분리 여부를 다시 검토합니다.'
+              : '학습자 만족도 피드백 정상 수집 중이며, 최근 문의 이력과 수업 후 설문 결과도 안정적으로 유지되고 있습니다.',
           createdAt: formatDateTime((index % 24) + 6, 2)
         }
       ]

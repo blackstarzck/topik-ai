@@ -18,6 +18,7 @@ import type { UserStatus } from '../model/types';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
+import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
 import {
   createColumnFilterProps,
   createNumberSorter,
@@ -357,7 +358,7 @@ export default function UserDetailPage(): JSX.Element {
         sorter: createTextSorter((record) => record.paidAt)
       },
       {
-        title: '상태',
+        title: createStatusColumnTitle('상태', ['완료', '취소', '환불']),
         dataIndex: 'status',
         width: 100,
         ...createColumnFilterProps(paymentRows, (record) => record.status),
@@ -415,7 +416,7 @@ export default function UserDetailPage(): JSX.Element {
         sorter: createNumberSorter((record) => record.reports)
       },
       {
-        title: '상태',
+        title: createStatusColumnTitle('상태', ['게시', '숨김']),
         dataIndex: 'status',
         width: 110,
         ...createColumnFilterProps(communityRows, (record) => record.status),
@@ -546,6 +547,7 @@ export default function UserDetailPage(): JSX.Element {
         children: (
           <Table
             rowKey="id"
+            showSorterTooltip={false}
             size="small"
             pagination={false}
             dataSource={activityRows}
@@ -563,6 +565,7 @@ export default function UserDetailPage(): JSX.Element {
         children: (
           <Table
             rowKey="id"
+            showSorterTooltip={false}
             size="small"
             pagination={false}
             dataSource={paymentRows}
@@ -580,6 +583,7 @@ export default function UserDetailPage(): JSX.Element {
         children: (
           <Table
             rowKey="id"
+            showSorterTooltip={false}
             size="small"
             pagination={false}
             dataSource={communityRows}
@@ -597,6 +601,7 @@ export default function UserDetailPage(): JSX.Element {
         children: (
           <Table
             rowKey="id"
+            showSorterTooltip={false}
             size="small"
             pagination={false}
             dataSource={logRows}
@@ -614,6 +619,7 @@ export default function UserDetailPage(): JSX.Element {
         children: (
           <Table
             rowKey="id"
+            showSorterTooltip={false}
             size="small"
             pagination={false}
             dataSource={memoRows}

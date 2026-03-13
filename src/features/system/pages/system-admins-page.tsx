@@ -20,6 +20,7 @@ import {
 } from '../../../shared/ui/search-bar/search-bar-utils';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
+import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
 import {
   createNumberSorter,
   createTextSorter
@@ -175,7 +176,7 @@ export default function SystemAdminsPage(): JSX.Element {
         sorter: createTextSorter((record) => record.lastLoginAt)
       },
       {
-        title: '상태',
+        title: createStatusColumnTitle('상태', ['활성', '비활성']),
         dataIndex: 'status',
         width: 110,
         sorter: createTextSorter((record) => record.status),

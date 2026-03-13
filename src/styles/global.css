@@ -112,12 +112,13 @@ body {
 
 .table-navigation-link {
   color: #1677ff;
-  text-decoration: underline;
+  text-decoration: none;
   font-weight: 500;
 }
 
 .table-navigation-link:hover {
   color: #4096ff;
+  text-decoration: none;
 }
 
 .search-bar {

@@ -5,7 +5,6 @@ import {
   Col,
   Descriptions,
   Drawer,
-  List,
   Row,
   Space,
   Tag,
@@ -23,8 +22,11 @@ import {
   useInstructorsQueryStore
 } from '../model/instructors-query-store';
 import type {
+  InstructorAdminNote,
   InstructorActivityStatus,
+  InstructorCourseSummary,
   InstructorDetail,
+  InstructorMessageHistory,
   InstructorQuery,
   InstructorSearchField,
   InstructorStatus
@@ -47,6 +49,13 @@ import {
 } from '../../../shared/ui/search-bar/search-bar-utils';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
+import {
+  createDrawerTableScroll,
+  DRAWER_SECTION_GAP,
+  DRAWER_TABLE_PAGINATION,
+  fixDrawerTableFirstColumn
+} from '../../../shared/ui/table/drawer-table';
+import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
 import {
   createColumnFilterProps,
   createNumberSorter,
@@ -191,6 +200,32 @@ function renderActivityTag(status: InstructorActivityStatus): JSX.Element {
     status === '활성' ? 'green' : status === '주의' ? 'orange' : 'default';
 
   return <Tag color={color}>{status}</Tag>;
+}
+
+function renderCourseStatusTag(
+  status: InstructorCourseSummary['status']
+): JSX.Element {
+  const color =
+    status === '진행 중' ? 'green' : status === '준비 중' ? 'gold' : 'default';
+
+  return <Tag color={color}>{status}</Tag>;
+}
+
+function renderMessageStatusTag(
+  status: InstructorMessageHistory['status']
+): JSX.Element {
+  const color =
+    status === '발송 완료' ? 'green' : status === '예약' ? 'cyan' : 'gold';
+
+  return <Tag color={color}>{status}</Tag>;
+}
+
+function summarizeNoteContent(content: string, maxLength = 52): string {
+  if (content.length <= maxLength) {
+    return content;
+  }
+
+  return `${content.slice(0, maxLength).trimEnd()}...`;
 }
 
 function buildSummaryItems(
@@ -495,7 +530,7 @@ export default function InstructorManagementPage(): JSX.Element {
         sorter: createTextSorter((record) => record.country)
       },
       {
-        title: '계정 상태',
+        title: createStatusColumnTitle('계정 상태', ['정상', '정지', '탈퇴']),
         dataIndex: 'status',
         width: 120,
         ...createColumnFilterProps(visibleInstructors, (record) => record.status),
@@ -503,7 +538,7 @@ export default function InstructorManagementPage(): JSX.Element {
         render: (status: InstructorStatus) => <StatusBadge status={status} />
       },
       {
-        title: '활동 상태',
+        title: createStatusColumnTitle('활동 상태', ['활성', '주의', '휴면']),
         dataIndex: 'activityStatus',
         width: 120,
         ...createColumnFilterProps(
@@ -596,6 +631,124 @@ export default function InstructorManagementPage(): JSX.Element {
       openMessageGroup,
       visibleInstructors
     ]
+  );
+
+  const courseColumns = useMemo<TableColumnsType<InstructorCourseSummary>>(
+    () =>
+      fixDrawerTableFirstColumn([
+        {
+          title: '과정 ID',
+          dataIndex: 'id',
+          width: 120,
+          sorter: createTextSorter((record) => record.id)
+        },
+        {
+          title: '과정명',
+          dataIndex: 'title',
+          ellipsis: true,
+          sorter: createTextSorter((record) => record.title)
+        },
+        {
+          title: '난이도',
+          dataIndex: 'level',
+          width: 120,
+          sorter: createTextSorter((record) => record.level)
+        },
+        {
+          title: '학습자 수',
+          dataIndex: 'studentCount',
+          width: 110,
+          align: 'right',
+          sorter: createNumberSorter((record) => record.studentCount),
+          render: (value: number) => `${value.toLocaleString()}명`
+        },
+        {
+          title: createStatusColumnTitle('과정 상태', [
+            '진행 중',
+            '준비 중',
+            '종료 예정'
+          ]),
+          dataIndex: 'status',
+          width: 120,
+          sorter: createTextSorter((record) => record.status),
+          render: (status: InstructorCourseSummary['status']) =>
+            renderCourseStatusTag(status)
+        }
+      ]),
+    []
+  );
+
+  const messageColumns = useMemo<TableColumnsType<InstructorMessageHistory>>(
+    () =>
+      fixDrawerTableFirstColumn([
+        {
+          title: '발송 ID',
+          dataIndex: 'id',
+          width: 120,
+          sorter: createTextSorter((record) => record.id)
+        },
+        {
+          title: '채널',
+          dataIndex: 'channel',
+          width: 90,
+          sorter: createTextSorter((record) => record.channel)
+        },
+        {
+          title: '제목',
+          dataIndex: 'title',
+          ellipsis: true,
+          sorter: createTextSorter((record) => record.title)
+        },
+        {
+          title: '발송 시각',
+          dataIndex: 'sentAt',
+          width: 150,
+          sorter: createTextSorter((record) => record.sentAt)
+        },
+        {
+          title: createStatusColumnTitle('상태', ['발송 완료', '예약', '초안']),
+          dataIndex: 'status',
+          width: 120,
+          sorter: createTextSorter((record) => record.status),
+          render: (status: InstructorMessageHistory['status']) =>
+            renderMessageStatusTag(status)
+        }
+      ]),
+    []
+  );
+
+  const adminNoteColumns = useMemo<TableColumnsType<InstructorAdminNote>>(
+    () =>
+      fixDrawerTableFirstColumn([
+        {
+          title: '메모 ID',
+          dataIndex: 'id',
+          width: 120,
+          sorter: createTextSorter((record) => record.id)
+        },
+        {
+          title: '작성 관리자',
+          dataIndex: 'adminName',
+          width: 120,
+          sorter: createTextSorter((record) => record.adminName)
+        },
+        {
+          title: '작성일',
+          dataIndex: 'createdAt',
+          width: 150,
+          sorter: createTextSorter((record) => record.createdAt)
+        },
+        {
+          title: '메모 요약',
+          dataIndex: 'content',
+          ellipsis: true,
+          render: (content: string) => (
+            <Text type="secondary">{summarizeNoteContent(content)}</Text>
+          ),
+          sorter: createTextSorter((record) => record.content)
+        }
+      ]),
+    []
   );
 
   const handleRowClick = useCallback(
@@ -812,7 +965,11 @@ export default function InstructorManagementPage(): JSX.Element {
         }
       >
         {selectedInstructor ? (
-          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+          <Space
+            direction="vertical"
+            size={DRAWER_SECTION_GAP}
+            style={{ width: '100%' }}
+          >
             {drawerStatusAlert ? (
               <Alert
                 type={drawerStatusAlert.type}
@@ -852,20 +1009,13 @@ export default function InstructorManagementPage(): JSX.Element {
               <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
                 담당 과정
               </Title>
-              <List
-                bordered
+              <AdminDataTable<InstructorCourseSummary>
+                rowKey="id"
+                columns={courseColumns}
                 dataSource={selectedInstructor.assignedCourses}
+                pagination={DRAWER_TABLE_PAGINATION}
+                scroll={createDrawerTableScroll(760)}
                 locale={{ emptyText: '배정된 과정이 없습니다.' }}
-                renderItem={(course) => (
-                  <List.Item key={course.id}>
-                    <Space direction="vertical" size={0}>
-                      <Text strong>{course.title}</Text>
-                      <Text type="secondary">
-                        {course.level} · 학습자 {course.studentCount}명 · {course.status}
-                      </Text>
-                    </Space>
-                  </List.Item>
-                )}
               />
             </div>
 
@@ -873,20 +1023,13 @@ export default function InstructorManagementPage(): JSX.Element {
               <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
                 최근 메시지 발송 이력
               </Title>
-              <List
-                bordered
+              <AdminDataTable<InstructorMessageHistory>
+                rowKey="id"
+                columns={messageColumns}
                 dataSource={selectedInstructor.recentMessages}
+                pagination={DRAWER_TABLE_PAGINATION}
+                scroll={createDrawerTableScroll(760)}
                 locale={{ emptyText: '최근 발송 이력이 없습니다.' }}
-                renderItem={(message) => (
-                  <List.Item key={message.id}>
-                    <Space direction="vertical" size={0}>
-                      <Text strong>{message.title}</Text>
-                      <Text type="secondary">
-                        {message.channel} · {message.sentAt} · {message.status}
-                      </Text>
-                    </Space>
-                  </List.Item>
-                )}
               />
             </div>
 
@@ -894,19 +1037,25 @@ export default function InstructorManagementPage(): JSX.Element {
               <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
                 관리자 메모
               </Title>
-              <List
-                bordered
+              <AdminDataTable<InstructorAdminNote>
+                rowKey="id"
+                columns={adminNoteColumns}
                 dataSource={selectedInstructor.adminNotes}
+                expandable={{
+                  fixed: 'left',
+                  expandRowByClick: true,
+                  expandedRowRender: (note) => (
+                    <Paragraph
+                      style={{ margin: 0, whiteSpace: 'pre-wrap' }}
+                    >
+                      {note.content}
+                    </Paragraph>
+                  ),
+                  rowExpandable: (note) => Boolean(note.content.trim())
+                }}
+                pagination={DRAWER_TABLE_PAGINATION}
+                scroll={createDrawerTableScroll(760)}
                 locale={{ emptyText: '등록된 관리자 메모가 없습니다.' }}
-                renderItem={(note) => (
-                  <List.Item key={note.id}>
-                    <Space direction="vertical" size={0}>
-                      <Text strong>{note.adminName}</Text>
-                      <Text>{note.content}</Text>
-                      <Text type="secondary">{note.createdAt}</Text>
-                    </Space>
-                  </List.Item>
-                )}
               />
             </div>
           </Space>

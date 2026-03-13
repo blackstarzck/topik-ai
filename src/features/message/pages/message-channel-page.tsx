@@ -43,6 +43,7 @@ import {
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
+import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
 import {
   createColumnFilterProps,
   createTextSorter
@@ -621,7 +622,7 @@ export function MessageChannelPage({
 
       baseColumns.push(
         {
-          title: '상태',
+          title: createStatusColumnTitle('상태', ['활성', '비활성', '초안']),
           dataIndex: 'status',
           width: 100,
           ...createColumnFilterProps(visibleTemplates, (record) => record.status),

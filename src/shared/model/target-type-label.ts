@@ -2,6 +2,7 @@ const targetTypeLabelMap: Record<string, string> = {
   Users: '회원',
   User: '회원',
   Instructor: '강사',
+  Referral: '추천인',
   Community: '커뮤니티',
   Operation: '운영',
   Billing: '커머스',

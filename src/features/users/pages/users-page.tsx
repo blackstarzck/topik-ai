@@ -41,6 +41,7 @@ import {
 } from '../../../shared/ui/search-bar/search-bar-utils';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
+import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
 import {
   createColumnFilterProps,
   createTextSorter
@@ -373,14 +374,14 @@ export default function UsersPage(): JSX.Element {
         sorter: createTextSorter((record) => record.tier)
       },
       {
-        title: '구독 상태',
+        title: createStatusColumnTitle('구독 상태', ['구독', '미구독']),
         dataIndex: 'subscriptionStatus',
         width: 120,
         ...createColumnFilterProps(filteredUsers, (record) => record.subscriptionStatus),
         sorter: createTextSorter((record) => record.subscriptionStatus)
       },
       {
-        title: '회원 상태',
+        title: createStatusColumnTitle('회원 상태', ['정상', '정지', '탈퇴']),
         dataIndex: 'status',
         width: 120,
         ...createColumnFilterProps(filteredUsers, (record) => record.status),

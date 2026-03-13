@@ -56,6 +56,7 @@ import {
 } from '../../../shared/ui/search-bar/search-bar-utils';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
+import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
 import {
   createColumnFilterProps,
   createNumberSorter,
@@ -490,7 +491,7 @@ export default function MessageGroupsPage(): JSX.Element {
         render: (value: number) => `${value.toLocaleString()}명`
       },
       {
-        title: '상태',
+        title: createStatusColumnTitle('상태', ['사용중', '초안']),
         dataIndex: 'status',
         width: 100,
         ...createColumnFilterProps(visibleGroups, (record) => record.status),

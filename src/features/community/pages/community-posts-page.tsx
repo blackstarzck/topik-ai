@@ -32,6 +32,7 @@ import {
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
+import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
 import {
   createColumnFilterProps,
   createNumberSorter,
@@ -290,7 +291,7 @@ export default function CommunityPostsPage(): JSX.Element {
         sorter: createNumberSorter((record) => record.reports)
       },
       {
-        title: '상태',
+        title: createStatusColumnTitle('상태', ['게시', '숨김']),
         dataIndex: 'status',
         width: 100,
         ...createColumnFilterProps(visibleRows, (record) => record.status),

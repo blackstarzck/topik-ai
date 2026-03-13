@@ -30,6 +30,7 @@ import {
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
+import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
 import {
   createColumnFilterProps,
   createTextSorter
@@ -300,7 +301,7 @@ export default function CommunityReportsPage(): JSX.Element {
         sorter: createTextSorter((record) => record.createdAt)
       },
       {
-        title: '처리 상태',
+        title: createStatusColumnTitle('처리 상태', ['처리 대기', '처리 완료']),
         dataIndex: 'processStatus',
         width: 120,
         ...createColumnFilterProps(visibleRows, (record) => record.processStatus),

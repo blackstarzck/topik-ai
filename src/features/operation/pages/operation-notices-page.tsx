@@ -18,6 +18,7 @@ import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action'
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
+import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
 import {
   createColumnFilterProps,
   createTextSorter
@@ -234,7 +235,7 @@ export default function OperationNoticesPage(): JSX.Element {
         sorter: createTextSorter((record) => record.createdAt)
       },
       {
-        title: '상태',
+        title: createStatusColumnTitle('상태', ['게시', '숨김']),
         dataIndex: 'status',
         width: 100,
         ...createColumnFilterProps(rows, (record) => record.status),
@@ -300,6 +301,7 @@ export default function OperationNoticesPage(): JSX.Element {
       >
         <Table
           rowKey="id"
+          showSorterTooltip={false}
           size="small"
           pagination={false}
           scroll={{ x: 1200 }}

@@ -10,6 +10,9 @@ const UsersPage = lazy(() => import('../../features/users/pages/users-page'));
 const InstructorManagementPage = lazy(
   () => import('../../features/users/pages/instructor-management-page')
 );
+const UsersReferralsPage = lazy(
+  () => import('../../features/users/pages/users-referrals-page')
+);
 const UserDetailPage = lazy(
   () => import('../../features/users/pages/user-detail-page')
 );
@@ -75,22 +78,7 @@ export function AppRouter(): JSX.Element {
         <Route path="/users" element={<UsersPage />} />
         <Route path="/users/:userId" element={<UserDetailPage />} />
         <Route path="/users/groups" element={<InstructorManagementPage />} />
-        <Route
-          path="/users/referrals"
-          element={
-            <AdminPlaceholderPage
-              title="추천인 관리"
-              summary="추천 관계와 추천 보상 규칙을 운영하기 위한 화면 자리입니다."
-              ownerRole="OPS_ADMIN"
-              supportingRoles={['SUPER_ADMIN']}
-              capabilities={[
-                '추천인 코드/링크 조회',
-                '추천 실적과 보상 내역 검수',
-                '추천 정책 변경 이력 관리'
-              ]}
-            />
-          }
-        />
+        <Route path="/users/referrals" element={<UsersReferralsPage />} />
 
         <Route path="/community/posts" element={<CommunityPostsPage />} />
         <Route path="/community/reports" element={<CommunityReportsPage />} />
