@@ -3,6 +3,7 @@ import type { TableColumnsType } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
+import { getMockUserById } from '../../users/api/mock-users';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
@@ -19,6 +20,10 @@ import {
 } from '../../../shared/ui/search-bar/search-bar-utils';
 import { createTextSorter } from '../../../shared/ui/table/table-column-utils';
 import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
+import {
+  formatUserDisplayName,
+  UserNavigationLink
+} from '../../../shared/ui/user/user-reference';
 import { usePermissionStore } from '../model/permission-store';
 
 const { Paragraph, Text } = Typography;
@@ -176,6 +181,15 @@ function getTargetRoute(targetType: string, targetId: string): string | null {
   return null;
 }
 
+function getAuditTargetDisplay(record: AuditLogRow): string {
+  if (record.targetType !== 'Users') {
+    return record.targetId;
+  }
+
+  const userName = getMockUserById(record.targetId)?.realName;
+  return userName ? formatUserDisplayName(userName, record.targetId) : record.targetId;
+}
+
 export default function SystemAuditLogsPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedRow, setSelectedRow] = useState<AuditLogRow | null>(null);
@@ -228,7 +242,7 @@ export default function SystemAuditLogsPage(): JSX.Element {
 
       return matchesSearchField(normalizedKeyword, searchField, {
         logId: item.logId,
-        targetId: item.targetId,
+        targetId: getAuditTargetDisplay(item),
         reason: item.reason,
         actor: item.actor,
         action: item.action
@@ -243,6 +257,17 @@ export default function SystemAuditLogsPage(): JSX.Element {
     targetIdFilter,
     targetTypeFilter
   ]);
+
+  const selectedDetailRecord = useMemo(
+    () =>
+      selectedRow
+        ? {
+            ...selectedRow,
+            targetId: getAuditTargetDisplay(selectedRow)
+          }
+        : null,
+    [selectedRow]
+  );
 
   const commitParams = useCallback(
     (
@@ -310,11 +335,24 @@ export default function SystemAuditLogsPage(): JSX.Element {
         title: '대상 ID',
         dataIndex: 'targetId',
         width: 160,
-        sorter: createTextSorter((record) => record.targetId),
+        sorter: createTextSorter((record) => getAuditTargetDisplay(record)),
         render: (value: string, record) => {
           const route = getTargetRoute(record.targetType, value);
           if (!route) {
-            return value;
+            return getAuditTargetDisplay(record);
+          }
+
+          if (record.targetType === 'Users') {
+            const userName = getMockUserById(value)?.realName;
+            if (userName) {
+              return (
+                <UserNavigationLink
+                  stopPropagation
+                  userId={value}
+                  userName={userName}
+                />
+              );
+            }
           }
 
           return (
@@ -323,7 +361,7 @@ export default function SystemAuditLogsPage(): JSX.Element {
               to={route}
               onClick={(event) => event.stopPropagation()}
             >
-              {value}
+              {getAuditTargetDisplay(record)}
             </Link>
           );
         }
@@ -442,7 +480,7 @@ export default function SystemAuditLogsPage(): JSX.Element {
       <TableRowDetailModal
         open={Boolean(selectedRow)}
         title="감사 로그 상세"
-        record={selectedRow}
+        record={selectedDetailRecord}
         labelMap={detailLabelMap}
         onClose={() => setSelectedRow(null)}
       />
