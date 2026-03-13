@@ -22,7 +22,7 @@ import type {
 } from 'antd/es/table/interface';
 import type { ChangeEvent } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { fetchReferralsSafe } from '../api/referrals-service';
 import {
@@ -71,6 +71,7 @@ import {
   createTextSorter
 } from '../../../shared/ui/table/table-column-utils';
 import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
+import { UserNavigationLink } from '../../../shared/ui/user/user-reference';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -263,9 +264,10 @@ function buildBasicInfoItems(
       key: 'referrer',
       label: '추천인 회원',
       children: (
-        <Link to={`/users/${referral.referrerUserId}?tab=profile`}>
-          {referral.referrerName} ({referral.referrerUserId})
-        </Link>
+        <UserNavigationLink
+          userId={referral.referrerUserId}
+          userName={referral.referrerName}
+        />
       )
     },
     { key: 'email', label: '추천인 이메일', children: referral.referrerEmail },
@@ -733,13 +735,11 @@ export default function UsersReferralsPage(): JSX.Element {
         ),
         sorter: createTextSorter((record) => record.referrerName),
         render: (_, record) => (
-          <Link
-            className="table-navigation-link"
-            to={`/users/${record.referrerUserId}?tab=profile`}
-            onClick={(event) => event.stopPropagation()}
-          >
-            {record.referrerName}
-          </Link>
+          <UserNavigationLink
+            stopPropagation
+            userId={record.referrerUserId}
+            userName={record.referrerName}
+          />
         )
       },
       {
@@ -880,12 +880,10 @@ export default function UsersReferralsPage(): JSX.Element {
         dataIndex: 'referredUserName',
         width: 120,
         render: (_, relation) => (
-          <Link
-            className="table-navigation-link"
-            to={`/users/${relation.referredUserId}?tab=profile`}
-          >
-            {relation.referredUserName}
-          </Link>
+          <UserNavigationLink
+            userId={relation.referredUserId}
+            userName={relation.referredUserName}
+          />
         )
       },
       {
@@ -1281,7 +1279,7 @@ export default function UsersReferralsPage(): JSX.Element {
                         rowKey={(entry) => entry.id}
                         columns={rewardLedgerColumns}
                         dataSource={relationEntries}
-                        pagination={DRAWER_TABLE_PAGINATION}
+                        pagination={false}
                         scroll={createDrawerTableScroll(720)}
                         locale={{ emptyText: '이 관계에 연결된 원장 이력이 없습니다.' }}
                       />

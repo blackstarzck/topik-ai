@@ -13,6 +13,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 
 import { useCommerceStore } from '../model/commerce-store';
 import type { RefundRow, RefundStatus } from '../model/commerce-store';
+import { getMockUserById } from '../../users/api/mock-users';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
@@ -35,6 +36,10 @@ import {
   createTextSorter
 } from '../../../shared/ui/table/table-column-utils';
 import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
+import {
+  formatUserDisplayName,
+  UserNavigationLink
+} from '../../../shared/ui/user/user-reference';
 
 const { Paragraph, Text } = Typography;
 
@@ -46,7 +51,7 @@ type PendingAction =
 const detailLabelMap: Record<string, string> = {
   id: '환불 ID',
   paymentId: '결제 ID',
-  userId: '회원 ID',
+  user: '회원',
   userNickname: '닉네임',
   requestedAmount: '요청 금액',
   reason: '환불 사유',
@@ -59,6 +64,10 @@ const detailLabelMap: Record<string, string> = {
 
 function formatCurrency(value: number): string {
   return `₩${value.toLocaleString('ko-KR')}`;
+}
+
+function getRefundUserName(record: Pick<RefundRow, 'userId' | 'userNickname'>): string {
+  return getMockUserById(record.userId)?.realName ?? record.userNickname;
 }
 
 export default function BillingRefundsPage(): JSX.Element {
@@ -96,6 +105,7 @@ export default function BillingRefundsPage(): JSX.Element {
         id: record.id,
         paymentId: record.paymentId,
         userId: record.userId,
+        userName: getRefundUserName(record),
         userNickname: record.userNickname,
         reason: record.reason
       });
@@ -141,8 +151,20 @@ export default function BillingRefundsPage(): JSX.Element {
     () =>
       selectedRow
         ? {
-            ...selectedRow,
-            requestedAmount: formatCurrency(selectedRow.requestedAmount)
+            id: selectedRow.id,
+            paymentId: selectedRow.paymentId,
+            user: formatUserDisplayName(
+              getRefundUserName(selectedRow),
+              selectedRow.userId
+            ),
+            userNickname: selectedRow.userNickname,
+            requestedAmount: formatCurrency(selectedRow.requestedAmount),
+            reason: selectedRow.reason,
+            status: selectedRow.status,
+            requestedAt: selectedRow.requestedAt,
+            processedAt: selectedRow.processedAt,
+            processedBy: selectedRow.processedBy,
+            reviewReason: selectedRow.reviewReason
           }
         : null,
     [selectedRow]
@@ -219,18 +241,15 @@ export default function BillingRefundsPage(): JSX.Element {
         title: '회원',
         key: 'user',
         width: 220,
-        sorter: createTextSorter((record) => record.userId),
+        sorter: createTextSorter((record) => getRefundUserName(record)),
         render: (_, record) => (
-          <>
-            <Link
-              className="table-navigation-link"
-              to={`/users/${record.userId}?tab=payments`}
-              onClick={(event) => event.stopPropagation()}
-            >
-              {record.userId}
-            </Link>{' '}
-            / {record.userNickname}
-          </>
+          <UserNavigationLink
+            stopPropagation
+            tab="payments"
+            userId={record.userId}
+            userName={getRefundUserName(record)}
+            withId
+          />
         )
       },
       {
@@ -318,6 +337,7 @@ export default function BillingRefundsPage(): JSX.Element {
             { label: '환불 ID', value: 'id' },
             { label: '결제 ID', value: 'paymentId' },
             { label: '회원 ID', value: 'userId' },
+            { label: '회원명', value: 'userName' },
             { label: '닉네임', value: 'userNickname' },
             { label: '사유', value: 'reason' }
           ]}

@@ -26,6 +26,7 @@ import {
   createTextSorter
 } from '../../../shared/ui/table/table-column-utils';
 import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
+import { formatUserDisplayName } from '../../../shared/ui/user/user-reference';
 
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
@@ -516,13 +517,17 @@ export default function UserDetailPage(): JSX.Element {
         key: 'profile',
         label: '프로필',
         children: user ? (
-          <Descriptions
-            bordered
-            column={2}
-            items={[
-              { key: 'id', label: '사용자 ID', children: user.id },
-              { key: 'realName', label: '이름', children: user.realName },
-              { key: 'email', label: '이메일', children: user.email },
+              <Descriptions
+                bordered
+                column={2}
+                items={[
+                  { key: 'id', label: '사용자 ID', children: user.id },
+                  {
+                    key: 'realName',
+                    label: '이름',
+                    children: formatUserDisplayName(user.realName, user.id)
+                  },
+                  { key: 'email', label: '이메일', children: user.email },
               { key: 'nickname', label: '닉네임', children: user.nickname },
               { key: 'joinedAt', label: '가입일', children: user.joinedAt },
               { key: 'lastLoginAt', label: '최근 로그인', children: user.lastLoginAt },

@@ -13,6 +13,7 @@ import type { DescriptionsProps, TableColumnsType } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
+import { getMockUserById } from '../../users/api/mock-users';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
@@ -38,6 +39,10 @@ import {
   createNumberSorter,
   createTextSorter
 } from '../../../shared/ui/table/table-column-utils';
+import {
+  formatUserDisplayName,
+  UserNavigationLink
+} from '../../../shared/ui/user/user-reference';
 
 const { Text } = Typography;
 
@@ -62,13 +67,17 @@ type PostActionState =
   | { type: 'delete'; post: CommunityPost }
   | null;
 
+function getCommunityUserName(userId: string, fallbackName: string): string {
+  return getMockUserById(userId)?.realName ?? fallbackName;
+}
+
 const initialRows: CommunityPost[] = [
   {
     id: 'POST-001',
     title: 'TOPIK 필기 노트 공유',
     content:
       'TOPIK 듣기와 읽기 대비용으로 정리한 필기 노트를 공유합니다.\n문제 유형별 포인트와 자주 틀리는 함정을 표로 정리했고, 시험 직전 체크할 항목도 같이 적어두었습니다.',
-    authorName: 'member_12',
+    authorName: getCommunityUserName('U00012', 'member_12'),
     authorId: 'U00012',
     board: '자유게시판',
     createdAt: '2026-03-02',
@@ -82,7 +91,7 @@ const initialRows: CommunityPost[] = [
     title: '운영 정책 문의',
     content:
       '신고 누적 시 제재 기준이 어떻게 적용되는지 문의드립니다.\n경고 누적 기준과 정지 처리 기준이 공지와 실제 운영에서 동일한지 확인하고 싶습니다.',
-    authorName: 'member_47',
+    authorName: getCommunityUserName('U00047', 'member_47'),
     authorId: 'U00047',
     board: '질문',
     createdAt: '2026-03-01',
@@ -96,7 +105,7 @@ const initialRows: CommunityPost[] = [
     title: '시험 후기 공유',
     content:
       '최근 TOPIK 시험 후기를 공유합니다.\n듣기 파트는 예상보다 빨랐고, 쓰기 파트는 시간 배분이 가장 중요했습니다.\n실수했던 포인트도 함께 남겨둡니다.',
-    authorName: 'member_19',
+    authorName: getCommunityUserName('U00019', 'member_19'),
     authorId: 'U00019',
     board: '후기',
     createdAt: '2026-02-28',
@@ -243,13 +252,12 @@ export default function CommunityPostsPage(): JSX.Element {
         ...createColumnFilterProps(visibleRows, (record) => record.authorName),
         sorter: createTextSorter((record) => record.authorName),
         render: (_, record) => (
-          <Link
-            className="table-navigation-link"
-            to={`/users/${record.authorId}?tab=profile`}
-            onClick={(event) => event.stopPropagation()}
-          >
-            {record.authorName}
-          </Link>
+          <UserNavigationLink
+            stopPropagation
+            userId={record.authorId}
+            userName={record.authorName}
+            withId
+          />
         )
       },
       {
@@ -341,7 +349,10 @@ export default function CommunityPostsPage(): JSX.Element {
       {
         key: 'author',
         label: '작성자',
-        children: `${selectedPost.authorName} (${selectedPost.authorId})`
+        children: formatUserDisplayName(
+          selectedPost.authorName,
+          selectedPost.authorId
+        )
       },
       { key: 'board', label: '게시판', children: selectedPost.board },
       { key: 'createdAt', label: '작성일', children: selectedPost.createdAt },

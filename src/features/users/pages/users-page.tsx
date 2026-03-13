@@ -47,6 +47,7 @@ import {
   createTextSorter
 } from '../../../shared/ui/table/table-column-utils';
 import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
+import { UserNavigationLink } from '../../../shared/ui/user/user-reference';
 import type { AsyncState } from '../../../shared/model/async-state';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 
@@ -325,11 +326,21 @@ export default function UsersPage(): JSX.Element {
   const columns = useMemo<TableColumnsType<UserSummary>>(
     () => [
       {
-        title: '사용자 ID',
-        dataIndex: 'id',
-        width: 110,
-        ...createColumnFilterProps(filteredUsers, (record) => record.id),
-        sorter: createTextSorter((record) => record.id)
+        title: '회원',
+        key: 'user',
+        width: 220,
+        ...createColumnFilterProps(
+          filteredUsers,
+          (record) => `${record.realName} ${record.id}`
+        ),
+        sorter: createTextSorter((record) => `${record.realName} ${record.id}`),
+        render: (_, record) => (
+          <UserNavigationLink
+            stopPropagation
+            userId={record.id}
+            userName={record.realName}
+          />
+        )
       },
       {
         title: '이메일',
@@ -337,13 +348,6 @@ export default function UsersPage(): JSX.Element {
         width: 220,
         ...createColumnFilterProps(filteredUsers, (record) => record.email),
         sorter: createTextSorter((record) => record.email)
-      },
-      {
-        title: '이름',
-        dataIndex: 'realName',
-        width: 120,
-        ...createColumnFilterProps(filteredUsers, (record) => record.realName),
-        sorter: createTextSorter((record) => record.realName)
       },
       {
         title: '닉네임',

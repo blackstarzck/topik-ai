@@ -62,6 +62,7 @@ import {
   createTextSorter
 } from '../../../shared/ui/table/table-column-utils';
 import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
+import { formatUserDisplayName } from '../../../shared/ui/user/user-reference';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -233,7 +234,11 @@ function buildSummaryItems(
 ): DescriptionsProps['items'] {
   return [
     { key: 'id', label: '강사 ID', children: instructor.id },
-    { key: 'realName', label: '이름', children: instructor.realName },
+    {
+      key: 'realName',
+      label: '이름',
+      children: formatUserDisplayName(instructor.realName, instructor.id)
+    },
     { key: 'email', label: '이메일', children: instructor.email },
     { key: 'organization', label: '소속', children: instructor.organization },
     { key: 'country', label: '담당 국가', children: instructor.country },

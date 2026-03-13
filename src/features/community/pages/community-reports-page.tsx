@@ -11,6 +11,7 @@ import type { TableColumnsType } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
+import { getMockUserById } from '../../users/api/mock-users';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
@@ -36,6 +37,10 @@ import {
   createTextSorter
 } from '../../../shared/ui/table/table-column-utils';
 import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
+import {
+  formatUserDisplayName,
+  UserNavigationLink
+} from '../../../shared/ui/user/user-reference';
 
 const { Text } = Typography;
 
@@ -45,7 +50,9 @@ type ReportRow = {
   id: string;
   targetPostId: string;
   targetUserId: string;
-  reporter: string;
+  targetUserName: string;
+  reporterId: string;
+  reporterName: string;
   reason: string;
   createdAt: string;
   processStatus: ProcessStatus;
@@ -56,12 +63,18 @@ type ReportActionState =
   | { type: 'suspend-user'; row: ReportRow }
   | null;
 
+function getResolvedUserName(userId: string, fallbackName?: string): string {
+  return getMockUserById(userId)?.realName ?? fallbackName ?? userId;
+}
+
 const initialRows: ReportRow[] = [
   {
     id: 'RP-001',
     targetPostId: 'POST-002',
     targetUserId: 'U00047',
-    reporter: 'member_12',
+    targetUserName: getResolvedUserName('U00047'),
+    reporterId: 'U00012',
+    reporterName: getResolvedUserName('U00012'),
     reason: '욕설 포함',
     createdAt: '2026-03-03 14:12',
     processStatus: '처리 대기'
@@ -70,7 +83,9 @@ const initialRows: ReportRow[] = [
     id: 'RP-002',
     targetPostId: 'POST-010',
     targetUserId: 'U00019',
-    reporter: 'member_31',
+    targetUserName: getResolvedUserName('U00019'),
+    reporterId: 'U00031',
+    reporterName: getResolvedUserName('U00031'),
     reason: '광고성 게시물',
     createdAt: '2026-03-04 09:31',
     processStatus: '처리 대기'
@@ -79,7 +94,9 @@ const initialRows: ReportRow[] = [
     id: 'RP-003',
     targetPostId: 'POST-003',
     targetUserId: 'U00077',
-    reporter: 'member_01',
+    targetUserName: getResolvedUserName('U00077'),
+    reporterId: 'U00001',
+    reporterName: getResolvedUserName('U00001'),
     reason: '스팸',
     createdAt: '2026-03-04 10:05',
     processStatus: '처리 완료'
@@ -89,7 +106,7 @@ const initialRows: ReportRow[] = [
 const detailLabelMap: Record<string, string> = {
   id: '신고 ID',
   targetPostId: '대상 게시글 ID',
-  targetUserId: '대상 사용자 ID',
+  targetUser: '대상 사용자',
   reporter: '신고자',
   reason: '신고 사유',
   createdAt: '신고일',
@@ -166,12 +183,34 @@ export default function CommunityReportsPage(): JSX.Element {
       return matchesSearchField(normalizedKeyword, searchField, {
         id: record.id,
         targetPostId: record.targetPostId,
-        targetUserId: record.targetUserId,
-        reporter: record.reporter,
+        targetUser: `${record.targetUserName} ${record.targetUserId}`,
+        reporter: `${record.reporterName} ${record.reporterId}`,
         reason: record.reason
       });
     });
   }, [endDate, keyword, rows, searchField, startDate]);
+
+  const selectedDetailRecord = useMemo(
+    () =>
+      selectedRow
+        ? {
+            id: selectedRow.id,
+            targetPostId: selectedRow.targetPostId,
+            targetUser: formatUserDisplayName(
+              selectedRow.targetUserName,
+              selectedRow.targetUserId
+            ),
+            reporter: formatUserDisplayName(
+              selectedRow.reporterName,
+              selectedRow.reporterId
+            ),
+            reason: selectedRow.reason,
+            createdAt: selectedRow.createdAt,
+            processStatus: selectedRow.processStatus
+          }
+        : null,
+    [selectedRow]
+  );
 
   const markProcessed = useCallback(
     (row: ReportRow) => {
@@ -264,27 +303,40 @@ export default function CommunityReportsPage(): JSX.Element {
         )
       },
       {
-        title: '대상 사용자 ID',
-        dataIndex: 'targetUserId',
-        width: 140,
-        ...createColumnFilterProps(visibleRows, (record) => record.targetUserId),
-        sorter: createTextSorter((record) => record.targetUserId),
-        render: (targetUserId: string) => (
-          <Link
-            className="table-navigation-link"
-            to={`/users/${targetUserId}?tab=profile`}
-            onClick={(event) => event.stopPropagation()}
-          >
-            {targetUserId}
-          </Link>
+        title: '대상 사용자',
+        dataIndex: 'targetUserName',
+        width: 180,
+        ...createColumnFilterProps(
+          visibleRows,
+          (record) => `${record.targetUserName} ${record.targetUserId}`
+        ),
+        sorter: createTextSorter((record) => record.targetUserName),
+        render: (_, record) => (
+          <UserNavigationLink
+            stopPropagation
+            userId={record.targetUserId}
+            userName={record.targetUserName}
+            withId
+          />
         )
       },
       {
         title: '신고자',
-        dataIndex: 'reporter',
-        width: 130,
-        ...createColumnFilterProps(visibleRows, (record) => record.reporter),
-        sorter: createTextSorter((record) => record.reporter)
+        dataIndex: 'reporterName',
+        width: 180,
+        ...createColumnFilterProps(
+          visibleRows,
+          (record) => `${record.reporterName} ${record.reporterId}`
+        ),
+        sorter: createTextSorter((record) => record.reporterName),
+        render: (_, record) => (
+          <UserNavigationLink
+            stopPropagation
+            userId={record.reporterId}
+            userName={record.reporterName}
+            withId
+          />
+        )
       },
       {
         title: '신고 사유',
@@ -379,7 +431,7 @@ export default function CommunityReportsPage(): JSX.Element {
               { label: '전체', value: 'all' },
               { label: '신고 ID', value: 'id' },
               { label: '게시글 ID', value: 'targetPostId' },
-              { label: '사용자 ID', value: 'targetUserId' },
+              { label: '대상 사용자', value: 'targetUser' },
               { label: '신고자', value: 'reporter' },
               { label: '신고 사유', value: 'reason' }
             ]}
@@ -459,7 +511,7 @@ export default function CommunityReportsPage(): JSX.Element {
       <TableRowDetailModal
         open={Boolean(selectedRow)}
         title="신고 상세"
-        record={selectedRow}
+        record={selectedDetailRecord}
         labelMap={detailLabelMap}
         onClose={() => setSelectedRow(null)}
       />

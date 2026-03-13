@@ -5,6 +5,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 
 import { useCommerceStore } from '../model/commerce-store';
 import type { PaymentRow, PaymentStatus } from '../model/commerce-store';
+import { getMockUserById } from '../../users/api/mock-users';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
   SearchBar,
@@ -25,12 +26,16 @@ import {
   createTextSorter
 } from '../../../shared/ui/table/table-column-utils';
 import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
+import {
+  formatUserDisplayName,
+  UserNavigationLink
+} from '../../../shared/ui/user/user-reference';
 
 const { Paragraph, Text } = Typography;
 
 const detailLabelMap: Record<string, string> = {
   id: '결제 ID',
-  userId: '회원 ID',
+  user: '회원',
   userNickname: '닉네임',
   product: '상품',
   amount: '결제 금액',
@@ -41,6 +46,10 @@ const detailLabelMap: Record<string, string> = {
 
 function formatCurrency(value: number): string {
   return `₩${value.toLocaleString('ko-KR')}`;
+}
+
+function getPaymentUserName(record: Pick<PaymentRow, 'userId' | 'userNickname'>): string {
+  return getMockUserById(record.userId)?.realName ?? record.userNickname;
 }
 
 export default function BillingPaymentsPage(): JSX.Element {
@@ -74,6 +83,7 @@ export default function BillingPaymentsPage(): JSX.Element {
       return matchesSearchField(normalizedKeyword, searchField, {
         id: record.id,
         userId: record.userId,
+        userName: getPaymentUserName(record),
         userNickname: record.userNickname,
         product: record.product
       });
@@ -124,8 +134,17 @@ export default function BillingPaymentsPage(): JSX.Element {
     () =>
       selectedRow
         ? {
-            ...selectedRow,
-            amount: formatCurrency(selectedRow.amount)
+            id: selectedRow.id,
+            user: formatUserDisplayName(
+              getPaymentUserName(selectedRow),
+              selectedRow.userId
+            ),
+            userNickname: selectedRow.userNickname,
+            product: selectedRow.product,
+            amount: formatCurrency(selectedRow.amount),
+            method: selectedRow.method,
+            paidAt: selectedRow.paidAt,
+            status: selectedRow.status
           }
         : null,
     [selectedRow]
@@ -152,18 +171,14 @@ export default function BillingPaymentsPage(): JSX.Element {
         title: '회원',
         key: 'user',
         width: 220,
-        sorter: createTextSorter((record) => record.userId),
+        sorter: createTextSorter((record) => getPaymentUserName(record)),
         render: (_, record) => (
-          <>
-            <Link
-              className="table-navigation-link"
-              to={`/users/${record.userId}?tab=profile`}
-              onClick={(event) => event.stopPropagation()}
-            >
-              {record.userId}
-            </Link>{' '}
-            / {record.userNickname}
-          </>
+          <UserNavigationLink
+            stopPropagation
+            userId={record.userId}
+            userName={getPaymentUserName(record)}
+            withId
+          />
         )
       },
       {
@@ -234,6 +249,7 @@ export default function BillingPaymentsPage(): JSX.Element {
             { label: '전체', value: 'all' },
             { label: '결제 ID', value: 'id' },
             { label: '회원 ID', value: 'userId' },
+            { label: '회원명', value: 'userName' },
             { label: '닉네임', value: 'userNickname' },
             { label: '상품명', value: 'product' }
           ]}

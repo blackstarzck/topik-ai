@@ -61,6 +61,7 @@ import {
   createNumberSorter,
   createTextSorter
 } from '../../../shared/ui/table/table-column-utils';
+import { UserNavigationLink } from '../../../shared/ui/user/user-reference';
 
 const { Paragraph, Text } = Typography;
 type HistoryModeFilter = MessageTemplateMode | 'all';
@@ -409,16 +410,17 @@ export default function MessageHistoryPage(): JSX.Element {
     () =>
       fixDrawerTableFirstColumn([
         {
-          title: '사용자 ID',
-          dataIndex: 'userId',
-          width: 110,
-          sorter: createTextSorter((record) => record.userId)
-        },
-        {
-          title: '사용자명',
-          dataIndex: 'userName',
-          width: 100,
-          sorter: createTextSorter((record) => record.userName)
+          title: '사용자',
+          key: 'user',
+          width: 180,
+          sorter: createTextSorter((record) => `${record.userName} ${record.userId}`),
+          render: (_, record) => (
+            <UserNavigationLink
+              userId={record.userId}
+              userName={record.userName}
+              withId
+            />
+          )
         },
         {
           title: activeChannel === 'mail' ? '이메일' : '디바이스 ID',

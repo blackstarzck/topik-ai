@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+import { mockUsers } from '../../users/api/mock-users';
 import type {
   MessageChannel,
   MessageGroup,
@@ -311,13 +312,17 @@ function createRecipients(options: {
 
   return Array.from({ length: sampleSize }, (_, index) => {
     const isFailure = failureSamples > 0 && index < failureSamples;
-    const userId = `user${String(index + 1).padStart(3, '0')}`;
+    const sampleUser =
+      mockUsers[
+        (options.historyId.length + options.targetCount + index) % mockUsers.length
+      ];
+    const userId = sampleUser.id;
     const normalizedId = `${options.historyId.replaceAll('-', '').toLowerCase()}${String(index + 1).padStart(2, '0')}`;
 
     return {
       id: `${options.historyId}-REC-${String(index + 1).padStart(3, '0')}`,
       userId,
-      userName: SAMPLE_NAMES[index % SAMPLE_NAMES.length],
+      userName: sampleUser.realName || SAMPLE_NAMES[index % SAMPLE_NAMES.length],
       destination:
         options.channel === 'mail'
           ? `${normalizedId}@example.com`
