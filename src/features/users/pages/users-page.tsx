@@ -43,7 +43,7 @@ import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
 import {
-  createColumnFilterProps,
+  createDefinedColumnFilterProps,
   createTextSorter
 } from '../../../shared/ui/table/table-column-utils';
 import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
@@ -54,6 +54,9 @@ import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 const { Text } = Typography;
 
 const pageSizeOptions = ['20', '50', '100'];
+const userTierFilterValues = ['일반', '프리미엄'] as const;
+const userSubscriptionStatusFilterValues = ['구독', '미구독'] as const;
+const userStatusFilterValues = ['정상', '정지', '탈퇴'] as const;
 
 const searchFieldOptions: { label: string; value: UsersSearchField }[] = [
   { label: '전체', value: 'all' },
@@ -222,7 +225,7 @@ export default function UsersPage(): JSX.Element {
     return () => {
       controller.abort();
     };
-  }, [reloadKey]);
+  }, [query.page, query.pageSize, reloadKey]);
 
   const commitQuery = useCallback(
     (next: Partial<UsersQuery>) => {
@@ -329,10 +332,6 @@ export default function UsersPage(): JSX.Element {
         title: '회원',
         key: 'user',
         width: 220,
-        ...createColumnFilterProps(
-          filteredUsers,
-          (record) => `${record.realName} ${record.id}`
-        ),
         sorter: createTextSorter((record) => `${record.realName} ${record.id}`),
         render: (_, record) => (
           <UserNavigationLink
@@ -346,49 +345,48 @@ export default function UsersPage(): JSX.Element {
         title: '이메일',
         dataIndex: 'email',
         width: 220,
-        ...createColumnFilterProps(filteredUsers, (record) => record.email),
         sorter: createTextSorter((record) => record.email)
       },
       {
         title: '닉네임',
         dataIndex: 'nickname',
         width: 160,
-        ...createColumnFilterProps(filteredUsers, (record) => record.nickname),
         sorter: createTextSorter((record) => record.nickname)
       },
       {
         title: '가입일',
         dataIndex: 'joinedAt',
         width: 120,
-        ...createColumnFilterProps(filteredUsers, (record) => record.joinedAt),
         sorter: createTextSorter((record) => record.joinedAt)
       },
       {
         title: '최근 접속',
         dataIndex: 'lastLoginAt',
         width: 120,
-        ...createColumnFilterProps(filteredUsers, (record) => record.lastLoginAt),
         sorter: createTextSorter((record) => record.lastLoginAt)
       },
       {
         title: '등급',
         dataIndex: 'tier',
         width: 120,
-        ...createColumnFilterProps(filteredUsers, (record) => record.tier),
+        ...createDefinedColumnFilterProps(userTierFilterValues, (record) => record.tier),
         sorter: createTextSorter((record) => record.tier)
       },
       {
         title: createStatusColumnTitle('구독 상태', ['구독', '미구독']),
         dataIndex: 'subscriptionStatus',
         width: 120,
-        ...createColumnFilterProps(filteredUsers, (record) => record.subscriptionStatus),
+        ...createDefinedColumnFilterProps(
+          userSubscriptionStatusFilterValues,
+          (record) => record.subscriptionStatus
+        ),
         sorter: createTextSorter((record) => record.subscriptionStatus)
       },
       {
         title: createStatusColumnTitle('회원 상태', ['정상', '정지', '탈퇴']),
         dataIndex: 'status',
         width: 120,
-        ...createColumnFilterProps(filteredUsers, (record) => record.status),
+        ...createDefinedColumnFilterProps(userStatusFilterValues, (record) => record.status),
         sorter: createTextSorter((record) => record.status),
         render: (status: UserStatus) => <StatusBadge status={status} />
       },
@@ -427,7 +425,7 @@ export default function UsersPage(): JSX.Element {
         )
       }
     ],
-    [filteredUsers, handleMemoOpen, handleSuspend, handleUnsuspend]
+    [handleMemoOpen, handleSuspend, handleUnsuspend]
   );
 
   const handleRowClick = useCallback(
@@ -551,7 +549,7 @@ export default function UsersPage(): JSX.Element {
             pageSize: query.pageSize,
             pageSizeOptions,
             showSizeChanger: true,
-            showTotal: (total) => `Total ${total.toLocaleString()}`,
+            showTotal: (total) => `총 ${total.toLocaleString()}건`,
             onChange: (page, pageSize) => {
               commitQuery({
                 page,
@@ -586,7 +584,7 @@ export default function UsersPage(): JSX.Element {
         cancelText="취소"
         onCancel={closeMemoModal}
         onOk={handleMemoSubmit}
-        destroyOnClose
+      destroyOnHidden
       >
         <Form form={memoForm} layout="vertical">
           <Text type="secondary">

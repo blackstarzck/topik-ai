@@ -435,11 +435,6 @@ export default function OperationFaqPage(): JSX.Element {
       </Row>
 
       <AdminListCard
-        extra={
-          <Button type="primary" onClick={openCreateModal}>
-            FAQ 등록
-          </Button>
-        }
         toolbar={
           <SearchBar
             searchField={searchField}
@@ -478,6 +473,11 @@ export default function OperationFaqPage(): JSX.Element {
             summary={
               <Text type="secondary">총 {visibleRows.length.toLocaleString()}건</Text>
             }
+            actions={
+              <Button type="primary" size="large" onClick={openCreateModal}>
+                FAQ 등록
+              </Button>
+            }
           />
         }
       >
@@ -501,7 +501,7 @@ export default function OperationFaqPage(): JSX.Element {
         cancelText="취소"
         onCancel={closeEditor}
         onOk={handleSaveFaq}
-        destroyOnClose
+      destroyOnHidden
       >
         <Form form={form} layout="vertical">
           <Form.Item

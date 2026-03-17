@@ -6,7 +6,7 @@ import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
 import {
-  createColumnFilterProps,
+  createDefinedColumnFilterProps,
   createNumberSorter,
   createTextSorter
 } from '../../../shared/ui/table/table-column-utils';
@@ -23,6 +23,8 @@ type NotificationHistoryRow = {
   failureCount: number;
   status: NotificationSendStatus;
 };
+
+const notificationStatusFilterValues = ['성공', '부분 실패', '실패'] as const;
 
 const rows: NotificationHistoryRow[] = [
   {
@@ -75,28 +77,24 @@ export default function NotificationHistoryPage(): JSX.Element {
         title: '발송 ID',
         dataIndex: 'id',
         width: 110,
-        ...createColumnFilterProps(rows, (record) => record.id),
         sorter: createTextSorter((record) => record.id)
       },
       {
         title: '제목',
         dataIndex: 'title',
         width: 240,
-        ...createColumnFilterProps(rows, (record) => record.title),
         sorter: createTextSorter((record) => record.title)
       },
       {
         title: '발송 대상',
         dataIndex: 'target',
         width: 160,
-        ...createColumnFilterProps(rows, (record) => record.target),
         sorter: createTextSorter((record) => record.target)
       },
       {
         title: '발송 시각',
         dataIndex: 'sentAt',
         width: 180,
-        ...createColumnFilterProps(rows, (record) => record.sentAt),
         sorter: createTextSorter((record) => record.sentAt)
       },
       {
@@ -104,7 +102,6 @@ export default function NotificationHistoryPage(): JSX.Element {
         dataIndex: 'successCount',
         width: 100,
         align: 'right',
-        ...createColumnFilterProps(rows, (record) => record.successCount),
         sorter: createNumberSorter((record) => record.successCount)
       },
       {
@@ -112,14 +109,16 @@ export default function NotificationHistoryPage(): JSX.Element {
         dataIndex: 'failureCount',
         width: 100,
         align: 'right',
-        ...createColumnFilterProps(rows, (record) => record.failureCount),
         sorter: createNumberSorter((record) => record.failureCount)
       },
       {
         title: createStatusColumnTitle('상태', ['성공', '부분 실패', '실패']),
         dataIndex: 'status',
         width: 110,
-        ...createColumnFilterProps(rows, (record) => record.status),
+        ...createDefinedColumnFilterProps(
+          notificationStatusFilterValues,
+          (record) => record.status
+        ),
         sorter: createTextSorter((record) => record.status),
         render: (status: NotificationSendStatus) => <StatusBadge status={status} />
       }

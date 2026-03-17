@@ -20,6 +20,9 @@
 
 ## 4. 공통 강제 원칙
 - 운영 흐름 `검색 -> 상세 -> 조치 -> 감사 로그 확인`을 훼손하지 않는다.
+- 페이지 단위 탭, 검색, 필터, 주요 액션 버튼 같은 상호작용 UI는 반드시 페이지 본문 컨테이너 안에 배치한다. `PageTitle`/브레드크럼과 overlay(`Drawer`, `Modal`, `Popover`)만 예외로 둔다.
+- `등록/추가/생성` 계열 버튼은 본문 기준 테이블 또는 주요 데이터 블록의 우측 상단에 둔다. `SearchBar`가 있으면 같은 줄 우측 끝에 함께 배치한다.
+- 본문 상단의 `등록/추가/생성` 계열 버튼은 항상 Ant Design `size="large"`를 사용한다.
 - 파괴적 액션(정지/삭제/환불/숨김/사용자 정지)은 확인 단계와 사유/근거 입력 수단을 제공한다.
 - 표준 상태값(`정상/정지/탈퇴`, `게시/숨김`, `완료/취소/환불`)을 임의로 변경하지 않는다.
 - 네트워크/서버 상태는 최소 `pending`, `success(result)`, `empty`, `error`를 UI에서 구분해 노출한다.
@@ -31,6 +34,7 @@
 - TypeScript 구현 표준 원문: `docs/guidelines/typescript-essential-checklist.md`
 - 코드 주석 정책 원문: `docs/guidelines/comments-rule.md`
 - React 최적화 원문: `docs/guidelines/react-optimization-rule.md`
+- 행 클릭 상세 Drawer 레이아웃 원문: `docs/guidelines/admin-detail-drawer-guidelines.md`
 - 상태/아키텍처 원문: `docs/architecture/admin-dev-stack.md`, `docs/architecture/admin-frontend-architecture.md`
 - 페이지별 상세 IA 템플릿 원문: `docs/templates/admin-page-ia-template.md`
 - 페이지별 상세 IA 변경 로그: `docs/specs/admin-page-ia-change-log.md`
@@ -45,6 +49,8 @@
 - 최적화/데이터 정합성/영향도/재활용/확장성 5축 중 영향 항목을 작업 결과에 명시한다.
 - 조치성 기능은 `Target Type`, `Target ID`, 감사 로그 확인 경로를 제공한다.
 - URL 복원 시 동일한 목록/필터/정렬/탭 결과가 재현되어야 한다.
+- 페이지 단위 UI가 본문 밖으로 분리되지 않아야 하며, `등록/추가/생성` 버튼은 본문 우측 상단 또는 `SearchBar` 우측 끝에 있어야 한다.
+- 본문 상단의 `등록/추가/생성` 버튼은 항상 `large` 크기여야 한다.
 - 네트워크 상태(`pending/success(empty 포함)/error`)별 UX와 복구 경로(재시도/fallback/가이드)가 확인 가능해야 한다.
 - 통신 실패 시 fail-safe가 동작해 페이지 전체 중단 없이 운영 핵심 흐름을 지속할 수 있어야 한다.
 
@@ -65,6 +71,7 @@
 - 구현 후: 코드/설정/플로우 변경에 따른 MD 문서 영향 평가를 반드시 수행한다.
 - MD 수정이 필요하면 동일 작업에서 즉시 반영하고, 미반영 상태로 작업을 종료하지 않는다.
 - 페이지별 상세 IA 문서(`docs/specs/page-ia/*.md`) 또는 IA 템플릿(`docs/templates/admin-page-ia-template.md`)을 수정한 경우 `docs/specs/admin-page-ia-change-log.md`에도 변경 요약을 같은 작업에서 반드시 기록한다.
+- 행 클릭 상세 Drawer의 헤더/푸터/본문 슬롯 위치, 감사 로그 링크 위치, 섹션 배치, 공용 `DetailDrawer` 사용 규칙이 바뀌면 `docs/guidelines/admin-detail-drawer-guidelines.md`와 관련 공통/페이지 IA 문서를 같은 작업에서 반드시 갱신한다.
 - 관리자 테이블/폼/정적 데이터/정책 데이터가 변경되거나, 해당 데이터의 B2C 노출 위치/사용 맥락이 바뀌면 `docs/specs/admin-data-usage-map.md`를 같은 작업에서 반드시 평가하고 반영한다.
 - `docs/specs/admin-data-usage-map.md`에는 B2C 노출 위치를 `확인됨/운영상 추정/내부 전용/노출 예정` 중 하나로 명시해 추정과 확정을 혼합하지 않는다.
 - 문서 파일(`docs/**`)을 추가/삭제/이동한 경우 `docs/README.md` 인덱스를 같은 작업에서 반드시 갱신한다.
@@ -77,7 +84,10 @@ DO
 - 문서 계약의 용어/범위를 코드 규칙보다 우선 적용한다.
 - 조치 후 검증 가능성(감사 로그 확인 가능)을 항상 보장한다.
 - 변경 영향이 문서에 미치면 관련 MD를 같은 작업에서 함께 업데이트한다.
+- 페이지 단위 UI와 `등록/추가/생성` 버튼 배치 규칙을 공통 문서와 현재 화면 구현에 함께 반영한다.
+- 본문 상단의 `등록/추가/생성` 버튼 크기를 예외 없이 `large`로 통일한다.
 - 페이지별 상세 IA 문서나 IA 템플릿을 수정하면 `docs/specs/admin-page-ia-change-log.md`와 `logs/admin-doc-update-log.md`를 함께 갱신한다.
+- 행 클릭 상세 Drawer 레이아웃 규칙이 바뀌면 `docs/guidelines/admin-detail-drawer-guidelines.md`를 기준 문서로 함께 갱신한다.
 - 운영 데이터가 B2C 어디에 노출되고 어떻게 사용되는지 `docs/specs/admin-data-usage-map.md`로 추적 가능하게 유지한다.
 - 사용자 노출 UI 라벨은 기본 한글 표기를 유지하고, 동일 개념을 영어/한글로 혼용하지 않는다.
 
@@ -85,6 +95,7 @@ DO NOT
 - 정보 부족 또는 코드베이스 불일치를 인지하고도 명시 없이 작업을 진행하지 않는다.
 - `Users`와 `User` 표기를 혼용하지 않는다.
 - `감사 로그`와 `시스템 로그`를 혼용하지 않는다.
+- 페이지 단위 탭/필터/주요 액션 버튼을 카드 헤더 `extra`나 본문 밖 독립 영역에 둔 채 작업을 종료하지 않는다.
 - 사용자에게 보이는 메뉴/브레드크럼/버튼/탭에 영문 기본값을 남긴 채 작업을 종료하지 않는다.
 
 ## 9. 사용자 맞춤 협업 프로토콜 (2026-03-04 합의)

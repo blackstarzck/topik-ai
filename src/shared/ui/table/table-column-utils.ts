@@ -39,16 +39,15 @@ function parseNumericValue(value: Primitive | null | undefined): number {
   return 0;
 }
 
-export function createColumnFilterProps<RecordType>(
-  rows: readonly RecordType[],
+export function createDefinedColumnFilterProps<RecordType>(
+  values: readonly Primitive[],
   accessor: Accessor<RecordType>
 ): {
   filters: { text: string; value: string }[];
-  filterSearch: true;
   onFilter: (value: string | number | boolean, record: RecordType) => boolean;
 } {
   const uniqueValues = Array.from(
-    new Set(rows.flatMap((record) => normalizeValues(accessor(record))))
+    new Set(values.map((value) => normalizeValue(value)).filter(Boolean))
   ).sort(compareText);
 
   return {
@@ -56,7 +55,6 @@ export function createColumnFilterProps<RecordType>(
       text: value,
       value
     })),
-    filterSearch: true,
     onFilter: (value, record) =>
       normalizeValues(accessor(record)).includes(String(value))
   };

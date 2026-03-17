@@ -3,13 +3,15 @@ import {
   BookOutlined,
   CommentOutlined,
   DashboardOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
   MessageOutlined,
   ReadOutlined,
   SettingOutlined,
   ShopOutlined,
   TeamOutlined
 } from '@ant-design/icons';
-import { Layout, Menu, Spin, Tag, Typography } from 'antd';
+import { Button, Grid, Layout, Menu, Spin, Tag, Typography, theme } from 'antd';
 import type { ItemType, MenuItemType } from 'antd/es/menu/interface';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -20,6 +22,9 @@ import { adminMenuLabels, adminRoleLabels } from './admin-labels';
 
 const { Header, Sider, Content } = Layout;
 const { Text, Title } = Typography;
+const { useBreakpoint } = Grid;
+
+const ADMIN_SHELL_SIDEBAR_COLLAPSED_STORAGE_KEY = 'topik-ai-admin:sidebar-collapsed';
 
 type MenuNode = {
   key: string;
@@ -28,6 +33,16 @@ type MenuNode = {
   permissionKeys?: string[];
   children?: MenuNode[];
 };
+
+function readStoredSidebarCollapsed(): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  return (
+    window.localStorage.getItem(ADMIN_SHELL_SIDEBAR_COLLAPSED_STORAGE_KEY) === 'true'
+  );
+}
 
 const menuConfig: MenuNode[] = [
   {
@@ -452,6 +467,12 @@ export function AdminShell(): JSX.Element {
   const location = useLocation();
   const currentAdminId = usePermissionStore((state) => state.currentAdminId);
   const admins = usePermissionStore((state) => state.admins);
+  const {
+    token: { colorBgContainer }
+  } = theme.useToken();
+  const screens = useBreakpoint();
+  const isDesktopViewport = screens.lg ?? true;
+  const isMobileViewport = !isDesktopViewport;
 
   const currentAdmin = useMemo(
     () => admins.find((admin) => admin.adminId === currentAdminId) ?? admins[0] ?? null,
@@ -471,38 +492,85 @@ export function AdminShell(): JSX.Element {
   const selectedKey = resolveSelectedKey(location.pathname);
   const derivedOpenKeys = useMemo(() => resolveOpenKeys(selectedKey), [selectedKey]);
   const [openKeys, setOpenKeys] = useState<string[]>(derivedOpenKeys);
+  const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState<boolean>(
+    readStoredSidebarCollapsed
+  );
+  const [mobileSidebarCollapsed, setMobileSidebarCollapsed] = useState(true);
+  const isSidebarCollapsed = isMobileViewport
+    ? mobileSidebarCollapsed
+    : desktopSidebarCollapsed;
 
   useEffect(() => {
     setOpenKeys(derivedOpenKeys);
   }, [derivedOpenKeys]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.localStorage.setItem(
+      ADMIN_SHELL_SIDEBAR_COLLAPSED_STORAGE_KEY,
+      String(desktopSidebarCollapsed)
+    );
+  }, [desktopSidebarCollapsed]);
+
+  useEffect(() => {
+    setMobileSidebarCollapsed(true);
+  }, [isMobileViewport, location.pathname]);
+
+  const toggleSidebar = () => {
+    if (isMobileViewport) {
+      setMobileSidebarCollapsed((current) => !current);
+      return;
+    }
+
+    setDesktopSidebarCollapsed((current) => !current);
+  };
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider
         width={272}
-        breakpoint="lg"
-        collapsedWidth={76}
+        trigger={null}
+        collapsible
+        collapsed={isSidebarCollapsed}
+        collapsedWidth={isMobileViewport ? 0 : 76}
         style={{
           height: '100vh',
-          position: 'sticky',
+          position: isMobileViewport ? 'fixed' : 'sticky',
           top: 0,
-          overflow: 'auto'
+          left: 0,
+          overflow: 'auto',
+          zIndex: isMobileViewport ? 40 : 1
         }}
       >
         <div
           style={{
             height: 72,
             margin: 12,
-            padding: '12px 14px',
+            padding: isSidebarCollapsed ? '12px 8px' : '12px 14px',
             borderRadius: 10,
             background: '#10233c',
-            color: '#fff'
+            color: '#fff',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: isSidebarCollapsed ? 'center' : 'flex-start',
+            justifyContent: 'center'
           }}
         >
           <Text style={{ color: '#ffffffcc', display: 'block', fontSize: 12 }}>
-            TOPIK AI
+            {isSidebarCollapsed ? 'TA' : 'TOPIK AI'}
           </Text>
-          <Title level={5} style={{ color: '#fff', margin: 0, lineHeight: '22px' }}>
+          <Title
+            level={5}
+            style={{
+              color: '#fff',
+              margin: 0,
+              lineHeight: '22px',
+              display: isSidebarCollapsed ? 'none' : 'block'
+            }}
+          >
             관리자
           </Title>
         </div>
@@ -511,35 +579,85 @@ export function AdminShell(): JSX.Element {
           theme="dark"
           items={menuItems as MenuItemType[]}
           selectedKeys={[selectedKey]}
-          openKeys={openKeys}
+          openKeys={isSidebarCollapsed ? [] : openKeys}
           onOpenChange={(nextOpenKeys) => setOpenKeys(nextOpenKeys)}
+          onClick={() => {
+            if (isMobileViewport) {
+              setMobileSidebarCollapsed(true);
+            }
+          }}
         />
       </Sider>
+      {isMobileViewport && !isSidebarCollapsed ? (
+        <div
+          aria-hidden="true"
+          onClick={() => setMobileSidebarCollapsed(true)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(16, 35, 60, 0.28)',
+            zIndex: 25
+          }}
+        />
+      ) : null}
       <Layout>
         <Header
           style={{
-            background: '#fff',
+            background: colorBgContainer,
             borderBottom: '1px solid #e8edf5',
             paddingInline: 20,
+            paddingBlock: 8,
+            minHeight: 64,
+            height: 'auto',
+            lineHeight: 'normal',
             position: 'sticky',
             top: 0,
-            zIndex: 10,
+            zIndex: isMobileViewport ? 30 : 10,
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 20
+            justifyContent: 'flex-start',
+            flexWrap: 'wrap',
+            gap: 12
           }}
         >
-          <Text type="secondary">
+          <Button
+            type="text"
+            icon={isSidebarCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            onClick={toggleSidebar}
+            aria-label={isSidebarCollapsed ? '사이드바 펼치기' : '사이드바 접기'}
+            style={{
+              width: 48,
+              height: 48,
+              fontSize: 18,
+              flex: '0 0 auto'
+            }}
+          />
+          <Text
+            type="secondary"
+            style={{
+              flex: '1 1 320px',
+              minWidth: 0,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}
+          >
             운영 기본 흐름: 검색 → 상세 → 조치 → 감사 로그 확인
           </Text>
           {currentAdmin ? (
-            <Tag color="blue">
+            <Tag color="blue" style={{ marginInlineStart: 'auto' }}>
               현재 세션: {currentAdmin.name} · {adminRoleLabels[currentAdmin.role]}
             </Tag>
           ) : null}
         </Header>
-        <Content style={{ padding: 20 }}>
+        <Content
+          style={{
+            padding: 20,
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0
+          }}
+        >
           <div key={location.pathname} className="route-transition-container">
             <Suspense
               fallback={

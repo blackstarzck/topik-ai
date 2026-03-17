@@ -3,7 +3,6 @@ import {
   Button,
   Card,
   Descriptions,
-  Drawer,
   Input,
   Space,
   Tabs,
@@ -35,6 +34,11 @@ import type { AsyncState } from '../../../shared/model/async-state';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
+import {
+  DetailDrawer,
+  DetailDrawerBody,
+  DetailDrawerSection
+} from '../../../shared/ui/detail-drawer/detail-drawer';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
   SearchBar,
@@ -51,19 +55,19 @@ import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import {
   createDrawerTableScroll,
-  DRAWER_SECTION_GAP,
   DRAWER_TABLE_PAGINATION,
   fixDrawerTableFirstColumn
 } from '../../../shared/ui/table/drawer-table';
 import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
 import {
-  createColumnFilterProps,
+  createDefinedColumnFilterProps,
   createNumberSorter,
   createTextSorter
 } from '../../../shared/ui/table/table-column-utils';
 import { UserNavigationLink } from '../../../shared/ui/user/user-reference';
 
 const { Paragraph, Text } = Typography;
+const messageHistoryStatusFilterValues = ['완료', '부분 실패', '실패', '예약'] as const;
 type HistoryModeFilter = MessageTemplateMode | 'all';
 
 type HistoryDangerState =
@@ -333,7 +337,6 @@ export default function MessageHistoryPage(): JSX.Element {
         title: '템플릿 이름',
         dataIndex: 'templateName',
         width: 220,
-        ...createColumnFilterProps(visibleRows, (record) => record.templateName),
         sorter: createTextSorter((record) => record.templateName)
       },
       {
@@ -341,7 +344,6 @@ export default function MessageHistoryPage(): JSX.Element {
         dataIndex: 'groupName',
         width: 220,
         ellipsis: true,
-        ...createColumnFilterProps(visibleRows, (record) => record.groupName),
         sorter: createTextSorter((record) => record.groupName)
       },
       {
@@ -349,7 +351,6 @@ export default function MessageHistoryPage(): JSX.Element {
         dataIndex: 'targetCount',
         width: 110,
         align: 'right',
-        ...createColumnFilterProps(visibleRows, (record) => record.targetCount),
         sorter: createNumberSorter((record) => record.targetCount),
         render: (value: number) => `${value.toLocaleString()}명`
       },
@@ -358,7 +359,6 @@ export default function MessageHistoryPage(): JSX.Element {
         dataIndex: 'successCount',
         width: 110,
         align: 'right',
-        ...createColumnFilterProps(visibleRows, (record) => record.successCount),
         sorter: createNumberSorter((record) => record.successCount),
         render: (value: number) => `${value.toLocaleString()}명`
       },
@@ -367,7 +367,6 @@ export default function MessageHistoryPage(): JSX.Element {
         dataIndex: 'failureCount',
         width: 110,
         align: 'right',
-        ...createColumnFilterProps(visibleRows, (record) => record.failureCount),
         sorter: createNumberSorter((record) => record.failureCount),
         render: (value: number) => `${value.toLocaleString()}명`
       },
@@ -375,7 +374,10 @@ export default function MessageHistoryPage(): JSX.Element {
         title: createStatusColumnTitle('상태', ['완료', '부분 실패', '실패', '예약']),
         dataIndex: 'status',
         width: 110,
-        ...createColumnFilterProps(visibleRows, (record) => record.status),
+        ...createDefinedColumnFilterProps(
+          messageHistoryStatusFilterValues,
+          (record) => record.status
+        ),
         sorter: createTextSorter((record) => record.status),
         render: (status: MessageHistoryStatus) => <StatusBadge status={status} />
       },
@@ -383,7 +385,6 @@ export default function MessageHistoryPage(): JSX.Element {
         title: '실행 시각',
         dataIndex: 'sentAt',
         width: 160,
-        ...createColumnFilterProps(visibleRows, (record) => record.sentAt),
         sorter: createTextSorter((record) => record.sentAt)
       },
       {
@@ -403,7 +404,7 @@ export default function MessageHistoryPage(): JSX.Element {
         )
       }
     ],
-    [visibleRows]
+    []
   );
 
   const recipientColumns = useMemo<TableColumnsType<MessageHistory['recipients'][number]>>(
@@ -607,84 +608,85 @@ export default function MessageHistoryPage(): JSX.Element {
         />
       </Card>
 
-      <Drawer
+      <DetailDrawer
         open={Boolean(detailRow)}
-        title={
-          <Space align="center">
-            <span>발송 이력 상세 정보</span>
-            {detailRow ? <StatusBadge status={detailRow.status} /> : null}
-          </Space>
-        }
+        title={detailRow ? `발송 이력 상세 · ${detailRow.id}` : '발송 이력 상세'}
         width={720}
-        destroyOnClose
+      destroyOnHidden
         onClose={() => setDetailRow(null)}
-        footer={
+        headerMeta={
+          detailRow ? <StatusBadge status={detailRow.status} /> : null
+        }
+        footerStart={
           detailRow ? (
-            <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-              <Space>
-                <Button
-                  icon={<ReloadOutlined />}
-                  disabled={detailRow.status === '예약'}
-                  onClick={() => setDangerState({ type: 'retry', history: detailRow })}
-                >
-                  재시도
-                </Button>
-                <Button
-                  icon={<CopyOutlined />}
-                  onClick={() => setDangerState({ type: 'duplicate', history: detailRow })}
-                >
-                  복제 발송
-                </Button>
-              </Space>
-              <Button onClick={() => setDetailRow(null)}>닫기</Button>
+            <AuditLogLink targetType="Message" targetId={detailRow.id} />
+          ) : null
+        }
+        footerEnd={
+          detailRow ? (
+            <Space wrap>
+              <Button
+                icon={<ReloadOutlined />}
+                disabled={detailRow.status === '예약'}
+                onClick={() => setDangerState({ type: 'retry', history: detailRow })}
+              >
+                재시도
+              </Button>
+              <Button
+                icon={<CopyOutlined />}
+                onClick={() => setDangerState({ type: 'duplicate', history: detailRow })}
+              >
+                복제 발송
+              </Button>
             </Space>
           ) : null
         }
       >
         {detailRow ? (
-          <Space
-            direction="vertical"
-            size={DRAWER_SECTION_GAP}
-            style={{ width: '100%' }}
-          >
-            <Descriptions
-              bordered
-              size="small"
-              column={2}
-              items={[
-                { key: 'templateName', label: '템플릿 이름', children: detailRow.templateName },
-                { key: 'groupName', label: '그룹 이름', children: detailRow.groupName },
-                { key: 'targetCount', label: '수신자 수', children: `${detailRow.targetCount.toLocaleString()}명` },
-                { key: 'mode', label: '유형', children: getModeLabel(detailRow.mode) },
-                { key: 'successCount', label: '발송 성공', children: `${detailRow.successCount.toLocaleString()}명` },
-                { key: 'failureCount', label: '발송 실패', children: `${detailRow.failureCount.toLocaleString()}명` },
-                { key: 'actionType', label: '발송 방식', children: detailRow.actionType },
-                { key: 'sentAt', label: '발송일', children: detailRow.scheduledAt ?? detailRow.sentAt }
-              ]}
-            />
+          <DetailDrawerBody>
+            <DetailDrawerSection title="기본 정보">
+              <Descriptions
+                bordered
+                size="small"
+                column={2}
+                items={[
+                  { key: 'templateName', label: '템플릿 이름', children: detailRow.templateName },
+                  { key: 'groupName', label: '그룹 이름', children: detailRow.groupName },
+                  { key: 'targetCount', label: '수신자 수', children: `${detailRow.targetCount.toLocaleString()}명` },
+                  { key: 'mode', label: '유형', children: getModeLabel(detailRow.mode) },
+                  { key: 'successCount', label: '발송 성공', children: `${detailRow.successCount.toLocaleString()}명` },
+                  { key: 'failureCount', label: '발송 실패', children: `${detailRow.failureCount.toLocaleString()}명` },
+                  { key: 'actionType', label: '발송 방식', children: detailRow.actionType },
+                  { key: 'sentAt', label: '발송일', children: detailRow.scheduledAt ?? detailRow.sentAt }
+                ]}
+              />
+            </DetailDrawerSection>
 
-            <Input.Search
-              allowClear
-              value={recipientKeyword}
-              onChange={(event) => setRecipientKeyword(event.target.value)}
-              placeholder="사용자 검색"
-            />
+            <DetailDrawerSection title="수신 상태 검색">
+              <Input.Search
+                allowClear
+                value={recipientKeyword}
+                onChange={(event) => setRecipientKeyword(event.target.value)}
+                placeholder="사용자 검색"
+              />
+              <Text type="secondary">
+                수신자 목록은 샘플 데이터 {detailRow.recipients.length.toLocaleString()}건을 보여줍니다. 총
+                대상 {detailRow.targetCount.toLocaleString()}건 기준으로 성공/실패 집계를 계산했습니다.
+              </Text>
+            </DetailDrawerSection>
 
-            <Text type="secondary">
-              수신자 목록은 샘플 데이터 {detailRow.recipients.length.toLocaleString()}건을 보여줍니다. 총
-              대상 {detailRow.targetCount.toLocaleString()}건 기준으로 성공/실패 집계를 계산했습니다.
-            </Text>
-
-            <AdminDataTable<MessageHistory['recipients'][number]>
-              rowKey="id"
-              columns={recipientColumns}
-              dataSource={filteredRecipients}
-              pagination={DRAWER_TABLE_PAGINATION}
-              scroll={createDrawerTableScroll(980)}
-            />
-          </Space>
+            <DetailDrawerSection title="수신자 샘플">
+              <AdminDataTable<MessageHistory['recipients'][number]>
+                rowKey="id"
+                columns={recipientColumns}
+                dataSource={filteredRecipients}
+                pagination={DRAWER_TABLE_PAGINATION}
+                scroll={createDrawerTableScroll(980)}
+              />
+            </DetailDrawerSection>
+          </DetailDrawerBody>
         ) : null}
-      </Drawer>
+      </DetailDrawer>
 
       {dangerState ? (
         <ConfirmAction

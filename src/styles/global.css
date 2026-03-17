@@ -121,6 +121,74 @@ body {
   text-decoration: none;
 }
 
+.detail-drawer__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detail-drawer__header-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.detail-drawer__footer {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+}
+
+.detail-drawer__footer-start {
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+}
+
+.detail-drawer__footer-end {
+  margin-left: auto;
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.detail-drawer__body {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 32px;
+}
+
+.detail-drawer__section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detail-drawer__section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.detail-drawer__section-title.ant-typography {
+  margin: 0;
+}
+
+.detail-drawer__section-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .search-bar {
   margin: 0 0 16px;
   display: flex;
@@ -151,6 +219,23 @@ body {
   color: #667085;
 }
 
+.search-bar-side {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.search-bar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .search-bar-detail-content {
   display: flex;
   flex-direction: column;
@@ -177,6 +262,25 @@ body {
   gap: 6px;
 }
 
+.admin-data-table .ant-spin-container,
+.admin-data-table .ant-pagination {
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease,
+    filter 160ms ease;
+}
+
+.admin-data-table--loading .ant-spin-container {
+  opacity: 0.72;
+  filter: saturate(0.86);
+  transform: translate3d(0, 2px, 0);
+}
+
+.admin-data-table--loading .ant-pagination {
+  opacity: 0.64;
+  pointer-events: none;
+}
+
 .search-bar-detail-label {
   color: #667085;
   font-size: 12px;
@@ -187,8 +291,111 @@ body {
   margin: 0 0 16px;
 }
 
+.message-channel-card-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.message-channel-card-tabs {
+  margin-bottom: 0;
+}
+
+.message-template-editor-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.message-template-editor-toolbar-actions {
+  margin-left: auto;
+}
+
+.message-template-detail-page {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+}
+
+.message-template-detail-card.ant-card {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.message-template-detail-card .ant-card-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  padding: 24px;
+  overflow: hidden;
+}
+
+.message-template-content-form {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.message-template-content-form .ant-form-item,
+.message-template-content-form .ant-form-item-row,
+.message-template-content-form .ant-form-item-control,
+.message-template-content-form .ant-form-item-control-input,
+.message-template-content-form .ant-form-item-control-input-content,
+.message-template-content-form .message-template-html-editor {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+}
+
+.message-template-html-editor {
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+}
+
+.message-template-html-editor .tox-tinymce {
+  width: 100% !important;
+  border-color: #d7dfeb;
+  border-radius: 12px;
+}
+
+.message-template-form-descriptions .ant-descriptions-item-label {
+  width: 180px;
+}
+
+.message-template-form-descriptions .ant-descriptions-item-content {
+  min-width: 0;
+}
+
+.table-primary-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 16px;
+}
+
 .route-transition-container {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   animation: route-fade-in 220ms ease-out;
+  min-height: 0;
+  min-width: 0;
   transform-origin: 50% 0;
 }
 

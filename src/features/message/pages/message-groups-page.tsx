@@ -58,7 +58,7 @@ import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
 import {
-  createColumnFilterProps,
+  createDefinedColumnFilterProps,
   createNumberSorter,
   createTextSorter
 } from '../../../shared/ui/table/table-column-utils';
@@ -130,6 +130,9 @@ const subscriptionOptions: CheckboxGroupProps<MessageGroupSubscriptionState>['op
   { label: '구독', value: '구독' },
   { label: '구독해지', value: '구독해지' }
 ];
+
+const messageGroupDefinitionTypeFilterValues = ['정적 그룹', '조건 기반 그룹'] as const;
+const messageGroupStatusFilterValues = ['사용중', '초안'] as const;
 
 const activityOptions: CheckboxGroupProps<'활동' | '비활동'>['options'] = [
   { label: '활동', value: '활동' },
@@ -456,7 +459,6 @@ export default function MessageGroupsPage(): JSX.Element {
         title: '그룹 이름',
         dataIndex: 'name',
         width: 180,
-        ...createColumnFilterProps(visibleGroups, (record) => record.name),
         sorter: createTextSorter((record) => record.name)
       },
       {
@@ -464,21 +466,22 @@ export default function MessageGroupsPage(): JSX.Element {
         dataIndex: 'description',
         width: 260,
         ellipsis: true,
-        ...createColumnFilterProps(visibleGroups, (record) => record.description),
         sorter: createTextSorter((record) => record.description)
       },
       {
         title: '정의 방식',
         dataIndex: 'definitionType',
         width: 130,
-        ...createColumnFilterProps(visibleGroups, (record) => record.definitionType),
+        ...createDefinedColumnFilterProps(
+          messageGroupDefinitionTypeFilterValues,
+          (record) => record.definitionType
+        ),
         sorter: createTextSorter((record) => record.definitionType)
       },
       {
         title: '조건 요약',
         dataIndex: 'ruleSummary',
         ellipsis: true,
-        ...createColumnFilterProps(visibleGroups, (record) => record.ruleSummary),
         sorter: createTextSorter((record) => record.ruleSummary)
       },
       {
@@ -486,7 +489,6 @@ export default function MessageGroupsPage(): JSX.Element {
         dataIndex: 'memberCount',
         width: 130,
         align: 'right',
-        ...createColumnFilterProps(visibleGroups, (record) => record.memberCount),
         sorter: createNumberSorter((record) => record.memberCount),
         render: (value: number) => `${value.toLocaleString()}명`
       },
@@ -494,7 +496,10 @@ export default function MessageGroupsPage(): JSX.Element {
         title: createStatusColumnTitle('상태', ['사용중', '초안']),
         dataIndex: 'status',
         width: 100,
-        ...createColumnFilterProps(visibleGroups, (record) => record.status),
+        ...createDefinedColumnFilterProps(
+          messageGroupStatusFilterValues,
+          (record) => record.status
+        ),
         sorter: createTextSorter((record) => record.status),
         render: (status: MessageGroupStatus) => <StatusBadge status={status} />
       },
@@ -527,7 +532,7 @@ export default function MessageGroupsPage(): JSX.Element {
         )
       }
     ],
-    [handleRecalculate, openEditDrawer, visibleGroups]
+    [handleRecalculate, openEditDrawer]
   );
 
   const handleRetryLoad = useCallback(() => {
@@ -603,7 +608,7 @@ export default function MessageGroupsPage(): JSX.Element {
               }
             />
           </div>
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreateDrawer}>
+          <Button type="primary" size="large" icon={<PlusOutlined />} onClick={openCreateDrawer}>
             그룹 추가
           </Button>
         </div>
@@ -642,7 +647,7 @@ export default function MessageGroupsPage(): JSX.Element {
         title={editorState?.type === 'edit' ? '그룹 수정' : '그룹 추가'}
         width={640}
         onClose={closeDrawer}
-        destroyOnClose
+      destroyOnHidden
         extra={
           editorState?.type === 'edit' ? (
             <Text type="secondary">그룹 ID: {editorState.group.id}</Text>

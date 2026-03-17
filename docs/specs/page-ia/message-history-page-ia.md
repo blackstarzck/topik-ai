@@ -130,6 +130,7 @@
 - 현재 코드베이스에서 재사용할 컴포넌트: PageTitle, SearchBar, AdminDataTable, ConfirmAction, AuditLogLink
 - 예상 feature 파일: src/features/message/pages/*
 - 권한/로그 처리 메모: 조회 중심 화면이라도 관련 원본 화면의 감사 로그로 역추적할 수 있어야 합니다.
+- 상세 Drawer 레이아웃 메모: 헤더 오른쪽은 상태 배지만 두고, 푸터 왼쪽은 `감사 로그 확인`, 푸터 오른쪽은 `재시도`/`복제 발송` 버튼을 배치합니다. 공통 기준은 `docs/guidelines/admin-detail-drawer-guidelines.md`를 따릅니다.
 - 구현된 상세 Drawer는 섹션 간 간격을 `32px`로 두고, `수신자 샘플 테이블`에는 첫 번째 열 고정, 최대 5행 높이, 오른쪽 아래 페이지네이션 규칙을 적용합니다.
 
 ## 14. 오픈 이슈

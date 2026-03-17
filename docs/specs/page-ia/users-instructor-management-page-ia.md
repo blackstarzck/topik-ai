@@ -114,6 +114,7 @@
 ## 12. 네트워크 상태와 fail-safe
 
 - pending: 스켈레톤 또는 loading 상태를 표시하고, 직전 성공 데이터가 있으면 유지합니다.
+- page/pageSize 변경 시에도 목록 테이블은 loading 애니메이션을 유지하고, 직전 성공 목록을 fallback으로 남깁니다.
 - success: 정상 결과를 렌더링합니다.
 - empty: 조건에 맞는 데이터가 없음을 페이지 맥락에 맞게 명확히 안내합니다.
 - error: 오류 코드/메시지, 재시도 버튼, 마지막 성공 상태 fallback 문구를 함께 노출합니다.
@@ -125,8 +126,10 @@
 - 현재 코드베이스에서 재사용할 컴포넌트: PageTitle, SearchBar, AdminDataTable, ConfirmAction, AuditLogLink
 - 예상 feature 파일: src/features/users/pages/*
 - 권한/로그 처리 메모: 조회 중심 화면이라도 관련 원본 화면의 감사 로그로 역추적할 수 있어야 합니다.
+- 상세 Drawer 레이아웃 메모: 헤더 오른쪽은 상태/활동 메타만 두고, 푸터 왼쪽은 `감사 로그 확인`, 푸터 오른쪽은 `대상 그룹 보기`와 상태 조치 버튼을 배치합니다. 공통 기준은 `docs/guidelines/admin-detail-drawer-guidelines.md`를 따릅니다.
 - 구현된 상세 Drawer는 컬렉션 섹션을 `List` 대신 테이블로 렌더링하고, `관리자 메모`는 요약 컬럼 + expandable row로 긴 본문을 확인합니다.
 - 구현된 상세 Drawer는 섹션 간 간격을 `32px`로 두고, 각 테이블은 첫 번째 열 고정, 최대 5행 높이, 오른쪽 아래 페이지네이션 규칙을 적용합니다.
+- 목록 재조회 메모: `page`, `pageSize` 변경 시 강사 목록을 다시 조회하고, 공통 `AdminDataTable` loading 애니메이션으로 페이지 전환 상태를 노출합니다.
 
 ## 14. 오픈 이슈
 

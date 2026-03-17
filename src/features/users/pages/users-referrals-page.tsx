@@ -4,7 +4,6 @@ import {
   Card,
   Col,
   Descriptions,
-  Drawer,
   Form,
   Input,
   InputNumber,
@@ -43,6 +42,11 @@ import type {
 import type { AsyncState } from '../../../shared/model/async-state';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
+import {
+  DetailDrawer,
+  DetailDrawerBody,
+  DetailDrawerSection
+} from '../../../shared/ui/detail-drawer/detail-drawer';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
@@ -60,13 +64,11 @@ import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import {
   createDrawerTableScroll,
-  DRAWER_SECTION_GAP,
   DRAWER_TABLE_PAGINATION,
   fixDrawerTableFirstColumn
 } from '../../../shared/ui/table/drawer-table';
 import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
 import {
-  createColumnFilterProps,
   createNumberSorter,
   createTextSorter
 } from '../../../shared/ui/table/table-column-utils';
@@ -406,7 +408,7 @@ export default function UsersReferralsPage(): JSX.Element {
     return () => {
       controller.abort();
     };
-  }, [reloadKey]);
+  }, [query.page, query.pageSize, reloadKey]);
 
   const commitQuery = useCallback(
     (next: Partial<ReferralQuery>) => {
@@ -722,17 +724,12 @@ export default function UsersReferralsPage(): JSX.Element {
         title: '추천 코드',
         dataIndex: 'code',
         width: 150,
-        ...createColumnFilterProps(visibleReferrals, (record) => record.code),
         sorter: createTextSorter((record) => record.code)
       },
       {
         title: '추천인 회원',
         dataIndex: 'referrerName',
         width: 180,
-        ...createColumnFilterProps(
-          visibleReferrals,
-          (record) => `${record.referrerName} ${record.referrerUserId}`
-        ),
         sorter: createTextSorter((record) => record.referrerName),
         render: (_, record) => (
           <UserNavigationLink
@@ -746,10 +743,6 @@ export default function UsersReferralsPage(): JSX.Element {
         title: '피추천인 수',
         dataIndex: 'referredCount',
         width: 120,
-        ...createColumnFilterProps(
-          visibleReferrals,
-          (record) => record.referredCount
-        ),
         sorter: createNumberSorter((record) => record.referredCount),
         render: (value: number) => `${value.toLocaleString()}명`
       },
@@ -757,10 +750,6 @@ export default function UsersReferralsPage(): JSX.Element {
         title: '추천 확정 수',
         dataIndex: 'confirmedCount',
         width: 120,
-        ...createColumnFilterProps(
-          visibleReferrals,
-          (record) => record.confirmedCount
-        ),
         sorter: createNumberSorter((record) => record.confirmedCount),
         render: (value: number) => `${value.toLocaleString()}건`
       },
@@ -768,10 +757,6 @@ export default function UsersReferralsPage(): JSX.Element {
         title: '누적 보상',
         dataIndex: 'totalRewardAmount',
         width: 140,
-        ...createColumnFilterProps(
-          visibleReferrals,
-          (record) => record.totalRewardAmount
-        ),
         sorter: createNumberSorter((record) => record.totalRewardAmount),
         render: (value: number) => formatRewardAmount(value)
       },
@@ -779,10 +764,6 @@ export default function UsersReferralsPage(): JSX.Element {
         title: '최근 사용일',
         dataIndex: 'lastUsedAt',
         width: 160,
-        ...createColumnFilterProps(
-          visibleReferrals,
-          (record) => record.lastUsedAt
-        ),
         sorter: createTextSorter((record) => record.lastUsedAt)
       },
       {
@@ -868,7 +849,6 @@ export default function UsersReferralsPage(): JSX.Element {
       openPointsPage,
       query.anomalyStatus,
       query.status,
-      visibleReferrals
     ]
   );
 
@@ -939,8 +919,7 @@ export default function UsersReferralsPage(): JSX.Element {
   );
 
   const rewardLedgerColumns = useMemo<TableColumnsType<ReferralRewardLedgerEntry>>(
-    () =>
-      fixDrawerTableFirstColumn([
+    () => [
       {
         title: '유형',
         dataIndex: 'entryType',
@@ -971,9 +950,15 @@ export default function UsersReferralsPage(): JSX.Element {
         title: '사유',
         dataIndex: 'reason'
       }
-      ]),
+    ],
     []
   );
+
+  const codeLevelRewardLedgerColumns =
+    useMemo<TableColumnsType<ReferralRewardLedgerEntry>>(
+      () => fixDrawerTableFirstColumn(rewardLedgerColumns),
+      [rewardLedgerColumns]
+    );
 
   const handleRowClick = useCallback(
     (record: ReferralSummary) => ({
@@ -1161,7 +1146,7 @@ export default function UsersReferralsPage(): JSX.Element {
         />
       </AdminListCard>
 
-      <Drawer
+      <DetailDrawer
         open={Boolean(selectedReferral)}
         title={
           selectedReferral
@@ -1170,7 +1155,7 @@ export default function UsersReferralsPage(): JSX.Element {
         }
         width={720}
         onClose={closeDrawer}
-        extra={
+        headerMeta={
           selectedReferral ? (
             <Space>
               <StatusBadge status={selectedReferral.status} />
@@ -1181,57 +1166,52 @@ export default function UsersReferralsPage(): JSX.Element {
             </Space>
           ) : null
         }
-        footer={
+        footerStart={
           selectedReferral ? (
-            <Space
-              style={{ width: '100%', justifyContent: 'space-between' }}
-              wrap
-            >
-              <AuditLogLink
-                targetType="Referral"
-                targetId={selectedReferral.id}
-              />
-              <Space wrap>
+            <AuditLogLink
+              targetType="Referral"
+              targetId={selectedReferral.id}
+            />
+          ) : null
+        }
+        footerEnd={
+          selectedReferral ? (
+            <Space wrap>
+              <Button
+                onClick={() => openPointsPage(selectedReferral.referrerUserId)}
+              >
+                포인트 관리 이동
+              </Button>
+              <Button onClick={() => handleOpenAdjustment(selectedReferral)}>
+                보상 조정
+              </Button>
+              {selectedReferral.anomalyStatus === '검토 필요' ? (
+                <Button onClick={() => handleReviewAnomaly(selectedReferral)}>
+                  이상치 검토 완료
+                </Button>
+              ) : null}
+              {selectedReferral.status === '활성' ? (
                 <Button
-                  onClick={() => openPointsPage(selectedReferral.referrerUserId)}
+                  danger
+                  type="primary"
+                  onClick={() => handleDeactivate(selectedReferral)}
                 >
-                  포인트 관리 이동
+                  코드 비활성화
                 </Button>
-                <Button onClick={() => handleOpenAdjustment(selectedReferral)}>
-                  보상 조정
+              ) : (
+                <Button
+                  type="primary"
+                  onClick={() => handleActivate(selectedReferral)}
+                >
+                  코드 재활성화
                 </Button>
-                {selectedReferral.anomalyStatus === '검토 필요' ? (
-                  <Button onClick={() => handleReviewAnomaly(selectedReferral)}>
-                    이상치 검토 완료
-                  </Button>
-                ) : null}
-                {selectedReferral.status === '활성' ? (
-                  <Button
-                    danger
-                    type="primary"
-                    onClick={() => handleDeactivate(selectedReferral)}
-                  >
-                    코드 비활성화
-                  </Button>
-                ) : (
-                  <Button
-                    type="primary"
-                    onClick={() => handleActivate(selectedReferral)}
-                  >
-                    코드 재활성화
-                  </Button>
-                )}
-              </Space>
+              )}
             </Space>
           ) : null
         }
       >
         {selectedReferral ? (
-          <Space
-            direction="vertical"
-            size={DRAWER_SECTION_GAP}
-            style={{ width: '100%' }}
-          >
+          <DetailDrawerBody>
             {drawerStatusAlert ? (
               <Alert
                 type={drawerStatusAlert.type}
@@ -1241,22 +1221,16 @@ export default function UsersReferralsPage(): JSX.Element {
               />
             ) : null}
 
-            <div>
-              <Title level={5} style={{ marginTop: 0 }}>
-                기본 정보
-              </Title>
+            <DetailDrawerSection title="기본 정보">
               <Descriptions
                 bordered
                 size="small"
                 column={1}
                 items={buildBasicInfoItems(selectedReferral)}
               />
-            </div>
+            </DetailDrawerSection>
 
-            <div>
-              <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
-                추천 관계 및 보상
-              </Title>
+            <DetailDrawerSection title="추천 관계 및 보상">
               <AdminDataTable
                 rowKey={(relation) => relation.id}
                 columns={relationColumns}
@@ -1294,7 +1268,7 @@ export default function UsersReferralsPage(): JSX.Element {
                   </Title>
                   <AdminDataTable
                     rowKey={(entry) => entry.id}
-                    columns={rewardLedgerColumns}
+                    columns={codeLevelRewardLedgerColumns}
                     dataSource={selectedReferralRewardGroups.codeLevelEntries}
                     pagination={DRAWER_TABLE_PAGINATION}
                     scroll={createDrawerTableScroll(720)}
@@ -1302,12 +1276,9 @@ export default function UsersReferralsPage(): JSX.Element {
                   />
                 </div>
               ) : null}
-            </div>
+            </DetailDrawerSection>
 
-            <div>
-              <Title level={5} style={{ marginTop: 0 }}>
-                정책 스냅샷
-              </Title>
+            <DetailDrawerSection title="정책 스냅샷">
               <Descriptions
                 bordered
                 size="small"
@@ -1317,12 +1288,9 @@ export default function UsersReferralsPage(): JSX.Element {
               <Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0 }}>
                 {selectedReferral.policySnapshot.note}
               </Paragraph>
-            </div>
+            </DetailDrawerSection>
 
-            <div>
-              <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
-                이상치 및 운영 메모
-              </Title>
+            <DetailDrawerSection title="이상치 및 운영 메모">
               <Space wrap style={{ marginBottom: 8 }}>
                 {selectedReferral.anomalyFlags.length > 0 ? (
                   selectedReferral.anomalyFlags.map((flag) => (
@@ -1337,10 +1305,10 @@ export default function UsersReferralsPage(): JSX.Element {
               <Paragraph style={{ marginBottom: 0 }}>
                 {selectedReferral.adminMemo}
               </Paragraph>
-            </div>
-          </Space>
+            </DetailDrawerSection>
+          </DetailDrawerBody>
         ) : null}
-      </Drawer>
+      </DetailDrawer>
 
       {actionState ? (
         <ConfirmAction
@@ -1380,7 +1348,7 @@ export default function UsersReferralsPage(): JSX.Element {
         cancelText="취소"
         onCancel={closeAdjustmentModal}
         onOk={handleSubmitAdjustment}
-        destroyOnClose
+      destroyOnHidden
       >
         <Form form={adjustmentForm} layout="vertical">
           <Text type="secondary">

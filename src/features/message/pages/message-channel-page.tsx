@@ -12,7 +12,7 @@ import {
 } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { fetchChannelSnapshotSafe } from '../api/messages-service';
 import { useMessageStore } from '../model/message-store';
@@ -20,9 +20,16 @@ import type {
   MessageChannel,
   MessageGroup,
   MessageTemplate,
-  MessageTemplateMode,
   MessageTemplateStatus
 } from '../model/types';
+import {
+  createEmptyMessageBodyJson,
+  createTemplateMetaDefaults,
+  MessageTemplateFormFields,
+  getMessageChannelMeta,
+  parseMessageTemplateMode,
+  type TemplateMetaFormValues
+} from '../ui/message-template-form-fields';
 import type { AsyncState } from '../../../shared/model/async-state';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
@@ -45,26 +52,16 @@ import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
 import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
 import {
-  createColumnFilterProps,
+  createDefinedColumnFilterProps,
   createTextSorter
 } from '../../../shared/ui/table/table-column-utils';
 
-const { Paragraph, Text } = Typography;
+const { Text } = Typography;
+
+const messageTemplateStatusFilterValues = ['활성', '비활성', '초안'] as const;
 
 type MessageChannelPageProps = {
   channel: MessageChannel;
-};
-
-type TemplateFormValues = {
-  category: string;
-  name: string;
-  summary: string;
-  subject: string;
-  targetGroupIds: string[];
-  status: MessageTemplateStatus;
-  triggerLabel?: string;
-  bodyHtml: string;
-  bodyJson: string;
 };
 
 type TestSendFormValues = {
@@ -80,42 +77,18 @@ type LiveSendFormValues = {
 };
 
 type TemplateEditorState =
-  | { type: 'create' }
-  | { type: 'edit'; template: MessageTemplate }
+  | { kind: 'create' }
+  | { kind: 'edit'; template: MessageTemplate }
   | null;
 
 type DangerState =
   | { type: 'delete'; template: MessageTemplate }
   | {
-      type: 'toggle';
-      template: MessageTemplate;
-      nextStatus: Extract<MessageTemplateStatus, '활성' | '비활성'>;
-    }
-  | null;
-
-function parseMode(value: string | null): MessageTemplateMode {
-  return value === 'manual' ? 'manual' : 'auto';
-}
-
-function getChannelMeta(channel: MessageChannel) {
-  if (channel === 'mail') {
-    return {
-      title: '메일',
-      subjectLabel: '메일 제목',
-      recipientLabel: '테스트 이메일',
-      recipientPlaceholder: 'admin@example.com',
-      categories: ['온보딩', '결제', '운영', '마케팅', '고객 안내']
-    };
+    type: 'toggle';
+    template: MessageTemplate;
+    nextStatus: Extract<MessageTemplateStatus, '활성' | '비활성'>;
   }
-
-  return {
-    title: '푸시',
-    subjectLabel: '푸시 제목',
-    recipientLabel: '테스트 디바이스 토큰',
-    recipientPlaceholder: 'device-token-demo-001',
-    categories: ['운영', '결제', '커뮤니티', '마케팅']
-  };
-}
+  | null;
 
 function renderGroupNames(groups: MessageGroup[], groupIds: string[]): string {
   const names = groups
@@ -124,36 +97,14 @@ function renderGroupNames(groups: MessageGroup[], groupIds: string[]): string {
   return names.length > 0 ? names.join(', ') : '-';
 }
 
-function createTemplateDefaults(
-  channel: MessageChannel,
-  mode: MessageTemplateMode,
-  groups: MessageGroup[]
-): TemplateFormValues {
-  return {
-    category: getChannelMeta(channel).categories[0],
-    name: '',
-    summary: '',
-    subject: '',
-    targetGroupIds: groups.slice(0, 1).map((group) => group.id),
-    status: mode === 'auto' ? '활성' : '초안',
-    triggerLabel: mode === 'auto' ? '이벤트 발생 직후' : undefined,
-    bodyHtml: '<p>메시지 내용을 입력하세요.</p>',
-    bodyJson: JSON.stringify(
-      {
-        blocks: [{ type: 'paragraph', data: { text: '메시지 내용을 입력하세요.' } }]
-      },
-      null,
-      2
-    )
-  };
-}
-
 export function MessageChannelPage({
   channel
 }: MessageChannelPageProps): JSX.Element {
-  const meta = useMemo(() => getChannelMeta(channel), [channel]);
+  const meta = useMemo(() => getMessageChannelMeta(channel), [channel]);
+  const location = useLocation();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeMode = parseMode(searchParams.get('tab'));
+  const activeMode = parseMessageTemplateMode(searchParams.get('tab'));
   const searchField = searchParams.get('searchField') ?? 'all';
   const startDate = parseSearchDate(searchParams.get('startDate'));
   const endDate = parseSearchDate(searchParams.get('endDate'));
@@ -190,12 +141,11 @@ export function MessageChannelPage({
   const [liveTemplate, setLiveTemplate] = useState<MessageTemplate | null>(null);
   const [dangerState, setDangerState] = useState<DangerState>(null);
   const [notificationApi, notificationContextHolder] = notification.useNotification();
-  const [templateForm] = Form.useForm<TemplateFormValues>();
+  const [templateForm] = Form.useForm<TemplateMetaFormValues>();
   const [testForm] = Form.useForm<TestSendFormValues>();
   const [liveSendForm] = Form.useForm<LiveSendFormValues>();
 
   const liveActionType = Form.useWatch('actionType', liveSendForm);
-
   useEffect(() => {
     const controller = new AbortController();
 
@@ -302,10 +252,70 @@ export function MessageChannelPage({
     searchField
   ]);
 
+  useEffect(() => {
+    const state = location.state as
+      | {
+        messageTemplateContentSaved?: {
+          templateId: string;
+          mode: 'auto' | 'manual';
+        };
+      }
+      | null;
+
+    if (!state?.messageTemplateContentSaved) {
+      return;
+    }
+
+    notificationApi.success({
+      message: `${meta.title} 본문 저장 완료`,
+      description: (
+        <Space direction="vertical">
+          <Text>대상 유형: {getTargetTypeLabel('Message')}</Text>
+          <Text>대상 ID: {state.messageTemplateContentSaved.templateId}</Text>
+          <Text>
+            조치:{' '}
+            {state.messageTemplateContentSaved.mode === 'auto'
+              ? '자동 발송 본문 작성'
+              : '수동 발송 본문 작성'}
+          </Text>
+          <AuditLogLink
+            targetType="Message"
+            targetId={state.messageTemplateContentSaved.templateId}
+          />
+        </Space>
+      )
+    });
+
+    navigate(
+      {
+        pathname: location.pathname,
+        search: location.search
+      },
+      {
+        replace: true,
+        state: null
+      }
+    );
+  }, [location.pathname, location.search, location.state, meta.title, navigate, notificationApi]);
+
   const openCreateModal = useCallback(() => {
-    templateForm.setFieldsValue(createTemplateDefaults(channel, activeMode, groups));
-    setEditorState({ type: 'create' });
+    templateForm.setFieldsValue(createTemplateMetaDefaults(channel, activeMode, groups));
+    setEditorState({ kind: 'create' });
   }, [activeMode, channel, groups, templateForm]);
+
+  const openTemplateDetail = useCallback(
+    (template: MessageTemplate) => {
+      const nextSearchParams = new URLSearchParams(searchParams);
+
+      nextSearchParams.set('tab', template.mode);
+
+      navigate({
+        pathname: `/messages/${channel}/create/${template.id}`,
+        search: `?${nextSearchParams.toString()}`
+      });
+    },
+    [channel, navigate, searchParams]
+  );
 
   const openEditModal = useCallback(
     (template: MessageTemplate) => {
@@ -316,43 +326,79 @@ export function MessageChannelPage({
         subject: template.subject,
         targetGroupIds: template.targetGroupIds,
         status: template.status,
-        triggerLabel: template.triggerLabel,
-        bodyHtml: template.bodyHtml,
-        bodyJson: template.bodyJson
+        triggerLabel: template.triggerLabel
       });
-      setEditorState({ type: 'edit', template });
+      setEditorState({ kind: 'edit', template });
     },
     [templateForm]
   );
 
-  const closeEditor = useCallback(() => setEditorState(null), []);
+  const closeEditor = useCallback(() => {
+    templateForm.resetFields();
+    setEditorState(null);
+  }, [templateForm]);
   const closeDanger = useCallback(() => setDangerState(null), []);
   const closePreview = useCallback(() => setPreviewTemplate(null), []);
   const closeTestModal = useCallback(() => setTestTemplate(null), []);
   const closeLiveModal = useCallback(() => setLiveTemplate(null), []);
 
   const handleSaveTemplate = useCallback(async () => {
-    const values = await templateForm.validateFields();
-    const saved = saveTemplate({
-      id: editorState?.type === 'edit' ? editorState.template.id : undefined,
-      channel,
-      mode: activeMode,
-      ...values
-    });
+    if (!editorState) {
+      return;
+    }
+
+    const values = (await templateForm.validateFields()) as TemplateMetaFormValues;
+    const saved =
+      editorState.kind === 'create'
+        ? saveTemplate({
+          channel,
+          mode: activeMode,
+          ...values,
+          bodyHtml: '',
+          bodyJson: createEmptyMessageBodyJson()
+        })
+        : saveTemplate({
+          ...editorState.template,
+          ...values
+        });
 
     notificationApi.success({
-      message: `${meta.title} 템플릿 ${editorState?.type === 'edit' ? '수정' : '등록'} 완료`,
+      message:
+        editorState.kind === 'create'
+          ? `${meta.title} 템플릿 등록 완료`
+          : `${meta.title} 템플릿 정보 수정 완료`,
       description: (
         <Space direction="vertical">
           <Text>대상 유형: {getTargetTypeLabel('Message')}</Text>
           <Text>대상 ID: {saved.id}</Text>
-          <Text>조치: {activeMode === 'auto' ? '자동 발송 템플릿 관리' : '수동 발송 템플릿 관리'}</Text>
+          <Text>
+            조치:{' '}
+            {editorState.kind === 'create'
+              ? activeMode === 'auto'
+                ? '자동 발송 템플릿 등록'
+                : '수동 발송 템플릿 등록'
+              : activeMode === 'auto'
+                ? '자동 발송 템플릿 정보 수정'
+                : '수동 발송 템플릿 정보 수정'}
+          </Text>
+          {editorState.kind === 'create' ? (
+            <Text>다음 단계: 생성된 행을 클릭해 등록 상세에서 본문을 작성하세요.</Text>
+          ) : null}
           <AuditLogLink targetType="Message" targetId={saved.id} />
         </Space>
       )
     });
-    setEditorState(null);
-  }, [activeMode, channel, editorState, meta.title, notificationApi, saveTemplate, templateForm]);
+    closeEditor();
+  }, [
+    activeMode,
+    channel,
+    closeEditor,
+    editorState,
+    meta.title,
+    notificationApi,
+    saveTemplate,
+    templateForm
+  ]);
 
   const handleDangerConfirm = useCallback(
     async (reason: string) => {
@@ -492,8 +538,13 @@ export function MessageChannelPage({
     (template: MessageTemplate) => {
       const commonItems = [
         {
-          key: `edit-${template.id}`,
-          label: activeMode === 'auto' ? '자동 발송 수정' : '수동 발송 수정',
+          key: `detail-${template.id}`,
+          label: '등록 상세 이동',
+          onClick: () => openTemplateDetail(template)
+        },
+        {
+          key: `edit-meta-${template.id}`,
+          label: '템플릿 정보 수정',
           onClick: () => openEditModal(template)
         },
         {
@@ -545,7 +596,7 @@ export function MessageChannelPage({
         }
       ];
     },
-    [activeMode, openEditModal, openLiveSendModal, openTestSendModal]
+    [activeMode, openEditModal, openLiveSendModal, openTemplateDetail, openTestSendModal]
   );
 
   const columns = useMemo<TableColumnsType<MessageTemplate>>(
@@ -555,37 +606,31 @@ export function MessageChannelPage({
           title: '템플릿 ID',
           dataIndex: 'id',
           width: 150,
-          ...createColumnFilterProps(visibleTemplates, (record) => record.id),
           sorter: createTextSorter((record) => record.id)
         },
         {
           title: '카테고리',
           dataIndex: 'category',
           width: 120,
-          ...createColumnFilterProps(visibleTemplates, (record) => record.category),
+          ...createDefinedColumnFilterProps(meta.categories, (record) => record.category),
           sorter: createTextSorter((record) => record.category)
         },
         {
           title: '템플릿명',
           dataIndex: 'name',
           width: 220,
-          ...createColumnFilterProps(visibleTemplates, (record) => record.name),
           sorter: createTextSorter((record) => record.name)
         },
         {
           title: meta.subjectLabel,
           dataIndex: 'subject',
           width: 260,
-          ...createColumnFilterProps(visibleTemplates, (record) => record.subject),
           sorter: createTextSorter((record) => record.subject)
         },
         {
           title: '발송 그룹',
           dataIndex: 'targetGroupIds',
           width: 220,
-          ...createColumnFilterProps(visibleTemplates, (record) =>
-            renderGroupNames(groups, record.targetGroupIds)
-          ),
           sorter: createTextSorter((record) => renderGroupNames(groups, record.targetGroupIds)),
           render: (targetGroupIds: string[]) => renderGroupNames(groups, targetGroupIds)
         }
@@ -597,7 +642,6 @@ export function MessageChannelPage({
             title: '자동 조건',
             dataIndex: 'triggerLabel',
             width: 180,
-            ...createColumnFilterProps(visibleTemplates, (record) => record.triggerLabel ?? ''),
             sorter: createTextSorter((record) => record.triggerLabel ?? ''),
             render: (value?: string) => value ?? '-'
           },
@@ -605,7 +649,6 @@ export function MessageChannelPage({
             title: '최근 발송',
             dataIndex: 'lastSentAt',
             width: 160,
-            ...createColumnFilterProps(visibleTemplates, (record) => record.lastSentAt ?? ''),
             sorter: createTextSorter((record) => record.lastSentAt ?? ''),
             render: (value?: string) => value ?? '-'
           }
@@ -615,7 +658,6 @@ export function MessageChannelPage({
           title: '최근 수정',
           dataIndex: 'updatedAt',
           width: 160,
-          ...createColumnFilterProps(visibleTemplates, (record) => record.updatedAt),
           sorter: createTextSorter((record) => record.updatedAt)
         });
       }
@@ -625,7 +667,10 @@ export function MessageChannelPage({
           title: createStatusColumnTitle('상태', ['활성', '비활성', '초안']),
           dataIndex: 'status',
           width: 100,
-          ...createColumnFilterProps(visibleTemplates, (record) => record.status),
+          ...createDefinedColumnFilterProps(
+            messageTemplateStatusFilterValues,
+            (record) => record.status
+          ),
           sorter: createTextSorter((record) => record.status),
           render: (status: MessageTemplateStatus) => <StatusBadge status={status} />
         },
@@ -644,7 +689,7 @@ export function MessageChannelPage({
 
       return baseColumns;
     },
-    [activeMode, buildActionItems, groups, meta.subjectLabel, visibleTemplates]
+    [activeMode, buildActionItems, groups, meta.categories, meta.subjectLabel]
   );
 
   const tabItems = useMemo(
@@ -667,11 +712,14 @@ export function MessageChannelPage({
 
   const handleRowClick = useCallback(
     (record: MessageTemplate) => ({
-      onClick: () => setPreviewTemplate(record),
+      onClick: () => openTemplateDetail(record),
       style: { cursor: 'pointer' }
     }),
-    []
+    [openTemplateDetail]
   );
+
+  const editorMode =
+    editorState?.kind === 'edit' ? editorState.template.mode : activeMode;
 
   return (
     <div>
@@ -697,67 +745,80 @@ export function MessageChannelPage({
         />
       ) : null}
 
-      <Tabs
-        activeKey={activeMode}
-        items={tabItems}
-            onChange={(nextTab) => commitParams({ tab: nextTab, keyword })}
-        style={{ marginBottom: 12 }}
-      />
-
       <AdminListCard
-        extra={
-          <Button type="primary" onClick={openCreateModal}>
-            {activeMode === 'auto' ? '자동 발송 등록' : '수동 발송 등록'}
-          </Button>
-        }
         toolbar={
-          <SearchBar
-            searchField={searchField}
-            searchFieldOptions={[
-              { label: '전체', value: 'all' },
-              { label: '템플릿 ID', value: 'id' },
-              { label: '템플릿명', value: 'name' },
-              { label: '제목', value: 'subject' },
-              { label: '요약', value: 'summary' }
-            ]}
-            keyword={keyword}
-            onSearchFieldChange={(value) =>
-              commitParams({ searchField: value, tab: activeMode })
-            }
-            onKeywordChange={(event) =>
-              commitParams({
-                keyword: event.target.value,
-                searchField,
-                tab: activeMode
-              })
-            }
-            keywordPlaceholder="검색..."
-            detailTitle="상세 검색"
-            detailContent={
-              <SearchBarDetailField
-                label={activeMode === 'auto' ? '최근 발송일' : '최근 수정일'}
-              >
-                <SearchBarDateRange
-                  startDate={draftStartDate}
-                  endDate={draftEndDate}
-                  onChange={handleDraftDateChange}
-                />
-              </SearchBarDetailField>
-            }
-            onApply={handleApplyDateRange}
-            onDetailOpenChange={handleDetailOpenChange}
-            onReset={handleDraftReset}
-            summary={
-              <Text type="secondary">총 {visibleTemplates.length.toLocaleString()}건</Text>
-            }
-          />
+          <div className="message-channel-card-toolbar">
+            <Tabs
+              activeKey={activeMode}
+              items={tabItems}
+              onChange={(nextTab) => commitParams({ tab: nextTab, keyword })}
+              className="message-channel-card-tabs"
+            />
+            <SearchBar
+              searchField={searchField}
+              searchFieldOptions={[
+                { label: '전체', value: 'all' },
+                { label: '템플릿 ID', value: 'id' },
+                { label: '템플릿명', value: 'name' },
+                { label: '제목', value: 'subject' },
+                { label: '요약', value: 'summary' }
+              ]}
+              keyword={keyword}
+              onSearchFieldChange={(value) =>
+                commitParams({ searchField: value, tab: activeMode })
+              }
+              onKeywordChange={(event) =>
+                commitParams({
+                  keyword: event.target.value,
+                  searchField,
+                  tab: activeMode
+                })
+              }
+              keywordPlaceholder="검색..."
+              detailTitle="상세 검색"
+              detailContent={
+                <SearchBarDetailField
+                  label={activeMode === 'auto' ? '최근 발송일' : '최근 수정일'}
+                >
+                  <SearchBarDateRange
+                    startDate={draftStartDate}
+                    endDate={draftEndDate}
+                    onChange={handleDraftDateChange}
+                  />
+                </SearchBarDetailField>
+              }
+              onApply={handleApplyDateRange}
+              onDetailOpenChange={handleDetailOpenChange}
+              onReset={handleDraftReset}
+              summary={
+                <Text type="secondary">총 {visibleTemplates.length.toLocaleString()}건</Text>
+              }
+              actions={
+                <Button
+                  type="primary"
+                  size="large"
+                  onClick={openCreateModal}
+                  disabled={groups.length === 0}
+                  data-testid={channel === 'mail' ? 'message-mail-create-button' : undefined}
+                >
+                  {activeMode === 'auto'
+                    ? '자동 발송 템플릿 등록'
+                    : '수동 발송 템플릿 등록'}
+                </Button>
+              }
+            />
+          </div>
         }
       >
-        <Paragraph type="secondary" style={{ marginTop: 0 }}>
-          {activeMode === 'auto'
-            ? '이벤트 기반 자동 발송은 활성화/비활성화와 트리거 조건을 함께 관리합니다.'
-            : '수동 발송은 템플릿 저장 후 즉시 발송, 예약 발송, 테스트 발송을 실행할 수 있습니다.'}
-        </Paragraph>
+        {groups.length === 0 ? (
+          <Alert
+            type="warning"
+            showIcon
+            style={{ marginBottom: 12 }}
+            message="선택 가능한 발송 그룹이 없습니다."
+            description="대상 그룹을 먼저 생성한 뒤 템플릿 등록을 진행하세요."
+          />
+        ) : null}
         {loadState.status !== 'pending' && visibleTemplates.length === 0 ? (
           <Alert
             type="info"
@@ -781,107 +842,30 @@ export function MessageChannelPage({
       <Modal
         open={Boolean(editorState)}
         title={
-          editorState?.type === 'edit'
-            ? `${meta.title} 템플릿 수정`
-            : `${meta.title} 템플릿 등록`
+          editorState?.kind === 'create'
+            ? editorMode === 'auto'
+              ? '자동 발송 템플릿 등록'
+              : '수동 발송 템플릿 등록'
+            : editorMode === 'auto'
+              ? '자동 발송 템플릿 정보 수정'
+              : '수동 발송 템플릿 정보 수정'
         }
-        okText="저장"
+        okText={editorState?.kind === 'create' ? '등록' : '저장'}
         cancelText="취소"
-        width={920}
+        width={840}
         onCancel={closeEditor}
         onOk={handleSaveTemplate}
-        destroyOnClose
+      destroyOnHidden
       >
         <Form form={templateForm} layout="vertical">
-          <Space style={{ width: '100%' }} size={16} align="start">
-            <Form.Item
-              label="카테고리"
-              name="category"
-              rules={[{ required: true, message: '카테고리를 선택하세요.' }]}
-              style={{ flex: 1 }}
-            >
-              <Select options={meta.categories.map((category) => ({ label: category, value: category }))} />
-            </Form.Item>
-            <Form.Item
-              label="상태"
-              name="status"
-              rules={[{ required: true, message: '상태를 선택하세요.' }]}
-              style={{ width: 180 }}
-            >
-              <Select
-                options={[
-                  { label: '활성', value: '활성' },
-                  { label: '비활성', value: '비활성' },
-                  { label: '초안', value: '초안' }
-                ]}
-              />
-            </Form.Item>
-          </Space>
-
-          <Form.Item
-            label="템플릿명"
-            name="name"
-            rules={[{ required: true, message: '템플릿명을 입력하세요.' }]}
-          >
-            <Input placeholder={`${meta.title} 템플릿명을 입력하세요.`} />
-          </Form.Item>
-
-          <Form.Item
-            label="요약"
-            name="summary"
-            rules={[{ required: true, message: '운영 요약을 입력하세요.' }]}
-          >
-            <Input placeholder="운영자가 한눈에 파악할 수 있는 요약을 입력하세요." />
-          </Form.Item>
-
-          <Form.Item
-            label={meta.subjectLabel}
-            name="subject"
-            rules={[{ required: true, message: `${meta.subjectLabel}을 입력하세요.` }]}
-          >
-            <Input placeholder={`${meta.subjectLabel}을 입력하세요.`} />
-          </Form.Item>
-
-          <Form.Item
-            label="발송 그룹"
-            name="targetGroupIds"
-            rules={[{ required: true, message: '발송 그룹을 1개 이상 선택하세요.' }]}
-          >
-            <Select
-              mode="multiple"
-              options={groups.map((group) => ({
-                label: `${group.name} (${group.memberCount.toLocaleString()}명)`,
-                value: group.id
-              }))}
-            />
-          </Form.Item>
-
-          {activeMode === 'auto' ? (
-            <Form.Item
-              label="자동 조건"
-              name="triggerLabel"
-              rules={[{ required: true, message: '자동 조건을 입력하세요.' }]}
-            >
-              <Input placeholder="예: 회원 가입 직후, 결제 실패 후 1시간" />
-            </Form.Item>
-          ) : null}
-
-          <Form.Item
-            label="HTML 본문"
-            name="bodyHtml"
-            rules={[{ required: true, message: 'HTML 본문을 입력하세요.' }]}
-          >
-            <Input.TextArea rows={8} placeholder="<p>HTML 템플릿 내용을 입력하세요.</p>" />
-          </Form.Item>
-
-          <Form.Item
-            label="JSON 본문"
-            name="bodyJson"
-            rules={[{ required: true, message: 'JSON 본문을 입력하세요.' }]}
-            style={{ marginBottom: 0 }}
-          >
-            <Input.TextArea rows={8} placeholder='{"blocks":[]}' />
-          </Form.Item>
+          <MessageTemplateFormFields
+            channel={channel}
+            mode={editorMode}
+            groups={groups}
+            variant="descriptions"
+            showBodyHtml={false}
+            showJsonBody={false}
+          />
         </Form>
       </Modal>
 
@@ -895,7 +879,7 @@ export function MessageChannelPage({
         ]}
         width={920}
         onCancel={closePreview}
-        destroyOnClose
+        destroyOnHidden
       >
         {previewTemplate ? (
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
@@ -950,7 +934,7 @@ export function MessageChannelPage({
         cancelText="취소"
         onCancel={closeTestModal}
         onOk={handleTestSend}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={testForm} layout="vertical">
           <Form.Item
@@ -978,7 +962,7 @@ export function MessageChannelPage({
         cancelText="취소"
         onCancel={closeLiveModal}
         onOk={handleLiveSend}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={liveSendForm} layout="vertical">
           <Form.Item

@@ -1,8 +1,14 @@
-import { Alert, Form, Input, Modal, Typography } from 'antd';
+import { Alert, Form, Input, Modal, Select, Typography } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { getTargetTypeLabel } from '../../model/target-type-label';
 
 const { Text } = Typography;
+
+type ConfirmActionPolicyCodeOption = {
+  label: string;
+  value: string;
+  description?: string;
+};
 
 type ConfirmActionProps = {
   open: boolean;
@@ -12,8 +18,17 @@ type ConfirmActionProps = {
   targetId: string;
   confirmText: string;
   requireReason?: boolean;
+  reasonLabel?: string;
+  reasonPlaceholder?: string;
+  policyCodeLabel?: string;
+  policyCodeOptions?: ConfirmActionPolicyCodeOption[];
+  policyCodePlaceholder?: string;
+  requirePolicyCode?: boolean;
   onCancel: () => void;
-  onConfirm: (reason: string) => Promise<void> | void;
+  onConfirm: (
+    reason: string,
+    context?: { policyCode?: string }
+  ) => Promise<void> | void;
 };
 
 export function ConfirmAction({
@@ -24,30 +39,50 @@ export function ConfirmAction({
   targetId,
   confirmText,
   requireReason = true,
+  reasonLabel = '사유/근거',
+  reasonPlaceholder = '조치 사유를 입력하세요.',
+  policyCodeLabel = '정책 코드',
+  policyCodeOptions,
+  policyCodePlaceholder = '정책 코드를 선택하세요.',
+  requirePolicyCode = false,
   onCancel,
   onConfirm
 }: ConfirmActionProps): JSX.Element {
   const [reason, setReason] = useState('');
+  const [policyCode, setPolicyCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!open) {
       setReason('');
+      setPolicyCode('');
       setSubmitting(false);
     }
   }, [open]);
 
   const isDisabled = useMemo(() => {
-    if (!requireReason) {
-      return false;
+    if (requireReason && reason.trim().length === 0) {
+      return true;
     }
-    return reason.trim().length === 0;
-  }, [reason, requireReason]);
+    if (requirePolicyCode && policyCode.trim().length === 0) {
+      return true;
+    }
+    return false;
+  }, [policyCode, reason, requirePolicyCode, requireReason]);
+
+  const selectedPolicyCodeDescription = useMemo(
+    () =>
+      policyCodeOptions?.find((option) => option.value === policyCode)?.description ??
+      '',
+    [policyCode, policyCodeOptions]
+  );
 
   const handleConfirm = async (): Promise<void> => {
     setSubmitting(true);
     try {
-      await onConfirm(reason.trim());
+      await onConfirm(reason.trim(), {
+        policyCode: policyCode.trim() || undefined
+      });
     } finally {
       setSubmitting(false);
     }
@@ -62,7 +97,7 @@ export function ConfirmAction({
       okButtonProps={{ danger: true, disabled: isDisabled, loading: submitting }}
       onCancel={onCancel}
       onOk={handleConfirm}
-      destroyOnClose
+      destroyOnHidden
     >
       <Form layout="vertical">
         <Alert
@@ -75,8 +110,30 @@ export function ConfirmAction({
         <Text type="secondary">
           대상 유형: {getTargetTypeLabel(targetType)} / 대상 ID: {targetId}
         </Text>
+        {policyCodeOptions?.length ? (
+          <Form.Item
+            label={policyCodeLabel}
+            required={requirePolicyCode}
+            style={{ marginTop: 12, marginBottom: 0 }}
+          >
+            <Select
+              value={policyCode || undefined}
+              options={policyCodeOptions}
+              placeholder={policyCodePlaceholder}
+              onChange={(value) => setPolicyCode(value)}
+            />
+            {selectedPolicyCodeDescription ? (
+              <Text
+                type="secondary"
+                style={{ display: 'block', marginTop: 8 }}
+              >
+                {selectedPolicyCodeDescription}
+              </Text>
+            ) : null}
+          </Form.Item>
+        ) : null}
         <Form.Item
-          label="사유/근거"
+          label={reasonLabel}
           required={requireReason}
           style={{ marginTop: 12, marginBottom: 0 }}
         >
@@ -84,7 +141,7 @@ export function ConfirmAction({
             rows={4}
             value={reason}
             onChange={(event) => setReason(event.target.value)}
-            placeholder="조치 사유를 입력하세요."
+            placeholder={reasonPlaceholder}
           />
         </Form.Item>
       </Form>

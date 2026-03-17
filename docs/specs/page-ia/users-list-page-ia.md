@@ -109,6 +109,7 @@
 ## 12. 네트워크 상태와 fail-safe
 
 - pending: 스켈레톤 또는 loading 상태를 표시하고, 직전 성공 데이터가 있으면 유지합니다.
+- page/pageSize 변경 시에도 테이블 본문은 loading 애니메이션을 유지하고, 직전 성공 목록을 fallback으로 남깁니다.
 - success: 정상 결과를 렌더링합니다.
 - empty: 조건에 맞는 데이터가 없음을 페이지 맥락에 맞게 명확히 안내합니다.
 - error: 오류 코드/메시지, 재시도 버튼, 마지막 성공 상태 fallback 문구를 함께 노출합니다.
@@ -120,6 +121,7 @@
 - 현재 코드베이스에서 재사용할 컴포넌트: PageTitle, SearchBar, AdminDataTable, ConfirmAction, AuditLogLink
 - 예상 feature 파일: src/features/users/pages/*
 - 권한/로그 처리 메모: 파괴적 액션에는 확인 단계와 사유 입력, Target Type, Target ID, 감사 로그 확인 경로를 함께 둡니다.
+- 목록 재조회 메모: `page`, `pageSize` 변경 시 목록을 다시 조회하고, 공통 `AdminDataTable` loading 애니메이션으로 페이지 전환 상태를 노출합니다.
 
 ## 14. 오픈 이슈
 

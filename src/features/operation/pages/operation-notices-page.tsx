@@ -20,7 +20,7 @@ import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
 import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
 import {
-  createColumnFilterProps,
+  createDefinedColumnFilterProps,
   createTextSorter
 } from '../../../shared/ui/table/table-column-utils';
 import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
@@ -37,6 +37,8 @@ type NoticeRow = {
   createdAt: string;
   status: NoticeStatus;
 };
+
+const noticeStatusFilterValues = ['게시', '숨김'] as const;
 
 type NoticeFormValue = {
   title: string;
@@ -201,21 +203,18 @@ export default function OperationNoticesPage(): JSX.Element {
         title: '공지 ID',
         dataIndex: 'id',
         width: 130,
-        ...createColumnFilterProps(rows, (record) => record.id),
         sorter: createTextSorter((record) => record.id)
       },
       {
         title: '제목',
         dataIndex: 'title',
         width: 320,
-        ...createColumnFilterProps(rows, (record) => record.title),
         sorter: createTextSorter((record) => record.title)
       },
       {
         title: '작성자',
         dataIndex: 'author',
         width: 130,
-        ...createColumnFilterProps(rows, (record) => record.author),
         sorter: createTextSorter((record) => record.author),
         render: (author: string) => (
           <Link
@@ -231,14 +230,13 @@ export default function OperationNoticesPage(): JSX.Element {
         title: '작성일',
         dataIndex: 'createdAt',
         width: 120,
-        ...createColumnFilterProps(rows, (record) => record.createdAt),
         sorter: createTextSorter((record) => record.createdAt)
       },
       {
         title: createStatusColumnTitle('상태', ['게시', '숨김']),
         dataIndex: 'status',
         width: 100,
-        ...createColumnFilterProps(rows, (record) => record.status),
+        ...createDefinedColumnFilterProps(noticeStatusFilterValues, (record) => record.status),
         sorter: createTextSorter((record) => record.status),
         render: (status: NoticeStatus) => <StatusBadge status={status} />
       },
@@ -276,7 +274,7 @@ export default function OperationNoticesPage(): JSX.Element {
         )
       }
     ],
-    [openEditModal, rows]
+    [openEditModal]
   );
 
   const handleRowClick = useCallback(
@@ -293,12 +291,12 @@ export default function OperationNoticesPage(): JSX.Element {
       <PageTitle title="공지사항" />
 
       <Card
-        extra={
-          <Button type="primary" onClick={openCreateModal}>
+      >
+        <div className="table-primary-actions">
+          <Button type="primary" size="large" onClick={openCreateModal}>
             공지 등록
           </Button>
-        }
-      >
+        </div>
         <Table
           rowKey="id"
           showSorterTooltip={false}

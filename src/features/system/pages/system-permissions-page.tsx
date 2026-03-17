@@ -33,13 +33,16 @@ import type {
 
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
-  createColumnFilterProps,
+  createDefinedColumnFilterProps,
   createNumberSorter,
   createTextSorter
 } from '../../../shared/ui/table/table-column-utils';
 import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
 
 const { Paragraph, Text, Title } = Typography;
+
+const adminStatusFilterValues = ['활성', '비활성'] as const;
+const permissionAuditActionFilterValues = ['권한 부여', '권한 수정', '권한 회수'] as const;
 
 type PermissionModalMode = 'grant' | 'update' | 'revoke';
 
@@ -256,7 +259,6 @@ export default function SystemPermissionsPage(): JSX.Element {
         title: '관리자 ID',
         dataIndex: 'adminId',
         width: 150,
-        ...createColumnFilterProps(admins, (record) => record.adminId),
         sorter: createTextSorter((record) => record.adminId),
         render: (adminId: string) => (
           <Link
@@ -272,14 +274,13 @@ export default function SystemPermissionsPage(): JSX.Element {
         title: '이름',
         dataIndex: 'name',
         width: 120,
-        ...createColumnFilterProps(admins, (record) => record.name),
         sorter: createTextSorter((record) => record.name)
       },
       {
         title: createStatusColumnTitle('상태', ['활성', '비활성']),
         dataIndex: 'status',
         width: 90,
-        ...createColumnFilterProps(admins, (record) => record.status),
+        ...createDefinedColumnFilterProps(adminStatusFilterValues, (record) => record.status),
         sorter: createTextSorter((record) => record.status),
         render: (status: string) => <StatusBadge status={status} />
       },
@@ -287,14 +288,16 @@ export default function SystemPermissionsPage(): JSX.Element {
         title: '역할',
         dataIndex: 'role',
         width: 120,
-        ...createColumnFilterProps(admins, (record) => record.role),
+        ...createDefinedColumnFilterProps(
+          roleCatalog.map((role) => role.key),
+          (record) => record.role
+        ),
         sorter: createTextSorter((record) => record.role)
       },
       {
         title: '권한 수',
         width: 90,
         align: 'right',
-        ...createColumnFilterProps(admins, (record) => record.permissions.length),
         sorter: createNumberSorter((record) => record.permissions.length),
         render: (_, record) => record.permissions.length
       },
@@ -302,7 +305,6 @@ export default function SystemPermissionsPage(): JSX.Element {
         title: '최근 수정',
         dataIndex: 'updatedAt',
         width: 170,
-        ...createColumnFilterProps(admins, (record) => record.updatedAt),
         sorter: createTextSorter((record) => record.updatedAt)
       },
       {
@@ -338,7 +340,7 @@ export default function SystemPermissionsPage(): JSX.Element {
         )
       }
     ],
-    [admins, openModal]
+    [openModal]
   );
 
   const roleColumns = useMemo<TableColumnsType<(typeof roleCatalog)[number]>>(
@@ -347,30 +349,23 @@ export default function SystemPermissionsPage(): JSX.Element {
         title: '역할 코드',
         dataIndex: 'key',
         width: 140,
-        ...createColumnFilterProps(roleCatalog, (record) => record.key),
         sorter: createTextSorter((record) => record.key)
       },
       {
         title: '역할명',
         dataIndex: 'name',
         width: 140,
-        ...createColumnFilterProps(roleCatalog, (record) => record.name),
         sorter: createTextSorter((record) => record.name)
       },
       {
         title: '설명',
         dataIndex: 'description',
-        ...createColumnFilterProps(roleCatalog, (record) => record.description),
         sorter: createTextSorter((record) => record.description)
       },
       {
         title: '기본 권한 수',
         width: 120,
         align: 'right',
-        ...createColumnFilterProps(
-          roleCatalog,
-          (record) => record.defaultPermissions.length
-        ),
         sorter: createNumberSorter((record) => record.defaultPermissions.length),
         render: (_, role) => role.defaultPermissions.length
       }
@@ -384,37 +379,34 @@ export default function SystemPermissionsPage(): JSX.Element {
         title: '권한 코드',
         dataIndex: 'key',
         width: 220,
-        ...createColumnFilterProps(permissionCatalog, (record) => record.key),
         sorter: createTextSorter((record) => record.key)
       },
       {
         title: '권한명',
         dataIndex: 'name',
         width: 160,
-        ...createColumnFilterProps(permissionCatalog, (record) => record.name),
         sorter: createTextSorter((record) => record.name)
       },
       {
         title: '모듈',
         dataIndex: 'module',
         width: 100,
-        ...createColumnFilterProps(permissionCatalog, (record) => record.module),
+        ...createDefinedColumnFilterProps(
+          permissionCatalog.map((permission) => permission.module),
+          (record) => record.module
+        ),
         sorter: createTextSorter((record) => record.module)
       },
       {
         title: '권한 범위 설명',
         dataIndex: 'scopeDescription',
-        ...createColumnFilterProps(
-          permissionCatalog,
-          (record) => record.scopeDescription
-        ),
         sorter: createTextSorter((record) => record.scopeDescription)
       },
       {
         title: '위험도',
         dataIndex: 'risk',
         width: 100,
-        ...createColumnFilterProps(permissionCatalog, (record) => record.risk),
+        ...createDefinedColumnFilterProps(['low', 'medium', 'high'], (record) => record.risk),
         sorter: createTextSorter((record) => record.risk),
         render: (risk: string) => formatRiskTag(risk)
       }
@@ -430,14 +422,12 @@ export default function SystemPermissionsPage(): JSX.Element {
         title: '로그 ID',
         dataIndex: 'id',
         width: 130,
-        ...createColumnFilterProps(recentAuditRows, (record) => record.id),
         sorter: createTextSorter((record) => record.id)
       },
       {
         title: '대상',
         dataIndex: 'targetId',
         width: 140,
-        ...createColumnFilterProps(recentAuditRows, (record) => record.targetId),
         sorter: createTextSorter((record) => record.targetId),
         render: (targetId: string) => (
           <Link
@@ -453,31 +443,31 @@ export default function SystemPermissionsPage(): JSX.Element {
         title: '액션',
         dataIndex: 'action',
         width: 100,
-        ...createColumnFilterProps(recentAuditRows, (record) => record.action),
+        ...createDefinedColumnFilterProps(
+          permissionAuditActionFilterValues,
+          (record) => record.action
+        ),
         sorter: createTextSorter((record) => record.action)
       },
       {
         title: '사유',
         dataIndex: 'reason',
-        ...createColumnFilterProps(recentAuditRows, (record) => record.reason),
         sorter: createTextSorter((record) => record.reason)
       },
       {
         title: '수행자',
         dataIndex: 'changedBy',
         width: 120,
-        ...createColumnFilterProps(recentAuditRows, (record) => record.changedBy),
         sorter: createTextSorter((record) => record.changedBy)
       },
       {
         title: '시각',
         dataIndex: 'createdAt',
         width: 170,
-        ...createColumnFilterProps(recentAuditRows, (record) => record.createdAt),
         sorter: createTextSorter((record) => record.createdAt)
       }
     ],
-    [recentAuditRows]
+    []
   );
 
   const modalTitle = useMemo(() => {
@@ -599,7 +589,7 @@ export default function SystemPermissionsPage(): JSX.Element {
         onOk={handleSubmit}
         okButtonProps={{ danger: modalState?.mode === 'revoke' }}
         width={760}
-        destroyOnClose
+      destroyOnHidden
       >
         {selectedAdmin ? (
           <Form form={form} layout="vertical">

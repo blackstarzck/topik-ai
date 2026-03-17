@@ -33,7 +33,7 @@ import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
 import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
 import {
-  createColumnFilterProps,
+  createDefinedColumnFilterProps,
   createTextSorter
 } from '../../../shared/ui/table/table-column-utils';
 import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
@@ -102,6 +102,8 @@ const initialRows: ReportRow[] = [
     processStatus: '처리 완료'
   }
 ];
+
+const reportProcessStatusFilterValues = ['처리 대기', '처리 완료'] as const;
 
 const detailLabelMap: Record<string, string> = {
   id: '신고 ID',
@@ -283,14 +285,12 @@ export default function CommunityReportsPage(): JSX.Element {
         title: '신고 ID',
         dataIndex: 'id',
         width: 110,
-        ...createColumnFilterProps(visibleRows, (record) => record.id),
         sorter: createTextSorter((record) => record.id)
       },
       {
         title: '게시글',
         dataIndex: 'targetPostId',
         width: 130,
-        ...createColumnFilterProps(visibleRows, (record) => record.targetPostId),
         sorter: createTextSorter((record) => record.targetPostId),
         render: (value: string) => (
           <Link
@@ -306,10 +306,6 @@ export default function CommunityReportsPage(): JSX.Element {
         title: '대상 사용자',
         dataIndex: 'targetUserName',
         width: 180,
-        ...createColumnFilterProps(
-          visibleRows,
-          (record) => `${record.targetUserName} ${record.targetUserId}`
-        ),
         sorter: createTextSorter((record) => record.targetUserName),
         render: (_, record) => (
           <UserNavigationLink
@@ -324,10 +320,6 @@ export default function CommunityReportsPage(): JSX.Element {
         title: '신고자',
         dataIndex: 'reporterName',
         width: 180,
-        ...createColumnFilterProps(
-          visibleRows,
-          (record) => `${record.reporterName} ${record.reporterId}`
-        ),
         sorter: createTextSorter((record) => record.reporterName),
         render: (_, record) => (
           <UserNavigationLink
@@ -342,21 +334,22 @@ export default function CommunityReportsPage(): JSX.Element {
         title: '신고 사유',
         dataIndex: 'reason',
         width: 220,
-        ...createColumnFilterProps(visibleRows, (record) => record.reason),
         sorter: createTextSorter((record) => record.reason)
       },
       {
         title: '신고일',
         dataIndex: 'createdAt',
         width: 180,
-        ...createColumnFilterProps(visibleRows, (record) => record.createdAt),
         sorter: createTextSorter((record) => record.createdAt)
       },
       {
         title: createStatusColumnTitle('처리 상태', ['처리 대기', '처리 완료']),
         dataIndex: 'processStatus',
         width: 120,
-        ...createColumnFilterProps(visibleRows, (record) => record.processStatus),
+        ...createDefinedColumnFilterProps(
+          reportProcessStatusFilterValues,
+          (record) => record.processStatus
+        ),
         sorter: createTextSorter((record) => record.processStatus),
         render: (status: ProcessStatus) => <StatusBadge status={status} />
       },
@@ -394,7 +387,7 @@ export default function CommunityReportsPage(): JSX.Element {
         )
       }
     ],
-    [markProcessed, processedStatus, visibleRows]
+    [markProcessed, processedStatus]
   );
 
   const pendingCount = rows.filter((row) => row.processStatus === '처리 대기').length;

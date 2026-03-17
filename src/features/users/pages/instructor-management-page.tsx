@@ -4,7 +4,6 @@ import {
   Card,
   Col,
   Descriptions,
-  Drawer,
   Row,
   Space,
   Tag,
@@ -21,6 +20,11 @@ import {
   defaultInstructorQuery,
   useInstructorsQueryStore
 } from '../model/instructors-query-store';
+import {
+  instructorActivityStatuses,
+  instructorCountries,
+  instructorOrganizations
+} from '../model/types';
 import type {
   InstructorAdminNote,
   InstructorActivityStatus,
@@ -34,6 +38,11 @@ import type {
 import type { AsyncState } from '../../../shared/model/async-state';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
+import {
+  DetailDrawer,
+  DetailDrawerBody,
+  DetailDrawerSection
+} from '../../../shared/ui/detail-drawer/detail-drawer';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
@@ -51,13 +60,12 @@ import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import {
   createDrawerTableScroll,
-  DRAWER_SECTION_GAP,
   DRAWER_TABLE_PAGINATION,
   fixDrawerTableFirstColumn
 } from '../../../shared/ui/table/drawer-table';
 import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
 import {
-  createColumnFilterProps,
+  createDefinedColumnFilterProps,
   createNumberSorter,
   createTextSorter
 } from '../../../shared/ui/table/table-column-utils';
@@ -67,6 +75,7 @@ import { formatUserDisplayName } from '../../../shared/ui/user/user-reference';
 const { Paragraph, Text, Title } = Typography;
 
 const pageSizeOptions = ['20', '50', '100'];
+const instructorStatusFilterValues = ['정상', '정지', '탈퇴'] as const;
 
 const searchFieldOptions: { label: string; value: InstructorSearchField }[] = [
   { label: '전체', value: 'all' },
@@ -347,7 +356,7 @@ export default function InstructorManagementPage(): JSX.Element {
     return () => {
       controller.abort();
     };
-  }, [reloadKey]);
+  }, [query.page, query.pageSize, reloadKey]);
 
   const commitQuery = useCallback(
     (next: Partial<InstructorQuery>) => {
@@ -500,29 +509,26 @@ export default function InstructorManagementPage(): JSX.Element {
         title: '강사 ID',
         dataIndex: 'id',
         width: 120,
-        ...createColumnFilterProps(visibleInstructors, (record) => record.id),
         sorter: createTextSorter((record) => record.id)
       },
       {
         title: '이름',
         dataIndex: 'realName',
         width: 110,
-        ...createColumnFilterProps(visibleInstructors, (record) => record.realName),
         sorter: createTextSorter((record) => record.realName)
       },
       {
         title: '이메일',
         dataIndex: 'email',
         width: 220,
-        ...createColumnFilterProps(visibleInstructors, (record) => record.email),
         sorter: createTextSorter((record) => record.email)
       },
       {
         title: '소속',
         dataIndex: 'organization',
         width: 180,
-        ...createColumnFilterProps(
-          visibleInstructors,
+        ...createDefinedColumnFilterProps(
+          instructorOrganizations,
           (record) => record.organization
         ),
         sorter: createTextSorter((record) => record.organization)
@@ -531,14 +537,17 @@ export default function InstructorManagementPage(): JSX.Element {
         title: '담당 국가',
         dataIndex: 'country',
         width: 120,
-        ...createColumnFilterProps(visibleInstructors, (record) => record.country),
+        ...createDefinedColumnFilterProps(instructorCountries, (record) => record.country),
         sorter: createTextSorter((record) => record.country)
       },
       {
         title: createStatusColumnTitle('계정 상태', ['정상', '정지', '탈퇴']),
         dataIndex: 'status',
         width: 120,
-        ...createColumnFilterProps(visibleInstructors, (record) => record.status),
+        ...createDefinedColumnFilterProps(
+          instructorStatusFilterValues,
+          (record) => record.status
+        ),
         sorter: createTextSorter((record) => record.status),
         render: (status: InstructorStatus) => <StatusBadge status={status} />
       },
@@ -546,8 +555,8 @@ export default function InstructorManagementPage(): JSX.Element {
         title: createStatusColumnTitle('활동 상태', ['활성', '주의', '휴면']),
         dataIndex: 'activityStatus',
         width: 120,
-        ...createColumnFilterProps(
-          visibleInstructors,
+        ...createDefinedColumnFilterProps(
+          instructorActivityStatuses,
           (record) => record.activityStatus
         ),
         sorter: createTextSorter((record) => record.activityStatus),
@@ -557,10 +566,6 @@ export default function InstructorManagementPage(): JSX.Element {
         title: '담당 과정 수',
         dataIndex: 'courseCount',
         width: 130,
-        ...createColumnFilterProps(
-          visibleInstructors,
-          (record) => record.courseCount
-        ),
         sorter: createNumberSorter((record) => record.courseCount),
         render: (value: number) => `${value}개`
       },
@@ -568,10 +573,6 @@ export default function InstructorManagementPage(): JSX.Element {
         title: '담당 학습자 수',
         dataIndex: 'studentCount',
         width: 140,
-        ...createColumnFilterProps(
-          visibleInstructors,
-          (record) => record.studentCount
-        ),
         sorter: createNumberSorter((record) => record.studentCount),
         render: (value: number) => `${value.toLocaleString()}명`
       },
@@ -579,20 +580,12 @@ export default function InstructorManagementPage(): JSX.Element {
         title: '최근 활동',
         dataIndex: 'lastActivityAt',
         width: 160,
-        ...createColumnFilterProps(
-          visibleInstructors,
-          (record) => record.lastActivityAt
-        ),
         sorter: createTextSorter((record) => record.lastActivityAt)
       },
       {
         title: '최근 조치일',
         dataIndex: 'lastActionAt',
         width: 160,
-        ...createColumnFilterProps(
-          visibleInstructors,
-          (record) => record.lastActionAt
-        ),
         sorter: createTextSorter((record) => record.lastActionAt)
       },
       {
@@ -630,12 +623,7 @@ export default function InstructorManagementPage(): JSX.Element {
         )
       }
     ],
-    [
-      handleSuspend,
-      handleUnsuspend,
-      openMessageGroup,
-      visibleInstructors
-    ]
+    [handleSuspend, handleUnsuspend, openMessageGroup]
   );
 
   const courseColumns = useMemo<TableColumnsType<InstructorCourseSummary>>(
@@ -919,12 +907,12 @@ export default function InstructorManagementPage(): JSX.Element {
         />
       </AdminListCard>
 
-      <Drawer
+      <DetailDrawer
         open={Boolean(selectedInstructor)}
         title={selectedInstructor ? `강사 상세 · ${selectedInstructor.realName}` : '강사 상세'}
         width={640}
         onClose={closeDrawer}
-        extra={
+        headerMeta={
           selectedInstructor ? (
             <Space>
               <StatusBadge status={selectedInstructor.status} />
@@ -932,49 +920,44 @@ export default function InstructorManagementPage(): JSX.Element {
             </Space>
           ) : null
         }
-        footer={
+        footerStart={
           selectedInstructor ? (
-            <Space
-              style={{ width: '100%', justifyContent: 'space-between' }}
-              wrap
-            >
-              <AuditLogLink
-                targetType="Instructor"
-                targetId={selectedInstructor.id}
-              />
-              <Space wrap>
+            <AuditLogLink
+              targetType="Instructor"
+              targetId={selectedInstructor.id}
+            />
+          ) : null
+        }
+        footerEnd={
+          selectedInstructor ? (
+            <Space wrap>
+              <Button
+                onClick={() => openMessageGroup(selectedInstructor.messageGroupName)}
+              >
+                대상 그룹 보기
+              </Button>
+              {selectedInstructor.status === '정지' ? (
                 <Button
-                  onClick={() => openMessageGroup(selectedInstructor.messageGroupName)}
+                  type="primary"
+                  onClick={() => handleUnsuspend(selectedInstructor)}
                 >
-                  대상 그룹 보기
+                  정지 해제
                 </Button>
-                {selectedInstructor.status === '정지' ? (
-                  <Button
-                    type="primary"
-                    onClick={() => handleUnsuspend(selectedInstructor)}
-                  >
-                    정지 해제
-                  </Button>
-                ) : (
-                  <Button
-                    danger
-                    type="primary"
-                    onClick={() => handleSuspend(selectedInstructor)}
-                  >
-                    강사 정지
-                  </Button>
-                )}
-              </Space>
+              ) : (
+                <Button
+                  danger
+                  type="primary"
+                  onClick={() => handleSuspend(selectedInstructor)}
+                >
+                  강사 정지
+                </Button>
+              )}
             </Space>
           ) : null
         }
       >
         {selectedInstructor ? (
-          <Space
-            direction="vertical"
-            size={DRAWER_SECTION_GAP}
-            style={{ width: '100%' }}
-          >
+          <DetailDrawerBody>
             {drawerStatusAlert ? (
               <Alert
                 type={drawerStatusAlert.type}
@@ -984,22 +967,16 @@ export default function InstructorManagementPage(): JSX.Element {
               />
             ) : null}
 
-            <div>
-              <Title level={5} style={{ marginTop: 0 }}>
-                기본 정보
-              </Title>
+            <DetailDrawerSection title="기본 정보">
               <Descriptions
                 bordered
                 size="small"
                 column={1}
                 items={buildSummaryItems(selectedInstructor)}
               />
-            </div>
+            </DetailDrawerSection>
 
-            <div>
-              <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
-                소개 및 전문 분야
-              </Title>
+            <DetailDrawerSection title="소개 및 전문 분야">
               <Paragraph style={{ marginBottom: 8 }}>
                 {selectedInstructor.introduction}
               </Paragraph>
@@ -1008,12 +985,9 @@ export default function InstructorManagementPage(): JSX.Element {
                   <Tag key={specialty}>{specialty}</Tag>
                 ))}
               </Space>
-            </div>
+            </DetailDrawerSection>
 
-            <div>
-              <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
-                담당 과정
-              </Title>
+            <DetailDrawerSection title="담당 과정">
               <AdminDataTable<InstructorCourseSummary>
                 rowKey="id"
                 columns={courseColumns}
@@ -1022,12 +996,9 @@ export default function InstructorManagementPage(): JSX.Element {
                 scroll={createDrawerTableScroll(760)}
                 locale={{ emptyText: '배정된 과정이 없습니다.' }}
               />
-            </div>
+            </DetailDrawerSection>
 
-            <div>
-              <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
-                최근 메시지 발송 이력
-              </Title>
+            <DetailDrawerSection title="최근 메시지 발송 이력">
               <AdminDataTable<InstructorMessageHistory>
                 rowKey="id"
                 columns={messageColumns}
@@ -1036,12 +1007,9 @@ export default function InstructorManagementPage(): JSX.Element {
                 scroll={createDrawerTableScroll(760)}
                 locale={{ emptyText: '최근 발송 이력이 없습니다.' }}
               />
-            </div>
+            </DetailDrawerSection>
 
-            <div>
-              <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
-                관리자 메모
-              </Title>
+            <DetailDrawerSection title="관리자 메모">
               <AdminDataTable<InstructorAdminNote>
                 rowKey="id"
                 columns={adminNoteColumns}
@@ -1062,10 +1030,10 @@ export default function InstructorManagementPage(): JSX.Element {
                 scroll={createDrawerTableScroll(760)}
                 locale={{ emptyText: '등록된 관리자 메모가 없습니다.' }}
               />
-            </div>
-          </Space>
+            </DetailDrawerSection>
+          </DetailDrawerBody>
         ) : null}
-      </Drawer>
+      </DetailDrawer>
 
       {actionState ? (
         <ConfirmAction

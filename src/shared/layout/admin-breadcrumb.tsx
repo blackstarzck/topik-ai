@@ -72,12 +72,32 @@ export function buildAdminBreadcrumbItems(
     ];
   }
 
+  if (pathname.startsWith('/messages/mail/create')) {
+    const tab = new URLSearchParams(search).get('tab');
+    return [
+      breadcrumbLinkItem(adminMenuLabels.messages, '/messages/mail?tab=auto'),
+      breadcrumbLinkItem(adminMenuLabels.messagesMail, `/messages/mail${search || '?tab=auto'}`),
+      breadcrumbTextItem(tab === 'manual' ? '수동 발송' : '자동 발송'),
+      breadcrumbTextItem('등록 상세')
+    ];
+  }
+
   if (pathname.startsWith('/messages/mail')) {
     const tab = new URLSearchParams(search).get('tab');
     return [
       breadcrumbLinkItem(adminMenuLabels.messages, '/messages/mail?tab=auto'),
       breadcrumbTextItem(adminMenuLabels.messagesMail),
       breadcrumbTextItem(tab === 'manual' ? '수동 발송' : '자동 발송')
+    ];
+  }
+
+  if (pathname.startsWith('/messages/push/create')) {
+    const tab = new URLSearchParams(search).get('tab');
+    return [
+      breadcrumbLinkItem(adminMenuLabels.messages, '/messages/push?tab=auto'),
+      breadcrumbLinkItem(adminMenuLabels.messagesPush, `/messages/push${search || '?tab=auto'}`),
+      breadcrumbTextItem(tab === 'manual' ? '수동 발송' : '자동 발송'),
+      breadcrumbTextItem('등록 상세')
     ];
   }
 

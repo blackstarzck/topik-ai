@@ -28,6 +28,9 @@ const MessageMailPage = lazy(
 const MessagePushPage = lazy(
   () => import('../../features/message/pages/message-push-page')
 );
+const MessageTemplateCreatePage = lazy(
+  () => import('../../features/message/pages/message-template-create-page')
+);
 const MessageGroupsPage = lazy(
   () => import('../../features/message/pages/message-groups-page')
 );
@@ -84,7 +87,23 @@ export function AppRouter(): JSX.Element {
         <Route path="/community/reports" element={<CommunityReportsPage />} />
 
         <Route path="/messages/mail" element={<MessageMailPage />} />
+        <Route
+          path="/messages/mail/create"
+          element={<MessageTemplateCreatePage channel="mail" />}
+        />
+        <Route
+          path="/messages/mail/create/:templateId"
+          element={<MessageTemplateCreatePage channel="mail" />}
+        />
         <Route path="/messages/push" element={<MessagePushPage />} />
+        <Route
+          path="/messages/push/create"
+          element={<MessageTemplateCreatePage channel="push" />}
+        />
+        <Route
+          path="/messages/push/create/:templateId"
+          element={<MessageTemplateCreatePage channel="push" />}
+        />
         <Route path="/messages/groups" element={<MessageGroupsPage />} />
         <Route path="/messages/history" element={<MessageHistoryPage />} />
 
