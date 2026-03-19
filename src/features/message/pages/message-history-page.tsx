@@ -1,21 +1,18 @@
 import {
   Alert,
   Button,
-  Card,
+  Checkbox,
   Descriptions,
   Input,
   Space,
   Tabs,
   Tag,
-  Tooltip,
   Typography,
   notification
 } from 'antd';
-import type { TableColumnsType } from 'antd';
+import type { TableColumnsType, TablePaginationConfig } from 'antd';
 import {
-  CopyOutlined,
   DownloadOutlined,
-  EyeOutlined,
   ReloadOutlined
 } from '@ant-design/icons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -39,6 +36,7 @@ import {
   DetailDrawerBody,
   DetailDrawerSection
 } from '../../../shared/ui/detail-drawer/detail-drawer';
+import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
   SearchBar,
@@ -55,7 +53,6 @@ import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import {
   createDrawerTableScroll,
-  DRAWER_TABLE_PAGINATION,
   fixDrawerTableFirstColumn
 } from '../../../shared/ui/table/drawer-table';
 import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
@@ -66,13 +63,13 @@ import {
 } from '../../../shared/ui/table/table-column-utils';
 import { UserNavigationLink } from '../../../shared/ui/user/user-reference';
 
-const { Paragraph, Text } = Typography;
+const { Text } = Typography;
 const messageHistoryStatusFilterValues = ['완료', '부분 실패', '실패', '예약'] as const;
 type HistoryModeFilter = MessageTemplateMode | 'all';
+type RecipientStatusFilter = MessageRecipientStatus | 'all';
 
 type HistoryDangerState =
   | { type: 'retry'; history: MessageHistory }
-  | { type: 'duplicate'; history: MessageHistory }
   | null;
 
 function parseChannel(value: string | null): MessageChannel {
@@ -133,7 +130,6 @@ export default function MessageHistoryPage(): JSX.Element {
 
   const histories = useMessageStore((state) => state.histories);
   const retryHistory = useMessageStore((state) => state.retryHistory);
-  const duplicateHistory = useMessageStore((state) => state.duplicateHistory);
 
   const [loadState, setLoadState] = useState<AsyncState<null>>({
     status: 'pending',
@@ -144,6 +140,8 @@ export default function MessageHistoryPage(): JSX.Element {
   const [reloadKey, setReloadKey] = useState(0);
   const [detailRow, setDetailRow] = useState<MessageHistory | null>(null);
   const [recipientKeyword, setRecipientKeyword] = useState('');
+  const [recipientStatusFilter, setRecipientStatusFilter] =
+    useState<RecipientStatusFilter>('all');
   const [dangerState, setDangerState] = useState<HistoryDangerState>(null);
   const [notificationApi, notificationContextHolder] = notification.useNotification();
 
@@ -184,6 +182,42 @@ export default function MessageHistoryPage(): JSX.Element {
     };
   }, [reloadKey]);
 
+  const channelCounts = useMemo(
+    () => ({
+      mail: histories.filter((history) => history.channel === 'mail').length,
+      push: histories.filter((history) => history.channel === 'push').length
+    }),
+    [histories]
+  );
+
+  const activeChannelModeCounts = useMemo(() => {
+    const channelHistories = histories.filter((history) => history.channel === activeChannel);
+
+    return {
+      all: channelHistories.length,
+      auto: channelHistories.filter((history) => history.mode === 'auto').length,
+      manual: channelHistories.filter((history) => history.mode === 'manual').length
+    };
+  }, [activeChannel, histories]);
+
+  const historyModeOptions = useMemo(
+    () => [
+      {
+        key: 'all' as const,
+        label: `전체 (${activeChannelModeCounts.all})`
+      },
+      {
+        key: 'auto' as const,
+        label: `자동 (${activeChannelModeCounts.auto})`
+      },
+      {
+        key: 'manual' as const,
+        label: `수동 (${activeChannelModeCounts.manual})`
+      }
+    ],
+    [activeChannelModeCounts]
+  );
+
   const visibleRows = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
 
@@ -215,18 +249,56 @@ export default function MessageHistoryPage(): JSX.Element {
     }
 
     const normalizedKeyword = recipientKeyword.trim().toLowerCase();
-    if (!normalizedKeyword) {
-      return detailRow.recipients;
-    }
-
     return detailRow.recipients.filter((recipient) => {
+      if (recipientStatusFilter !== 'all' && recipient.status !== recipientStatusFilter) {
+        return false;
+      }
+
+      if (!normalizedKeyword) {
+        return true;
+      }
+
       return (
         recipient.userId.toLowerCase().includes(normalizedKeyword) ||
-        recipient.userName.toLowerCase().includes(normalizedKeyword) ||
-        recipient.destination.toLowerCase().includes(normalizedKeyword)
+        recipient.userName.toLowerCase().includes(normalizedKeyword)
       );
     });
-  }, [detailRow, recipientKeyword]);
+  }, [detailRow, recipientKeyword, recipientStatusFilter]);
+
+  const recipientStatusOptions = useMemo(() => {
+    if (!detailRow) {
+      return [];
+    }
+
+    const counts = detailRow.recipients.reduce(
+      (acc, recipient) => {
+        acc[recipient.status] += 1;
+        return acc;
+      },
+      {
+        성공: 0,
+        실패: 0,
+        예약: 0
+      } satisfies Record<MessageRecipientStatus, number>
+    );
+
+    return [
+      { key: 'all' as const, label: `전체 (${detailRow.recipients.length})` },
+      { key: '성공' as const, label: `성공 (${counts['성공']})` },
+      { key: '실패' as const, label: `실패 (${counts['실패']})` },
+      { key: '예약' as const, label: `예약 (${counts['예약']})` }
+    ];
+  }, [detailRow]);
+
+  const recipientTablePagination = useMemo<TablePaginationConfig>(
+    () => ({
+      position: ['bottomRight'],
+      defaultPageSize: 10,
+      showSizeChanger: true,
+      pageSizeOptions: ['10', '20', '50']
+    }),
+    []
+  );
 
   const commitParams = useCallback(
     (
@@ -276,23 +348,26 @@ export default function MessageHistoryPage(): JSX.Element {
     searchField
   ]);
 
+  const handleModeFilterChange = useCallback(
+    (nextMode: HistoryModeFilter) => {
+      commitParams({ mode: nextMode, channel: activeChannel, keyword });
+    },
+    [activeChannel, commitParams, keyword]
+  );
+
   const handleDangerConfirm = useCallback(
-    async (reason: string) => {
+    (reason: string) => {
       if (!dangerState) {
         return;
       }
 
-      const result =
-        dangerState.type === 'retry'
-          ? retryHistory(dangerState.history.id, 'admin_current')
-          : duplicateHistory(dangerState.history.id, 'admin_current');
-
+      const result = retryHistory(dangerState.history.id, 'admin_current');
       if (!result) {
         return;
       }
 
       notificationApi.success({
-        message: dangerState.type === 'retry' ? '재시도 발송 등록 완료' : '복제 발송 완료',
+        message: '재시도 발송 등록 완료',
         description: (
           <Space direction="vertical">
             <Text>대상 유형: {getTargetTypeLabel('Message')}</Text>
@@ -305,7 +380,7 @@ export default function MessageHistoryPage(): JSX.Element {
       setDangerState(null);
       setDetailRow(null);
     },
-    [dangerState, duplicateHistory, notificationApi, retryHistory]
+    [dangerState, notificationApi, retryHistory]
   );
 
   const handleExportCsv = useCallback(() => {
@@ -386,22 +461,6 @@ export default function MessageHistoryPage(): JSX.Element {
         dataIndex: 'sentAt',
         width: 160,
         sorter: createTextSorter((record) => record.sentAt)
-      },
-      {
-        title: '미리보기',
-        key: 'detail',
-        width: 90,
-        align: 'center',
-        onCell: () => ({
-          onClick: (event) => {
-            event.stopPropagation();
-          }
-        }),
-        render: (_, record) => (
-          <Tooltip title="상세 보기">
-            <Button type="text" icon={<EyeOutlined />} onClick={() => setDetailRow(record)} />
-          </Tooltip>
-        )
       }
     ],
     []
@@ -413,7 +472,6 @@ export default function MessageHistoryPage(): JSX.Element {
         {
           title: '사용자',
           key: 'user',
-          width: 180,
           sorter: createTextSorter((record) => `${record.userName} ${record.userId}`),
           render: (_, record) => (
             <UserNavigationLink
@@ -422,26 +480,6 @@ export default function MessageHistoryPage(): JSX.Element {
               withId
             />
           )
-        },
-        {
-          title: activeChannel === 'mail' ? '이메일' : '디바이스 ID',
-          dataIndex: 'destination',
-          ellipsis: true,
-          sorter: createTextSorter((record) => record.destination)
-        },
-        {
-          title: '유형',
-          dataIndex: 'mode',
-          width: 90,
-          render: (mode: MessageTemplateMode) => getModeLabel(mode),
-          sorter: createTextSorter((record) => record.mode)
-        },
-        {
-          title: '템플릿 이름',
-          dataIndex: 'templateName',
-          width: 140,
-          ellipsis: true,
-          sorter: createTextSorter((record) => record.templateName)
         },
         {
           title: createStatusColumnTitle('수신 상태', ['성공', '실패', '예약']),
@@ -459,7 +497,7 @@ export default function MessageHistoryPage(): JSX.Element {
           sorter: createTextSorter((record) => record.sentAt)
         }
       ]),
-    [activeChannel]
+    []
   );
 
   const handleRetryLoad = useCallback(() => {
@@ -487,96 +525,91 @@ export default function MessageHistoryPage(): JSX.Element {
         />
       ) : null}
 
-      <Tabs
-        activeKey={activeChannel}
-        onChange={(nextChannel) =>
-          commitParams({ channel: nextChannel, mode: modeFilter, keyword })
-        }
-        items={[
-          {
-            key: 'mail',
-            label: `메일 (${histories.filter((history) => history.channel === 'mail').length})`
-          },
-          {
-            key: 'push',
-            label: `푸시 (${histories.filter((history) => history.channel === 'push').length})`
-          }
-        ]}
-        style={{ marginBottom: 12 }}
-      />
+      <AdminListCard
+        toolbar={
+          <div className="admin-list-card-toolbar-stack">
+            <Tabs
+              activeKey={activeChannel}
+              onChange={(nextChannel) =>
+                commitParams({ channel: nextChannel, mode: modeFilter, keyword })
+              }
+              items={[
+                {
+                  key: 'mail',
+                  label: `메일 (${channelCounts.mail})`
+                },
+                {
+                  key: 'push',
+                  label: `푸시 (${channelCounts.push})`
+                }
+              ]}
+              className="admin-list-card-toolbar-tabs"
+            />
 
-      <Card
-        extra={
-          <Button icon={<DownloadOutlined />} onClick={handleExportCsv}>
-            CSV
-          </Button>
+            <SearchBar
+              searchField={searchField}
+              searchFieldOptions={[
+                { label: '전체', value: 'all' },
+                { label: '발송 ID', value: 'id' },
+                { label: '템플릿 이름', value: 'templateName' },
+                { label: '그룹 이름', value: 'groupName' }
+              ]}
+              keyword={keyword}
+              onSearchFieldChange={(value) =>
+                commitParams({
+                  searchField: value,
+                  channel: activeChannel,
+                  mode: modeFilter
+                })
+              }
+              onKeywordChange={(event) =>
+                commitParams({
+                  keyword: event.target.value,
+                  searchField,
+                  channel: activeChannel,
+                  mode: modeFilter
+                })
+              }
+              keywordPlaceholder="검색..."
+              detailTitle="상세 검색"
+              detailContent={
+                <SearchBarDetailField label="발송일">
+                  <SearchBarDateRange
+                    startDate={draftStartDate}
+                    endDate={draftEndDate}
+                    onChange={handleDraftDateChange}
+                  />
+                </SearchBarDetailField>
+              }
+              onApply={handleApplyDateRange}
+              onDetailOpenChange={handleDetailOpenChange}
+              onReset={handleDraftReset}
+              extra={
+                <div className="message-history-mode-filter" role="group" aria-label="발송 방식 필터">
+                  {historyModeOptions.map((option) => (
+                    <Checkbox
+                      key={option.key}
+                      checked={modeFilter === option.key}
+                      onChange={() => handleModeFilterChange(option.key)}
+                      className="message-history-mode-filter-item"
+                    >
+                      {option.label}
+                    </Checkbox>
+                  ))}
+                </div>
+              }
+              summary={
+                <Text type="secondary">총 {visibleRows.length.toLocaleString()}건</Text>
+              }
+              actions={
+                <Button icon={<DownloadOutlined />} onClick={handleExportCsv}>
+                  CSV
+                </Button>
+              }
+            />
+          </div>
         }
       >
-        <Paragraph type="secondary" style={{ marginTop: 0 }}>
-          채널별 발송 이력을 유지하면서, 선택한 발송건의 수신자 샘플과 성공/실패 상태를 우측
-          상세 패널에서 함께 확인합니다.
-        </Paragraph>
-
-        <Tabs
-          activeKey={modeFilter}
-          onChange={(value) =>
-            commitParams({ mode: value, channel: activeChannel, keyword })
-          }
-          items={[
-            { key: 'all', label: `전체 (${histories.filter((history) => history.channel === activeChannel).length})` },
-            {
-              key: 'auto',
-              label: `자동 (${histories.filter((history) => history.channel === activeChannel && history.mode === 'auto').length})`
-            },
-            {
-              key: 'manual',
-              label: `수동 (${histories.filter((history) => history.channel === activeChannel && history.mode === 'manual').length})`
-            }
-          ]}
-        />
-
-        <SearchBar
-          searchField={searchField}
-          searchFieldOptions={[
-            { label: '전체', value: 'all' },
-            { label: '발송 ID', value: 'id' },
-            { label: '템플릿 이름', value: 'templateName' },
-            { label: '그룹 이름', value: 'groupName' }
-          ]}
-          keyword={keyword}
-          onSearchFieldChange={(value) =>
-            commitParams({
-              searchField: value,
-              channel: activeChannel,
-              mode: modeFilter
-            })
-          }
-          onKeywordChange={(event) =>
-            commitParams({
-              keyword: event.target.value,
-              searchField,
-              channel: activeChannel,
-              mode: modeFilter
-            })
-          }
-          keywordPlaceholder="검색..."
-          detailTitle="상세 검색"
-          detailContent={
-            <SearchBarDetailField label="발송일">
-              <SearchBarDateRange
-                startDate={draftStartDate}
-                endDate={draftEndDate}
-                onChange={handleDraftDateChange}
-              />
-            </SearchBarDetailField>
-          }
-          onApply={handleApplyDateRange}
-          onDetailOpenChange={handleDetailOpenChange}
-          onReset={handleDraftReset}
-          summary={
-            <Text type="secondary">총 {visibleRows.length.toLocaleString()}건</Text>
-          }
-        />
 
         {loadState.status !== 'pending' && visibleRows.length === 0 ? (
           <Alert
@@ -595,6 +628,7 @@ export default function MessageHistoryPage(): JSX.Element {
           onRow={(record) => ({
             onClick: () => {
               setRecipientKeyword('');
+              setRecipientStatusFilter('all');
               setDetailRow(record);
             },
             style: { cursor: 'pointer' }
@@ -606,14 +640,18 @@ export default function MessageHistoryPage(): JSX.Element {
           }}
           scroll={{ x: 1110 }}
         />
-      </Card>
+      </AdminListCard>
 
       <DetailDrawer
         open={Boolean(detailRow)}
         title={detailRow ? `발송 이력 상세 · ${detailRow.id}` : '발송 이력 상세'}
         width={720}
-      destroyOnHidden
-        onClose={() => setDetailRow(null)}
+        destroyOnHidden
+        onClose={() => {
+          setDetailRow(null);
+          setRecipientKeyword('');
+          setRecipientStatusFilter('all');
+        }}
         headerMeta={
           detailRow ? <StatusBadge status={detailRow.status} /> : null
         }
@@ -631,12 +669,6 @@ export default function MessageHistoryPage(): JSX.Element {
                 onClick={() => setDangerState({ type: 'retry', history: detailRow })}
               >
                 재시도
-              </Button>
-              <Button
-                icon={<CopyOutlined />}
-                onClick={() => setDangerState({ type: 'duplicate', history: detailRow })}
-              >
-                복제 발송
               </Button>
             </Space>
           ) : null
@@ -662,26 +694,36 @@ export default function MessageHistoryPage(): JSX.Element {
               />
             </DetailDrawerSection>
 
-            <DetailDrawerSection title="수신 상태 검색">
+            <DetailDrawerSection title="수신자 조회">
               <Input.Search
                 allowClear
                 value={recipientKeyword}
                 onChange={(event) => setRecipientKeyword(event.target.value)}
                 placeholder="사용자 검색"
               />
-              <Text type="secondary">
-                수신자 목록은 샘플 데이터 {detailRow.recipients.length.toLocaleString()}건을 보여줍니다. 총
-                대상 {detailRow.targetCount.toLocaleString()}건 기준으로 성공/실패 집계를 계산했습니다.
-              </Text>
-            </DetailDrawerSection>
-
-            <DetailDrawerSection title="수신자 샘플">
+              <div
+                className="message-history-recipient-status-filter"
+                role="group"
+                aria-label="수신 상태 필터"
+              >
+                {recipientStatusOptions.map((option) => (
+                  <Checkbox
+                    key={option.key}
+                    checked={recipientStatusFilter === option.key}
+                    onChange={() => setRecipientStatusFilter(option.key)}
+                    className="message-history-recipient-status-filter-item"
+                  >
+                    {option.label}
+                  </Checkbox>
+                ))}
+              </div>
               <AdminDataTable<MessageHistory['recipients'][number]>
                 rowKey="id"
                 columns={recipientColumns}
                 dataSource={filteredRecipients}
-                pagination={DRAWER_TABLE_PAGINATION}
-                scroll={createDrawerTableScroll(980)}
+                pagination={recipientTablePagination}
+                scroll={createDrawerTableScroll(560)}
+                tableLayout="auto"
               />
             </DetailDrawerSection>
           </DetailDrawerBody>
@@ -691,15 +733,11 @@ export default function MessageHistoryPage(): JSX.Element {
       {dangerState ? (
         <ConfirmAction
           open
-          title={dangerState.type === 'retry' ? '재시도 발송' : '복제 발송'}
-          description={
-            dangerState.type === 'retry'
-              ? '실패 또는 부분 실패 건을 다시 발송합니다. 중복 발송 가능성을 확인한 뒤 사유를 남기세요.'
-              : '현재 발송 조건을 그대로 복제해 새 발송건으로 등록합니다. 복제 목적을 남기세요.'
-          }
+          title="재시도 발송"
+          description="실패 또는 부분 실패 건을 다시 발송합니다. 중복 발송 가능성을 확인한 뒤 사유를 남기세요."
           targetType="Message"
           targetId={dangerState.history.id}
-          confirmText={dangerState.type === 'retry' ? '재시도 실행' : '복제 실행'}
+          confirmText="재시도 실행"
           onCancel={() => setDangerState(null)}
           onConfirm={handleDangerConfirm}
         />

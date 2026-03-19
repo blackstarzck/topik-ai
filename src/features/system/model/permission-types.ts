@@ -138,7 +138,7 @@ export const permissionCatalog: PermissionDefinition[] = [
     key: 'message.history.read',
     name: '발송 이력 조회',
     module: 'Message',
-    scopeDescription: '채널별 발송 이력을 조회하고 재시도 또는 복제 발송을 수행합니다.',
+    scopeDescription: '채널별 발송 이력을 조회하고 재시도를 수행합니다.',
     risk: 'medium'
   },
   {

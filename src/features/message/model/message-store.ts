@@ -135,7 +135,6 @@ type MessageStore = {
   deleteGroup: (groupId: string) => MessageGroup | null;
   sendTemplate: (payload: SendTemplatePayload) => MessageHistory | null;
   retryHistory: (historyId: string, actor: string) => MessageHistory | null;
-  duplicateHistory: (historyId: string, actor: string) => MessageHistory | null;
 };
 
 function formatNow(): string {
@@ -971,20 +970,6 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       groupIds: history.groupIds,
       actor,
       actionType: '재시도'
-    });
-  },
-  duplicateHistory: (historyId, actor) => {
-    const history = get().histories.find((item) => item.id === historyId);
-    if (!history) {
-      return null;
-    }
-
-    return get().sendTemplate({
-      templateId: history.templateId,
-      channel: history.channel,
-      groupIds: history.groupIds,
-      actor,
-      actionType: '복제 발송'
     });
   }
 }));
