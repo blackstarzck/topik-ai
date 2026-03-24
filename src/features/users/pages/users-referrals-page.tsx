@@ -35,7 +35,6 @@ import type {
   ReferralRelation,
   ReferralRewardLedgerEntry,
   ReferralSearchField,
-  ReferralStatus,
   ReferralStatusFilter,
   ReferralSummary
 } from '../model/referrals-types';
@@ -62,6 +61,7 @@ import {
 } from '../../../shared/ui/search-bar/search-bar-utils';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
+import { BinaryStatusSwitch } from '../../../shared/ui/table/binary-status-switch';
 import {
   createDrawerTableScroll,
   DRAWER_TABLE_PAGINATION,
@@ -778,7 +778,23 @@ export default function UsersReferralsPage(): JSX.Element {
           })),
         filteredValue: query.status === 'all' ? null : [query.status],
         sorter: createTextSorter((record) => record.status),
-        render: (status: ReferralStatus) => <StatusBadge status={status} />
+        onCell: () => ({
+          onClick: (event) => {
+            event.stopPropagation();
+          }
+        }),
+        render: (_, record) => (
+          <BinaryStatusSwitch
+            checked={record.status === '활성'}
+            checkedLabel="활성"
+            uncheckedLabel="비활성"
+            onToggle={() =>
+              record.status === '활성'
+                ? handleDeactivate(record)
+                : handleActivate(record)
+            }
+          />
+        )
       },
       {
         title: createStatusColumnTitle('이상치 여부', ['없음', '검토 필요', '검토 완료']),
@@ -823,19 +839,7 @@ export default function UsersReferralsPage(): JSX.Element {
                 label: '이상치 검토 완료',
                 disabled: record.anomalyStatus !== '검토 필요',
                 onClick: () => handleReviewAnomaly(record)
-              },
-              record.status === '활성'
-                ? {
-                    key: `deactivate-${record.id}`,
-                    label: '코드 비활성화',
-                    danger: true,
-                    onClick: () => handleDeactivate(record)
-                  }
-                : {
-                    key: `activate-${record.id}`,
-                    label: '코드 재활성화',
-                    onClick: () => handleActivate(record)
-                  }
+              }
             ]}
           />
         )

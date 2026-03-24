@@ -6,6 +6,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useCommerceStore } from '../model/commerce-store';
 import type { PaymentRow, PaymentStatus } from '../model/commerce-store';
 import { getMockUserById } from '../../users/api/mock-users';
+import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
   SearchBar,
@@ -242,38 +243,41 @@ export default function BillingPaymentsPage(): JSX.Element {
         </Col>
       </Row>
 
-      <Card>
-        <SearchBar
-          searchField={searchField}
-          searchFieldOptions={[
-            { label: '전체', value: 'all' },
-            { label: '결제 ID', value: 'id' },
-            { label: '회원 ID', value: 'userId' },
-            { label: '회원명', value: 'userName' },
-            { label: '닉네임', value: 'userNickname' },
-            { label: '상품명', value: 'product' }
-          ]}
-          keyword={keyword}
-          onSearchFieldChange={(value) => commitParams({ searchField: value })}
-          onKeywordChange={(event) => commitParams({ keyword: event.target.value })}
-          keywordPlaceholder="검색..."
-          detailTitle="상세 검색"
-          detailContent={
-            <SearchBarDetailField label="결제일">
-              <SearchBarDateRange
-                startDate={draftStartDate}
-                endDate={draftEndDate}
-                onChange={handleDraftDateChange}
-              />
-            </SearchBarDetailField>
-          }
-          onApply={handleApplyDateRange}
-          onDetailOpenChange={handleDetailOpenChange}
-          onReset={handleDraftReset}
-          summary={
-            <Text type="secondary">총 {filteredRows.length.toLocaleString()}건</Text>
-          }
-        />
+      <AdminListCard
+        toolbar={
+          <SearchBar
+            searchField={searchField}
+            searchFieldOptions={[
+              { label: '전체', value: 'all' },
+              { label: '결제 ID', value: 'id' },
+              { label: '회원 ID', value: 'userId' },
+              { label: '회원명', value: 'userName' },
+              { label: '닉네임', value: 'userNickname' },
+              { label: '상품명', value: 'product' }
+            ]}
+            keyword={keyword}
+            onSearchFieldChange={(value) => commitParams({ searchField: value })}
+            onKeywordChange={(event) => commitParams({ keyword: event.target.value })}
+            keywordPlaceholder="검색..."
+            detailTitle="상세 검색"
+            detailContent={
+              <SearchBarDetailField label="결제일">
+                <SearchBarDateRange
+                  startDate={draftStartDate}
+                  endDate={draftEndDate}
+                  onChange={handleDraftDateChange}
+                />
+              </SearchBarDetailField>
+            }
+            onApply={handleApplyDateRange}
+            onDetailOpenChange={handleDetailOpenChange}
+            onReset={handleDraftReset}
+            summary={
+              <Text type="secondary">총 {filteredRows.length.toLocaleString()}건</Text>
+            }
+          />
+        }
+      >
 
         <Paragraph type="secondary" style={{ marginBottom: 16 }}>
           환불 관리에서 승인된 요청은 같은 원본 데이터를 공유하므로 이 페이지의 결제 상태에도 즉시 반영됩니다.{' '}
@@ -294,7 +298,7 @@ export default function BillingPaymentsPage(): JSX.Element {
             style: { cursor: 'pointer' }
           })}
         />
-      </Card>
+      </AdminListCard>
 
       <TableRowDetailModal
         open={Boolean(selectedDetailRecord)}

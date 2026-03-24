@@ -118,6 +118,7 @@
 ## 13. 구현 메모
 
 - 현재 코드베이스에서 재사용할 컴포넌트: PageTitle, SearchBar, AdminDataTable, ConfirmAction, AuditLogLink
+- 본문 레이아웃 메모: 요약 카드 아래 목록 본문은 `AdminListCard(toolbar=SearchBar, body=안내 문구 -> Table)` 구조를 사용합니다.
 - 예상 feature 파일: src/features/system/pages/*
 - 권한/로그 처리 메모: 조회 중심 화면이라도 관련 원본 화면의 감사 로그로 역추적할 수 있어야 합니다.
 

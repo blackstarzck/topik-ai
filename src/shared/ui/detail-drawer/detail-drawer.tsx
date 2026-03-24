@@ -1,6 +1,13 @@
-import { ConfigProvider, Drawer, Typography } from 'antd';
+import { Drawer, Typography } from 'antd';
 import type { DrawerProps } from 'antd';
 import type { ReactNode } from 'react';
+
+import {
+  DrawerFooter,
+  DrawerHeaderMeta,
+  DrawerTitle,
+  mergeDrawerFrameStyles
+} from '../drawer-frame/drawer-frame';
 
 const { Title } = Typography;
 
@@ -29,34 +36,13 @@ export function DetailDrawer({
   children,
   ...drawerProps
 }: DetailDrawerProps): JSX.Element {
-  const drawerStyles = drawerProps.styles;
-
   return (
     <Drawer
       {...drawerProps}
-      styles={{
-        ...drawerStyles,
-        footer: {
-          padding: '26px 16px',
-          ...drawerStyles?.footer
-        }
-      }}
-      title={<div className="detail-drawer__title">{title}</div>}
-      extra={
-        headerMeta ? (
-          <div className="detail-drawer__header-meta">{headerMeta}</div>
-        ) : null
-      }
-      footer={
-        footerStart || footerEnd ? (
-          <ConfigProvider componentSize="large">
-            <div className="detail-drawer__footer">
-              <div className="detail-drawer__footer-start">{footerStart}</div>
-              <div className="detail-drawer__footer-end">{footerEnd}</div>
-            </div>
-          </ConfigProvider>
-        ) : null
-      }
+      styles={mergeDrawerFrameStyles(drawerProps.styles)}
+      title={<DrawerTitle>{title}</DrawerTitle>}
+      extra={<DrawerHeaderMeta>{headerMeta}</DrawerHeaderMeta>}
+      footer={<DrawerFooter start={footerStart} end={footerEnd} />}
     >
       {children}
     </Drawer>

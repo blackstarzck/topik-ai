@@ -3,6 +3,7 @@ import {
   Button,
   Card,
   Checkbox,
+  Descriptions,
   Form,
   Input,
   Modal,
@@ -38,6 +39,7 @@ import {
   createTextSorter
 } from '../../../shared/ui/table/table-column-utils';
 import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
+import { markRequiredDescriptionItems } from '../../../shared/ui/descriptions/description-label';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -592,7 +594,7 @@ export default function SystemPermissionsPage(): JSX.Element {
       destroyOnHidden
       >
         {selectedAdmin ? (
-          <Form form={form} layout="vertical">
+          <Form form={form}>
             <Alert
               type={modalState?.mode === 'revoke' ? 'warning' : 'info'}
               showIcon
@@ -606,71 +608,105 @@ export default function SystemPermissionsPage(): JSX.Element {
               }
               description={`대상 유형: ${getTargetTypeLabel('Admin')} / 대상 ID: ${selectedAdmin.adminId}`}
             />
-
-            <Form.Item label="대상 관리자">
-              <Text>
-                {selectedAdmin.adminId} / {selectedAdmin.name}
-              </Text>
-            </Form.Item>
-
-            <Form.Item
-              label="역할"
-              name="role"
-              rules={[{ required: true, message: '역할을 선택하세요.' }]}
-            >
-              <Select
-                options={roleOptions}
-                disabled={modalState?.mode === 'grant' || modalState?.mode === 'revoke'}
-              />
-            </Form.Item>
-
-            {modalState?.mode === 'update' ? (
-              <Form.Item>
-                <Button onClick={applyRoleDefaults}>선택한 역할의 기본 권한 불러오기</Button>
-              </Form.Item>
-            ) : null}
-
-            <Form.Item
-              label={
-                modalState?.mode === 'grant'
-                  ? '부여할 권한'
-                  : modalState?.mode === 'update'
-                    ? '권한 목록'
-                    : '회수할 권한'
-              }
-              name="permissionKeys"
-              rules={[{ required: true, message: '권한을 1개 이상 선택하세요.' }]}
-            >
-              <Checkbox.Group
-                options={
-                  modalState?.mode === 'grant'
-                    ? permissionOptions.filter(
-                        (option) => !selectedAdmin.permissions.includes(option.value)
-                      )
-                    : modalState?.mode === 'revoke'
-                      ? permissionOptions.filter((option) =>
-                          selectedAdmin.permissions.includes(option.value)
-                        )
-                      : permissionOptions
-                }
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(2, minmax(260px, 1fr))',
-                  gap: 8
-                }}
-              />
-            </Form.Item>
-
-            <Form.Item
-              label="사유/근거"
-              name="reason"
-              rules={[{ required: true, message: '변경 사유를 입력하세요.' }]}
-            >
-              <Typography.Paragraph style={{ marginBottom: 8 }} type="secondary">
-                권한 변경 내역은 감사 로그에 기록됩니다.
-              </Typography.Paragraph>
-              <Input.TextArea rows={4} placeholder="권한 변경 사유를 입력하세요." />
-            </Form.Item>
+            <Descriptions
+              bordered
+              size="small"
+              column={1}
+              className="admin-form-descriptions"
+              items={markRequiredDescriptionItems(
+                [
+                  {
+                    key: 'admin',
+                    label: '대상 관리자',
+                    children: (
+                      <Text>
+                        {selectedAdmin.adminId} / {selectedAdmin.name}
+                      </Text>
+                    )
+                  },
+                  {
+                    key: 'role',
+                    label: '역할',
+                    children: (
+                      <Form.Item
+                        name="role"
+                        rules={[{ required: true, message: '역할을 선택하세요.' }]}
+                      >
+                        <Select
+                          options={roleOptions}
+                          disabled={modalState?.mode === 'grant' || modalState?.mode === 'revoke'}
+                        />
+                      </Form.Item>
+                    )
+                  },
+                  ...(modalState?.mode === 'update'
+                    ? [
+                        {
+                          key: 'roleDefaults',
+                          label: '기본 권한',
+                          children: (
+                            <Button onClick={applyRoleDefaults}>
+                              선택한 역할의 기본 권한 불러오기
+                            </Button>
+                          )
+                        }
+                      ]
+                    : []),
+                  {
+                    key: 'permissionKeys',
+                    label:
+                      modalState?.mode === 'grant'
+                        ? '부여할 권한'
+                        : modalState?.mode === 'update'
+                          ? '권한 목록'
+                          : '회수할 권한',
+                    children: (
+                      <Form.Item
+                        name="permissionKeys"
+                        rules={[{ required: true, message: '권한을 1개 이상 선택하세요.' }]}
+                      >
+                        <Checkbox.Group
+                          options={
+                            modalState?.mode === 'grant'
+                              ? permissionOptions.filter(
+                                  (option) => !selectedAdmin.permissions.includes(option.value)
+                                )
+                              : modalState?.mode === 'revoke'
+                                ? permissionOptions.filter((option) =>
+                                    selectedAdmin.permissions.includes(option.value)
+                                  )
+                                : permissionOptions
+                          }
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(2, minmax(260px, 1fr))',
+                            gap: 8
+                          }}
+                        />
+                      </Form.Item>
+                    )
+                  },
+                  {
+                    key: 'reason',
+                    label: '사유/근거',
+                    children: (
+                      <Form.Item
+                        name="reason"
+                        rules={[{ required: true, message: '변경 사유를 입력하세요.' }]}
+                      >
+                        <div>
+                          <Typography.Paragraph style={{ marginBottom: 8 }} type="secondary">
+                            권한 변경 내역은 감사 로그에 기록됩니다.
+                          </Typography.Paragraph>
+                          <Input.TextArea rows={4} placeholder="권한 변경 사유를 입력하세요." />
+                        </div>
+                      </Form.Item>
+                    )
+                  }
+                ],
+                ['role', 'permissionKeys', 'reason']
+              )}
+            />
 
             {selectedPermissionDescriptions.length > 0 ? (
               <Card size="small" title="선택 권한 범위 미리보기">

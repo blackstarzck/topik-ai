@@ -65,7 +65,7 @@
 - 최근 접속
 - 회원 상태
 - 등급
-- 구독 상태
+- 구독 상태 표시
 
 ### 상세 데이터
 - 별도 상세 패널 없이 원본 화면 이동으로 처리합니다.
@@ -120,6 +120,7 @@
 
 - 현재 코드베이스에서 재사용할 컴포넌트: PageTitle, SearchBar, AdminDataTable, ConfirmAction, AuditLogLink
 - 예상 feature 파일: src/features/users/pages/*
+- 목록 상태 메모: `구독 상태` 컬럼은 외부 구독 원천 데이터를 보여주는 정보용 컬럼이므로 스위치 조치 없이 텍스트 상태로 표시합니다.
 - 권한/로그 처리 메모: 파괴적 액션에는 확인 단계와 사유 입력, Target Type, Target ID, 감사 로그 확인 경로를 함께 둡니다.
 - 목록 재조회 메모: `page`, `pageSize` 변경 시 목록을 다시 조회하고, 공통 `AdminDataTable` loading 애니메이션으로 페이지 전환 상태를 노출합니다.
 

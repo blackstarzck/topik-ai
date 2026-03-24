@@ -1,7 +1,6 @@
-import { Editor } from '@tinymce/tinymce-react';
 import { Descriptions, Form, Input, Select } from 'antd';
 import type { DescriptionsProps } from 'antd';
-import { useLayoutEffect, useRef, useState } from 'react';
+import type { Editor as TinyMceEditor } from 'tinymce';
 
 import type {
   MessageChannel,
@@ -9,6 +8,11 @@ import type {
   MessageTemplateMode,
   MessageTemplateStatus
 } from '../model/types';
+import {
+  DEFAULT_TINYMCE_PLUGINS,
+  TinyMceHtmlEditor
+} from '../../../shared/ui/html-editor/tiny-mce-html-editor';
+import { markRequiredDescriptionItems } from '../../../shared/ui/descriptions/description-label';
 
 export type TemplateFormValues = {
   category: string;
@@ -57,25 +61,6 @@ type MessageTemplateVariable = {
   token: string;
 };
 
-const TINYMCE_PLUGINS = [
-  'advlist',
-  'anchor',
-  'autolink',
-  'charmap',
-  'code',
-  'fullscreen',
-  'help',
-  'image',
-  'insertdatetime',
-  'link',
-  'lists',
-  'media',
-  'preview',
-  'searchreplace',
-  'table',
-  'visualblocks'
-] as const;
-
 const MESSAGE_TEMPLATE_VARIABLES: readonly MessageTemplateVariable[] = [
   { category: '회원', label: '회원 이름', token: '{{user_name}}' },
   { category: '회원', label: '회원 ID', token: '{{user_id}}' },
@@ -88,7 +73,7 @@ const MESSAGE_TEMPLATE_VARIABLES: readonly MessageTemplateVariable[] = [
   { category: '시스템', label: '고객센터 이메일', token: '{{support_email}}' }
 ] as const;
 
-const TINYMCE_TOOLBAR =
+const MESSAGE_TINYMCE_TOOLBAR =
   'undo redo | styles | templateVariables | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image';
 
 function buildMessageTemplateVariableMenuItems(
@@ -119,100 +104,29 @@ export function MessageHtmlEditor({
   editorId = 'default-editor',
   height
 }: MessageHtmlEditorProps): JSX.Element {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [resolvedHeight, setResolvedHeight] = useState<number | undefined>(
-    typeof height === 'number' ? height : undefined
-  );
-
-  useLayoutEffect(() => {
-    if (typeof height === 'number') {
-      setResolvedHeight(height);
-      return;
-    }
-
-    const container = containerRef.current;
-    const sizingElement = container?.parentElement;
-
-    if (!container || !sizingElement) {
-      return;
-    }
-
-    let frameId: number | null = null;
-
-    const updateHeight = () => {
-      frameId = null;
-
-      const nextHeight = Math.max(sizingElement.clientHeight, 320);
-
-      setResolvedHeight((prevHeight) =>
-        prevHeight === nextHeight ? prevHeight : nextHeight
-      );
-    };
-
-    const scheduleUpdate = () => {
-      if (frameId !== null) {
-        cancelAnimationFrame(frameId);
-      }
-
-      frameId = requestAnimationFrame(updateHeight);
-    };
-
-    scheduleUpdate();
-
-    const resizeObserver = new ResizeObserver(() => {
-      scheduleUpdate();
-    });
-
-    resizeObserver.observe(sizingElement);
-
-    return () => {
-      resizeObserver.disconnect();
-
-      if (frameId !== null) {
-        cancelAnimationFrame(frameId);
-      }
-    };
-  }, [height]);
-
   return (
-    <div
-      ref={containerRef}
+    <TinyMceHtmlEditor
+      value={value}
+      onChange={onChange}
+      editorId={editorId}
+      height={height}
       className="message-template-html-editor"
-      style={{
-        width: '100%',
-        height: typeof height === 'string' ? height : undefined
-      }}
-    >
-      <Editor
-        key={`${editorId}-${resolvedHeight ?? 'auto'}`}
-        id={editorId}
-        licenseKey="gpl"
-        tinymceScriptSrc="/tinymce/tinymce.min.js"
-        value={value ?? ''}
-        init={{
-          plugins: [...TINYMCE_PLUGINS],
-          toolbar: TINYMCE_TOOLBAR,
-          height: resolvedHeight,
-          width: '100%',
-          borderColor: 'transparent',
-          resize: false,
-          setup: (editor) => {
-            editor.ui.registry.addMenuButton('templateVariables', {
-              text: '환경변수',
-              tooltip: '환경변수 삽입',
-              fetch: (callback) => {
-                callback(
-                  buildMessageTemplateVariableMenuItems((token) => {
-                    editor.insertContent(token);
-                  })
-                );
-              }
-            });
+      plugins={DEFAULT_TINYMCE_PLUGINS}
+      toolbar={MESSAGE_TINYMCE_TOOLBAR}
+      setup={(editor: TinyMceEditor) => {
+        editor.ui.registry.addMenuButton('templateVariables', {
+          text: '환경변수',
+          tooltip: '환경변수 삽입',
+          fetch: (callback) => {
+            callback(
+              buildMessageTemplateVariableMenuItems((token) => {
+                editor.insertContent(token);
+              })
+            );
           }
-        }}
-        onEditorChange={(nextValue) => onChange?.(nextValue)}
-      />
-    </div>
+        });
+      }}
+    />
   );
 }
 
@@ -473,7 +387,17 @@ export function MessageTemplateFormFields({
         bordered
         size="small"
         column={2}
-        items={descriptionItems}
+        items={markRequiredDescriptionItems(descriptionItems, [
+          'category',
+          'status',
+          'name',
+          'summary',
+          'subject',
+          'targetGroupIds',
+          ...(mode === 'auto' ? ['triggerLabel'] : []),
+          ...(showBodyHtml ? ['bodyHtml'] : []),
+          ...(showBodyHtml && showJsonBody ? ['bodyJson'] : [])
+        ])}
         className="message-template-form-descriptions"
       />
     );

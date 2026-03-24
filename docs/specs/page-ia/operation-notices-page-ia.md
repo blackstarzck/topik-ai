@@ -3,8 +3,7 @@
 ## 1. 문서 목적
 
 - 공지사항 화면의 운영 목적, 데이터 블록, 조치 흐름을 같은 기준으로 정리합니다.
-- 구현 전 placeholder 화면은 미확정 정책과 후속 결정 포인트를 빈칸 없이 기록하고, 구현된 화면은 현재 코드/문서 기준 운영 흐름을 고정합니다.
-- 운영 기본 흐름 검색 -> 상세 -> 조치 -> 감사 로그 확인 또는 편집형 화면의 작성/수정 -> 확인 -> 발행 -> 감사 로그 확인을 유지합니다.
+- 목록 검수, 등록 상세 작성, 게시/숨김/삭제 조치, 감사 로그 확인까지 현재 구현 기준을 단일 SoT로 유지합니다.
 
 ## 2. 문서 메타
 
@@ -13,111 +12,113 @@
 | 모듈 | Operation |
 | 페이지명 | 공지사항 |
 | 현재 상태 | 구현됨 |
-| 페이지 유형 | 목록 운영형 |
-| 라우트 | /operation/notices |
-| 주요 권한 | operation.notices.manage |
-| 주요 role | SUPER_ADMIN, OPS_ADMIN |
-| 연관 문서 | docs/specs/admin-page-analysis.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
+| 페이지 유형 | 목록 운영형 + 등록 상세 페이지 |
+| 라우트 | `/operation/notices`, `/operation/notices/create`, `/operation/notices/create/:noticeId` |
+| 주요 권한 | `operation.notices.manage` |
+| 주요 role | `SUPER_ADMIN`, `OPS_ADMIN` |
+| 연관 문서 | `docs/specs/admin-page-analysis.md`, `docs/specs/admin-page-tables.md`, `docs/specs/admin-data-usage-map.md`, `docs/specs/admin-page-flows-mermaid.md` |
 
 ## 3. 페이지 목표와 비목표
 
 ### 목표
 
-- 공지사항 화면의 핵심 운영 데이터를 검색하고 검수합니다.
-- 상세 확인과 조치 후 감사 로그 확인 경로를 같은 화면 문서 기준으로 고정합니다.
+- 공지사항 목록을 검수하고 상태를 운영합니다.
+- 등록/수정은 별도 상세 페이지에서 제목과 TinyMCE 본문을 작성합니다.
+- 게시/숨김/삭제 조치 후 `Target Type`, `Target ID`, 감사 로그 확인 경로를 제공합니다.
 
 ### 비목표
 
-- 백엔드 정산, 배치, 외부 서비스 설정 전체를 이 화면이 직접 대체하지 않습니다.
-- 연관 화면의 원본 책임을 빼앗지 않고 필요한 경우 원본 화면 이동과 감사 로그 확인 경로를 제공합니다.
-- 이미 구현된 화면이라도 현재 코드/문서 SoT를 넘는 임의 규칙을 추가하지 않습니다.
+- 백엔드 배치, 배포, 스케줄링 정책은 이 화면에서 직접 다루지 않습니다.
+- B2C 공지 노출 규칙 전체를 이 문서에서 새로 정의하지 않고, 현재 운영 입력/검수 흐름만 다룹니다.
 
-## 4. 운영자 사용 시나리오
+## 4. 운영자 시나리오
 
-- 시나리오 1: 운영자가 공지사항 화면에서 검색/필터를 적용하고 대상 레코드나 편집 대상을 선택합니다.
-- 시나리오 2: 운영자가 공지 등록 흐름으로 세부 정보를 확인하고 필요한 조치를 실행합니다.
-- 시나리오 3: 운영자가 조치 후 Target Type, Target ID 기준으로 감사 로그를 확인하고 관련 관리자 화면으로 후속 검수를 이어갑니다.
+- 시나리오 1: 운영자가 목록 행을 클릭해 HTML 본문을 미리보기 Modal에서 검수합니다.
+- 시나리오 2: 운영자가 `공지 등록` 버튼으로 상세 페이지에 진입해 `공지 제목 + TinyMCE 본문`을 저장합니다. 신규 공지는 기본적으로 `숨김` 상태로 저장됩니다.
+- 시나리오 3: 운영자가 미리보기 Modal 푸터의 `공지 수정` 버튼으로 수정 상세 페이지로 이동합니다.
+- 시나리오 4: 운영자가 목록의 상태 스위치를 사용해 `게시/숨김`을 전환하고, 확인 모달에서 사유를 남긴 뒤 감사 로그를 확인합니다.
+- 시나리오 5: 운영자가 목록의 붉은색 삭제 아이콘 버튼으로 공지를 삭제하고, 확인 모달에서 사유를 남긴 뒤 감사 로그를 확인합니다.
 
 ## 5. 화면 구조
 
-| 영역 | 목적 | 주요 데이터 | 주요 액션 | 다른 관리자 페이지 영향 | 사용자 화면 영향 |
-| --- | --- | --- | --- | --- | --- |
-| 상단 요약 | 운영 규모와 우선순위 파악 | 요약 없음 | 없음 | 후속 화면 우선순위 결정 | 직접 또는 간접 영향 |
-| 검색/필터 | 탐색 범위 축소 | 별도 SearchBar 없음 | 없음 | 후속 상세 대상 축소 | 직접 영향 없음 |
-| 본문 영역 | 핵심 데이터 비교와 대상 선택 | 본문 테이블 상단 우측 끝 `공지 등록` 버튼, 공지 ID, 제목, 작성자, 작성일, 게시 상태 | 등록, 행 클릭/편집 | 관련 화면과 연결 | 간접 영향 |
-| 상세 영역 | 세부 정보와 조치 근거 확인 | 상세 이동 또는 패널 | 조회/저장/상태 변경 | 감사 로그와 연결 | 직접 또는 간접 영향 |
-| 후속 링크 | 원본 화면과 감사 로그 이동 | Target Type, Target ID, 관련 링크 | 원본 화면 이동 | 후속 검수 동선 고정 | 직접 영향 없음 |
+| 영역 | 목적 | 주요 데이터 | 주요 액션 | 관리자 영향 |
+| --- | --- | --- | --- | --- |
+| 본문 툴바 | 목록 규모와 등록 진입 제공 | `총 n건`, `공지 등록` 버튼 | 등록 상세 이동 | 별도 SearchBar 없이 목록 운영형 툴바 기준 유지 |
+| 목록 테이블 | 공지 검수와 조치 진입 | 공지 ID, 제목, 작성자, 작성일, 상태 스위치, 삭제 아이콘 | 행 클릭 미리보기, 게시/숨김 전환, 삭제 | 운영 핵심 목록 |
+| 미리보기 Modal | 저장된 HTML 본문 검수 | 공지 ID, 제목, 상태, HTML 본문 | 닫기, 공지 수정 | 수정 진입 전 검수 단계 |
+| 등록 상세 페이지 | 제목/본문 작성 | 공지 제목, TinyMCE 본문 | 저장, 목록 복귀 | 신규 저장은 숨김 상태 |
+| 확인 모달 | 파괴적/상태 전환 조치 검증 | 대상 유형, 대상 ID, 사유 | 게시, 숨김, 삭제 실행 | 감사 로그 추적 연결 |
 
 ## 6. 데이터 블록 정의
 
-### 상단 요약 데이터
-- 별도 요약 카드 없이 본문 데이터와 상세 패널에서 직접 파악합니다.
+### 본문 툴바
 
-### 검색/선택 데이터
-- 별도 SearchBar 없음
+- `총 n건`
+- `공지 등록` 버튼 (`size="large"`)
 
-### 본문 데이터
-- 본문 테이블 상단 우측 끝 `공지 등록` 버튼
-- 공지 ID
-- 제목
-- 작성자
-- 작성일
-- 게시 상태
+### 목록 테이블
 
-### 상세 데이터
-- 별도 상세 패널 없이 원본 화면 이동으로 처리합니다.
+- `공지 ID`
+- `제목`
+- `작성자`
+- `작성일`
+- `상태` 스위치
+  - on: `게시`
+  - off: `숨김`
+- `액션` 삭제 아이콘 버튼
+
+### 미리보기 Modal
+
+- `공지 ID`
+- `제목`
+- `상태`
+- 저장된 HTML 본문
+- 푸터 액션: `공지 수정`, `닫기`
+
+### 등록 상세 페이지
+
+- `공지 제목`
+- TinyMCE 본문
+- 신규 공지 기본 저장 정책 안내
 
 ## 7. 액션 정의
 
-| 액션 | 성격 | 대상 식별 기준 | 확인/사유 필요 여부 | 성공 후 피드백 | 감사 로그 확인 경로 |
+| 액션 | 성격 | 대상 식별 기준 | 확인/사유 필요 여부 | 성공 피드백 | 감사 로그 경로 |
 | --- | --- | --- | --- | --- | --- |
-| 공지 등록 | 수정 | Operation + noticeId | 사유 권장 | 공지 등록 완료 후 대상 식별 정보와 후속 확인 경로를 안내합니다. | /system/audit-logs?targetType=Operation&targetId={noticeId} |
-| 수정 | 수정 | Operation + noticeId | 사유 권장 | 수정 완료 후 대상 식별 정보와 후속 확인 경로를 안내합니다. | /system/audit-logs?targetType=Operation&targetId={noticeId} |
-| 게시/숨김 | 파괴적 | Operation + noticeId | 확인 + 사유 필수 | 게시/숨김 완료 후 대상 식별 정보와 후속 확인 경로를 안내합니다. | /system/audit-logs?targetType=Operation&targetId={noticeId} |
-| 삭제 | 파괴적 | Operation + noticeId | 확인 + 사유 필수 | 삭제 완료 후 대상 식별 정보와 후속 확인 경로를 안내합니다. | /system/audit-logs?targetType=Operation&targetId={noticeId} |
+| 공지 등록 | 수정 | `Operation + noticeId` | 사유 없음 | 저장 완료 notification과 감사 로그 링크 제공 | `/system/audit-logs?targetType=Operation&targetId={noticeId}` |
+| 공지 수정 | 수정 | `Operation + noticeId` | 사유 없음 | 수정 완료 notification과 감사 로그 링크 제공 | `/system/audit-logs?targetType=Operation&targetId={noticeId}` |
+| 미리보기 | 조회 | `Operation + noticeId` | 불필요 | HTML 본문 검수 | 해당 없음 |
+| 상태 스위치 on | 파괴적 성격 포함 조치 | `Operation + noticeId` | 확인 + 사유 필수 | 게시 완료 notification과 감사 로그 링크 제공 | `/system/audit-logs?targetType=Operation&targetId={noticeId}` |
+| 상태 스위치 off | 파괴적 성격 포함 조치 | `Operation + noticeId` | 확인 + 사유 필수 | 숨김 완료 notification과 감사 로그 링크 제공 | `/system/audit-logs?targetType=Operation&targetId={noticeId}` |
+| 삭제 아이콘 | 파괴적 조치 | `Operation + noticeId` | 확인 + 사유 필수 | 삭제 완료 notification과 감사 로그 링크 제공 | `/system/audit-logs?targetType=Operation&targetId={noticeId}` |
 
-## 8. 상태값/정책/운영 규칙
+## 8. 상태값과 운영 규칙
 
-| 항목 | 현재 상태 | 관리자 페이지 영향 | 사용자 화면 영향 | 추후 결정 필요 내용 |
-| --- | --- | --- | --- | --- |
-| 상태값/운영 규칙 | 확정 | Operation 모듈의 현재 코드/문서 기준 상태값과 운영 규칙을 유지하고 변경 시 연관 화면과 문서를 함께 갱신해야 합니다. | 사용자 화면 문구와 상태 기준의 운영 원천이 됩니다. | 상태 세트 변경 시 연관 문서와 화면을 함께 갱신해야 합니다. |
-| URL/상태 복원 | 확정 | 목록/탭/버전/선택 상태를 새로고침과 뒤로가기에서도 가능한 한 재현해야 합니다. | 운영자는 같은 검색/상세 맥락으로 복귀할 수 있습니다. | 필수 쿼리 파라미터를 변경하면 연관 화면도 함께 검토해야 합니다. |
-| 감사 추적 | 확정 | 조치가 있으면 Target Type, Target ID, 사유, 수행자 기준으로 감사 로그 확인 경로를 제공합니다. | 직접 B2C 노출이 없어도 운영 증적 확보가 필요합니다. | 조치성 액션과 조회성 액션의 로깅 범위를 분리 관리합니다. |
-
-## 9. 다른 관리자 페이지 영향
-
-| 대상 페이지 | 영향 내용 | 연동 방식 | 선행/후행 관계 |
+| 항목 | 현재 상태 | 관리자 영향 | B2C 영향 |
 | --- | --- | --- | --- |
-| System > 감사 로그 | 조치가 있는 경우 Target Type, Target ID 기준으로 사후 검증을 수행합니다. | AuditLogLink 또는 딥링크 | 조치 후 필수 |
+| 공지 상태 | `게시`, `숨김` | 목록 상태 스위치로 전환 | `게시`만 사용자 노출 후보 |
+| 신규 저장 정책 | 확정 | 신규 공지는 저장 시 `숨김` 상태로 보관 | 검수 전 노출 방지 |
+| 수정 진입 | 확정 | 목록 행 클릭 미리보기 Modal과 푸터 `공지 수정` 버튼으로 이동 | 직접 영향 없음 |
+| 삭제 진입 | 확정 | 더보기 드롭다운 없이 삭제 아이콘으로만 제공 | 삭제 시 노출 중단 |
 
-## 10. 사용자 화면/B2C 영향 참고
+## 9. URL/상태 복원
 
-| 사용자 화면 후보 | 영향 상태 | 이 페이지 데이터가 반영되는 방식 | 비고 |
-| --- | --- | --- | --- |
-| 공지 목록, 공지 상세, 홈/마이페이지 공지 섹션 | 운영상 추정 | 대표적인 B2C 노출 운영 콘텐츠 | 공지 콘텐츠 |
+- 목록 라우트: `/operation/notices`
+- 등록 상세 라우트: `/operation/notices/create`, `/operation/notices/create/:noticeId`
+- 쿼리 파라미터: `status`, `sortField`, `sortOrder`, `preview`
+- `preview`가 있으면 같은 공지를 미리보기 Modal에서 복원합니다.
+- 등록/수정 상세에서 목록으로 돌아오면 기존 목록 필터/정렬 상태를 유지합니다.
 
-## 11. URL/상태 복원
+## 10. 네트워크 상태와 fail-safe
 
-- 기본 라우트: /operation/notices
-- 필수 쿼리 파라미터 후보: page, pageSize, searchField, keyword, startDate, endDate, selected
-- Drawer/Modal 복원 여부: 권장
-- 유지되어야 하는 상태: 목록 조건과 선택된 상세 패널 상태를 함께 복원하는 구조를 권장합니다.
+- `pending`: loading 상태를 표시하고, 직전 성공 데이터가 있으면 유지합니다.
+- `success`: 현재 목록 또는 상세 데이터를 정상 렌더링합니다.
+- `empty`: 공지가 없거나 필터 결과가 없는 상태를 별도 안내합니다.
+- `error`: 오류 메시지, 오류 코드, `다시 시도` 버튼을 노출하고 마지막 성공 상태 fallback을 유지합니다.
+- 상태 전환/삭제 실패는 목록 전체를 중단시키지 않고 action-level notification으로 격리합니다.
 
-## 12. 네트워크 상태와 fail-safe
+## 11. 구현 메모
 
-- pending: 스켈레톤 또는 loading 상태를 표시하고, 직전 성공 데이터가 있으면 유지합니다.
-- success: 정상 결과를 렌더링합니다.
-- empty: 조건에 맞는 데이터가 없음을 페이지 맥락에 맞게 명확히 안내합니다.
-- error: 오류 코드/메시지, 재시도 버튼, 마지막 성공 상태 fallback 문구를 함께 노출합니다.
-- 마지막 성공 상태 fallback: 화면 전체를 비우지 않고 직전 성공 데이터나 읽기 전용 요약을 유지합니다.
-- 요청 취소/재시도: 화면 이탈 시 abort, 조회 실패 시 retry, 파괴적 액션은 중복 제출 방지가 필요합니다.
-
-## 13. 구현 메모
-
-- 현재 코드베이스에서 재사용할 컴포넌트: PageTitle, SearchBar, AdminDataTable, ConfirmAction, AuditLogLink
-- 예상 feature 파일: src/features/operation/pages/*
-- 권한/로그 처리 메모: 파괴적 액션에는 확인 단계와 사유 입력, Target Type, Target ID, 감사 로그 확인 경로를 함께 둡니다.
-
-## 14. 오픈 이슈
-
-- 예약 게시와 상단 고정 정책 미정
+- 사용 컴포넌트: `PageTitle`, `AdminListCard`, `AdminDataTable`, `HtmlPreviewModal`, `ConfirmAction`, `AuditLogLink`, TinyMCE HTML Editor
+- 관련 코드: `src/features/operation/pages/operation-notices-page.tsx`, `src/features/operation/pages/operation-notice-create-page.tsx`, `src/features/operation/api/notices-service.ts`
+- 미리보기 Modal 푸터의 `공지 수정` 버튼은 공지사항 페이지에서만 사용하는 page-level 액션 슬롯입니다.

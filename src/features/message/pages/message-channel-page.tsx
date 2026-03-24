@@ -1,6 +1,8 @@
 import {
   Alert,
   Button,
+  DatePicker,
+  Descriptions,
   Form,
   Input,
   Modal,
@@ -11,6 +13,7 @@ import {
   notification
 } from 'antd';
 import type { TableColumnsType } from 'antd';
+import type { Dayjs } from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -34,6 +37,8 @@ import type { AsyncState } from '../../../shared/model/async-state';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
+import { markRequiredDescriptionItems } from '../../../shared/ui/descriptions/description-label';
+import { HtmlPreviewModal } from '../../../shared/ui/html-preview-modal/html-preview-modal';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
@@ -49,6 +54,7 @@ import {
 } from '../../../shared/ui/search-bar/search-bar-utils';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
+import { BinaryStatusSwitch } from '../../../shared/ui/table/binary-status-switch';
 import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
 import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
 import {
@@ -59,6 +65,7 @@ import {
 const { Text } = Typography;
 
 const messageTemplateStatusFilterValues = ['활성', '비활성', '초안'] as const;
+const DATE_TIME_FORMAT = 'YYYY-MM-DD HH:mm';
 
 type MessageChannelPageProps = {
   channel: MessageChannel;
@@ -72,7 +79,7 @@ type TestSendFormValues = {
 type LiveSendFormValues = {
   targetGroupIds: string[];
   actionType: '즉시 발송' | '예약 발송';
-  scheduledAt?: string;
+  scheduledAt?: Dayjs;
   reason: string;
 };
 
@@ -332,6 +339,9 @@ export function MessageChannelPage({
     },
     [templateForm]
   );
+  const openPreviewModal = useCallback((template: MessageTemplate) => {
+    setPreviewTemplate(template);
+  }, []);
 
   const closeEditor = useCallback(() => {
     templateForm.resetFields();
@@ -463,6 +473,18 @@ export function MessageChannelPage({
     [meta.recipientPlaceholder, testForm]
   );
 
+  const openStatusToggleConfirm = useCallback((template: MessageTemplate) => {
+    if (template.status !== '활성' && template.status !== '비활성') {
+      return;
+    }
+
+    setDangerState({
+      type: 'toggle',
+      template,
+      nextStatus: template.status === '활성' ? '비활성' : '활성'
+    });
+  }, []);
+
   const handleTestSend = useCallback(async () => {
     if (!testTemplate) {
       return;
@@ -510,7 +532,10 @@ export function MessageChannelPage({
       groupIds: values.targetGroupIds,
       actor: 'admin_current',
       actionType: values.actionType,
-      scheduledAt: values.actionType === '예약 발송' ? values.scheduledAt : undefined
+      scheduledAt:
+        values.actionType === '예약 발송'
+          ? values.scheduledAt?.format(DATE_TIME_FORMAT)
+          : undefined
     });
 
     if (!result) {
@@ -538,19 +563,9 @@ export function MessageChannelPage({
     (template: MessageTemplate) => {
       const commonItems = [
         {
-          key: `detail-${template.id}`,
-          label: '등록 상세 이동',
-          onClick: () => openTemplateDetail(template)
-        },
-        {
           key: `edit-meta-${template.id}`,
           label: '템플릿 정보 수정',
           onClick: () => openEditModal(template)
-        },
-        {
-          key: `preview-${template.id}`,
-          label: '미리보기',
-          onClick: () => setPreviewTemplate(template)
         },
         {
           key: `test-${template.id}`,
@@ -568,15 +583,10 @@ export function MessageChannelPage({
             onClick: () => openLiveSendModal(template)
           },
           {
-            key: `toggle-${template.id}`,
-            label: template.status === '활성' ? '자동 발송 비활성화' : '자동 발송 활성화',
-            danger: template.status === '활성',
-            onClick: () =>
-              setDangerState({
-                type: 'toggle',
-                template,
-                nextStatus: template.status === '활성' ? '비활성' : '활성'
-              })
+            key: `delete-${template.id}`,
+            label: '템플릿 삭제',
+            danger: true,
+            onClick: () => setDangerState({ type: 'delete', template })
           }
         ];
       }
@@ -596,7 +606,7 @@ export function MessageChannelPage({
         }
       ];
     },
-    [activeMode, openEditModal, openLiveSendModal, openTemplateDetail, openTestSendModal]
+    [activeMode, openEditModal, openLiveSendModal, openTestSendModal]
   );
 
   const columns = useMemo<TableColumnsType<MessageTemplate>>(
@@ -666,13 +676,23 @@ export function MessageChannelPage({
         {
           title: createStatusColumnTitle('상태', ['활성', '비활성', '초안']),
           dataIndex: 'status',
-          width: 100,
+          width: activeMode === 'auto' ? 120 : 100,
           ...createDefinedColumnFilterProps(
             messageTemplateStatusFilterValues,
             (record) => record.status
           ),
           sorter: createTextSorter((record) => record.status),
-          render: (status: MessageTemplateStatus) => <StatusBadge status={status} />
+          render: (status: MessageTemplateStatus, record) =>
+            activeMode === 'auto' && (status === '활성' || status === '비활성') ? (
+              <BinaryStatusSwitch
+                checked={status === '활성'}
+                checkedLabel="활성"
+                uncheckedLabel="비활성"
+                onToggle={() => openStatusToggleConfirm(record)}
+              />
+            ) : (
+              <StatusBadge status={status} />
+            )
         },
         {
           title: '액션',
@@ -689,7 +709,7 @@ export function MessageChannelPage({
 
       return baseColumns;
     },
-    [activeMode, buildActionItems, groups, meta.categories, meta.subjectLabel]
+    [activeMode, buildActionItems, groups, meta.categories, meta.subjectLabel, openStatusToggleConfirm]
   );
 
   const tabItems = useMemo(
@@ -712,14 +732,40 @@ export function MessageChannelPage({
 
   const handleRowClick = useCallback(
     (record: MessageTemplate) => ({
-      onClick: () => openTemplateDetail(record),
+      onClick: () => openPreviewModal(record),
       style: { cursor: 'pointer' }
     }),
-    [openTemplateDetail]
+    [openPreviewModal]
   );
 
   const editorMode =
     editorState?.kind === 'edit' ? editorState.template.mode : activeMode;
+  const previewDescriptionItems = previewTemplate
+    ? [
+      {
+        key: 'templateId',
+        label: '템플릿 ID',
+        children: previewTemplate.id
+      },
+      {
+        key: 'templateName',
+        label: '템플릿명',
+        children: previewTemplate.name
+      },
+      {
+        key: 'targetGroups',
+        label: '발송 그룹',
+        children: renderGroupNames(groups, previewTemplate.targetGroupIds)
+      }
+    ]
+    : [];
+  const previewFooterActions = previewTemplate
+    ? [
+        <Button key="edit" type="primary" onClick={() => openTemplateDetail(previewTemplate)}>
+          템플릿 수정
+        </Button>
+      ]
+    : [];
 
   return (
     <div>
@@ -857,7 +903,7 @@ export function MessageChannelPage({
         onOk={handleSaveTemplate}
       destroyOnHidden
       >
-        <Form form={templateForm} layout="vertical">
+        <Form form={templateForm}>
           <MessageTemplateFormFields
             channel={channel}
             mode={editorMode}
@@ -869,63 +915,16 @@ export function MessageChannelPage({
         </Form>
       </Modal>
 
-      <Modal
+      <HtmlPreviewModal
         open={Boolean(previewTemplate)}
         title={`${meta.title} 템플릿 미리보기`}
-        footer={[
-          <Button key="close" onClick={closePreview}>
-            닫기
-          </Button>
-        ]}
+        descriptionItems={previewDescriptionItems}
+        bodyHtml={previewTemplate?.bodyHtml}
+        footerActions={previewFooterActions}
         width={920}
-        onCancel={closePreview}
-        destroyOnHidden
-      >
-        {previewTemplate ? (
-          <Space direction="vertical" size={16} style={{ width: '100%' }}>
-            <div>
-              <Text strong>템플릿 ID</Text>
-              <div>{previewTemplate.id}</div>
-            </div>
-            <div>
-              <Text strong>{meta.subjectLabel}</Text>
-              <div>{previewTemplate.subject}</div>
-            </div>
-            <div>
-              <Text strong>발송 그룹</Text>
-              <div>{renderGroupNames(groups, previewTemplate.targetGroupIds)}</div>
-            </div>
-            <div>
-              <Text strong>HTML 미리보기</Text>
-              <div
-                style={{
-                  marginTop: 8,
-                  border: '1px solid #e5eaf3',
-                  borderRadius: 10,
-                  padding: 16,
-                  background: '#fbfcfe'
-                }}
-                dangerouslySetInnerHTML={{ __html: previewTemplate.bodyHtml }}
-              />
-            </div>
-            <div>
-              <Text strong>JSON 원본</Text>
-              <pre
-                style={{
-                  marginTop: 8,
-                  padding: 16,
-                  background: '#0f172a',
-                  color: '#e2e8f0',
-                  borderRadius: 10,
-                  overflowX: 'auto'
-                }}
-              >
-                {previewTemplate.bodyJson}
-              </pre>
-            </div>
-          </Space>
-        ) : null}
-      </Modal>
+        onClose={closePreview}
+        emptyDescription="행을 클릭해 등록 상세에서 본문을 먼저 저장하세요."
+      />
 
       <Modal
         open={Boolean(testTemplate)}
@@ -936,22 +935,44 @@ export function MessageChannelPage({
         onOk={handleTestSend}
         destroyOnHidden
       >
-        <Form form={testForm} layout="vertical">
-          <Form.Item
-            label={meta.recipientLabel}
-            name="recipient"
-            rules={[{ required: true, message: `${meta.recipientLabel}을 입력하세요.` }]}
-          >
-            <Input placeholder={meta.recipientPlaceholder} />
-          </Form.Item>
-          <Form.Item
-            label="사유/근거"
-            name="reason"
-            rules={[{ required: true, message: '테스트 발송 사유를 입력하세요.' }]}
-            style={{ marginBottom: 0 }}
-          >
-            <Input.TextArea rows={4} placeholder="예: 템플릿 렌더링과 링크 확인" />
-          </Form.Item>
+        <Form form={testForm}>
+          <Descriptions
+            bordered
+            size="small"
+            column={1}
+            className="message-template-form-descriptions"
+            items={markRequiredDescriptionItems(
+              [
+                {
+                  key: 'recipient',
+                  label: meta.recipientLabel,
+                  children: (
+                    <Form.Item
+                      name="recipient"
+                      rules={[{ required: true, message: `${meta.recipientLabel}을 입력하세요.` }]}
+                      style={{ marginBottom: 0 }}
+                    >
+                      <Input placeholder={meta.recipientPlaceholder} />
+                    </Form.Item>
+                  )
+                },
+                {
+                  key: 'reason',
+                  label: '사유/근거',
+                  children: (
+                    <Form.Item
+                      name="reason"
+                      rules={[{ required: true, message: '테스트 발송 사유를 입력하세요.' }]}
+                      style={{ marginBottom: 0 }}
+                    >
+                      <Input.TextArea rows={4} placeholder="예: 템플릿 렌더링과 링크 확인" />
+                    </Form.Item>
+                  )
+                }
+              ],
+              ['recipient', 'reason']
+            )}
+          />
         </Form>
       </Modal>
 
@@ -964,49 +985,98 @@ export function MessageChannelPage({
         onOk={handleLiveSend}
         destroyOnHidden
       >
-        <Form form={liveSendForm} layout="vertical">
-          <Form.Item
-            label="발송 그룹"
-            name="targetGroupIds"
-            rules={[{ required: true, message: '발송 그룹을 선택하세요.' }]}
-          >
-            <Select
-              mode="multiple"
-              options={groups.map((group) => ({
-                label: `${group.name} (${group.memberCount.toLocaleString()}명)`,
-                value: group.id
-              }))}
-            />
-          </Form.Item>
-          <Form.Item
-            label="발송 방식"
-            name="actionType"
-            rules={[{ required: true, message: '발송 방식을 선택하세요.' }]}
-          >
-            <Select
-              options={[
-                { label: '즉시 발송', value: '즉시 발송' },
-                { label: '예약 발송', value: '예약 발송' }
-              ]}
-            />
-          </Form.Item>
-          {liveActionType === '예약 발송' ? (
-            <Form.Item
-              label="예약 시각"
-              name="scheduledAt"
-              rules={[{ required: true, message: '예약 시각을 입력하세요.' }]}
-            >
-              <Input placeholder="예: 2026-03-12 09:00" />
-            </Form.Item>
-          ) : null}
-          <Form.Item
-            label="사유/근거"
-            name="reason"
-            rules={[{ required: true, message: '발송 사유를 입력하세요.' }]}
-            style={{ marginBottom: 0 }}
-          >
-            <Input.TextArea rows={4} placeholder="예: 월간 캠페인 발송, 결제 실패 대응" />
-          </Form.Item>
+        <Form form={liveSendForm}>
+          <Descriptions
+            bordered
+            size="small"
+            column={1}
+            className="message-template-form-descriptions"
+            items={markRequiredDescriptionItems(
+              [
+                {
+                  key: 'targetGroupIds',
+                  label: '발송 그룹',
+                  children: (
+                    <Form.Item
+                      name="targetGroupIds"
+                      rules={[{ required: true, message: '발송 그룹을 선택하세요.' }]}
+                      style={{ marginBottom: 0 }}
+                    >
+                      <Select
+                        mode="multiple"
+                        options={groups.map((group) => ({
+                          label: `${group.name} (${group.memberCount.toLocaleString()}명)`,
+                          value: group.id
+                        }))}
+                      />
+                    </Form.Item>
+                  )
+                },
+                {
+                  key: 'actionType',
+                  label: '발송 방식',
+                  children: (
+                    <Form.Item
+                      name="actionType"
+                      rules={[{ required: true, message: '발송 방식을 선택하세요.' }]}
+                      style={{ marginBottom: 0 }}
+                    >
+                      <Select
+                        options={[
+                          { label: '즉시 발송', value: '즉시 발송' },
+                          { label: '예약 발송', value: '예약 발송' }
+                        ]}
+                      />
+                    </Form.Item>
+                  )
+                },
+                ...(liveActionType === '예약 발송'
+                  ? [
+                      {
+                        key: 'scheduledAt',
+                        label: '예약 시각',
+                        children: (
+                          <Form.Item
+                            name="scheduledAt"
+                            rules={[{ required: true, message: '예약 시각을 선택하세요.' }]}
+                            style={{ marginBottom: 0 }}
+                          >
+                            <DatePicker
+                              showTime
+                              format={DATE_TIME_FORMAT}
+                              placeholder="예약 시각 선택"
+                              style={{ width: '100%' }}
+                            />
+                          </Form.Item>
+                        )
+                      }
+                    ]
+                  : []),
+                {
+                  key: 'reason',
+                  label: '사유/근거',
+                  children: (
+                    <Form.Item
+                      name="reason"
+                      rules={[{ required: true, message: '발송 사유를 입력하세요.' }]}
+                      style={{ marginBottom: 0 }}
+                    >
+                      <Input.TextArea
+                        rows={4}
+                        placeholder="예: 월간 캠페인 발송, 결제 실패 대응"
+                      />
+                    </Form.Item>
+                  )
+                }
+              ],
+              [
+                'targetGroupIds',
+                'actionType',
+                'reason',
+                ...(liveActionType === '예약 발송' ? ['scheduledAt'] : [])
+              ]
+            )}
+          />
         </Form>
       </Modal>
 

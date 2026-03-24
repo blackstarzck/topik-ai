@@ -40,8 +40,17 @@ const MessageHistoryPage = lazy(
 const OperationNoticesPage = lazy(
   () => import('../../features/operation/pages/operation-notices-page')
 );
+const OperationNoticeCreatePage = lazy(
+  () => import('../../features/operation/pages/operation-notice-create-page')
+);
 const OperationFaqPage = lazy(
   () => import('../../features/operation/pages/operation-faq-page')
+);
+const OperationEventsPage = lazy(
+  () => import('../../features/operation/pages/operation-events-page')
+);
+const OperationEventCreatePage = lazy(
+  () => import('../../features/operation/pages/operation-event-create-page')
 );
 const BillingPaymentsPage = lazy(
   () => import('../../features/billing/pages/billing-payments-page')
@@ -108,22 +117,23 @@ export function AppRouter(): JSX.Element {
         <Route path="/messages/history" element={<MessageHistoryPage />} />
 
         <Route path="/operation/notices" element={<OperationNoticesPage />} />
-        <Route path="/operation/faq" element={<OperationFaqPage />} />
         <Route
-          path="/operation/events"
-          element={
-            <AdminPlaceholderPage
-              title="이벤트"
-              summary="이벤트 페이지, 참여 조건, 노출 상태를 운영하기 위한 화면 자리입니다."
-              ownerRole="OPS_ADMIN"
-              supportingRoles={['SUPER_ADMIN']}
-              capabilities={[
-                '이벤트 메타데이터 관리',
-                '노출 기간과 대상 설정',
-                '메시지/커머스와의 연동 계획 정리'
-              ]}
-            />
-          }
+          path="/operation/notices/create"
+          element={<OperationNoticeCreatePage />}
+        />
+        <Route
+          path="/operation/notices/create/:noticeId"
+          element={<OperationNoticeCreatePage />}
+        />
+        <Route path="/operation/faq" element={<OperationFaqPage />} />
+        <Route path="/operation/events" element={<OperationEventsPage />} />
+        <Route
+          path="/operation/events/create"
+          element={<OperationEventCreatePage />}
+        />
+        <Route
+          path="/operation/events/create/:eventId"
+          element={<OperationEventCreatePage />}
         />
         <Route
           path="/operation/chatbot"

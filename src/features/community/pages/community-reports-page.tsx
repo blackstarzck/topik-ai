@@ -28,8 +28,8 @@ import {
   matchesSearchField,
   parseSearchDate
 } from '../../../shared/ui/search-bar/search-bar-utils';
-import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
+import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
 import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
 import {
@@ -133,13 +133,6 @@ export default function CommunityReportsPage(): JSX.Element {
   } = useSearchBarDateDraft(startDate, endDate);
   const [notificationApi, notificationContextHolder] = notification.useNotification();
 
-  const processedStatus = useMemo<ProcessStatus>(
-    () =>
-      initialRows.find((row) => row.processStatus === '처리 완료')?.processStatus ??
-      '처리 완료',
-    []
-  );
-
   const commitParams = useCallback(
     (
       next: Partial<
@@ -212,28 +205,6 @@ export default function CommunityReportsPage(): JSX.Element {
           }
         : null,
     [selectedRow]
-  );
-
-  const markProcessed = useCallback(
-    (row: ReportRow) => {
-      setRows((prev) =>
-        prev.map((item) =>
-          item.id === row.id ? { ...item, processStatus: '처리 완료' } : item
-        )
-      );
-      notificationApi.success({
-        message: '신고 처리 완료',
-        description: (
-          <Space direction="vertical">
-            <Text>대상 유형: {getTargetTypeLabel('Community')}</Text>
-            <Text>대상 ID: {row.id}</Text>
-            <Text>사유/근거: 운영자가 신고 처리를 완료했습니다.</Text>
-            <AuditLogLink targetType="Community" targetId={row.id} />
-          </Space>
-        )
-      });
-    },
-    [notificationApi]
   );
 
   const handleConfirmAction = useCallback(
@@ -375,19 +346,13 @@ export default function CommunityReportsPage(): JSX.Element {
                 label: '사용자 정지',
                 danger: true,
                 onClick: () => setActionState({ type: 'suspend-user', row: record })
-              },
-              {
-                key: `complete-${record.id}`,
-                label: '신고 처리 완료',
-                disabled: record.processStatus === processedStatus,
-                onClick: () => markProcessed(record)
               }
             ]}
           />
         )
       }
     ],
-    [markProcessed, processedStatus]
+    []
   );
 
   const pendingCount = rows.filter((row) => row.processStatus === '처리 대기').length;

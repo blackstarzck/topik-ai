@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import { mockUsers } from '../../users/api/mock-users';
+import { createDefaultMessageGroupFilters } from './message-group-segment-schema';
 import type {
   MessageChannel,
   MessageGroup,
@@ -11,6 +12,7 @@ import type {
   MessageGroupFilters,
   MessageGroupGender,
   MessageGroupMemberType,
+  MessageGroupQueryGroup,
   MessageGroupSignupMethod,
   MessageGroupStatus,
   MessageGroupSubscriptionState,
@@ -74,19 +76,7 @@ const SAMPLE_NAMES = [
   '오채원'
 ];
 
-const DEFAULT_FILTERS: MessageGroupFilters = {
-  country: '한국 (KR)',
-  memberTypes: ['학생'],
-  genders: ['남성', '여성'],
-  ageRange: [18, 34],
-  signupMethods: ['이메일', '구글'],
-  signupDateRange: {
-    start: '2025-01-01',
-    end: '2025-03-10'
-  },
-  subscriptionStates: ['구독'],
-  activityStates: ['활동']
-};
+const DEFAULT_FILTERS: MessageGroupFilters = createDefaultMessageGroupFilters('2026-03-10');
 
 type SaveTemplatePayload = Omit<
   MessageTemplate,
@@ -111,6 +101,7 @@ type SaveGroupPayload = {
   staticMembers: string[];
   filters: MessageGroupFilters;
   queryBuilderText?: string;
+  queryBuilderConfig?: MessageGroupQueryGroup;
 };
 
 type SendTemplatePayload = {
@@ -350,7 +341,8 @@ function createGroup(seed: Omit<MessageGroup, 'memberCount' | 'ruleSummary' | 'l
     status: seed.status,
     staticMembers: seed.staticMembers,
     filters: seed.filters,
-    queryBuilderText: seed.queryBuilderText
+    queryBuilderText: seed.queryBuilderText,
+    queryBuilderConfig: seed.queryBuilderConfig
   };
 
   return {
@@ -413,7 +405,42 @@ const initialGroups: MessageGroup[] = [
       activityStates: ['비활동']
     },
     queryBuilderText:
-      "country = 'US' AND member_type = '강사' AND last_login_at <= NOW() - INTERVAL '25 day' AND subscription_state = '구독'",
+      "country = 'US' AND member_type = '강사' AND activity_state = '비활동' AND subscription_state = '구독'",
+    queryBuilderConfig: {
+      type: 'group',
+      id: 'group-seed-002',
+      combinator: 'and',
+      children: [
+        {
+          type: 'rule',
+          id: 'rule-seed-002-country',
+          field: 'country',
+          operator: 'equals',
+          value: '미국 (US)'
+        },
+        {
+          type: 'rule',
+          id: 'rule-seed-002-member-type',
+          field: 'memberType',
+          operator: 'equals',
+          value: '강사'
+        },
+        {
+          type: 'rule',
+          id: 'rule-seed-002-activity',
+          field: 'activityState',
+          operator: 'equals',
+          value: '비활동'
+        },
+        {
+          type: 'rule',
+          id: 'rule-seed-002-subscription',
+          field: 'subscriptionState',
+          operator: 'equals',
+          value: '구독'
+        }
+      ]
+    },
     updatedAt: '2026-03-09 15:40',
     updatedBy: 'admin_kim',
     lastCalculatedAt: '2026-03-09 15:32'
@@ -860,18 +887,19 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       return null;
     }
 
-    const payload: SaveGroupPayload = {
-      id: target.id,
-      name: target.name,
-      description: target.description,
+      const payload: SaveGroupPayload = {
+        id: target.id,
+        name: target.name,
+        description: target.description,
       definitionType: target.definitionType,
       builderMode: target.builderMode,
       channels: target.channels,
-      status: target.status,
-      staticMembers: target.staticMembers,
-      filters: target.filters,
-      queryBuilderText: target.queryBuilderText
-    };
+        status: target.status,
+        staticMembers: target.staticMembers,
+        filters: target.filters,
+        queryBuilderText: target.queryBuilderText,
+        queryBuilderConfig: target.queryBuilderConfig
+      };
 
     const refreshed: MessageGroup = {
       ...target,

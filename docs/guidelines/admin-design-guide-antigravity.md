@@ -67,7 +67,7 @@
 ## 컴포넌트 규칙 (Ant Design)
 - **ConfigProvider**: 전역 테마 설정을 위해 반드시 사용하며, `theme.token`을 통해 커스터마이징한다.
 - **Button**: 액션의 중요도에 따라 `primary`, `default`, `dashed`, `text`, `link`를 구분하여 사용한다.
-- **Form**: `layout="vertical"`을 기본으로 하며, 필수 입력 항목은 `required` 표시를 누락하지 않는다.
+- **입력 레이아웃**: Modal, Drawer, 보조 패널의 항목형 입력은 `Descriptions` 기반 입력 테이블을 기본으로 사용하고, `Form`은 검증과 상태 관리 용도로만 감싼다. 단일 본문 에디터처럼 표 구조가 맞지 않는 캔버스형 입력만 예외로 둔다.
 
 ## 테이블/필터 UI 규칙
 - **필터**: 테이블 상단에 배치하며, 검색어 입력과 셀렉트 박스, 기간 선택(RangePicker)을 조합한다.

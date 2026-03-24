@@ -12,10 +12,11 @@ import {
   TeamOutlined
 } from '@ant-design/icons';
 import { Button, Grid, Layout, Menu, Spin, Tag, Typography, theme } from 'antd';
-import type { ItemType, MenuItemType } from 'antd/es/menu/interface';
+import type { MenuProps } from 'antd';
+import type { ItemType } from 'antd/es/menu/interface';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { usePermissionStore } from '../../features/system/model/permission-store';
 import { adminMenuLabels, adminRoleLabels } from './admin-labels';
@@ -29,7 +30,8 @@ const ADMIN_SHELL_SIDEBAR_COLLAPSED_STORAGE_KEY = 'topik-ai-admin:sidebar-collap
 type MenuNode = {
   key: string;
   icon?: ReactNode;
-  label: ReactNode;
+  label: string;
+  to?: string;
   permissionKeys?: string[];
   children?: MenuNode[];
 };
@@ -48,7 +50,8 @@ const menuConfig: MenuNode[] = [
   {
     key: '/dashboard',
     icon: <DashboardOutlined />,
-    label: <Link to="/dashboard">{adminMenuLabels.dashboard}</Link>,
+    label: adminMenuLabels.dashboard,
+    to: '/dashboard',
     permissionKeys: ['dashboard.read']
   },
   {
@@ -58,17 +61,20 @@ const menuConfig: MenuNode[] = [
     children: [
       {
         key: '/users',
-        label: <Link to="/users">{adminMenuLabels.usersList}</Link>,
+        label: adminMenuLabels.usersList,
+        to: '/users',
         permissionKeys: ['users.read']
       },
       {
         key: '/users/groups',
-        label: <Link to="/users/groups">{adminMenuLabels.usersGroups}</Link>,
+        label: adminMenuLabels.usersGroups,
+        to: '/users/groups',
         permissionKeys: ['users.groups.manage']
       },
       {
         key: '/users/referrals',
-        label: <Link to="/users/referrals">{adminMenuLabels.usersReferrals}</Link>,
+        label: adminMenuLabels.usersReferrals,
+        to: '/users/referrals',
         permissionKeys: ['users.referrals.manage']
       }
     ]
@@ -80,12 +86,14 @@ const menuConfig: MenuNode[] = [
     children: [
       {
         key: '/community/posts',
-        label: <Link to="/community/posts">{adminMenuLabels.communityPosts}</Link>,
+        label: adminMenuLabels.communityPosts,
+        to: '/community/posts',
         permissionKeys: ['community.posts.hide', 'community.posts.delete']
       },
       {
         key: '/community/reports',
-        label: <Link to="/community/reports">{adminMenuLabels.communityReports}</Link>,
+        label: adminMenuLabels.communityReports,
+        to: '/community/reports',
         permissionKeys: ['community.reports.resolve']
       }
     ]
@@ -97,24 +105,26 @@ const menuConfig: MenuNode[] = [
     children: [
       {
         key: '/messages/mail',
-        label: <Link to="/messages/mail?tab=auto">{adminMenuLabels.messagesMail}</Link>,
+        label: adminMenuLabels.messagesMail,
+        to: '/messages/mail?tab=auto',
         permissionKeys: ['message.mail.manage']
       },
       {
         key: '/messages/push',
-        label: <Link to="/messages/push?tab=auto">{adminMenuLabels.messagesPush}</Link>,
+        label: adminMenuLabels.messagesPush,
+        to: '/messages/push?tab=auto',
         permissionKeys: ['message.push.manage']
       },
       {
         key: '/messages/groups',
-        label: <Link to="/messages/groups">{adminMenuLabels.messagesGroups}</Link>,
+        label: adminMenuLabels.messagesGroups,
+        to: '/messages/groups',
         permissionKeys: ['message.groups.manage']
       },
       {
         key: '/messages/history',
-        label: (
-          <Link to="/messages/history?channel=mail">{adminMenuLabels.messagesHistory}</Link>
-        ),
+        label: adminMenuLabels.messagesHistory,
+        to: '/messages/history?channel=mail',
         permissionKeys: ['message.history.read']
       }
     ]
@@ -126,22 +136,26 @@ const menuConfig: MenuNode[] = [
     children: [
       {
         key: '/operation/notices',
-        label: <Link to="/operation/notices">{adminMenuLabels.operationNotices}</Link>,
+        label: adminMenuLabels.operationNotices,
+        to: '/operation/notices',
         permissionKeys: ['operation.notices.manage']
       },
       {
         key: '/operation/faq',
-        label: <Link to="/operation/faq">{adminMenuLabels.operationFaq}</Link>,
+        label: adminMenuLabels.operationFaq,
+        to: '/operation/faq',
         permissionKeys: ['operation.faq.manage']
       },
       {
         key: '/operation/events',
-        label: <Link to="/operation/events">{adminMenuLabels.operationEvents}</Link>,
+        label: adminMenuLabels.operationEvents,
+        to: '/operation/events',
         permissionKeys: ['operation.events.manage']
       },
       {
         key: '/operation/chatbot',
-        label: <Link to="/operation/chatbot">{adminMenuLabels.operationChatbot}</Link>,
+        label: adminMenuLabels.operationChatbot,
+        to: '/operation/chatbot',
         permissionKeys: ['operation.chatbot.manage']
       }
     ]
@@ -153,27 +167,32 @@ const menuConfig: MenuNode[] = [
     children: [
       {
         key: '/commerce/payments',
-        label: <Link to="/commerce/payments">{adminMenuLabels.commercePayments}</Link>,
+        label: adminMenuLabels.commercePayments,
+        to: '/commerce/payments',
         permissionKeys: ['commerce.payments.read']
       },
       {
         key: '/commerce/refunds',
-        label: <Link to="/commerce/refunds">{adminMenuLabels.commerceRefunds}</Link>,
+        label: adminMenuLabels.commerceRefunds,
+        to: '/commerce/refunds',
         permissionKeys: ['commerce.refunds.approve']
       },
       {
         key: '/commerce/coupons',
-        label: <Link to="/commerce/coupons">{adminMenuLabels.commerceCoupons}</Link>,
+        label: adminMenuLabels.commerceCoupons,
+        to: '/commerce/coupons',
         permissionKeys: ['commerce.coupons.manage']
       },
       {
         key: '/commerce/points',
-        label: <Link to="/commerce/points">{adminMenuLabels.commercePoints}</Link>,
+        label: adminMenuLabels.commercePoints,
+        to: '/commerce/points',
         permissionKeys: ['commerce.points.manage']
       },
       {
         key: '/commerce/store',
-        label: <Link to="/commerce/store">{adminMenuLabels.commerceStore}</Link>,
+        label: adminMenuLabels.commerceStore,
+        to: '/commerce/store',
         permissionKeys: ['commerce.store.manage']
       }
     ]
@@ -185,29 +204,20 @@ const menuConfig: MenuNode[] = [
     children: [
       {
         key: '/assessment/question-bank',
-        label: (
-          <Link to="/assessment/question-bank">
-            {adminMenuLabels.assessmentQuestionBank}
-          </Link>
-        ),
+        label: adminMenuLabels.assessmentQuestionBank,
+        to: '/assessment/question-bank',
         permissionKeys: ['assessment.question-bank.manage']
       },
       {
         key: '/assessment/question-bank/eps-topik',
-        label: (
-          <Link to="/assessment/question-bank/eps-topik">
-            {adminMenuLabels.assessmentEpsTopik}
-          </Link>
-        ),
+        label: adminMenuLabels.assessmentEpsTopik,
+        to: '/assessment/question-bank/eps-topik',
         permissionKeys: ['assessment.eps-topik.manage']
       },
       {
         key: '/assessment/level-tests',
-        label: (
-          <Link to="/assessment/level-tests">
-            {adminMenuLabels.assessmentLevelTests}
-          </Link>
-        ),
+        label: adminMenuLabels.assessmentLevelTests,
+        to: '/assessment/level-tests',
         permissionKeys: ['assessment.level-tests.manage']
       }
     ]
@@ -219,42 +229,40 @@ const menuConfig: MenuNode[] = [
     children: [
       {
         key: '/content/library',
-        label: <Link to="/content/library">{adminMenuLabels.contentLibrary}</Link>,
+        label: adminMenuLabels.contentLibrary,
+        to: '/content/library',
         permissionKeys: ['content.library.manage']
       },
       {
         key: '/content/badges',
-        label: <Link to="/content/badges">{adminMenuLabels.contentBadges}</Link>,
+        label: adminMenuLabels.contentBadges,
+        to: '/content/badges',
         permissionKeys: ['content.badges.manage']
       },
       {
         key: '/content/vocabulary',
-        label: <Link to="/content/vocabulary">{adminMenuLabels.contentVocabulary}</Link>,
+        label: adminMenuLabels.contentVocabulary,
+        to: '/content/vocabulary',
         permissionKeys: ['content.vocabulary.manage'],
         children: [
           {
             key: '/content/vocabulary/sonagi',
-            label: (
-              <Link to="/content/vocabulary/sonagi">
-                {adminMenuLabels.contentVocabularySonagi}
-              </Link>
-            ),
+            label: adminMenuLabels.contentVocabularySonagi,
+            to: '/content/vocabulary/sonagi',
             permissionKeys: ['content.vocabulary.sonagi.manage']
           },
           {
             key: '/content/vocabulary/multiple-choice',
-            label: (
-              <Link to="/content/vocabulary/multiple-choice">
-                {adminMenuLabels.contentVocabularyMultipleChoice}
-              </Link>
-            ),
+            label: adminMenuLabels.contentVocabularyMultipleChoice,
+            to: '/content/vocabulary/multiple-choice',
             permissionKeys: ['content.vocabulary.multiple-choice.manage']
           }
         ]
       },
       {
         key: '/content/missions',
-        label: <Link to="/content/missions">{adminMenuLabels.contentMissions}</Link>,
+        label: adminMenuLabels.contentMissions,
+        to: '/content/missions',
         permissionKeys: ['content.missions.manage']
       }
     ]
@@ -262,7 +270,8 @@ const menuConfig: MenuNode[] = [
   {
     key: '/analytics/overview',
     icon: <BarChartOutlined />,
-    label: <Link to="/analytics/overview">{adminMenuLabels.analytics}</Link>,
+    label: adminMenuLabels.analytics,
+    to: '/analytics/overview',
     permissionKeys: ['analytics.read']
   },
   {
@@ -272,22 +281,26 @@ const menuConfig: MenuNode[] = [
     children: [
       {
         key: '/system/admins',
-        label: <Link to="/system/admins">{adminMenuLabels.systemAdmins}</Link>,
+        label: adminMenuLabels.systemAdmins,
+        to: '/system/admins',
         permissionKeys: ['system.admins.manage']
       },
       {
         key: '/system/permissions',
-        label: <Link to="/system/permissions">{adminMenuLabels.systemPermissions}</Link>,
+        label: adminMenuLabels.systemPermissions,
+        to: '/system/permissions',
         permissionKeys: ['system.permissions.manage']
       },
       {
         key: '/system/audit-logs',
-        label: <Link to="/system/audit-logs">{adminMenuLabels.systemAuditLogs}</Link>,
+        label: adminMenuLabels.systemAuditLogs,
+        to: '/system/audit-logs',
         permissionKeys: ['system.audit.read']
       },
       {
         key: '/system/logs',
-        label: <Link to="/system/logs">{adminMenuLabels.systemLogs}</Link>,
+        label: adminMenuLabels.systemLogs,
+        to: '/system/logs',
         permissionKeys: ['system.logs.read']
       }
     ]
@@ -323,11 +336,28 @@ function buildVisibleMenuItems(
         key: node.key,
         icon: node.icon,
         label: node.label,
+        title: node.label,
         children: visibleChildren
       } satisfies ItemType
     ];
   });
 }
+
+function buildMenuRouteMap(nodes: MenuNode[]): Record<string, string> {
+  return nodes.reduce<Record<string, string>>((routeMap, node) => {
+    if (node.to) {
+      routeMap[node.key] = node.to;
+    }
+
+    if (node.children) {
+      Object.assign(routeMap, buildMenuRouteMap(node.children));
+    }
+
+    return routeMap;
+  }, {});
+}
+
+const menuRouteMap = buildMenuRouteMap(menuConfig);
 
 function resolveSelectedKey(pathname: string): string {
   if (pathname.startsWith('/users/groups')) {
@@ -465,6 +495,7 @@ function resolveOpenKeys(selectedKey: string): string[] {
 
 export function AdminShell(): JSX.Element {
   const location = useLocation();
+  const navigate = useNavigate();
   const currentAdminId = usePermissionStore((state) => state.currentAdminId);
   const admins = usePermissionStore((state) => state.admins);
   const {
@@ -528,6 +559,23 @@ export function AdminShell(): JSX.Element {
     setDesktopSidebarCollapsed((current) => !current);
   };
 
+  const handleMenuClick: MenuProps['onClick'] = ({ key }) => {
+    const nextPath = menuRouteMap[String(key)];
+
+    if (nextPath) {
+      navigate(nextPath);
+    }
+
+    if (isMobileViewport) {
+      setMobileSidebarCollapsed(true);
+    }
+  };
+
+  const controlledOpenKeys = isSidebarCollapsed ? undefined : openKeys;
+  const handleOpenChange = isSidebarCollapsed
+    ? undefined
+    : (nextOpenKeys: string[]) => setOpenKeys(nextOpenKeys);
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider
@@ -577,15 +625,11 @@ export function AdminShell(): JSX.Element {
         <Menu
           mode="inline"
           theme="dark"
-          items={menuItems as MenuItemType[]}
+          items={menuItems}
           selectedKeys={[selectedKey]}
-          openKeys={isSidebarCollapsed ? [] : openKeys}
-          onOpenChange={(nextOpenKeys) => setOpenKeys(nextOpenKeys)}
-          onClick={() => {
-            if (isMobileViewport) {
-              setMobileSidebarCollapsed(true);
-            }
-          }}
+          openKeys={controlledOpenKeys}
+          onOpenChange={handleOpenChange}
+          onClick={handleMenuClick}
         />
       </Sider>
       {isMobileViewport && !isSidebarCollapsed ? (

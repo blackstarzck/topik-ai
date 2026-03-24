@@ -16,6 +16,7 @@ import type { RefundRow, RefundStatus } from '../model/commerce-store';
 import { getMockUserById } from '../../users/api/mock-users';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
+import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
   SearchBar,
@@ -329,39 +330,42 @@ export default function BillingRefundsPage(): JSX.Element {
         </Col>
       </Row>
 
-      <Card>
-        <SearchBar
-          searchField={searchField}
-          searchFieldOptions={[
-            { label: '전체', value: 'all' },
-            { label: '환불 ID', value: 'id' },
-            { label: '결제 ID', value: 'paymentId' },
-            { label: '회원 ID', value: 'userId' },
-            { label: '회원명', value: 'userName' },
-            { label: '닉네임', value: 'userNickname' },
-            { label: '사유', value: 'reason' }
-          ]}
-          keyword={keyword}
-          onSearchFieldChange={(value) => commitParams({ searchField: value })}
-          onKeywordChange={(event) => commitParams({ keyword: event.target.value })}
-          keywordPlaceholder="검색..."
-          detailTitle="상세 검색"
-          detailContent={
-            <SearchBarDetailField label="요청일">
-              <SearchBarDateRange
-                startDate={draftStartDate}
-                endDate={draftEndDate}
-                onChange={handleDraftDateChange}
-              />
-            </SearchBarDetailField>
-          }
-          onApply={handleApplyDateRange}
-          onDetailOpenChange={handleDetailOpenChange}
-          onReset={handleDraftReset}
-          summary={
-            <Text type="secondary">총 {filteredRows.length.toLocaleString()}건</Text>
-          }
-        />
+      <AdminListCard
+        toolbar={
+          <SearchBar
+            searchField={searchField}
+            searchFieldOptions={[
+              { label: '전체', value: 'all' },
+              { label: '환불 ID', value: 'id' },
+              { label: '결제 ID', value: 'paymentId' },
+              { label: '회원 ID', value: 'userId' },
+              { label: '회원명', value: 'userName' },
+              { label: '닉네임', value: 'userNickname' },
+              { label: '사유', value: 'reason' }
+            ]}
+            keyword={keyword}
+            onSearchFieldChange={(value) => commitParams({ searchField: value })}
+            onKeywordChange={(event) => commitParams({ keyword: event.target.value })}
+            keywordPlaceholder="검색..."
+            detailTitle="상세 검색"
+            detailContent={
+              <SearchBarDetailField label="요청일">
+                <SearchBarDateRange
+                  startDate={draftStartDate}
+                  endDate={draftEndDate}
+                  onChange={handleDraftDateChange}
+                />
+              </SearchBarDetailField>
+            }
+            onApply={handleApplyDateRange}
+            onDetailOpenChange={handleDetailOpenChange}
+            onReset={handleDraftReset}
+            summary={
+              <Text type="secondary">총 {filteredRows.length.toLocaleString()}건</Text>
+            }
+          />
+        }
+      >
 
         <Paragraph type="secondary" style={{ marginBottom: 16 }}>
           환불 승인/거절은 결제 내역과 동일한 원본을 갱신합니다. 승인 시 결제 상태는 즉시
@@ -379,7 +383,7 @@ export default function BillingRefundsPage(): JSX.Element {
             style: { cursor: 'pointer' }
           })}
         />
-      </Card>
+      </AdminListCard>
 
       <TableRowDetailModal
         open={Boolean(selectedDetailRecord)}

@@ -107,6 +107,28 @@ export function TableActionMenu({
     [clickHandlers]
   );
 
+  const singleActionItem = useMemo(() => {
+    const allActionItems = [...menuActionItems, ...resolvedFooterItems];
+    return allActionItems.length === 1 ? allActionItems[0] : null;
+  }, [menuActionItems, resolvedFooterItems]);
+
+  if (singleActionItem) {
+    return (
+      <Button
+        size="small"
+        type={singleActionItem.danger ? 'text' : 'default'}
+        danger={singleActionItem.danger}
+        disabled={singleActionItem.disabled}
+        onClick={(event) => {
+          event.stopPropagation();
+          singleActionItem.onClick?.();
+        }}
+      >
+        {singleActionItem.label}
+      </Button>
+    );
+  }
+
   return (
     <Dropdown
       open={open}

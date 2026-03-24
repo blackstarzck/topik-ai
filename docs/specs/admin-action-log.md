@@ -13,6 +13,9 @@
 - 회원 정지/해제/탈퇴
 - 강사 정지/해제
 - 게시글 숨김/삭제
+- FAQ 공개/비공개/삭제
+- FAQ 대표 노출 추가/수정/일시중지/재개/삭제
+- 이벤트 저장/게시 예약/즉시 게시/종료
 - 메시지 발송 설정 변경/발송 실행
 - 커머스 환불/정책 변경
 - Assessment/Content 모듈의 주요 저장 액션
@@ -36,3 +39,6 @@
 - 감사 로그는 `Target Type`, `Target ID` 기준으로 원본 화면을 역추적할 수 있어야 합니다.
 - 성공 피드백(notification)은 감사 로그와 동일한 식별 값을 사용해야 합니다.
 - 강사 조치 로그는 `Target Type = Instructor`, `Target ID = instructorId`를 사용합니다.
+- 이벤트 조치 로그는 현재 `Target Type = Operation`, `Target ID = eventId`를 사용하고, `EVT-` 접두의 대상 ID는 `/operation/events` 원본 화면으로 역추적할 수 있어야 합니다.
+- FAQ 원문 조치 로그는 `Target Type = OperationFaq`, `Target ID = faqId`를 사용합니다.
+- FAQ 대표 노출 조치 로그는 `Target Type = OperationFaqCuration`, `Target ID = curationId`를 사용합니다.

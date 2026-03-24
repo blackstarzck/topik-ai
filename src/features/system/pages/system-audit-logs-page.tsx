@@ -5,6 +5,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 
 import { getMockUserById } from '../../users/api/mock-users';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
+import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import {
@@ -146,6 +147,15 @@ function getTargetRoute(targetType: string, targetId: string): string | null {
     return '/messages/history?channel=mail';
   }
   if (targetType === 'Operation') {
+    if (targetId.startsWith('EVT-')) {
+      return `/operation/events?selected=${targetId}`;
+    }
+    if (targetId.startsWith('FAQ-')) {
+      return `/operation/faq?selected=${targetId}`;
+    }
+    if (targetId.startsWith('NOTICE-')) {
+      return `/operation/notices?preview=${targetId}`;
+    }
     return '/operation/notices';
   }
   if (targetType === 'Assessment') {
@@ -415,43 +425,46 @@ export default function SystemAuditLogsPage(): JSX.Element {
         </Col>
       </Row>
 
-      <Card>
-        <SearchBar
-          searchField={searchField}
-          searchFieldOptions={[
-            { label: '전체', value: 'all' },
-            { label: '로그 ID', value: 'logId' },
-            { label: '대상 ID', value: 'targetId' },
-            { label: '조치', value: 'action' },
-            { label: '수행자', value: 'actor' },
-            { label: '사유', value: 'reason' }
-          ]}
-          keyword={keyword}
-          onSearchFieldChange={(value) => commitParams({ searchField: value })}
-          onKeywordChange={(event) =>
-            commitParams({
-              keyword: event.target.value,
-              searchField
-            })
-          }
-          keywordPlaceholder="검색..."
-          detailTitle="상세 검색"
-          detailContent={
-            <SearchBarDetailField label="시각">
-              <SearchBarDateRange
-                startDate={draftStartDate}
-                endDate={draftEndDate}
-                onChange={handleDraftDateChange}
-              />
-            </SearchBarDetailField>
-          }
-          onApply={handleApplyDateRange}
-          onDetailOpenChange={handleDetailOpenChange}
-          onReset={handleDraftReset}
-          summary={
-            <Text type="secondary">총 {filteredRows.length.toLocaleString()}건</Text>
-          }
-        />
+      <AdminListCard
+        toolbar={
+          <SearchBar
+            searchField={searchField}
+            searchFieldOptions={[
+              { label: '전체', value: 'all' },
+              { label: '로그 ID', value: 'logId' },
+              { label: '대상 ID', value: 'targetId' },
+              { label: '조치', value: 'action' },
+              { label: '수행자', value: 'actor' },
+              { label: '사유', value: 'reason' }
+            ]}
+            keyword={keyword}
+            onSearchFieldChange={(value) => commitParams({ searchField: value })}
+            onKeywordChange={(event) =>
+              commitParams({
+                keyword: event.target.value,
+                searchField
+              })
+            }
+            keywordPlaceholder="검색..."
+            detailTitle="상세 검색"
+            detailContent={
+              <SearchBarDetailField label="시각">
+                <SearchBarDateRange
+                  startDate={draftStartDate}
+                  endDate={draftEndDate}
+                  onChange={handleDraftDateChange}
+                />
+              </SearchBarDetailField>
+            }
+            onApply={handleApplyDateRange}
+            onDetailOpenChange={handleDetailOpenChange}
+            onReset={handleDraftReset}
+            summary={
+              <Text type="secondary">총 {filteredRows.length.toLocaleString()}건</Text>
+            }
+          />
+        }
+      >
 
         <Paragraph type="secondary" style={{ marginBottom: 16 }}>
           대상 ID 링크를 누르면 원본 운영 화면으로 이동합니다.
@@ -475,7 +488,7 @@ export default function SystemAuditLogsPage(): JSX.Element {
             style: { cursor: 'pointer' }
           })}
         />
-      </Card>
+      </AdminListCard>
 
       <TableRowDetailModal
         open={Boolean(selectedRow)}

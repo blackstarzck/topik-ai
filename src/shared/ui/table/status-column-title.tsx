@@ -1,6 +1,6 @@
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
-import type { KeyboardEvent, MouseEvent } from 'react';
+import type { CSSProperties, KeyboardEvent, MouseEvent } from 'react';
 
 export type StatusGuideItem = {
   label: string;
@@ -52,6 +52,32 @@ const statusDescriptionMap: Record<string, string> = {
   ERROR: '실패나 장애를 기록한 오류 로그입니다.'
 };
 
+const tooltipContainerStyle: CSSProperties = {
+  display: 'grid',
+  gap: 10,
+  maxWidth: 280
+};
+
+const tooltipItemStyle: CSSProperties = {
+  display: 'grid',
+  gap: 4
+};
+
+const tooltipLabelStyle: CSSProperties = {
+  color: '#fff',
+  display: 'block',
+  fontSize: 13,
+  fontWeight: 600,
+  letterSpacing: '-0.01em',
+  lineHeight: 1.4
+};
+
+const tooltipDescriptionStyle: CSSProperties = {
+  color: 'rgba(255, 255, 255, 0.72)',
+  fontSize: 13,
+  lineHeight: 1.5
+};
+
 function getStatusDescription(status: string): string {
   return statusDescriptionMap[status] ?? '현재 운영 기준에 따라 표시되는 상태입니다.';
 }
@@ -65,11 +91,11 @@ function stopHeaderInteraction(
 
 function renderTooltipTitle(items: readonly StatusGuideItem[]): JSX.Element {
   return (
-    <div style={{ display: 'grid', gap: 8, maxWidth: 280 }}>
+    <div style={tooltipContainerStyle}>
       {items.map((item) => (
-        <div key={item.label}>
-          <strong>{item.label}</strong>
-          <div>{item.description}</div>
+        <div key={item.label} style={tooltipItemStyle}>
+          <strong style={tooltipLabelStyle}>{item.label}</strong>
+          <div style={tooltipDescriptionStyle}>{item.description}</div>
         </div>
       ))}
     </div>

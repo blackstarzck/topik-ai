@@ -22,6 +22,7 @@ type SearchBarProps = {
   onApply?: () => void;
   onDetailOpenChange?: (open: boolean) => void;
   onReset?: () => void;
+  extra?: ReactNode;
   summary?: ReactNode;
   actions?: ReactNode;
   fieldWidth?: number;
@@ -51,6 +52,7 @@ export function SearchBar({
   onApply,
   onDetailOpenChange,
   onReset,
+  extra,
   summary,
   actions,
   fieldWidth = 112,
@@ -125,6 +127,7 @@ export function SearchBar({
           </Popover>
         ) : null}
       </div>
+      {extra ? <div className="search-bar-extra">{extra}</div> : null}
       {summary || actions ? (
         <div className="search-bar-side">
           {summary ? <div className="search-bar-summary">{summary}</div> : null}

@@ -1,6 +1,7 @@
-import { Alert, Form, Input, Modal, Select, Typography } from 'antd';
+import { Alert, Descriptions, Input, Modal, Select, Typography } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { getTargetTypeLabel } from '../../model/target-type-label';
+import { markRequiredDescriptionItems } from '../descriptions/description-label';
 
 const { Text } = Typography;
 
@@ -99,52 +100,71 @@ export function ConfirmAction({
       onOk={handleConfirm}
       destroyOnHidden
     >
-      <Form layout="vertical">
-        <Alert
-          type="warning"
-          showIcon
-          message="고위험 액션 확인"
-          description={description}
-          style={{ marginBottom: 12 }}
-        />
-        <Text type="secondary">
-          대상 유형: {getTargetTypeLabel(targetType)} / 대상 ID: {targetId}
-        </Text>
-        {policyCodeOptions?.length ? (
-          <Form.Item
-            label={policyCodeLabel}
-            required={requirePolicyCode}
-            style={{ marginTop: 12, marginBottom: 0 }}
-          >
-            <Select
-              value={policyCode || undefined}
-              options={policyCodeOptions}
-              placeholder={policyCodePlaceholder}
-              onChange={(value) => setPolicyCode(value)}
-            />
-            {selectedPolicyCodeDescription ? (
-              <Text
-                type="secondary"
-                style={{ display: 'block', marginTop: 8 }}
-              >
-                {selectedPolicyCodeDescription}
-              </Text>
-            ) : null}
-          </Form.Item>
-        ) : null}
-        <Form.Item
-          label={reasonLabel}
-          required={requireReason}
-          style={{ marginTop: 12, marginBottom: 0 }}
-        >
-          <Input.TextArea
-            rows={4}
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            placeholder={reasonPlaceholder}
-          />
-        </Form.Item>
-      </Form>
+      <Alert
+        type="warning"
+        showIcon
+        message="고위험 액션 확인"
+        description={description}
+        style={{ marginBottom: 12 }}
+      />
+      <Descriptions
+        bordered
+        size="small"
+        column={1}
+        className="admin-form-descriptions"
+        items={markRequiredDescriptionItems(
+          [
+            {
+              key: 'target',
+              label: '대상',
+              children: (
+                <Text type="secondary">
+                  대상 유형: {getTargetTypeLabel(targetType)} / 대상 ID: {targetId}
+                </Text>
+              )
+            },
+            ...(policyCodeOptions?.length
+              ? [
+                  {
+                    key: 'policyCode',
+                    label: policyCodeLabel,
+                    children: (
+                      <div>
+                        <Select
+                          value={policyCode || undefined}
+                          options={policyCodeOptions}
+                          placeholder={policyCodePlaceholder}
+                          onChange={(value) => setPolicyCode(value)}
+                        />
+                        {selectedPolicyCodeDescription ? (
+                          <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+                            {selectedPolicyCodeDescription}
+                          </Text>
+                        ) : null}
+                      </div>
+                    )
+                  }
+                ]
+              : []),
+            {
+              key: 'reason',
+              label: reasonLabel,
+              children: (
+                <Input.TextArea
+                  rows={4}
+                  value={reason}
+                  onChange={(event) => setReason(event.target.value)}
+                  placeholder={reasonPlaceholder}
+                />
+              )
+            }
+          ],
+          [
+            ...(policyCodeOptions?.length && requirePolicyCode ? ['policyCode'] : []),
+            ...(requireReason ? ['reason'] : [])
+          ]
+        )}
+      />
     </Modal>
   );
 }

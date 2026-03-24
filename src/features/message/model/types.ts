@@ -17,6 +17,44 @@ export type MessageSendActionType =
 
 export type MessageGroupBuilderMode = 'simple' | 'query-builder';
 
+export type MessageGroupQueryCombinator = 'and' | 'or';
+
+export type MessageGroupQueryField =
+  | 'country'
+  | 'memberType'
+  | 'gender'
+  | 'age'
+  | 'signupMethod'
+  | 'signupDate'
+  | 'subscriptionState'
+  | 'activityState';
+
+export type MessageGroupQueryOperator =
+  | 'equals'
+  | 'notEquals'
+  | 'contains'
+  | 'greaterThanOrEquals'
+  | 'lessThanOrEquals'
+  | 'before'
+  | 'after';
+
+export type MessageGroupQueryRule = {
+  type: 'rule';
+  id: string;
+  field: MessageGroupQueryField;
+  operator: MessageGroupQueryOperator;
+  value: string;
+};
+
+export type MessageGroupQueryGroup = {
+  type: 'group';
+  id: string;
+  combinator: MessageGroupQueryCombinator;
+  children: MessageGroupQueryNode[];
+};
+
+export type MessageGroupQueryNode = MessageGroupQueryRule | MessageGroupQueryGroup;
+
 export type MessageGroupCountry = '한국 (KR)' | '미국 (US)' | '베트남 (VN)';
 
 export type MessageGroupMemberType = '학생' | '강사' | '파트너';
@@ -62,6 +100,7 @@ export type MessageGroup = {
   staticMembers: string[];
   filters: MessageGroupFilters;
   queryBuilderText?: string;
+  queryBuilderConfig?: MessageGroupQueryGroup;
   lastCalculatedAt: string;
   updatedAt: string;
   updatedBy: string;

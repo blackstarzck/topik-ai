@@ -107,33 +107,35 @@ export default function MessageTemplateCreatePage({
         toolbar={
           <div className="message-template-editor-toolbar">
             <Space className="message-template-editor-toolbar-actions" wrap>
-              <Button onClick={handleBackToList}>목록으로</Button>
-              <Button
-                type="primary"
-                size="large"
-                onClick={handleSaveTemplateContent}
-                disabled={!template}
-              >
-                저장
-              </Button>
+            <Button size="large" onClick={handleBackToList}>
+              목록으로
+            </Button>
+            <Button
+              type="primary"
+              size="large"
+              onClick={handleSaveTemplateContent}
+              disabled={!template}
+            >
+              저장
+            </Button>
             </Space>
           </div>
         }
       >
-        {template ? (
-          <Form form={contentForm} layout="vertical" className="message-template-content-form">
-            <Form.Item
-              name="bodyHtml"
-              rules={[{ required: true, message: '본문을 입력하세요.' }]}
-              style={{ marginBottom: 0 }}
-            >
-              <MessageHtmlEditor
-                editorId={`${channel}-template-editor-${template.id}`}
-                height="100%"
-              />
-            </Form.Item>
-          </Form>
-        ) : null}
+          {template ? (
+            <Form form={contentForm} className="message-template-content-form">
+              <Form.Item
+                name="bodyHtml"
+                rules={[{ required: true, message: '본문을 입력하세요.' }]}
+                style={{ marginBottom: 0 }}
+              >
+                <MessageHtmlEditor
+                  editorId={`${channel}-template-editor-${template.id}`}
+                  height="100%"
+                />
+              </Form.Item>
+            </Form>
+          ) : null}
       </AdminListCard>
     </div>
   );

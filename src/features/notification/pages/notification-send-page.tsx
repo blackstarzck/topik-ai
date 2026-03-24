@@ -2,6 +2,7 @@ import {
   Button,
   Card,
   DatePicker,
+  Descriptions,
   Form,
   Input,
   Radio,
@@ -14,6 +15,7 @@ import type { Dayjs } from 'dayjs';
 import { useMemo } from 'react';
 
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import { markRequiredDescriptionItems } from '../../../shared/ui/descriptions/description-label';
 
 const { Text } = Typography;
 
@@ -54,78 +56,126 @@ export default function NotificationSendPage(): JSX.Element {
       <Card>
         <Form
           form={form}
-          layout="vertical"
           initialValues={{
             target: 'all',
             channel: 'push',
             sendMode: 'instant'
           }}
         >
-          <Form.Item
-            label="알림 제목"
-            name="title"
-            rules={[{ required: true, message: '알림 제목을 입력하세요.' }]}
-          >
-            <Input placeholder="예: 정기 점검 안내" />
-          </Form.Item>
-
-          <Form.Item
-            label="알림 내용"
-            name="content"
-            rules={[{ required: true, message: '알림 내용을 입력하세요.' }]}
-          >
-            <Input.TextArea rows={5} placeholder="알림 메시지를 입력하세요." />
-          </Form.Item>
-
-          <Form.Item
-            label="발송 대상"
-            name="target"
-            rules={[{ required: true, message: '발송 대상을 선택하세요.' }]}
-          >
-            <Select
-              options={[
-                { label: '전체', value: 'all' },
-                { label: '프리미엄 사용자', value: 'premium' },
-                { label: '정지 회원 제외', value: 'active' }
-              ]}
-            />
-          </Form.Item>
-
-          <Form.Item
-            label="발송 채널"
-            name="channel"
-            rules={[{ required: true, message: '발송 채널을 선택하세요.' }]}
-          >
-            <Select
-              options={[
-                { label: '푸시', value: 'push' },
-                { label: '이메일', value: 'email' }
-              ]}
-            />
-          </Form.Item>
-
-          <Form.Item
-            label="발송 방식"
-            name="sendMode"
-            rules={[{ required: true, message: '발송 방식을 선택하세요.' }]}
-          >
-            <Radio.Group
-              options={[
-                { label: '즉시 발송', value: 'instant' },
-                { label: '예약 발송', value: 'scheduled' }
-              ]}
-            />
-          </Form.Item>
-
-          {sendMode === 'scheduled' ? (
-            <Form.Item
-              label="예약 발송 시각"
-              name="scheduleAt"
-              rules={[{ required: true, message: '예약 시각을 선택하세요.' }]}
-            >
-              <DatePicker showTime style={{ width: '100%' }} />
-            </Form.Item>
-          ) : null}
+          <Descriptions
+            bordered
+            size="small"
+            column={2}
+            className="admin-form-descriptions"
+            items={markRequiredDescriptionItems(
+              [
+                {
+                  key: 'title',
+                  label: '알림 제목',
+                  span: 2,
+                  children: (
+                    <Form.Item
+                      name="title"
+                      rules={[{ required: true, message: '알림 제목을 입력하세요.' }]}
+                    >
+                      <Input placeholder="예: 정기 점검 안내" />
+                    </Form.Item>
+                  )
+                },
+                {
+                  key: 'content',
+                  label: '알림 내용',
+                  span: 2,
+                  children: (
+                    <Form.Item
+                      name="content"
+                      rules={[{ required: true, message: '알림 내용을 입력하세요.' }]}
+                    >
+                      <Input.TextArea rows={5} placeholder="알림 메시지를 입력하세요." />
+                    </Form.Item>
+                  )
+                },
+                {
+                  key: 'target',
+                  label: '발송 대상',
+                  children: (
+                    <Form.Item
+                      name="target"
+                      rules={[{ required: true, message: '발송 대상을 선택하세요.' }]}
+                    >
+                      <Select
+                        options={[
+                          { label: '전체', value: 'all' },
+                          { label: '프리미엄 사용자', value: 'premium' },
+                          { label: '정지 회원 제외', value: 'active' }
+                        ]}
+                      />
+                    </Form.Item>
+                  )
+                },
+                {
+                  key: 'channel',
+                  label: '발송 채널',
+                  children: (
+                    <Form.Item
+                      name="channel"
+                      rules={[{ required: true, message: '발송 채널을 선택하세요.' }]}
+                    >
+                      <Select
+                        options={[
+                          { label: '푸시', value: 'push' },
+                          { label: '이메일', value: 'email' }
+                        ]}
+                      />
+                    </Form.Item>
+                  )
+                },
+                {
+                  key: 'sendMode',
+                  label: '발송 방식',
+                  span: 2,
+                  children: (
+                    <Form.Item
+                      name="sendMode"
+                      rules={[{ required: true, message: '발송 방식을 선택하세요.' }]}
+                    >
+                      <Radio.Group
+                        options={[
+                          { label: '즉시 발송', value: 'instant' },
+                          { label: '예약 발송', value: 'scheduled' }
+                        ]}
+                      />
+                    </Form.Item>
+                  )
+                },
+                ...(sendMode === 'scheduled'
+                  ? [
+                      {
+                        key: 'scheduleAt',
+                        label: '예약 발송 시각',
+                        span: 2,
+                        children: (
+                          <Form.Item
+                            name="scheduleAt"
+                            rules={[{ required: true, message: '예약 시각을 선택하세요.' }]}
+                          >
+                            <DatePicker showTime style={{ width: '100%' }} />
+                          </Form.Item>
+                        )
+                      }
+                    ]
+                  : [])
+              ],
+              [
+                'title',
+                'content',
+                'target',
+                'channel',
+                'sendMode',
+                ...(sendMode === 'scheduled' ? ['scheduleAt'] : [])
+              ]
+            )}
+          />
 
           <Space>
             <Button type="primary" onClick={handleSubmit}>

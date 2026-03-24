@@ -23,9 +23,11 @@
   - `admin-information-architecture.md`
   - `admin-dev-stack.md`
   - `admin-frontend-architecture.md`
+  - `admin-data-source-transition.md`
 
 - `docs/specs`
   - `admin-page-analysis.md`
+  - `admin-data-contract.md`
   - `admin-page-ia-change-log.md`
   - `admin-page-tables.md`
   - `admin-page-flows-mermaid.md`
@@ -82,5 +84,7 @@
 - MD 문서를 수정하면 `logs/admin-doc-update-log.md`에 변경 요약을 기록합니다.
 - 행 클릭 상세 Drawer 레이아웃 규칙이 바뀌면 `docs/guidelines/admin-detail-drawer-guidelines.md`와 관련 공통/페이지 IA 문서를 함께 갱신합니다.
 - 관리자 테이블, 정책 데이터, B2C 노출 위치가 바뀌면 `docs/specs/admin-data-usage-map.md`를 함께 평가하고 반영합니다.
+- 엔티티명, 테이블명 후보, 컬럼/필드명, 변수명, enum/code table 후보, 하드코딩된 schema candidate 분류가 바뀌면 `docs/specs/admin-data-contract.md`를 함께 평가하고 반영합니다.
+- API, mock, 데이터베이스, 응답 스키마, repository/service 경계, 더미데이터 SoT 구조가 바뀌면 `docs/architecture/admin-data-source-transition.md`를 함께 평가하고 반영합니다.
 - 페이지 목적과 화면 블록 구성이 변하면 `docs/specs/admin-page-analysis.md`, `docs/specs/page-ia/*.md`, `docs/specs/admin-page-tables.md`를 함께 검토합니다.
 - 페이지별 상세 IA 문서는 `docs/templates/admin-page-ia-template.md`를 기반으로 작성하고, 변경 시 `docs/specs/admin-page-ia-change-log.md`에도 기록합니다.

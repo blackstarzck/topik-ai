@@ -14,7 +14,7 @@ import {
   Typography,
   notification
 } from 'antd';
-import type { AlertProps, DescriptionsProps, TableColumnsType } from 'antd';
+import type { AlertProps, TableColumnsType } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -43,6 +43,7 @@ import {
 } from '../../../shared/ui/search-bar/search-bar-utils';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
+import { BinaryStatusSwitch } from '../../../shared/ui/table/binary-status-switch';
 import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
 import {
   createDrawerTableScroll,
@@ -60,14 +61,6 @@ import {
 } from '../../../shared/ui/user/user-reference';
 
 const { Text } = Typography;
-
-const DETAIL_DESCRIPTIONS_STYLES: DescriptionsProps['styles'] = {
-  label: {
-    width: 184,
-    minWidth: 184,
-    whiteSpace: 'nowrap'
-  }
-};
 
 type PostStatus = '게시' | '숨김';
 
@@ -118,6 +111,7 @@ type CommunityPost = {
 };
 
 type PostActionState =
+  | { type: 'show'; post: CommunityPost }
   | { type: 'hide'; post: CommunityPost }
   | { type: 'delete'; post: CommunityPost }
   | null;
@@ -480,6 +474,13 @@ export default function CommunityPostsPage(): JSX.Element {
     setPreviewPostId('');
   }, []);
 
+  const handleTogglePostStatus = useCallback((post: CommunityPost) => {
+    setActionState({
+      type: post.status === '게시' ? 'hide' : 'show',
+      post
+    });
+  }, []);
+
   const visibleRows = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
 
@@ -509,7 +510,32 @@ export default function CommunityPostsPage(): JSX.Element {
       const policyCode = context?.policyCode as PolicyCode | undefined;
       const moderatedAt = formatNow();
 
-      if (actionState.type === 'hide') {
+      if (actionState.type === 'show') {
+        setRows((prev) =>
+          prev.map((item) =>
+            item.id === actionState.post.id
+              ? {
+                  ...item,
+                  status: '게시',
+                  lastModerationPolicyCode: undefined,
+                  lastModerationReason: reason,
+                  lastModeratedAt: moderatedAt
+                }
+              : item
+          )
+        );
+        notificationApi.success({
+          message: '게시글 재게시 완료',
+          description: (
+            <Space direction="vertical">
+              <Text>대상 유형: {getTargetTypeLabel('Community')}</Text>
+              <Text>대상 ID: {actionState.post.id}</Text>
+              <Text>사유/근거: {reason}</Text>
+              <AuditLogLink targetType="Community" targetId={actionState.post.id} />
+            </Space>
+          )
+        });
+      } else if (actionState.type === 'hide') {
         setRows((prev) =>
           prev.map((item) =>
             item.id === actionState.post.id
@@ -756,7 +782,19 @@ export default function CommunityPostsPage(): JSX.Element {
         width: 100,
         ...createDefinedColumnFilterProps(postStatusFilterValues, (record) => record.status),
         sorter: createTextSorter((record) => record.status),
-        render: (status: PostStatus) => <StatusBadge status={status} />
+        onCell: () => ({
+          onClick: (event) => {
+            event.stopPropagation();
+          }
+        }),
+        render: (_, record) => (
+          <BinaryStatusSwitch
+            checked={record.status === '게시'}
+            checkedLabel="게시"
+            uncheckedLabel="숨김"
+            onToggle={() => handleTogglePostStatus(record)}
+          />
+        )
       },
       {
         title: '액션',
@@ -779,12 +817,6 @@ export default function CommunityPostsPage(): JSX.Element {
                 key: `memo-${record.id}`,
                 label: '내부 메모',
                 onClick: () => handleOpenLatestMemoDetailModal(record)
-              },
-              {
-                key: `hide-${record.id}`,
-                label: '게시글 숨김',
-                disabled: record.status === '숨김',
-                onClick: () => setActionState({ type: 'hide', post: record })
               }
             ]}
             footerItems={[
@@ -799,7 +831,7 @@ export default function CommunityPostsPage(): JSX.Element {
         )
       }
     ],
-    [handleOpenLatestMemoDetailModal, handleOpenPostPreview]
+    [handleOpenLatestMemoDetailModal, handleOpenPostPreview, handleTogglePostStatus]
   );
 
   const detailItems = useMemo<DescriptionsProps['items']>(() => {
@@ -989,21 +1021,39 @@ export default function CommunityPostsPage(): JSX.Element {
       {actionState ? (
         <ConfirmAction
           open
-          title={actionState.type === 'hide' ? '게시글 숨김' : '게시글 삭제'}
+          title={
+            actionState.type === 'show'
+              ? '게시글 재게시'
+              : actionState.type === 'hide'
+                ? '게시글 숨김'
+                : '게시글 삭제'
+          }
           description={
-            actionState.type === 'hide'
+            actionState.type === 'show'
+              ? '숨김 처리된 게시글을 다시 게시합니다. 재게시 사유를 기록하세요.'
+              : actionState.type === 'hide'
               ? '게시글 노출을 중단합니다. 정책 코드와 숨김 사유를 기록하세요.'
               : '게시글을 목록에서 제거합니다. 정책 코드와 삭제 사유를 기록하세요.'
           }
           targetType="Community"
           targetId={actionState.post.id}
-          confirmText={actionState.type === 'hide' ? '숨김 실행' : '삭제 실행'}
-          policyCodeOptions={moderationPolicyCodeOptions.map((option) => ({
-            label: option.label,
-            value: option.value,
-            description: option.description
-          }))}
-          requirePolicyCode
+          confirmText={
+            actionState.type === 'show'
+              ? '재게시 실행'
+              : actionState.type === 'hide'
+                ? '숨김 실행'
+                : '삭제 실행'
+          }
+          policyCodeOptions={
+            actionState.type === 'show'
+              ? undefined
+              : moderationPolicyCodeOptions.map((option) => ({
+                  label: option.label,
+                  value: option.value,
+                  description: option.description
+                }))
+          }
+          requirePolicyCode={actionState.type !== 'show'}
           onCancel={() => setActionState(null)}
           onConfirm={handleConfirmAction}
         />
@@ -1027,10 +1077,9 @@ export default function CommunityPostsPage(): JSX.Element {
           selectedPost ? (
             <Space wrap>
               <Button
-                disabled={selectedPost.status === '숨김'}
-                onClick={() => setActionState({ type: 'hide', post: selectedPost })}
+                onClick={() => handleTogglePostStatus(selectedPost)}
               >
-                게시글 숨김
+                {selectedPost.status === '게시' ? '게시글 숨김' : '게시글 재게시'}
               </Button>
               <Button
                 danger
@@ -1052,7 +1101,6 @@ export default function CommunityPostsPage(): JSX.Element {
                 size="small"
                 column={1}
                 items={detailItems}
-                styles={DETAIL_DESCRIPTIONS_STYLES}
               />
             </DetailDrawerSection>
 

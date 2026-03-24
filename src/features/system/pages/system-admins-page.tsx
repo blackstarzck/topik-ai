@@ -5,7 +5,8 @@ import { Link, useSearchParams } from 'react-router-dom';
 
 import { usePermissionStore } from '../model/permission-store';
 import { roleCatalog } from '../model/permission-types';
-import type { AdminPermissionAssignment, AdminStatus, RoleKey } from '../model/permission-types';
+import type { AdminPermissionAssignment, RoleKey } from '../model/permission-types';
+import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
   SearchBar,
@@ -180,7 +181,7 @@ export default function SystemAdminsPage(): JSX.Element {
         dataIndex: 'status',
         width: 110,
         sorter: createTextSorter((record) => record.status),
-        render: (status: AdminStatus) => <StatusBadge status={status} />
+        render: (status) => <StatusBadge status={status} />
       },
       {
         title: '권한 관리',
@@ -222,41 +223,44 @@ export default function SystemAdminsPage(): JSX.Element {
         </Col>
       </Row>
 
-      <Card>
-        <SearchBar
-          searchField={searchField}
-          searchFieldOptions={[
-            { label: '전체', value: 'all' },
-            { label: '관리자 ID', value: 'adminId' },
-            { label: '이름', value: 'name' },
-            { label: '역할', value: 'role' }
-          ]}
-          keyword={keyword}
-          onSearchFieldChange={(value) => commitParams({ searchField: value })}
-          onKeywordChange={(event) =>
-            commitParams({
-              keyword: event.target.value,
-              searchField
-            })
-          }
-          keywordPlaceholder="검색..."
-          detailTitle="상세 검색"
-          detailContent={
-            <SearchBarDetailField label="최근 로그인">
-              <SearchBarDateRange
-                startDate={draftStartDate}
-                endDate={draftEndDate}
-                onChange={handleDraftDateChange}
-              />
-            </SearchBarDetailField>
-          }
-          onApply={handleApplyDateRange}
-          onDetailOpenChange={handleDetailOpenChange}
-          onReset={handleDraftReset}
-          summary={
-            <Text type="secondary">총 {filteredRows.length.toLocaleString()}건</Text>
-          }
-        />
+      <AdminListCard
+        toolbar={
+          <SearchBar
+            searchField={searchField}
+            searchFieldOptions={[
+              { label: '전체', value: 'all' },
+              { label: '관리자 ID', value: 'adminId' },
+              { label: '이름', value: 'name' },
+              { label: '역할', value: 'role' }
+            ]}
+            keyword={keyword}
+            onSearchFieldChange={(value) => commitParams({ searchField: value })}
+            onKeywordChange={(event) =>
+              commitParams({
+                keyword: event.target.value,
+                searchField
+              })
+            }
+            keywordPlaceholder="검색..."
+            detailTitle="상세 검색"
+            detailContent={
+              <SearchBarDetailField label="최근 로그인">
+                <SearchBarDateRange
+                  startDate={draftStartDate}
+                  endDate={draftEndDate}
+                  onChange={handleDraftDateChange}
+                />
+              </SearchBarDetailField>
+            }
+            onApply={handleApplyDateRange}
+            onDetailOpenChange={handleDetailOpenChange}
+            onReset={handleDraftReset}
+            summary={
+              <Text type="secondary">총 {filteredRows.length.toLocaleString()}건</Text>
+            }
+          />
+        }
+      >
 
         <Paragraph type="secondary" style={{ marginBottom: 16 }}>
           관리자 계정과 권한 변경은 동일한 권한 원본을 공유합니다. 상세 조치 이력은 감사 로그
@@ -282,7 +286,7 @@ export default function SystemAdminsPage(): JSX.Element {
         <Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0 }}>
           비활성 계정 {inactiveCount}명은 로그인만 차단되며, 이력은 감사 로그에서 유지됩니다.
         </Paragraph>
-      </Card>
+      </AdminListCard>
 
       <TableRowDetailModal
         open={Boolean(selectedDetailRecord)}

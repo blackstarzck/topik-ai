@@ -5,6 +5,8 @@ const targetTypeLabelMap: Record<string, string> = {
   Referral: '추천인',
   Community: '커뮤니티',
   Operation: '운영',
+  OperationFaq: 'FAQ',
+  OperationFaqCuration: 'FAQ 노출',
   Billing: '커머스',
   Commerce: '커머스',
   Notification: '메시지',

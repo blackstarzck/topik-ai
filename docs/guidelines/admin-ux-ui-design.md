@@ -30,9 +30,10 @@
 - 기본 구성:
   - `PageTitle`
   - 필요 시 요약 카드 3~4개
-  - `Card`
-  - `Card body` 상단의 페이지 단위 UI 묶음
+  - `AdminListCard` 또는 같은 구조의 공용 본문 카드
+  - 카드 `toolbar` 안의 페이지 단위 UI 묶음
   - `SearchBar`를 쓰는 페이지는 `검색 대상 Select + 검색 Input + 상세 버튼 + 총 건수`를 유지하고, `등록/추가/생성` 버튼은 같은 줄 우측 끝에 둡니다.
+  - 탭이 필요한 페이지는 카드 header `extra`나 본문 밖 별도 줄이 아니라 카드 `toolbar` 안에서 `SearchBar` 위쪽 행으로 정렬합니다.
   - `SearchBar`가 없는 페이지는 본문 상단 우측 끝에 `등록/추가/생성` 버튼을 두고 그 아래에 테이블 또는 주요 데이터 블록을 둡니다.
   - 상세 조건은 `상세` 버튼 클릭 시 열리는 드롭다운 패널로 분리하고, 페이지 기준 날짜 필드의 기간 범위만 배치합니다. 패널 하단에는 `필터 초기화`와 `적용` 버튼을 둡니다
 - 드롭다운 안에서 바꾼 기간 값은 즉시 조회하지 않고 draft 상태로만 유지합니다. 실제 목록 조회는 `적용` 버튼 클릭 시점에만 발생합니다.
@@ -104,10 +105,11 @@
 
 - `PageTitle`/브레드크럼과 overlay(`Drawer`, `Modal`, `Popover`, `Tooltip`)를 제외한 페이지 단위 UI는 반드시 본문 컨테이너 안에 둡니다.
 - 탭, 필터, 검색, 요약 액션, 주요 버튼을 본문 밖 별도 줄이나 카드 헤더 `extra`에 분리하지 않습니다.
-- 목록형 페이지: `PageTitle -> Summary Cards(선택) -> Card(body=본문 상단 UI -> 안내 문구 -> Table)`
+- 목록형 페이지: `PageTitle -> Summary Cards(선택) -> AdminListCard(toolbar=본문 상단 UI, body=안내 문구 -> Table)`
 - `등록/추가/생성/새로 만들기` 계열 버튼은 본문 기준 테이블 또는 주요 데이터 블록의 우측 상단에 둡니다.
 - 본문 상단의 `등록/추가/생성/새로 만들기` 계열 버튼은 항상 Ant Design `large` 크기를 사용합니다.
 - `SearchBar`가 있는 목록형 페이지에서는 `SearchBar`와 `등록/추가/생성` 버튼을 같은 줄에 두고, 버튼은 항상 우측 끝에 정렬합니다.
+- `SearchBar`의 총 건수와 `내보내기` 같은 핵심 보조 액션도 가능하면 같은 줄 오른쪽 영역에 두고, 카드 header `extra`로 따로 빼지 않습니다.
 - `SearchBar`가 없는 목록형 페이지에서는 본문 상단 우측 끝에 `등록/추가/생성` 버튼을 두고, 버튼 아래에 안내 문구와 테이블을 배치합니다.
 - 우측 상단 버튼은 `등록/생성`, `내보내기`, `즉시 실행`처럼 해당 페이지의 핵심 액션이 분명할 때만 둡니다. 단순 페이지 이동 버튼은 안내 문구나 테이블 링크로 내립니다.
 - `SearchBar` 바깥에는 검색과 직접 관련 없는 필터를 두지 않고, `상세 검색` 드롭다운에는 기간만 둡니다.
@@ -131,13 +133,20 @@
 - `Drawer` 내부 테이블에 긴 본문(예: 관리자 메모, 운영 코멘트)이 포함되면 셀에서는 요약만 보여주고, 전체 내용은 expandable row에서 확인하게 구성합니다.
 - 행 클릭 상세 Drawer의 헤더 오른쪽은 상태/태그 같은 읽기 전용 메타만 두고, 전역 조치 버튼은 푸터 오른쪽으로 내립니다.
 - 행 클릭 상세 Drawer의 푸터 왼쪽은 `감사 로그 확인`, 오른쪽은 주요 조치 버튼 묶음을 기본 위치로 사용합니다.
+- 행 클릭 상세 Drawer의 header/footer 시각 baseline은 `Community > 게시글 관리 > 게시글 상세 Drawer`를 따르고, header 메타 간격 `8px`, footer 버튼 간격 `8px`, footer wrap 구조를 기본값으로 유지합니다.
+- 행 클릭 상세 Drawer footer 액션 버튼은 공통 `large` 크기를 기본값으로 사용합니다.
+- 작성/편집/조건 설정 Drawer도 본문 구조는 화면 목적에 맞게 다를 수 있지만, header/footer chrome은 같은 baseline을 따릅니다.
+- 작성/편집/조건 설정 Drawer footer는 왼쪽 `취소`, 오른쪽 보조/주요 액션 버튼 묶음, 버튼 `large`, gap `8px`, wrap 허용 구조를 기본값으로 사용합니다.
 - `Drawer` 내부 섹션 간 간격은 `Space` 기준 `32px`를 기본값으로 사용합니다.
 - `Drawer` 내부 최상위 테이블은 첫 번째 열을 좌측 고정하고, 본문 높이는 최대 5개 행 정도가 보이도록 유지합니다.
 - `Drawer` 내부 최상위 테이블 페이지네이션은 테이블 기준 오른쪽 아래(`bottomRight`)에 배치합니다.
 - `Drawer` 내부 expandable row에 렌더되는 하위 테이블은 첫 번째 열을 고정하지 않고, 페이지네이션 없이 한 번에 표시합니다.
+- `DetailDrawer` 내부 `Descriptions`의 label(`th`) 폭은 전역 `130px`로 통일하고, 페이지별 width override는 예외 사유가 있을 때만 허용합니다.
 - 위 레이아웃 규칙이 바뀌면 `docs/guidelines/admin-detail-drawer-guidelines.md`, `docs/specs/admin-page-tables.md`, 영향받는 `docs/specs/page-ia/*.md`를 같은 작업에서 갱신합니다.
 - 작성/편집 맥락이 강한 화면은 `Modal`보다 별도 편집 영역 또는 전용 페이지를 우선 사용합니다.
 - 정책 충돌이나 파괴적 액션은 `ConfirmAction` 또는 `Modal.confirm`으로 명시적으로 확인합니다.
+- 입력 Modal/Drawer/보조 패널의 항목형 UI는 일반 `Form.Item` 세로 나열보다 `Descriptions` 기반 입력 테이블을 기본값으로 사용합니다. `Form`은 검증과 상태 관리 용도로만 유지하고, 단일 본문 에디터 같은 캔버스형 입력만 예외로 둡니다.
+- `Descriptions` 기반 입력 테이블에서 필수 검증이 있는 항목은 label(`th`) heading에 빨간 `*`를 붙여 필수 입력 여부를 시각적으로 고정합니다.
 
 ## 상호작용 규칙
 

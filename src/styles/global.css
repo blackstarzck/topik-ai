@@ -304,6 +304,131 @@ body {
   pointer-events: none;
 }
 
+.message-groups-count-cell {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.message-groups-count-value-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 22px;
+}
+
+.message-groups-count-value {
+  transition: opacity 160ms ease;
+}
+
+.message-groups-count-value--muted {
+  opacity: 0.42;
+}
+
+.message-groups-count-spinner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.message-groups-editor-table {
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.message-groups-editor-row {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.message-groups-editor-row:last-child {
+  border-bottom: none;
+}
+
+.message-groups-editor-label {
+  padding: 18px 16px;
+  background: #fafafa;
+  font-weight: 600;
+  color: #10233c;
+}
+
+.message-groups-editor-content {
+  padding: 14px 16px;
+}
+
+.message-groups-inline-fields {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.message-groups-age-inputs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.message-groups-age-inputs .ant-input-number {
+  width: 132px;
+}
+
+.message-groups-query-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.message-groups-query-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #e8eaef;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.message-groups-query-group--root {
+  background: #fcfdff;
+}
+
+.message-groups-query-group-children {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.message-groups-query-group-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.message-groups-query-rule {
+  display: grid;
+  grid-template-columns: minmax(120px, 160px) minmax(110px, 140px) minmax(0, 1fr) 40px;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #eef1f6;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.message-groups-query-rule .ant-input-number,
+.message-groups-query-rule .ant-picker,
+.message-groups-query-rule .ant-select {
+  width: 100%;
+}
+
 .search-bar-detail-label {
   color: #667085;
   font-size: 12px;
@@ -322,6 +447,27 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.admin-list-card-toolbar-side {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.admin-list-card-toolbar-summary {
+  color: #667085;
+}
+
+.admin-list-card-toolbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .admin-list-card-toolbar-tabs {
@@ -359,6 +505,7 @@ body {
   font-weight: 500;
 }
 
+.content-editor-toolbar,
 .message-template-editor-toolbar {
   display: flex;
   justify-content: flex-end;
@@ -366,10 +513,12 @@ body {
   gap: 16px;
 }
 
+.content-editor-toolbar-actions,
 .message-template-editor-toolbar-actions {
   margin-left: auto;
 }
 
+.content-editor-page,
 .message-template-detail-page {
   display: flex;
   flex: 1;
@@ -380,6 +529,7 @@ body {
   min-width: 0;
 }
 
+.content-editor-detail-card.ant-card,
 .message-template-detail-card.ant-card {
   display: flex;
   flex: 1;
@@ -388,6 +538,7 @@ body {
   min-width: 0;
 }
 
+.content-editor-detail-card .ant-card-body,
 .message-template-detail-card .ant-card-body {
   display: flex;
   flex: 1;
@@ -396,6 +547,73 @@ body {
   min-width: 0;
   padding: 24px;
   overflow: hidden;
+}
+
+.event-create-form-shell {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+  align-items: start;
+  gap: 24px;
+  width: 100%;
+}
+
+.event-create-form-steps {
+  position: sticky;
+  top: 8px;
+  align-self: start;
+}
+
+.event-create-form-steps .ant-steps-item-title {
+  font-weight: 600;
+}
+
+.event-create-form-steps .ant-steps-item-description {
+  color: #98a2b3;
+}
+
+.event-create-form-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+  width: 100%;
+}
+
+.event-create-form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0;
+  scroll-margin-top: 88px;
+}
+
+.event-create-form-section + .event-create-form-section {
+  margin-top: 24px;
+  padding-top: 24px;
+}
+
+.event-create-form-section__header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.event-create-form-section__title.ant-typography {
+  margin: 0;
+}
+
+.event-create-form-section__description {
+  color: #667085;
+}
+
+.event-create-form-section__content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.event-create-form-section .admin-form-descriptions .ant-descriptions-item-label {
+  width: 160px;
 }
 
 .message-template-content-form {
@@ -421,34 +639,107 @@ body {
   width: 100%;
 }
 
+.content-html-editor,
 .message-template-html-editor {
   min-height: 0;
   min-width: 0;
   width: 100%;
 }
 
+@media (max-width: 768px) {
+  .event-create-form-shell {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .event-create-form-steps {
+    position: static;
+  }
+
+  .event-create-form-section + .event-create-form-section {
+    margin-top: 20px;
+    padding-top: 20px;
+  }
+}
+
+.content-html-editor .tox-tinymce,
 .message-template-html-editor .tox-tinymce {
   width: 100% !important;
   border-color: #d7dfeb;
   border-radius: 12px;
 }
 
+.content-preview-descriptions .ant-descriptions-view,
 .message-template-preview-descriptions .ant-descriptions-view {
   overflow: hidden;
   border-radius: 12px;
 }
 
+.content-preview-canvas,
 .message-template-preview-canvas {
   overflow: hidden;
   border-radius: 16px;
   background: #fff;
 }
 
+.content-preview-canvas-body,
 .message-template-preview-canvas-body {
   max-height: 60vh;
   overflow: auto;
   padding: 24px;
   background: #fff;
+}
+
+.notice-detail-form {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+  min-width: 0;
+}
+
+.notice-detail-meta {
+  flex: none;
+}
+
+.notice-detail-editor-field,
+.notice-detail-editor-field .ant-form-item-row,
+.notice-detail-editor-field .ant-form-item-control,
+.notice-detail-editor-field .ant-form-item-control-input,
+.notice-detail-editor-field .ant-form-item-control-input-content,
+.notice-detail-editor-field .content-html-editor,
+.event-detail-editor-field,
+.event-detail-editor-field .ant-form-item-row,
+.event-detail-editor-field .ant-form-item-control,
+.event-detail-editor-field .ant-form-item-control-input,
+.event-detail-editor-field .ant-form-item-control-input-content,
+.event-detail-editor-field .content-html-editor {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+}
+
+.event-rich-content-preview {
+  color: #111827;
+  line-height: 1.7;
+  word-break: break-word;
+}
+
+.event-rich-content-preview > *:first-child {
+  margin-top: 0;
+}
+
+.event-rich-content-preview > *:last-child {
+  margin-bottom: 0;
+}
+
+.event-rich-content-preview img {
+  height: auto;
+  max-width: 100%;
 }
 
 .admin-form-descriptions .ant-descriptions-view {
@@ -468,18 +759,24 @@ body {
   margin-bottom: 0;
 }
 
+.admin-required-description-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.admin-required-description-label__mark {
+  color: #ff4d4f;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .message-template-form-descriptions .ant-descriptions-item-label {
   width: 180px;
 }
 
 .message-template-form-descriptions .ant-descriptions-item-content {
   min-width: 0;
-}
-
-.table-primary-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin: 0 0 16px;
 }
 
 .route-transition-container {
@@ -512,5 +809,19 @@ body {
     opacity: 1;
     transform: translate3d(0, 0, 0);
     filter: blur(0);
+  }
+}
+
+@media (max-width: 960px) {
+  .message-groups-editor-row {
+    grid-template-columns: 1fr;
+  }
+
+  .message-groups-inline-fields {
+    flex-direction: column;
+  }
+
+  .message-groups-query-rule {
+    grid-template-columns: 1fr;
   }
 }

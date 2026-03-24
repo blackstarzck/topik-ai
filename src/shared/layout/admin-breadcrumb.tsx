@@ -126,6 +126,14 @@ export function buildAdminBreadcrumbItems(
     ];
   }
 
+  if (pathname.startsWith('/operation/notices/create')) {
+    return [
+      breadcrumbLinkItem(adminMenuLabels.operation, '/operation/notices'),
+      breadcrumbLinkItem(adminMenuLabels.operationNotices, '/operation/notices'),
+      breadcrumbTextItem('등록 상세')
+    ];
+  }
+
   if (pathname.startsWith('/operation/notices')) {
     return [
       breadcrumbLinkItem(adminMenuLabels.operation, '/operation/notices'),
@@ -137,6 +145,14 @@ export function buildAdminBreadcrumbItems(
     return [
       breadcrumbLinkItem(adminMenuLabels.operation, '/operation/notices'),
       breadcrumbTextItem(adminMenuLabels.operationFaq)
+    ];
+  }
+
+  if (pathname.startsWith('/operation/events/create')) {
+    return [
+      breadcrumbLinkItem(adminMenuLabels.operation, '/operation/notices'),
+      breadcrumbLinkItem(adminMenuLabels.operationEvents, '/operation/events'),
+      breadcrumbTextItem('등록 상세')
     ];
   }
 
