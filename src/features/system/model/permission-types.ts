@@ -163,6 +163,14 @@ export const permissionCatalog: PermissionDefinition[] = [
     risk: 'medium'
   },
   {
+    key: 'operation.policies.manage',
+    name: '정책 관리',
+    module: 'Operation',
+    scopeDescription:
+      '이용약관, 개인정보 처리방침, 결제ㆍ환불 정책 등 법적/운영 정책 문서를 관리합니다.',
+    risk: 'high'
+  },
+  {
     key: 'operation.chatbot.manage',
     name: '챗봇 설정 관리',
     module: 'Operation',
@@ -335,6 +343,7 @@ export const roleCatalog: RoleDefinition[] = [
       'operation.notices.manage',
       'operation.faq.manage',
       'operation.events.manage',
+      'operation.policies.manage',
       'operation.chatbot.manage',
       'commerce.payments.read',
       'commerce.refunds.approve',

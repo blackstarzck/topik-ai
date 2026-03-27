@@ -31,13 +31,14 @@
 | P0-06 | `lint` 통과 | FE | Yes | 실행 명령 + 결과 로그 |
 | P0-07 | `typecheck` 통과 | FE | Yes | 실행 명령 + 결과 로그 |
 | P0-08 | `build` 통과 | FE | Yes | 실행 명령 + 결과 로그 |
-| P0-09 | 변경 영향 핵심 플로우 1개 이상 검증(자동 테스트 우선) | FE/QA | Yes | 테스트 결과 또는 수동 시나리오 결과 |
+| P0-09 | 변경 영향 핵심 플로우 e2e 테스트 실행 및 통과 | FE/QA | Yes | e2e 실행 명령 + 통과 로그 또는 리포트 링크 |
 | P0-10 | 변경 영향 MD 문서 평가 완료, 필요 문서 수정 반영 완료 | FE | Yes | 영향 판단 근거 + 수정된 MD 목록 |
 | P0-10A | 관리자 테이블/정책/B2C 노출 위치 변경 시 `docs/specs/admin-data-usage-map.md` 평가 및 반영 완료 | FE | Yes (해당 시) | 수정 diff 또는 N/A 근거 |
 | P0-10B | 페이지별 상세 IA 문서(`docs/specs/page-ia/*.md`) 또는 IA 템플릿 수정 시 `docs/specs/admin-page-ia-change-log.md` 기록 완료 | FE | Yes (해당 시) | IA 로그 항목 링크 |
 | P0-10C | 행 클릭 상세 Drawer 레이아웃 변경 시 `docs/guidelines/admin-detail-drawer-guidelines.md`와 관련 공통/페이지 IA 문서 반영 완료 | FE | Yes (해당 시) | 수정 diff 또는 N/A 근거 |
 | P0-10D | API/mock/데이터베이스/응답 스키마/데이터 source 경계 변경 시 `docs/architecture/admin-data-source-transition.md`와 관련 SoT 문서 평가 및 반영 완료 | FE | Yes (해당 시) | 수정 diff 또는 N/A 근거 |
 | P0-10E | 엔티티명, 테이블명 후보, 컬럼/필드명, 변수명, enum/code table 후보, 하드코딩된 schema candidate 분류 변경 시 `docs/specs/admin-data-contract.md` 평가 및 반영 완료 | FE | Yes (해당 시) | 수정 diff 또는 N/A 근거 |
+| P0-10F | 현재 작업이 `docs/specs/admin-page-gap-register.md` 항목을 생성/해소/상태 변경하는 경우 문서 갱신 완료 | FE | Yes (해당 시) | 수정 diff 또는 N/A 근거 |
 | P0-11 | MD를 수정한 경우 `logs/admin-doc-update-log.md`에 기록 완료 | FE | Yes (해당 시) | 로그 항목 링크 |
 | P0-12 | 문서 파일(`docs/**`) 추가/삭제/이동 시 `docs/README.md` 인덱스와 로그 동시 반영 | FE | Yes (해당 시) | 인덱스 diff + 로그 항목 링크 |
 | P0-13 | 네트워크 상태(`pending/success/empty/error`)별 UX와 복구 경로(재시도/fallback/가이드) 제공 | FE | Yes (해당 시) | 화면 상태별 캡처 + 코드 위치 |

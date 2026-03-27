@@ -163,6 +163,21 @@ export function buildAdminBreadcrumbItems(
     ];
   }
 
+  if (pathname.startsWith('/operation/policies/create')) {
+    return [
+      breadcrumbLinkItem(adminMenuLabels.operation, '/operation/notices'),
+      breadcrumbLinkItem(adminMenuLabels.operationPolicies, '/operation/policies'),
+      breadcrumbTextItem('등록 상세')
+    ];
+  }
+
+  if (pathname.startsWith('/operation/policies')) {
+    return [
+      breadcrumbLinkItem(adminMenuLabels.operation, '/operation/notices'),
+      breadcrumbTextItem(adminMenuLabels.operationPolicies)
+    ];
+  }
+
   if (pathname.startsWith('/operation/chatbot')) {
     return [
       breadcrumbLinkItem(adminMenuLabels.operation, '/operation/notices'),
@@ -181,6 +196,14 @@ export function buildAdminBreadcrumbItems(
     return [
       breadcrumbLinkItem(adminMenuLabels.commerce, '/commerce/payments'),
       breadcrumbTextItem(adminMenuLabels.commerceRefunds)
+    ];
+  }
+
+  if (pathname.startsWith('/commerce/coupons/create')) {
+    return [
+      breadcrumbLinkItem(adminMenuLabels.commerce, '/commerce/payments'),
+      breadcrumbLinkItem(adminMenuLabels.commerceCoupons, '/commerce/coupons'),
+      breadcrumbTextItem('등록 상세')
     ];
   }
 

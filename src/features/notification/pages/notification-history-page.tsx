@@ -101,14 +101,12 @@ export default function NotificationHistoryPage(): JSX.Element {
         title: '성공 수',
         dataIndex: 'successCount',
         width: 100,
-        align: 'right',
         sorter: createNumberSorter((record) => record.successCount)
       },
       {
         title: '실패 수',
         dataIndex: 'failureCount',
         width: 100,
-        align: 'right',
         sorter: createNumberSorter((record) => record.failureCount)
       },
       {

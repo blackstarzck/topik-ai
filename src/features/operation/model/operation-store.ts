@@ -68,7 +68,11 @@ type SaveEventPayload = {
   rewardType: OperationEventRewardType;
   rewardPolicyId: string;
   rewardPolicyName: string;
+  messageTemplateId: string;
   bannerImageUrl: string;
+  bannerImageSourceType: OperationEvent['bannerImageSourceType'];
+  bannerImageFileName: string;
+  bannerImages: OperationEvent['bannerImages'];
   landingUrl: string;
   messageTemplateName: string;
   metaTitle: string;
@@ -359,17 +363,27 @@ const initialEvents: OperationEvent[] = [
     startAt: '2026-03-20',
     endAt: '2026-03-31',
     exposureChannels: ['앱 홈', '이벤트 탭'],
-    targetGroupId: 'SEG-ATTEND-001',
-    targetGroupName: '최근 30일 활성 학습자',
+    targetGroupId: 'GRP-001',
+    targetGroupName: '활성 학습자',
     participantCount: 1280,
     participantLimit: 5000,
     rewardType: '포인트',
     rewardPolicyId: 'POINT-100',
     rewardPolicyName: '출석 7일 누적 100P',
     rewardPolicySummary: '포인트 · 출석 7일 누적 100P',
+    messageTemplateId: 'PUSH-MAN-001',
+    bannerImages: [
+      {
+        uid: 'EVT-001-banner-1',
+        name: 'attendance-march.png',
+        url: 'https://images.example.com/events/attendance-march.png'
+      }
+    ],
     bannerImageUrl: 'https://images.example.com/events/attendance-march.png',
+    bannerImageSourceType: 'file',
+    bannerImageFileName: 'attendance-march.png',
     landingUrl: '/events/spring-attendance',
-    messageTemplateName: '출석 이벤트 공지 푸시',
+    messageTemplateName: '점검 공지 푸시',
     metaTitle: '봄 학습 출석 이벤트',
     metaDescription: '연속 출석 시 포인트를 지급하는 3월 학습 이벤트를 확인하세요.',
     ogImageUrl: 'https://images.example.com/events/attendance-march-og.png',
@@ -393,17 +407,27 @@ const initialEvents: OperationEvent[] = [
     startAt: '2026-04-01',
     endAt: '2026-04-20',
     exposureChannels: ['웹 홈', '이벤트 탭'],
-    targetGroupId: 'SEG-REF-APR',
-    targetGroupName: '초대 링크 보유 회원',
+    targetGroupId: 'GRP-003',
+    targetGroupName: 'VIP 고객',
     participantCount: 0,
     participantLimit: 3000,
     rewardType: '쿠폰',
     rewardPolicyId: 'COUPON-APR-15',
     rewardPolicyName: '친구 초대 15% 쿠폰',
     rewardPolicySummary: '쿠폰 · 친구 초대 15% 쿠폰',
+    messageTemplateId: 'MAIL-MAN-002',
+    bannerImages: [
+      {
+        uid: 'EVT-002-banner-1',
+        name: 'referral-april.png',
+        url: 'https://images.example.com/events/referral-april.png'
+      }
+    ],
     bannerImageUrl: 'https://images.example.com/events/referral-april.png',
+    bannerImageSourceType: 'file',
+    bannerImageFileName: 'referral-april.png',
     landingUrl: '/events/referral-april',
-    messageTemplateName: '친구 초대 이벤트 메일',
+    messageTemplateName: 'VIP 행사 초대 메일',
     metaTitle: '친구 초대 리워드 캠페인',
     metaDescription: '친구 초대 성공 시 사용할 수 있는 할인 쿠폰 이벤트입니다.',
     ogImageUrl: 'https://images.example.com/events/referral-april-og.png',
@@ -427,17 +451,27 @@ const initialEvents: OperationEvent[] = [
     startAt: '2026-02-01',
     endAt: '2026-02-28',
     exposureChannels: ['이벤트 탭'],
-    targetGroupId: 'SEG-TOPIK-ALL',
-    targetGroupName: 'TOPIK 응시 회원',
+    targetGroupId: 'GRP-004',
+    targetGroupName: '운영 공지 구독자',
     participantCount: 642,
     participantLimit: null,
     rewardType: '배지',
     rewardPolicyId: 'BADGE-TOPIK-001',
     rewardPolicyName: 'TOPIK 챌린지 완주 배지',
     rewardPolicySummary: '배지 · TOPIK 챌린지 완주 배지',
+    messageTemplateId: 'PUSH-MAN-002',
+    bannerImages: [
+      {
+        uid: 'EVT-003-banner-1',
+        name: 'topik-challenge.png',
+        url: 'https://images.example.com/events/topik-challenge.png'
+      }
+    ],
     bannerImageUrl: 'https://images.example.com/events/topik-challenge.png',
+    bannerImageSourceType: 'file',
+    bannerImageFileName: 'topik-challenge.png',
     landingUrl: '/events/topik-challenge',
-    messageTemplateName: 'TOPIK 챌린지 결과 안내',
+    messageTemplateName: '주말 캠페인 안내',
     metaTitle: 'TOPIK 응시 챌린지',
     metaDescription: 'TOPIK 응시 회원을 위한 시즌 챌린지와 배지 지급 기록입니다.',
     ogImageUrl: 'https://images.example.com/events/topik-challenge-og.png',
@@ -688,7 +722,17 @@ export const useOperationStore = create<OperationStore>((set, get) => ({
     const title = normalizeText(payload.title);
     const summary = normalizeText(payload.summary);
     const slug = createSlug(payload.slug || title, eventId.toLowerCase());
-    const bannerImageUrl = normalizeText(payload.bannerImageUrl);
+    const bannerImages = payload.bannerImages
+      .map((bannerImage) => ({
+        uid: normalizeText(bannerImage.uid),
+        name: normalizeText(bannerImage.name),
+        url: normalizeText(bannerImage.url)
+      }))
+      .filter((bannerImage) => bannerImage.uid && bannerImage.url);
+    const representativeBannerImage = bannerImages[0];
+    const bannerImageUrl = representativeBannerImage?.url ?? '';
+    const bannerImageSourceType = 'file';
+    const bannerImageFileName = representativeBannerImage?.name ?? '';
     const landingUrl = normalizeText(payload.landingUrl);
     const nextEvent: OperationEvent = {
       id: eventId,
@@ -717,7 +761,11 @@ export const useOperationStore = create<OperationStore>((set, get) => ({
         payload.rewardType,
         payload.rewardPolicyName
       ),
+      messageTemplateId: normalizeText(payload.messageTemplateId),
+      bannerImages,
       bannerImageUrl,
+      bannerImageSourceType,
+      bannerImageFileName,
       landingUrl,
       messageTemplateName: normalizeText(payload.messageTemplateName),
       metaTitle: normalizeText(payload.metaTitle) || title,

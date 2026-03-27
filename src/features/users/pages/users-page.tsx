@@ -536,10 +536,9 @@ export default function UsersPage(): JSX.Element {
             description="필터 조건을 확인하거나 잠시 후 다시 조회해주세요."
           />
         ) : null}
-        <AdminDataTable<UserSummary>
-          rowKey="id"
-          virtual
-          columns={columns}
+      <AdminDataTable<UserSummary>
+        rowKey="id"
+        columns={columns}
           dataSource={filteredUsers}
           onRow={handleRowClick}
           loading={usersState.status === 'pending'}

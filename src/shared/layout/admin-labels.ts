@@ -18,6 +18,7 @@ export const adminMenuLabels = {
   operationNotices: '공지사항',
   operationFaq: 'FAQ',
   operationEvents: '이벤트',
+  operationPolicies: '정책 관리',
   operationChatbot: '챗봇 설정',
   commerce: '커머스',
   commercePayments: '결제 내역',

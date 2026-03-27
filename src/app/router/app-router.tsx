@@ -1,4 +1,4 @@
-import { lazy } from 'react';
+﻿import { lazy } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { AdminShell } from '../../shared/layout/admin-shell';
@@ -49,14 +49,32 @@ const OperationFaqPage = lazy(
 const OperationEventsPage = lazy(
   () => import('../../features/operation/pages/operation-events-page')
 );
+const OperationPoliciesPage = lazy(
+  () => import('../../features/operation/pages/operation-policies-page')
+);
 const OperationEventCreatePage = lazy(
   () => import('../../features/operation/pages/operation-event-create-page')
+);
+const OperationPolicyCreatePage = lazy(
+  () => import('../../features/operation/pages/operation-policy-create-page')
 );
 const BillingPaymentsPage = lazy(
   () => import('../../features/billing/pages/billing-payments-page')
 );
 const BillingRefundsPage = lazy(
   () => import('../../features/billing/pages/billing-refunds-page')
+);
+const CommerceCouponsPage = lazy(
+  () => import('../../features/commerce/pages/commerce-coupons-page')
+);
+const CommercePointsPage = lazy(
+  () => import('../../features/commerce/pages/commerce-points-page')
+);
+const CommerceCouponCreatePage = lazy(
+  () => import('../../features/commerce/pages/commerce-coupon-create-page')
+);
+const CommerceCouponTemplateCreatePage = lazy(
+  () => import('../../features/commerce/pages/commerce-coupon-template-create-page')
 );
 const AnalyticsOverviewPage = lazy(
   () => import('../../features/analytics/pages/analytics-overview-page')
@@ -135,6 +153,15 @@ export function AppRouter(): JSX.Element {
           path="/operation/events/create/:eventId"
           element={<OperationEventCreatePage />}
         />
+        <Route path="/operation/policies" element={<OperationPoliciesPage />} />
+        <Route
+          path="/operation/policies/create"
+          element={<OperationPolicyCreatePage />}
+        />
+        <Route
+          path="/operation/policies/create/:policyId"
+          element={<OperationPolicyCreatePage />}
+        />
         <Route
           path="/operation/chatbot"
           element={
@@ -157,38 +184,24 @@ export function AppRouter(): JSX.Element {
 
         <Route path="/commerce/payments" element={<BillingPaymentsPage />} />
         <Route path="/commerce/refunds" element={<BillingRefundsPage />} />
+        <Route path="/commerce/coupons" element={<CommerceCouponsPage />} />
         <Route
-          path="/commerce/coupons"
-          element={
-            <AdminPlaceholderPage
-              title="쿠폰 관리"
-              summary="쿠폰 정책, 발급 상태, 사용 조건을 관리하기 위한 화면 자리입니다."
-              ownerRole="OPS_ADMIN"
-              supportingRoles={['SUPER_ADMIN']}
-              capabilities={[
-                '쿠폰 생성 및 만료 정책 설정',
-                '대상 그룹/회원 연결',
-                '사용량과 중복 사용 검수'
-              ]}
-            />
-          }
+          path="/commerce/coupons/create"
+          element={<CommerceCouponCreatePage />}
         />
         <Route
-          path="/commerce/points"
-          element={
-            <AdminPlaceholderPage
-              title="포인트 관리"
-              summary="포인트 적립/차감 정책과 운영 이력을 관리하기 위한 자리입니다."
-              ownerRole="OPS_ADMIN"
-              supportingRoles={['SUPER_ADMIN']}
-              capabilities={[
-                '포인트 정책 정의',
-                '회원별 포인트 이력 검수',
-                '수동 차감 및 보정 플로우 설계'
-              ]}
-            />
-          }
+          path="/commerce/coupons/create/:couponId"
+          element={<CommerceCouponCreatePage />}
         />
+        <Route
+          path="/commerce/coupons/template/create"
+          element={<CommerceCouponTemplateCreatePage />}
+        />
+        <Route
+          path="/commerce/coupons/template/create/:templateId"
+          element={<CommerceCouponTemplateCreatePage />}
+        />
+        <Route path="/commerce/points" element={<CommercePointsPage />} />
         <Route
           path="/commerce/store"
           element={
@@ -392,3 +405,4 @@ export function AppRouter(): JSX.Element {
     </Routes>
   );
 }
+

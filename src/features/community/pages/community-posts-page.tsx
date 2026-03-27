@@ -1,16 +1,12 @@
 import {
   Alert,
   Button,
-  Card,
-  Col,
   Descriptions,
   Form,
   Input,
   Modal,
-  Row,
   Select,
   Space,
-  Statistic,
   Typography,
   notification
 } from 'antd';
@@ -29,6 +25,7 @@ import {
 } from '../../../shared/ui/detail-drawer/detail-drawer';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
+import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
   SearchBar,
@@ -759,21 +756,18 @@ export default function CommunityPostsPage(): JSX.Element {
         title: '조회수',
         dataIndex: 'views',
         width: 90,
-        align: 'right',
         sorter: createNumberSorter((record) => record.views)
       },
       {
         title: '댓글수',
         dataIndex: 'comments',
         width: 90,
-        align: 'right',
         sorter: createNumberSorter((record) => record.comments)
       },
       {
         title: '신고수',
         dataIndex: 'reports',
         width: 90,
-        align: 'right',
         sorter: createNumberSorter((record) => record.reports)
       },
       {
@@ -931,29 +925,32 @@ export default function CommunityPostsPage(): JSX.Element {
 
   const hiddenCount = rows.filter((row) => row.status === '숨김').length;
   const reportedCount = rows.filter((row) => row.reports > 0).length;
+  const postSummaryCards = useMemo(
+    () => [
+      {
+        key: 'all-posts',
+        label: '전체 게시글',
+        value: `${rows.length.toLocaleString()}건`
+      },
+      {
+        key: 'hidden-posts',
+        label: '숨김 게시글',
+        value: `${hiddenCount.toLocaleString()}건`
+      },
+      {
+        key: 'reported-posts',
+        label: '신고 누적 게시글',
+        value: `${reportedCount.toLocaleString()}건`
+      }
+    ],
+    [hiddenCount, reportedCount, rows.length]
+  );
 
   return (
     <div>
       {notificationContextHolder}
       <PageTitle title="게시글 관리" />
-
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic title="전체 게시글" value={rows.length} suffix="건" />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic title="숨김 게시글" value={hiddenCount} suffix="건" />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic title="신고 누적 게시글" value={reportedCount} suffix="건" />
-          </Card>
-        </Col>
-      </Row>
+      <ListSummaryCards items={postSummaryCards} />
 
       <AdminListCard
         toolbar={

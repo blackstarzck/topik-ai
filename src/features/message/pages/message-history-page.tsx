@@ -37,6 +37,7 @@ import {
   DetailDrawerSection
 } from '../../../shared/ui/detail-drawer/detail-drawer';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
+import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
   SearchBar,
@@ -200,19 +201,22 @@ export default function MessageHistoryPage(): JSX.Element {
     };
   }, [activeChannel, histories]);
 
-  const historyModeOptions = useMemo(
+  const historySummaryCardItems = useMemo(
     () => [
       {
         key: 'all' as const,
-        label: `전체 (${activeChannelModeCounts.all})`
+        label: '전체 발송',
+        value: `${activeChannelModeCounts.all.toLocaleString()}건`
       },
       {
         key: 'auto' as const,
-        label: `자동 (${activeChannelModeCounts.auto})`
+        label: '자동 발송',
+        value: `${activeChannelModeCounts.auto.toLocaleString()}건`
       },
       {
         key: 'manual' as const,
-        label: `수동 (${activeChannelModeCounts.manual})`
+        label: '수동 발송',
+        value: `${activeChannelModeCounts.manual.toLocaleString()}건`
       }
     ],
     [activeChannelModeCounts]
@@ -355,6 +359,16 @@ export default function MessageHistoryPage(): JSX.Element {
     [activeChannel, commitParams, keyword]
   );
 
+  const historySummaryCards = useMemo(
+    () =>
+      historySummaryCardItems.map((item) => ({
+        ...item,
+        active: modeFilter === item.key,
+        onClick: () => handleModeFilterChange(item.key)
+      })),
+    [handleModeFilterChange, historySummaryCardItems, modeFilter]
+  );
+
   const handleDangerConfirm = useCallback(
     (reason: string) => {
       if (!dangerState) {
@@ -425,7 +439,6 @@ export default function MessageHistoryPage(): JSX.Element {
         title: '수신자 수',
         dataIndex: 'targetCount',
         width: 110,
-        align: 'right',
         sorter: createNumberSorter((record) => record.targetCount),
         render: (value: number) => `${value.toLocaleString()}명`
       },
@@ -433,7 +446,6 @@ export default function MessageHistoryPage(): JSX.Element {
         title: '발송 성공',
         dataIndex: 'successCount',
         width: 110,
-        align: 'right',
         sorter: createNumberSorter((record) => record.successCount),
         render: (value: number) => `${value.toLocaleString()}명`
       },
@@ -441,7 +453,6 @@ export default function MessageHistoryPage(): JSX.Element {
         title: '발송 실패',
         dataIndex: 'failureCount',
         width: 110,
-        align: 'right',
         sorter: createNumberSorter((record) => record.failureCount),
         render: (value: number) => `${value.toLocaleString()}명`
       },
@@ -508,6 +519,7 @@ export default function MessageHistoryPage(): JSX.Element {
     <div>
       {notificationContextHolder}
       <PageTitle title="발송 이력" />
+      <ListSummaryCards items={historySummaryCards} />
 
       {loadState.status === 'error' ? (
         <Alert
@@ -584,20 +596,6 @@ export default function MessageHistoryPage(): JSX.Element {
               onApply={handleApplyDateRange}
               onDetailOpenChange={handleDetailOpenChange}
               onReset={handleDraftReset}
-              extra={
-                <div className="message-history-mode-filter" role="group" aria-label="발송 방식 필터">
-                  {historyModeOptions.map((option) => (
-                    <Checkbox
-                      key={option.key}
-                      checked={modeFilter === option.key}
-                      onChange={() => handleModeFilterChange(option.key)}
-                      className="message-history-mode-filter-item"
-                    >
-                      {option.label}
-                    </Checkbox>
-                  ))}
-                </div>
-              }
               summary={
                 <Text type="secondary">총 {visibleRows.length.toLocaleString()}건</Text>
               }

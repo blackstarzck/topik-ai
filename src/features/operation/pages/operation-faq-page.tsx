@@ -1,18 +1,14 @@
 import {
   Alert,
   Button,
-  Card,
-  Col,
   DatePicker,
   Descriptions,
   Form,
   Input,
   InputNumber,
   Modal,
-  Row,
   Select,
   Space,
-  Statistic,
   Tabs,
   Tag,
   Typography,
@@ -76,6 +72,7 @@ import {
   DetailDrawerSection
 } from '../../../shared/ui/detail-drawer/detail-drawer';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
+import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
   SearchBar,
@@ -718,6 +715,31 @@ export default function OperationFaqPage(): JSX.Element {
   const totalViewCount = metricsState.data.reduce(
     (sum, metric) => sum + metric.viewCount,
     0
+  );
+  const faqSummaryCards = useMemo(
+    () => [
+      {
+        key: 'all-faqs',
+        label: '전체 FAQ',
+        value: `${totalFaqCount.toLocaleString()}건`
+      },
+      {
+        key: 'public-faqs',
+        label: '공개 FAQ',
+        value: `${publicFaqCount.toLocaleString()}건`
+      },
+      {
+        key: 'active-curations',
+        label: '활성 노출',
+        value: `${activeCurationCount.toLocaleString()}건`
+      },
+      {
+        key: 'faq-views',
+        label: '누적 조회수',
+        value: `${totalViewCount.toLocaleString()}회`
+      }
+    ],
+    [activeCurationCount, publicFaqCount, totalFaqCount, totalViewCount]
   );
 
   useEffect(() => {
@@ -1696,29 +1718,7 @@ export default function OperationFaqPage(): JSX.Element {
     <div>
       {notificationContextHolder}
       <PageTitle title="자주 묻는 질문" />
-
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={24} md={6}>
-          <Card>
-            <Statistic title="전체 FAQ" value={totalFaqCount} suffix="건" />
-          </Card>
-        </Col>
-        <Col xs={24} md={6}>
-          <Card>
-            <Statistic title="공개 FAQ" value={publicFaqCount} suffix="건" />
-          </Card>
-        </Col>
-        <Col xs={24} md={6}>
-          <Card>
-            <Statistic title="활성 노출" value={activeCurationCount} suffix="건" />
-          </Card>
-        </Col>
-        <Col xs={24} md={6}>
-          <Card>
-            <Statistic title="누적 조회수" value={totalViewCount} suffix="회" />
-          </Card>
-        </Col>
-      </Row>
+      <ListSummaryCards items={faqSummaryCards} />
 
       <AdminListCard
         toolbar={

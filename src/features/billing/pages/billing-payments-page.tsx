@@ -1,4 +1,4 @@
-import { Card, Col, Row, Statistic, Typography } from 'antd';
+import { Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -7,6 +7,7 @@ import { useCommerceStore } from '../model/commerce-store';
 import type { PaymentRow, PaymentStatus } from '../model/commerce-store';
 import { getMockUserById } from '../../users/api/mock-users';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
+import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
   SearchBar,
@@ -100,6 +101,26 @@ export default function BillingPaymentsPage(): JSX.Element {
   );
   const refundedCount = payments.filter((row) => row.status === '환불').length;
   const pendingRefundCount = refunds.filter((row) => row.status === '처리 대기').length;
+  const paymentSummaryCards = useMemo(
+    () => [
+      {
+        key: 'all-payments',
+        label: '전체 결제 건수',
+        value: `${payments.length.toLocaleString()}건`
+      },
+      {
+        key: 'completed-amount',
+        label: '결제 완료 금액',
+        value: formatCurrency(completedAmount)
+      },
+      {
+        key: 'refund-related',
+        label: '환불 관련 건수',
+        value: `${(refundedCount + pendingRefundCount).toLocaleString()}건`
+      }
+    ],
+    [completedAmount, payments.length, pendingRefundCount, refundedCount]
+  );
 
   const commitParams = useCallback(
     (
@@ -192,7 +213,6 @@ export default function BillingPaymentsPage(): JSX.Element {
         title: '금액',
         dataIndex: 'amount',
         width: 140,
-        align: 'right',
         sorter: createNumberSorter((record) => record.amount),
         render: (value: number) => formatCurrency(value)
       },
@@ -224,24 +244,7 @@ export default function BillingPaymentsPage(): JSX.Element {
   return (
     <div>
       <PageTitle title="결제 내역" />
-
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic title="전체 결제 건수" value={payments.length} suffix="건" />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic title="결제 완료 금액" value={completedAmount} prefix="₩" />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic title="환불 관련 건수" value={refundedCount + pendingRefundCount} suffix="건" />
-          </Card>
-        </Col>
-      </Row>
+      <ListSummaryCards items={paymentSummaryCards} />
 
       <AdminListCard
         toolbar={

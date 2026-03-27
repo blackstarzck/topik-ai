@@ -1394,7 +1394,6 @@ export default function MessageGroupsPage(): JSX.Element {
         title: '예상 대상 수',
         dataIndex: 'memberCount',
         width: 130,
-        align: 'right',
         sorter: createNumberSorter((record) => record.memberCount),
         render: (value: number, record) => (
           <div className="message-groups-count-cell">

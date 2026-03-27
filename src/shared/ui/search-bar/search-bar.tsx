@@ -1,5 +1,13 @@
 import { FilterOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
-import { Button, DatePicker, Input, Popover, Select, Space } from 'antd';
+import {
+  Button,
+  ConfigProvider,
+  DatePicker,
+  Input,
+  Popover,
+  Select,
+  Space
+} from 'antd';
 import type { ChangeEvent, ReactNode } from 'react';
 import { useState } from 'react';
 
@@ -13,6 +21,7 @@ export type SearchBarOption = {
 type SearchBarProps = {
   searchField: string;
   searchFieldOptions: SearchBarOption[];
+  showSingleFieldSelect?: boolean;
   keyword: string;
   onSearchFieldChange: (value: string) => void;
   onKeywordChange: (event: ChangeEvent<HTMLInputElement>) => void;
@@ -27,6 +36,7 @@ type SearchBarProps = {
   actions?: ReactNode;
   fieldWidth?: number;
   keywordWidth?: number;
+  hideSearchControls?: boolean;
 };
 
 type SearchBarDetailFieldProps = {
@@ -43,6 +53,7 @@ type SearchBarDateRangeProps = {
 export function SearchBar({
   searchField,
   searchFieldOptions,
+  showSingleFieldSelect = false,
   keyword,
   onSearchFieldChange,
   onKeywordChange,
@@ -56,10 +67,13 @@ export function SearchBar({
   summary,
   actions,
   fieldWidth = 112,
-  keywordWidth = 230
+  keywordWidth = 230,
+  hideSearchControls = false
 }: SearchBarProps): JSX.Element {
   const [detailOpen, setDetailOpen] = useState(false);
   const hasDetailControls = Boolean(detailContent) || Boolean(onReset);
+  const hasSingleFieldOption = searchFieldOptions.length <= 1;
+  const shouldShowFieldSelect = showSingleFieldSelect || !hasSingleFieldOption;
 
   const handleApply = (): void => {
     onApply?.();
@@ -73,65 +87,73 @@ export function SearchBar({
 
   return (
     <div className="search-bar">
-      <div className="search-bar-main">
-        <Space.Compact className="search-bar-compact">
-          <Select
-            value={searchField}
-            options={searchFieldOptions}
-            onChange={onSearchFieldChange}
-            style={{ width: fieldWidth }}
-          />
-          <Input
-            allowClear
-            value={keyword}
-            onChange={onKeywordChange}
-            placeholder={keywordPlaceholder}
-            prefix={<SearchOutlined />}
-            style={{ width: keywordWidth }}
-          />
-        </Space.Compact>
-        {hasDetailControls ? (
-          <Popover
-            open={detailOpen}
-            onOpenChange={handleDetailOpenChange}
-            trigger="click"
-            placement="bottomLeft"
-            title={detailTitle}
-            overlayClassName="search-bar-popover"
-            content={
-              <div className="search-bar-detail-content">
-                {detailContent}
-                <div className="search-bar-detail-actions">
-                  {onReset ? (
-                    <Button
-                      className="search-bar-detail-reset"
-                      icon={<ReloadOutlined />}
-                      onClick={onReset}
-                    >
-                      필터 초기화
+      {hideSearchControls ? null : (
+        <div className="search-bar-main">
+          <Space.Compact className="search-bar-compact">
+            {shouldShowFieldSelect ? (
+              <Select
+                value={searchField}
+                options={searchFieldOptions}
+                onChange={onSearchFieldChange}
+                style={{ width: fieldWidth }}
+              />
+            ) : null}
+            <Input
+              allowClear
+              value={keyword}
+              onChange={onKeywordChange}
+              placeholder={keywordPlaceholder}
+              prefix={<SearchOutlined />}
+              style={{ width: keywordWidth }}
+            />
+          </Space.Compact>
+          {hasDetailControls ? (
+            <Popover
+              open={detailOpen}
+              onOpenChange={handleDetailOpenChange}
+              trigger="click"
+              placement="bottomLeft"
+              title={detailTitle}
+              overlayClassName="search-bar-popover"
+              content={
+                <div className="search-bar-detail-content">
+                  {detailContent}
+                  <div className="search-bar-detail-actions">
+                    {onReset ? (
+                      <Button
+                        className="search-bar-detail-reset"
+                        icon={<ReloadOutlined />}
+                        onClick={onReset}
+                      >
+                        필터 초기화
+                      </Button>
+                    ) : null}
+                    <Button type="primary" onClick={handleApply}>
+                      적용
                     </Button>
-                  ) : null}
-                  <Button type="primary" onClick={handleApply}>
-                    적용
-                  </Button>
+                  </div>
                 </div>
-              </div>
-            }
-          >
-            <Button
-              className="search-bar-detail-trigger"
-              icon={<FilterOutlined />}
+              }
             >
-              상세
-            </Button>
-          </Popover>
-        ) : null}
-      </div>
+              <Button
+                className="search-bar-detail-trigger"
+                icon={<FilterOutlined />}
+              >
+                상세
+              </Button>
+            </Popover>
+          ) : null}
+        </div>
+      )}
       {extra ? <div className="search-bar-extra">{extra}</div> : null}
       {summary || actions ? (
         <div className="search-bar-side">
           {summary ? <div className="search-bar-summary">{summary}</div> : null}
-          {actions ? <div className="search-bar-actions">{actions}</div> : null}
+          {actions ? (
+            <ConfigProvider componentSize="large">
+              <div className="search-bar-actions">{actions}</div>
+            </ConfigProvider>
+          ) : null}
         </div>
       ) : null}
     </div>

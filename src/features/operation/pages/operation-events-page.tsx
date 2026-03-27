@@ -1,13 +1,8 @@
 import {
   Alert,
   Button,
-  Card,
-  Col,
   Descriptions,
-  Modal,
-  Row,
   Space,
-  Statistic,
   Tag,
   Typography,
   notification
@@ -36,7 +31,9 @@ import {
   DetailDrawerBody,
   DetailDrawerSection
 } from '../../../shared/ui/detail-drawer/detail-drawer';
+import { HtmlPreviewModal } from '../../../shared/ui/html-preview-modal/html-preview-modal';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
+import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
   SearchBar,
@@ -51,7 +48,6 @@ import {
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
-import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
 import {
   createDefinedColumnFilterProps,
   createTextSorter
@@ -176,6 +172,7 @@ export default function OperationEventsPage(): JSX.Element {
   });
   const [reloadKey, setReloadKey] = useState(0);
   const [actionState, setActionState] = useState<EventActionState>(null);
+  const [previewEvent, setPreviewEvent] = useState<OperationEvent | null>(null);
   const [notificationApi, notificationContextHolder] = notification.useNotification();
   const handledSavedStateRef = useRef<string | null>(null);
 
@@ -274,7 +271,7 @@ export default function OperationEventsPage(): JSX.Element {
         state.operationEventSaved.action === 'schedule'
           ? '이벤트 게시 예약 완료'
           : state.operationEventSaved.mode === 'create'
-            ? '이벤트 등록 완료'
+            ? '이벤트 임시 저장 완료'
             : '이벤트 수정 완료',
       description: (
         <Space direction="vertical">
@@ -285,7 +282,7 @@ export default function OperationEventsPage(): JSX.Element {
             {state.operationEventSaved.action === 'schedule'
               ? '등록 상세에서 게시 예약 실행'
               : state.operationEventSaved.mode === 'create'
-                ? '이벤트 신규 저장'
+                ? '이벤트 신규 임시 저장'
                 : '이벤트 정보 수정'}
           </Text>
           <AuditLogLink
@@ -350,6 +347,26 @@ export default function OperationEventsPage(): JSX.Element {
     }),
     [eventsState.data]
   );
+  const eventSummaryCards = useMemo(
+    () => [
+      {
+        key: 'visible-events',
+        label: '노출 이벤트',
+        value: `${visibilitySummary.visibleCount.toLocaleString()}건`
+      },
+      {
+        key: 'scheduled-events',
+        label: '예약 이벤트',
+        value: `${visibilitySummary.scheduledCount.toLocaleString()}건`
+      },
+      {
+        key: 'hidden-events',
+        label: '숨김 이벤트',
+        value: `${visibilitySummary.hiddenCount.toLocaleString()}건`
+      }
+    ],
+    [visibilitySummary.hiddenCount, visibilitySummary.scheduledCount, visibilitySummary.visibleCount]
+  );
 
   const selectedEvent = useMemo(
     () =>
@@ -397,59 +414,10 @@ export default function OperationEventsPage(): JSX.Element {
   );
 
   const openPreviewModal = useCallback((event: OperationEvent) => {
-    Modal.info({
-      title: `이벤트 미리보기 · ${event.id}`,
-      width: 720,
-      content: (
-        <Space direction="vertical" size={16} style={{ width: '100%' }}>
-          <Descriptions
-            bordered
-            size="small"
-            column={1}
-            items={[
-              { key: 'title', label: '이벤트명', children: event.title },
-              { key: 'summary', label: '요약', children: event.summary },
-              { key: 'landingUrl', label: '랜딩 경로', children: event.landingUrl || '미입력' },
-              { key: 'metaTitle', label: '공유 제목', children: event.metaTitle || '자동 생성' }
-            ]}
-          />
-          <div
-            className="event-rich-content-preview"
-            dangerouslySetInnerHTML={{
-              __html: event.bodyHtml || '<p>등록된 본문이 없습니다.</p>'
-            }}
-          />
-        </Space>
-      )
-    });
+    setPreviewEvent(event);
   }, []);
-
-  const openParticipantModal = useCallback((event: OperationEvent) => {
-    Modal.info({
-      title: `참여 현황 · ${event.id}`,
-      content: (
-        <Descriptions
-          bordered
-          size="small"
-          column={1}
-          items={[
-            { key: 'targetGroup', label: '대상 그룹', children: event.targetGroupName },
-            {
-              key: 'participantCount',
-              label: '참여자 수',
-              children: `${event.participantCount.toLocaleString()}명`
-            },
-            {
-              key: 'participantLimit',
-              label: '참여 제한',
-              children: event.participantLimit
-                ? `${event.participantLimit.toLocaleString()}명`
-                : '제한 없음'
-            }
-          ]}
-        />
-      )
-    });
+  const closePreviewModal = useCallback(() => {
+    setPreviewEvent(null);
   }, []);
 
   const handleReload = useCallback(() => setReloadKey((prev) => prev + 1), []);
@@ -461,6 +429,14 @@ export default function OperationEventsPage(): JSX.Element {
     () => commitParams({ selected: null }),
     [commitParams]
   );
+  const handlePreviewEdit = useCallback(() => {
+    if (!previewEvent) {
+      return;
+    }
+
+    setPreviewEvent(null);
+    openEditDetail(previewEvent);
+  }, [openEditDetail, previewEvent]);
 
   const handleActionConfirm = useCallback(
     async (reason: string) => {
@@ -622,104 +598,35 @@ export default function OperationEventsPage(): JSX.Element {
       {
         title: '액션',
         key: 'actions',
-        width: 108,
+        width: 96,
         onCell: () => ({
           onClick: (event) => {
             event.stopPropagation();
           }
         }),
         render: (_, record) => (
-          <TableActionMenu
-            items={[
-              {
-                key: `edit-${record.id}`,
-                label: '수정',
-                onClick: () => openEditDetail(record)
-              },
-              {
-                key: `preview-${record.id}`,
-                label: '미리보기',
-                onClick: () => openPreviewModal(record)
-              },
-              {
-                key: `participants-${record.id}`,
-                label: '참여 현황',
-                onClick: () => openParticipantModal(record)
-              },
-              {
-                key: `schedule-${record.id}`,
-                label: '게시 예약',
-                disabled:
-                  record.progressStatus === '종료' || record.visibilityStatus === '예약',
-                onClick: () => setActionState({ type: 'schedule', event: record })
-              },
-              {
-                key: `publish-${record.id}`,
-                label: '즉시 게시',
-                disabled:
-                  record.progressStatus === '종료' || record.visibilityStatus === '노출',
-                onClick: () => setActionState({ type: 'publish', event: record })
-              }
-            ]}
-            footerItems={[
-              {
-                key: `end-${record.id}`,
-                label: '종료',
-                danger: true,
-                disabled: record.progressStatus === '종료',
-                onClick: () => setActionState({ type: 'end', event: record })
-              }
-            ]}
-          />
+          <Button type="link" onClick={() => openPreviewModal(record)}>
+            미리보기
+          </Button>
         )
       }
     ],
-    [
-      eventTypeFilter,
-      listSearch,
-      openEditDetail,
-      openParticipantModal,
-      openPreviewModal,
-      sortField,
-      sortOrder,
-      visibilityStatusFilter
-    ]
+    [eventTypeFilter, listSearch, openPreviewModal, sortField, sortOrder, visibilityStatusFilter]
   );
+
+  const previewFooterActions = previewEvent
+    ? [
+        <Button key="edit" type="primary" onClick={handlePreviewEdit}>
+          본문 수정하기
+        </Button>
+      ]
+    : undefined;
 
   return (
     <div>
       {notificationContextHolder}
       <PageTitle title="이벤트" />
-
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic
-              title="노출 이벤트"
-              value={visibilitySummary.visibleCount}
-              suffix="건"
-            />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic
-              title="예약 이벤트"
-              value={visibilitySummary.scheduledCount}
-              suffix="건"
-            />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic
-              title="숨김 이벤트"
-              value={visibilitySummary.hiddenCount}
-              suffix="건"
-            />
-          </Card>
-        </Col>
-      </Row>
+      <ListSummaryCards items={eventSummaryCards} />
 
       <AdminListCard
         toolbar={
@@ -869,6 +776,9 @@ export default function OperationEventsPage(): JSX.Element {
         footerEnd={
           selectedEvent ? (
             <Space wrap>
+              <Button size="large" onClick={() => openPreviewModal(selectedEvent)}>
+                미리보기
+              </Button>
               <Button size="large" onClick={() => openEditDetail(selectedEvent)}>
                 수정
               </Button>
@@ -931,7 +841,14 @@ export default function OperationEventsPage(): JSX.Element {
                   { key: 'title', label: '이벤트명', children: selectedEvent.title },
                   { key: 'period', label: '진행 기간', children: `${selectedEvent.startAt} ~ ${selectedEvent.endAt}` },
                   { key: 'visibility', label: '노출 상태', children: <StatusBadge status={selectedEvent.visibilityStatus} /> },
-                  { key: 'channels', label: '노출 위치', children: selectedEvent.exposureChannels.join(', ') }
+                  { key: 'channels', label: '노출 위치', children: selectedEvent.exposureChannels.join(', ') },
+                  {
+                    key: 'bannerCount',
+                    label: '배너 이미지',
+                    children: selectedEvent.bannerImages.length
+                      ? `총 ${selectedEvent.bannerImages.length}개 · 대표 ${selectedEvent.bannerImageFileName || '첨부 이미지'}`
+                      : '미등록'
+                  }
                 ]}
               />
             </DetailDrawerSection>
@@ -942,15 +859,6 @@ export default function OperationEventsPage(): JSX.Element {
               </Paragraph>
             </DetailDrawerSection>
 
-            <DetailDrawerSection title="이벤트 본문">
-              <div
-                className="event-rich-content-preview"
-                dangerouslySetInnerHTML={{
-                  __html: selectedEvent.bodyHtml || '<p>등록된 본문이 없습니다.</p>'
-                }}
-              />
-            </DetailDrawerSection>
-
             <DetailDrawerSection title="참여 조건">
               <Descriptions
                 bordered
@@ -958,7 +866,17 @@ export default function OperationEventsPage(): JSX.Element {
                 column={1}
                 items={[
                   { key: 'targetGroup', label: '대상 그룹', children: selectedEvent.targetGroupName },
-                  { key: 'targetGroupId', label: '대상 그룹 ID', children: selectedEvent.targetGroupId },
+                  { key: 'targetGroupId', label: '대상 그룹 ID', children: selectedEvent.targetGroupId }
+                ]}
+              />
+            </DetailDrawerSection>
+
+            <DetailDrawerSection title="참여 현황">
+              <Descriptions
+                bordered
+                size="small"
+                column={1}
+                items={[
                   { key: 'participants', label: '참여자 수', children: `${selectedEvent.participantCount.toLocaleString()}명` },
                   {
                     key: 'participantLimit',
@@ -991,6 +909,7 @@ export default function OperationEventsPage(): JSX.Element {
                 size="small"
                 column={1}
                 items={[
+                  { key: 'messageTemplateId', label: '메시지 템플릿 ID', children: selectedEvent.messageTemplateId || '미연결' },
                   { key: 'messageTemplateName', label: '메시지 템플릿', children: selectedEvent.messageTemplateName || '미연결' },
                   { key: 'slug', label: '슬러그', children: selectedEvent.slug },
                   { key: 'metaTitle', label: '공유 제목', children: selectedEvent.metaTitle || '자동 생성' },
@@ -1009,6 +928,16 @@ export default function OperationEventsPage(): JSX.Element {
           </DetailDrawerBody>
         ) : null}
       </DetailDrawer>
+
+      <HtmlPreviewModal
+        open={Boolean(previewEvent)}
+        title={previewEvent ? `이벤트 미리보기 · ${previewEvent.id}` : '이벤트 미리보기'}
+        bodyHtml={previewEvent?.bodyHtml}
+        footerActions={previewFooterActions}
+        width={920}
+        onClose={closePreviewModal}
+        emptyDescription="등록 상세에서 이벤트 본문을 먼저 저장하세요."
+      />
     </div>
   );
 }

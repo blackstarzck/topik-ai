@@ -1,7 +1,7 @@
 import { MoreOutlined } from '@ant-design/icons';
 import { Button, Dropdown, Space } from 'antd';
 import type { MenuProps } from 'antd';
-import type { ReactNode } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 import { useCallback, useMemo, useState } from 'react';
 
 export type TableActionMenuItem = {
@@ -18,8 +18,16 @@ type TableActionMenuProps = {
   footerItems?: TableActionMenuItem[];
 };
 
-const FOOTER_ACTION_KEY_PREFIXES = ['delete-', 'suspend-'] as const;
-const FOOTER_ACTION_LABEL_KEYWORDS = ['삭제', '정지'] as const;
+const FOOTER_ACTION_KEY_PREFIXES = [
+  'delete-',
+  'suspend-',
+  'pause-',
+  'stop-',
+  'hide-',
+  'revoke-'
+] as const;
+const FOOTER_ACTION_LABEL_KEYWORDS = ['삭제', '정지', '중지', '숨김', '회수'] as const;
+const NON_FOOTER_ACTION_LABEL_KEYWORDS = ['정지해제', '중지해제', '발행재개', '운영시작', '재개', '복구'] as const;
 
 function extractActionLabelText(label: ReactNode): string {
   if (typeof label === 'string' || typeof label === 'number') {
@@ -29,7 +37,11 @@ function extractActionLabelText(label: ReactNode): string {
   return '';
 }
 
-function shouldRenderActionInFooter(item: TableActionMenuItem): boolean {
+function isCriticalFooterAction(item: TableActionMenuItem): boolean {
+  if (item.danger) {
+    return true;
+  }
+
   const normalizedKey = item.key.toLowerCase();
   if (FOOTER_ACTION_KEY_PREFIXES.some((prefix) => normalizedKey.startsWith(prefix))) {
     return true;
@@ -37,11 +49,15 @@ function shouldRenderActionInFooter(item: TableActionMenuItem): boolean {
 
   const labelText = extractActionLabelText(item.label).replace(/\s+/g, '');
 
-  if (labelText.includes('정지해제')) {
+  if (NON_FOOTER_ACTION_LABEL_KEYWORDS.some((keyword) => labelText.includes(keyword))) {
     return false;
   }
 
   return FOOTER_ACTION_LABEL_KEYWORDS.some((keyword) => labelText.includes(keyword));
+}
+
+function shouldRenderActionInFooter(item: TableActionMenuItem): boolean {
+  return isCriticalFooterAction(item);
 }
 
 export function TableActionMenu({
@@ -50,6 +66,13 @@ export function TableActionMenu({
   footerItems = []
 }: TableActionMenuProps): JSX.Element {
   const [open, setOpen] = useState(false);
+
+  const stopTriggerPropagation = useCallback(
+    (event: MouseEvent<HTMLElement>): void => {
+      event.stopPropagation();
+    },
+    []
+  );
 
   const menuActionItems = useMemo(
     () => items.filter((item) => !shouldRenderActionInFooter(item)),
@@ -92,7 +115,8 @@ export function TableActionMenu({
   }, [menuActionItems, resolvedFooterItems]);
 
   const handleMenuClick = useCallback<NonNullable<MenuProps['onClick']>>(
-    ({ key }) => {
+    ({ key, domEvent }) => {
+      domEvent.stopPropagation();
       clickHandlers.get(String(key))?.();
       setOpen(false);
     },
@@ -119,6 +143,7 @@ export function TableActionMenu({
         type={singleActionItem.danger ? 'text' : 'default'}
         danger={singleActionItem.danger}
         disabled={singleActionItem.disabled}
+        onMouseDown={stopTriggerPropagation}
         onClick={(event) => {
           event.stopPropagation();
           singleActionItem.onClick?.();
@@ -148,22 +173,16 @@ export function TableActionMenu({
       }}
       popupRender={(menu) =>
         resolvedFooterItems.length ? (
-          <div
-            style={{
-              minWidth: 176,
-              overflow: 'hidden',
-              borderRadius: 12,
-              background: '#fff',
-              boxShadow:
-                '0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 9px 28px 8px rgba(0, 0, 0, 0.05)'
-              }}
-            >
-              {menuActionItems.length ? menu : null}
+          <div className="table-action-menu__popup">
+            {menuActionItems.length ? (
+              <div className="table-action-menu__content">{menu}</div>
+            ) : null}
               <div
-                style={{
-                  padding: 8,
-                  borderTop: menuActionItems.length ? '1px solid #f0f0f0' : 'none'
-                }}
+                className={
+                  menuActionItems.length
+                    ? 'table-action-menu__footer'
+                    : 'table-action-menu__footer table-action-menu__footer--standalone'
+                }
               >
                 <Space direction="vertical" size={8} style={{ width: '100%' }}>
                   {resolvedFooterItems.map((item) => (
@@ -171,23 +190,37 @@ export function TableActionMenu({
                       key={item.key}
                       block
                       size="small"
-                      type={item.danger ? 'primary' : 'default'}
-                      danger={item.danger}
+                      type={isCriticalFooterAction(item) ? 'primary' : 'default'}
+                      danger={isCriticalFooterAction(item)}
                       disabled={item.disabled}
-                      onClick={() => handleFooterClick(item.key)}
+                      className={
+                        isCriticalFooterAction(item)
+                          ? 'table-action-menu__footer-button table-action-menu__footer-button--critical'
+                          : 'table-action-menu__footer-button'
+                      }
+                      onMouseDown={stopTriggerPropagation}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleFooterClick(item.key);
+                      }}
                     >
                       {item.label}
                     </Button>
                   ))}
                 </Space>
-            </div>
+              </div>
           </div>
         ) : (
           menu
         )
       }
     >
-      <Button size="small" icon={<MoreOutlined />}>
+      <Button
+        size="small"
+        icon={<MoreOutlined />}
+        onMouseDown={stopTriggerPropagation}
+        onClick={stopTriggerPropagation}
+      >
         {buttonLabel}
       </Button>
     </Dropdown>

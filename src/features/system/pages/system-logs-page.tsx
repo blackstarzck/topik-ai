@@ -1,9 +1,10 @@
-import { Card, Col, Row, Statistic, Typography } from 'antd';
+import { Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
+import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
   SearchBar,
@@ -158,6 +159,26 @@ export default function SystemLogsPage(): JSX.Element {
   const errorCount = rows.filter((row) => row.level === 'ERROR').length;
   const warningCount = rows.filter((row) => row.level === 'WARN').length;
   const componentCount = new Set(rows.map((row) => row.component)).size;
+  const systemLogSummaryCards = useMemo(
+    () => [
+      {
+        key: 'error-logs',
+        label: '오류 로그',
+        value: `${errorCount.toLocaleString()}건`
+      },
+      {
+        key: 'warning-logs',
+        label: '경고 로그',
+        value: `${warningCount.toLocaleString()}건`
+      },
+      {
+        key: 'affected-components',
+        label: '영향 컴포넌트',
+        value: `${componentCount.toLocaleString()}개`
+      }
+    ],
+    [componentCount, errorCount, warningCount]
+  );
 
   const columns = useMemo<TableColumnsType<SystemLogRow>>(
     () => [
@@ -214,24 +235,7 @@ export default function SystemLogsPage(): JSX.Element {
   return (
     <div>
       <PageTitle title="시스템 로그" />
-
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic title="오류 로그" value={errorCount} suffix="건" />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic title="경고 로그" value={warningCount} suffix="건" />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic title="영향 컴포넌트" value={componentCount} suffix="개" />
-          </Card>
-        </Col>
-      </Row>
+      <ListSummaryCards items={systemLogSummaryCards} />
 
       <AdminListCard
         toolbar={

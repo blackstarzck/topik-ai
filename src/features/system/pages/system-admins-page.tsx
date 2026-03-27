@@ -1,4 +1,4 @@
-import { Card, Col, Row, Statistic, Typography } from 'antd';
+import { Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -7,6 +7,7 @@ import { usePermissionStore } from '../model/permission-store';
 import { roleCatalog } from '../model/permission-types';
 import type { AdminPermissionAssignment, RoleKey } from '../model/permission-types';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
+import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
   SearchBar,
@@ -87,6 +88,26 @@ export default function SystemAdminsPage(): JSX.Element {
   const contentManagerCount = admins.filter(
     (admin) => admin.role === 'CONTENT_MANAGER'
   ).length;
+  const adminSummaryCards = useMemo(
+    () => [
+      {
+        key: 'all-admins',
+        label: '전체 관리자',
+        value: `${admins.length.toLocaleString()}명`
+      },
+      {
+        key: 'active-admins',
+        label: '활성 계정',
+        value: `${activeCount.toLocaleString()}명`
+      },
+      {
+        key: 'content-managers',
+        label: '콘텐츠 관리자',
+        value: `${contentManagerCount.toLocaleString()}명`
+      }
+    ],
+    [activeCount, admins.length, contentManagerCount]
+  );
 
   const commitParams = useCallback(
     (
@@ -166,7 +187,6 @@ export default function SystemAdminsPage(): JSX.Element {
         title: '권한 수',
         key: 'permissionCount',
         width: 110,
-        align: 'right',
         sorter: createNumberSorter((record) => record.permissions.length),
         render: (_, record) => record.permissions.length
       },
@@ -204,24 +224,7 @@ export default function SystemAdminsPage(): JSX.Element {
   return (
     <div>
       <PageTitle title="관리자 계정" />
-
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic title="전체 관리자" value={admins.length} suffix="명" />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic title="활성 계정" value={activeCount} suffix="명" />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic title="콘텐츠 관리자" value={contentManagerCount} suffix="명" />
-          </Card>
-        </Col>
-      </Row>
+      <ListSummaryCards items={adminSummaryCards} />
 
       <AdminListCard
         toolbar={

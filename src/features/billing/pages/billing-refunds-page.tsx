@@ -1,9 +1,6 @@
 import {
-  Card,
-  Col,
-  Row,
+  Button,
   Space,
-  Statistic,
   Typography,
   notification
 } from 'antd';
@@ -17,6 +14,7 @@ import { getMockUserById } from '../../users/api/mock-users';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
+import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
   SearchBar,
@@ -118,6 +116,26 @@ export default function BillingRefundsPage(): JSX.Element {
     .filter((row) => row.status === '승인')
     .reduce((sum, row) => sum + row.requestedAmount, 0);
   const rejectedCount = refunds.filter((row) => row.status === '거절').length;
+  const refundSummaryCards = useMemo(
+    () => [
+      {
+        key: 'pending-refunds',
+        label: '처리 대기',
+        value: `${pendingCount.toLocaleString()}건`
+      },
+      {
+        key: 'approved-amount',
+        label: '승인 금액',
+        value: formatCurrency(approvedAmount)
+      },
+      {
+        key: 'rejected-refunds',
+        label: '거절 건수',
+        value: `${rejectedCount.toLocaleString()}건`
+      }
+    ],
+    [approvedAmount, pendingCount, rejectedCount]
+  );
 
   const commitParams = useCallback(
     (
@@ -257,7 +275,6 @@ export default function BillingRefundsPage(): JSX.Element {
         title: '요청 금액',
         dataIndex: 'requestedAmount',
         width: 140,
-        align: 'right',
         sorter: createNumberSorter((record) => record.requestedAmount),
         render: (value: number) => formatCurrency(value)
       },
@@ -311,24 +328,7 @@ export default function BillingRefundsPage(): JSX.Element {
   return (
     <div>
       <PageTitle title="환불 관리" />
-
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic title="처리 대기" value={pendingCount} suffix="건" />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic title="승인 금액" value={approvedAmount} prefix="₩" />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic title="거절 건수" value={rejectedCount} suffix="건" />
-          </Card>
-        </Col>
-      </Row>
+      <ListSummaryCards items={refundSummaryCards} />
 
       <AdminListCard
         toolbar={

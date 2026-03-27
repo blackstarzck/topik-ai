@@ -1,13 +1,37 @@
+import { InfoCircleOutlined } from '@ant-design/icons';
+import { Tooltip } from 'antd';
 import type { DescriptionsProps } from 'antd';
 import type { ReactNode } from 'react';
 
-function createRequiredDescriptionLabel(label: ReactNode): ReactNode {
+type DescriptionLabelOptions = {
+  required?: boolean;
+  tooltip?: ReactNode;
+};
+
+export function createDescriptionLabel(
+  label: ReactNode,
+  options: DescriptionLabelOptions = {}
+): ReactNode {
   return (
-    <span className="admin-required-description-label">
+    <span className="admin-description-label">
       <span>{label}</span>
-      <span className="admin-required-description-label__mark" aria-hidden="true">
-        *
-      </span>
+      {options.tooltip ? (
+        <Tooltip title={options.tooltip}>
+          <span
+            className="admin-description-label__icon"
+            role="img"
+            aria-label={`${String(label)} 안내`}
+            tabIndex={0}
+          >
+            <InfoCircleOutlined />
+          </span>
+        </Tooltip>
+      ) : null}
+      {options.required ? (
+        <span className="admin-required-description-label__mark" aria-hidden="true">
+          *
+        </span>
+      ) : null}
     </span>
   );
 }
@@ -29,7 +53,7 @@ export function markRequiredDescriptionItems(
 
     return {
       ...item,
-      label: createRequiredDescriptionLabel(item.label)
+      label: createDescriptionLabel(item.label, { required: true })
     };
   });
 }

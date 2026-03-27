@@ -337,7 +337,6 @@ export default function UserDetailPage(): JSX.Element {
         title: '결제 금액',
         dataIndex: 'amount',
         width: 130,
-        align: 'right',
         sorter: createNumericTextSorter((record) => record.amount)
       },
       {
@@ -409,7 +408,6 @@ export default function UserDetailPage(): JSX.Element {
         title: '신고 수',
         dataIndex: 'reports',
         width: 90,
-        align: 'right',
         sorter: createNumberSorter((record) => record.reports)
       },
       {

@@ -21,6 +21,7 @@ import { Link } from 'react-router-dom';
 
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
+import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
 import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
@@ -299,7 +300,6 @@ export default function SystemPermissionsPage(): JSX.Element {
       {
         title: '권한 수',
         width: 90,
-        align: 'right',
         sorter: createNumberSorter((record) => record.permissions.length),
         render: (_, record) => record.permissions.length
       },
@@ -367,7 +367,6 @@ export default function SystemPermissionsPage(): JSX.Element {
       {
         title: '기본 권한 수',
         width: 120,
-        align: 'right',
         sorter: createNumberSorter((record) => record.defaultPermissions.length),
         render: (_, role) => role.defaultPermissions.length
       }
@@ -495,7 +494,7 @@ export default function SystemPermissionsPage(): JSX.Element {
         <Title level={5} style={{ marginTop: 0 }}>
           관리자별 권한 부여 상태
         </Title>
-        <Table
+        <AdminDataTable
           rowKey="adminId"
           showSorterTooltip={false}
           size="small"

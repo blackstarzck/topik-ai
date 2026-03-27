@@ -20,7 +20,11 @@ export type SaveEventPayload = {
   rewardType: OperationEvent['rewardType'];
   rewardPolicyId: string;
   rewardPolicyName: string;
+  messageTemplateId: string;
   bannerImageUrl: string;
+  bannerImageSourceType: OperationEvent['bannerImageSourceType'];
+  bannerImageFileName: string;
+  bannerImages: OperationEvent['bannerImages'];
   landingUrl: string;
   messageTemplateName: string;
   metaTitle: string;

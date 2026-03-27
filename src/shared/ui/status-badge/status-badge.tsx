@@ -26,6 +26,7 @@ const colorMap: Record<string, string> = {
   공개: 'green',
   비공개: 'default',
   노출: 'green',
+  '발행 중지': 'volcano',
   index: 'blue',
   noindex: 'default',
   승인: 'blue',

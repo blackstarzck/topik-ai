@@ -1,9 +1,5 @@
 import {
-  Card,
-  Col,
-  Row,
   Space,
-  Statistic,
   Typography,
   notification
 } from 'antd';
@@ -16,6 +12,7 @@ import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
+import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
   SearchBar,
@@ -357,29 +354,32 @@ export default function CommunityReportsPage(): JSX.Element {
 
   const pendingCount = rows.filter((row) => row.processStatus === '처리 대기').length;
   const completedCount = rows.filter((row) => row.processStatus === '처리 완료').length;
+  const reportSummaryCards = useMemo(
+    () => [
+      {
+        key: 'all-reports',
+        label: '전체 신고',
+        value: `${rows.length.toLocaleString()}건`
+      },
+      {
+        key: 'pending-reports',
+        label: '처리 대기',
+        value: `${pendingCount.toLocaleString()}건`
+      },
+      {
+        key: 'completed-reports',
+        label: '처리 완료',
+        value: `${completedCount.toLocaleString()}건`
+      }
+    ],
+    [completedCount, pendingCount, rows.length]
+  );
 
   return (
     <div>
       {notificationContextHolder}
       <PageTitle title="신고 관리" />
-
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic title="전체 신고" value={rows.length} suffix="건" />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic title="처리 대기" value={pendingCount} suffix="건" />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic title="처리 완료" value={completedCount} suffix="건" />
-          </Card>
-        </Col>
-      </Row>
+      <ListSummaryCards items={reportSummaryCards} />
 
       <AdminListCard
         toolbar={

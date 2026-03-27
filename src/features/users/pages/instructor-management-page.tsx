@@ -651,7 +651,6 @@ export default function InstructorManagementPage(): JSX.Element {
           title: '학습자 수',
           dataIndex: 'studentCount',
           width: 110,
-          align: 'right',
           sorter: createNumberSorter((record) => record.studentCount),
           render: (value: number) => `${value.toLocaleString()}명`
         },
@@ -883,10 +882,9 @@ export default function InstructorManagementPage(): JSX.Element {
           />
         ) : null}
 
-        <AdminDataTable<InstructorDetail>
-          rowKey="id"
-          virtual
-          columns={columns}
+      <AdminDataTable<InstructorDetail>
+        rowKey="id"
+        columns={columns}
           dataSource={visibleInstructors}
           onRow={handleRowClick}
           loading={instructorsState.status === 'pending'}

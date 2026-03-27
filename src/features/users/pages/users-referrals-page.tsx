@@ -1131,10 +1131,9 @@ export default function UsersReferralsPage(): JSX.Element {
           />
         ) : null}
 
-        <AdminDataTable<ReferralSummary>
-          rowKey="id"
-          virtual
-          columns={columns}
+      <AdminDataTable<ReferralSummary>
+        rowKey="id"
+        columns={columns}
           dataSource={visibleReferrals}
           onChange={handleTableChange}
           onRow={handleRowClick}

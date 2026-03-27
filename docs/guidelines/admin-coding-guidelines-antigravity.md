@@ -32,6 +32,7 @@
 - 표준 상태값을 임의 변경하지 않습니다(예: `정상/정지/탈퇴`, `게시/숨김`, `완료/취소/환불`).
 - 입력/편집 Modal, Drawer, 패널의 항목형 UI는 Ant Design `Descriptions` 기반 입력 테이블을 기본값으로 사용합니다. `Form`은 검증과 상태 관리 용도로만 감싸고, 단일 본문 에디터처럼 표 구조가 맞지 않는 캔버스형 입력만 예외로 둡니다.
 - `Descriptions` 기반 입력 테이블에서 `required` 검증을 거는 항목은 label(`th`) heading에 빨간 `*`를 함께 표시해 필수 입력임을 즉시 알 수 있게 합니다.
+- `Descriptions` 기반 입력 테이블의 행 높이는 입력 control 유무와 무관하게 기본 baseline을 통일하고, 더 큰 control이 필요한 경우에만 해당 행이 확장되게 유지합니다.
 - 목록 운영형 본문은 공용 `AdminListCard` 또는 같은 책임의 shared wrapper를 기본으로 사용하고, 탭/검색/요약 액션/핵심 버튼은 카드 본문 툴바 안에 배치합니다.
 - 네트워크/서버 상태는 최소 `pending`, `success(result)`, `empty`, `error`를 구분해 UX에 반영합니다.
 - 통신 안정성은 `try-catch`에만 의존하지 않고 Error Boundary, 라우트 fallback, 재시도/취소/타임아웃, 마지막 성공 상태 fallback 같은 fail-safe를 함께 설계합니다.

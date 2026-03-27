@@ -153,6 +153,12 @@ const menuConfig: MenuNode[] = [
         permissionKeys: ['operation.events.manage']
       },
       {
+        key: '/operation/policies',
+        label: adminMenuLabels.operationPolicies,
+        to: '/operation/policies',
+        permissionKeys: ['operation.policies.manage']
+      },
+      {
         key: '/operation/chatbot',
         label: adminMenuLabels.operationChatbot,
         to: '/operation/chatbot',
@@ -392,6 +398,9 @@ function resolveSelectedKey(pathname: string): string {
   }
   if (pathname.startsWith('/operation/events')) {
     return '/operation/events';
+  }
+  if (pathname.startsWith('/operation/policies')) {
+    return '/operation/policies';
   }
   if (pathname.startsWith('/operation/chatbot')) {
     return '/operation/chatbot';

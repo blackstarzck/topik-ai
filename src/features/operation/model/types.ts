@@ -97,6 +97,17 @@ export const operationEventExposureChannelValues = [
 export type OperationEventExposureChannel =
   (typeof operationEventExposureChannelValues)[number];
 
+export const operationEventBannerSourceTypeValues = ['file'] as const;
+
+export type OperationEventBannerSourceType =
+  (typeof operationEventBannerSourceTypeValues)[number];
+
+export type OperationEventBannerImage = {
+  uid: string;
+  name: string;
+  url: string;
+};
+
 export const operationEventRewardTypeValues = [
   '없음',
   '쿠폰',
@@ -135,7 +146,11 @@ export type OperationEvent = {
   rewardPolicyId: string;
   rewardPolicyName: string;
   rewardPolicySummary: string;
+  messageTemplateId: string;
+  bannerImages: OperationEventBannerImage[];
   bannerImageUrl: string;
+  bannerImageSourceType: OperationEventBannerSourceType;
+  bannerImageFileName: string;
   landingUrl: string;
   messageTemplateName: string;
   metaTitle: string;
