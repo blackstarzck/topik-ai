@@ -79,6 +79,9 @@ const CommerceCouponTemplateCreatePage = lazy(
 const AssessmentQuestionBankPage = lazy(
   () => import('../../features/assessment/pages/assessment-question-bank-page')
 );
+const AssessmentQuestionReviewPage = lazy(
+  () => import('../../features/assessment/pages/assessment-question-review-page')
+);
 const AnalyticsOverviewPage = lazy(
   () => import('../../features/analytics/pages/analytics-overview-page')
 );
@@ -228,6 +231,10 @@ export function AppRouter(): JSX.Element {
         <Route
           path="/assessment/question-bank"
           element={<AssessmentQuestionBankPage />}
+        />
+        <Route
+          path="/assessment/question-bank/review/:questionId"
+          element={<AssessmentQuestionReviewPage />}
         />
         <Route
           path="/assessment/question-bank/eps-topik"
@@ -400,4 +407,3 @@ export function AppRouter(): JSX.Element {
     </Routes>
   );
 }
-

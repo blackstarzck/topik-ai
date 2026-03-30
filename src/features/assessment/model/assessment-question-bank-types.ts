@@ -18,6 +18,24 @@ export type AssessmentQuestionOperationStatus =
 export type AssessmentQuestionValidationStatus = '정상' | '주의' | '재검토';
 
 export type AssessmentQuestionSourceType = 'AI 자동 생성';
+export type AssessmentQuestionDomain =
+  | '생활'
+  | '학습'
+  | '사회'
+  | '문화';
+export type AssessmentQuestionTypeLabel =
+  | '빈칸 완성'
+  | '연결 표현'
+  | '자료 설명'
+  | '의견 서술';
+export type AssessmentQuestionDifficulty = '상' | '중' | '하';
+
+export type AssessmentQuestionRevisionHistoryItem = {
+  id: string;
+  changedAt: string;
+  changedBy: string;
+  summary: string;
+};
 
 type AssessmentQuestionBaseContent = {
   learnerPrompt: string;
@@ -63,6 +81,9 @@ export type AssessmentQuestion = {
   questionId: string;
   questionNumber: AssessmentQuestionNumber;
   topic: string;
+  domain: AssessmentQuestionDomain;
+  questionTypeLabel: AssessmentQuestionTypeLabel;
+  difficultyLevel: AssessmentQuestionDifficulty;
   sourceType: AssessmentQuestionSourceType;
   generationBatchId: string;
   promptVersion: string;
@@ -75,6 +96,11 @@ export type AssessmentQuestion = {
   linkedExamCount: number;
   reviewMemo: string;
   managementNote: string;
+  coreMeaning: string;
+  keyIssue: string;
+  modelAnswer: string;
+  scoringCriteria: string[];
+  revisionHistory: AssessmentQuestionRevisionHistoryItem[];
   generatedAt: string;
   updatedAt: string;
   updatedBy: string;
@@ -83,6 +109,7 @@ export type AssessmentQuestion = {
 };
 
 export type AssessmentQuestionAuditAction =
+  | 'review_memo_saved'
   | 'review_completed'
   | 'review_on_hold'
   | 'review_revision_requested'

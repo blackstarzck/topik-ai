@@ -245,17 +245,20 @@
 - `Assessment > TOPIK 쓰기 문제은행`
   - query: `tab`, `questionNo`, `searchField`, `keyword`, `startDate`, `endDate`, `reviewStatus`, `operationStatus`, `selected`
   - 엔티티 후보
-    - `AssessmentQuestion`
-    - `AssessmentQuestionGenerationBatch`
-    - `AssessmentQuestionAuditEvent`
+  - `AssessmentQuestion`
+  - `AssessmentQuestionGenerationBatch`
+  - `AssessmentQuestionAuditEvent`
   - 테이블 후보
     - `assessment_questions`
     - `assessment_question_generation_batches`
     - `assessment_question_audits`
   - 핵심 필드
-    - `questionId`, `questionNumber`, `topic`, `sourceType`, `generationBatchId`, `promptVersion`, `generationModel`, `reviewStatus`, `operationStatus`, `validationStatus`, `validationSignals`, `usageCount`, `linkedExamCount`, `reviewMemo`, `managementNote`, `generatedAt`, `updatedAt`, `updatedBy`
+    - `questionId`, `questionNumber`, `topic`, `domain`, `questionTypeLabel`, `difficultyLevel`, `sourceType`, `generationBatchId`, `promptVersion`, `generationModel`, `reviewStatus`, `operationStatus`, `validationStatus`, `validationSignals`, `usageCount`, `linkedExamCount`, `reviewMemo`, `managementNote`, `coreMeaning`, `keyIssue`, `modelAnswer`, `scoringCriteria`, `revisionHistory`, `generatedAt`, `updatedAt`, `updatedBy`
   - enum / code table candidate
     - `questionNumber`: `51`, `52`, `53`, `54`
+    - `domain`: `생활`, `학습`, `사회`, `문화`
+    - `questionTypeLabel`: `빈칸 완성`, `연결 표현`, `자료 설명`, `의견 서술`
+    - `difficultyLevel`: `상`, `중`, `하`
     - `reviewStatus`: `검수 대기`, `검수 중`, `보류`, `검수 완료`, `수정 필요`
     - `operationStatus`: `미지정`, `노출 후보`, `숨김 후보`, `운영 제외`
     - `validationStatus`: `정상`, `주의`, `재검토`
@@ -270,7 +273,7 @@
   - 감사 로그 / URL 계약
     - `Target Type = AssessmentQuestion`
     - `Target ID = questionId`
-    - 원본 화면 역추적 경로: `/assessment/question-bank?selected={questionId}`
+    - 원본 화면 역추적 경로: `/assessment/question-bank/review/{questionId}`
 
 ## 10. 문서 갱신 규칙
 

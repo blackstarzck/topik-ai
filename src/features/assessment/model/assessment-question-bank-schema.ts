@@ -2,9 +2,12 @@ import type { TabsProps } from 'antd';
 
 import type {
   AssessmentQuestionBankTab,
+  AssessmentQuestionDifficulty,
+  AssessmentQuestionDomain,
   AssessmentQuestionNumber,
   AssessmentQuestionOperationStatus,
   AssessmentQuestionReviewStatus,
+  AssessmentQuestionTypeLabel,
   AssessmentQuestionValidationStatus
 } from './assessment-question-bank-types';
 
@@ -48,21 +51,25 @@ export const assessmentQuestionValidationStatuses: AssessmentQuestionValidationS
   '재검토'
 ];
 
-export const reviewSearchFieldOptions = [
-  { label: '전체', value: 'all' },
-  { label: '문항 ID', value: 'questionId' },
-  { label: '배치 ID', value: 'generationBatchId' },
-  { label: '토픽', value: 'topic' },
-  { label: '프롬프트 버전', value: 'promptVersion' }
-] as const;
+export const assessmentQuestionDomains: AssessmentQuestionDomain[] = [
+  '생활',
+  '학습',
+  '사회',
+  '문화'
+];
 
-export const manageSearchFieldOptions = [
-  { label: '전체', value: 'all' },
-  { label: '문항 ID', value: 'questionId' },
-  { label: '토픽', value: 'topic' },
-  { label: '수정자', value: 'updatedBy' },
-  { label: '운영 메모', value: 'managementNote' }
-] as const;
+export const assessmentQuestionTypeLabels: AssessmentQuestionTypeLabel[] = [
+  '빈칸 완성',
+  '연결 표현',
+  '자료 설명',
+  '의견 서술'
+];
+
+export const assessmentQuestionDifficultyLevels: AssessmentQuestionDifficulty[] = [
+  '상',
+  '중',
+  '하'
+];
 
 export function parseAssessmentQuestionBankTab(
   value: string | null
@@ -97,6 +104,32 @@ export function parseAssessmentQuestionOperationStatus(
     value as AssessmentQuestionOperationStatus
   )
     ? (value as AssessmentQuestionOperationStatus)
+    : null;
+}
+
+export function parseAssessmentQuestionDomain(
+  value: string | null
+): AssessmentQuestionDomain | null {
+  return assessmentQuestionDomains.includes(value as AssessmentQuestionDomain)
+    ? (value as AssessmentQuestionDomain)
+    : null;
+}
+
+export function parseAssessmentQuestionTypeLabel(
+  value: string | null
+): AssessmentQuestionTypeLabel | null {
+  return assessmentQuestionTypeLabels.includes(value as AssessmentQuestionTypeLabel)
+    ? (value as AssessmentQuestionTypeLabel)
+    : null;
+}
+
+export function parseAssessmentQuestionDifficulty(
+  value: string | null
+): AssessmentQuestionDifficulty | null {
+  return assessmentQuestionDifficultyLevels.includes(
+    value as AssessmentQuestionDifficulty
+  )
+    ? (value as AssessmentQuestionDifficulty)
     : null;
 }
 

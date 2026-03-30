@@ -239,6 +239,17 @@ export function buildAdminBreadcrumbItems(
     ];
   }
 
+  if (pathname.startsWith('/assessment/question-bank/review/')) {
+    return [
+      breadcrumbLinkItem(adminMenuLabels.assessment, '/assessment/question-bank'),
+      breadcrumbLinkItem(
+        adminMenuLabels.assessmentQuestionBank,
+        '/assessment/question-bank'
+      ),
+      breadcrumbTextItem(adminMenuLabels.assessmentQuestionReview)
+    ];
+  }
+
   if (pathname.startsWith('/assessment/question-bank')) {
     return [
       breadcrumbLinkItem(adminMenuLabels.assessment, '/assessment/question-bank'),
@@ -338,4 +349,3 @@ export function buildAdminBreadcrumbItems(
 
   return [breadcrumbTextItem(adminMenuLabels.dashboard)];
 }
-

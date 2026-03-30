@@ -58,7 +58,8 @@
 - 쿠폰 조치 로그는 `Target Type = CommerceCoupon`, `Target ID = couponId`를 사용합니다.
 - 정기 쿠폰 템플릿 조치 로그는 `Target Type = CommerceCouponTemplate`, `Target ID = templateId`를 사용합니다.
 - TOPIK 쓰기 문제은행 조치 로그는 `Target Type = AssessmentQuestion`, `Target ID = questionId`를 사용합니다.
-- `검수 완료`, `보류`, `수정 필요`, `노출 후보`, `숨김 후보`, `운영 제외`는 모두 확인 + 사유 입력을 남기고, 시스템 감사 로그에서 `/assessment/question-bank?selected={questionId}` 기준으로 원본 화면을 역추적할 수 있어야 합니다.
+  - `검수 메모 저장`은 2depth 검수 페이지에서 직접 저장하며, 저장된 메모 본문 자체를 감사 로그의 `Reason` 필드로 사용합니다.
+- `검수 완료`, `보류`, `수정 필요`, `노출 후보`, `숨김 후보`, `운영 제외`는 모두 확인 + 사유 입력을 남기고, 시스템 감사 로그에서 `/assessment/question-bank/review/{questionId}` 기준으로 원본 화면을 역추적할 수 있어야 합니다.
 - 메타데이터 그룹/항목 조치 로그는 `Target Type = SystemMetadataGroup`, `Target ID = groupId`를 사용합니다.
 - 메타데이터 항목 조치도 현재는 그룹 단위 추적을 우선 적용하며, 시스템 감사 로그에서 `/system/metadata?selected={groupId}` 기준으로 원본 화면을 역추적할 수 있어야 합니다.
 - 메타데이터의 `운영 값 순서 변경(item_reordered)`도 같은 계약을 사용하며, 드래그 정렬 직후 감사 로그에서 해당 그룹 단위 이력을 확인할 수 있어야 합니다.

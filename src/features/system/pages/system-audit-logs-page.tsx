@@ -93,6 +93,9 @@ const staticRows: AuditLogRow[] = [
 ];
 
 function getAuditActionLabel(action: string): string {
+  if (action === 'review_memo_saved') {
+    return '검수 메모 저장';
+  }
   if (action === 'review_completed') {
     return '검수 완료';
   }
@@ -179,7 +182,7 @@ function getTargetRoute(targetType: string, targetId: string): string | null {
     return '/assessment/question-bank';
   }
   if (targetType === 'AssessmentQuestion') {
-    return `/assessment/question-bank?selected=${targetId}`;
+    return `/assessment/question-bank/review/${targetId}?tab=review`;
   }
   if (targetType === 'Content') {
     if (targetId.startsWith('VOC-SON-')) {

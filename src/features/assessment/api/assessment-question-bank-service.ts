@@ -13,6 +13,11 @@ type UpdateAssessmentQuestionReviewStatusPayload = {
   reason: string;
 };
 
+type UpdateAssessmentQuestionReviewMemoPayload = {
+  questionId: string;
+  reviewMemo: string;
+};
+
 type UpdateAssessmentQuestionOperationStatusPayload = {
   questionId: string;
   nextStatus: AssessmentQuestionOperationStatus;
@@ -59,6 +64,21 @@ async function loadQuestions(signal?: AbortSignal): Promise<AssessmentQuestion[]
   return useAssessmentQuestionBankStore.getState().questions;
 }
 
+async function loadQuestion(
+  questionId: string,
+  signal?: AbortSignal
+): Promise<AssessmentQuestion> {
+  const questions = await loadQuestions(signal);
+  const question =
+    questions.find((candidate) => candidate.questionId === questionId) ?? null;
+
+  if (!question) {
+    throw createQuestionNotFoundError();
+  }
+
+  return question;
+}
+
 async function updateReviewStatus(
   payload: UpdateAssessmentQuestionReviewStatusPayload,
   signal?: AbortSignal
@@ -68,6 +88,21 @@ async function updateReviewStatus(
   const updated = useAssessmentQuestionBankStore
     .getState()
     .updateReviewStatus(payload);
+
+  if (!updated) {
+    throw createQuestionNotFoundError();
+  }
+
+  return updated;
+}
+
+async function updateReviewMemo(
+  payload: UpdateAssessmentQuestionReviewMemoPayload,
+  signal?: AbortSignal
+): Promise<AssessmentQuestion> {
+  await sleep(220, signal);
+
+  const updated = useAssessmentQuestionBankStore.getState().updateReviewMemo(payload);
 
   if (!updated) {
     throw createQuestionNotFoundError();
@@ -99,11 +134,27 @@ export function fetchAssessmentQuestionsSafe(signal?: AbortSignal) {
   );
 }
 
+export function fetchAssessmentQuestionSafe(
+  questionId: string,
+  signal?: AbortSignal
+) {
+  return toSafeResult(() =>
+    withRetry(() => loadQuestion(questionId, signal), { maxRetries: 1 })
+  );
+}
+
 export function updateAssessmentQuestionReviewStatusSafe(
   payload: UpdateAssessmentQuestionReviewStatusPayload,
   signal?: AbortSignal
 ) {
   return toSafeResult(() => updateReviewStatus(payload, signal));
+}
+
+export function updateAssessmentQuestionReviewMemoSafe(
+  payload: UpdateAssessmentQuestionReviewMemoPayload,
+  signal?: AbortSignal
+) {
+  return toSafeResult(() => updateReviewMemo(payload, signal));
 }
 
 export function updateAssessmentQuestionOperationStatusSafe(

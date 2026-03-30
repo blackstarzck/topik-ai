@@ -28,6 +28,7 @@ export const adminMenuLabels = {
   commerceStore: '이커머스 관리',
   assessment: '평가',
   assessmentQuestionBank: 'TOPIK 쓰기 문제은행',
+  assessmentQuestionReview: '문항 검수',
   assessmentEpsTopik: 'EPS TOPIK',
   assessmentLevelTests: '레벨 테스트',
   content: '콘텐츠',

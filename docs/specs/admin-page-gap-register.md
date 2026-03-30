@@ -368,12 +368,14 @@
 
 - 대상 파일: `src/features/assessment/pages/assessment-question-bank-page.tsx`, `src/features/assessment/api/assessment-question-bank-service.ts`, `src/features/assessment/model/assessment-question-bank-store.ts`, `src/app/router/app-router.tsx`
 - 현 상태
-  - `TOPIK 쓰기 문제은행`은 mock service/store 기반 실페이지로 전환되었고, `EPS TOPIK`, `레벨 테스트`는 아직 Placeholder
+  - `TOPIK 쓰기 문제은행`은 mock service/store 기반 실페이지로 전환되었고, `검수 큐 -> 2depth 검수 페이지`, `문항 관리 -> 빠른 상세 Drawer` 역할 분리와 `53/54번` 카드형 검수 워크스페이스, `검수 메모 저장 -> 검수 상태 변경` 흐름까지 반영되었다.
+  - `EPS TOPIK`, `레벨 테스트`는 아직 Placeholder
 - 미확정/누락/오구현
-  - `TOPIK 쓰기 문제은행`
-    - 검수 상태와 운영 상태는 분리 구현됐지만, 최종 공개/숨김 정책과 승인 체계는 아직 확정되지 않았다.
-    - AI 재생성, 배치 재시도, 프롬프트 버전 비교, 검수 히스토리 diff는 아직 구현되지 않았다.
-    - EPS TOPIK / 레벨 테스트 세트 편성 화면에서 검수 완료 문항을 소비하는 계약은 후속 구현이 필요하다.
+    - `TOPIK 쓰기 문제은행`
+      - 검수 상태와 운영 상태는 분리 구현됐지만, 최종 공개/숨김 정책과 승인 체계는 아직 확정되지 않았다.
+      - AI 재생성, 배치 재시도, 프롬프트 버전 비교, 검수 히스토리 diff는 아직 구현되지 않았다.
+      - EPS TOPIK / 레벨 테스트 세트 편성 화면에서 검수 완료 문항을 소비하는 계약은 후속 구현이 필요하다.
+      - `53/54번` 카드형 검수 워크스페이스와 목록 검색바 재구성은 반영됐지만, JSON 업로드/내보내기와 배치별 대량 검수 액션은 아직 관리자 SoT에 연결되지 않았다.
   - `EPS TOPIK`, `레벨 테스트`
     - 여전히 Placeholder이며, 편성/배점/발행/결과 정책의 화면 SoT와 데이터 source 경계가 미정이다.
 - 분류

@@ -16,6 +16,11 @@ type UpdateReviewStatusPayload = {
   reason: string;
 };
 
+type UpdateReviewMemoPayload = {
+  questionId: string;
+  reviewMemo: string;
+};
+
 type UpdateOperationStatusPayload = {
   questionId: string;
   nextStatus: AssessmentQuestionOperationStatus;
@@ -27,6 +32,9 @@ type AssessmentQuestionBankStore = {
   audits: AssessmentQuestionAuditEvent[];
   updateReviewStatus: (
     payload: UpdateReviewStatusPayload
+  ) => AssessmentQuestion | null;
+  updateReviewMemo: (
+    payload: UpdateReviewMemoPayload
   ) => AssessmentQuestion | null;
   updateOperationStatus: (
     payload: UpdateOperationStatusPayload
@@ -85,6 +93,9 @@ const initialQuestions: AssessmentQuestion[] = [
     questionId: 'AQ-51001',
     questionNumber: '51',
     topic: '안내문 빈칸 어휘 선택',
+    domain: '생활',
+    questionTypeLabel: '빈칸 완성',
+    difficultyLevel: '중',
     sourceType: 'AI 자동 생성',
     generationBatchId: 'BATCH-20260329-01',
     promptVersion: 'prompt-v2.3',
@@ -97,6 +108,22 @@ const initialQuestions: AssessmentQuestion[] = [
     linkedExamCount: 0,
     reviewMemo: '빈칸 주변 문맥은 자연스럽지만 distractor 난이도 확인이 필요합니다.',
     managementNote: '검수 완료 후 EPS TOPIK 편성 후보와 비교 예정',
+    coreMeaning: '도서관 공지문 맥락에서 공공장소 예절 어휘를 고르는 문항입니다.',
+    keyIssue: '오답 선택지 간 의미 차이는 안정적이지만 4번 표현이 다소 직접적입니다.',
+    modelAnswer:
+      '도서관 공지문의 핵심은 조용히 해야 한다는 점이므로, 공손한 종결 표현을 고른 답이 정답입니다.',
+    scoringCriteria: [
+      '도서관 이용 맥락과 공공 예절을 정확히 읽었는지',
+      '존댓말 문장에 맞는 종결 표현을 선택했는지'
+    ],
+    revisionHistory: [
+      {
+        id: 'AQ-51001-REV-001',
+        changedAt: '2026-03-29 09:10',
+        changedBy: 'system_batch',
+        summary: '초기 생성본 등록'
+      }
+    ],
     generatedAt: '2026-03-29 09:10',
     updatedAt: '2026-03-29 09:10',
     updatedBy: 'system_batch',
@@ -115,6 +142,9 @@ const initialQuestions: AssessmentQuestion[] = [
     questionId: 'AQ-51002',
     questionNumber: '51',
     topic: '생활 공지문 빈칸 표현',
+    domain: '생활',
+    questionTypeLabel: '빈칸 완성',
+    difficultyLevel: '상',
     sourceType: 'AI 자동 생성',
     generationBatchId: 'BATCH-20260329-01',
     promptVersion: 'prompt-v2.3',
@@ -127,6 +157,28 @@ const initialQuestions: AssessmentQuestion[] = [
     linkedExamCount: 0,
     reviewMemo: '정답과 3번 보기가 모두 가능한 문맥으로 읽힐 수 있어 보류했습니다.',
     managementNote: '프롬프트 재생성 후보',
+    coreMeaning: '분실물 보관 안내문에서 수동/능동 표현을 구분하게 하는 문항입니다.',
+    keyIssue: '정답과 오답 후보의 의미 간격이 좁아 중의성 제거가 필요합니다.',
+    modelAnswer:
+      '주인을 찾을 때까지 분실물을 안전하게 보관한다는 의미가 자연스럽게 연결되어야 합니다.',
+    scoringCriteria: [
+      '안내문 맥락에서 수동 표현을 정확히 골랐는지',
+      '의미상 가능한 오답을 걸러낼 수 있는지'
+    ],
+    revisionHistory: [
+      {
+        id: 'AQ-51002-REV-001',
+        changedAt: '2026-03-29 09:11',
+        changedBy: 'system_batch',
+        summary: '초기 생성본 등록'
+      },
+      {
+        id: 'AQ-51002-REV-002',
+        changedAt: '2026-03-29 13:20',
+        changedBy: 'admin_current',
+        summary: '정답-오답 중의성으로 보류 처리'
+      }
+    ],
     generatedAt: '2026-03-29 09:11',
     updatedAt: '2026-03-29 13:20',
     updatedBy: 'admin_current',
@@ -145,6 +197,9 @@ const initialQuestions: AssessmentQuestion[] = [
     questionId: 'AQ-52001',
     questionNumber: '52',
     topic: '짧은 설명문 연결 표현',
+    domain: '학습',
+    questionTypeLabel: '연결 표현',
+    difficultyLevel: '중',
     sourceType: 'AI 자동 생성',
     generationBatchId: 'BATCH-20260329-02',
     promptVersion: 'prompt-v2.4',
@@ -157,6 +212,28 @@ const initialQuestions: AssessmentQuestion[] = [
     linkedExamCount: 0,
     reviewMemo: '연결 표현 난이도는 적절합니다. 지문 자연스러움만 추가 확인 중입니다.',
     managementNote: '검수 완료 후 바로 노출 후보 검토',
+    coreMeaning: '자기계발 맥락에서 이어지는 의도 표현을 고르게 하는 문항입니다.',
+    keyIssue: '정답 표현은 적절하지만 화자의 의도가 조금 더 선명하면 좋겠습니다.',
+    modelAnswer:
+      '운동 습관을 계속 이어 가겠다는 화자의 의도 표현이 자연스럽게 연결되어야 합니다.',
+    scoringCriteria: [
+      '화자의 의도와 미래 계획을 읽고 연결 표현을 고를 수 있는지',
+      '문장 흐름을 끊지 않는 자연스러운 표현을 구분했는지'
+    ],
+    revisionHistory: [
+      {
+        id: 'AQ-52001-REV-001',
+        changedAt: '2026-03-29 10:02',
+        changedBy: 'system_batch',
+        summary: '초기 생성본 등록'
+      },
+      {
+        id: 'AQ-52001-REV-002',
+        changedAt: '2026-03-30 09:05',
+        changedBy: 'admin_current',
+        summary: '검수 중 메모 보강'
+      }
+    ],
     generatedAt: '2026-03-29 10:02',
     updatedAt: '2026-03-30 09:05',
     updatedBy: 'admin_current',
@@ -175,6 +252,9 @@ const initialQuestions: AssessmentQuestion[] = [
     questionId: 'AQ-52002',
     questionNumber: '52',
     topic: '의견 표현 연결 문장',
+    domain: '학습',
+    questionTypeLabel: '연결 표현',
+    difficultyLevel: '중',
     sourceType: 'AI 자동 생성',
     generationBatchId: 'BATCH-20260329-02',
     promptVersion: 'prompt-v2.4',
@@ -187,6 +267,28 @@ const initialQuestions: AssessmentQuestion[] = [
     linkedExamCount: 1,
     reviewMemo: '검수 완료. 보기 간 난이도 차이도 허용 범위입니다.',
     managementNote: '4월 모의고사 세트 후보',
+    coreMeaning: '꾸준한 학습 습관에 대한 의견을 완성하는 문장 연결형 문항입니다.',
+    keyIssue: '구문은 안정적이지만 2번 보기를 더 멀게 만들 여지는 있습니다.',
+    modelAnswer:
+      '꾸준함의 중요성을 강조한 뒤, 매일 조금씩 연습하려는 의도를 이어 주는 답이 적절합니다.',
+    scoringCriteria: [
+      '문맥상 의도 표현을 정확히 선택했는지',
+      '오답 보기와 정답 보기의 문법 범주를 구분했는지'
+    ],
+    revisionHistory: [
+      {
+        id: 'AQ-52002-REV-001',
+        changedAt: '2026-03-29 10:05',
+        changedBy: 'system_batch',
+        summary: '초기 생성본 등록'
+      },
+      {
+        id: 'AQ-52002-REV-002',
+        changedAt: '2026-03-30 08:55',
+        changedBy: 'admin_current',
+        summary: '검수 완료 후 노출 후보 유지'
+      }
+    ],
     generatedAt: '2026-03-29 10:05',
     updatedAt: '2026-03-30 08:55',
     updatedBy: 'admin_current',
@@ -205,6 +307,9 @@ const initialQuestions: AssessmentQuestion[] = [
     questionId: 'AQ-53001',
     questionNumber: '53',
     topic: '도시별 자전거 이용률 그래프',
+    domain: '사회',
+    questionTypeLabel: '자료 설명',
+    difficultyLevel: '상',
     sourceType: 'AI 자동 생성',
     generationBatchId: 'BATCH-20260329-03',
     promptVersion: 'prompt-v3.0',
@@ -217,6 +322,29 @@ const initialQuestions: AssessmentQuestion[] = [
     linkedExamCount: 0,
     reviewMemo: '그래프 설명에서 2024년 수치가 누락돼 재생성이 필요합니다.',
     managementNote: '재생성 전까지 운영 제외 유지',
+    coreMeaning: '도시별 자전거 이용률 증가 추세를 비교해 설명하는 자료 해석형 문항입니다.',
+    keyIssue: '답안 가이드와 핵심 수치 연결이 느슨하고 2024년 수치 설명이 빠졌습니다.',
+    modelAnswer:
+      '전체적으로 자전거 이용률이 증가했으며, 서울이 가장 높고 대구가 가장 낮았다는 점을 수치와 함께 서술해야 합니다.',
+    scoringCriteria: [
+      '모든 연도별 핵심 수치를 빠짐없이 반영했는지',
+      '도시 간 비교 포인트를 최소 2개 이상 제시했는지',
+      '53번 분량과 객관적 서술 톤을 유지했는지'
+    ],
+    revisionHistory: [
+      {
+        id: 'AQ-53001-REV-001',
+        changedAt: '2026-03-29 11:42',
+        changedBy: 'system_batch',
+        summary: '초기 생성본 등록'
+      },
+      {
+        id: 'AQ-53001-REV-002',
+        changedAt: '2026-03-30 09:15',
+        changedBy: 'admin_current',
+        summary: '핵심 수치 누락으로 수정 필요 처리'
+      }
+    ],
     generatedAt: '2026-03-29 11:42',
     updatedAt: '2026-03-30 09:15',
     updatedBy: 'admin_current',
@@ -237,6 +365,9 @@ const initialQuestions: AssessmentQuestion[] = [
     questionId: 'AQ-53002',
     questionNumber: '53',
     topic: '연령대별 온라인 강의 만족도 표',
+    domain: '학습',
+    questionTypeLabel: '자료 설명',
+    difficultyLevel: '중',
     sourceType: 'AI 자동 생성',
     generationBatchId: 'BATCH-20260329-03',
     promptVersion: 'prompt-v3.0',
@@ -249,6 +380,29 @@ const initialQuestions: AssessmentQuestion[] = [
     linkedExamCount: 1,
     reviewMemo: '문항은 사용 가능하지만 비교 포인트가 단순해 숨김 후보로 관리합니다.',
     managementNote: '다음 세트 편성에서는 우선순위 낮음',
+    coreMeaning: '연령대별 온라인 강의 만족도 차이를 비교해 요약하는 표 해석형 문항입니다.',
+    keyIssue: '품질은 양호하지만 비교 지점이 한쪽으로 쏠려 답안 다양성이 낮습니다.',
+    modelAnswer:
+      '20대 만족도가 가장 높고 40대가 가장 낮다는 점을 중심으로, 보통 응답 비율을 보조 근거로 정리해야 합니다.',
+    scoringCriteria: [
+      '만족도 차이를 연령대별로 비교했는지',
+      '보조 지표를 함께 활용해 설명을 확장했는지',
+      '표 데이터만으로 객관적으로 서술했는지'
+    ],
+    revisionHistory: [
+      {
+        id: 'AQ-53002-REV-001',
+        changedAt: '2026-03-29 11:48',
+        changedBy: 'system_batch',
+        summary: '초기 생성본 등록'
+      },
+      {
+        id: 'AQ-53002-REV-002',
+        changedAt: '2026-03-30 09:25',
+        changedBy: 'admin_current',
+        summary: '비교 포인트 단순성으로 숨김 후보 지정'
+      }
+    ],
     generatedAt: '2026-03-29 11:48',
     updatedAt: '2026-03-30 09:25',
     updatedBy: 'admin_current',
@@ -269,6 +423,9 @@ const initialQuestions: AssessmentQuestion[] = [
     questionId: 'AQ-54001',
     questionNumber: '54',
     topic: '온라인 학습의 장단점 의견 제시',
+    domain: '학습',
+    questionTypeLabel: '의견 서술',
+    difficultyLevel: '상',
     sourceType: 'AI 자동 생성',
     generationBatchId: 'BATCH-20260329-04',
     promptVersion: 'prompt-v3.1',
@@ -281,6 +438,23 @@ const initialQuestions: AssessmentQuestion[] = [
     linkedExamCount: 0,
     reviewMemo: '조건과 주제는 적절합니다. 주제 중복 여부만 확인하면 됩니다.',
     managementNote: '검수 완료 전 사용처 없음',
+    coreMeaning: '온라인 학습과 오프라인 학습의 효과를 비교해 자신의 입장을 서술하는 논술형 문항입니다.',
+    keyIssue: '주제 범위는 적절하지만 최근 세트와의 주제 중복 여부 확인이 필요합니다.',
+    modelAnswer:
+      '입장을 명확히 밝힌 뒤 접근성, 집중도, 상호작용을 근거로 장단점을 비교하고 결론에서 현실적인 판단을 제시해야 합니다.',
+    scoringCriteria: [
+      '입장을 서론에서 분명히 밝혔는지',
+      '본론에서 최소 두 가지 근거를 구체적으로 전개했는지',
+      '조건 줄과 결론 제안을 모두 충족했는지'
+    ],
+    revisionHistory: [
+      {
+        id: 'AQ-54001-REV-001',
+        changedAt: '2026-03-29 14:15',
+        changedBy: 'system_batch',
+        summary: '초기 생성본 등록'
+      }
+    ],
     generatedAt: '2026-03-29 14:15',
     updatedAt: '2026-03-29 14:15',
     updatedBy: 'system_batch',
@@ -300,6 +474,9 @@ const initialQuestions: AssessmentQuestion[] = [
     questionId: 'AQ-54002',
     questionNumber: '54',
     topic: '지역 축제 보존과 변화에 대한 의견',
+    domain: '문화',
+    questionTypeLabel: '의견 서술',
+    difficultyLevel: '상',
     sourceType: 'AI 자동 생성',
     generationBatchId: 'BATCH-20260329-04',
     promptVersion: 'prompt-v3.1',
@@ -312,6 +489,29 @@ const initialQuestions: AssessmentQuestion[] = [
     linkedExamCount: 1,
     reviewMemo: '문항 품질은 충분하지만 최근 세트와 주제 유사도가 높아 운영 제외로 둡니다.',
     managementNote: '차기 배치 생성 시 주제 다양성 필터 강화 필요',
+    coreMeaning: '지역 축제의 전통 보존과 현대화 사이에서 의견을 제시하게 하는 사회문화형 논술 문항입니다.',
+    keyIssue: '품질은 충분하지만 최근 운영 세트와의 주제 유사도가 높습니다.',
+    modelAnswer:
+      '전통 보존과 현대화의 장단점을 모두 다룬 뒤, 지역 정체성을 지키면서도 현대적 요소를 부분 도입하는 절충안을 제시하는 구조가 적절합니다.',
+    scoringCriteria: [
+      '찬반 입장과 이유를 분명히 제시했는지',
+      '전통 유지와 변화의 장단점을 균형 있게 다뤘는지',
+      '결론에서 현실적 제안을 포함했는지'
+    ],
+    revisionHistory: [
+      {
+        id: 'AQ-54002-REV-001',
+        changedAt: '2026-03-29 14:18',
+        changedBy: 'system_batch',
+        summary: '초기 생성본 등록'
+      },
+      {
+        id: 'AQ-54002-REV-002',
+        changedAt: '2026-03-30 09:40',
+        changedBy: 'admin_current',
+        summary: '주제 유사도로 운영 제외 처리'
+      }
+    ],
     generatedAt: '2026-03-29 14:18',
     updatedAt: '2026-03-30 09:40',
     updatedBy: 'admin_current',
@@ -392,6 +592,47 @@ export const useAssessmentQuestionBankStore = create<AssessmentQuestionBankStore
           targetId: questionId,
           action: mapReviewAction(nextStatus),
           reason,
+          changedBy: CURRENT_ACTOR,
+          createdAt: formatNow()
+        };
+
+        return {
+          questions: nextQuestions,
+          audits: [audit, ...state.audits]
+        };
+      });
+
+      return updatedQuestion;
+    },
+    updateReviewMemo: ({ questionId, reviewMemo }) => {
+      let updatedQuestion: AssessmentQuestion | null = null;
+
+      set((state) => {
+        const nextQuestions = state.questions.map((question) => {
+          if (question.questionId !== questionId) {
+            return question;
+          }
+
+          updatedQuestion = {
+            ...question,
+            reviewMemo,
+            updatedAt: formatNow(),
+            updatedBy: CURRENT_ACTOR
+          };
+
+          return updatedQuestion;
+        });
+
+        if (!updatedQuestion) {
+          return state;
+        }
+
+        const audit: AssessmentQuestionAuditEvent = {
+          id: createAuditId(state.audits),
+          targetType: 'AssessmentQuestion',
+          targetId: questionId,
+          action: 'review_memo_saved',
+          reason: reviewMemo,
           changedBy: CURRENT_ACTOR,
           createdAt: formatNow()
         };
