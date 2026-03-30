@@ -2,6 +2,8 @@ import { AppApiError } from '../../../shared/api/api-error';
 import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
 import {
   useSystemMetadataStore,
+  type DeleteMetadataItemPayload,
+  type ReorderMetadataItemsPayload,
   type SaveMetadataGroupPayload,
   type SaveMetadataItemPayload,
   type ToggleMetadataGroupStatusPayload,
@@ -149,6 +151,16 @@ async function persistMetadataItem(
     throw createValidationError('같은 항목 코드가 이미 존재합니다.');
   }
 
+  const normalizedLabel = payload.label.trim().toLowerCase();
+  const duplicatedLabel = targetGroup.items.find(
+    (item) =>
+      item.itemId !== payload.itemId && item.label.trim().toLowerCase() === normalizedLabel
+  );
+
+  if (duplicatedLabel) {
+    throw createValidationError('같은 운영 값 라벨이 이미 존재합니다.');
+  }
+
   const updatedGroup = store.saveItem({
     ...payload,
     code: normalizedCode,
@@ -200,6 +212,59 @@ async function changeItemStatus(
   return updatedGroup;
 }
 
+async function deleteMetadataItem(
+  payload: DeleteMetadataItemPayload,
+  signal?: AbortSignal
+) {
+  await sleep(180, signal);
+
+  const updatedGroup = useSystemMetadataStore.getState().deleteItem({
+    ...payload,
+    reason: payload.reason.trim()
+  });
+
+  if (!updatedGroup) {
+    throw createNotFoundError('메타 항목을 찾을 수 없습니다.');
+  }
+
+  return updatedGroup;
+}
+
+async function reorderMetadataItems(
+  payload: ReorderMetadataItemsPayload,
+  signal?: AbortSignal
+) {
+  await sleep(180, signal);
+
+  const store = useSystemMetadataStore.getState();
+  const targetGroup = store.groups.find((group) => group.groupId === payload.groupId);
+  if (!targetGroup) {
+    throw createNotFoundError('메타 그룹을 찾을 수 없습니다.');
+  }
+
+  if (payload.orderedItemIds.length !== targetGroup.items.length) {
+    throw createValidationError('정렬 대상 운영 값 수가 현재 목록과 일치하지 않습니다.');
+  }
+
+  const hasMissingItem = targetGroup.items.some(
+    (item) => !payload.orderedItemIds.includes(item.itemId)
+  );
+  if (hasMissingItem) {
+    throw createValidationError('정렬 대상 운영 값 정보가 일부 누락되었습니다.');
+  }
+
+  const updatedGroup = store.reorderItems({
+    ...payload,
+    reason: payload.reason.trim()
+  });
+
+  if (!updatedGroup) {
+    throw createNotFoundError('메타 그룹을 찾을 수 없습니다.');
+  }
+
+  return updatedGroup;
+}
+
 export function fetchMetadataGroupsSafe(signal?: AbortSignal) {
   return toSafeResult(() =>
     withRetry(() => loadMetadataGroups(signal), {
@@ -235,3 +300,18 @@ export function toggleMetadataItemStatusSafe(
 ) {
   return toSafeResult(() => changeItemStatus(payload, signal));
 }
+
+export function deleteMetadataItemSafe(
+  payload: DeleteMetadataItemPayload,
+  signal?: AbortSignal
+) {
+  return toSafeResult(() => deleteMetadataItem(payload, signal));
+}
+
+export function reorderMetadataItemsSafe(
+  payload: ReorderMetadataItemsPayload,
+  signal?: AbortSignal
+) {
+  return toSafeResult(() => reorderMetadataItems(payload, signal));
+}
+

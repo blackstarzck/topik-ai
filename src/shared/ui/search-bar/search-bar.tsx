@@ -1,4 +1,4 @@
-import { FilterOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+﻿import { FilterOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import {
   Button,
   ConfigProvider,
@@ -57,7 +57,7 @@ export function SearchBar({
   keyword,
   onSearchFieldChange,
   onKeywordChange,
-  keywordPlaceholder = '검색...',
+  keywordPlaceholder = '검색어...',
   detailTitle = '상세 검색',
   detailContent,
   onApply,
@@ -191,3 +191,4 @@ export function SearchBarDateRange({
     />
   );
 }
+

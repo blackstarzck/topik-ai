@@ -298,6 +298,12 @@ const menuConfig: MenuNode[] = [
         permissionKeys: ['system.permissions.manage']
       },
       {
+        key: '/system/metadata',
+        label: adminMenuLabels.systemMetadata,
+        to: '/system/metadata',
+        permissionKeys: ['system.metadata.manage']
+      },
+      {
         key: '/system/audit-logs',
         label: adminMenuLabels.systemAuditLogs,
         to: '/system/audit-logs',
@@ -458,6 +464,9 @@ function resolveSelectedKey(pathname: string): string {
   }
   if (pathname.startsWith('/system/audit-logs')) {
     return '/system/audit-logs';
+  }
+  if (pathname.startsWith('/system/metadata')) {
+    return '/system/metadata';
   }
   if (pathname.startsWith('/system/permissions')) {
     return '/system/permissions';
@@ -695,7 +704,7 @@ export function AdminShell(): JSX.Element {
               textOverflow: 'ellipsis'
             }}
           >
-            운영 기본 흐름: 검색 → 상세 → 조치 → 감사 로그 확인
+            운영 기본 흐름: 검색 {"->"} 상세 {"->"} 조치 {"->"} 감사 로그 확인
           </Text>
           {currentAdmin ? (
             <Tag color="blue" style={{ marginInlineStart: 'auto' }}>
@@ -727,3 +736,5 @@ export function AdminShell(): JSX.Element {
     </Layout>
   );
 }
+
+

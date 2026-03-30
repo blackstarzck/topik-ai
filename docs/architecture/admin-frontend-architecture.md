@@ -26,7 +26,7 @@
 | Message | `/messages/mail`, `/messages/push`, `/messages/groups`, `/messages/history` | 메일, 푸시, 대상 그룹, 발송 이력 |
 | Operation | `/operation/notices`, `/operation/faq`, `/operation/events`, `/operation/chatbot` | 공지사항, FAQ, 이벤트, 챗봇 설정 |
 | Commerce | `/commerce/payments`, `/commerce/refunds`, `/commerce/coupons`, `/commerce/points`, `/commerce/store` | 결제 내역, 환불 관리, 쿠폰 관리, 포인트 관리, 이커머스 관리 |
-| Assessment | `/assessment/question-bank`, `/assessment/question-bank/eps-topik`, `/assessment/level-tests` | 문제은행, EPS TOPIK, 레벨 테스트 |
+| Assessment | `/assessment/question-bank`, `/assessment/question-bank/eps-topik`, `/assessment/level-tests` | TOPIK 쓰기 문제은행, EPS TOPIK, 레벨 테스트 |
 | Content | `/content/library`, `/content/badges`, `/content/vocabulary`, `/content/vocabulary/sonagi`, `/content/vocabulary/multiple-choice`, `/content/missions` | 콘텐츠 관리, 배지, 단어장, 소나기, 객관식 선택, 학습 미션 |
 | Analytics | `/analytics/overview` | 통계 개요 |
 | System | `/system/admins`, `/system/permissions`, `/system/audit-logs`, `/system/logs` | 관리자 계정, 권한 관리, 감사 로그, 시스템 로그 |

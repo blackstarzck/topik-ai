@@ -3,7 +3,7 @@ import type { TableProps } from 'antd';
 import { useMemo } from 'react';
 
 const ACTION_COLUMN_KEYS = new Set(['action', 'actions']);
-const ACTION_COLUMN_TITLES = new Set(['\uC561\uC158', '\uC791\uC5C5']);
+const ACTION_COLUMN_TITLES = new Set(['액션', '작업']);
 
 type TableColumn<RecordType extends object> = NonNullable<
   TableProps<RecordType>['columns']

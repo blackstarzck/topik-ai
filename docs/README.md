@@ -65,6 +65,7 @@
 - `page-ia/system-admins-page-ia.md`
 - `page-ia/system-audit-logs-page-ia.md`
 - `page-ia/system-logs-page-ia.md`
+- `page-ia/system-metadata-page-ia.md`
 - `page-ia/system-permissions-page-ia.md`
 - `page-ia/users-detail-page-ia.md`
 - `page-ia/users-instructor-management-page-ia.md`

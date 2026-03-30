@@ -31,7 +31,7 @@
 | P0-06 | `lint` 통과 | FE | Yes | 실행 명령 + 결과 로그 |
 | P0-07 | `typecheck` 통과 | FE | Yes | 실행 명령 + 결과 로그 |
 | P0-08 | `build` 통과 | FE | Yes | 실행 명령 + 결과 로그 |
-| P0-09 | 변경 영향 핵심 플로우 e2e 테스트 실행 및 통과 | FE/QA | Yes | e2e 실행 명령 + 통과 로그 또는 리포트 링크 |
+| P0-09 | 변경 영향 핵심 플로우 e2e 테스트 실행 및 통과, 공통 문서 기준 UI 일관성 확인 포함 | FE/QA | Yes | e2e 실행 명령 + 통과 로그 또는 리포트 링크 + 확인한 UI baseline 기록 |
 | P0-10 | 변경 영향 MD 문서 평가 완료, 필요 문서 수정 반영 완료 | FE | Yes | 영향 판단 근거 + 수정된 MD 목록 |
 | P0-10A | 관리자 테이블/정책/B2C 노출 위치 변경 시 `docs/specs/admin-data-usage-map.md` 평가 및 반영 완료 | FE | Yes (해당 시) | 수정 diff 또는 N/A 근거 |
 | P0-10B | 페이지별 상세 IA 문서(`docs/specs/page-ia/*.md`) 또는 IA 템플릿 수정 시 `docs/specs/admin-page-ia-change-log.md` 기록 완료 | FE | Yes (해당 시) | IA 로그 항목 링크 |

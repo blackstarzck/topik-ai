@@ -1158,7 +1158,7 @@ export default function OperationEventCreatePage(): JSX.Element {
                                       className="event-banner-upload__trigger"
                                     >
                                       {
-                                        "\uBC30\uB108 \uC774\uBBF8\uC9C0 \uC5C5\uB85C\uB4DC"
+                                        "배너 이미지 업로드"
                                       }
                                     </Button>
                                   </Upload>

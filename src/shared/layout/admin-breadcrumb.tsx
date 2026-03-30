@@ -315,6 +315,13 @@ export function buildAdminBreadcrumbItems(
     ];
   }
 
+  if (pathname.startsWith('/system/metadata')) {
+    return [
+      breadcrumbLinkItem(adminMenuLabels.system, '/system/admins'),
+      breadcrumbTextItem(adminMenuLabels.systemMetadata)
+    ];
+  }
+
   if (pathname.startsWith('/system/audit-logs')) {
     return [
       breadcrumbLinkItem(adminMenuLabels.system, '/system/admins'),
@@ -331,3 +338,4 @@ export function buildAdminBreadcrumbItems(
 
   return [breadcrumbTextItem(adminMenuLabels.dashboard)];
 }
+

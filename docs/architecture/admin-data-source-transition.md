@@ -19,6 +19,7 @@
 - `Operation > 이벤트`는 `events-service.ts`를 통해 조회/상세/저장/게시 예약/즉시 게시/종료를 감싸고, `bodyHtml`을 포함한 이벤트 원본 콘텐츠의 mock SoT는 `operation-store.ts`의 `events` 컬렉션에 유지한다.
 - `Operation > 이벤트 등록 상세`는 현재 `MessageGroup`, `MessageTemplate`, 이벤트 보상 정책 schema를 참조하는 선택형 입력을 사용한다. 다만 message store/schema를 직접 읽는 mock 단계이므로, DB/API 단계에서는 이벤트 전용 service 응답 뒤로 숨기는 구조로 전환해야 한다.
 - `Commerce > 쿠폰 관리`는 `coupons-service.ts`를 통해 쿠폰/정기 쿠폰 템플릿의 조회/저장/발행 중지/재개/삭제를 감싸고, mock SoT는 `coupon-store.ts`, 정적 정책값은 `coupon-form-schema.ts`와 `coupon-template-form-schema.ts`에 유지한다.
+- `Assessment > TOPIK 쓰기 문제은행`은 `assessment-question-bank-service.ts`를 통해 목록 조회와 검수 상태/운영 상태 변경을 감싸고, mock SoT는 `assessment-question-bank-store.ts`, 정적 정책값과 query metadata는 `assessment-question-bank-schema.ts`에 유지한다.
 
 ### 2.2 아직 페이지 내부에 남아 있는 패턴
 
@@ -168,3 +169,59 @@ src/features/<feature>/
 - feature 경계를 깨고 다른 feature dataset을 직접 가져오는 구조
 - 페이지 내부 `initialRows`를 유지한 채 service만 얇게 추가하는 구조
 - 목록은 service, 상세는 page-local 상수로 남기는 절충안
+## 10. 2026-03-27 메타데이터 관리 전환 메모
+
+- 대상 화면: `System > 메타데이터 관리`
+- 현재 SoT
+  - `src/features/system/api/system-metadata-service.ts`
+  - `src/features/system/model/system-metadata-store.ts`
+  - `src/features/system/model/system-metadata-types.ts`
+- 현재 구조
+  - 페이지는 메타 그룹/항목 seed를 직접 소유하지 않고 service를 통해 단일 source를 조회합니다.
+  - 그룹 생성/수정, 항목 생성/수정, 활성/비활성, 항목 정렬 변경 조치는 모두 `system-metadata-store.ts`의 단일 write path를 사용합니다.
+  - 내부 계약은 `linkedAdminPages[]`와 `linkedAdminLocations[]`를 유지하지만, 현재 운영자 UI는 `관리 위치`를 목록/상세 주요 정보에서 제거하고 `기본 정보 + 설정 구조 + 운영 값` 흐름으로 단순화했습니다.
+  - 시스템 감사 로그 페이지는 `useSystemMetadataStore().audits`를 병합해 역추적 경로를 구성합니다.
+- API/DB 전환 후보
+  - `GET /system/metadata-groups`
+  - `POST /system/metadata-groups`
+  - `PATCH /system/metadata-groups/:groupId`
+  - `POST /system/metadata-groups/:groupId/items`
+  - `PATCH /system/metadata-groups/:groupId/items/:itemId`
+  - `POST /system/metadata-groups/:groupId/items/reorder`
+  - `POST /system/metadata-groups/:groupId/status`
+- 테이블 후보
+  - `system_metadata_groups`
+  - `system_metadata_group_items`
+  - `system_metadata_group_histories`
+- 전환 메모
+  - 그룹/항목 조치는 현재 `Target Type = SystemMetadataGroup` 단일 계약을 사용합니다.
+  - 운영 값 드래그 정렬도 그룹 단위 write path와 감사 계약을 공유합니다.
+  - 항목 단위 Target Type 분리 여부는 실제 백엔드 감사 스키마 확정 시 함께 결정합니다.
+  - API/DB 전환 시에도 `관리 route 연결` 입력값과 `관리 위치 계층` 읽기값을 분리해 유지하거나, 서버가 `linkedAdminPages[]`를 받아 `linkedAdminLocations[]`를 파생하는 구조를 유지해야 합니다.
+
+## 10.1 2026-03-27 보강 메모 > 메타데이터 운영 값 삭제 write path
+- `system-metadata-service.ts`는 운영 값 삭제를 위한 safe wrapper(`deleteMetadataItemSafe`)를 제공합니다.
+- `system-metadata-store.ts`는 운영 값 삭제, 기본값 재승격, 정렬 재정규화, `item_deleted` 이력 적재를 같은 write path에서 처리합니다.
+- 실제 API/DB 전환 시에도 같은 단일 write path 책임을 유지해야 합니다.
+
+## 10.2 2026-03-30 Assessment TOPIK 쓰기 문제은행 전환 메모
+
+- 대상 화면: `Assessment > TOPIK 쓰기 문제은행`
+- 현재 SoT
+  - `src/features/assessment/api/assessment-question-bank-service.ts`
+  - `src/features/assessment/model/assessment-question-bank-store.ts`
+  - `src/features/assessment/model/assessment-question-bank-schema.ts`
+  - `src/features/assessment/model/assessment-question-bank-types.ts`
+- 현재 구조
+  - 페이지는 문항 seed를 직접 소유하지 않고 service를 통해 단일 source를 조회합니다.
+  - 검수 상태 변경과 운영 상태 변경은 같은 store write path를 사용하고, 조치 결과는 `AssessmentQuestion` 감사 로그 이벤트로 적재합니다.
+  - 문제 번호, 검수 상태, 운영 상태, 자동 점검 상태와 search field 메타데이터는 schema 파일에서 단일 SoT로 관리합니다.
+- API/DB 전환 후보
+  - `GET /assessment/questions`
+  - `PATCH /assessment/questions/:questionId/review-status`
+  - `PATCH /assessment/questions/:questionId/operation-status`
+  - `GET /assessment/question-batches`
+- 전환 메모
+  - `reviewStatus`와 `operationStatus`는 같은 컬럼으로 합치지 않고 별도 필드로 유지합니다.
+  - `generationBatchId`, `promptVersion`, `generationModel`은 AI 생성 출처 추적용 메타데이터로 유지합니다.
+  - 검수 이력 diff, 재생성 배치, 시험 세트 편성 연결은 후속 API로 확장하되 현재 route/service 계약은 유지합니다.

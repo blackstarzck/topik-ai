@@ -1,5 +1,6 @@
 import { Alert, Descriptions, Input, Modal, Select, Typography } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
+
 import { getTargetTypeLabel } from '../../model/target-type-label';
 import { markRequiredDescriptionItems } from '../descriptions/description-label';
 
@@ -26,10 +27,7 @@ type ConfirmActionProps = {
   policyCodePlaceholder?: string;
   requirePolicyCode?: boolean;
   onCancel: () => void;
-  onConfirm: (
-    reason: string,
-    context?: { policyCode?: string }
-  ) => Promise<void> | void;
+  onConfirm: (reason: string, context?: { policyCode?: string }) => Promise<void> | void;
 };
 
 export function ConfirmAction({
@@ -41,10 +39,10 @@ export function ConfirmAction({
   confirmText,
   requireReason = true,
   reasonLabel = '사유/근거',
-  reasonPlaceholder = '조치 사유를 입력하세요.',
+  reasonPlaceholder = '조치 사유를 입력해 주세요.',
   policyCodeLabel = '정책 코드',
   policyCodeOptions,
-  policyCodePlaceholder = '정책 코드를 선택하세요.',
+  policyCodePlaceholder = '정책 코드를 선택해 주세요.',
   requirePolicyCode = false,
   onCancel,
   onConfirm
@@ -71,10 +69,8 @@ export function ConfirmAction({
     return false;
   }, [policyCode, reason, requirePolicyCode, requireReason]);
 
-  const selectedPolicyCodeDescription = useMemo(
-    () =>
-      policyCodeOptions?.find((option) => option.value === policyCode)?.description ??
-      '',
+  const selectedPolicyDescription = useMemo(
+    () => policyCodeOptions?.find((option) => option.value === policyCode)?.description ?? '',
     [policyCode, policyCodeOptions]
   );
 
@@ -97,15 +93,15 @@ export function ConfirmAction({
       cancelText="취소"
       okButtonProps={{ danger: true, disabled: isDisabled, loading: submitting }}
       onCancel={onCancel}
-      onOk={handleConfirm}
+      onOk={() => void handleConfirm()}
       destroyOnHidden
     >
       <Alert
         type="warning"
         showIcon
+        style={{ marginBottom: 12 }}
         message="고위험 액션 확인"
         description={description}
-        style={{ marginBottom: 12 }}
       />
       <Descriptions
         bordered
@@ -119,7 +115,8 @@ export function ConfirmAction({
               label: '대상',
               children: (
                 <Text type="secondary">
-                  대상 유형: {getTargetTypeLabel(targetType)} / 대상 ID: {targetId}
+                  대상 유형: {getTargetTypeLabel(targetType)} / 대상 ID:{' '}
+                  {targetId}
                 </Text>
               )
             },
@@ -136,9 +133,9 @@ export function ConfirmAction({
                           placeholder={policyCodePlaceholder}
                           onChange={(value) => setPolicyCode(value)}
                         />
-                        {selectedPolicyCodeDescription ? (
+                        {selectedPolicyDescription ? (
                           <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
-                            {selectedPolicyCodeDescription}
+                            {selectedPolicyDescription}
                           </Text>
                         ) : null}
                       </div>
@@ -153,8 +150,8 @@ export function ConfirmAction({
                 <Input.TextArea
                   rows={4}
                   value={reason}
-                  onChange={(event) => setReason(event.target.value)}
                   placeholder={reasonPlaceholder}
+                  onChange={(event) => setReason(event.target.value)}
                 />
               )
             }

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "check:mojibake": "node ./scripts/check-mojibake.mjs",
     "lint": "set ESLINT_USE_FLAT_CONFIG=false&& eslint \"src/**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",

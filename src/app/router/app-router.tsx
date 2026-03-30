@@ -76,6 +76,9 @@ const CommerceCouponCreatePage = lazy(
 const CommerceCouponTemplateCreatePage = lazy(
   () => import('../../features/commerce/pages/commerce-coupon-template-create-page')
 );
+const AssessmentQuestionBankPage = lazy(
+  () => import('../../features/assessment/pages/assessment-question-bank-page')
+);
 const AnalyticsOverviewPage = lazy(
   () => import('../../features/analytics/pages/analytics-overview-page')
 );
@@ -84,6 +87,9 @@ const SystemAdminsPage = lazy(
 );
 const SystemPermissionsPage = lazy(
   () => import('../../features/system/pages/system-permissions-page')
+);
+const SystemMetadataPage = lazy(
+  () => import('../../features/system/pages/system-metadata-page')
 );
 const SystemAuditLogsPage = lazy(
   () => import('../../features/system/pages/system-audit-logs-page')
@@ -221,19 +227,7 @@ export function AppRouter(): JSX.Element {
 
         <Route
           path="/assessment/question-bank"
-          element={
-            <AdminPlaceholderPage
-              title="문제은행"
-              summary="문항 풀과 출제 기준을 관리하기 위한 Assessment 모듈의 시작점입니다."
-              ownerRole="CONTENT_MANAGER"
-              supportingRoles={['SUPER_ADMIN']}
-              capabilities={[
-                '문항 카테고리/난이도 관리',
-                '문항 검수 상태와 버전 관리',
-                '시험 세트와의 연결'
-              ]}
-            />
-          }
+          element={<AssessmentQuestionBankPage />}
         />
         <Route
           path="/assessment/question-bank/eps-topik"
@@ -369,6 +363,7 @@ export function AppRouter(): JSX.Element {
 
         <Route path="/system/admins" element={<SystemAdminsPage />} />
         <Route path="/system/permissions" element={<SystemPermissionsPage />} />
+        <Route path="/system/metadata" element={<SystemMetadataPage />} />
         <Route path="/system/audit-logs" element={<SystemAuditLogsPage />} />
         <Route path="/system/logs" element={<SystemLogsPage />} />
 

@@ -240,6 +240,38 @@
     - 포인트 원장: `pointLedgerId`, `userId`, `userName`, `ledgerType`, `ledgerSourceType`, `policyId`, `policyName`, `changeAmount`, `balanceAfter`, `expiresAt`, `ledgerStatus`, `reasonCode`, `reasonDetail`, `createdAt`, `createdBy`
     - 소멸 예정: `expirationId`, `userId`, `userName`, `sourceLedgerId`, `scheduledAt`, `scheduledAmount`, `availableAmount`, `expirationStatus`, `holdReason`, `processedAt`, `processedBy`
 
+### 9.6 Assessment
+
+- `Assessment > TOPIK 쓰기 문제은행`
+  - query: `tab`, `questionNo`, `searchField`, `keyword`, `startDate`, `endDate`, `reviewStatus`, `operationStatus`, `selected`
+  - 엔티티 후보
+    - `AssessmentQuestion`
+    - `AssessmentQuestionGenerationBatch`
+    - `AssessmentQuestionAuditEvent`
+  - 테이블 후보
+    - `assessment_questions`
+    - `assessment_question_generation_batches`
+    - `assessment_question_audits`
+  - 핵심 필드
+    - `questionId`, `questionNumber`, `topic`, `sourceType`, `generationBatchId`, `promptVersion`, `generationModel`, `reviewStatus`, `operationStatus`, `validationStatus`, `validationSignals`, `usageCount`, `linkedExamCount`, `reviewMemo`, `managementNote`, `generatedAt`, `updatedAt`, `updatedBy`
+  - enum / code table candidate
+    - `questionNumber`: `51`, `52`, `53`, `54`
+    - `reviewStatus`: `검수 대기`, `검수 중`, `보류`, `검수 완료`, `수정 필요`
+    - `operationStatus`: `미지정`, `노출 후보`, `숨김 후보`, `운영 제외`
+    - `validationStatus`: `정상`, `주의`, `재검토`
+    - `sourceType`: `AI 자동 생성`
+  - 하드코딩 분류
+    - `schema candidate`
+      - 문항 본문, 정답/가이드, 검수 메모, 운영 메모, 검수 이력, 배치 메타데이터
+    - `code table candidate`
+      - 문제 번호, 검수 상태, 운영 상태, 자동 점검 상태
+    - `ui-only`
+      - 탭 안내 문구, empty/error/pending 메시지
+  - 감사 로그 / URL 계약
+    - `Target Type = AssessmentQuestion`
+    - `Target ID = questionId`
+    - 원본 화면 역추적 경로: `/assessment/question-bank?selected={questionId}`
+
 ## 10. 문서 갱신 규칙
 
 - 사이드바 검수가 다음 범위로 진행되면 이 문서의 `검수 완료 범위`와 `페이지별 계약/검수 요약`을 같은 작업에서 갱신한다.
@@ -247,3 +279,62 @@
 - 목록/상세 필드나 검색/정렬/URL 복원 키가 바뀌면 `docs/specs/admin-page-tables.md`와 관련 IA 문서를 함께 갱신한다.
 - 데이터 source 경계가 바뀌면 `docs/architecture/admin-data-source-transition.md`를 함께 갱신한다.
 - 문서를 수정하면 `logs/admin-doc-update-log.md`에 변경 요약을 남긴다.
+## 11. 2026-03-27 메타데이터 관리 계약
+
+### 11.1 엔티티 / 테이블 후보
+
+- `SystemMetadataGroup`
+  - table candidate: `system_metadata_groups`
+- `SystemMetadataItem`
+  - table candidate: `system_metadata_group_items`
+- `SystemMetadataHistoryEntry`
+  - table candidate: `system_metadata_group_histories`
+
+### 11.2 필드 계약
+
+- `SystemMetadataGroup`
+  - `groupId`, `groupName`, `description`, `managerType`, `ownerModule`, `ownerRole`, `status`, `syncStatus`, `exposureStatus`, `linkedAdminPages[]`, `linkedAdminLocations[]`, `linkedUserSurfaces[]`, `schemaCandidateNotes[]`, `itemCodePrefix`, `updatedAt`, `updatedBy`, `lastReviewedAt`
+  - `linkedAdminLocations[].locationId`, `linkedAdminLocations[].route`, `linkedAdminLocations[].path[]`, `linkedAdminLocations[].note`
+- `SystemMetadataItem`
+  - `itemId`, `groupId`, `code`, `label`, `description`, `status`, `sortOrder`, `isDefault`, `exposureStatus`, `updatedAt`, `updatedBy`
+- `SystemMetadataHistoryEntry`
+  - `historyId`, `groupId`, `action`, `reason`, `changedBy`, `createdAt`
+
+### 11.3 enum / code table candidate
+
+- `managerType`
+  - `codeTable`, `selectOption`, `exposureRule`, `segmentField`
+- `syncStatus`
+  - `live`, `review`, `draft`
+- `exposureStatus`
+  - `confirmed`, `inferred`, `internalOnly`, `planned`
+- `status`
+  - `active`, `inactive`
+- `historyAction`
+  - `group_created`, `group_updated`, `group_activated`, `group_deactivated`, `item_created`, `item_reordered`, `item_updated`, `item_activated`, `item_deactivated`
+
+### 11.4 하드코딩 분류
+
+- unique candidate
+  - `SystemMetadataGroup.groupName`는 전체 그룹 기준 unique
+  - `SystemMetadataItem.code`, `SystemMetadataItem.label`은 같은 `groupId` 안에서 unique
+- 현재 mock 단계에서는 form validator + service validation으로 먼저 중복을 차단하고, API/DB 단계에서 unique 제약으로 승격합니다.
+
+- `schema candidate`
+  - 그룹명, 설명, 관리 route 연결, 관리 위치 계층, 연결 사용자 화면, schema/code table 메모, 코드 prefix
+- `code table candidate`
+  - 그룹 유형, 동기화 상태, 노출 상태, 활성 상태, 항목 코드 집합
+- `ui-only`
+  - 요약 안내 문구, 빈 상태/오류 상태 메시지
+
+### 11.5 감사 로그 / URL 계약
+
+- `Target Type = SystemMetadataGroup`
+- `Target ID = groupId`
+- 시스템 감사 로그에서 메타데이터 관리 상세 역추적 경로는 `/system/metadata?selected={groupId}`를 사용합니다.
+- 메타데이터 관리 URL 복원 쿼리는 `summaryFilter`, `searchField`, `keyword`, `startDate`, `endDate`, `selected`를 사용합니다.
+
+## 11.6 2026-03-27 보강 메모 > 메타데이터 삭제 계약
+- `SystemMetadataHistoryEntry.action` 후보에 `item_deleted`를 추가합니다.
+- `SystemMetadataGroup.items[]` 삭제 시 남은 값의 `sortOrder`는 1부터 다시 정규화합니다.
+- 삭제된 값이 기본값(`isDefault`)이었다면 남아 있는 첫 번째 값이 기본값으로 승격됩니다.

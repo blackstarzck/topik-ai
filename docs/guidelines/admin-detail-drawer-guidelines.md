@@ -26,6 +26,7 @@
 - 본문 섹션은 `32px` 간격을 기본값으로 유지합니다.
 - 본문 최하단과 footer 사이에는 최소 `16px` 여백을 유지해 마지막 섹션 카드/표/문단이 footer 구분선에 바로 붙지 않게 합니다.
 - `DetailDrawerBody` 안의 `Descriptions`는 label(`th`) 폭을 전역 `130px`로 통일하고, 페이지별 inline width override는 예외 사유가 없으면 두지 않습니다.
+- `DetailDrawer` 폭은 shared preset만 사용합니다. 기본값은 `760`, 축약형은 `720`, 밀도 높은 짧은 상세는 `640`을 사용하고, 페이지별 `960` 같은 임의 숫자 override는 허용하지 않습니다.
 
 ## 헤더 규칙
 
@@ -61,6 +62,7 @@
 
 - 신규 상세 Drawer는 `antd`의 `Drawer`를 직접 조합하지 않고 우선 `DetailDrawer` 조합 가능 여부를 검토합니다.
 - 공통 구조를 벗어나야 하면 이유를 코드와 문서에 함께 남깁니다.
+- 폭 예외가 정말 필요하면 페이지 파일에서 숫자를 직접 넣지 말고 shared `DetailDrawer` preset과 관련 문서를 같은 작업에서 함께 갱신합니다.
 - 상세 Drawer 안 섹션 제목/액션 정렬을 위해 임시 inline layout을 반복 추가하지 않습니다.
 
 ## 문서 갱신 규칙

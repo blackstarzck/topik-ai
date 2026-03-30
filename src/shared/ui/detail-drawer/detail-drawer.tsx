@@ -11,11 +11,21 @@ import {
 
 const { Title } = Typography;
 
-type DetailDrawerProps = Omit<DrawerProps, 'title' | 'extra' | 'footer'> & {
+export const DETAIL_DRAWER_WIDTH = {
+  compact: 640,
+  medium: 720,
+  default: 760
+} as const;
+
+export type DetailDrawerWidth =
+  (typeof DETAIL_DRAWER_WIDTH)[keyof typeof DETAIL_DRAWER_WIDTH];
+
+type DetailDrawerProps = Omit<DrawerProps, 'title' | 'extra' | 'footer' | 'width'> & {
   title: ReactNode;
   headerMeta?: ReactNode;
   footerStart?: ReactNode;
   footerEnd?: ReactNode;
+  width?: DetailDrawerWidth;
 };
 
 type DetailDrawerBodyProps = {
@@ -34,11 +44,13 @@ export function DetailDrawer({
   footerStart,
   footerEnd,
   children,
+  width = DETAIL_DRAWER_WIDTH.default,
   ...drawerProps
 }: DetailDrawerProps): JSX.Element {
   return (
     <Drawer
       {...drawerProps}
+      width={width}
       styles={mergeDrawerFrameStyles(drawerProps.styles)}
       title={<DrawerTitle>{title}</DrawerTitle>}
       extra={<DrawerHeaderMeta>{headerMeta}</DrawerHeaderMeta>}

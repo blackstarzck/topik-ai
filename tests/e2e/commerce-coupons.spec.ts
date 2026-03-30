@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('정기 쿠폰 템플릿 생성과 쿠폰 노출 설정 저장이 동작한다', async ({ page }) => {
+test('정기 쿠폰 템플릿 생성이 동작하고 쿠폰 노출 설정은 노출되지 않는다', async ({ page }) => {
   await page.goto('/commerce/coupons');
 
   await expect(page.getByRole('heading', { name: '쿠폰' })).toBeVisible();
@@ -25,12 +25,5 @@ test('정기 쿠폰 템플릿 생성과 쿠폰 노출 설정 저장이 동작한
   await page.getByRole('dialog').getByRole('button', { name: '닫기' }).click();
   await expect(page.getByRole('dialog')).not.toBeVisible();
 
-  await page.getByRole('button', { name: '쿠폰 노출 설정' }).click();
-  await expect(page.getByRole('dialog', { name: '쿠폰 노출 설정' })).toBeVisible();
-
-  const exposureDialog = page.getByRole('dialog', { name: '쿠폰 노출 설정' });
-  await exposureDialog.getByRole('switch').nth(1).click();
-  await exposureDialog.getByRole('button', { name: '설정 저장' }).click();
-
-  await expect(page.getByText('쿠폰 노출 설정을 저장했어요')).toBeVisible();
+  await expect(page.getByRole('button', { name: '쿠폰 노출 설정' })).toHaveCount(0);
 });

@@ -36,7 +36,7 @@
 | 쿠폰 관리 | placeholder | 목록 운영형 |
 | 포인트 관리 | placeholder | 목록 운영형 |
 | 이커머스 관리 | placeholder | 목록 운영형 |
-| 문제은행 | placeholder | 카탈로그/자산 관리형 |
+| TOPIK 쓰기 문제은행 | 구현됨 | 카탈로그/자산 관리형 + 유형별 검수 워크스페이스 |
 | EPS TOPIK | placeholder | 편집/미리보기 병행형 |
 | 레벨 테스트 | placeholder | 편집/미리보기 병행형 |
 | 콘텐츠 관리 | placeholder | 카탈로그/자산 관리형 |
@@ -131,13 +131,13 @@
 ## 7) 평가
 
 - 목적: 시험과 문항 운영을 위한 별도 작업 공간 제공
-- 책임 범위: 문제은행, EPS TOPIK, 레벨 테스트
+- 책임 범위: TOPIK 쓰기 문제은행, EPS TOPIK, 레벨 테스트
 - 핵심 기능:
   - 문항 자산 관리
   - 시험 세트 구성
   - 평가 규칙과 결과 기준 운영
 - 페이지 유형:
-  - 문제은행: 카탈로그/자산 관리형
+- TOPIK 쓰기 문제은행: 카탈로그/자산 관리형 + 유형별 검수 워크스페이스
   - EPS TOPIK: 편집/미리보기 병행형
   - 레벨 테스트: 편집/미리보기 병행형
 - 현재 상태: placeholder 중심. 상세 IA는 `docs/specs/page-ia/*.md`로 확장합니다.
@@ -201,7 +201,7 @@
   - `Commerce > 쿠폰 관리`
   - `Commerce > 포인트 관리`
   - `Commerce > 이커머스 관리`
-  - `Assessment > 문제은행`
+- `Assessment > TOPIK 쓰기 문제은행`
   - `Assessment > EPS TOPIK`
   - `Assessment > 레벨 테스트`
   - `Content > 콘텐츠 관리`

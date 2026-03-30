@@ -7,19 +7,31 @@ export type MetadataModule =
   | 'System';
 
 export type MetadataManagerType =
-  | '코드 테이블'
-  | '선택 옵션'
-  | '노출 규칙'
-  | '세그먼트 필드';
+  | 'codeTable'
+  | 'selectOption'
+  | 'exposureRule'
+  | 'segmentField';
 
 export type MetadataExposureStatus =
-  | '확인됨'
-  | '운영상 추정'
-  | '내부 전용'
-  | '노출 예정';
+  | 'confirmed'
+  | 'inferred'
+  | 'internalOnly'
+  | 'planned';
 
-export type MetadataSyncStatus = '운영 중' | '검토 필요' | '초안';
-export type MetadataStatus = '활성' | '비활성';
+export type MetadataSyncStatus = 'live' | 'review' | 'draft';
+export type MetadataStatus = 'active' | 'inactive';
+
+export type MetadataHistoryAction =
+  | 'group_created'
+  | 'group_updated'
+  | 'group_activated'
+  | 'group_deactivated'
+  | 'item_created'
+  | 'item_deleted'
+  | 'item_reordered'
+  | 'item_updated'
+  | 'item_activated'
+  | 'item_deactivated';
 
 export type SystemMetadataItem = {
   itemId: string;
@@ -36,18 +48,17 @@ export type SystemMetadataItem = {
 
 export type SystemMetadataHistoryEntry = {
   historyId: string;
-  action:
-    | '그룹 생성'
-    | '그룹 수정'
-    | '그룹 활성화'
-    | '그룹 비활성화'
-    | '항목 추가'
-    | '항목 수정'
-    | '항목 활성화'
-    | '항목 비활성화';
+  action: MetadataHistoryAction;
   reason: string;
   changedBy: string;
   createdAt: string;
+};
+
+export type SystemMetadataAdminLocation = {
+  locationId: string;
+  route: string;
+  path: string[];
+  note?: string;
 };
 
 export type SystemMetadataGroup = {
@@ -61,6 +72,7 @@ export type SystemMetadataGroup = {
   syncStatus: MetadataSyncStatus;
   exposureStatus: MetadataExposureStatus;
   linkedAdminPages: string[];
+  linkedAdminLocations: SystemMetadataAdminLocation[];
   linkedUserSurfaces: string[];
   schemaCandidateNotes: string[];
   itemCodePrefix: string;
@@ -75,7 +87,7 @@ export type SystemMetadataAuditEvent = {
   id: string;
   targetType: 'SystemMetadataGroup';
   targetId: string;
-  action: SystemMetadataHistoryEntry['action'];
+  action: MetadataHistoryAction;
   reason: string;
   changedBy: string;
   createdAt: string;
@@ -85,10 +97,10 @@ export const metadataManagerTypeOptions: Array<{
   label: MetadataManagerType;
   value: MetadataManagerType;
 }> = [
-  { label: '코드 테이블', value: '코드 테이블' },
-  { label: '선택 옵션', value: '선택 옵션' },
-  { label: '노출 규칙', value: '노출 규칙' },
-  { label: '세그먼트 필드', value: '세그먼트 필드' }
+  { label: 'codeTable', value: 'codeTable' },
+  { label: 'selectOption', value: 'selectOption' },
+  { label: 'exposureRule', value: 'exposureRule' },
+  { label: 'segmentField', value: 'segmentField' }
 ];
 
 export const metadataOwnerModuleOptions: Array<{
@@ -107,25 +119,25 @@ export const metadataExposureStatusOptions: Array<{
   label: MetadataExposureStatus;
   value: MetadataExposureStatus;
 }> = [
-  { label: '확인됨', value: '확인됨' },
-  { label: '운영상 추정', value: '운영상 추정' },
-  { label: '내부 전용', value: '내부 전용' },
-  { label: '노출 예정', value: '노출 예정' }
+  { label: 'confirmed', value: 'confirmed' },
+  { label: 'inferred', value: 'inferred' },
+  { label: 'internalOnly', value: 'internalOnly' },
+  { label: 'planned', value: 'planned' }
 ];
 
 export const metadataSyncStatusOptions: Array<{
   label: MetadataSyncStatus;
   value: MetadataSyncStatus;
 }> = [
-  { label: '운영 중', value: '운영 중' },
-  { label: '검토 필요', value: '검토 필요' },
-  { label: '초안', value: '초안' }
+  { label: 'live', value: 'live' },
+  { label: 'review', value: 'review' },
+  { label: 'draft', value: 'draft' }
 ];
 
 export const metadataStatusOptions: Array<{
   label: MetadataStatus;
   value: MetadataStatus;
 }> = [
-  { label: '활성', value: '활성' },
-  { label: '비활성', value: '비활성' }
+  { label: 'active', value: 'active' },
+  { label: 'inactive', value: 'inactive' }
 ];

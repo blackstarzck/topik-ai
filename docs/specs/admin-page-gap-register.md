@@ -366,13 +366,18 @@
 
 ### 4.7 Assessment
 
-- 대상 파일: `src/app/router/app-router.tsx`
+- 대상 파일: `src/features/assessment/pages/assessment-question-bank-page.tsx`, `src/features/assessment/api/assessment-question-bank-service.ts`, `src/features/assessment/model/assessment-question-bank-store.ts`, `src/app/router/app-router.tsx`
 - 현 상태
-  - 문제 은행, EPS-TOPIK 문제 은행, 레벨 테스트가 모두 Placeholder
+  - `TOPIK 쓰기 문제은행`은 mock service/store 기반 실페이지로 전환되었고, `EPS TOPIK`, `레벨 테스트`는 아직 Placeholder
 - 미확정/누락/오구현
-  - 문항 버전 관리, 배포 승인, 시험 회차/출제 정책, 정답 수정 이력, 결과 재채점 플로우가 전혀 확정되지 않았다.
+  - `TOPIK 쓰기 문제은행`
+    - 검수 상태와 운영 상태는 분리 구현됐지만, 최종 공개/숨김 정책과 승인 체계는 아직 확정되지 않았다.
+    - AI 재생성, 배치 재시도, 프롬프트 버전 비교, 검수 히스토리 diff는 아직 구현되지 않았다.
+    - EPS TOPIK / 레벨 테스트 세트 편성 화면에서 검수 완료 문항을 소비하는 계약은 후속 구현이 필요하다.
+  - `EPS TOPIK`, `레벨 테스트`
+    - 여전히 Placeholder이며, 편성/배점/발행/결과 정책의 화면 SoT와 데이터 source 경계가 미정이다.
 - 분류
-  - `미확정 + 누락`
+  - `부분 구현 + 미확정`
 
 ### 4.8 Content
 
@@ -437,6 +442,27 @@
 - 분류
   - `미확정 + 누락`
 
+#### 4.10.4 메타데이터 관리
+
+- 대상 파일
+  - `src/features/system/pages/system-metadata-page.tsx`
+  - `src/features/system/api/system-metadata-service.ts`
+  - `src/features/system/model/system-metadata-store.ts`
+- 현 상태
+  - 목록/상세 Drawer/등록·수정 Modal/활성·비활성 ConfirmAction/감사 로그 역추적까지 구현됨
+  - page-local seed 없이 service + zustand store 단일 SoT를 사용함
+  - `summaryFilter`, `searchField`, `keyword`, `startDate`, `endDate`, `selected` URL 복원 지원
+  - 2026-03-27 기준으로 화면 설명과 목록/상세 정보 구조를 `기능/사용처 중심 운영 설정 카탈로그` 관점으로 재정리함
+  - 목록은 `설정명`, 기능 카테고리 태그, 운영 값 preview 중심의 압축형 행으로 정리했고, 보조 텍스트는 상세 Drawer로 이동함
+  - 상세 Drawer `설정 구조`는 `설정 그룹 -> 운영 값 -> 추가` Tree와 드래그 정렬을 함께 지원함
+  - `지금 운영 중인 값` 테이블도 행 드래그로 정렬 순서를 바꾸고, `item_reordered` 이력과 감사 로그를 남김
+  - 운영 값 등록/수정 Modal은 현재 mock 데이터 기준으로 같은 설정 그룹 안의 코드/라벨 중복을 즉시 검사함
+- 미확정/누락/오구현
+  - 실제 API/DB 테이블(`system_metadata_groups`, `system_metadata_group_items`, `system_metadata_group_histories`)과 승인 절차는 아직 문서 후보 단계다.
+  - 메타 항목 조치를 그룹 단위 `Target Type = SystemMetadataGroup`으로 묶을지, item-level Target Type을 분리할지는 미확정이다.
+- 분류
+  - `미확정`: API/DB 계약, 승인 절차, item-level 감사 로그 세분화
+
 ## 5. 우선 정리 권장 순서
 
 1. 인코딩 깨짐과 전역 한글 라벨 복구
@@ -456,6 +482,13 @@
 
 ## 7. 최근 해소 이력
 
+- 2026-03-27 | `System > 메타데이터 관리` 관리 위치 계층 UX 보강 | `src/features/system/pages/system-metadata-page.tsx`, `src/features/system/model/system-metadata-store.ts`, `docs/specs/page-ia/system-metadata-page-ia.md`, `docs/specs/admin-page-tables.md`를 기준으로 목록의 `관리 위치`를 `route > 세부 위치` 형태로 읽히게 바꾸고, 상세 Drawer에는 Breadcrumb 기반 위치 카드와 `설정 그룹 -> 관리 위치 -> 운영 값 -> 사용자 영향` Tree를 추가했습니다. 메타데이터가 계층형 구조를 가진다는 점을 비개발자 운영자도 한눈에 이해할 수 있도록 위치 정보와 구조 정보를 같은 화면에서 검수하게 정리했습니다.
+- 2026-03-27 | `System > 메타데이터 관리` 목록 압축과 Tree 기반 운영 값 관리 보강 | `src/features/system/pages/system-metadata-page.tsx`, `src/features/system/model/system-metadata-store.ts`, `tests/e2e/system-metadata.spec.ts`, `docs/specs/page-ia/system-metadata-page-ia.md`, `docs/specs/admin-page-tables.md`를 기준으로 목록 행에서 그룹 ID/설명/관리 방식/총 개수 같은 보조 텍스트를 제거하고, 상세 Drawer `설정 구조`를 `설정 그룹 -> 운영 값 -> 추가` Tree로 단순화했습니다. 운영 값은 Tree와 테이블에서 모두 드래그 정렬할 수 있게 바꾸고, 순서 변경은 `item_reordered` 이력과 감사 로그로 추적하도록 정리했습니다.
+- 2026-03-27 | `System > 메타데이터 관리` mock 기준 운영 값 중복 체크 추가 | `src/features/system/pages/system-metadata-page.tsx`, `src/features/system/api/system-metadata-service.ts`, `tests/e2e/system-metadata.spec.ts`, `docs/specs/page-ia/system-metadata-page-ia.md`, `docs/specs/admin-page-tables.md`, `docs/specs/admin-data-contract.md`를 기준으로 운영 값 등록/수정 Modal에 같은 설정 그룹 안의 코드/라벨 중복 validator를 추가하고, 저장 시 service에서도 한 번 더 차단하도록 정리했습니다. 실제 DB unique 제약은 아직 없지만 mock 단계에서도 중복 데이터가 섞이지 않도록 입력 UX와 write path를 같이 맞췄습니다.
+- 2026-03-27 | `System > 메타데이터 관리` 첫 진입 운영자용 설명 레이어 보강 | `src/features/system/pages/system-metadata-page.tsx`, `docs/specs/page-ia/system-metadata-page-ia.md`, `docs/specs/admin-page-tables.md`를 기준으로 페이지 상단 3단계 사용 가이드, 섹션 caption, Tooltip 설명 아이콘, Modal 안내 Alert를 추가했습니다. 운영자가 이 페이지 목적과 사용 순서를 처음부터 이해하기 어렵던 문제를 설명 레이어로 보완했습니다.
+- 2026-03-27 | `System > 메타데이터 관리` 기능/사용처 중심 UX 재구성 | `src/features/system/pages/system-metadata-page.tsx`, `tests/e2e/system-metadata.spec.ts`, `docs/specs/page-ia/system-metadata-page-ia.md`, `docs/specs/admin-page-tables.md`를 기준으로 페이지 제목과 안내 문구를 `운영 설정 카탈로그` 관점으로 바꾸고, 목록 컬럼/상세 Drawer 섹션 순서를 `설정 -> 사용처 -> 운영 값 -> 영향 범위` 중심으로 재배치했습니다. 기존 메타데이터 레지스트리처럼 보이던 정보 구조를 운영자 업무 언어로 바꿔 비개발자도 페이지 역할을 바로 이해할 수 있게 정리했습니다.
+- 2026-03-27 | `System > 메타데이터 관리` 상세 Drawer/입력 Modal UI 일관성 복구 | `src/shared/ui/detail-drawer/detail-drawer.tsx`, `src/shared/ui/descriptions/admin-form-descriptions.tsx`, `src/features/system/pages/system-metadata-page.tsx`, `tests/e2e/system-metadata.spec.ts`를 기준으로 상세 Drawer 폭을 shared preset(기본 `760`)으로 되돌리고, Drawer 내부 테이블은 shared drawer table helper를 사용하도록 정리했습니다. 그룹/항목 Modal도 `Descriptions` 기반 shared 입력 wrapper로 치환해 page-local `Form.Item` 세로 나열 예외를 제거했고, e2e에는 Drawer 폭과 `Descriptions` 구조 검증을 추가했습니다.
+- 2026-03-27 | `System > 메타데이터 관리` 신규 화면 추가 | `src/features/system/pages/system-metadata-page.tsx`, `src/features/system/api/system-metadata-service.ts`, `src/features/system/model/system-metadata-store.ts`, `src/features/system/pages/system-audit-logs-page.tsx`, `tests/e2e/system-metadata.spec.ts`를 기준으로 운영 메타데이터 그룹/항목을 self-service로 관리하는 시스템 페이지를 추가했습니다. `검색 -> 상세 -> 조치 -> 감사 로그 확인` 흐름과 URL 복원, ConfirmAction, 감사 로그 역추적을 모두 같은 계약으로 맞췄고, 남은 쟁점은 실제 API/DB 계약과 item-level Target Type 세분화입니다.
 - 2026-03-26 | `Commerce > 쿠폰 관리` 쿠폰 노출 설정 기능 제거 및 계약 정리 | `src/features/commerce/pages/commerce-coupons-page.tsx`, `src/features/commerce/pages/commerce-coupon-template-create-page.tsx`, `src/features/commerce/api/coupons-service.ts`, `src/features/commerce/model/coupon-store.ts`, `src/features/commerce/model/coupon-template-types.ts`, `src/features/commerce/model/coupon-template-form-schema.ts`, `src/features/system/pages/system-audit-logs-page.tsx`, `src/shared/model/target-type-label.ts`를 기준으로 `쿠폰 노출 설정` 버튼/모달/저장 로직/감사 로그 타깃 라벨/라우팅을 모두 제거했습니다. 이에 따라 쿠폰 관리의 현재 계약은 `쿠폰`과 `정기 쿠폰 템플릿` 2개 엔티티만 유지하며, 관련 문서도 같은 기준으로 동기화했습니다.
 - 2026-03-26 | `Operation > 정책 관리` 액션 역할 분리와 히스토리 버전 게시 정리 | `src/features/operation/pages/operation-policies-page.tsx`, `src/features/operation/pages/operation-policy-create-page.tsx`, `src/features/operation/api/policies-service.ts`, `src/features/operation/model/policy-store.ts`, `src/features/operation/model/policy-types.ts`, `tests/e2e/operation-policies.spec.ts`를 기준으로 Drawer 푸터 액션을 `내용 수정`/`새 버전 등록`/`게시-숨김`/`삭제`로 재정의하고, 히스토리 행 우측 액션에 `본문 보기`, `이 버전 게시`를 분리했습니다. `정책 수정`이 곧 새 버전 생성으로 오해되던 흐름을 해소하고, 히스토리 `변경 사유`와 게시 전환 조치가 감사 로그 계약과 함께 추적되도록 정리했습니다.
 - 2026-03-26 | `Commerce > 쿠폰 관리` `정기 쿠폰 템플릿` 탭 상단 요약 카드 누락 해소 | `src/features/commerce/pages/commerce-coupons-page.tsx`를 기준으로 `정기 쿠폰 템플릿` 탭에도 `ListSummaryCards`를 상단에 노출하고, `전체 / 진행 중 / 발행 중지` 카드 클릭으로 같은 탭 안에서 상태 필터와 URL(`templateStatus`)이 함께 복원되도록 정리했습니다. 이로써 같은 쿠폰 관리 페이지 안에서 `쿠폰 목록`만 상단 카드가 있고 템플릿 탭은 바로 toolbar로 시작하던 구조 불일치를 해소했습니다.
@@ -468,3 +501,5 @@
 - 2026-03-26 | `Commerce > 쿠폰 관리` toolbar 구조 불일치 해소 | `src/shared/ui/search-bar/search-bar.tsx`에 검색 입력 없이 `summary/actions`만 사용하는 toolbar 행 옵션을 추가하고, `src/features/commerce/pages/commerce-coupons-page.tsx`와 관련 문서를 `Tabs -> SearchBar(summary + actions)` 공통 목록 패턴으로 다시 정렬했습니다. 이로써 쿠폰 관리만 따로 쓰던 `메인 탭 + 우측 액션 버튼` 전용 헤더/CSS를 제거하고 `Message > 발송 이력`과 같은 구조로 맞췄습니다.
 - 2026-03-26 | `Commerce > 쿠폰 관리` 정기 쿠폰 템플릿/노출 설정 placeholder 해소 | `src/features/commerce/pages/commerce-coupons-page.tsx`, `src/features/commerce/pages/commerce-coupon-template-create-page.tsx`, `src/features/commerce/api/coupons-service.ts`, `src/features/commerce/model/coupon-store.ts`를 기준으로 정기 쿠폰 템플릿 목록/상세/생성·수정/발행 중지·재개/삭제와 `쿠폰 노출 설정` modal 저장, 감사 로그 연결을 실제 구현 기준으로 승격했습니다.
 - 2026-03-25 | 전역 입력형 `Descriptions` 행 높이 불일치 해소 | `src/styles/global.css`에서 `admin-form-descriptions`, `message-template-form-descriptions`의 bordered row `th/td` 기본 높이를 `56px`로 통일하고 `vertical-align: middle`을 적용해, 텍스트 셀과 `Select`/`Switch` 셀이 섞여 있어도 라벨 셀 높이가 들쭉날쭉하지 않도록 보정했습니다.
+
+- 2026-03-27 | `System > 메타데이터 관리` Tree 삭제 affordance/운영 값 수정 Modal 삭제 버튼 해소 | `src/features/system/pages/system-metadata-page.tsx`, `src/features/system/model/system-metadata-store.ts`, `src/features/system/api/system-metadata-service.ts`, `tests/e2e/system-metadata.spec.ts`를 기준으로 `설정 구조` Tree 노드 hover 삭제와 `운영 값 수정` Modal 삭제 버튼을 같은 ConfirmAction 흐름으로 연결했습니다. 삭제 후 `item_deleted` 이력, 감사 로그, Tree/테이블 갱신이 함께 반영되도록 정리했습니다.

@@ -27,7 +27,7 @@ export const adminMenuLabels = {
   commercePoints: '포인트 관리',
   commerceStore: '이커머스 관리',
   assessment: '평가',
-  assessmentQuestionBank: '문제은행',
+  assessmentQuestionBank: 'TOPIK 쓰기 문제은행',
   assessmentEpsTopik: 'EPS TOPIK',
   assessmentLevelTests: '레벨 테스트',
   content: '콘텐츠',
@@ -41,6 +41,7 @@ export const adminMenuLabels = {
   system: '시스템',
   systemAdmins: '관리자 계정',
   systemPermissions: '권한 관리',
+  systemMetadata: '메타데이터 관리',
   systemAuditLogs: '감사 로그',
   systemLogs: '시스템 로그'
 } as const;

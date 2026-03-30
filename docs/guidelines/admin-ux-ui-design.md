@@ -7,6 +7,8 @@
 - 감사 추적 용어는 `감사 로그`로 통일합니다.
 - Users 상세 탭은 `프로필`, `활동`, `결제`, `커뮤니티`, `로그`, `관리자 메모` 6개를 고정합니다.
 - 사용자가 `~을 참고해서`, `~와 비슷하게`, `~처럼 맞춰서`처럼 레퍼런스 기반 표현을 쓰더라도, 명시적 예외 요구가 없는 한 기존 전역 공통 레이아웃/공용 컴포넌트/일관성 규칙을 우선합니다.
+- 페이지 IA와 개별 페이지 문서는 shared 레이아웃/스타일의 SoT가 아니며, 전역 공통 문서에 이미 있는 baseline을 다시 정의하지 않습니다.
+- `Drawer`/`Modal` 폭, gap, padding, `Descriptions` label width, 공통 버튼 크기처럼 shared 책임인 수치는 페이지 문서에 반복 기재하지 않고, 예외가 있을 때만 별도 `UI 예외` 섹션에 남깁니다.
 
 ## 라벨 언어 규칙
 
@@ -174,8 +176,9 @@
 - 위 레이아웃 규칙이 바뀌면 `docs/guidelines/admin-detail-drawer-guidelines.md`, `docs/specs/admin-page-tables.md`, 영향받는 `docs/specs/page-ia/*.md`를 같은 작업에서 갱신합니다.
 - 작성/편집 맥락이 강한 화면은 `Modal`보다 별도 편집 영역 또는 전용 페이지를 우선 사용합니다.
 - 정책 충돌이나 파괴적 액션은 `ConfirmAction` 또는 `Modal.confirm`으로 명시적으로 확인합니다.
-- 입력 Modal/Drawer/보조 패널의 항목형 UI는 일반 `Form.Item` 세로 나열보다 `Descriptions` 기반 입력 테이블을 기본값으로 사용합니다. `Form`은 검증과 상태 관리 용도로만 유지하고, 단일 본문 에디터 같은 캔버스형 입력만 예외로 둡니다.
+- 입력 Modal/Drawer/보조 패널의 항목형 UI는 일반 `Form.Item` 세로 나열보다 shared `AdminFormDescriptions` 또는 같은 `Descriptions` wrapper를 기본값으로 사용합니다. `Form`은 검증과 상태 관리 용도로만 유지하고, 단일 본문 에디터 같은 캔버스형 입력만 예외로 둡니다.
 - `Descriptions` 기반 입력 테이블에서 필수 검증이 있는 항목은 label(`th`) heading에 빨간 `*`를 붙여 필수 입력 여부를 시각적으로 고정합니다.
+- 입력형 `Descriptions` baseline을 페이지별 plain `Form.Item` 세로 나열로 되돌려서는 안 되며, 예외가 필요하면 페이지 IA `UI 예외` 섹션과 구현 메모에 이유/영향 범위를 함께 남깁니다.
 
 ## 상호작용 규칙
 

@@ -373,13 +373,13 @@ export default function OperationPoliciesPage(): JSX.Element {
 
     const successMessage =
       state.operationPolicySaved.mode === 'create'
-        ? '?뺤콉 ?깅줉 ?꾨즺'
+        ? '정책 등록 완료'
         : state.operationPolicySaved.mode === 'version'
           ? '정책 새 버전 등록 완료'
           : '정책 내용 수정 완료';
     const successReason =
       state.operationPolicySaved.mode === 'create'
-        ? '?좉퇋 ?뺤콉 ???珥덇린 ?곹깭: ?④?)'
+        ? '신규 정책 저장(초기 상태: 숨김)'
         : state.operationPolicySaved.mode === 'version'
           ? '기존 정책 기준 새 버전 등록(초기 상태: 숨김)'
           : '정책 메타/본문 내용 수정';
