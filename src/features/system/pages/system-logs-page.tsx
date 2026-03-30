@@ -1,16 +1,25 @@
-import { Card, Col, Row, Select, Statistic, Typography } from 'antd';
+import { Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
+import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
+import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
   SearchBar,
+  SearchBarDateRange,
   SearchBarDetailField
 } from '../../../shared/ui/search-bar/search-bar';
-import { matchesSearchField } from '../../../shared/ui/search-bar/search-bar-utils';
+import { useSearchBarDateDraft } from '../../../shared/ui/search-bar/use-search-bar-date-draft';
+import {
+  matchesSearchDateRange,
+  matchesSearchField,
+  parseSearchDate
+} from '../../../shared/ui/search-bar/search-bar-utils';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
+import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
 import { createTextSorter } from '../../../shared/ui/table/table-column-utils';
 import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
 
@@ -84,28 +93,23 @@ function getComponentRoute(component: string): string | null {
 export default function SystemLogsPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
   const searchField = searchParams.get('searchField') ?? 'all';
+  const startDate = parseSearchDate(searchParams.get('startDate'));
+  const endDate = parseSearchDate(searchParams.get('endDate'));
   const keyword = searchParams.get('keyword') ?? '';
-  const levelFilter = searchParams.get('level') ?? 'all';
-  const componentFilter = searchParams.get('component') ?? 'all';
+  const {
+    draftStartDate,
+    draftEndDate,
+    handleDraftDateChange,
+    handleDraftReset,
+    handleDetailOpenChange
+  } = useSearchBarDateDraft(startDate, endDate);
   const [selectedRow, setSelectedRow] = useState<SystemLogRow | null>(null);
-
-  const componentOptions = useMemo(
-    () =>
-      Array.from(new Set(rows.map((row) => row.component))).map((component) => ({
-        label: component,
-        value: component
-      })),
-    []
-  );
 
   const filteredRows = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
 
     return rows.filter((row) => {
-      if (levelFilter !== 'all' && row.level !== levelFilter) {
-        return false;
-      }
-      if (componentFilter !== 'all' && row.component !== componentFilter) {
+      if (!matchesSearchDateRange(row.createdAt, startDate, endDate)) {
         return false;
       }
       if (!normalizedKeyword) {
@@ -118,11 +122,17 @@ export default function SystemLogsPage(): JSX.Element {
         message: row.message
       });
     });
-  }, [componentFilter, keyword, levelFilter, searchField]);
+  }, [endDate, keyword, searchField, startDate]);
 
   const commitParams = useCallback(
-    (next: Partial<Record<'keyword' | 'searchField' | 'level' | 'component', string>>) => {
+    (
+      next: Partial<
+        Record<'keyword' | 'searchField' | 'startDate' | 'endDate', string>
+      >
+    ) => {
       const merged = new URLSearchParams(searchParams);
+      merged.delete('level');
+      merged.delete('component');
 
       Object.entries(next).forEach(([key, value]) => {
         if (!value || value === 'all') {
@@ -137,9 +147,38 @@ export default function SystemLogsPage(): JSX.Element {
     [searchParams, setSearchParams]
   );
 
+  const handleApplyDateRange = useCallback(() => {
+    commitParams({
+      startDate: draftStartDate,
+      endDate: draftEndDate,
+      keyword,
+      searchField
+    });
+  }, [commitParams, draftEndDate, draftStartDate, keyword, searchField]);
+
   const errorCount = rows.filter((row) => row.level === 'ERROR').length;
   const warningCount = rows.filter((row) => row.level === 'WARN').length;
   const componentCount = new Set(rows.map((row) => row.component)).size;
+  const systemLogSummaryCards = useMemo(
+    () => [
+      {
+        key: 'error-logs',
+        label: '오류 로그',
+        value: `${errorCount.toLocaleString()}건`
+      },
+      {
+        key: 'warning-logs',
+        label: '경고 로그',
+        value: `${warningCount.toLocaleString()}건`
+      },
+      {
+        key: 'affected-components',
+        label: '영향 컴포넌트',
+        value: `${componentCount.toLocaleString()}개`
+      }
+    ],
+    [componentCount, errorCount, warningCount]
+  );
 
   const columns = useMemo<TableColumnsType<SystemLogRow>>(
     () => [
@@ -150,7 +189,7 @@ export default function SystemLogsPage(): JSX.Element {
         sorter: createTextSorter((record) => record.id)
       },
       {
-        title: '레벨',
+        title: createStatusColumnTitle('레벨', ['INFO', 'WARN', 'ERROR']),
         dataIndex: 'level',
         width: 100,
         sorter: createTextSorter((record) => record.level),
@@ -196,90 +235,46 @@ export default function SystemLogsPage(): JSX.Element {
   return (
     <div>
       <PageTitle title="시스템 로그" />
+      <ListSummaryCards items={systemLogSummaryCards} />
 
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic title="오류 로그" value={errorCount} suffix="건" />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic title="경고 로그" value={warningCount} suffix="건" />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic title="영향 컴포넌트" value={componentCount} suffix="개" />
-          </Card>
-        </Col>
-      </Row>
-
-      <Card>
-        <SearchBar
-          searchField={searchField}
-          searchFieldOptions={[
-            { label: '전체', value: 'all' },
-            { label: '로그 ID', value: 'id' },
-            { label: '컴포넌트', value: 'component' },
-            { label: '메시지', value: 'message' }
-          ]}
-          keyword={keyword}
-          onSearchFieldChange={(value) =>
-            commitParams({ searchField: value, level: levelFilter, component: componentFilter })
-          }
-          onKeywordChange={(event) =>
-            commitParams({
-              keyword: event.target.value,
-              searchField,
-              level: levelFilter,
-              component: componentFilter
-            })
-          }
-          keywordPlaceholder="검색..."
-          detailTitle="상세 검색"
-          detailContent={
-            <>
-              <SearchBarDetailField label="레벨">
-                <Select
-                  value={levelFilter}
-                  options={[
-                    { label: '전체', value: 'all' },
-                    { label: 'INFO', value: 'INFO' },
-                    { label: 'WARN', value: 'WARN' },
-                    { label: 'ERROR', value: 'ERROR' }
-                  ]}
-                  onChange={(value) =>
-                    commitParams({
-                      level: value,
-                      keyword,
-                      searchField,
-                      component: componentFilter
-                    })
-                  }
+      <AdminListCard
+        toolbar={
+          <SearchBar
+            searchField={searchField}
+            searchFieldOptions={[
+              { label: '전체', value: 'all' },
+              { label: '로그 ID', value: 'id' },
+              { label: '컴포넌트', value: 'component' },
+              { label: '메시지', value: 'message' }
+            ]}
+            keyword={keyword}
+            onSearchFieldChange={(value) => commitParams({ searchField: value })}
+            onKeywordChange={(event) =>
+              commitParams({
+                keyword: event.target.value,
+                searchField
+              })
+            }
+            keywordPlaceholder="검색..."
+            detailTitle="상세 검색"
+            detailContent={
+              <SearchBarDetailField label="발생 시각">
+                <SearchBarDateRange
+                  startDate={draftStartDate}
+                  endDate={draftEndDate}
+                  onChange={handleDraftDateChange}
                 />
               </SearchBarDetailField>
-              <SearchBarDetailField label="컴포넌트">
-                <Select
-                  value={componentFilter}
-                  options={[{ label: '전체', value: 'all' }, ...componentOptions]}
-                  onChange={(value) =>
-                    commitParams({
-                      component: value,
-                      keyword,
-                      searchField,
-                      level: levelFilter
-                    })
-                  }
-                />
-              </SearchBarDetailField>
-            </>
-          }
-          onReset={() => setSearchParams({}, { replace: true })}
-          summary={
-            <Text type="secondary">총 {filteredRows.length.toLocaleString()}건</Text>
-          }
-        />
+            }
+            onApply={handleApplyDateRange}
+            onDetailOpenChange={handleDetailOpenChange}
+            onReset={handleDraftReset}
+            summary={
+              <Text type="secondary">총 {filteredRows.length.toLocaleString()}건</Text>
+            }
+          />
+        }
+      >
 
         <Paragraph type="secondary" style={{ marginBottom: 16 }}>
           컴포넌트 링크를 누르면 해당 오류가 주로 영향을 주는 운영 화면으로 이동합니다.{' '}
@@ -299,7 +294,7 @@ export default function SystemLogsPage(): JSX.Element {
             style: { cursor: 'pointer' }
           })}
         />
-      </Card>
+      </AdminListCard>
 
       <TableRowDetailModal
         open={Boolean(selectedRow)}

@@ -43,20 +43,19 @@ function getRole(role: RoleKey) {
   return roleCatalog.find((item) => item.key === role);
 }
 
-function formatNow(): string {
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const dd = String(now.getDate()).padStart(2, '0');
-  const hh = String(now.getHours()).padStart(2, '0');
-  const mi = String(now.getMinutes()).padStart(2, '0');
-  const ss = String(now.getSeconds()).padStart(2, '0');
+function formatNow(date = new Date()): string {
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const hh = String(date.getHours()).padStart(2, '0');
+  const mi = String(date.getMinutes()).padStart(2, '0');
+  const ss = String(date.getSeconds()).padStart(2, '0');
   return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
 }
 
 function normalizePermissionKeys(permissionKeys: string[]): string[] {
-  const valid = new Set(permissionCatalog.map((item) => item.key));
-  return [...new Set(permissionKeys.filter((key) => valid.has(key)))].sort();
+  const validKeys = new Set(permissionCatalog.map((item) => item.key));
+  return [...new Set(permissionKeys.filter((key) => validKeys.has(key)))].sort();
 }
 
 function buildAuditEvent(params: {
@@ -71,6 +70,7 @@ function buildAuditEvent(params: {
   sequence: number;
 }): PermissionAuditEvent {
   const createdAt = formatNow();
+
   return {
     id: `AL-PERM-${String(params.sequence).padStart(5, '0')}`,
     targetType: 'Admin',
@@ -89,53 +89,51 @@ function buildAuditEvent(params: {
 const initialAdmins: AdminPermissionAssignment[] = [
   {
     adminId: 'admin_park',
-    name: '박수미',
+    name: '박수민',
     status: '활성',
-    lastLoginAt: '2026-03-11 09:10',
+    lastLoginAt: '2026-03-27 09:10:00',
     role: 'SUPER_ADMIN',
-    permissions: normalizePermissionKeys(
-      getRole('SUPER_ADMIN')?.defaultPermissions ?? []
-    ),
-    updatedAt: '2026-03-11 09:10:00',
+    permissions: normalizePermissionKeys(getRole('SUPER_ADMIN')?.defaultPermissions ?? []),
+    updatedAt: '2026-03-27 09:10:00',
     updatedBy: 'system_seed'
   },
   {
     adminId: 'admin_kim',
-    name: '김혜영',
+    name: '김서영',
     status: '활성',
-    lastLoginAt: '2026-03-11 08:42',
+    lastLoginAt: '2026-03-27 08:42:00',
     role: 'OPS_ADMIN',
     permissions: normalizePermissionKeys(getRole('OPS_ADMIN')?.defaultPermissions ?? []),
-    updatedAt: '2026-03-11 08:42:00',
+    updatedAt: '2026-03-27 08:42:00',
     updatedBy: 'system_seed'
   },
   {
     adminId: 'admin_han',
     name: '한지우',
     status: '활성',
-    lastLoginAt: '2026-03-10 16:27',
+    lastLoginAt: '2026-03-26 16:27:00',
     role: 'CONTENT_MANAGER',
     permissions: normalizePermissionKeys(
       getRole('CONTENT_MANAGER')?.defaultPermissions ?? []
     ),
-    updatedAt: '2026-03-10 16:27:00',
+    updatedAt: '2026-03-26 16:27:00',
     updatedBy: 'system_seed'
   },
   {
     adminId: 'admin_choi',
-    name: '최민서',
+    name: '최다은',
     status: '활성',
-    lastLoginAt: '2026-03-10 11:18',
+    lastLoginAt: '2026-03-26 11:18:00',
     role: 'CS_MANAGER',
     permissions: normalizePermissionKeys(getRole('CS_MANAGER')?.defaultPermissions ?? []),
-    updatedAt: '2026-03-10 11:18:00',
+    updatedAt: '2026-03-26 11:18:00',
     updatedBy: 'system_seed'
   },
   {
     adminId: 'admin_temp',
     name: '임시계정',
     status: '비활성',
-    lastLoginAt: '2026-02-27 18:11',
+    lastLoginAt: '2026-02-27 18:11:00',
     role: 'READ_ONLY',
     permissions: normalizePermissionKeys(getRole('READ_ONLY')?.defaultPermissions ?? []),
     updatedAt: '2026-02-27 18:11:00',
@@ -149,29 +147,46 @@ const initialAudits: PermissionAuditEvent[] = [
     targetType: 'Admin',
     targetId: 'admin_han',
     action: '권한 수정',
-    reason: 'Assessment와 Content 전용 역할 부여',
+    reason:
+      'Assessment 중심 역할을 Content 관리자 템플릿으로 조정했습니다.',
     changedBy: 'admin_park',
     beforeRole: 'OPS_ADMIN',
     afterRole: 'CONTENT_MANAGER',
-    beforePermissions: normalizePermissionKeys(
-      getRole('OPS_ADMIN')?.defaultPermissions ?? []
-    ),
+    beforePermissions: normalizePermissionKeys(getRole('OPS_ADMIN')?.defaultPermissions ?? []),
     afterPermissions: normalizePermissionKeys(
       getRole('CONTENT_MANAGER')?.defaultPermissions ?? []
     ),
-    createdAt: '2026-03-10 16:30:00'
+    createdAt: '2026-03-26 16:30:00'
+  },
+  {
+    id: 'AL-PERM-00002',
+    targetType: 'Admin',
+    targetId: 'admin_kim',
+    action: '권한 부여',
+    reason:
+      '메타데이터 관리 페이지 오픈에 맞춰 system.metadata.manage 권한을 추가했습니다.',
+    changedBy: 'admin_park',
+    beforeRole: 'OPS_ADMIN',
+    afterRole: 'OPS_ADMIN',
+    beforePermissions: normalizePermissionKeys(
+      getRole('OPS_ADMIN')?.defaultPermissions.filter(
+        (permission) => permission !== 'system.metadata.manage'
+      ) ?? []
+    ),
+    afterPermissions: normalizePermissionKeys(getRole('OPS_ADMIN')?.defaultPermissions ?? []),
+    createdAt: '2026-03-27 09:00:00'
   }
 ];
 
 export const usePermissionStore = create<PermissionStore>((set, get) => ({
   currentAdminId: 'admin_park',
   admins: initialAdmins,
-  audits: initialAudits,
+  audits: [...initialAudits].sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
   setCurrentAdminId: (adminId) => {
-    const exists = get().admins.some((item) => item.adminId === adminId);
-    if (!exists) {
+    if (!get().admins.some((item) => item.adminId === adminId)) {
       return;
     }
+
     set({ currentAdminId: adminId });
   },
   grantPermissions: (payload) => {
@@ -180,7 +195,7 @@ export const usePermissionStore = create<PermissionStore>((set, get) => ({
       return null;
     }
 
-    const beforePermissions = target.permissions;
+    const beforePermissions = normalizePermissionKeys(target.permissions);
     const afterPermissions = normalizePermissionKeys([
       ...beforePermissions,
       ...payload.permissionKeys
@@ -193,7 +208,7 @@ export const usePermissionStore = create<PermissionStore>((set, get) => ({
     const audit = buildAuditEvent({
       adminId: payload.adminId,
       action: '권한 부여',
-      reason: payload.reason,
+      reason: payload.reason.trim(),
       changedBy: payload.changedBy,
       beforeRole: target.role,
       afterRole: target.role,
@@ -225,7 +240,7 @@ export const usePermissionStore = create<PermissionStore>((set, get) => ({
     }
 
     const beforeRole = target.role;
-    const beforePermissions = target.permissions;
+    const beforePermissions = normalizePermissionKeys(target.permissions);
     const afterRole = payload.role;
     const afterPermissions = normalizePermissionKeys(payload.permissionKeys);
 
@@ -239,7 +254,7 @@ export const usePermissionStore = create<PermissionStore>((set, get) => ({
     const audit = buildAuditEvent({
       adminId: payload.adminId,
       action: '권한 수정',
-      reason: payload.reason,
+      reason: payload.reason.trim(),
       changedBy: payload.changedBy,
       beforeRole,
       afterRole,
@@ -253,7 +268,7 @@ export const usePermissionStore = create<PermissionStore>((set, get) => ({
         item.adminId === payload.adminId
           ? {
               ...item,
-              role: payload.role,
+              role: afterRole,
               permissions: afterPermissions,
               updatedAt: audit.createdAt,
               updatedBy: payload.changedBy
@@ -271,7 +286,7 @@ export const usePermissionStore = create<PermissionStore>((set, get) => ({
       return null;
     }
 
-    const beforePermissions = target.permissions;
+    const beforePermissions = normalizePermissionKeys(target.permissions);
     const removeSet = new Set(payload.permissionKeys);
     const afterPermissions = beforePermissions.filter((key) => !removeSet.has(key));
 
@@ -282,7 +297,7 @@ export const usePermissionStore = create<PermissionStore>((set, get) => ({
     const audit = buildAuditEvent({
       adminId: payload.adminId,
       action: '권한 회수',
-      reason: payload.reason,
+      reason: payload.reason.trim(),
       changedBy: payload.changedBy,
       beforeRole: target.role,
       afterRole: target.role,

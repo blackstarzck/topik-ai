@@ -368,6 +368,7 @@ export default function AnalyticsOverviewPage(): JSX.Element {
           >
             <Table
               rowKey="key"
+              showSorterTooltip={false}
               size="small"
               pagination={false}
               columns={columns}

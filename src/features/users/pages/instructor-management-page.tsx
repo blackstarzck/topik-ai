@@ -4,10 +4,7 @@ import {
   Card,
   Col,
   Descriptions,
-  Drawer,
-  List,
   Row,
-  Select,
   Space,
   Tag,
   Typography,
@@ -24,24 +21,28 @@ import {
   useInstructorsQueryStore
 } from '../model/instructors-query-store';
 import {
+  instructorActivityStatuses,
   instructorCountries,
   instructorOrganizations
 } from '../model/types';
 import type {
-  InstructorActivityFilter,
+  InstructorAdminNote,
   InstructorActivityStatus,
-  InstructorCountryFilter,
+  InstructorCourseSummary,
   InstructorDetail,
-  InstructorOrganizationFilter,
+  InstructorMessageHistory,
   InstructorQuery,
   InstructorSearchField,
-  InstructorSort,
-  InstructorStatusFilter,
   InstructorStatus
 } from '../model/types';
 import type { AsyncState } from '../../../shared/model/async-state';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
+import {
+  DetailDrawer,
+  DetailDrawerBody,
+  DetailDrawerSection
+} from '../../../shared/ui/detail-drawer/detail-drawer';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
@@ -49,6 +50,7 @@ import {
   SearchBarDateRange,
   SearchBarDetailField
 } from '../../../shared/ui/search-bar/search-bar';
+import { useSearchBarDateDraft } from '../../../shared/ui/search-bar/use-search-bar-date-draft';
 import {
   matchesSearchDateRange,
   matchesSearchField,
@@ -57,51 +59,23 @@ import {
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import {
-  createColumnFilterProps,
+  createDrawerTableScroll,
+  DRAWER_TABLE_PAGINATION,
+  fixDrawerTableFirstColumn
+} from '../../../shared/ui/table/drawer-table';
+import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
+import {
+  createDefinedColumnFilterProps,
   createNumberSorter,
   createTextSorter
 } from '../../../shared/ui/table/table-column-utils';
 import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
+import { formatUserDisplayName } from '../../../shared/ui/user/user-reference';
 
 const { Paragraph, Text, Title } = Typography;
 
 const pageSizeOptions = ['20', '50', '100'];
-
-const statusOptions: { label: string; value: InstructorStatusFilter }[] = [
-  { label: '전체 상태', value: 'all' },
-  { label: '정상', value: '정상' },
-  { label: '정지', value: '정지' },
-  { label: '탈퇴', value: '탈퇴' }
-];
-
-const activityOptions: { label: string; value: InstructorActivityFilter }[] = [
-  { label: '전체 활동', value: 'all' },
-  { label: '활성', value: '활성' },
-  { label: '주의', value: '주의' },
-  { label: '휴면', value: '휴면' }
-];
-
-const countryOptions: { label: string; value: InstructorCountryFilter }[] = [
-  { label: '전체 국가', value: 'all' },
-  ...instructorCountries.map((country) => ({ label: country, value: country }))
-];
-
-const organizationOptions: {
-  label: string;
-  value: InstructorOrganizationFilter;
-}[] = [
-  { label: '전체 소속', value: 'all' },
-  ...instructorOrganizations.map((organization) => ({
-    label: organization,
-    value: organization
-  }))
-];
-
-const sortOptions: { label: string; value: InstructorSort }[] = [
-  { label: '최근 활동순', value: 'recent-activity' },
-  { label: '담당 학습자 많은 순', value: 'students-desc' },
-  { label: '담당 과정 많은 순', value: 'courses-desc' }
-];
+const instructorStatusFilterValues = ['정상', '정지', '탈퇴'] as const;
 
 const searchFieldOptions: { label: string; value: InstructorSearchField }[] = [
   { label: '전체', value: 'all' },
@@ -130,48 +104,6 @@ function parsePositiveNumber(value: string | null, fallback: number): number {
   return parsed;
 }
 
-function parseStatus(value: string | null): InstructorStatusFilter {
-  if (value === '정상' || value === '정지' || value === '탈퇴') {
-    return value;
-  }
-  return defaultInstructorQuery.status;
-}
-
-function parseActivityStatus(value: string | null): InstructorActivityFilter {
-  if (value === '활성' || value === '주의' || value === '휴면') {
-    return value;
-  }
-  return defaultInstructorQuery.activityStatus;
-}
-
-function parseCountry(value: string | null): InstructorCountryFilter {
-  if (value && instructorCountries.includes(value as InstructorCountryFilter)) {
-    return value as InstructorCountryFilter;
-  }
-  return defaultInstructorQuery.country;
-}
-
-function parseOrganization(value: string | null): InstructorOrganizationFilter {
-  if (
-    value &&
-    instructorOrganizations.includes(value as InstructorOrganizationFilter)
-  ) {
-    return value as InstructorOrganizationFilter;
-  }
-  return defaultInstructorQuery.organization;
-}
-
-function parseSort(value: string | null): InstructorSort {
-  if (
-    value === 'recent-activity' ||
-    value === 'students-desc' ||
-    value === 'courses-desc'
-  ) {
-    return value;
-  }
-  return defaultInstructorQuery.sort;
-}
-
 function parseSearchField(value: string | null): InstructorSearchField {
   if (
     value === 'id' ||
@@ -195,11 +127,11 @@ function parseInstructorQuery(searchParams: URLSearchParams): InstructorQuery {
       searchParams.get('pageSize'),
       defaultInstructorQuery.pageSize
     ),
-    sort: parseSort(searchParams.get('sort')),
-    status: parseStatus(searchParams.get('status')),
-    activityStatus: parseActivityStatus(searchParams.get('activityStatus')),
-    country: parseCountry(searchParams.get('country')),
-    organization: parseOrganization(searchParams.get('organization')),
+    sort: defaultInstructorQuery.sort,
+    status: defaultInstructorQuery.status,
+    activityStatus: defaultInstructorQuery.activityStatus,
+    country: defaultInstructorQuery.country,
+    organization: defaultInstructorQuery.organization,
     searchField: parseSearchField(searchParams.get('searchField')),
     startDate: parseSearchDate(searchParams.get('startDate')),
     endDate: parseSearchDate(searchParams.get('endDate')),
@@ -214,20 +146,6 @@ function buildInstructorSearchParams(
   const params = new URLSearchParams();
   params.set('page', String(query.page));
   params.set('pageSize', String(query.pageSize));
-  params.set('sort', query.sort);
-
-  if (query.status !== 'all') {
-    params.set('status', query.status);
-  }
-  if (query.activityStatus !== 'all') {
-    params.set('activityStatus', query.activityStatus);
-  }
-  if (query.country !== 'all') {
-    params.set('country', query.country);
-  }
-  if (query.organization !== 'all') {
-    params.set('organization', query.organization);
-  }
   if (query.searchField !== 'all') {
     params.set('searchField', query.searchField);
   }
@@ -254,21 +172,6 @@ function filterInstructors(
   const keyword = query.keyword.trim().toLowerCase();
 
   const filtered = instructors.filter((item) => {
-    if (query.status !== 'all' && item.status !== query.status) {
-      return false;
-    }
-    if (
-      query.activityStatus !== 'all' &&
-      item.activityStatus !== query.activityStatus
-    ) {
-      return false;
-    }
-    if (query.country !== 'all' && item.country !== query.country) {
-      return false;
-    }
-    if (query.organization !== 'all' && item.organization !== query.organization) {
-      return false;
-    }
     if (
       !matchesSearchDateRange(item.lastActivityAt, query.startDate, query.endDate)
     ) {
@@ -309,12 +212,42 @@ function renderActivityTag(status: InstructorActivityStatus): JSX.Element {
   return <Tag color={color}>{status}</Tag>;
 }
 
+function renderCourseStatusTag(
+  status: InstructorCourseSummary['status']
+): JSX.Element {
+  const color =
+    status === '진행 중' ? 'green' : status === '준비 중' ? 'gold' : 'default';
+
+  return <Tag color={color}>{status}</Tag>;
+}
+
+function renderMessageStatusTag(
+  status: InstructorMessageHistory['status']
+): JSX.Element {
+  const color =
+    status === '발송 완료' ? 'green' : status === '예약' ? 'cyan' : 'gold';
+
+  return <Tag color={color}>{status}</Tag>;
+}
+
+function summarizeNoteContent(content: string, maxLength = 52): string {
+  if (content.length <= maxLength) {
+    return content;
+  }
+
+  return `${content.slice(0, maxLength).trimEnd()}...`;
+}
+
 function buildSummaryItems(
   instructor: InstructorDetail
 ): DescriptionsProps['items'] {
   return [
     { key: 'id', label: '강사 ID', children: instructor.id },
-    { key: 'realName', label: '이름', children: instructor.realName },
+    {
+      key: 'realName',
+      label: '이름',
+      children: formatUserDisplayName(instructor.realName, instructor.id)
+    },
     { key: 'email', label: '이메일', children: instructor.email },
     { key: 'organization', label: '소속', children: instructor.organization },
     { key: 'country', label: '담당 국가', children: instructor.country },
@@ -375,6 +308,13 @@ export default function InstructorManagementPage(): JSX.Element {
   const [actionState, setActionState] = useState<ActionState>(null);
   const [notificationApi, notificationContextHolder] =
     notification.useNotification();
+  const {
+    draftStartDate,
+    draftEndDate,
+    handleDraftDateChange,
+    handleDraftReset,
+    handleDetailOpenChange
+  } = useSearchBarDateDraft(query.startDate, query.endDate);
 
   useEffect(() => {
     replaceQuery(parseInstructorQuery(searchParams));
@@ -416,7 +356,7 @@ export default function InstructorManagementPage(): JSX.Element {
     return () => {
       controller.abort();
     };
-  }, [reloadKey]);
+  }, [query.page, query.pageSize, reloadKey]);
 
   const commitQuery = useCallback(
     (next: Partial<InstructorQuery>) => {
@@ -535,13 +475,6 @@ export default function InstructorManagementPage(): JSX.Element {
     setReloadKey((prev) => prev + 1);
   }, []);
 
-  const handleReset = useCallback(() => {
-    replaceQuery(defaultInstructorQuery);
-    setSearchParams(buildInstructorSearchParams(defaultInstructorQuery), {
-      replace: true
-    });
-  }, [replaceQuery, setSearchParams]);
-
   const handleKeywordChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       commitQuery({ keyword: event.target.value, page: 1 });
@@ -559,41 +492,6 @@ export default function InstructorManagementPage(): JSX.Element {
     [commitQuery]
   );
 
-  const handleStatusChange = useCallback(
-    (value: InstructorStatusFilter) => {
-      commitQuery({ status: value, page: 1 });
-    },
-    [commitQuery]
-  );
-
-  const handleActivityChange = useCallback(
-    (value: InstructorActivityFilter) => {
-      commitQuery({ activityStatus: value, page: 1 });
-    },
-    [commitQuery]
-  );
-
-  const handleCountryChange = useCallback(
-    (value: InstructorCountryFilter) => {
-      commitQuery({ country: value, page: 1 });
-    },
-    [commitQuery]
-  );
-
-  const handleOrganizationChange = useCallback(
-    (value: InstructorOrganizationFilter) => {
-      commitQuery({ organization: value, page: 1 });
-    },
-    [commitQuery]
-  );
-
-  const handleSortChange = useCallback(
-    (value: InstructorSort) => {
-      commitQuery({ sort: value, page: 1 });
-    },
-    [commitQuery]
-  );
-
   const handleDateRangeChange = useCallback(
     (startDate: string, endDate: string) => {
       commitQuery({ startDate, endDate, page: 1 });
@@ -601,35 +499,36 @@ export default function InstructorManagementPage(): JSX.Element {
     [commitQuery]
   );
 
+  const handleApplyDateRange = useCallback(() => {
+    handleDateRangeChange(draftStartDate, draftEndDate);
+  }, [draftEndDate, draftStartDate, handleDateRangeChange]);
+
   const columns = useMemo<TableColumnsType<InstructorDetail>>(
     () => [
       {
         title: '강사 ID',
         dataIndex: 'id',
         width: 120,
-        ...createColumnFilterProps(visibleInstructors, (record) => record.id),
         sorter: createTextSorter((record) => record.id)
       },
       {
         title: '이름',
         dataIndex: 'realName',
         width: 110,
-        ...createColumnFilterProps(visibleInstructors, (record) => record.realName),
         sorter: createTextSorter((record) => record.realName)
       },
       {
         title: '이메일',
         dataIndex: 'email',
         width: 220,
-        ...createColumnFilterProps(visibleInstructors, (record) => record.email),
         sorter: createTextSorter((record) => record.email)
       },
       {
         title: '소속',
         dataIndex: 'organization',
         width: 180,
-        ...createColumnFilterProps(
-          visibleInstructors,
+        ...createDefinedColumnFilterProps(
+          instructorOrganizations,
           (record) => record.organization
         ),
         sorter: createTextSorter((record) => record.organization)
@@ -638,23 +537,26 @@ export default function InstructorManagementPage(): JSX.Element {
         title: '담당 국가',
         dataIndex: 'country',
         width: 120,
-        ...createColumnFilterProps(visibleInstructors, (record) => record.country),
+        ...createDefinedColumnFilterProps(instructorCountries, (record) => record.country),
         sorter: createTextSorter((record) => record.country)
       },
       {
-        title: '계정 상태',
+        title: createStatusColumnTitle('계정 상태', ['정상', '정지', '탈퇴']),
         dataIndex: 'status',
         width: 120,
-        ...createColumnFilterProps(visibleInstructors, (record) => record.status),
+        ...createDefinedColumnFilterProps(
+          instructorStatusFilterValues,
+          (record) => record.status
+        ),
         sorter: createTextSorter((record) => record.status),
         render: (status: InstructorStatus) => <StatusBadge status={status} />
       },
       {
-        title: '활동 상태',
+        title: createStatusColumnTitle('활동 상태', ['활성', '주의', '휴면']),
         dataIndex: 'activityStatus',
         width: 120,
-        ...createColumnFilterProps(
-          visibleInstructors,
+        ...createDefinedColumnFilterProps(
+          instructorActivityStatuses,
           (record) => record.activityStatus
         ),
         sorter: createTextSorter((record) => record.activityStatus),
@@ -664,10 +566,6 @@ export default function InstructorManagementPage(): JSX.Element {
         title: '담당 과정 수',
         dataIndex: 'courseCount',
         width: 130,
-        ...createColumnFilterProps(
-          visibleInstructors,
-          (record) => record.courseCount
-        ),
         sorter: createNumberSorter((record) => record.courseCount),
         render: (value: number) => `${value}개`
       },
@@ -675,10 +573,6 @@ export default function InstructorManagementPage(): JSX.Element {
         title: '담당 학습자 수',
         dataIndex: 'studentCount',
         width: 140,
-        ...createColumnFilterProps(
-          visibleInstructors,
-          (record) => record.studentCount
-        ),
         sorter: createNumberSorter((record) => record.studentCount),
         render: (value: number) => `${value.toLocaleString()}명`
       },
@@ -686,20 +580,12 @@ export default function InstructorManagementPage(): JSX.Element {
         title: '최근 활동',
         dataIndex: 'lastActivityAt',
         width: 160,
-        ...createColumnFilterProps(
-          visibleInstructors,
-          (record) => record.lastActivityAt
-        ),
         sorter: createTextSorter((record) => record.lastActivityAt)
       },
       {
         title: '최근 조치일',
         dataIndex: 'lastActionAt',
         width: 160,
-        ...createColumnFilterProps(
-          visibleInstructors,
-          (record) => record.lastActionAt
-        ),
         sorter: createTextSorter((record) => record.lastActionAt)
       },
       {
@@ -737,12 +623,124 @@ export default function InstructorManagementPage(): JSX.Element {
         )
       }
     ],
-    [
-      handleSuspend,
-      handleUnsuspend,
-      openMessageGroup,
-      visibleInstructors
-    ]
+    [handleSuspend, handleUnsuspend, openMessageGroup]
+  );
+
+  const courseColumns = useMemo<TableColumnsType<InstructorCourseSummary>>(
+    () =>
+      fixDrawerTableFirstColumn([
+        {
+          title: '과정 ID',
+          dataIndex: 'id',
+          width: 120,
+          sorter: createTextSorter((record) => record.id)
+        },
+        {
+          title: '과정명',
+          dataIndex: 'title',
+          ellipsis: true,
+          sorter: createTextSorter((record) => record.title)
+        },
+        {
+          title: '난이도',
+          dataIndex: 'level',
+          width: 120,
+          sorter: createTextSorter((record) => record.level)
+        },
+        {
+          title: '학습자 수',
+          dataIndex: 'studentCount',
+          width: 110,
+          sorter: createNumberSorter((record) => record.studentCount),
+          render: (value: number) => `${value.toLocaleString()}명`
+        },
+        {
+          title: createStatusColumnTitle('과정 상태', [
+            '진행 중',
+            '준비 중',
+            '종료 예정'
+          ]),
+          dataIndex: 'status',
+          width: 120,
+          sorter: createTextSorter((record) => record.status),
+          render: (status: InstructorCourseSummary['status']) =>
+            renderCourseStatusTag(status)
+        }
+      ]),
+    []
+  );
+
+  const messageColumns = useMemo<TableColumnsType<InstructorMessageHistory>>(
+    () =>
+      fixDrawerTableFirstColumn([
+        {
+          title: '발송 ID',
+          dataIndex: 'id',
+          width: 120,
+          sorter: createTextSorter((record) => record.id)
+        },
+        {
+          title: '채널',
+          dataIndex: 'channel',
+          width: 90,
+          sorter: createTextSorter((record) => record.channel)
+        },
+        {
+          title: '제목',
+          dataIndex: 'title',
+          ellipsis: true,
+          sorter: createTextSorter((record) => record.title)
+        },
+        {
+          title: '발송 시각',
+          dataIndex: 'sentAt',
+          width: 150,
+          sorter: createTextSorter((record) => record.sentAt)
+        },
+        {
+          title: createStatusColumnTitle('상태', ['발송 완료', '예약', '초안']),
+          dataIndex: 'status',
+          width: 120,
+          sorter: createTextSorter((record) => record.status),
+          render: (status: InstructorMessageHistory['status']) =>
+            renderMessageStatusTag(status)
+        }
+      ]),
+    []
+  );
+
+  const adminNoteColumns = useMemo<TableColumnsType<InstructorAdminNote>>(
+    () =>
+      fixDrawerTableFirstColumn([
+        {
+          title: '메모 ID',
+          dataIndex: 'id',
+          width: 120,
+          sorter: createTextSorter((record) => record.id)
+        },
+        {
+          title: '작성 관리자',
+          dataIndex: 'adminName',
+          width: 120,
+          sorter: createTextSorter((record) => record.adminName)
+        },
+        {
+          title: '작성일',
+          dataIndex: 'createdAt',
+          width: 150,
+          sorter: createTextSorter((record) => record.createdAt)
+        },
+        {
+          title: '메모 요약',
+          dataIndex: 'content',
+          ellipsis: true,
+          render: (content: string) => (
+            <Text type="secondary">{summarizeNoteContent(content)}</Text>
+          ),
+          sorter: createTextSorter((record) => record.content)
+        }
+      ]),
+    []
   );
 
   const handleRowClick = useCallback(
@@ -855,52 +853,17 @@ export default function InstructorManagementPage(): JSX.Element {
             keywordPlaceholder="검색..."
             detailTitle="상세 검색"
             detailContent={
-              <>
-                <SearchBarDetailField label="소속">
-                  <Select
-                    value={query.organization}
-                    options={organizationOptions}
-                    onChange={handleOrganizationChange}
-                  />
-                </SearchBarDetailField>
-                <SearchBarDetailField label="담당 국가">
-                  <Select
-                    value={query.country}
-                    options={countryOptions}
-                    onChange={handleCountryChange}
-                  />
-                </SearchBarDetailField>
-                <SearchBarDetailField label="계정 상태">
-                  <Select
-                    value={query.status}
-                    options={statusOptions}
-                    onChange={handleStatusChange}
-                  />
-                </SearchBarDetailField>
-                <SearchBarDetailField label="활동 상태">
-                  <Select
-                    value={query.activityStatus}
-                    options={activityOptions}
-                    onChange={handleActivityChange}
-                  />
-                </SearchBarDetailField>
-                <SearchBarDetailField label="정렬">
-                  <Select
-                    value={query.sort}
-                    options={sortOptions}
-                    onChange={handleSortChange}
-                  />
-                </SearchBarDetailField>
-                <SearchBarDetailField label="최근 활동일">
-                  <SearchBarDateRange
-                    startDate={query.startDate}
-                    endDate={query.endDate}
-                    onChange={handleDateRangeChange}
-                  />
-                </SearchBarDetailField>
-              </>
+              <SearchBarDetailField label="최근 활동일">
+                <SearchBarDateRange
+                  startDate={draftStartDate}
+                  endDate={draftEndDate}
+                  onChange={handleDraftDateChange}
+                />
+              </SearchBarDetailField>
             }
-            onReset={handleReset}
+            onApply={handleApplyDateRange}
+            onDetailOpenChange={handleDetailOpenChange}
+            onReset={handleDraftReset}
             summary={
               <Text type="secondary">
                 총 {visibleInstructors.length.toLocaleString()}건
@@ -919,10 +882,9 @@ export default function InstructorManagementPage(): JSX.Element {
           />
         ) : null}
 
-        <AdminDataTable<InstructorDetail>
-          rowKey="id"
-          virtual
-          columns={columns}
+      <AdminDataTable<InstructorDetail>
+        rowKey="id"
+        columns={columns}
           dataSource={visibleInstructors}
           onRow={handleRowClick}
           loading={instructorsState.status === 'pending'}
@@ -943,12 +905,12 @@ export default function InstructorManagementPage(): JSX.Element {
         />
       </AdminListCard>
 
-      <Drawer
+      <DetailDrawer
         open={Boolean(selectedInstructor)}
         title={selectedInstructor ? `강사 상세 · ${selectedInstructor.realName}` : '강사 상세'}
         width={640}
         onClose={closeDrawer}
-        extra={
+        headerMeta={
           selectedInstructor ? (
             <Space>
               <StatusBadge status={selectedInstructor.status} />
@@ -956,45 +918,44 @@ export default function InstructorManagementPage(): JSX.Element {
             </Space>
           ) : null
         }
-        footer={
+        footerStart={
           selectedInstructor ? (
-            <Space
-              style={{ width: '100%', justifyContent: 'space-between' }}
-              wrap
-            >
-              <AuditLogLink
-                targetType="Instructor"
-                targetId={selectedInstructor.id}
-              />
-              <Space wrap>
+            <AuditLogLink
+              targetType="Instructor"
+              targetId={selectedInstructor.id}
+            />
+          ) : null
+        }
+        footerEnd={
+          selectedInstructor ? (
+            <Space wrap>
+              <Button
+                onClick={() => openMessageGroup(selectedInstructor.messageGroupName)}
+              >
+                대상 그룹 보기
+              </Button>
+              {selectedInstructor.status === '정지' ? (
                 <Button
-                  onClick={() => openMessageGroup(selectedInstructor.messageGroupName)}
+                  type="primary"
+                  onClick={() => handleUnsuspend(selectedInstructor)}
                 >
-                  대상 그룹 보기
+                  정지 해제
                 </Button>
-                {selectedInstructor.status === '정지' ? (
-                  <Button
-                    type="primary"
-                    onClick={() => handleUnsuspend(selectedInstructor)}
-                  >
-                    정지 해제
-                  </Button>
-                ) : (
-                  <Button
-                    danger
-                    type="primary"
-                    onClick={() => handleSuspend(selectedInstructor)}
-                  >
-                    강사 정지
-                  </Button>
-                )}
-              </Space>
+              ) : (
+                <Button
+                  danger
+                  type="primary"
+                  onClick={() => handleSuspend(selectedInstructor)}
+                >
+                  강사 정지
+                </Button>
+              )}
             </Space>
           ) : null
         }
       >
         {selectedInstructor ? (
-          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+          <DetailDrawerBody>
             {drawerStatusAlert ? (
               <Alert
                 type={drawerStatusAlert.type}
@@ -1004,22 +965,16 @@ export default function InstructorManagementPage(): JSX.Element {
               />
             ) : null}
 
-            <div>
-              <Title level={5} style={{ marginTop: 0 }}>
-                기본 정보
-              </Title>
+            <DetailDrawerSection title="기본 정보">
               <Descriptions
                 bordered
                 size="small"
                 column={1}
                 items={buildSummaryItems(selectedInstructor)}
               />
-            </div>
+            </DetailDrawerSection>
 
-            <div>
-              <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
-                소개 및 전문 분야
-              </Title>
+            <DetailDrawerSection title="소개 및 전문 분야">
               <Paragraph style={{ marginBottom: 8 }}>
                 {selectedInstructor.introduction}
               </Paragraph>
@@ -1028,72 +983,55 @@ export default function InstructorManagementPage(): JSX.Element {
                   <Tag key={specialty}>{specialty}</Tag>
                 ))}
               </Space>
-            </div>
+            </DetailDrawerSection>
 
-            <div>
-              <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
-                담당 과정
-              </Title>
-              <List
-                bordered
+            <DetailDrawerSection title="담당 과정">
+              <AdminDataTable<InstructorCourseSummary>
+                rowKey="id"
+                columns={courseColumns}
                 dataSource={selectedInstructor.assignedCourses}
+                pagination={DRAWER_TABLE_PAGINATION}
+                scroll={createDrawerTableScroll(760)}
                 locale={{ emptyText: '배정된 과정이 없습니다.' }}
-                renderItem={(course) => (
-                  <List.Item key={course.id}>
-                    <Space direction="vertical" size={0}>
-                      <Text strong>{course.title}</Text>
-                      <Text type="secondary">
-                        {course.level} · 학습자 {course.studentCount}명 · {course.status}
-                      </Text>
-                    </Space>
-                  </List.Item>
-                )}
               />
-            </div>
+            </DetailDrawerSection>
 
-            <div>
-              <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
-                최근 메시지 발송 이력
-              </Title>
-              <List
-                bordered
+            <DetailDrawerSection title="최근 메시지 발송 이력">
+              <AdminDataTable<InstructorMessageHistory>
+                rowKey="id"
+                columns={messageColumns}
                 dataSource={selectedInstructor.recentMessages}
+                pagination={DRAWER_TABLE_PAGINATION}
+                scroll={createDrawerTableScroll(760)}
                 locale={{ emptyText: '최근 발송 이력이 없습니다.' }}
-                renderItem={(message) => (
-                  <List.Item key={message.id}>
-                    <Space direction="vertical" size={0}>
-                      <Text strong>{message.title}</Text>
-                      <Text type="secondary">
-                        {message.channel} · {message.sentAt} · {message.status}
-                      </Text>
-                    </Space>
-                  </List.Item>
-                )}
               />
-            </div>
+            </DetailDrawerSection>
 
-            <div>
-              <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
-                관리자 메모
-              </Title>
-              <List
-                bordered
+            <DetailDrawerSection title="관리자 메모">
+              <AdminDataTable<InstructorAdminNote>
+                rowKey="id"
+                columns={adminNoteColumns}
                 dataSource={selectedInstructor.adminNotes}
+                expandable={{
+                  fixed: 'left',
+                  expandRowByClick: true,
+                  expandedRowRender: (note) => (
+                    <Paragraph
+                      style={{ margin: 0, whiteSpace: 'pre-wrap' }}
+                    >
+                      {note.content}
+                    </Paragraph>
+                  ),
+                  rowExpandable: (note) => Boolean(note.content.trim())
+                }}
+                pagination={DRAWER_TABLE_PAGINATION}
+                scroll={createDrawerTableScroll(760)}
                 locale={{ emptyText: '등록된 관리자 메모가 없습니다.' }}
-                renderItem={(note) => (
-                  <List.Item key={note.id}>
-                    <Space direction="vertical" size={0}>
-                      <Text strong>{note.adminName}</Text>
-                      <Text>{note.content}</Text>
-                      <Text type="secondary">{note.createdAt}</Text>
-                    </Space>
-                  </List.Item>
-                )}
               />
-            </div>
-          </Space>
+            </DetailDrawerSection>
+          </DetailDrawerBody>
         ) : null}
-      </Drawer>
+      </DetailDrawer>
 
       {actionState ? (
         <ConfirmAction

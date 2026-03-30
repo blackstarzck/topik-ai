@@ -3,12 +3,12 @@ import {
   Button,
   Card,
   Checkbox,
+  Descriptions,
   Form,
   Input,
   Modal,
   Select,
   Space,
-  Table,
   Tag,
   Typography,
   message,
@@ -18,27 +18,28 @@ import type { TableColumnsType } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
-import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
-import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
+import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
+import { markRequiredDescriptionItems } from '../../../shared/ui/descriptions/description-label';
+import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
+import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
+import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
+import { createTextSorter } from '../../../shared/ui/table/table-column-utils';
+import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
 import { usePermissionStore } from '../model/permission-store';
 import { permissionCatalog, roleCatalog } from '../model/permission-types';
 import type {
   AdminPermissionAssignment,
   PermissionAuditEvent,
+  PermissionDefinition,
+  RoleDefinition,
   RoleKey
 } from '../model/permission-types';
 
-import { PageTitle } from '../../../shared/ui/page-title/page-title';
-import {
-  createColumnFilterProps,
-  createNumberSorter,
-  createTextSorter
-} from '../../../shared/ui/table/table-column-utils';
-import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
-
 const { Paragraph, Text, Title } = Typography;
+
+const CURRENT_ACTOR = 'admin_park';
 
 type PermissionModalMode = 'grant' | 'update' | 'revoke';
 
@@ -53,12 +54,12 @@ type PermissionFormValues = {
   reason: string;
 };
 
-type DetailModalState = {
-  title: string;
-  record: Record<string, unknown>;
-} | null;
-
-const CURRENT_ACTOR = 'admin_park';
+type DetailModalState =
+  | {
+      title: string;
+      record: Record<string, unknown>;
+    }
+  | null;
 
 function formatRiskTag(risk: string): JSX.Element {
   if (risk === 'high') {
@@ -79,14 +80,20 @@ export default function SystemPermissionsPage(): JSX.Element {
 
   const [modalState, setModalState] = useState<PermissionModalState>(null);
   const [detailModalState, setDetailModalState] = useState<DetailModalState>(null);
-  const [messageApi, contextHolder] = message.useMessage();
+  const [messageApi, messageContextHolder] = message.useMessage();
   const [notificationApi, notificationContextHolder] = notification.useNotification();
   const [form] = Form.useForm<PermissionFormValues>();
+
+  const permissionNameMap = useMemo(
+    () => Object.fromEntries(permissionCatalog.map((permission) => [permission.key, permission.name])),
+    []
+  );
 
   const selectedAdmin = useMemo(() => {
     if (!modalState) {
       return null;
     }
+
     return admins.find((item) => item.adminId === modalState.adminId) ?? null;
   }, [admins, modalState]);
 
@@ -109,17 +116,12 @@ export default function SystemPermissionsPage(): JSX.Element {
   );
 
   const watchedPermissionKeys = Form.useWatch('permissionKeys', form);
-  const selectedPermissionKeys = useMemo(
-    () => watchedPermissionKeys ?? [],
-    [watchedPermissionKeys]
-  );
-
   const selectedPermissionDescriptions = useMemo(
     () =>
       permissionCatalog.filter((permission) =>
-        selectedPermissionKeys.includes(permission.key)
+        (watchedPermissionKeys ?? []).includes(permission.key)
       ),
-    [selectedPermissionKeys]
+    [watchedPermissionKeys]
   );
 
   const openModal = useCallback(
@@ -161,26 +163,19 @@ export default function SystemPermissionsPage(): JSX.Element {
     form.resetFields();
   }, [form]);
 
+  const openDetailModal = useCallback((title: string, record: Record<string, unknown>) => {
+    setDetailModalState({ title, record });
+  }, []);
+
   const applyRoleDefaults = useCallback(() => {
     const role = form.getFieldValue('role') as RoleKey | undefined;
-    if (!role) {
+    const roleDefinition = roleCatalog.find((item) => item.key === role);
+    if (!roleDefinition) {
       return;
     }
-    const roleDef = roleCatalog.find((item) => item.key === role);
-    if (!roleDef) {
-      return;
-    }
-    form.setFieldValue('permissionKeys', roleDef.defaultPermissions);
+
+    form.setFieldValue('permissionKeys', roleDefinition.defaultPermissions);
   }, [form]);
-
-  const openDetailModal = useCallback(
-    (title: string, record: Record<string, unknown>) => {
-      setDetailModalState({ title, record });
-    },
-    []
-  );
-
-  const closeDetailModal = useCallback(() => setDetailModalState(null), []);
 
   const handleSubmit = useCallback(async () => {
     if (!modalState || !selectedAdmin) {
@@ -189,7 +184,6 @@ export default function SystemPermissionsPage(): JSX.Element {
 
     const values = await form.validateFields();
     const reason = values.reason.trim();
-
     let result: PermissionAuditEvent | null = null;
 
     if (modalState.mode === 'grant') {
@@ -199,9 +193,7 @@ export default function SystemPermissionsPage(): JSX.Element {
         reason,
         changedBy: CURRENT_ACTOR
       });
-    }
-
-    if (modalState.mode === 'update') {
+    } else if (modalState.mode === 'update') {
       result = updatePermissions({
         adminId: selectedAdmin.adminId,
         role: values.role,
@@ -209,9 +201,7 @@ export default function SystemPermissionsPage(): JSX.Element {
         reason,
         changedBy: CURRENT_ACTOR
       });
-    }
-
-    if (modalState.mode === 'revoke') {
+    } else {
       result = revokePermissions({
         adminId: selectedAdmin.adminId,
         permissionKeys: values.permissionKeys,
@@ -236,6 +226,7 @@ export default function SystemPermissionsPage(): JSX.Element {
         </Space>
       )
     });
+
     closeModal();
   }, [
     closeModal,
@@ -254,13 +245,12 @@ export default function SystemPermissionsPage(): JSX.Element {
       {
         title: '관리자 ID',
         dataIndex: 'adminId',
-        width: 150,
-        ...createColumnFilterProps(admins, (record) => record.adminId),
+        width: 140,
         sorter: createTextSorter((record) => record.adminId),
         render: (adminId: string) => (
           <Link
             className="table-navigation-link"
-            to="/system/admins"
+            to={`/system/audit-logs?targetType=Admin&targetId=${adminId}`}
             onClick={(event) => event.stopPropagation()}
           >
             {adminId}
@@ -271,47 +261,41 @@ export default function SystemPermissionsPage(): JSX.Element {
         title: '이름',
         dataIndex: 'name',
         width: 120,
-        ...createColumnFilterProps(admins, (record) => record.name),
         sorter: createTextSorter((record) => record.name)
       },
       {
         title: '상태',
         dataIndex: 'status',
-        width: 90,
-        ...createColumnFilterProps(admins, (record) => record.status),
+        width: 100,
         sorter: createTextSorter((record) => record.status),
         render: (status: string) => <StatusBadge status={status} />
       },
       {
         title: '역할',
         dataIndex: 'role',
-        width: 120,
-        ...createColumnFilterProps(admins, (record) => record.role),
-        sorter: createTextSorter((record) => record.role)
+        width: 150,
+        sorter: createTextSorter((record) => record.role),
+        render: (role: RoleKey) => roleCatalog.find((item) => item.key === role)?.name ?? role
       },
       {
         title: '권한 수',
+        key: 'permissionCount',
         width: 90,
-        align: 'right',
-        ...createColumnFilterProps(admins, (record) => record.permissions.length),
-        sorter: createNumberSorter((record) => record.permissions.length),
+        sorter: createTextSorter((record) => String(record.permissions.length)),
         render: (_, record) => record.permissions.length
       },
       {
         title: '최근 수정',
         dataIndex: 'updatedAt',
         width: 170,
-        ...createColumnFilterProps(admins, (record) => record.updatedAt),
         sorter: createTextSorter((record) => record.updatedAt)
       },
       {
         title: '액션',
         key: 'actions',
-        width: 140,
+        width: 120,
         onCell: () => ({
-          onClick: (event) => {
-            event.stopPropagation();
-          }
+          onClick: (event) => event.stopPropagation()
         }),
         render: (_, record) => (
           <TableActionMenu
@@ -337,83 +321,67 @@ export default function SystemPermissionsPage(): JSX.Element {
         )
       }
     ],
-    [admins, openModal]
+    [openModal]
   );
 
-  const roleColumns = useMemo<TableColumnsType<(typeof roleCatalog)[number]>>(
+  const roleColumns = useMemo<TableColumnsType<RoleDefinition>>(
     () => [
       {
         title: '역할 코드',
         dataIndex: 'key',
-        width: 140,
-        ...createColumnFilterProps(roleCatalog, (record) => record.key),
+        width: 150,
         sorter: createTextSorter((record) => record.key)
       },
       {
         title: '역할명',
         dataIndex: 'name',
-        width: 140,
-        ...createColumnFilterProps(roleCatalog, (record) => record.name),
+        width: 150,
         sorter: createTextSorter((record) => record.name)
       },
       {
         title: '설명',
         dataIndex: 'description',
-        ...createColumnFilterProps(roleCatalog, (record) => record.description),
         sorter: createTextSorter((record) => record.description)
       },
       {
         title: '기본 권한 수',
         width: 120,
-        align: 'right',
-        ...createColumnFilterProps(
-          roleCatalog,
-          (record) => record.defaultPermissions.length
-        ),
-        sorter: createNumberSorter((record) => record.defaultPermissions.length),
+        sorter: createTextSorter((record) => String(record.defaultPermissions.length)),
         render: (_, role) => role.defaultPermissions.length
       }
     ],
     []
   );
 
-  const permissionColumns = useMemo<TableColumnsType<(typeof permissionCatalog)[number]>>(
+  const permissionColumns = useMemo<TableColumnsType<PermissionDefinition>>(
     () => [
       {
         title: '권한 코드',
         dataIndex: 'key',
-        width: 220,
-        ...createColumnFilterProps(permissionCatalog, (record) => record.key),
+        width: 240,
         sorter: createTextSorter((record) => record.key)
       },
       {
         title: '권한명',
         dataIndex: 'name',
-        width: 160,
-        ...createColumnFilterProps(permissionCatalog, (record) => record.name),
+        width: 180,
         sorter: createTextSorter((record) => record.name)
       },
       {
         title: '모듈',
         dataIndex: 'module',
         width: 100,
-        ...createColumnFilterProps(permissionCatalog, (record) => record.module),
         sorter: createTextSorter((record) => record.module)
       },
       {
         title: '권한 범위 설명',
         dataIndex: 'scopeDescription',
-        ...createColumnFilterProps(
-          permissionCatalog,
-          (record) => record.scopeDescription
-        ),
         sorter: createTextSorter((record) => record.scopeDescription)
       },
       {
         title: '위험도',
         dataIndex: 'risk',
         width: 100,
-        ...createColumnFilterProps(permissionCatalog, (record) => record.risk),
         sorter: createTextSorter((record) => record.risk),
         render: (risk: string) => formatRiskTag(risk)
       }
@@ -421,27 +389,23 @@ export default function SystemPermissionsPage(): JSX.Element {
     []
   );
 
-  const recentAuditRows = useMemo(() => audits.slice(0, 8), [audits]);
-
-  const auditColumns = useMemo<TableColumnsType<(typeof recentAuditRows)[number]>>(
+  const auditColumns = useMemo<TableColumnsType<PermissionAuditEvent>>(
     () => [
       {
         title: '로그 ID',
         dataIndex: 'id',
         width: 130,
-        ...createColumnFilterProps(recentAuditRows, (record) => record.id),
         sorter: createTextSorter((record) => record.id)
       },
       {
         title: '대상',
         dataIndex: 'targetId',
         width: 140,
-        ...createColumnFilterProps(recentAuditRows, (record) => record.targetId),
         sorter: createTextSorter((record) => record.targetId),
         render: (targetId: string) => (
           <Link
             className="table-navigation-link"
-            to="/system/admins"
+            to={`/system/audit-logs?targetType=Admin&targetId=${targetId}`}
             onClick={(event) => event.stopPropagation()}
           >
             {targetId}
@@ -449,40 +413,37 @@ export default function SystemPermissionsPage(): JSX.Element {
         )
       },
       {
-        title: '액션',
+        title: '조치',
         dataIndex: 'action',
-        width: 100,
-        ...createColumnFilterProps(recentAuditRows, (record) => record.action),
+        width: 110,
         sorter: createTextSorter((record) => record.action)
       },
       {
-        title: '사유',
+        title: '사유/근거',
         dataIndex: 'reason',
-        ...createColumnFilterProps(recentAuditRows, (record) => record.reason),
         sorter: createTextSorter((record) => record.reason)
       },
       {
         title: '수행자',
         dataIndex: 'changedBy',
         width: 120,
-        ...createColumnFilterProps(recentAuditRows, (record) => record.changedBy),
         sorter: createTextSorter((record) => record.changedBy)
       },
       {
         title: '시각',
         dataIndex: 'createdAt',
         width: 170,
-        ...createColumnFilterProps(recentAuditRows, (record) => record.createdAt),
         sorter: createTextSorter((record) => record.createdAt)
       }
     ],
-    [recentAuditRows]
+    []
   );
 
   const modalTitle = useMemo(() => {
     if (!modalState || !selectedAdmin) {
       return '';
     }
+
     if (modalState.mode === 'grant') {
       return `권한 부여 - ${selectedAdmin.adminId}`;
     }
@@ -492,9 +453,11 @@ export default function SystemPermissionsPage(): JSX.Element {
     return `권한 회수 - ${selectedAdmin.adminId}`;
   }, [modalState, selectedAdmin]);
 
+  const recentAuditRows = useMemo(() => audits.slice(0, 8), [audits]);
+
   return (
     <div>
-      {contextHolder}
+      {messageContextHolder}
       {notificationContextHolder}
       <PageTitle title="권한 관리" />
 
@@ -502,15 +465,22 @@ export default function SystemPermissionsPage(): JSX.Element {
         <Title level={5} style={{ marginTop: 0 }}>
           관리자별 권한 부여 상태
         </Title>
-        <Table
+        <Paragraph type="secondary">
+          운영 흐름은 관리자 조회 - 권한 조치 - 감사 로그 확인 순서를 기본으로 유지합니다.
+        </Paragraph>
+        <AdminDataTable
           rowKey="adminId"
-          size="small"
           pagination={false}
           scroll={{ x: 1200 }}
           columns={adminColumns}
           dataSource={admins}
           onRow={(record) => ({
-            onClick: () => openDetailModal('관리자 권한 상세 (더미)', record),
+            onClick: () =>
+              openDetailModal('관리자 권한 상세', {
+                ...record,
+                roleName: roleCatalog.find((role) => role.key === record.role)?.name ?? record.role,
+                permissionNames: record.permissions.map((permission) => permissionNameMap[permission])
+              }),
             style: { cursor: 'pointer' }
           })}
         />
@@ -520,14 +490,39 @@ export default function SystemPermissionsPage(): JSX.Element {
         <Title level={5} style={{ marginTop: 0 }}>
           역할 템플릿
         </Title>
-        <Table
+        <AdminDataTable<RoleDefinition>
           rowKey="key"
-          size="small"
           pagination={false}
           columns={roleColumns}
           dataSource={roleCatalog}
           onRow={(record) => ({
-            onClick: () => openDetailModal('역할 템플릿 상세 (더미)', record),
+            onClick: () =>
+              openDetailModal('역할 템플릿 상세', {
+                ...record,
+                defaultPermissionNames: record.defaultPermissions.map(
+                  (permission) => permissionNameMap[permission]
+                )
+              }),
+            style: { cursor: 'pointer' }
+          })}
+        />
+      </Card>
+
+      <Card style={{ marginBottom: 12 }}>
+        <Title level={5} style={{ marginTop: 0 }}>
+          권한 정의
+        </Title>
+        <Paragraph type="secondary">
+          권한 정의는 메뉴 노출, 조치 가능 여부, 감사 로그 검증 경로를 함께 관리합니다.
+        </Paragraph>
+        <AdminDataTable<PermissionDefinition>
+          rowKey="key"
+          pagination={false}
+          scroll={{ x: 1400 }}
+          columns={permissionColumns}
+          dataSource={permissionCatalog}
+          onRow={(record) => ({
+            onClick: () => openDetailModal('권한 정의 상세', record),
             style: { cursor: 'pointer' }
           })}
         />
@@ -535,38 +530,24 @@ export default function SystemPermissionsPage(): JSX.Element {
 
       <Card>
         <Title level={5} style={{ marginTop: 0 }}>
-          권한별 범위 설명
-        </Title>
-        <Paragraph type="secondary">
-          각 권한마다 접근 가능한 화면과 액션 범위를 확인하고, 부여 시 운영 영향을
-          검토하세요.
-        </Paragraph>
-        <Table
-          rowKey="key"
-          size="small"
-          pagination={false}
-          scroll={{ x: 1400 }}
-          columns={permissionColumns}
-          dataSource={permissionCatalog}
-          onRow={(record) => ({
-            onClick: () => openDetailModal('권한 정의 상세 (더미)', record),
-            style: { cursor: 'pointer' }
-          })}
-        />
-      </Card>
-
-      <Card style={{ marginTop: 12 }}>
-        <Title level={5} style={{ marginTop: 0 }}>
           최근 권한 변경 이력
         </Title>
-        <Table
+        <AdminDataTable<PermissionAuditEvent>
           rowKey="id"
-          size="small"
           pagination={false}
           columns={auditColumns}
           dataSource={recentAuditRows}
           onRow={(record) => ({
-            onClick: () => openDetailModal('권한 변경 이력 상세 (더미)', record),
+            onClick: () =>
+              openDetailModal('권한 변경 이력 상세', {
+                ...record,
+                beforePermissionNames: record.beforePermissions.map(
+                  (permission) => permissionNameMap[permission]
+                ),
+                afterPermissionNames: record.afterPermissions.map(
+                  (permission) => permissionNameMap[permission]
+                )
+              }),
             style: { cursor: 'pointer' }
           })}
         />
@@ -576,7 +557,7 @@ export default function SystemPermissionsPage(): JSX.Element {
         open={Boolean(detailModalState)}
         title={detailModalState?.title ?? ''}
         record={detailModalState?.record ?? null}
-        onClose={closeDetailModal}
+        onClose={() => setDetailModalState(null)}
       />
 
       <Modal
@@ -591,13 +572,13 @@ export default function SystemPermissionsPage(): JSX.Element {
         }
         cancelText="취소"
         onCancel={closeModal}
-        onOk={handleSubmit}
+        onOk={() => void handleSubmit()}
         okButtonProps={{ danger: modalState?.mode === 'revoke' }}
         width={760}
-        destroyOnClose
+        destroyOnHidden
       >
         {selectedAdmin ? (
-          <Form form={form} layout="vertical">
+          <Form<PermissionFormValues> form={form}>
             <Alert
               type={modalState?.mode === 'revoke' ? 'warning' : 'info'}
               showIcon
@@ -612,77 +593,119 @@ export default function SystemPermissionsPage(): JSX.Element {
               description={`대상 유형: ${getTargetTypeLabel('Admin')} / 대상 ID: ${selectedAdmin.adminId}`}
             />
 
-            <Form.Item label="대상 관리자">
-              <Text>
-                {selectedAdmin.adminId} / {selectedAdmin.name}
-              </Text>
-            </Form.Item>
-
-            <Form.Item
-              label="역할"
-              name="role"
-              rules={[{ required: true, message: '역할을 선택하세요.' }]}
-            >
-              <Select
-                options={roleOptions}
-                disabled={modalState?.mode === 'grant' || modalState?.mode === 'revoke'}
-              />
-            </Form.Item>
-
-            {modalState?.mode === 'update' ? (
-              <Form.Item>
-                <Button onClick={applyRoleDefaults}>선택한 역할의 기본 권한 불러오기</Button>
-              </Form.Item>
-            ) : null}
-
-            <Form.Item
-              label={
-                modalState?.mode === 'grant'
-                  ? '부여할 권한'
-                  : modalState?.mode === 'update'
-                    ? '권한 목록'
-                    : '회수할 권한'
-              }
-              name="permissionKeys"
-              rules={[{ required: true, message: '권한을 1개 이상 선택하세요.' }]}
-            >
-              <Checkbox.Group
-                options={
-                  modalState?.mode === 'grant'
-                    ? permissionOptions.filter(
-                        (option) => !selectedAdmin.permissions.includes(option.value)
-                      )
-                    : modalState?.mode === 'revoke'
-                      ? permissionOptions.filter((option) =>
-                          selectedAdmin.permissions.includes(option.value)
-                        )
-                      : permissionOptions
-                }
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(2, minmax(260px, 1fr))',
-                  gap: 8
-                }}
-              />
-            </Form.Item>
-
-            <Form.Item
-              label="사유/근거"
-              name="reason"
-              rules={[{ required: true, message: '변경 사유를 입력하세요.' }]}
-            >
-              <Typography.Paragraph style={{ marginBottom: 8 }} type="secondary">
-                권한 변경 내역은 감사 로그에 기록됩니다.
-              </Typography.Paragraph>
-              <Input.TextArea rows={4} placeholder="권한 변경 사유를 입력하세요." />
-            </Form.Item>
+            <Descriptions
+              bordered
+              size="small"
+              column={1}
+              className="admin-form-descriptions"
+              items={markRequiredDescriptionItems(
+                [
+                  {
+                    key: 'admin',
+                    label: '대상 관리자',
+                    children: (
+                      <Text>
+                        {selectedAdmin.adminId} / {selectedAdmin.name}
+                      </Text>
+                    )
+                  },
+                  {
+                    key: 'role',
+                    label: '역할',
+                    children: (
+                      <Form.Item
+                        name="role"
+                        rules={[{ required: true, message: '역할을 선택해 주세요.' }]}
+                      >
+                        <Select
+                          options={roleOptions}
+                          disabled={modalState?.mode === 'grant' || modalState?.mode === 'revoke'}
+                        />
+                      </Form.Item>
+                    )
+                  },
+                  ...(modalState?.mode === 'update'
+                    ? [
+                        {
+                          key: 'roleDefaults',
+                          label: '기본 권한',
+                          children: (
+                            <Button onClick={applyRoleDefaults}>
+                              선택한 역할의 기본 권한 불러오기
+                            </Button>
+                          )
+                        }
+                      ]
+                    : []),
+                  {
+                    key: 'permissionKeys',
+                    label:
+                      modalState?.mode === 'grant'
+                        ? '부여할 권한'
+                        : modalState?.mode === 'update'
+                          ? '권한 목록'
+                          : '회수할 권한',
+                    children: (
+                      <Form.Item
+                        name="permissionKeys"
+                        rules={[{ required: true, message: '권한을 1개 이상 선택해 주세요.' }]}
+                      >
+                        <Checkbox.Group
+                          options={
+                            modalState?.mode === 'grant'
+                              ? permissionOptions.filter(
+                                  (option) => !selectedAdmin.permissions.includes(option.value)
+                                )
+                              : modalState?.mode === 'revoke'
+                                ? permissionOptions.filter((option) =>
+                                    selectedAdmin.permissions.includes(option.value)
+                                  )
+                                : permissionOptions
+                          }
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(2, minmax(260px, 1fr))',
+                            gap: 8
+                          }}
+                        />
+                      </Form.Item>
+                    )
+                  },
+                  {
+                    key: 'reason',
+                    label: '사유/근거',
+                    children: (
+                      <Form.Item
+                        name="reason"
+                        rules={[{ required: true, message: '변경 사유를 입력해 주세요.' }]}
+                      >
+                        <div>
+                          <Paragraph style={{ marginBottom: 8 }} type="secondary">
+                            권한 변경 내역은 감사 로그에 기록됩니다.
+                          </Paragraph>
+                          <Input.TextArea
+                            rows={4}
+                            placeholder="권한 변경 사유를 입력해 주세요."
+                          />
+                        </div>
+                      </Form.Item>
+                    )
+                  }
+                ],
+                ['role', 'permissionKeys', 'reason']
+              )}
+            />
 
             {selectedPermissionDescriptions.length > 0 ? (
-              <Card size="small" title="선택 권한 범위 미리보기">
+              <Card
+                size="small"
+                title="선택 권한 범위 미리보기"
+                style={{ marginTop: 12 }}
+              >
                 <Space direction="vertical">
                   {selectedPermissionDescriptions.map((permission) => (
                     <Text key={permission.key}>
-                      - {permission.name}: {permission.scopeDescription}
+                      {permission.name}: {permission.scopeDescription}
                     </Text>
                   ))}
                 </Space>

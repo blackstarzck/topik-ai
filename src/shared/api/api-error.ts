@@ -1,4 +1,4 @@
-import axios from 'axios';
+﻿import axios from 'axios';
 
 export type ApiErrorCode =
   | 'NETWORK_ERROR'
@@ -93,7 +93,7 @@ export function toAppApiError(error: unknown): AppApiError {
     }
 
     if (!error.response) {
-      return new AppApiError('네트워크 연결 상태를 확인해주세요.', {
+      return new AppApiError('네트워크 연결 상태를 확인해 주세요.', {
         code: 'NETWORK_ERROR',
         retryable: true
       });
@@ -126,3 +126,4 @@ export function toAppApiError(error: unknown): AppApiError {
     retryable: false
   });
 }
+

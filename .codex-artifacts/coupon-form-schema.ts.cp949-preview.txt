@@ -1,0 +1,356 @@
+?import type { SelectProps } from 'antd';
+
+import type {
+  CommerceCoupon,
+  CouponApplicableScope,
+  CouponAudience,
+  CouponAutoIssueTriggerType,
+  CouponBenefitType,
+  CouponCodeGenerationMode,
+  CouponIssueTargetType,
+  CouponKind,
+  CouponValidityMode
+} from './coupon-types';
+import {
+  getCouponApplicableScopeLabel,
+  getCouponAudienceLabel,
+  getCouponAutoIssueTriggerLabel,
+  getCouponBenefitTypeLabel,
+  getCouponIssueTargetTypeLabel,
+  getCouponKindLabel,
+  getCouponValidityModeLabel
+} from './coupon-types';
+
+type CouponDraftDefaults = Pick<
+  CommerceCoupon,
+  | 'couponKind'
+  | 'couponName'
+  | 'issueTargetType'
+  | 'targetGroupIds'
+  | 'targetGroupNames'
+  | 'targetUserIds'
+  | 'autoIssueTriggerType'
+  | 'codeGenerationMode'
+  | 'couponCode'
+  | 'codeCount'
+  | 'audience'
+  | 'benefitType'
+  | 'benefitValue'
+  | 'minOrderAmount'
+  | 'maxDiscountAmount'
+  | 'applicableScope'
+  | 'isStackable'
+  | 'isSecretCoupon'
+  | 'issueLimitMode'
+  | 'issueLimit'
+  | 'downloadLimitMode'
+  | 'downloadLimit'
+  | 'usageLimitMode'
+  | 'usageLimit'
+  | 'validityMode'
+  | 'validFrom'
+  | 'validUntil'
+  | 'expireAfterDays'
+  | 'linkedMessageTemplateId'
+  | 'linkedMessageTemplateName'
+  | 'linkedCrmCampaignId'
+  | 'linkedCrmCampaignName'
+  | 'linkedEventId'
+  | 'linkedEventName'
+  | 'adminMemo'
+  | 'issueAlert'
+  | 'expireAlert'
+>;
+
+export const couponKindCardItems: Array<{
+  value: CouponKind;
+  title: string;
+  description: string;
+}> = [
+  {
+    value: 'customerDownload',
+    title: '고객 ?�운로드',
+    description: '?�크�?링크, ?�바구니 ?�도, 쿠폰?�처??링크 기반 ?�운로드 쿠폰??만듭?�다.'
+  },
+  {
+    value: 'autoIssue',
+    title: '?�동 발행',
+    description: 'ȸ���??? �?주문 �Ϸ�, ?�핑 ��� �?�? ?�일 ?�리거에 ?�라 ?�동 발행?�니??'
+  },
+  {
+    value: 'couponCode',
+    title: '쿠폰 코드 ?�성',
+    description: '?�일 ?�는 ?�러 개의 쿠폰 코드�??�성?�고 ���� ?�계 ?�력?�으�?�?�니??'
+  },
+  {
+    value: 'manualIssue',
+    title: '�???발행',
+    description: '?�정 그룹 ?�는 ?�정 ȸ��?�게 ?�동 발행?�고 ?�속 �˸�???�결?�니??'
+  }
+];
+
+export function getCouponKindOptions(): SelectProps['options'] {
+  return couponKindCardItems.map((item) => ({
+    label: getCouponKindLabel(item.value),
+    value: item.value
+  }));
+}
+
+export function getCouponIssueTargetOptions(): SelectProps['options'] {
+  return (['allMembers', 'specificGroup', 'specificMembers'] as const).map(
+    (value) => ({
+      label: getCouponIssueTargetTypeLabel(value),
+      value
+    })
+  );
+}
+
+export function getCouponAutoIssueTriggerOptions(): SelectProps['options'] {
+  return (
+    [
+      'firstSignup',
+      'firstOrderComplete',
+      'shoppingGradeChange',
+      'birthday'
+    ] as const
+  ).map((value) => ({
+    label: getCouponAutoIssueTriggerLabel(value),
+    value
+  }));
+}
+
+export function getCouponBenefitTypeOptions(): SelectProps['options'] {
+  return (
+    ['amountDiscount', 'rateDiscount', 'freeShipping', 'fixedPrice'] as const
+  ).map((value) => ({
+    label: getCouponBenefitTypeLabel(value),
+    value
+  }));
+}
+
+export function getCouponScopeOptions(): SelectProps['options'] {
+  return (
+    ['allProducts', 'specificCategory', 'specificProduct'] as const
+  ).map((value) => ({
+    label: getCouponApplicableScopeLabel(value),
+    value
+  }));
+}
+
+export function getCouponCodeGenerationOptions(): SelectProps['options'] {
+  return (
+    ['single', 'bulk'] as const
+  ).map((value) => ({
+    label: value === 'single' ? '?�일 ?�성' : '?�러 �??�성',
+    value
+  }));
+}
+
+export function getCouponAudienceOptions(): SelectProps['options'] {
+  return (['memberOnly', 'memberAndGuest'] as const).map((value) => ({
+    label: getCouponAudienceLabel(value),
+    value
+  }));
+}
+
+export function getCouponValidityModeOptions(): SelectProps['options'] {
+  return (['fixedDate', 'afterIssued', 'unlimited'] as const).map((value) => ({
+    label: getCouponValidityModeLabel(value),
+    value
+  }));
+}
+
+export function createCouponDraftDefaults(
+  couponKind: CouponKind
+): CouponDraftDefaults {
+  const sharedDefaults: CouponDraftDefaults = {
+    couponKind,
+    couponName: '',
+    issueTargetType: couponKind === 'couponCode' ? null : 'allMembers',
+    targetGroupIds: [],
+    targetGroupNames: [],
+    targetUserIds: [],
+    autoIssueTriggerType: couponKind === 'autoIssue' ? 'firstSignup' : null,
+    codeGenerationMode: couponKind === 'couponCode' ? 'single' : null,
+    couponCode: '',
+    codeCount: couponKind === 'couponCode' ? 1 : null,
+    audience: couponKind === 'couponCode' ? 'memberOnly' : null,
+    benefitType: 'amountDiscount',
+    benefitValue: 1000,
+    minOrderAmount: 5000,
+    maxDiscountAmount: 10000,
+    applicableScope: 'allProducts',
+    isStackable: false,
+    isSecretCoupon: couponKind === 'customerDownload',
+    issueLimitMode: 'unlimited',
+    issueLimit: null,
+    downloadLimitMode: couponKind === 'customerDownload' ? 'unlimited' : 'unlimited',
+    downloadLimit: null,
+    usageLimitMode: 'unlimited',
+    usageLimit: null,
+    validityMode:
+      couponKind === 'customerDownload' || couponKind === 'autoIssue'
+        ? 'afterIssued'
+        : 'fixedDate',
+    validFrom: '2026-03-25',
+    validUntil: '2026-04-30',
+    expireAfterDays:
+      couponKind === 'customerDownload' || couponKind === 'autoIssue' ? 30 : null,
+    linkedMessageTemplateId: '',
+    linkedMessageTemplateName: '',
+    linkedCrmCampaignId: '',
+    linkedCrmCampaignName: '',
+    linkedEventId: '',
+    linkedEventName: '',
+    adminMemo: '',
+    issueAlert: {
+      enabled: couponKind !== 'couponCode',
+      channel: 'alimtalk',
+      templateId: '',
+      templateName: '',
+      timingLabel: couponKind === 'autoIssue' ? '발급 ���' : '발급 ���'
+    },
+    expireAlert: {
+      enabled: couponKind === 'autoIssue' || couponKind === 'manualIssue',
+      channel: 'alimtalk',
+      templateId: '',
+      templateName: '',
+      timingLabel: '만료 1????
+    }
+  };
+
+  if (couponKind === 'manualIssue') {
+    return {
+      ...sharedDefaults,
+      issueTargetType: 'specificGroup',
+      validityMode: 'fixedDate',
+      expireAfterDays: null
+    };
+  }
+
+  if (couponKind === 'couponCode') {
+    return {
+      ...sharedDefaults,
+      isSecretCoupon: false,
+      issueAlert: {
+        enabled: false,
+        channel: 'webPush',
+        templateId: '',
+        templateName: '',
+        timingLabel: '?�용 ????
+      },
+      expireAlert: {
+        enabled: false,
+        channel: 'webPush',
+        templateId: '',
+        templateName: '',
+        timingLabel: '?�용 ????
+      }
+    };
+  }
+
+  return sharedDefaults;
+}
+
+export function getCouponPolicyNotes(
+  couponKind: CouponKind,
+  trigger: CouponAutoIssueTriggerType | null
+): string[] {
+  if (couponKind === 'customerDownload') {
+    return [
+      '?�크�?쿠폰?? 링크�?받�? ȸ���??�운로드?????�습?�다.',
+      '쿠폰?��? 고객 ?�운로드 쿠폰�?묶을 ???�고 최�? 10개까�? 구성?????�습?�다.'
+    ];
+  }
+
+  if (couponKind === 'couponCode') {
+    return [
+      '?�일 ?�성?? 코드�?비워?�면 ?�동 ?�성?�고, 직접 ?�력??코드??���???�정?????�습?�다.',
+      '?�러 �??�성?? 최�? 10,000개까�? ?�동 ?�성?????�습?�다.'
+    ];
+  }
+
+  if (couponKind === 'manualIssue') {
+    return [
+      '?�정 ȸ�� 발행?? ?�효??ȸ�� ID�????�할 ???�습?�다.',
+      '?�회??���발행?? ������ � ?�이?�에 ?�향??�????�으�?�?����?? ����??��? ?�요?�니??'
+    ];
+  }
+
+  if (trigger === 'firstSignup') {
+    return [
+      '�?ȸ���????�동 발행?? 기존 �????�력 ?�는 ?�일 ?�증?�보 ?��???ȸ��?�게??발급?��? ?�습?�다.'
+    ];
+  }
+
+  if (trigger === 'firstOrderComplete') {
+    return [
+      '�?주문 �Ϸ� ?�동 발행?? �?�?���?�도 발급?????��?�? 주문 ??��ü ���???�일 ?�보 ?�주문�? ?�외?�니??',
+      '반품·교환 반복 발급 방�? ?�책?? ?�핑 ?�정�??�께 �??�해???�니??'
+    ];
+  }
+
+  if (trigger === 'shoppingGradeChange') {
+    return [
+      '?�핑 ��� �?�??�동 발행?? ?�향/?�향 모두 발급?????�으�?�?��� �?�??�책�??�께 ?�인?�야 ?�니??'
+    ];
+  }
+
+  if (trigger === 'birthday') {
+    return [
+      '?�일 쿠폰?? 1?�에 ??번만 발급?�고, 쿠폰 ?�성 ?�음 ?��???발급?�니??',
+      'ȸ�� ?�년?�일???�집?��? ?�으�?발급 ???�에???�외?�니??'
+    ];
+  }
+
+  return [
+    '?�동 발행 쿠폰?? 발행 ?�리거�? 메시�? ?�플릿이 ?�께 �?증돼??� ?�선??줄일 ???�습?�다.'
+  ];
+}
+
+export function parseCouponUserIds(rawValue: string): string[] {
+  return rawValue
+    .split(/[\n,]/)
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+export function serializeCouponUserIds(userIds: string[]): string {
+  return userIds.join('\n');
+}
+
+export function normalizeCouponScope(
+  scope: CouponApplicableScope
+): CouponApplicableScope {
+  return scope;
+}
+
+export function normalizeCouponIssueTargetType(
+  value: CouponIssueTargetType
+): CouponIssueTargetType {
+  return value;
+}
+
+export function normalizeCouponBenefitType(
+  value: CouponBenefitType
+): CouponBenefitType {
+  return value;
+}
+
+export function normalizeCouponCodeGenerationMode(
+  value: CouponCodeGenerationMode
+): CouponCodeGenerationMode {
+  return value;
+}
+
+export function normalizeCouponAudience(value: CouponAudience): CouponAudience {
+  return value;
+}
+
+export function normalizeCouponValidityMode(
+  value: CouponValidityMode
+): CouponValidityMode {
+  return value;
+}
+
+

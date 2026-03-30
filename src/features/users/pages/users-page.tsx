@@ -4,9 +4,9 @@ import {
   Alert,
   Button,
   Form,
+  Input,
   Modal,
   notification,
-  Select,
   Space,
   Typography
 } from 'antd';
@@ -22,9 +22,7 @@ import type {
   UserStatus,
   UserSummary,
   UsersQuery,
-  UsersSearchField,
-  UsersSort,
-  UsersStatusFilter
+  UsersSearchField
 } from '../model/types';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
@@ -35,6 +33,7 @@ import {
   SearchBarDateRange,
   SearchBarDetailField
 } from '../../../shared/ui/search-bar/search-bar';
+import { useSearchBarDateDraft } from '../../../shared/ui/search-bar/use-search-bar-date-draft';
 import {
   matchesSearchDateRange,
   matchesSearchField,
@@ -42,29 +41,22 @@ import {
 } from '../../../shared/ui/search-bar/search-bar-utils';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
+import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
 import {
-  createColumnFilterProps,
+  createDefinedColumnFilterProps,
   createTextSorter
 } from '../../../shared/ui/table/table-column-utils';
 import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
+import { UserNavigationLink } from '../../../shared/ui/user/user-reference';
 import type { AsyncState } from '../../../shared/model/async-state';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 
 const { Text } = Typography;
 
 const pageSizeOptions = ['20', '50', '100'];
-
-const statusOptions: { label: string; value: UsersStatusFilter }[] = [
-  { label: '전체', value: 'all' },
-  { label: '정상', value: '정상' },
-  { label: '정지', value: '정지' },
-  { label: '탈퇴', value: '탈퇴' }
-];
-
-const sortOptions: { label: string; value: UsersSort }[] = [
-  { label: '최신 가입순', value: 'latest' },
-  { label: '오래된 가입순', value: 'oldest' }
-];
+const userTierFilterValues = ['일반', '프리미엄'] as const;
+const userSubscriptionStatusFilterValues = ['구독', '미구독'] as const;
+const userStatusFilterValues = ['정상', '정지', '탈퇴'] as const;
 
 const searchFieldOptions: { label: string; value: UsersSearchField }[] = [
   { label: '전체', value: 'all' },
@@ -90,21 +82,6 @@ function parsePositiveNumber(value: string | null, fallback: number): number {
   return parsed;
 }
 
-function parseStatus(value: string | null): UsersStatusFilter {
-  const allowed = new Set<UsersStatusFilter>(['all', '정상', '정지', '탈퇴']);
-  if (value && allowed.has(value as UsersStatusFilter)) {
-    return value as UsersStatusFilter;
-  }
-  return defaultUsersQuery.status;
-}
-
-function parseSort(value: string | null): UsersSort {
-  if (value === 'latest' || value === 'oldest') {
-    return value;
-  }
-  return defaultUsersQuery.sort;
-}
-
 function parseSearchField(value: string | null): UsersSearchField {
   if (
     value === 'id' ||
@@ -124,8 +101,8 @@ function parseUsersQuery(searchParams: URLSearchParams): UsersQuery {
       searchParams.get('pageSize'),
       defaultUsersQuery.pageSize
     ),
-    status: parseStatus(searchParams.get('status')),
-    sort: parseSort(searchParams.get('sort')),
+    status: defaultUsersQuery.status,
+    sort: defaultUsersQuery.sort,
     searchField: parseSearchField(searchParams.get('searchField')),
     startDate: parseSearchDate(searchParams.get('startDate')),
     endDate: parseSearchDate(searchParams.get('endDate')),
@@ -137,10 +114,6 @@ function buildUsersSearchParams(query: UsersQuery): URLSearchParams {
   const params = new URLSearchParams();
   params.set('page', String(query.page));
   params.set('pageSize', String(query.pageSize));
-  params.set('sort', query.sort);
-  if (query.status !== 'all') {
-    params.set('status', query.status);
-  }
   if (query.searchField !== 'all') {
     params.set('searchField', query.searchField);
   }
@@ -160,9 +133,6 @@ function filterUsers(users: UserSummary[], query: UsersQuery): UserSummary[] {
   const keyword = query.keyword.trim().toLowerCase();
 
   const filtered = users.filter((item) => {
-    if (query.status !== 'all' && item.status !== query.status) {
-      return false;
-    }
     if (!matchesSearchDateRange(item.joinedAt, query.startDate, query.endDate)) {
       return false;
     }
@@ -206,6 +176,13 @@ export default function UsersPage(): JSX.Element {
   const [memoForm] = Form.useForm<{ memo: string }>();
   const [memoTarget, setMemoTarget] = useState<UserSummary | null>(null);
   const [notificationApi, notificationContextHolder] = notification.useNotification();
+  const {
+    draftStartDate,
+    draftEndDate,
+    handleDraftDateChange,
+    handleDraftReset,
+    handleDetailOpenChange
+  } = useSearchBarDateDraft(query.startDate, query.endDate);
 
   useEffect(() => {
     const parsed = parseUsersQuery(searchParams);
@@ -248,7 +225,7 @@ export default function UsersPage(): JSX.Element {
     return () => {
       controller.abort();
     };
-  }, [reloadKey]);
+  }, [query.page, query.pageSize, reloadKey]);
 
   const commitQuery = useCallback(
     (next: Partial<UsersQuery>) => {
@@ -352,66 +329,64 @@ export default function UsersPage(): JSX.Element {
   const columns = useMemo<TableColumnsType<UserSummary>>(
     () => [
       {
-        title: '사용자 ID',
-        dataIndex: 'id',
-        width: 110,
-        ...createColumnFilterProps(filteredUsers, (record) => record.id),
-        sorter: createTextSorter((record) => record.id)
+        title: '회원',
+        key: 'user',
+        width: 220,
+        sorter: createTextSorter((record) => `${record.realName} ${record.id}`),
+        render: (_, record) => (
+          <UserNavigationLink
+            stopPropagation
+            userId={record.id}
+            userName={record.realName}
+          />
+        )
       },
       {
         title: '이메일',
         dataIndex: 'email',
         width: 220,
-        ...createColumnFilterProps(filteredUsers, (record) => record.email),
         sorter: createTextSorter((record) => record.email)
-      },
-      {
-        title: '이름',
-        dataIndex: 'realName',
-        width: 120,
-        ...createColumnFilterProps(filteredUsers, (record) => record.realName),
-        sorter: createTextSorter((record) => record.realName)
       },
       {
         title: '닉네임',
         dataIndex: 'nickname',
         width: 160,
-        ...createColumnFilterProps(filteredUsers, (record) => record.nickname),
         sorter: createTextSorter((record) => record.nickname)
       },
       {
         title: '가입일',
         dataIndex: 'joinedAt',
         width: 120,
-        ...createColumnFilterProps(filteredUsers, (record) => record.joinedAt),
         sorter: createTextSorter((record) => record.joinedAt)
       },
       {
         title: '최근 접속',
         dataIndex: 'lastLoginAt',
         width: 120,
-        ...createColumnFilterProps(filteredUsers, (record) => record.lastLoginAt),
         sorter: createTextSorter((record) => record.lastLoginAt)
       },
       {
         title: '등급',
         dataIndex: 'tier',
         width: 120,
-        ...createColumnFilterProps(filteredUsers, (record) => record.tier),
+        ...createDefinedColumnFilterProps(userTierFilterValues, (record) => record.tier),
         sorter: createTextSorter((record) => record.tier)
       },
       {
-        title: '구독 상태',
+        title: createStatusColumnTitle('구독 상태', ['구독', '미구독']),
         dataIndex: 'subscriptionStatus',
         width: 120,
-        ...createColumnFilterProps(filteredUsers, (record) => record.subscriptionStatus),
+        ...createDefinedColumnFilterProps(
+          userSubscriptionStatusFilterValues,
+          (record) => record.subscriptionStatus
+        ),
         sorter: createTextSorter((record) => record.subscriptionStatus)
       },
       {
-        title: '회원 상태',
+        title: createStatusColumnTitle('회원 상태', ['정상', '정지', '탈퇴']),
         dataIndex: 'status',
         width: 120,
-        ...createColumnFilterProps(filteredUsers, (record) => record.status),
+        ...createDefinedColumnFilterProps(userStatusFilterValues, (record) => record.status),
         sorter: createTextSorter((record) => record.status),
         render: (status: UserStatus) => <StatusBadge status={status} />
       },
@@ -431,13 +406,13 @@ export default function UsersPage(): JSX.Element {
                 key: `suspend-${record.id}`,
                 label: '회원 정지',
                 danger: true,
-                disabled: record.status !== statusOptions[1].value,
+                disabled: record.status !== '정상',
                 onClick: () => handleSuspend(record)
               },
               {
                 key: `unsuspend-${record.id}`,
                 label: '회원 정지 해제',
-                disabled: record.status !== statusOptions[2].value,
+                disabled: record.status !== '정지',
                 onClick: () => handleUnsuspend(record)
               },
               {
@@ -450,7 +425,7 @@ export default function UsersPage(): JSX.Element {
         )
       }
     ],
-    [filteredUsers, handleMemoOpen, handleSuspend, handleUnsuspend]
+    [handleMemoOpen, handleSuspend, handleUnsuspend]
   );
 
   const handleRowClick = useCallback(
@@ -492,30 +467,9 @@ export default function UsersPage(): JSX.Element {
     [commitQuery]
   );
 
-  const handleStatusChange = useCallback(
-    (value: UsersStatusFilter) => {
-      commitQuery({
-        status: value,
-        page: 1
-      });
-    },
-    [commitQuery]
-  );
-
-  const handleSortChange = useCallback(
-    (value: UsersSort) => {
-      commitQuery({
-        sort: value,
-        page: 1
-      });
-    },
-    [commitQuery]
-  );
-
-  const handleReset = useCallback(() => {
-    replaceQuery(defaultUsersQuery);
-    setSearchParams(buildUsersSearchParams(defaultUsersQuery), { replace: true });
-  }, [replaceQuery, setSearchParams]);
+  const handleApplyDateRange = useCallback(() => {
+    handleDateRangeChange(draftStartDate, draftEndDate);
+  }, [draftEndDate, draftStartDate, handleDateRangeChange]);
 
   const handleRetryLoad = useCallback(() => {
     setReloadKey((prev) => prev + 1);
@@ -524,7 +478,7 @@ export default function UsersPage(): JSX.Element {
   return (
     <div>
       {notificationContextHolder}
-      <PageTitle title="사용자" />
+      <PageTitle title="회원 목록" />
 
       {usersState.status === 'error' ? (
         <Alert
@@ -556,31 +510,17 @@ export default function UsersPage(): JSX.Element {
             keywordPlaceholder="검색..."
             detailTitle="상세 검색"
             detailContent={
-              <>
-                <SearchBarDetailField label="회원 상태">
-                  <Select
-                    value={query.status}
-                    options={statusOptions}
-                    onChange={handleStatusChange}
-                  />
-                </SearchBarDetailField>
-                <SearchBarDetailField label="정렬">
-                  <Select
-                    value={query.sort}
-                    options={sortOptions}
-                    onChange={handleSortChange}
-                  />
-                </SearchBarDetailField>
-                <SearchBarDetailField label="가입일">
-                  <SearchBarDateRange
-                    startDate={query.startDate}
-                    endDate={query.endDate}
-                    onChange={handleDateRangeChange}
-                  />
-                </SearchBarDetailField>
-              </>
+              <SearchBarDetailField label="가입일">
+                <SearchBarDateRange
+                  startDate={draftStartDate}
+                  endDate={draftEndDate}
+                  onChange={handleDraftDateChange}
+                />
+              </SearchBarDetailField>
             }
-            onReset={handleReset}
+            onApply={handleApplyDateRange}
+            onDetailOpenChange={handleDetailOpenChange}
+            onReset={handleDraftReset}
             summary={
               <Text type="secondary">총 {filteredUsers.length.toLocaleString()}건</Text>
             }
@@ -596,10 +536,9 @@ export default function UsersPage(): JSX.Element {
             description="필터 조건을 확인하거나 잠시 후 다시 조회해주세요."
           />
         ) : null}
-        <AdminDataTable<UserSummary>
-          rowKey="id"
-          virtual
-          columns={columns}
+      <AdminDataTable<UserSummary>
+        rowKey="id"
+        columns={columns}
           dataSource={filteredUsers}
           onRow={handleRowClick}
           loading={usersState.status === 'pending'}
@@ -609,7 +548,7 @@ export default function UsersPage(): JSX.Element {
             pageSize: query.pageSize,
             pageSizeOptions,
             showSizeChanger: true,
-            showTotal: (total) => `Total ${total.toLocaleString()}`,
+            showTotal: (total) => `총 ${total.toLocaleString()}건`,
             onChange: (page, pageSize) => {
               commitQuery({
                 page,
@@ -644,7 +583,7 @@ export default function UsersPage(): JSX.Element {
         cancelText="취소"
         onCancel={closeMemoModal}
         onOk={handleMemoSubmit}
-        destroyOnClose
+      destroyOnHidden
       >
         <Form form={memoForm} layout="vertical">
           <Text type="secondary">

@@ -57,7 +57,7 @@ export function TableRowDetailModal({
       title={title}
       onCancel={onClose}
       footer={null}
-      destroyOnClose
+      destroyOnHidden
       width={640}
     >
       <Descriptions bordered size="small" column={1} items={items} />

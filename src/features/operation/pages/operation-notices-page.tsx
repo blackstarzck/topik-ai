@@ -1,155 +1,284 @@
-﻿import {
-  Button,
-  Card,
-  Form,
-  Input,
-  Modal,
-  Space,
-  Table,
-  Typography,
-  notification
-} from 'antd';
-import type { TableColumnsType } from 'antd';
-import { useCallback, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { DeleteOutlined, EditOutlined } from '@ant-design/icons';
+import { Alert, Button, Space, Tooltip, Typography, notification } from 'antd';
+import type { SortOrder, TableColumnsType, TableProps } from 'antd';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
+import {
+  deleteNoticeSafe,
+  fetchNoticesSafe,
+  toggleNoticeStatusSafe
+} from '../api/notices-service';
+import type { OperationNotice } from '../model/types';
+import type { AsyncState } from '../../../shared/model/async-state';
+import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
+import { HtmlPreviewModal } from '../../../shared/ui/html-preview-modal/html-preview-modal';
+import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
-import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
-import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
+import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
+import { BinaryStatusSwitch } from '../../../shared/ui/table/binary-status-switch';
+import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
 import {
-  createColumnFilterProps,
+  createDefinedColumnFilterProps,
   createTextSorter
 } from '../../../shared/ui/table/table-column-utils';
-import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
-import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 
 const { Text } = Typography;
 
-type NoticeStatus = '게시' | '숨김';
+const noticeStatusFilterValues = ['게시', '숨김'] as const;
+const sortableFieldValues = ['id', 'title', 'author', 'createdAt', 'status'] as const;
 
-type NoticeRow = {
-  id: string;
-  title: string;
-  author: string;
-  createdAt: string;
-  status: NoticeStatus;
-};
+type NoticeSortField = (typeof sortableFieldValues)[number];
 
-type NoticeFormValue = {
-  title: string;
-};
-
-type EditModalState =
-  | { type: 'create' }
-  | { type: 'edit'; row: NoticeRow }
+type DangerState =
+  | { type: 'delete'; notice: OperationNotice }
+  | {
+      type: 'toggle';
+      notice: OperationNotice;
+      nextStatus: OperationNotice['status'];
+    }
   | null;
 
-type DangerActionState =
-  | { type: 'delete'; row: NoticeRow }
-  | { type: 'hide'; row: NoticeRow }
-  | null;
-
-const initialRows: NoticeRow[] = [
-  {
-    id: 'NOTICE-001',
-    title: '정기 점검 안내',
-    author: 'admin_park',
-    createdAt: '2026-03-03',
-    status: '게시'
-  },
-  {
-    id: 'NOTICE-002',
-    title: '환불 정책 변경',
-    author: 'admin_kim',
-    createdAt: '2026-02-21',
-    status: '숨김'
+function parseStatusFilter(value: string | null): OperationNotice['status'] | null {
+  if (value === '게시' || value === '숨김') {
+    return value;
   }
-];
 
-const detailLabelMap: Record<string, string> = {
-  id: '공지 ID',
-  title: '제목',
-  author: '작성자',
-  createdAt: '작성일',
-  status: '상태'
-};
+  return null;
+}
+
+function parseSortField(value: string | null): NoticeSortField | null {
+  if (
+    value === 'id' ||
+    value === 'title' ||
+    value === 'author' ||
+    value === 'createdAt' ||
+    value === 'status'
+  ) {
+    return value;
+  }
+
+  return null;
+}
+
+function parseSortOrder(value: string | null): SortOrder | null {
+  if (value === 'ascend' || value === 'descend') {
+    return value;
+  }
+
+  return null;
+}
 
 export default function OperationNoticesPage(): JSX.Element {
-  const [rows, setRows] = useState<NoticeRow[]>(initialRows);
-  const [modalState, setModalState] = useState<EditModalState>(null);
-  const [dangerState, setDangerState] = useState<DangerActionState>(null);
-  const [selectedRow, setSelectedRow] = useState<NoticeRow | null>(null);
-  const [form] = Form.useForm<NoticeFormValue>();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const statusFilter = parseStatusFilter(searchParams.get('status'));
+  const sortField = parseSortField(searchParams.get('sortField'));
+  const sortOrder = parseSortOrder(searchParams.get('sortOrder'));
+  const previewNoticeId = searchParams.get('preview');
+  const [noticesState, setNoticesState] = useState<AsyncState<OperationNotice[]>>({
+    status: 'pending',
+    data: [],
+    errorMessage: null,
+    errorCode: null
+  });
+  const [reloadKey, setReloadKey] = useState(0);
+  const [dangerState, setDangerState] = useState<DangerState>(null);
   const [notificationApi, notificationContextHolder] = notification.useNotification();
 
-  const openCreateModal = useCallback(() => {
-    form.setFieldsValue({ title: '' });
-    setModalState({ type: 'create' });
-  }, [form]);
+  const listSearch = useMemo(() => {
+    const nextSearchParams = new URLSearchParams(searchParams);
+    nextSearchParams.delete('preview');
+    const search = nextSearchParams.toString();
+    return search ? `?${search}` : '';
+  }, [searchParams]);
 
-  const openEditModal = useCallback(
-    (row: NoticeRow) => {
-      form.setFieldsValue({ title: row.title });
-      setModalState({ type: 'edit', row });
+  const commitParams = useCallback(
+    (
+      next: Partial<Record<'status' | 'sortField' | 'sortOrder' | 'preview', string | null>>
+    ) => {
+      const merged = new URLSearchParams(searchParams);
+
+      Object.entries(next).forEach(([key, value]) => {
+        if (!value) {
+          merged.delete(key);
+          return;
+        }
+
+        merged.set(key, value);
+      });
+
+      setSearchParams(merged, { replace: true });
     },
-    [form]
+    [searchParams, setSearchParams]
   );
 
-  const closeModal = useCallback(() => setModalState(null), []);
+  useEffect(() => {
+    const controller = new AbortController();
+
+    setNoticesState((prev) => ({
+      ...prev,
+      status: 'pending',
+      errorMessage: null,
+      errorCode: null
+    }));
+
+    void fetchNoticesSafe(controller.signal).then((result) => {
+      if (controller.signal.aborted) {
+        return;
+      }
+
+      if (result.ok) {
+        setNoticesState({
+          status: result.data.length === 0 ? 'empty' : 'success',
+          data: result.data,
+          errorMessage: null,
+          errorCode: null
+        });
+        return;
+      }
+
+      setNoticesState((prev) => ({
+        ...prev,
+        status: 'error',
+        errorMessage: result.error.message,
+        errorCode: result.error.code
+      }));
+    });
+
+    return () => {
+      controller.abort();
+    };
+  }, [reloadKey]);
+
+  useEffect(() => {
+    const state = location.state as
+      | {
+          operationNoticeSaved?: {
+            noticeId: string;
+            mode: 'create' | 'edit';
+          };
+        }
+      | null;
+
+    if (!state?.operationNoticeSaved) {
+      return;
+    }
+
+    notificationApi.success({
+      message:
+        state.operationNoticeSaved.mode === 'create' ? '공지 등록 완료' : '공지 수정 완료',
+      description: (
+        <Space direction="vertical">
+          <Text>대상 유형: {getTargetTypeLabel('Operation')}</Text>
+          <Text>대상 ID: {state.operationNoticeSaved.noticeId}</Text>
+          <Text>
+            사유/근거:{' '}
+            {state.operationNoticeSaved.mode === 'create'
+              ? '신규 공지 저장(초기 상태: 숨김)'
+              : '공지 제목/본문 수정'}
+          </Text>
+          <AuditLogLink
+            targetType="Operation"
+            targetId={state.operationNoticeSaved.noticeId}
+          />
+        </Space>
+      )
+    });
+
+    navigate(
+      {
+        pathname: location.pathname,
+        search: location.search
+      },
+      {
+        replace: true,
+        state: null
+      }
+    );
+  }, [location.pathname, location.search, location.state, navigate, notificationApi]);
+
+  useEffect(() => {
+    if (!previewNoticeId) {
+      return;
+    }
+
+    const canValidatePreview =
+      noticesState.status === 'success' ||
+      noticesState.status === 'empty' ||
+      (noticesState.status === 'error' && noticesState.data.length > 0);
+
+    if (!canValidatePreview) {
+      return;
+    }
+
+    const hasPreviewTarget = noticesState.data.some((notice) => notice.id === previewNoticeId);
+
+    if (hasPreviewTarget) {
+      return;
+    }
+
+    commitParams({ preview: null });
+  }, [commitParams, noticesState.data, noticesState.status, previewNoticeId]);
+
+  const previewNotice = useMemo(
+    () =>
+      previewNoticeId
+        ? noticesState.data.find((notice) => notice.id === previewNoticeId) ?? null
+        : null,
+    [noticesState.data, previewNoticeId]
+  );
+
+  const filteredNoticeCount = useMemo(() => {
+    if (!statusFilter) {
+      return noticesState.data.length;
+    }
+
+    return noticesState.data.filter((notice) => notice.status === statusFilter).length;
+  }, [noticesState.data, statusFilter]);
+
+  const openCreateDetail = useCallback(() => {
+    navigate({
+      pathname: '/operation/notices/create',
+      search: listSearch
+    });
+  }, [listSearch, navigate]);
+
+  const openEditDetail = useCallback(
+    (notice: OperationNotice) => {
+      navigate({
+        pathname: `/operation/notices/create/${notice.id}`,
+        search: listSearch
+      });
+    },
+    [listSearch, navigate]
+  );
+
+  const openPreviewModal = useCallback(
+    (notice: OperationNotice) => {
+      commitParams({ preview: notice.id });
+    },
+    [commitParams]
+  );
+
+  const promptDelete = useCallback((notice: OperationNotice) => {
+    setDangerState({ type: 'delete', notice });
+  }, []);
+
+  const promptToggleStatus = useCallback((notice: OperationNotice) => {
+    setDangerState({
+      type: 'toggle',
+      notice,
+      nextStatus: notice.status === '게시' ? '숨김' : '게시'
+    });
+  }, []);
+
   const closeDangerModal = useCallback(() => setDangerState(null), []);
-  const closeDetailModal = useCallback(() => setSelectedRow(null), []);
-
-  const handleSaveNotice = useCallback(async () => {
-    const values = await form.validateFields();
-
-    if (modalState?.type === 'create') {
-      const nextId = `NOTICE-${String(rows.length + 1).padStart(3, '0')}`;
-      setRows((prev) => [
-        {
-          id: nextId,
-          title: values.title,
-          author: 'admin_current',
-          createdAt: '2026-03-04',
-          status: '게시'
-        },
-        ...prev
-      ]);
-      notificationApi.success({
-        message: '공지 등록 완료',
-        description: (
-          <Space direction="vertical">
-            <Text>대상 유형: {getTargetTypeLabel('Operation')}</Text>
-            <Text>대상 ID: {nextId}</Text>
-            <Text>사유/근거: 신규 공지 등록</Text>
-            <AuditLogLink targetType="Operation" targetId={nextId} />
-          </Space>
-        )
-      });
-    }
-
-    if (modalState?.type === 'edit') {
-      setRows((prev) =>
-        prev.map((item) =>
-          item.id === modalState.row.id ? { ...item, title: values.title } : item
-        )
-      );
-      notificationApi.success({
-        message: '공지 수정 완료',
-        description: (
-          <Space direction="vertical">
-            <Text>대상 유형: {getTargetTypeLabel('Operation')}</Text>
-            <Text>대상 ID: {modalState.row.id}</Text>
-            <Text>사유/근거: 공지 제목 수정</Text>
-            <AuditLogLink targetType="Operation" targetId={modalState.row.id} />
-          </Space>
-        )
-      });
-    }
-
-    setModalState(null);
-  }, [form, modalState, notificationApi, rows.length]);
+  const closePreviewModal = useCallback(() => commitParams({ preview: null }), [commitParams]);
+  const handleReload = useCallback(() => setReloadKey((prev) => prev + 1), []);
 
   const handleDangerAction = useCallback(
     async (reason: string) => {
@@ -158,32 +287,81 @@ export default function OperationNoticesPage(): JSX.Element {
       }
 
       if (dangerState.type === 'delete') {
-        setRows((prev) => prev.filter((item) => item.id !== dangerState.row.id));
+        const result = await deleteNoticeSafe(dangerState.notice.id);
+        if (!result.ok) {
+          notificationApi.error({
+            message: '공지 삭제 실패',
+            description: (
+              <Space direction="vertical">
+                <Text>{result.error.message}</Text>
+                <Text type="secondary">오류 코드: {result.error.code}</Text>
+              </Space>
+            )
+          });
+          return;
+        }
+
+        setNoticesState((prev) => {
+          const nextData = prev.data.filter((notice) => notice.id !== result.data.id);
+
+          return {
+            status: nextData.length === 0 ? 'empty' : 'success',
+            data: nextData,
+            errorMessage: null,
+            errorCode: null
+          };
+        });
+
         notificationApi.success({
           message: '공지 삭제 완료',
           description: (
             <Space direction="vertical">
               <Text>대상 유형: {getTargetTypeLabel('Operation')}</Text>
-              <Text>대상 ID: {dangerState.row.id}</Text>
+              <Text>대상 ID: {result.data.id}</Text>
               <Text>사유/근거: {reason}</Text>
-              <AuditLogLink targetType="Operation" targetId={dangerState.row.id} />
+              <AuditLogLink targetType="Operation" targetId={result.data.id} />
             </Space>
           )
         });
-      } else {
-        setRows((prev) =>
-          prev.map((item) =>
-            item.id === dangerState.row.id ? { ...item, status: '숨김' } : item
-          )
-        );
+      }
+
+      if (dangerState.type === 'toggle') {
+        const result = await toggleNoticeStatusSafe({
+          noticeId: dangerState.notice.id,
+          nextStatus: dangerState.nextStatus
+        });
+
+        if (!result.ok) {
+          notificationApi.error({
+            message:
+              dangerState.nextStatus === '게시' ? '공지 게시 실패' : '공지 숨김 실패',
+            description: (
+              <Space direction="vertical">
+                <Text>{result.error.message}</Text>
+                <Text type="secondary">오류 코드: {result.error.code}</Text>
+              </Space>
+            )
+          });
+          return;
+        }
+
+        setNoticesState((prev) => ({
+          status: prev.data.length === 0 ? 'empty' : 'success',
+          data: prev.data.map((notice) =>
+            notice.id === result.data.id ? result.data : notice
+          ),
+          errorMessage: null,
+          errorCode: null
+        }));
+
         notificationApi.success({
-          message: '공지 숨김 완료',
+          message: result.data.status === '게시' ? '공지 게시 완료' : '공지 숨김 완료',
           description: (
             <Space direction="vertical">
               <Text>대상 유형: {getTargetTypeLabel('Operation')}</Text>
-              <Text>대상 ID: {dangerState.row.id}</Text>
+              <Text>대상 ID: {result.data.id}</Text>
               <Text>사유/근거: {reason}</Text>
-              <AuditLogLink targetType="Operation" targetId={dangerState.row.id} />
+              <AuditLogLink targetType="Operation" targetId={result.data.id} />
             </Space>
           )
         });
@@ -194,28 +372,28 @@ export default function OperationNoticesPage(): JSX.Element {
     [dangerState, notificationApi]
   );
 
-  const columns = useMemo<TableColumnsType<NoticeRow>>(
+  const columns = useMemo<TableColumnsType<OperationNotice>>(
     () => [
       {
         title: '공지 ID',
         dataIndex: 'id',
         width: 130,
-        ...createColumnFilterProps(rows, (record) => record.id),
-        sorter: createTextSorter((record) => record.id)
+        sorter: createTextSorter((record) => record.id),
+        sortOrder: sortField === 'id' ? sortOrder : null
       },
       {
         title: '제목',
         dataIndex: 'title',
         width: 320,
-        ...createColumnFilterProps(rows, (record) => record.title),
-        sorter: createTextSorter((record) => record.title)
+        sorter: createTextSorter((record) => record.title),
+        sortOrder: sortField === 'title' ? sortOrder : null
       },
       {
         title: '작성자',
         dataIndex: 'author',
         width: 130,
-        ...createColumnFilterProps(rows, (record) => record.author),
         sorter: createTextSorter((record) => record.author),
+        sortOrder: sortField === 'author' ? sortOrder : null,
         render: (author: string) => (
           <Link
             className="table-navigation-link"
@@ -230,130 +408,249 @@ export default function OperationNoticesPage(): JSX.Element {
         title: '작성일',
         dataIndex: 'createdAt',
         width: 120,
-        ...createColumnFilterProps(rows, (record) => record.createdAt),
-        sorter: createTextSorter((record) => record.createdAt)
+        sorter: createTextSorter((record) => record.createdAt),
+        sortOrder: sortField === 'createdAt' ? sortOrder : null
       },
       {
-        title: '상태',
+        title: createStatusColumnTitle('상태', ['게시', '숨김']),
         dataIndex: 'status',
-        width: 100,
-        ...createColumnFilterProps(rows, (record) => record.status),
+        width: 132,
+        filteredValue: statusFilter ? [statusFilter] : null,
+        ...createDefinedColumnFilterProps(noticeStatusFilterValues, (record) => record.status),
         sorter: createTextSorter((record) => record.status),
-        render: (status: NoticeStatus) => <StatusBadge status={status} />
-      },
-      {
-        title: '액션',
-        key: 'action',
-        width: 140,
+        sortOrder: sortField === 'status' ? sortOrder : null,
         onCell: () => ({
           onClick: (event) => {
             event.stopPropagation();
           }
         }),
         render: (_, record) => (
-          <TableActionMenu
-            items={[
-              {
-                key: `edit-${record.id}`,
-                label: '공지 수정',
-                onClick: () => openEditModal(record)
-              },
-              {
-                key: `hide-${record.id}`,
-                label: '공지 숨김',
-                disabled: record.status !== '게시',
-                onClick: () => setDangerState({ type: 'hide', row: record })
-              },
-              {
-                key: `delete-${record.id}`,
-                label: '공지 삭제',
-                danger: true,
-                onClick: () => setDangerState({ type: 'delete', row: record })
-              }
-            ]}
+          <BinaryStatusSwitch
+            checked={record.status === '게시'}
+            checkedLabel="게시"
+            uncheckedLabel="숨김"
+            onToggle={() => promptToggleStatus(record)}
           />
+        )
+      },
+      {
+        title: '액션',
+        key: 'action',
+        width: 88,
+        onCell: () => ({
+          onClick: (event) => {
+            event.stopPropagation();
+          }
+        }),
+        render: (_, record) => (
+          <Tooltip title="공지 삭제">
+            <Button
+              danger
+              type="text"
+              icon={<DeleteOutlined />}
+              onClick={() => promptDelete(record)}
+            />
+          </Tooltip>
         )
       }
     ],
-    [openEditModal, rows]
+    [promptDelete, promptToggleStatus, sortField, sortOrder, statusFilter]
+  );
+
+  const handleTableChange = useCallback<NonNullable<TableProps<OperationNotice>['onChange']>>(
+    (_, filters, sorter) => {
+      const nextStatusFilter = Array.isArray(filters.status)
+        ? String(filters.status[0] ?? '')
+        : '';
+      const nextSorter = Array.isArray(sorter) ? sorter[0] : sorter;
+      const nextField =
+        nextSorter && typeof nextSorter.field === 'string'
+          ? parseSortField(nextSorter.field)
+          : null;
+
+      commitParams({
+        status: nextStatusFilter || null,
+        sortField: nextField,
+        sortOrder: nextField ? nextSorter?.order ?? null : null
+      });
+    },
+    [commitParams]
   );
 
   const handleRowClick = useCallback(
-    (record: NoticeRow) => ({
-      onClick: () => setSelectedRow(record),
+    (record: OperationNotice) => ({
+      onClick: () => openPreviewModal(record),
       style: { cursor: 'pointer' }
     }),
-    []
+    [openPreviewModal]
   );
+
+  const previewDescriptionItems = previewNotice
+    ? [
+        {
+          key: 'noticeId',
+          label: '공지 ID',
+          children: previewNotice.id
+        },
+        {
+          key: 'title',
+          label: '제목',
+          children: previewNotice.title
+        },
+        {
+          key: 'status',
+          label: '상태',
+          children: previewNotice.status
+        }
+      ]
+    : [];
+
+  const previewFooterActions = previewNotice
+    ? [
+        <Button
+          key="edit"
+          type="primary"
+          icon={<EditOutlined />}
+          onClick={() => openEditDetail(previewNotice)}
+        >
+          공지 수정
+        </Button>
+      ]
+    : undefined;
+
+  const hasCachedNotices = noticesState.data.length > 0;
+  const isFilteredEmpty =
+    noticesState.status !== 'empty' &&
+    noticesState.data.length > 0 &&
+    filteredNoticeCount === 0;
 
   return (
     <div>
       {notificationContextHolder}
       <PageTitle title="공지사항" />
 
-      <Card
-        extra={
-          <Button type="primary" onClick={openCreateModal}>
-            공지 등록
-          </Button>
+      <AdminListCard
+        toolbar={
+          <div className="admin-list-card-toolbar-side">
+            <Text className="admin-list-card-toolbar-summary" type="secondary">
+              총 {filteredNoticeCount.toLocaleString()}건
+            </Text>
+            <div className="admin-list-card-toolbar-actions">
+              <Button type="primary" size="large" onClick={openCreateDetail}>
+                공지 등록
+              </Button>
+            </div>
+          </div>
         }
       >
-        <Table
-          rowKey="id"
-          size="small"
-          pagination={false}
-          scroll={{ x: 1200 }}
-          columns={columns}
-          dataSource={rows}
-          onRow={handleRowClick}
-        />
-      </Card>
+        {noticesState.status === 'error' ? (
+          <Alert
+            type="error"
+            showIcon
+            style={{ marginBottom: 12 }}
+            message="공지사항을 불러오지 못했습니다."
+            description={
+              <Space direction="vertical">
+                <Text>{noticesState.errorMessage ?? '일시적인 오류가 발생했습니다.'}</Text>
+                {noticesState.errorCode ? (
+                  <Text type="secondary">오류 코드: {noticesState.errorCode}</Text>
+                ) : null}
+                {hasCachedNotices ? (
+                  <Text type="secondary">
+                    마지막 성공 상태를 유지한 채 목록을 계속 확인할 수 있습니다.
+                  </Text>
+                ) : null}
+              </Space>
+            }
+            action={
+              <Button size="small" onClick={handleReload}>
+                다시 시도
+              </Button>
+            }
+          />
+        ) : null}
 
-      <Modal
-        open={Boolean(modalState)}
-        title={modalState?.type === 'create' ? '공지 등록' : '공지 수정'}
-        okText="저장"
-        cancelText="취소"
-        onCancel={closeModal}
-        onOk={handleSaveNotice}
-      >
-        <Form form={form} layout="vertical">
-          <Form.Item
-            label="공지 제목"
-            name="title"
-            rules={[{ required: true, message: '공지 제목을 입력하세요.' }]}
-            style={{ marginBottom: 0 }}
-          >
-            <Input placeholder="공지 제목을 입력하세요." />
-          </Form.Item>
-        </Form>
-      </Modal>
+        {noticesState.status === 'pending' && hasCachedNotices ? (
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginBottom: 12 }}
+            message="최신 공지사항을 다시 불러오는 중입니다."
+            description="마지막 성공 상태를 유지한 채 현재 데이터를 확인합니다."
+          />
+        ) : null}
+
+        {noticesState.status === 'empty' ? (
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginBottom: 12 }}
+            message="등록된 공지가 없습니다."
+            description="공지 등록 버튼으로 첫 공지를 작성해주세요. 신규 공지는 기본적으로 숨김 상태로 저장됩니다."
+          />
+        ) : null}
+
+        {isFilteredEmpty ? (
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginBottom: 12 }}
+            message="선택한 상태 조건에 맞는 공지가 없습니다."
+            description="상태 필터를 해제하거나 다른 상태를 선택해 다시 확인해주세요."
+          />
+        ) : null}
+
+        <AdminDataTable<OperationNotice>
+          rowKey="id"
+          pagination={false}
+          scroll={{ x: 1120 }}
+          loading={noticesState.status === 'pending' && !hasCachedNotices}
+          columns={columns}
+          dataSource={noticesState.data}
+          onRow={handleRowClick}
+          onChange={handleTableChange}
+        />
+      </AdminListCard>
 
       {dangerState ? (
         <ConfirmAction
           open
-          title={dangerState.type === 'delete' ? '공지 삭제' : '공지 숨김'}
+          title={
+            dangerState.type === 'delete'
+              ? '공지 삭제'
+              : dangerState.nextStatus === '게시'
+                ? '공지 게시'
+                : '공지 숨김'
+          }
           description={
             dangerState.type === 'delete'
-              ? '공지 항목을 삭제합니다. 삭제 사유를 입력하세요.'
-              : '공지 노출을 중단합니다. 숨김 사유를 입력하세요.'
+              ? '공지를 삭제합니다. 삭제 사유를 입력해주세요.'
+              : dangerState.nextStatus === '게시'
+                ? '숨김 상태 공지를 다시 게시합니다. 게시 사유를 입력해주세요.'
+                : '공지 노출을 중단합니다. 숨김 사유를 입력해주세요.'
           }
           targetType="Operation"
-          targetId={dangerState.row.id}
-          confirmText={dangerState.type === 'delete' ? '삭제 실행' : '숨김 실행'}
+          targetId={dangerState.notice.id}
+          confirmText={
+            dangerState.type === 'delete'
+              ? '삭제 실행'
+              : dangerState.nextStatus === '게시'
+                ? '게시 실행'
+                : '숨김 실행'
+          }
           onCancel={closeDangerModal}
           onConfirm={handleDangerAction}
         />
       ) : null}
-      <TableRowDetailModal
-        open={Boolean(selectedRow)}
-        title="공지 상세 (더미)"
-        record={selectedRow}
-        labelMap={detailLabelMap}
-        onClose={closeDetailModal}
+
+      <HtmlPreviewModal
+        open={Boolean(previewNotice)}
+        title="공지 미리보기"
+        descriptionItems={previewDescriptionItems}
+        bodyHtml={previewNotice?.bodyHtml}
+        footerActions={previewFooterActions}
+        onClose={closePreviewModal}
       />
     </div>
   );
 }
-
-

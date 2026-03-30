@@ -49,7 +49,7 @@ TOPIK AI Admin
 │  └ 이커머스 관리
 │
 ├ Assessment
-│  ├ 문제은행
+│  ├ TOPIK 쓰기 문제은행
 │  │  └ EPS TOPIK
 │  └ 레벨 테스트
 │

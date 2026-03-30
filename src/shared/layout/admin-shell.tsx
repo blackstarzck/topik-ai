@@ -3,37 +3,55 @@ import {
   BookOutlined,
   CommentOutlined,
   DashboardOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
   MessageOutlined,
   ReadOutlined,
   SettingOutlined,
   ShopOutlined,
   TeamOutlined
 } from '@ant-design/icons';
-import { Layout, Menu, Spin, Tag, Typography } from 'antd';
-import type { ItemType, MenuItemType } from 'antd/es/menu/interface';
+import { Button, Grid, Layout, Menu, Spin, Tag, Typography, theme } from 'antd';
+import type { MenuProps } from 'antd';
+import type { ItemType } from 'antd/es/menu/interface';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { usePermissionStore } from '../../features/system/model/permission-store';
 import { adminMenuLabels, adminRoleLabels } from './admin-labels';
 
 const { Header, Sider, Content } = Layout;
 const { Text, Title } = Typography;
+const { useBreakpoint } = Grid;
+
+const ADMIN_SHELL_SIDEBAR_COLLAPSED_STORAGE_KEY = 'topik-ai-admin:sidebar-collapsed';
 
 type MenuNode = {
   key: string;
   icon?: ReactNode;
-  label: ReactNode;
+  label: string;
+  to?: string;
   permissionKeys?: string[];
   children?: MenuNode[];
 };
+
+function readStoredSidebarCollapsed(): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  return (
+    window.localStorage.getItem(ADMIN_SHELL_SIDEBAR_COLLAPSED_STORAGE_KEY) === 'true'
+  );
+}
 
 const menuConfig: MenuNode[] = [
   {
     key: '/dashboard',
     icon: <DashboardOutlined />,
-    label: <Link to="/dashboard">{adminMenuLabels.dashboard}</Link>,
+    label: adminMenuLabels.dashboard,
+    to: '/dashboard',
     permissionKeys: ['dashboard.read']
   },
   {
@@ -43,17 +61,20 @@ const menuConfig: MenuNode[] = [
     children: [
       {
         key: '/users',
-        label: <Link to="/users">{adminMenuLabels.usersList}</Link>,
+        label: adminMenuLabels.usersList,
+        to: '/users',
         permissionKeys: ['users.read']
       },
       {
         key: '/users/groups',
-        label: <Link to="/users/groups">{adminMenuLabels.usersGroups}</Link>,
+        label: adminMenuLabels.usersGroups,
+        to: '/users/groups',
         permissionKeys: ['users.groups.manage']
       },
       {
         key: '/users/referrals',
-        label: <Link to="/users/referrals">{adminMenuLabels.usersReferrals}</Link>,
+        label: adminMenuLabels.usersReferrals,
+        to: '/users/referrals',
         permissionKeys: ['users.referrals.manage']
       }
     ]
@@ -65,12 +86,14 @@ const menuConfig: MenuNode[] = [
     children: [
       {
         key: '/community/posts',
-        label: <Link to="/community/posts">{adminMenuLabels.communityPosts}</Link>,
+        label: adminMenuLabels.communityPosts,
+        to: '/community/posts',
         permissionKeys: ['community.posts.hide', 'community.posts.delete']
       },
       {
         key: '/community/reports',
-        label: <Link to="/community/reports">{adminMenuLabels.communityReports}</Link>,
+        label: adminMenuLabels.communityReports,
+        to: '/community/reports',
         permissionKeys: ['community.reports.resolve']
       }
     ]
@@ -82,24 +105,26 @@ const menuConfig: MenuNode[] = [
     children: [
       {
         key: '/messages/mail',
-        label: <Link to="/messages/mail?tab=auto">{adminMenuLabels.messagesMail}</Link>,
+        label: adminMenuLabels.messagesMail,
+        to: '/messages/mail?tab=auto',
         permissionKeys: ['message.mail.manage']
       },
       {
         key: '/messages/push',
-        label: <Link to="/messages/push?tab=auto">{adminMenuLabels.messagesPush}</Link>,
+        label: adminMenuLabels.messagesPush,
+        to: '/messages/push?tab=auto',
         permissionKeys: ['message.push.manage']
       },
       {
         key: '/messages/groups',
-        label: <Link to="/messages/groups">{adminMenuLabels.messagesGroups}</Link>,
+        label: adminMenuLabels.messagesGroups,
+        to: '/messages/groups',
         permissionKeys: ['message.groups.manage']
       },
       {
         key: '/messages/history',
-        label: (
-          <Link to="/messages/history?channel=mail">{adminMenuLabels.messagesHistory}</Link>
-        ),
+        label: adminMenuLabels.messagesHistory,
+        to: '/messages/history?channel=mail',
         permissionKeys: ['message.history.read']
       }
     ]
@@ -111,22 +136,32 @@ const menuConfig: MenuNode[] = [
     children: [
       {
         key: '/operation/notices',
-        label: <Link to="/operation/notices">{adminMenuLabels.operationNotices}</Link>,
+        label: adminMenuLabels.operationNotices,
+        to: '/operation/notices',
         permissionKeys: ['operation.notices.manage']
       },
       {
         key: '/operation/faq',
-        label: <Link to="/operation/faq">{adminMenuLabels.operationFaq}</Link>,
+        label: adminMenuLabels.operationFaq,
+        to: '/operation/faq',
         permissionKeys: ['operation.faq.manage']
       },
       {
         key: '/operation/events',
-        label: <Link to="/operation/events">{adminMenuLabels.operationEvents}</Link>,
+        label: adminMenuLabels.operationEvents,
+        to: '/operation/events',
         permissionKeys: ['operation.events.manage']
       },
       {
+        key: '/operation/policies',
+        label: adminMenuLabels.operationPolicies,
+        to: '/operation/policies',
+        permissionKeys: ['operation.policies.manage']
+      },
+      {
         key: '/operation/chatbot',
-        label: <Link to="/operation/chatbot">{adminMenuLabels.operationChatbot}</Link>,
+        label: adminMenuLabels.operationChatbot,
+        to: '/operation/chatbot',
         permissionKeys: ['operation.chatbot.manage']
       }
     ]
@@ -138,27 +173,32 @@ const menuConfig: MenuNode[] = [
     children: [
       {
         key: '/commerce/payments',
-        label: <Link to="/commerce/payments">{adminMenuLabels.commercePayments}</Link>,
+        label: adminMenuLabels.commercePayments,
+        to: '/commerce/payments',
         permissionKeys: ['commerce.payments.read']
       },
       {
         key: '/commerce/refunds',
-        label: <Link to="/commerce/refunds">{adminMenuLabels.commerceRefunds}</Link>,
+        label: adminMenuLabels.commerceRefunds,
+        to: '/commerce/refunds',
         permissionKeys: ['commerce.refunds.approve']
       },
       {
         key: '/commerce/coupons',
-        label: <Link to="/commerce/coupons">{adminMenuLabels.commerceCoupons}</Link>,
+        label: adminMenuLabels.commerceCoupons,
+        to: '/commerce/coupons',
         permissionKeys: ['commerce.coupons.manage']
       },
       {
         key: '/commerce/points',
-        label: <Link to="/commerce/points">{adminMenuLabels.commercePoints}</Link>,
+        label: adminMenuLabels.commercePoints,
+        to: '/commerce/points',
         permissionKeys: ['commerce.points.manage']
       },
       {
         key: '/commerce/store',
-        label: <Link to="/commerce/store">{adminMenuLabels.commerceStore}</Link>,
+        label: adminMenuLabels.commerceStore,
+        to: '/commerce/store',
         permissionKeys: ['commerce.store.manage']
       }
     ]
@@ -170,29 +210,20 @@ const menuConfig: MenuNode[] = [
     children: [
       {
         key: '/assessment/question-bank',
-        label: (
-          <Link to="/assessment/question-bank">
-            {adminMenuLabels.assessmentQuestionBank}
-          </Link>
-        ),
+        label: adminMenuLabels.assessmentQuestionBank,
+        to: '/assessment/question-bank',
         permissionKeys: ['assessment.question-bank.manage']
       },
       {
         key: '/assessment/question-bank/eps-topik',
-        label: (
-          <Link to="/assessment/question-bank/eps-topik">
-            {adminMenuLabels.assessmentEpsTopik}
-          </Link>
-        ),
+        label: adminMenuLabels.assessmentEpsTopik,
+        to: '/assessment/question-bank/eps-topik',
         permissionKeys: ['assessment.eps-topik.manage']
       },
       {
         key: '/assessment/level-tests',
-        label: (
-          <Link to="/assessment/level-tests">
-            {adminMenuLabels.assessmentLevelTests}
-          </Link>
-        ),
+        label: adminMenuLabels.assessmentLevelTests,
+        to: '/assessment/level-tests',
         permissionKeys: ['assessment.level-tests.manage']
       }
     ]
@@ -204,42 +235,40 @@ const menuConfig: MenuNode[] = [
     children: [
       {
         key: '/content/library',
-        label: <Link to="/content/library">{adminMenuLabels.contentLibrary}</Link>,
+        label: adminMenuLabels.contentLibrary,
+        to: '/content/library',
         permissionKeys: ['content.library.manage']
       },
       {
         key: '/content/badges',
-        label: <Link to="/content/badges">{adminMenuLabels.contentBadges}</Link>,
+        label: adminMenuLabels.contentBadges,
+        to: '/content/badges',
         permissionKeys: ['content.badges.manage']
       },
       {
         key: '/content/vocabulary',
-        label: <Link to="/content/vocabulary">{adminMenuLabels.contentVocabulary}</Link>,
+        label: adminMenuLabels.contentVocabulary,
+        to: '/content/vocabulary',
         permissionKeys: ['content.vocabulary.manage'],
         children: [
           {
             key: '/content/vocabulary/sonagi',
-            label: (
-              <Link to="/content/vocabulary/sonagi">
-                {adminMenuLabels.contentVocabularySonagi}
-              </Link>
-            ),
+            label: adminMenuLabels.contentVocabularySonagi,
+            to: '/content/vocabulary/sonagi',
             permissionKeys: ['content.vocabulary.sonagi.manage']
           },
           {
             key: '/content/vocabulary/multiple-choice',
-            label: (
-              <Link to="/content/vocabulary/multiple-choice">
-                {adminMenuLabels.contentVocabularyMultipleChoice}
-              </Link>
-            ),
+            label: adminMenuLabels.contentVocabularyMultipleChoice,
+            to: '/content/vocabulary/multiple-choice',
             permissionKeys: ['content.vocabulary.multiple-choice.manage']
           }
         ]
       },
       {
         key: '/content/missions',
-        label: <Link to="/content/missions">{adminMenuLabels.contentMissions}</Link>,
+        label: adminMenuLabels.contentMissions,
+        to: '/content/missions',
         permissionKeys: ['content.missions.manage']
       }
     ]
@@ -247,7 +276,8 @@ const menuConfig: MenuNode[] = [
   {
     key: '/analytics/overview',
     icon: <BarChartOutlined />,
-    label: <Link to="/analytics/overview">{adminMenuLabels.analytics}</Link>,
+    label: adminMenuLabels.analytics,
+    to: '/analytics/overview',
     permissionKeys: ['analytics.read']
   },
   {
@@ -257,22 +287,32 @@ const menuConfig: MenuNode[] = [
     children: [
       {
         key: '/system/admins',
-        label: <Link to="/system/admins">{adminMenuLabels.systemAdmins}</Link>,
+        label: adminMenuLabels.systemAdmins,
+        to: '/system/admins',
         permissionKeys: ['system.admins.manage']
       },
       {
         key: '/system/permissions',
-        label: <Link to="/system/permissions">{adminMenuLabels.systemPermissions}</Link>,
+        label: adminMenuLabels.systemPermissions,
+        to: '/system/permissions',
         permissionKeys: ['system.permissions.manage']
       },
       {
+        key: '/system/metadata',
+        label: adminMenuLabels.systemMetadata,
+        to: '/system/metadata',
+        permissionKeys: ['system.metadata.manage']
+      },
+      {
         key: '/system/audit-logs',
-        label: <Link to="/system/audit-logs">{adminMenuLabels.systemAuditLogs}</Link>,
+        label: adminMenuLabels.systemAuditLogs,
+        to: '/system/audit-logs',
         permissionKeys: ['system.audit.read']
       },
       {
         key: '/system/logs',
-        label: <Link to="/system/logs">{adminMenuLabels.systemLogs}</Link>,
+        label: adminMenuLabels.systemLogs,
+        to: '/system/logs',
         permissionKeys: ['system.logs.read']
       }
     ]
@@ -308,11 +348,28 @@ function buildVisibleMenuItems(
         key: node.key,
         icon: node.icon,
         label: node.label,
+        title: node.label,
         children: visibleChildren
       } satisfies ItemType
     ];
   });
 }
+
+function buildMenuRouteMap(nodes: MenuNode[]): Record<string, string> {
+  return nodes.reduce<Record<string, string>>((routeMap, node) => {
+    if (node.to) {
+      routeMap[node.key] = node.to;
+    }
+
+    if (node.children) {
+      Object.assign(routeMap, buildMenuRouteMap(node.children));
+    }
+
+    return routeMap;
+  }, {});
+}
+
+const menuRouteMap = buildMenuRouteMap(menuConfig);
 
 function resolveSelectedKey(pathname: string): string {
   if (pathname.startsWith('/users/groups')) {
@@ -347,6 +404,9 @@ function resolveSelectedKey(pathname: string): string {
   }
   if (pathname.startsWith('/operation/events')) {
     return '/operation/events';
+  }
+  if (pathname.startsWith('/operation/policies')) {
+    return '/operation/policies';
   }
   if (pathname.startsWith('/operation/chatbot')) {
     return '/operation/chatbot';
@@ -405,6 +465,9 @@ function resolveSelectedKey(pathname: string): string {
   if (pathname.startsWith('/system/audit-logs')) {
     return '/system/audit-logs';
   }
+  if (pathname.startsWith('/system/metadata')) {
+    return '/system/metadata';
+  }
   if (pathname.startsWith('/system/permissions')) {
     return '/system/permissions';
   }
@@ -450,8 +513,15 @@ function resolveOpenKeys(selectedKey: string): string[] {
 
 export function AdminShell(): JSX.Element {
   const location = useLocation();
+  const navigate = useNavigate();
   const currentAdminId = usePermissionStore((state) => state.currentAdminId);
   const admins = usePermissionStore((state) => state.admins);
+  const {
+    token: { colorBgContainer }
+  } = theme.useToken();
+  const screens = useBreakpoint();
+  const isDesktopViewport = screens.lg ?? true;
+  const isMobileViewport = !isDesktopViewport;
 
   const currentAdmin = useMemo(
     () => admins.find((admin) => admin.adminId === currentAdminId) ?? admins[0] ?? null,
@@ -471,75 +541,185 @@ export function AdminShell(): JSX.Element {
   const selectedKey = resolveSelectedKey(location.pathname);
   const derivedOpenKeys = useMemo(() => resolveOpenKeys(selectedKey), [selectedKey]);
   const [openKeys, setOpenKeys] = useState<string[]>(derivedOpenKeys);
+  const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState<boolean>(
+    readStoredSidebarCollapsed
+  );
+  const [mobileSidebarCollapsed, setMobileSidebarCollapsed] = useState(true);
+  const isSidebarCollapsed = isMobileViewport
+    ? mobileSidebarCollapsed
+    : desktopSidebarCollapsed;
 
   useEffect(() => {
     setOpenKeys(derivedOpenKeys);
   }, [derivedOpenKeys]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.localStorage.setItem(
+      ADMIN_SHELL_SIDEBAR_COLLAPSED_STORAGE_KEY,
+      String(desktopSidebarCollapsed)
+    );
+  }, [desktopSidebarCollapsed]);
+
+  useEffect(() => {
+    setMobileSidebarCollapsed(true);
+  }, [isMobileViewport, location.pathname]);
+
+  const toggleSidebar = () => {
+    if (isMobileViewport) {
+      setMobileSidebarCollapsed((current) => !current);
+      return;
+    }
+
+    setDesktopSidebarCollapsed((current) => !current);
+  };
+
+  const handleMenuClick: MenuProps['onClick'] = ({ key }) => {
+    const nextPath = menuRouteMap[String(key)];
+
+    if (nextPath) {
+      navigate(nextPath);
+    }
+
+    if (isMobileViewport) {
+      setMobileSidebarCollapsed(true);
+    }
+  };
+
+  const controlledOpenKeys = isSidebarCollapsed ? undefined : openKeys;
+  const handleOpenChange = isSidebarCollapsed
+    ? undefined
+    : (nextOpenKeys: string[]) => setOpenKeys(nextOpenKeys);
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider
         width={272}
-        breakpoint="lg"
-        collapsedWidth={76}
+        trigger={null}
+        collapsible
+        collapsed={isSidebarCollapsed}
+        collapsedWidth={isMobileViewport ? 0 : 76}
         style={{
           height: '100vh',
-          position: 'sticky',
+          position: isMobileViewport ? 'fixed' : 'sticky',
           top: 0,
-          overflow: 'auto'
+          left: 0,
+          overflow: 'auto',
+          zIndex: isMobileViewport ? 40 : 1
         }}
       >
         <div
           style={{
             height: 72,
             margin: 12,
-            padding: '12px 14px',
+            padding: isSidebarCollapsed ? '12px 8px' : '12px 14px',
             borderRadius: 10,
             background: '#10233c',
-            color: '#fff'
+            color: '#fff',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: isSidebarCollapsed ? 'center' : 'flex-start',
+            justifyContent: 'center'
           }}
         >
           <Text style={{ color: '#ffffffcc', display: 'block', fontSize: 12 }}>
-            TOPIK AI
+            {isSidebarCollapsed ? 'TA' : 'TOPIK AI'}
           </Text>
-          <Title level={5} style={{ color: '#fff', margin: 0, lineHeight: '22px' }}>
+          <Title
+            level={5}
+            style={{
+              color: '#fff',
+              margin: 0,
+              lineHeight: '22px',
+              display: isSidebarCollapsed ? 'none' : 'block'
+            }}
+          >
             관리자
           </Title>
         </div>
         <Menu
           mode="inline"
           theme="dark"
-          items={menuItems as MenuItemType[]}
+          items={menuItems}
           selectedKeys={[selectedKey]}
-          openKeys={openKeys}
-          onOpenChange={(nextOpenKeys) => setOpenKeys(nextOpenKeys)}
+          openKeys={controlledOpenKeys}
+          onOpenChange={handleOpenChange}
+          onClick={handleMenuClick}
         />
       </Sider>
+      {isMobileViewport && !isSidebarCollapsed ? (
+        <div
+          aria-hidden="true"
+          onClick={() => setMobileSidebarCollapsed(true)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(16, 35, 60, 0.28)',
+            zIndex: 25
+          }}
+        />
+      ) : null}
       <Layout>
         <Header
           style={{
-            background: '#fff',
+            background: colorBgContainer,
             borderBottom: '1px solid #e8edf5',
             paddingInline: 20,
+            paddingBlock: 8,
+            minHeight: 64,
+            height: 'auto',
+            lineHeight: 'normal',
             position: 'sticky',
             top: 0,
-            zIndex: 10,
+            zIndex: isMobileViewport ? 30 : 10,
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 20
+            justifyContent: 'flex-start',
+            flexWrap: 'wrap',
+            gap: 12
           }}
         >
-          <Text type="secondary">
-            운영 기본 흐름: 검색 → 상세 → 조치 → 감사 로그 확인
+          <Button
+            type="text"
+            icon={isSidebarCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            onClick={toggleSidebar}
+            aria-label={isSidebarCollapsed ? '사이드바 펼치기' : '사이드바 접기'}
+            style={{
+              width: 48,
+              height: 48,
+              fontSize: 18,
+              flex: '0 0 auto'
+            }}
+          />
+          <Text
+            type="secondary"
+            style={{
+              flex: '1 1 320px',
+              minWidth: 0,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}
+          >
+            운영 기본 흐름: 검색 {"->"} 상세 {"->"} 조치 {"->"} 감사 로그 확인
           </Text>
           {currentAdmin ? (
-            <Tag color="blue">
+            <Tag color="blue" style={{ marginInlineStart: 'auto' }}>
               현재 세션: {currentAdmin.name} · {adminRoleLabels[currentAdmin.role]}
             </Tag>
           ) : null}
         </Header>
-        <Content style={{ padding: 20 }}>
+        <Content
+          style={{
+            padding: 20,
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0
+          }}
+        >
           <div key={location.pathname} className="route-transition-container">
             <Suspense
               fallback={
@@ -556,3 +736,5 @@ export function AdminShell(): JSX.Element {
     </Layout>
   );
 }
+
+

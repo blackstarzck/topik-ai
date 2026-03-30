@@ -72,12 +72,32 @@ export function buildAdminBreadcrumbItems(
     ];
   }
 
+  if (pathname.startsWith('/messages/mail/create')) {
+    const tab = new URLSearchParams(search).get('tab');
+    return [
+      breadcrumbLinkItem(adminMenuLabels.messages, '/messages/mail?tab=auto'),
+      breadcrumbLinkItem(adminMenuLabels.messagesMail, `/messages/mail${search || '?tab=auto'}`),
+      breadcrumbTextItem(tab === 'manual' ? '수동 발송' : '자동 발송'),
+      breadcrumbTextItem('등록 상세')
+    ];
+  }
+
   if (pathname.startsWith('/messages/mail')) {
     const tab = new URLSearchParams(search).get('tab');
     return [
       breadcrumbLinkItem(adminMenuLabels.messages, '/messages/mail?tab=auto'),
       breadcrumbTextItem(adminMenuLabels.messagesMail),
       breadcrumbTextItem(tab === 'manual' ? '수동 발송' : '자동 발송')
+    ];
+  }
+
+  if (pathname.startsWith('/messages/push/create')) {
+    const tab = new URLSearchParams(search).get('tab');
+    return [
+      breadcrumbLinkItem(adminMenuLabels.messages, '/messages/push?tab=auto'),
+      breadcrumbLinkItem(adminMenuLabels.messagesPush, `/messages/push${search || '?tab=auto'}`),
+      breadcrumbTextItem(tab === 'manual' ? '수동 발송' : '자동 발송'),
+      breadcrumbTextItem('등록 상세')
     ];
   }
 
@@ -106,6 +126,14 @@ export function buildAdminBreadcrumbItems(
     ];
   }
 
+  if (pathname.startsWith('/operation/notices/create')) {
+    return [
+      breadcrumbLinkItem(adminMenuLabels.operation, '/operation/notices'),
+      breadcrumbLinkItem(adminMenuLabels.operationNotices, '/operation/notices'),
+      breadcrumbTextItem('등록 상세')
+    ];
+  }
+
   if (pathname.startsWith('/operation/notices')) {
     return [
       breadcrumbLinkItem(adminMenuLabels.operation, '/operation/notices'),
@@ -120,10 +148,33 @@ export function buildAdminBreadcrumbItems(
     ];
   }
 
+  if (pathname.startsWith('/operation/events/create')) {
+    return [
+      breadcrumbLinkItem(adminMenuLabels.operation, '/operation/notices'),
+      breadcrumbLinkItem(adminMenuLabels.operationEvents, '/operation/events'),
+      breadcrumbTextItem('등록 상세')
+    ];
+  }
+
   if (pathname.startsWith('/operation/events')) {
     return [
       breadcrumbLinkItem(adminMenuLabels.operation, '/operation/notices'),
       breadcrumbTextItem(adminMenuLabels.operationEvents)
+    ];
+  }
+
+  if (pathname.startsWith('/operation/policies/create')) {
+    return [
+      breadcrumbLinkItem(adminMenuLabels.operation, '/operation/notices'),
+      breadcrumbLinkItem(adminMenuLabels.operationPolicies, '/operation/policies'),
+      breadcrumbTextItem('등록 상세')
+    ];
+  }
+
+  if (pathname.startsWith('/operation/policies')) {
+    return [
+      breadcrumbLinkItem(adminMenuLabels.operation, '/operation/notices'),
+      breadcrumbTextItem(adminMenuLabels.operationPolicies)
     ];
   }
 
@@ -145,6 +196,14 @@ export function buildAdminBreadcrumbItems(
     return [
       breadcrumbLinkItem(adminMenuLabels.commerce, '/commerce/payments'),
       breadcrumbTextItem(adminMenuLabels.commerceRefunds)
+    ];
+  }
+
+  if (pathname.startsWith('/commerce/coupons/create')) {
+    return [
+      breadcrumbLinkItem(adminMenuLabels.commerce, '/commerce/payments'),
+      breadcrumbLinkItem(adminMenuLabels.commerceCoupons, '/commerce/coupons'),
+      breadcrumbTextItem('등록 상세')
     ];
   }
 
@@ -256,6 +315,13 @@ export function buildAdminBreadcrumbItems(
     ];
   }
 
+  if (pathname.startsWith('/system/metadata')) {
+    return [
+      breadcrumbLinkItem(adminMenuLabels.system, '/system/admins'),
+      breadcrumbTextItem(adminMenuLabels.systemMetadata)
+    ];
+  }
+
   if (pathname.startsWith('/system/audit-logs')) {
     return [
       breadcrumbLinkItem(adminMenuLabels.system, '/system/admins'),
@@ -272,3 +338,4 @@ export function buildAdminBreadcrumbItems(
 
   return [breadcrumbTextItem(adminMenuLabels.dashboard)];
 }
+

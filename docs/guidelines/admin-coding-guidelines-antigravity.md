@@ -30,6 +30,10 @@
 - 모든 조치 코드는 운영 흐름 `검색 -> 상세 -> 조치 -> 감사 로그 확인`을 훼손하지 않아야 합니다.
 - 파괴적 액션(정지/삭제/환불/숨김/사용자 정지)은 확인 단계와 사유/근거를 남길 수 있어야 합니다.
 - 표준 상태값을 임의 변경하지 않습니다(예: `정상/정지/탈퇴`, `게시/숨김`, `완료/취소/환불`).
+- 입력/편집 Modal, Drawer, 패널의 항목형 UI는 Ant Design `Descriptions` 기반 입력 테이블을 기본값으로 사용합니다. `Form`은 검증과 상태 관리 용도로만 감싸고, 단일 본문 에디터처럼 표 구조가 맞지 않는 캔버스형 입력만 예외로 둡니다.
+- `Descriptions` 기반 입력 테이블에서 `required` 검증을 거는 항목은 label(`th`) heading에 빨간 `*`를 함께 표시해 필수 입력임을 즉시 알 수 있게 합니다.
+- `Descriptions` 기반 입력 테이블의 행 높이는 입력 control 유무와 무관하게 기본 baseline을 통일하고, 더 큰 control이 필요한 경우에만 해당 행이 확장되게 유지합니다.
+- 목록 운영형 본문은 공용 `AdminListCard` 또는 같은 책임의 shared wrapper를 기본으로 사용하고, 탭/검색/요약 액션/핵심 버튼은 카드 본문 툴바 안에 배치합니다.
 - 네트워크/서버 상태는 최소 `pending`, `success(result)`, `empty`, `error`를 구분해 UX에 반영합니다.
 - 통신 안정성은 `try-catch`에만 의존하지 않고 Error Boundary, 라우트 fallback, 재시도/취소/타임아웃, 마지막 성공 상태 fallback 같은 fail-safe를 함께 설계합니다.
 - 통신 실패가 발생해도 화면/기능 단위로 장애를 격리해 전체 서비스 중단을 방지합니다.
@@ -131,8 +135,10 @@ messageApi.success('게시글 숨김 완료');
 
 ### Do
 - 공통 패턴(`AdminDataTable`, `SearchBar`, `ActionConfirm`, `AuditLogLink`)을 우선 재사용합니다.
+- 목록 운영형 페이지의 본문 컨테이너는 `AdminListCard`를 우선 재사용하고, 카드 header `extra` 대신 toolbar 슬롯으로 상단 UI를 구성합니다.
 - 모듈별 구현은 공통 컴포넌트 위에 도메인 옵션만 얹는 방식으로 구성합니다.
 - 동일한 상태 배지/오류 메시지/확인 모달 문구 템플릿을 재사용합니다.
+- Drawer를 직접 조합해야 할 때도 header/footer는 공통 `DrawerTitle`, `DrawerHeaderMeta`, `DrawerFooter` 레이어를 우선 재사용합니다.
 
 ### Do Not
 - 페이지마다 별도의 테이블/필터/확인 모달 구현을 새로 복제하지 않습니다.

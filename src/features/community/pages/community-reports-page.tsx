@@ -1,10 +1,5 @@
 import {
-  Card,
-  Col,
-  Row,
-  Select,
   Space,
-  Statistic,
   Typography,
   notification
 } from 'antd';
@@ -12,24 +7,37 @@ import type { TableColumnsType } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
+import { getMockUserById } from '../../users/api/mock-users';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
+import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
   SearchBar,
+  SearchBarDateRange,
   SearchBarDetailField
 } from '../../../shared/ui/search-bar/search-bar';
-import { matchesSearchField } from '../../../shared/ui/search-bar/search-bar-utils';
-import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
-import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
-import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
+import { useSearchBarDateDraft } from '../../../shared/ui/search-bar/use-search-bar-date-draft';
 import {
-  createColumnFilterProps,
+  matchesSearchDateRange,
+  matchesSearchField,
+  parseSearchDate
+} from '../../../shared/ui/search-bar/search-bar-utils';
+import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
+import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
+import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
+import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
+import {
+  createDefinedColumnFilterProps,
   createTextSorter
 } from '../../../shared/ui/table/table-column-utils';
 import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
+import {
+  formatUserDisplayName,
+  UserNavigationLink
+} from '../../../shared/ui/user/user-reference';
 
 const { Text } = Typography;
 
@@ -39,7 +47,9 @@ type ReportRow = {
   id: string;
   targetPostId: string;
   targetUserId: string;
-  reporter: string;
+  targetUserName: string;
+  reporterId: string;
+  reporterName: string;
   reason: string;
   createdAt: string;
   processStatus: ProcessStatus;
@@ -50,12 +60,18 @@ type ReportActionState =
   | { type: 'suspend-user'; row: ReportRow }
   | null;
 
+function getResolvedUserName(userId: string, fallbackName?: string): string {
+  return getMockUserById(userId)?.realName ?? fallbackName ?? userId;
+}
+
 const initialRows: ReportRow[] = [
   {
     id: 'RP-001',
     targetPostId: 'POST-002',
     targetUserId: 'U00047',
-    reporter: 'member_12',
+    targetUserName: getResolvedUserName('U00047'),
+    reporterId: 'U00012',
+    reporterName: getResolvedUserName('U00012'),
     reason: '욕설 포함',
     createdAt: '2026-03-03 14:12',
     processStatus: '처리 대기'
@@ -64,7 +80,9 @@ const initialRows: ReportRow[] = [
     id: 'RP-002',
     targetPostId: 'POST-010',
     targetUserId: 'U00019',
-    reporter: 'member_31',
+    targetUserName: getResolvedUserName('U00019'),
+    reporterId: 'U00031',
+    reporterName: getResolvedUserName('U00031'),
     reason: '광고성 게시물',
     createdAt: '2026-03-04 09:31',
     processStatus: '처리 대기'
@@ -73,29 +91,26 @@ const initialRows: ReportRow[] = [
     id: 'RP-003',
     targetPostId: 'POST-003',
     targetUserId: 'U00077',
-    reporter: 'member_01',
+    targetUserName: getResolvedUserName('U00077'),
+    reporterId: 'U00001',
+    reporterName: getResolvedUserName('U00001'),
     reason: '스팸',
     createdAt: '2026-03-04 10:05',
     processStatus: '처리 완료'
   }
 ];
 
+const reportProcessStatusFilterValues = ['처리 대기', '처리 완료'] as const;
+
 const detailLabelMap: Record<string, string> = {
   id: '신고 ID',
   targetPostId: '대상 게시글 ID',
-  targetUserId: '대상 사용자 ID',
+  targetUser: '대상 사용자',
   reporter: '신고자',
   reason: '신고 사유',
   createdAt: '신고일',
   processStatus: '처리 상태'
 };
-
-function parseStatus(value: string | null): ProcessStatus | 'all' {
-  if (value === '처리 대기' || value === '처리 완료') {
-    return value;
-  }
-  return 'all';
-}
 
 export default function CommunityReportsPage(): JSX.Element {
   const [rows, setRows] = useState<ReportRow[]>(initialRows);
@@ -103,20 +118,26 @@ export default function CommunityReportsPage(): JSX.Element {
   const [selectedRow, setSelectedRow] = useState<ReportRow | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const searchField = searchParams.get('searchField') ?? 'all';
+  const startDate = parseSearchDate(searchParams.get('startDate'));
+  const endDate = parseSearchDate(searchParams.get('endDate'));
   const keyword = searchParams.get('keyword') ?? '';
-  const statusFilter = parseStatus(searchParams.get('status'));
+  const {
+    draftStartDate,
+    draftEndDate,
+    handleDraftDateChange,
+    handleDraftReset,
+    handleDetailOpenChange
+  } = useSearchBarDateDraft(startDate, endDate);
   const [notificationApi, notificationContextHolder] = notification.useNotification();
 
-  const processedStatus = useMemo<ProcessStatus>(
-    () =>
-      initialRows.find((row) => row.processStatus === '처리 완료')?.processStatus ??
-      '처리 완료',
-    []
-  );
-
   const commitParams = useCallback(
-    (next: Partial<Record<'keyword' | 'searchField' | 'status', string>>) => {
+    (
+      next: Partial<
+        Record<'keyword' | 'searchField' | 'startDate' | 'endDate', string>
+      >
+    ) => {
       const merged = new URLSearchParams(searchParams);
+      merged.delete('status');
 
       Object.entries(next).forEach(([key, value]) => {
         if (!value || value === 'all') {
@@ -131,11 +152,20 @@ export default function CommunityReportsPage(): JSX.Element {
     [searchParams, setSearchParams]
   );
 
+  const handleApplyDateRange = useCallback(() => {
+    commitParams({
+      startDate: draftStartDate,
+      endDate: draftEndDate,
+      keyword,
+      searchField
+    });
+  }, [commitParams, draftEndDate, draftStartDate, keyword, searchField]);
+
   const visibleRows = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
 
     return rows.filter((record) => {
-      if (statusFilter !== 'all' && record.processStatus !== statusFilter) {
+      if (!matchesSearchDateRange(record.createdAt, startDate, endDate)) {
         return false;
       }
       if (!normalizedKeyword) {
@@ -145,33 +175,33 @@ export default function CommunityReportsPage(): JSX.Element {
       return matchesSearchField(normalizedKeyword, searchField, {
         id: record.id,
         targetPostId: record.targetPostId,
-        targetUserId: record.targetUserId,
-        reporter: record.reporter,
+        targetUser: `${record.targetUserName} ${record.targetUserId}`,
+        reporter: `${record.reporterName} ${record.reporterId}`,
         reason: record.reason
       });
     });
-  }, [keyword, rows, searchField, statusFilter]);
+  }, [endDate, keyword, rows, searchField, startDate]);
 
-  const markProcessed = useCallback(
-    (row: ReportRow) => {
-      setRows((prev) =>
-        prev.map((item) =>
-          item.id === row.id ? { ...item, processStatus: '처리 완료' } : item
-        )
-      );
-      notificationApi.success({
-        message: '신고 처리 완료',
-        description: (
-          <Space direction="vertical">
-            <Text>대상 유형: {getTargetTypeLabel('Community')}</Text>
-            <Text>대상 ID: {row.id}</Text>
-            <Text>사유/근거: 운영자가 신고 처리를 완료했습니다.</Text>
-            <AuditLogLink targetType="Community" targetId={row.id} />
-          </Space>
-        )
-      });
-    },
-    [notificationApi]
+  const selectedDetailRecord = useMemo(
+    () =>
+      selectedRow
+        ? {
+            id: selectedRow.id,
+            targetPostId: selectedRow.targetPostId,
+            targetUser: formatUserDisplayName(
+              selectedRow.targetUserName,
+              selectedRow.targetUserId
+            ),
+            reporter: formatUserDisplayName(
+              selectedRow.reporterName,
+              selectedRow.reporterId
+            ),
+            reason: selectedRow.reason,
+            createdAt: selectedRow.createdAt,
+            processStatus: selectedRow.processStatus
+          }
+        : null,
+    [selectedRow]
   );
 
   const handleConfirmAction = useCallback(
@@ -223,14 +253,12 @@ export default function CommunityReportsPage(): JSX.Element {
         title: '신고 ID',
         dataIndex: 'id',
         width: 110,
-        ...createColumnFilterProps(visibleRows, (record) => record.id),
         sorter: createTextSorter((record) => record.id)
       },
       {
         title: '게시글',
         dataIndex: 'targetPostId',
         width: 130,
-        ...createColumnFilterProps(visibleRows, (record) => record.targetPostId),
         sorter: createTextSorter((record) => record.targetPostId),
         render: (value: string) => (
           <Link
@@ -243,47 +271,53 @@ export default function CommunityReportsPage(): JSX.Element {
         )
       },
       {
-        title: '대상 사용자 ID',
-        dataIndex: 'targetUserId',
-        width: 140,
-        ...createColumnFilterProps(visibleRows, (record) => record.targetUserId),
-        sorter: createTextSorter((record) => record.targetUserId),
-        render: (targetUserId: string) => (
-          <Link
-            className="table-navigation-link"
-            to={`/users/${targetUserId}?tab=profile`}
-            onClick={(event) => event.stopPropagation()}
-          >
-            {targetUserId}
-          </Link>
+        title: '대상 사용자',
+        dataIndex: 'targetUserName',
+        width: 180,
+        sorter: createTextSorter((record) => record.targetUserName),
+        render: (_, record) => (
+          <UserNavigationLink
+            stopPropagation
+            userId={record.targetUserId}
+            userName={record.targetUserName}
+            withId
+          />
         )
       },
       {
         title: '신고자',
-        dataIndex: 'reporter',
-        width: 130,
-        ...createColumnFilterProps(visibleRows, (record) => record.reporter),
-        sorter: createTextSorter((record) => record.reporter)
+        dataIndex: 'reporterName',
+        width: 180,
+        sorter: createTextSorter((record) => record.reporterName),
+        render: (_, record) => (
+          <UserNavigationLink
+            stopPropagation
+            userId={record.reporterId}
+            userName={record.reporterName}
+            withId
+          />
+        )
       },
       {
         title: '신고 사유',
         dataIndex: 'reason',
         width: 220,
-        ...createColumnFilterProps(visibleRows, (record) => record.reason),
         sorter: createTextSorter((record) => record.reason)
       },
       {
         title: '신고일',
         dataIndex: 'createdAt',
         width: 180,
-        ...createColumnFilterProps(visibleRows, (record) => record.createdAt),
         sorter: createTextSorter((record) => record.createdAt)
       },
       {
-        title: '처리 상태',
+        title: createStatusColumnTitle('처리 상태', ['처리 대기', '처리 완료']),
         dataIndex: 'processStatus',
         width: 120,
-        ...createColumnFilterProps(visibleRows, (record) => record.processStatus),
+        ...createDefinedColumnFilterProps(
+          reportProcessStatusFilterValues,
+          (record) => record.processStatus
+        ),
         sorter: createTextSorter((record) => record.processStatus),
         render: (status: ProcessStatus) => <StatusBadge status={status} />
       },
@@ -309,46 +343,43 @@ export default function CommunityReportsPage(): JSX.Element {
                 label: '사용자 정지',
                 danger: true,
                 onClick: () => setActionState({ type: 'suspend-user', row: record })
-              },
-              {
-                key: `complete-${record.id}`,
-                label: '신고 처리 완료',
-                disabled: record.processStatus === processedStatus,
-                onClick: () => markProcessed(record)
               }
             ]}
           />
         )
       }
     ],
-    [markProcessed, processedStatus, visibleRows]
+    []
   );
 
   const pendingCount = rows.filter((row) => row.processStatus === '처리 대기').length;
   const completedCount = rows.filter((row) => row.processStatus === '처리 완료').length;
+  const reportSummaryCards = useMemo(
+    () => [
+      {
+        key: 'all-reports',
+        label: '전체 신고',
+        value: `${rows.length.toLocaleString()}건`
+      },
+      {
+        key: 'pending-reports',
+        label: '처리 대기',
+        value: `${pendingCount.toLocaleString()}건`
+      },
+      {
+        key: 'completed-reports',
+        label: '처리 완료',
+        value: `${completedCount.toLocaleString()}건`
+      }
+    ],
+    [completedCount, pendingCount, rows.length]
+  );
 
   return (
     <div>
       {notificationContextHolder}
       <PageTitle title="신고 관리" />
-
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic title="전체 신고" value={rows.length} suffix="건" />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic title="처리 대기" value={pendingCount} suffix="건" />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic title="처리 완료" value={completedCount} suffix="건" />
-          </Card>
-        </Col>
-      </Row>
+      <ListSummaryCards items={reportSummaryCards} />
 
       <AdminListCard
         toolbar={
@@ -358,42 +389,36 @@ export default function CommunityReportsPage(): JSX.Element {
               { label: '전체', value: 'all' },
               { label: '신고 ID', value: 'id' },
               { label: '게시글 ID', value: 'targetPostId' },
-              { label: '사용자 ID', value: 'targetUserId' },
+              { label: '대상 사용자', value: 'targetUser' },
               { label: '신고자', value: 'reporter' },
               { label: '신고 사유', value: 'reason' }
             ]}
             keyword={keyword}
             onSearchFieldChange={(value) =>
               commitParams({
-                searchField: value,
-                status: statusFilter
+                searchField: value
               })
             }
             onKeywordChange={(event) =>
               commitParams({
                 keyword: event.target.value,
-                searchField,
-                status: statusFilter
+                searchField
               })
             }
             keywordPlaceholder="검색..."
-            detailTitle="상세 검색"
-            detailContent={
-              <SearchBarDetailField label="처리 상태">
-                <Select
-                  value={statusFilter}
-                  options={[
-                    { label: '전체', value: 'all' },
-                    { label: '처리 대기', value: '처리 대기' },
-                    { label: '처리 완료', value: '처리 완료' }
-                  ]}
-                  onChange={(value: ProcessStatus | 'all') =>
-                    commitParams({ status: value, keyword, searchField })
-                  }
-                />
-              </SearchBarDetailField>
-            }
-            onReset={() => setSearchParams({}, { replace: true })}
+          detailTitle="상세 검색"
+          detailContent={
+            <SearchBarDetailField label="신고일">
+              <SearchBarDateRange
+                startDate={draftStartDate}
+                endDate={draftEndDate}
+                onChange={handleDraftDateChange}
+              />
+            </SearchBarDetailField>
+          }
+            onApply={handleApplyDateRange}
+            onDetailOpenChange={handleDetailOpenChange}
+            onReset={handleDraftReset}
             summary={
               <Text type="secondary">총 {visibleRows.length.toLocaleString()}건</Text>
             }
@@ -444,7 +469,7 @@ export default function CommunityReportsPage(): JSX.Element {
       <TableRowDetailModal
         open={Boolean(selectedRow)}
         title="신고 상세"
-        record={selectedRow}
+        record={selectedDetailRecord}
         labelMap={detailLabelMap}
         onClose={() => setSelectedRow(null)}
       />

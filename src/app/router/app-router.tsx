@@ -1,4 +1,4 @@
-import { lazy } from 'react';
+﻿import { lazy } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { AdminShell } from '../../shared/layout/admin-shell';
@@ -9,6 +9,9 @@ const DashboardPage = lazy(
 const UsersPage = lazy(() => import('../../features/users/pages/users-page'));
 const InstructorManagementPage = lazy(
   () => import('../../features/users/pages/instructor-management-page')
+);
+const UsersReferralsPage = lazy(
+  () => import('../../features/users/pages/users-referrals-page')
 );
 const UserDetailPage = lazy(
   () => import('../../features/users/pages/user-detail-page')
@@ -25,6 +28,9 @@ const MessageMailPage = lazy(
 const MessagePushPage = lazy(
   () => import('../../features/message/pages/message-push-page')
 );
+const MessageTemplateCreatePage = lazy(
+  () => import('../../features/message/pages/message-template-create-page')
+);
 const MessageGroupsPage = lazy(
   () => import('../../features/message/pages/message-groups-page')
 );
@@ -34,14 +40,44 @@ const MessageHistoryPage = lazy(
 const OperationNoticesPage = lazy(
   () => import('../../features/operation/pages/operation-notices-page')
 );
+const OperationNoticeCreatePage = lazy(
+  () => import('../../features/operation/pages/operation-notice-create-page')
+);
 const OperationFaqPage = lazy(
   () => import('../../features/operation/pages/operation-faq-page')
+);
+const OperationEventsPage = lazy(
+  () => import('../../features/operation/pages/operation-events-page')
+);
+const OperationPoliciesPage = lazy(
+  () => import('../../features/operation/pages/operation-policies-page')
+);
+const OperationEventCreatePage = lazy(
+  () => import('../../features/operation/pages/operation-event-create-page')
+);
+const OperationPolicyCreatePage = lazy(
+  () => import('../../features/operation/pages/operation-policy-create-page')
 );
 const BillingPaymentsPage = lazy(
   () => import('../../features/billing/pages/billing-payments-page')
 );
 const BillingRefundsPage = lazy(
   () => import('../../features/billing/pages/billing-refunds-page')
+);
+const CommerceCouponsPage = lazy(
+  () => import('../../features/commerce/pages/commerce-coupons-page')
+);
+const CommercePointsPage = lazy(
+  () => import('../../features/commerce/pages/commerce-points-page')
+);
+const CommerceCouponCreatePage = lazy(
+  () => import('../../features/commerce/pages/commerce-coupon-create-page')
+);
+const CommerceCouponTemplateCreatePage = lazy(
+  () => import('../../features/commerce/pages/commerce-coupon-template-create-page')
+);
+const AssessmentQuestionBankPage = lazy(
+  () => import('../../features/assessment/pages/assessment-question-bank-page')
 );
 const AnalyticsOverviewPage = lazy(
   () => import('../../features/analytics/pages/analytics-overview-page')
@@ -51,6 +87,9 @@ const SystemAdminsPage = lazy(
 );
 const SystemPermissionsPage = lazy(
   () => import('../../features/system/pages/system-permissions-page')
+);
+const SystemMetadataPage = lazy(
+  () => import('../../features/system/pages/system-metadata-page')
 );
 const SystemAuditLogsPage = lazy(
   () => import('../../features/system/pages/system-audit-logs-page')
@@ -75,48 +114,59 @@ export function AppRouter(): JSX.Element {
         <Route path="/users" element={<UsersPage />} />
         <Route path="/users/:userId" element={<UserDetailPage />} />
         <Route path="/users/groups" element={<InstructorManagementPage />} />
-        <Route
-          path="/users/referrals"
-          element={
-            <AdminPlaceholderPage
-              title="추천인 관리"
-              summary="추천 관계와 추천 보상 규칙을 운영하기 위한 화면 자리입니다."
-              ownerRole="OPS_ADMIN"
-              supportingRoles={['SUPER_ADMIN']}
-              capabilities={[
-                '추천인 코드/링크 조회',
-                '추천 실적과 보상 내역 검수',
-                '추천 정책 변경 이력 관리'
-              ]}
-            />
-          }
-        />
+        <Route path="/users/referrals" element={<UsersReferralsPage />} />
 
         <Route path="/community/posts" element={<CommunityPostsPage />} />
         <Route path="/community/reports" element={<CommunityReportsPage />} />
 
         <Route path="/messages/mail" element={<MessageMailPage />} />
+        <Route
+          path="/messages/mail/create"
+          element={<MessageTemplateCreatePage channel="mail" />}
+        />
+        <Route
+          path="/messages/mail/create/:templateId"
+          element={<MessageTemplateCreatePage channel="mail" />}
+        />
         <Route path="/messages/push" element={<MessagePushPage />} />
+        <Route
+          path="/messages/push/create"
+          element={<MessageTemplateCreatePage channel="push" />}
+        />
+        <Route
+          path="/messages/push/create/:templateId"
+          element={<MessageTemplateCreatePage channel="push" />}
+        />
         <Route path="/messages/groups" element={<MessageGroupsPage />} />
         <Route path="/messages/history" element={<MessageHistoryPage />} />
 
         <Route path="/operation/notices" element={<OperationNoticesPage />} />
-        <Route path="/operation/faq" element={<OperationFaqPage />} />
         <Route
-          path="/operation/events"
-          element={
-            <AdminPlaceholderPage
-              title="이벤트"
-              summary="이벤트 페이지, 참여 조건, 노출 상태를 운영하기 위한 화면 자리입니다."
-              ownerRole="OPS_ADMIN"
-              supportingRoles={['SUPER_ADMIN']}
-              capabilities={[
-                '이벤트 메타데이터 관리',
-                '노출 기간과 대상 설정',
-                '메시지/커머스와의 연동 계획 정리'
-              ]}
-            />
-          }
+          path="/operation/notices/create"
+          element={<OperationNoticeCreatePage />}
+        />
+        <Route
+          path="/operation/notices/create/:noticeId"
+          element={<OperationNoticeCreatePage />}
+        />
+        <Route path="/operation/faq" element={<OperationFaqPage />} />
+        <Route path="/operation/events" element={<OperationEventsPage />} />
+        <Route
+          path="/operation/events/create"
+          element={<OperationEventCreatePage />}
+        />
+        <Route
+          path="/operation/events/create/:eventId"
+          element={<OperationEventCreatePage />}
+        />
+        <Route path="/operation/policies" element={<OperationPoliciesPage />} />
+        <Route
+          path="/operation/policies/create"
+          element={<OperationPolicyCreatePage />}
+        />
+        <Route
+          path="/operation/policies/create/:policyId"
+          element={<OperationPolicyCreatePage />}
         />
         <Route
           path="/operation/chatbot"
@@ -140,38 +190,24 @@ export function AppRouter(): JSX.Element {
 
         <Route path="/commerce/payments" element={<BillingPaymentsPage />} />
         <Route path="/commerce/refunds" element={<BillingRefundsPage />} />
+        <Route path="/commerce/coupons" element={<CommerceCouponsPage />} />
         <Route
-          path="/commerce/coupons"
-          element={
-            <AdminPlaceholderPage
-              title="쿠폰 관리"
-              summary="쿠폰 정책, 발급 상태, 사용 조건을 관리하기 위한 화면 자리입니다."
-              ownerRole="OPS_ADMIN"
-              supportingRoles={['SUPER_ADMIN']}
-              capabilities={[
-                '쿠폰 생성 및 만료 정책 설정',
-                '대상 그룹/회원 연결',
-                '사용량과 중복 사용 검수'
-              ]}
-            />
-          }
+          path="/commerce/coupons/create"
+          element={<CommerceCouponCreatePage />}
         />
         <Route
-          path="/commerce/points"
-          element={
-            <AdminPlaceholderPage
-              title="포인트 관리"
-              summary="포인트 적립/차감 정책과 운영 이력을 관리하기 위한 자리입니다."
-              ownerRole="OPS_ADMIN"
-              supportingRoles={['SUPER_ADMIN']}
-              capabilities={[
-                '포인트 정책 정의',
-                '회원별 포인트 이력 검수',
-                '수동 차감 및 보정 플로우 설계'
-              ]}
-            />
-          }
+          path="/commerce/coupons/create/:couponId"
+          element={<CommerceCouponCreatePage />}
         />
+        <Route
+          path="/commerce/coupons/template/create"
+          element={<CommerceCouponTemplateCreatePage />}
+        />
+        <Route
+          path="/commerce/coupons/template/create/:templateId"
+          element={<CommerceCouponTemplateCreatePage />}
+        />
+        <Route path="/commerce/points" element={<CommercePointsPage />} />
         <Route
           path="/commerce/store"
           element={
@@ -191,19 +227,7 @@ export function AppRouter(): JSX.Element {
 
         <Route
           path="/assessment/question-bank"
-          element={
-            <AdminPlaceholderPage
-              title="문제은행"
-              summary="문항 풀과 출제 기준을 관리하기 위한 Assessment 모듈의 시작점입니다."
-              ownerRole="CONTENT_MANAGER"
-              supportingRoles={['SUPER_ADMIN']}
-              capabilities={[
-                '문항 카테고리/난이도 관리',
-                '문항 검수 상태와 버전 관리',
-                '시험 세트와의 연결'
-              ]}
-            />
-          }
+          element={<AssessmentQuestionBankPage />}
         />
         <Route
           path="/assessment/question-bank/eps-topik"
@@ -339,6 +363,7 @@ export function AppRouter(): JSX.Element {
 
         <Route path="/system/admins" element={<SystemAdminsPage />} />
         <Route path="/system/permissions" element={<SystemPermissionsPage />} />
+        <Route path="/system/metadata" element={<SystemMetadataPage />} />
         <Route path="/system/audit-logs" element={<SystemAuditLogsPage />} />
         <Route path="/system/logs" element={<SystemLogsPage />} />
 
@@ -375,3 +400,4 @@ export function AppRouter(): JSX.Element {
     </Routes>
   );
 }
+

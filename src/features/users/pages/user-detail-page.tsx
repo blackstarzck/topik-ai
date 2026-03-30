@@ -18,18 +18,24 @@ import type { UserStatus } from '../model/types';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
+import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
 import {
-  createColumnFilterProps,
+  createDefinedColumnFilterProps,
   createNumberSorter,
   createNumericTextSorter,
   createTextSorter
 } from '../../../shared/ui/table/table-column-utils';
 import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
+import { formatUserDisplayName } from '../../../shared/ui/user/user-reference';
 
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 
 const { Text } = Typography;
+
+const detailPaymentStatusFilterValues = ['완료', '취소', '환불'] as const;
+const detailCommunityBoardFilterValues = ['자유게시판', '후기', '질문'] as const;
+const detailCommunityStatusFilterValues = ['게시', '숨김'] as const;
 
 type UsersDetailTabKey =
   | 'profile'
@@ -276,38 +282,33 @@ export default function UserDetailPage(): JSX.Element {
         title: '활동 ID',
         dataIndex: 'id',
         width: 160,
-        ...createColumnFilterProps(activityRows, (record) => record.id),
         sorter: createTextSorter((record) => record.id)
       },
       {
         title: '활동 유형',
         dataIndex: 'type',
         width: 120,
-        ...createColumnFilterProps(activityRows, (record) => record.type),
         sorter: createTextSorter((record) => record.type)
       },
       {
         title: '콘텐츠',
         dataIndex: 'content',
-        ...createColumnFilterProps(activityRows, (record) => record.content),
         sorter: createTextSorter((record) => record.content)
       },
       {
         title: '활동 시각',
         dataIndex: 'createdAt',
         width: 180,
-        ...createColumnFilterProps(activityRows, (record) => record.createdAt),
         sorter: createTextSorter((record) => record.createdAt)
       },
       {
         title: 'IP',
         dataIndex: 'ip',
         width: 160,
-        ...createColumnFilterProps(activityRows, (record) => record.ip),
         sorter: createTextSorter((record) => record.ip)
       }
     ],
-    [activityRows]
+    []
   );
 
   const paymentColumns = useMemo<TableColumnsType<(typeof paymentRows)[number]>>(
@@ -316,7 +317,6 @@ export default function UserDetailPage(): JSX.Element {
         title: '결제 ID',
         dataIndex: 'id',
         width: 150,
-        ...createColumnFilterProps(paymentRows, (record) => record.id),
         sorter: createTextSorter((record) => record.id),
         render: (id: string) => (
           <Link
@@ -331,41 +331,39 @@ export default function UserDetailPage(): JSX.Element {
       {
         title: '상품',
         dataIndex: 'product',
-        ...createColumnFilterProps(paymentRows, (record) => record.product),
         sorter: createTextSorter((record) => record.product)
       },
       {
         title: '결제 금액',
         dataIndex: 'amount',
         width: 130,
-        align: 'right',
-        ...createColumnFilterProps(paymentRows, (record) => record.amount),
         sorter: createNumericTextSorter((record) => record.amount)
       },
       {
         title: '결제 수단',
         dataIndex: 'method',
         width: 120,
-        ...createColumnFilterProps(paymentRows, (record) => record.method),
         sorter: createTextSorter((record) => record.method)
       },
       {
         title: '결제일',
         dataIndex: 'paidAt',
         width: 130,
-        ...createColumnFilterProps(paymentRows, (record) => record.paidAt),
         sorter: createTextSorter((record) => record.paidAt)
       },
       {
-        title: '상태',
+        title: createStatusColumnTitle('상태', ['완료', '취소', '환불']),
         dataIndex: 'status',
         width: 100,
-        ...createColumnFilterProps(paymentRows, (record) => record.status),
+        ...createDefinedColumnFilterProps(
+          detailPaymentStatusFilterValues,
+          (record) => record.status
+        ),
         sorter: createTextSorter((record) => record.status),
         render: (status: string) => <StatusBadge status={status} />
       }
     ],
-    [paymentRows]
+    []
   );
 
   const communityColumns = useMemo<TableColumnsType<(typeof communityRows)[number]>>(
@@ -374,7 +372,6 @@ export default function UserDetailPage(): JSX.Element {
         title: '게시글 ID',
         dataIndex: 'id',
         width: 160,
-        ...createColumnFilterProps(communityRows, (record) => record.id),
         sorter: createTextSorter((record) => record.id),
         render: (id: string) => (
           <Link
@@ -389,41 +386,43 @@ export default function UserDetailPage(): JSX.Element {
       {
         title: '제목',
         dataIndex: 'title',
-        ...createColumnFilterProps(communityRows, (record) => record.title),
         sorter: createTextSorter((record) => record.title)
       },
       {
         title: '게시판',
         dataIndex: 'board',
         width: 120,
-        ...createColumnFilterProps(communityRows, (record) => record.board),
+        ...createDefinedColumnFilterProps(
+          detailCommunityBoardFilterValues,
+          (record) => record.board
+        ),
         sorter: createTextSorter((record) => record.board)
       },
       {
         title: '작성일',
         dataIndex: 'createdAt',
         width: 120,
-        ...createColumnFilterProps(communityRows, (record) => record.createdAt),
         sorter: createTextSorter((record) => record.createdAt)
       },
       {
         title: '신고 수',
         dataIndex: 'reports',
         width: 90,
-        align: 'right',
-        ...createColumnFilterProps(communityRows, (record) => record.reports),
         sorter: createNumberSorter((record) => record.reports)
       },
       {
-        title: '상태',
+        title: createStatusColumnTitle('상태', ['게시', '숨김']),
         dataIndex: 'status',
         width: 110,
-        ...createColumnFilterProps(communityRows, (record) => record.status),
+        ...createDefinedColumnFilterProps(
+          detailCommunityStatusFilterValues,
+          (record) => record.status
+        ),
         sorter: createTextSorter((record) => record.status),
         render: (status: string) => <StatusBadge status={status} />
       }
     ],
-    [communityRows]
+    []
   );
 
   const logsColumns = useMemo<TableColumnsType<(typeof logRows)[number]>>(
@@ -432,39 +431,34 @@ export default function UserDetailPage(): JSX.Element {
         title: '로그 ID',
         dataIndex: 'id',
         width: 150,
-        ...createColumnFilterProps(logRows, (record) => record.id),
         sorter: createTextSorter((record) => record.id)
       },
       {
         title: '로그 유형',
         dataIndex: 'type',
         width: 120,
-        ...createColumnFilterProps(logRows, (record) => record.type),
         sorter: createTextSorter((record) => record.type)
       },
       {
         title: 'IP',
         dataIndex: 'ip',
         width: 160,
-        ...createColumnFilterProps(logRows, (record) => record.ip),
         sorter: createTextSorter((record) => record.ip)
       },
       {
         title: '기기',
         dataIndex: 'device',
         width: 170,
-        ...createColumnFilterProps(logRows, (record) => record.device),
         sorter: createTextSorter((record) => record.device)
       },
       {
         title: '시각',
         dataIndex: 'createdAt',
         width: 190,
-        ...createColumnFilterProps(logRows, (record) => record.createdAt),
         sorter: createTextSorter((record) => record.createdAt)
       }
     ],
-    [logRows]
+    []
   );
 
   const memoColumns = useMemo<TableColumnsType<(typeof memoRows)[number]>>(
@@ -473,14 +467,12 @@ export default function UserDetailPage(): JSX.Element {
         title: '메모 ID',
         dataIndex: 'id',
         width: 150,
-        ...createColumnFilterProps(memoRows, (record) => record.id),
         sorter: createTextSorter((record) => record.id)
       },
       {
         title: '관리자',
         dataIndex: 'admin',
         width: 130,
-        ...createColumnFilterProps(memoRows, (record) => record.admin),
         sorter: createTextSorter((record) => record.admin),
         render: (admin: string) => (
           <Link
@@ -495,18 +487,16 @@ export default function UserDetailPage(): JSX.Element {
       {
         title: '내용',
         dataIndex: 'content',
-        ...createColumnFilterProps(memoRows, (record) => record.content),
         sorter: createTextSorter((record) => record.content)
       },
       {
         title: '작성일',
         dataIndex: 'createdAt',
         width: 130,
-        ...createColumnFilterProps(memoRows, (record) => record.createdAt),
         sorter: createTextSorter((record) => record.createdAt)
       }
     ],
-    [memoRows]
+    []
   );
 
   const tabs = useMemo<NonNullable<TabsProps['items']>>(
@@ -515,13 +505,17 @@ export default function UserDetailPage(): JSX.Element {
         key: 'profile',
         label: '프로필',
         children: user ? (
-          <Descriptions
-            bordered
-            column={2}
-            items={[
-              { key: 'id', label: '사용자 ID', children: user.id },
-              { key: 'realName', label: '이름', children: user.realName },
-              { key: 'email', label: '이메일', children: user.email },
+              <Descriptions
+                bordered
+                column={2}
+                items={[
+                  { key: 'id', label: '사용자 ID', children: user.id },
+                  {
+                    key: 'realName',
+                    label: '이름',
+                    children: formatUserDisplayName(user.realName, user.id)
+                  },
+                  { key: 'email', label: '이메일', children: user.email },
               { key: 'nickname', label: '닉네임', children: user.nickname },
               { key: 'joinedAt', label: '가입일', children: user.joinedAt },
               { key: 'lastLoginAt', label: '최근 로그인', children: user.lastLoginAt },
@@ -546,6 +540,7 @@ export default function UserDetailPage(): JSX.Element {
         children: (
           <Table
             rowKey="id"
+            showSorterTooltip={false}
             size="small"
             pagination={false}
             dataSource={activityRows}
@@ -563,6 +558,7 @@ export default function UserDetailPage(): JSX.Element {
         children: (
           <Table
             rowKey="id"
+            showSorterTooltip={false}
             size="small"
             pagination={false}
             dataSource={paymentRows}
@@ -580,6 +576,7 @@ export default function UserDetailPage(): JSX.Element {
         children: (
           <Table
             rowKey="id"
+            showSorterTooltip={false}
             size="small"
             pagination={false}
             dataSource={communityRows}
@@ -597,6 +594,7 @@ export default function UserDetailPage(): JSX.Element {
         children: (
           <Table
             rowKey="id"
+            showSorterTooltip={false}
             size="small"
             pagination={false}
             dataSource={logRows}
@@ -614,6 +612,7 @@ export default function UserDetailPage(): JSX.Element {
         children: (
           <Table
             rowKey="id"
+            showSorterTooltip={false}
             size="small"
             pagination={false}
             dataSource={memoRows}

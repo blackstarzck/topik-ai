@@ -1,0 +1,711 @@
+﻿import {
+  Button,
+  Card,
+  Descriptions,
+  Empty,
+  notification,
+  Space,
+  Table,
+  Tabs,
+  Typography
+} from 'antd';
+import type { TableColumnsType, TabsProps } from 'antd';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
+
+import { getMockUserById } from '../api/mock-users';
+import type { UserStatus } from '../model/types';
+import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
+import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
+import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
+import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
+import {
+  createDefinedColumnFilterProps,
+  createNumberSorter,
+  createNumericTextSorter,
+  createTextSorter
+} from '../../../shared/ui/table/table-column-utils';
+import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
+import { formatUserDisplayName } from '../../../shared/ui/user/user-reference';
+
+import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
+
+const { Text } = Typography;
+
+const detailPaymentStatusFilterValues = ['완료', '취소', '환불'] as const;
+const detailCommunityBoardFilterValues = ['?먯쑀게시판, '후기', '吏덈Ц'] as const;
+const detailCommunityStatusFilterValues = ['게시', '숨김'] as const;
+
+type UsersDetailTabKey =
+  | 'profile'
+  | 'activity'
+  | 'payments'
+  | 'community'
+  | 'logs'
+  | 'admin-memo';
+
+type PendingAction = 'suspend' | 'unsuspend' | 'withdraw' | null;
+
+type ActionMeta = {
+  title: string;
+  confirmText: string;
+  description: string;
+  nextStatus: UserStatus;
+};
+
+type DetailModalState = {
+  title: string;
+  record: Record<string, unknown>;
+} | null;
+
+const allowedTabs: readonly UsersDetailTabKey[] = [
+  'profile',
+  'activity',
+  'payments',
+  'community',
+  'logs',
+  'admin-memo'
+];
+
+function isUsersDetailTab(value: string | null): value is UsersDetailTabKey {
+  return typeof value === 'string' && allowedTabs.includes(value as UsersDetailTabKey);
+}
+
+function buildActionMeta(
+  currentStatus: UserStatus
+): Record<Exclude<PendingAction, null>, ActionMeta> {
+  return {
+    suspend: {
+      title: '회원 정지',
+      confirmText: '정지 실행',
+      description: '회원 湲곕뒫??즉시 ?쒗븳?⑸땲?? 議곗튂 사유? 洹쇨굅瑜?湲곕줉?섏꽭??',
+      nextStatus: '정지'
+    },
+    unsuspend: {
+      title: '회원 정지 ?댁젣',
+      confirmText: '정지 ?댁젣',
+      description: '회원 湲곕뒫???ㅼ떆 활성?뷀빀?덈떎. ?댁젣 사유? 洹쇨굅瑜?湲곕줉?섏꽭??',
+      nextStatus: '정상'
+    },
+    withdraw: {
+      title: '회원 탈퇴 泥섎━',
+      confirmText: '탈퇴 泥섎━',
+      description: '蹂듦뎄媛 ?대젮??議곗튂?낅땲?? ??곴낵 사유瑜?諛섎뱶???ㅼ떆 ?뺤씤?섏꽭??',
+      nextStatus: currentStatus === '탈퇴' ? '탈퇴' : '탈퇴'
+    }
+  };
+}
+
+export default function UserDetailPage(): JSX.Element {
+  const { userId = '' } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [notificationApi, notificationContextHolder] = notification.useNotification();
+
+  const user = useMemo(() => getMockUserById(userId), [userId]);
+  const [pendingAction, setPendingAction] = useState<PendingAction>(null);
+  const [detailModalState, setDetailModalState] = useState<DetailModalState>(null);
+  const [currentStatus, setCurrentStatus] = useState<UserStatus>(
+    user?.status ?? '정상'
+  );
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+    setCurrentStatus(user.status);
+  }, [user]);
+
+  const activeTab = useMemo<UsersDetailTabKey>(() => {
+    const tab = searchParams.get('tab');
+    return isUsersDetailTab(tab) ? tab : 'profile';
+  }, [searchParams]);
+
+  const actionMeta = useMemo(() => buildActionMeta(currentStatus), [currentStatus]);
+  const isAccountSuspended = currentStatus === '정지';
+
+  const handleTabChange = useCallback(
+    (nextTab: string) => {
+      if (!isUsersDetailTab(nextTab)) {
+        return;
+      }
+      const next = new URLSearchParams(searchParams);
+      next.set('tab', nextTab);
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
+
+  const closeActionModal = useCallback(() => setPendingAction(null), []);
+  const closeDetailModal = useCallback(() => setDetailModalState(null), []);
+
+  const openDetailModal = useCallback(
+    (title: string, record: Record<string, unknown>) => {
+      setDetailModalState({ title, record });
+    },
+    []
+  );
+
+  const handleToggleSuspend = useCallback(() => {
+    setPendingAction(isAccountSuspended ? 'unsuspend' : 'suspend');
+  }, [isAccountSuspended]);
+
+  const handleConfirmAction = useCallback(
+    async (reason: string) => {
+      if (!user || !pendingAction) {
+        return;
+      }
+
+      const meta = actionMeta[pendingAction];
+      setCurrentStatus(meta.nextStatus);
+      notificationApi.success({
+        message: `${meta.title} 완료`,
+        description: (
+          <Space direction="vertical">
+            <Text>대상?좏삎: {getTargetTypeLabel('Users')}</Text>
+            <Text>대상ID: {user.id}</Text>
+            <Text>사유/洹쇨굅: {reason}</Text>
+            <AuditLogLink targetType="Users" targetId={user.id} />
+          </Space>
+        )
+      });
+      setPendingAction(null);
+    },
+    [actionMeta, notificationApi, pendingAction, user]
+  );
+
+  const activityRows = useMemo(
+    () => [
+      {
+        id: `${userId}-A1`,
+        type: '로그??,
+        content: 'TOPIK ??로그??,
+        createdAt: '2026-03-03 09:12',
+        ip: '121.133.11.42'
+      },
+      {
+        id: `${userId}-A2`,
+        type: '게시글',
+        content: '?쒗뿕 ?숈뒿 吏덈Ц',
+        createdAt: '2026-03-03 12:40',
+        ip: '121.133.11.42'
+      }
+    ],
+    [userId]
+  );
+
+  const paymentRows = useMemo(
+    () => [
+      {
+        id: `${userId}-P1`,
+        product: 'TOPIK Premium Monthly',
+        amount: '₩5,000',
+        method: '移대뱶',
+        paidAt: '2026-02-14',
+        status: '완료'
+      },
+      {
+        id: `${userId}-P2`,
+        product: 'TOPIK Mock Test',
+        amount: '₩5,000',
+        method: '怨꾩쥖?댁껜',
+        paidAt: '2026-01-03',
+        status: '환불'
+      }
+    ],
+    [userId]
+  );
+
+  const communityRows = useMemo(
+    () => [
+      {
+        id: `${userId}-C1`,
+        title: '후기 ?곗뒿 ?명듃??怨듭쑀?⑸땲??,
+        board: '?먯쑀게시판,
+        createdAt: '2026-02-21',
+        reports: 0,
+        status: '게시'
+      },
+      {
+        id: `${userId}-C2`,
+        title: '시험 후기 공유',
+        board: '후기',
+        createdAt: '2026-01-20',
+        reports: 2,
+        status: '숨김'
+      }
+    ],
+    [userId]
+  );
+
+  const logRows = useMemo(
+    () => [
+      {
+        id: `${userId}-L1`,
+        type: '로그??,
+        ip: '121.133.11.42',
+        device: 'Windows Chrome',
+        createdAt: '2026-03-03 09:12'
+      },
+      {
+        id: `${userId}-L2`,
+        type: 'API',
+        ip: '121.133.11.42',
+        device: 'Windows Chrome',
+        createdAt: '2026-03-03 09:15'
+      }
+    ],
+    [userId]
+  );
+
+  const memoRows = useMemo(
+    () => [
+      {
+        id: `${userId}-M1`,
+        admin: 'admin_park',
+        content: '결제 문의 확인 후 환불 처리 가이드 전달',
+        createdAt: '2026-02-15'
+      },
+      {
+        id: `${userId}-M2`,
+        admin: 'admin_kim',
+        content: '커뮤니티 신고 건 모니터링 필요',
+        createdAt: '2026-02-22'
+      }
+    ],
+    [userId]
+  );
+
+  const activityColumns = useMemo<TableColumnsType<(typeof activityRows)[number]>>(
+    () => [
+      {
+        title: '활동 ID',
+        dataIndex: 'id',
+        width: 160,
+        sorter: createTextSorter((record) => record.id)
+      },
+      {
+        title: '활동 유형',
+        dataIndex: 'type',
+        width: 120,
+        sorter: createTextSorter((record) => record.type)
+      },
+      {
+        title: '콘텐츠,
+        dataIndex: 'content',
+        sorter: createTextSorter((record) => record.content)
+      },
+      {
+        title: '활동 시각',
+        dataIndex: 'createdAt',
+        width: 180,
+        sorter: createTextSorter((record) => record.createdAt)
+      },
+      {
+        title: 'IP',
+        dataIndex: 'ip',
+        width: 160,
+        sorter: createTextSorter((record) => record.ip)
+      }
+    ],
+    []
+  );
+
+  const paymentColumns = useMemo<TableColumnsType<(typeof paymentRows)[number]>>(
+    () => [
+      {
+        title: '결제 ID',
+        dataIndex: 'id',
+        width: 150,
+        sorter: createTextSorter((record) => record.id),
+        render: (id: string) => (
+          <Link
+            className="table-navigation-link"
+            to="/commerce/payments"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {id}
+          </Link>
+        )
+      },
+      {
+        title: '상품',
+        dataIndex: 'product',
+        sorter: createTextSorter((record) => record.product)
+      },
+      {
+        title: '결제 湲덉븸',
+        dataIndex: 'amount',
+        width: 130,
+        sorter: createNumericTextSorter((record) => record.amount)
+      },
+      {
+        title: '결제 수단',
+        dataIndex: 'method',
+        width: 120,
+        sorter: createTextSorter((record) => record.method)
+      },
+      {
+        title: '결제일,
+        dataIndex: 'paidAt',
+        width: 130,
+        sorter: createTextSorter((record) => record.paidAt)
+      },
+      {
+        title: createStatusColumnTitle('상태', ['완료', '취소', '환불']),
+        dataIndex: 'status',
+        width: 100,
+        ...createDefinedColumnFilterProps(
+          detailPaymentStatusFilterValues,
+          (record) => record.status
+        ),
+        sorter: createTextSorter((record) => record.status),
+        render: (status: string) => <StatusBadge status={status} />
+      }
+    ],
+    []
+  );
+
+  const communityColumns = useMemo<TableColumnsType<(typeof communityRows)[number]>>(
+    () => [
+      {
+        title: '게시글 ID',
+        dataIndex: 'id',
+        width: 160,
+        sorter: createTextSorter((record) => record.id),
+        render: (id: string) => (
+          <Link
+            className="table-navigation-link"
+            to="/community/posts"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {id}
+          </Link>
+        )
+      },
+      {
+        title: '제목',
+        dataIndex: 'title',
+        sorter: createTextSorter((record) => record.title)
+      },
+      {
+        title: '게시판,
+        dataIndex: 'board',
+        width: 120,
+        ...createDefinedColumnFilterProps(
+          detailCommunityBoardFilterValues,
+          (record) => record.board
+        ),
+        sorter: createTextSorter((record) => record.board)
+      },
+      {
+        title: '작성일,
+        dataIndex: 'createdAt',
+        width: 120,
+        sorter: createTextSorter((record) => record.createdAt)
+      },
+      {
+        title: '신고 ??,
+        dataIndex: 'reports',
+        width: 90,
+        sorter: createNumberSorter((record) => record.reports)
+      },
+      {
+        title: createStatusColumnTitle('상태', ['게시', '숨김']),
+        dataIndex: 'status',
+        width: 110,
+        ...createDefinedColumnFilterProps(
+          detailCommunityStatusFilterValues,
+          (record) => record.status
+        ),
+        sorter: createTextSorter((record) => record.status),
+        render: (status: string) => <StatusBadge status={status} />
+      }
+    ],
+    []
+  );
+
+  const logsColumns = useMemo<TableColumnsType<(typeof logRows)[number]>>(
+    () => [
+      {
+        title: '로그 ID',
+        dataIndex: 'id',
+        width: 150,
+        sorter: createTextSorter((record) => record.id)
+      },
+      {
+        title: '로그 ?좏삎',
+        dataIndex: 'type',
+        width: 120,
+        sorter: createTextSorter((record) => record.type)
+      },
+      {
+        title: 'IP',
+        dataIndex: 'ip',
+        width: 160,
+        sorter: createTextSorter((record) => record.ip)
+      },
+      {
+        title: '湲곌린',
+        dataIndex: 'device',
+        width: 170,
+        sorter: createTextSorter((record) => record.device)
+      },
+      {
+        title: '시각',
+        dataIndex: 'createdAt',
+        width: 190,
+        sorter: createTextSorter((record) => record.createdAt)
+      }
+    ],
+    []
+  );
+
+  const memoColumns = useMemo<TableColumnsType<(typeof memoRows)[number]>>(
+    () => [
+      {
+        title: '硫붾え ID',
+        dataIndex: 'id',
+        width: 150,
+        sorter: createTextSorter((record) => record.id)
+      },
+      {
+        title: '愿由ъ옄',
+        dataIndex: 'admin',
+        width: 130,
+        sorter: createTextSorter((record) => record.admin),
+        render: (admin: string) => (
+          <Link
+            className="table-navigation-link"
+            to="/system/admins"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {admin}
+          </Link>
+        )
+      },
+      {
+        title: '내용',
+        dataIndex: 'content',
+        sorter: createTextSorter((record) => record.content)
+      },
+      {
+        title: '작성일,
+        dataIndex: 'createdAt',
+        width: 130,
+        sorter: createTextSorter((record) => record.createdAt)
+      }
+    ],
+    []
+  );
+
+  const tabs = useMemo<NonNullable<TabsProps['items']>>(
+    () => [
+      {
+        key: 'profile',
+        label: '프로필,
+        children: user ? (
+              <Descriptions
+                bordered
+                column={2}
+                items={[
+                  { key: 'id', label: '사용자ID', children: user.id },
+                  {
+                    key: 'realName',
+                    label: '이름',
+                    children: formatUserDisplayName(user.realName, user.id)
+                  },
+                  { key: 'email', label: '이메일, children: user.email },
+              { key: 'nickname', label: '닉네임, children: user.nickname },
+              { key: 'joinedAt', label: '가입일', children: user.joinedAt },
+              { key: 'lastLoginAt', label: '理쒓렐 로그??, children: user.lastLoginAt },
+              {
+                key: 'status',
+                label: '회원 상태',
+                children: <StatusBadge status={currentStatus} />
+              },
+              { key: 'tier', label: '회원 등급', children: user.tier },
+              {
+                key: 'subscriptionStatus',
+                label: '구독 상태',
+                children: user.subscriptionStatus
+              }
+            ]}
+          />
+        ) : null
+      },
+      {
+        key: 'activity',
+        label: '활동',
+        children: (
+          <Table
+            rowKey="id"
+            showSorterTooltip={false}
+            size="small"
+            pagination={false}
+            dataSource={activityRows}
+            columns={activityColumns}
+            onRow={(record) => ({
+              onClick: () => openDetailModal('활동 상세 (?붾?)', record),
+              style: { cursor: 'pointer' }
+            })}
+          />
+        )
+      },
+      {
+        key: 'payments',
+        label: '결제',
+        children: (
+          <Table
+            rowKey="id"
+            showSorterTooltip={false}
+            size="small"
+            pagination={false}
+            dataSource={paymentRows}
+            columns={paymentColumns}
+            onRow={(record) => ({
+              onClick: () => openDetailModal('결제 상세 (?붾?)', record),
+              style: { cursor: 'pointer' }
+            })}
+          />
+        )
+      },
+      {
+        key: 'community',
+        label: '커뮤니티',
+        children: (
+          <Table
+            rowKey="id"
+            showSorterTooltip={false}
+            size="small"
+            pagination={false}
+            dataSource={communityRows}
+            columns={communityColumns}
+            onRow={(record) => ({
+              onClick: () => openDetailModal('커뮤니티 상세 (?붾?)', record),
+              style: { cursor: 'pointer' }
+            })}
+          />
+        )
+      },
+      {
+        key: 'logs',
+        label: '로그',
+        children: (
+          <Table
+            rowKey="id"
+            showSorterTooltip={false}
+            size="small"
+            pagination={false}
+            dataSource={logRows}
+            columns={logsColumns}
+            onRow={(record) => ({
+              onClick: () => openDetailModal('로그 상세 (?붾?)', record),
+              style: { cursor: 'pointer' }
+            })}
+          />
+        )
+      },
+      {
+        key: 'admin-memo',
+        label: '관리자 메모',
+        children: (
+          <Table
+            rowKey="id"
+            showSorterTooltip={false}
+            size="small"
+            pagination={false}
+            dataSource={memoRows}
+            columns={memoColumns}
+            onRow={(record) => ({
+              onClick: () => openDetailModal('관리자 메모 상세 (?붾?)', record),
+              style: { cursor: 'pointer' }
+            })}
+          />
+        )
+      }
+    ],
+    [
+      activityColumns,
+      activityRows,
+      communityColumns,
+      communityRows,
+      currentStatus,
+      logRows,
+      logsColumns,
+      memoColumns,
+      memoRows,
+      paymentColumns,
+      paymentRows,
+      openDetailModal,
+      user
+    ]
+  );
+
+  if (!user) {
+    return (
+      <Card>
+        <Empty description="회원 ?뺣낫瑜?李얠쓣 ???놁뒿?덈떎." image={Empty.PRESENTED_IMAGE_SIMPLE}>
+          <Link to="/users">Users 紐⑸줉?쇰줈 ?대룞</Link>
+        </Empty>
+      </Card>
+    );
+  }
+
+  return (
+    <div>
+      {notificationContextHolder}
+      <Space direction="vertical" size={14} style={{ width: '100%' }}>
+        <div>
+          <PageTitle title="Users 상세" />
+        </div>
+
+        <Card>
+          <section
+            style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              marginBottom: 12
+            }}
+          >
+            <Space size={10} wrap>
+              <Button
+                danger={!isAccountSuspended}
+                disabled={currentStatus === '탈퇴' || pendingAction !== null}
+                onClick={handleToggleSuspend}
+              >
+                {isAccountSuspended ? '정지 ?댁젣' : '怨꾩젙 정지'}
+              </Button>
+              <Button danger onClick={() => setPendingAction('withdraw')}>
+                탈퇴 泥섎━
+              </Button>
+              <AuditLogLink targetType="Users" targetId={user.id} />
+            </Space>
+          </section>
+          <Tabs activeKey={activeTab} items={tabs} onChange={handleTabChange} />
+        </Card>
+      </Space>
+
+      {pendingAction ? (
+        <ConfirmAction
+          open
+          title={actionMeta[pendingAction].title}
+          description={actionMeta[pendingAction].description}
+          confirmText={actionMeta[pendingAction].confirmText}
+          targetType="Users"
+          targetId={user.id}
+          onCancel={closeActionModal}
+          onConfirm={handleConfirmAction}
+        />
+      ) : null}
+      <TableRowDetailModal
+        open={Boolean(detailModalState)}
+        title={detailModalState?.title ?? ''}
+        record={detailModalState?.record ?? null}
+        onClose={closeDetailModal}
+      />
+    </div>
+  );
+}
+
+

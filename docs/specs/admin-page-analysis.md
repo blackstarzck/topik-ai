@@ -1,14 +1,16 @@
 # TOPIK AI Admin 페이지 분석
 
 이 문서는 관리자 메뉴별 `목적`, `책임 범위`, `핵심 기능`, `페이지 유형`을 상위 수준에서 정리합니다.  
-세부 화면 블록은 `admin-page-ia-drafts.md`, 실제 컬럼과 입력 필드는 `admin-page-tables.md`를 기준으로 봅니다.
+세부 화면 블록과 미확정 정책은 `docs/specs/page-ia/*.md`, 실제 컬럼과 입력 필드는 `admin-page-tables.md`를 기준으로 봅니다.
 
 ## 문서 사용 규칙
 
 - `admin-page-analysis.md`: 왜 이 페이지가 존재하는지, 어떤 책임을 가지는지 정리합니다.
-- `admin-page-ia-drafts.md`: 페이지 레이아웃, 섹션 순서, Drawer/Modal, 추천 컴포넌트를 정리합니다.
+- `docs/guidelines/admin-ux-ui-design.md`: 페이지 유형별 레이아웃 패턴과 공통 UX 규칙을 정리합니다.
+- `docs/templates/admin-page-ia-template.md`: 페이지별 상세 IA 문서 작성의 공통 템플릿입니다.
+- `docs/specs/page-ia/*.md`: 특정 페이지의 상세 IA, 미확정 정책, B2C/관리자 영향도를 정리합니다.
 - `admin-page-tables.md`: 테이블 컬럼, 입력 필드, 필터, 정렬, 액션을 정리합니다.
-- placeholder 페이지는 이 문서와 `admin-page-ia-drafts.md`를 먼저 채우고, 실제 UI 설계가 고정되면 `admin-page-tables.md`를 확정합니다.
+- placeholder 페이지는 이 문서로 목적/책임을 먼저 정리하고, 상세 설계가 필요해지면 `docs/specs/page-ia/*.md`를 추가합니다. 실제 UI 설계가 고정되면 `admin-page-tables.md`를 확정합니다.
 
 ## 전체 페이지 유형 매트릭스
 
@@ -18,7 +20,7 @@
 | 회원 목록 | 구현됨 | 목록 운영형 |
 | 회원 상세 | 구현됨 | 상세 드릴다운형 |
 | 강사 관리 | 구현됨 | 목록 운영형 |
-| 추천인 관리 | placeholder | 목록 운영형 |
+| 추천인 관리 | 구현됨 | 목록 운영형 |
 | 게시글 관리 | 구현됨 | 목록 운영형 |
 | 신고 관리 | 구현됨 | 목록 운영형 |
 | 메일 | 구현됨 | 정책/시나리오 편집형 + 목록 운영형 혼합 |
@@ -27,14 +29,14 @@
 | 발송 이력 | 구현됨 | 목록 운영형 |
 | 공지사항 | 구현됨 | 목록 운영형 |
 | FAQ | 구현됨 | 목록 운영형 |
-| 이벤트 | placeholder | 정책/시나리오 편집형 |
+| 이벤트 | 구현됨 | 목록 운영형 + 등록 상세 페이지 |
 | 챗봇 설정 | placeholder | 정책/시나리오 편집형 |
 | 결제 내역 | 구현됨 | 목록 운영형 |
 | 환불 관리 | 구현됨 | 목록 운영형 |
 | 쿠폰 관리 | placeholder | 목록 운영형 |
 | 포인트 관리 | placeholder | 목록 운영형 |
 | 이커머스 관리 | placeholder | 목록 운영형 |
-| 문제은행 | placeholder | 카탈로그/자산 관리형 |
+| TOPIK 쓰기 문제은행 | 구현됨 | 카탈로그/자산 관리형 + 유형별 검수 워크스페이스 |
 | EPS TOPIK | placeholder | 편집/미리보기 병행형 |
 | 레벨 테스트 | placeholder | 편집/미리보기 병행형 |
 | 콘텐츠 관리 | placeholder | 카탈로그/자산 관리형 |
@@ -109,7 +111,7 @@
   - 챗봇 시나리오와 인계 규칙 관리
 - 페이지 유형:
   - 공지사항, FAQ: 목록 운영형
-  - 이벤트: 정책/시나리오 편집형
+  - 이벤트: 목록 운영형 + 등록 상세 페이지
   - 챗봇 설정: 정책/시나리오 편집형
 
 ## 6) 커머스
@@ -129,16 +131,16 @@
 ## 7) 평가
 
 - 목적: 시험과 문항 운영을 위한 별도 작업 공간 제공
-- 책임 범위: 문제은행, EPS TOPIK, 레벨 테스트
+- 책임 범위: TOPIK 쓰기 문제은행, EPS TOPIK, 레벨 테스트
 - 핵심 기능:
   - 문항 자산 관리
   - 시험 세트 구성
   - 평가 규칙과 결과 기준 운영
 - 페이지 유형:
-  - 문제은행: 카탈로그/자산 관리형
+- TOPIK 쓰기 문제은행: 카탈로그/자산 관리형 + 유형별 검수 워크스페이스
   - EPS TOPIK: 편집/미리보기 병행형
   - 레벨 테스트: 편집/미리보기 병행형
-- 현재 상태: placeholder 중심. 상세 IA는 `admin-page-ia-drafts.md` 우선
+- 현재 상태: placeholder 중심. 상세 IA는 `docs/specs/page-ia/*.md`로 확장합니다.
 
 ## 8) 콘텐츠
 
@@ -152,7 +154,7 @@
   - 콘텐츠 관리, 배지, 단어장: 카탈로그/자산 관리형
   - 소나기, 객관식 선택: 편집/미리보기 병행형
   - 학습 미션: 정책/시나리오 편집형
-- 현재 상태: placeholder 중심. 상세 IA는 `admin-page-ia-drafts.md` 우선
+- 현재 상태: placeholder 중심. 상세 IA는 `docs/specs/page-ia/*.md`로 확장합니다.
 
 ## 9) 통계
 
@@ -176,30 +178,52 @@
   - 기술 로그 확인과 컴포넌트별 영향 화면 연결
 - 페이지 유형: 목록 운영형
 
-## 상세 IA 우선 작성 대상
+## 상세 IA 문서 현황
 
-아래 페이지는 현재 구현보다 정보구조 설계가 먼저 필요한 영역입니다.
-
-- `회원 관리 > 추천인 관리`
-- `운영 > 이벤트`
-- `운영 > 챗봇 설정`
-- `커머스 > 쿠폰 관리`
-- `커머스 > 포인트 관리`
-- `커머스 > 이커머스 관리`
-- `평가 > 문제은행`
-- `평가 > EPS TOPIK`
-- `평가 > 레벨 테스트`
-- `콘텐츠 > 콘텐츠 관리`
-- `콘텐츠 > 배지`
-- `콘텐츠 > 단어장`
-- `콘텐츠 > 소나기`
-- `콘텐츠 > 객관식 선택`
-- `콘텐츠 > 학습 미션`
+- 작성됨
+  - `Dashboard > 대시보드`
+  - `Users > 회원 목록`
+  - `Users > 회원 상세`
+  - `Users > 강사 관리`
+  - `Users > 추천인 관리`
+  - `Community > 게시글 관리`
+  - `Community > 신고 관리`
+  - `Message > 메일`
+  - `Message > 푸시`
+  - `Message > 대상 그룹`
+  - `Message > 발송 이력`
+  - `Operation > 공지사항`
+  - `Operation > FAQ`
+  - `Operation > 이벤트`
+  - `Operation > 챗봇 설정`
+  - `Commerce > 결제 내역`
+  - `Commerce > 환불 관리`
+  - `Commerce > 쿠폰 관리`
+  - `Commerce > 포인트 관리`
+  - `Commerce > 이커머스 관리`
+- `Assessment > TOPIK 쓰기 문제은행`
+  - `Assessment > EPS TOPIK`
+  - `Assessment > 레벨 테스트`
+  - `Content > 콘텐츠 관리`
+  - `Content > 배지`
+  - `Content > 단어장`
+  - `Content > 소나기`
+  - `Content > 객관식 선택`
+  - `Content > 학습 미션`
+  - `Analytics > 통계 개요`
+  - `System > 관리자 계정`
+  - `System > 권한 관리`
+  - `System > 감사 로그`
+  - `System > 시스템 로그`
+- 제외
+  - `/notification/send`, `/notification/history`, `/billing/payments`, `/billing/refunds`, `/commerce`, `/assessment`, `/content`는 실제 페이지가 아니라 redirect alias입니다.
+  - `*` fallback not-found는 관리자 업무용 상세 IA 대상에서 제외합니다.
 
 ## 연관 문서
 
 - 정보구조: `docs/architecture/admin-information-architecture.md`
-- 상세 IA 초안: `docs/specs/admin-page-ia-drafts.md`
+- 페이지 유형/공통 UX: `docs/guidelines/admin-ux-ui-design.md`
+- 페이지별 상세 IA: `docs/specs/page-ia/*.md`
 - 테이블/필드/액션: `docs/specs/admin-page-tables.md`
 - 플로우: `docs/specs/admin-page-flows-mermaid.md`
 - 데이터-B2C 매핑: `docs/specs/admin-data-usage-map.md`
