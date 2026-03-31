@@ -24,7 +24,7 @@ export default function AdminPlaceholderPage({
   return (
     <div>
       <PageTitle title={title} />
-      <Card>
+      <Card className="admin-page-fill-card">
         <Space direction="vertical" size={16} style={{ width: '100%' }}>
           <Alert
             type="info"
@@ -86,5 +86,4 @@ export default function AdminPlaceholderPage({
     </div>
   );
 }
-
 

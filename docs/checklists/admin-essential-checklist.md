@@ -6,15 +6,16 @@
 
 ## 2) 단일 원문(SoT) 맵과 충돌 우선순위
 - 실행 지침/리뷰 게이트: `AGENTS.md`
+- 상위 개요/상태/아키텍처 원문: `docs/architecture/admin-overview.md`
 - 프로젝트 코딩 품질 원문: `docs/guidelines/admin-coding-guidelines-antigravity.md`
 - TypeScript 구현 표준 원문: `docs/guidelines/typescript-essential-checklist.md`
 - 코드 주석 정책 원문: `docs/guidelines/comments-rule.md`
 - React 최적화 원문: `docs/guidelines/react-optimization-rule.md`
 - 행 클릭 상세 Drawer 레이아웃 원문: `docs/guidelines/admin-detail-drawer-guidelines.md`
-- 상태/아키텍처 원문: `docs/architecture/admin-dev-stack.md`, `docs/architecture/admin-frontend-architecture.md`
 - 데이터 계약/명명 기준 원문: `docs/specs/admin-data-contract.md`
 - 문서 변경 이력 로그: `logs/admin-doc-update-log.md`
-- 충돌 해석 우선순위: `AGENTS.md` > `docs/guidelines/admin-coding-guidelines-antigravity.md` > `docs/guidelines/typescript-essential-checklist.md` > `docs/guidelines/comments-rule.md` > `docs/guidelines/react-optimization-rule.md` > `docs/architecture/admin-dev-stack.md`/`docs/architecture/admin-frontend-architecture.md` > 본 문서
+- 검증 하네스: `docs/harness/index.md`
+- 충돌 해석 우선순위: `AGENTS.md` > `docs/architecture/admin-overview.md` > `docs/guidelines/admin-coding-guidelines-antigravity.md` > `docs/guidelines/typescript-essential-checklist.md` > `docs/guidelines/comments-rule.md` > `docs/guidelines/react-optimization-rule.md` > 본 문서
 - 충돌이 해소되지 않으면 머지하지 않고 이슈를 생성한다.
 
 ## 3) 머지 전 하드 게이트 (P0, Blocking)
@@ -28,6 +29,8 @@
 | P0-05B | 데이터/용어/키워드/변수명 정합성 및 일반 관리자 패턴 이탈 여부 검토 완료 | FE | Yes | 검토 결과 + 근거 |
 | P0-05A | 페이지 단위 UI는 본문 컨테이너 안에 있고, `등록/추가/생성` 버튼은 본문 우측 상단 또는 `SearchBar` 우측 끝에 `large` 크기로 배치 | FE | Yes (해당 시) | 화면 캡처 + 코드 위치 |
 | P0-05C | `Descriptions` 기반 입력 테이블에서 `required` 검증이 있는 항목은 label(`th`) heading에 빨간 `*` 표시 | FE | Yes (해당 시) | 화면 캡처 + 코드 위치 |
+| P0-05D | 사용자 요구사항이 프로젝트에 미칠 영향 범위를 `영향 모듈`, `데이터 계약`, `공통 UI`, `운영/정책`, `검증 범위` 기준으로 보고 | FE | Yes | 결과 보고 본문 또는 문서 링크 |
+| P0-05E | `npm run harness:check` 통과 | FE | Yes | 실행 명령 + 결과 로그 |
 | P0-06 | `lint` 통과 | FE | Yes | 실행 명령 + 결과 로그 |
 | P0-07 | `typecheck` 통과 | FE | Yes | 실행 명령 + 결과 로그 |
 | P0-08 | `build` 통과 | FE | Yes | 실행 명령 + 결과 로그 |
@@ -39,6 +42,8 @@
 | P0-10D | API/mock/데이터베이스/응답 스키마/데이터 source 경계 변경 시 `docs/architecture/admin-data-source-transition.md`와 관련 SoT 문서 평가 및 반영 완료 | FE | Yes (해당 시) | 수정 diff 또는 N/A 근거 |
 | P0-10E | 엔티티명, 테이블명 후보, 컬럼/필드명, 변수명, enum/code table 후보, 하드코딩된 schema candidate 분류 변경 시 `docs/specs/admin-data-contract.md` 평가 및 반영 완료 | FE | Yes (해당 시) | 수정 diff 또는 N/A 근거 |
 | P0-10F | 현재 작업이 `docs/specs/admin-page-gap-register.md` 항목을 생성/해소/상태 변경하는 경우 문서 갱신 완료 | FE | Yes (해당 시) | 수정 diff 또는 N/A 근거 |
+| P0-10G | 운영/정책 관련 내용이 바뀐 경우 관련 MD를 지속 모니터링 대상으로 평가하고 반영 또는 미반영 사유 기록 완료 | FE | Yes (해당 시) | 수정 diff 또는 모니터링/미반영 근거 |
+| P0-10H | 사용자 요구사항이 MD 내용 수정/삭제와 관련된 경우 같은 작업에서 문서 반영 완료 | FE | Yes (해당 시) | 수정 diff 또는 N/A 근거 |
 | P0-11 | MD를 수정한 경우 `logs/admin-doc-update-log.md`에 기록 완료 | FE | Yes (해당 시) | 로그 항목 링크 |
 | P0-12 | 문서 파일(`docs/**`) 추가/삭제/이동 시 `docs/README.md` 인덱스와 로그 동시 반영 | FE | Yes (해당 시) | 인덱스 diff + 로그 항목 링크 |
 | P0-13 | 네트워크 상태(`pending/success/empty/error`)별 UX와 복구 경로(재시도/fallback/가이드) 제공 | FE | Yes (해당 시) | 화면 상태별 캡처 + 코드 위치 |
@@ -76,4 +81,5 @@
 ## 6) 범위 외(참고)
 - 기능 플래그, 롤백 정책, 릴리즈 노트 등 배포/변경 관리는 프론트엔드 구현 규칙의 직접 범위 밖이다.
 - 단, 릴리즈에서 해당 항목이 요구되면 별도 운영/릴리즈 정책 문서에서 추적한다.
+
 

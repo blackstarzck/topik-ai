@@ -1,4 +1,4 @@
-# Content > 콘텐츠 관리 상세 IA
+﻿# Content > 콘텐츠 관리 상세 IA
 
 ## 1. 문서 목적
 
@@ -17,7 +17,7 @@
 | 라우트 | /content/library |
 | 주요 권한 | content.library.manage |
 | 주요 role | SUPER_ADMIN, CONTENT_MANAGER |
-| 연관 문서 | docs/specs/admin-page-analysis.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
+| 연관 문서 | docs/architecture/admin-overview.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
 
 ## 3. 페이지 목표와 비목표
 
@@ -120,3 +120,4 @@
 ## 14. 오픈 이슈
 
 - 검수 상태와 발행 상태 분리 여부 미정
+

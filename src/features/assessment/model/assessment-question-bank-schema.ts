@@ -55,7 +55,11 @@ export const assessmentQuestionDomains: AssessmentQuestionDomain[] = [
   '생활',
   '학습',
   '사회',
-  '문화'
+  '문화',
+  '경제',
+  '교육',
+  '환경',
+  '기술'
 ];
 
 export const assessmentQuestionTypeLabels: AssessmentQuestionTypeLabel[] = [
@@ -85,6 +89,19 @@ export function parseAssessmentQuestionNumber(
   }
 
   return '51';
+}
+
+export function parseAssessmentQuestionNumbers(
+  values: string[]
+): AssessmentQuestionNumber[] {
+  const requestedNumbers = new Set(values);
+  const normalizedNumbers = assessmentQuestionNumbers.filter((questionNumber) =>
+    requestedNumbers.has(questionNumber)
+  );
+
+  return normalizedNumbers.length > 0
+    ? normalizedNumbers
+    : assessmentQuestionNumbers;
 }
 
 export function parseAssessmentQuestionReviewStatus(

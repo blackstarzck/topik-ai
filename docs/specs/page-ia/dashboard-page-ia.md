@@ -1,4 +1,4 @@
-# Dashboard > 대시보드 상세 IA
+﻿# Dashboard > 대시보드 상세 IA
 
 ## 1. 문서 목적
 
@@ -17,7 +17,7 @@
 | 라우트 | /dashboard |
 | 주요 권한 | dashboard.read |
 | 주요 role | SUPER_ADMIN, OPS_ADMIN, CONTENT_MANAGER, CS_MANAGER, READ_ONLY |
-| 연관 문서 | docs/specs/admin-page-analysis.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
+| 연관 문서 | docs/architecture/admin-overview.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
 
 ## 3. 페이지 목표와 비목표
 
@@ -120,3 +120,4 @@
 ## 14. 오픈 이슈
 
 - 지표 계산식과 알림 임계치 SoT 보강 필요
+

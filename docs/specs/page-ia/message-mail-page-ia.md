@@ -1,4 +1,4 @@
-# Message > 메일 상세 IA
+﻿# Message > 메일 상세 IA
 
 ## 1. 문서 목적
 
@@ -14,10 +14,10 @@
 | 페이지명 | 메일 |
 | 현재 상태 | 구현됨 |
 | 페이지 유형 | 정책/시나리오 편집형 + 목록 운영형 혼합 |
-| 라우트 | /messages/mail, /messages/mail/create/:templateId |
+| 라우트 | /messages/mail, /messages/mail/create, /messages/mail/create/:templateId |
 | 주요 권한 | message.mail.manage |
 | 주요 role | SUPER_ADMIN, OPS_ADMIN |
-| 연관 문서 | docs/specs/admin-page-analysis.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
+| 연관 문서 | docs/architecture/admin-overview.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
 
 ## 3. 페이지 목표와 비목표
 
@@ -163,3 +163,4 @@
 ## 14. 오픈 이슈
 
 - 템플릿 승인과 발송 승인 권한 분리 여부 미정
+

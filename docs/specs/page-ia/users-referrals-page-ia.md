@@ -1,4 +1,4 @@
-# Users > 추천인 관리 상세 IA
+﻿# Users > 추천인 관리 상세 IA
 
 ## 1. 문서 목적
 
@@ -17,7 +17,7 @@
 | 라우트 | `/users/referrals` |
 | 주요 권한 | `users.referrals.manage` |
 | 주요 role | `OPS_ADMIN`, `SUPER_ADMIN` |
-| 연관 문서 | `docs/architecture/admin-information-architecture.md`, `docs/guidelines/admin-ux-ui-design.md`, `docs/specs/admin-page-analysis.md`, `docs/specs/admin-page-tables.md`, `docs/specs/admin-data-usage-map.md` |
+| 연관 문서 | `docs/architecture/admin-overview.md`, `docs/guidelines/admin-ux-ui-design.md`, `docs/specs/admin-page-tables.md`, `docs/specs/admin-data-usage-map.md` |
 
 ## 3. 페이지 목표와 비목표
 
@@ -220,3 +220,4 @@
 - 목록 테이블의 `추천인 회원`과 Drawer 관계 테이블의 `피추천인`은 raw ID를 직접 노출하지 않고 `이름 (ID)` 형식의 파란 링크로 표시합니다.
 - 관련 사용자 링크는 모두 `Users > 회원 상세`로 이동하는 단일 동선을 사용합니다.
 - 상세 Drawer의 `추천인 회원` 필드도 `이름 (ID)` 형식을 유지합니다.
+

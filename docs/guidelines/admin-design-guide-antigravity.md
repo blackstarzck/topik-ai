@@ -2,16 +2,14 @@
 
 ## 문서 계약
 - **기준 모듈**: Dashboard, Users, Community, Message, Operation, Commerce, Assessment, Content, Analytics, System
-- **메뉴명 고정**: `Users`(복수형)로 표기하며, `User` 단수형 사용을 금지합니다. (참조: `docs/architecture/admin-information-architecture.md:63`)
-- **감사 로그 용어**: `감사 로그`로 통일하며, `시스템 로그`(기술 로그)와 엄격히 구분합니다. (참조: `docs/architecture/admin-information-architecture.md:64`, `docs/specs/admin-action-log.md:4`)
-- **회원 상세 탭 고정**: `프로필`, `활동`, `결제`, `커뮤니티`, `로그`, `관리자 메모` 순서를 유지합니다. (참조: `docs/architecture/admin-information-architecture.md:66`)
-- **확장 범위 포함**: `Commerce`, `Assessment`, `Content` 모듈을 포함합니다. (참조: `docs/architecture/admin-information-architecture.md`)
+- **메뉴명 고정**: `Users`(복수형)로 표기하며, `User` 단수형 사용을 금지합니다. (참조: `docs/architecture/admin-overview.md`)
+- **감사 로그 용어**: `감사 로그`로 통일하며, `시스템 로그`(기술 로그)와 엄격히 구분합니다. (참조: `docs/architecture/admin-overview.md`, `docs/specs/admin-action-log.md:4`)
+- **회원 상세 탭 고정**: `프로필`, `활동`, `결제`, `커뮤니티`, `로그`, `관리자 메모` 순서를 유지합니다. (참조: `docs/architecture/admin-overview.md`)
+- **확장 범위 포함**: `Commerce`, `Assessment`, `Content` 모듈을 포함합니다. (참조: `docs/architecture/admin-overview.md`)
 
 ## 근거 문서
-- [docs/architecture/admin-information-architecture.md](../architecture/admin-information-architecture.md)
-- [docs/specs/admin-page-analysis.md](../specs/admin-page-analysis.md)
+- [docs/architecture/admin-overview.md](../architecture/admin-overview.md)
 - [docs/specs/admin-page-tables.md](../specs/admin-page-tables.md)
-- [docs/specs/admin-user-detail-page-structure.md](../specs/admin-user-detail-page-structure.md)
 - [docs/specs/admin-action-log.md](../specs/admin-action-log.md)
 - https://5x.ant.design/docs/react/customize-theme
 - https://ant.design/theme-editor
@@ -83,4 +81,5 @@
 - **로딩**: `Spin` 또는 테이블의 `loading` 프롭을 사용하여 사용자에게 진행 상태를 알린다.
 - **성공**: 조치 성공 시 `message.success()`를 사용하여 간결하게 알린다.
 - **오류**: 시스템 오류나 유효성 검사 실패 시 `notification.error()` 또는 `Form`의 에러 메시지를 활용한다.
+
 

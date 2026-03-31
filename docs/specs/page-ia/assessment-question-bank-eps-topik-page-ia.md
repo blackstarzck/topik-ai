@@ -1,4 +1,4 @@
-# Assessment > EPS TOPIK 상세 IA
+﻿# Assessment > EPS TOPIK 상세 IA
 
 ## 1. 문서 목적
 
@@ -17,7 +17,7 @@
 | 라우트 | /assessment/question-bank/eps-topik |
 | 주요 권한 | assessment.eps-topik.manage |
 | 주요 role | SUPER_ADMIN, CONTENT_MANAGER |
-| 연관 문서 | docs/specs/admin-page-analysis.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
+| 연관 문서 | docs/architecture/admin-overview.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
 
 ## 3. 페이지 목표와 비목표
 
@@ -118,3 +118,4 @@
 ## 14. 오픈 이슈
 
 - 회차별 발행 승인과 롤백 정책 미정
+

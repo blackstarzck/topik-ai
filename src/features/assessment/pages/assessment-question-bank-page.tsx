@@ -5,7 +5,8 @@ import {
   Collapse,
   Descriptions,
   Empty,
-  Input,
+  Form,
+  Select,
   Space,
   Tabs,
   Tag,
@@ -24,6 +25,7 @@ import {
   assessmentQuestionBankTabItems,
   assessmentQuestionDifficultyLevels,
   assessmentQuestionDomains,
+  assessmentQuestionNumbers,
   assessmentQuestionNumberTabItems,
   assessmentQuestionReviewStatuses,
   assessmentQuestionTypeLabels,
@@ -33,7 +35,7 @@ import {
   parseAssessmentQuestionBankTab,
   parseAssessmentQuestionDifficulty,
   parseAssessmentQuestionDomain,
-  parseAssessmentQuestionNumber,
+  parseAssessmentQuestionNumbers,
   parseAssessmentQuestionOperationStatus,
   parseAssessmentQuestionReviewStatus,
   parseAssessmentQuestionTypeLabel
@@ -48,6 +50,7 @@ import {
 } from '../model/assessment-question-bank-presenter';
 import type {
   AssessmentQuestion,
+  AssessmentQuestionNumber,
   AssessmentQuestionOperationStatus,
   AssessmentQuestionReviewStatus
 } from '../model/assessment-question-bank-types';
@@ -62,7 +65,10 @@ import {
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
-import { SearchBar } from '../../../shared/ui/search-bar/search-bar';
+import {
+  SearchBar,
+  SearchBarDetailField
+} from '../../../shared/ui/search-bar/search-bar';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
 import {
@@ -96,6 +102,8 @@ type SearchQueryKey =
   | 'reviewStatus'
   | 'operationStatus'
   | 'selected';
+
+type SearchQueryValue = string | string[] | null;
 
 function parseSelectedId(value: string | null): string {
   return value?.trim() ?? '';
@@ -270,8 +278,8 @@ export default function AssessmentQuestionBankPage(): JSX.Element {
     notification.useNotification();
 
   const activeTab = parseAssessmentQuestionBankTab(searchParams.get('tab'));
-  const activeQuestionNumber = parseAssessmentQuestionNumber(
-    searchParams.get('questionNo')
+  const activeQuestionNumbers = parseAssessmentQuestionNumbers(
+    searchParams.getAll('questionNo')
   );
   const domainFilter = parseAssessmentQuestionDomain(searchParams.get('domain'));
   const questionTypeFilter = parseAssessmentQuestionTypeLabel(
@@ -288,6 +296,21 @@ export default function AssessmentQuestionBankPage(): JSX.Element {
   const operationStatusFilter = parseAssessmentQuestionOperationStatus(
     searchParams.get('operationStatus')
   );
+  const [draftDomainFilter, setDraftDomainFilter] = useState<string | null>(
+    domainFilter
+  );
+  const [draftQuestionTypeFilter, setDraftQuestionTypeFilter] = useState<
+    string | null
+  >(questionTypeFilter);
+  const [draftDifficultyFilter, setDraftDifficultyFilter] = useState<string | null>(
+    difficultyFilter
+  );
+
+  useEffect(() => {
+    setDraftDomainFilter(domainFilter);
+    setDraftQuestionTypeFilter(questionTypeFilter);
+    setDraftDifficultyFilter(difficultyFilter);
+  }, [difficultyFilter, domainFilter, questionTypeFilter]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -328,10 +351,27 @@ export default function AssessmentQuestionBankPage(): JSX.Element {
   }, [reloadKey]);
 
   const commitParams = useCallback(
-    (next: Partial<Record<SearchQueryKey, string | null>>) => {
+    (next: Partial<Record<SearchQueryKey, SearchQueryValue>>) => {
       const merged = new URLSearchParams(searchParams);
 
       Object.entries(next).forEach(([key, value]) => {
+        if (Array.isArray(value)) {
+          merged.delete(key);
+
+          if (value.length === 0) {
+            return;
+          }
+
+          value.forEach((item) => {
+            if (!item || item === 'all') {
+              return;
+            }
+
+            merged.append(key, item);
+          });
+          return;
+        }
+
         if (!value || value === 'all') {
           merged.delete(key);
           return;
@@ -344,6 +384,39 @@ export default function AssessmentQuestionBankPage(): JSX.Element {
     },
     [searchParams, setSearchParams]
   );
+
+  const handleSearchDetailOpenChange = useCallback(
+    (open: boolean) => {
+      if (open) {
+        return;
+      }
+
+      setDraftDomainFilter(domainFilter);
+      setDraftQuestionTypeFilter(questionTypeFilter);
+      setDraftDifficultyFilter(difficultyFilter);
+    },
+    [difficultyFilter, domainFilter, questionTypeFilter]
+  );
+
+  const handleResetSearchDetail = useCallback(() => {
+    setDraftDomainFilter(null);
+    setDraftQuestionTypeFilter(null);
+    setDraftDifficultyFilter(null);
+  }, []);
+
+  const handleApplySearchDetail = useCallback(() => {
+    commitParams({
+      domain: draftDomainFilter,
+      questionType: draftQuestionTypeFilter,
+      difficulty: draftDifficultyFilter,
+      selected: null
+    });
+  }, [
+    commitParams,
+    draftDifficultyFilter,
+    draftDomainFilter,
+    draftQuestionTypeFilter
+  ]);
 
   const hasCachedQuestions = questionsState.data.length > 0;
 
@@ -384,9 +457,33 @@ export default function AssessmentQuestionBankPage(): JSX.Element {
   const currentNumberQuestions = useMemo(
     () =>
       questionsState.data.filter(
-        (question) => question.questionNumber === activeQuestionNumber
+        (question) => activeQuestionNumbers.includes(question.questionNumber)
       ),
-    [activeQuestionNumber, questionsState.data]
+    [activeQuestionNumbers, questionsState.data]
+  );
+
+  const handleQuestionNumberToggle = useCallback(
+    (questionNumber: AssessmentQuestionNumber, checked: boolean) => {
+      const nextQuestionNumbers = checked
+        ? assessmentQuestionNumbers.filter(
+          (candidate) =>
+            activeQuestionNumbers.includes(candidate) || candidate === questionNumber
+        )
+        : activeQuestionNumbers.filter((candidate) => candidate !== questionNumber);
+
+      if (nextQuestionNumbers.length === 0) {
+        return;
+      }
+
+      commitParams({
+        questionNo:
+          nextQuestionNumbers.length === assessmentQuestionNumbers.length
+            ? null
+            : nextQuestionNumbers,
+        selected: null
+      });
+    },
+    [activeQuestionNumbers, commitParams]
   );
 
   const filteredQuestions = useMemo(() => {
@@ -835,7 +932,10 @@ export default function AssessmentQuestionBankPage(): JSX.Element {
         onChange={(value) => {
           commitParams({
             tab: value,
-            questionNo: activeQuestionNumber,
+            questionNo:
+              activeQuestionNumbers.length === assessmentQuestionNumbers.length
+                ? null
+                : activeQuestionNumbers,
             domain: null,
             questionType: null,
             difficulty: null,
@@ -851,23 +951,15 @@ export default function AssessmentQuestionBankPage(): JSX.Element {
           {assessmentQuestionNumberTabItems.map((item) => (
             <Checkbox
               key={item.key}
-              checked={activeQuestionNumber === item.key}
-              onChange={(event) => {
-                if (!event.target.checked) {
-                  return;
-                }
-
-                commitParams({
-                  questionNo: item.key,
-                  domain: null,
-                  questionType: null,
-                  difficulty: null,
-                  keyword: null,
-                  reviewStatus: null,
-                  operationStatus: null,
-                  selected: null
-                });
-              }}
+              checked={activeQuestionNumbers.includes(
+                item.key as AssessmentQuestionNumber
+              )}
+              onChange={(event) =>
+                handleQuestionNumberToggle(
+                  item.key as AssessmentQuestionNumber,
+                  event.target.checked
+                )
+              }
             >
               {item.label}
             </Checkbox>
@@ -877,94 +969,80 @@ export default function AssessmentQuestionBankPage(): JSX.Element {
       <SearchBar
         searchField="all"
         searchFieldOptions={[{ label: '전체', value: 'all' }]}
+        showSingleFieldSelect
+        searchFieldAriaLabel="검색 범위"
         keyword={keyword}
+        keywordAriaLabel="문항 검색어"
         onSearchFieldChange={() => undefined}
-        onKeywordChange={() => undefined}
-        hideSearchControls
-        extra={
-          <div className="assessment-question-searchbar" role="group" aria-label="문항 검색">
-            <div className="assessment-question-searchbar__field">
-              <span className="assessment-question-searchbar__label">도메인</span>
-              <select
-                aria-label="도메인 필터"
-                className="assessment-question-searchbar__native-select"
-                value={domainFilter ?? 'all'}
-                onChange={(event) =>
-                  commitParams({
-                    domain: event.target.value === 'all' ? null : event.target.value,
-                    selected: null
-                  })
-                }
-              >
-                <option value="all">전체</option>
-                {assessmentQuestionDomains.map((domain) => (
-                  <option key={domain} value={domain}>
-                    {domain}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="assessment-question-searchbar__field">
-              <span className="assessment-question-searchbar__label">유형</span>
-              <select
-                aria-label="유형 필터"
-                className="assessment-question-searchbar__native-select assessment-question-searchbar__native-select--wide"
-                value={questionTypeFilter ?? 'all'}
-                onChange={(event) =>
-                  commitParams({
-                    questionType:
-                      event.target.value === 'all' ? null : event.target.value,
-                    selected: null
-                  })
-                }
-              >
-                <option value="all">전체</option>
-                {assessmentQuestionTypeLabels.map((questionType) => (
-                  <option key={questionType} value={questionType}>
-                    {questionType}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="assessment-question-searchbar__field">
-              <span className="assessment-question-searchbar__label">난이도</span>
-              <select
-                aria-label="난이도 필터"
-                className="assessment-question-searchbar__native-select"
-                value={difficultyFilter ?? 'all'}
-                onChange={(event) =>
-                  commitParams({
-                    difficulty:
-                      event.target.value === 'all' ? null : event.target.value,
-                    selected: null
-                  })
-                }
-              >
-                <option value="all">전체</option>
-                {assessmentQuestionDifficultyLevels.map((difficulty) => (
-                  <option key={difficulty} value={difficulty}>
-                    {difficulty}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="assessment-question-searchbar__field assessment-question-searchbar__field--search">
-              <span className="assessment-question-searchbar__label">검색</span>
-              <Input
-                allowClear
-                aria-label="문항 검색어"
-                value={keyword}
-                placeholder="제목 또는 키워드 검색..."
-                onChange={(event) =>
-                  commitParams({
-                    keyword: event.target.value || null,
-                    selected: null
-                  })
-                }
-              />
-            </div>
-          </div>
+        onKeywordChange={(event) =>
+          commitParams({
+            keyword: event.target.value || null,
+            selected: null
+          })
         }
+        keywordPlaceholder="문항 ID, 주제, 키워드를 검색하세요."
+        detailTitle="상세 검색"
+        detailContent={
+          <Form layout="vertical">
+            <SearchBarDetailField label="도메인">
+              <Select
+                aria-label="도메인 필터"
+                popupMatchSelectWidth={false}
+                value={draftDomainFilter ?? 'all'}
+                options={[
+                  { label: '전체', value: 'all' },
+                  ...assessmentQuestionDomains.map((domain) => ({
+                    label: domain,
+                    value: domain
+                  }))
+                ]}
+                onChange={(value) =>
+                  setDraftDomainFilter(value === 'all' ? null : value)
+                }
+                style={{ width: '100%' }}
+              />
+            </SearchBarDetailField>
+            <SearchBarDetailField label="유형">
+              <Select
+                aria-label="유형 필터"
+                popupMatchSelectWidth={false}
+                value={draftQuestionTypeFilter ?? 'all'}
+                options={[
+                  { label: '전체', value: 'all' },
+                  ...assessmentQuestionTypeLabels.map((questionType) => ({
+                    label: questionType,
+                    value: questionType
+                  }))
+                ]}
+                onChange={(value) =>
+                  setDraftQuestionTypeFilter(value === 'all' ? null : value)
+                }
+                style={{ width: '100%' }}
+              />
+            </SearchBarDetailField>
+            <SearchBarDetailField label="난이도">
+              <Select
+                aria-label="난이도 필터"
+                popupMatchSelectWidth={false}
+                value={draftDifficultyFilter ?? 'all'}
+                options={[
+                  { label: '전체', value: 'all' },
+                  ...assessmentQuestionDifficultyLevels.map((difficulty) => ({
+                    label: difficulty,
+                    value: difficulty
+                  }))
+                ]}
+                onChange={(value) =>
+                  setDraftDifficultyFilter(value === 'all' ? null : value)
+                }
+                style={{ width: '100%' }}
+              />
+            </SearchBarDetailField>
+          </Form>
+        }
+        onApply={handleApplySearchDetail}
+        onDetailOpenChange={handleSearchDetailOpenChange}
+        onReset={handleResetSearchDetail}
         summary={
           <Text type="secondary">
             현재 결과 {filteredQuestions.length.toLocaleString()}문항
@@ -1045,11 +1123,6 @@ export default function AssessmentQuestionBankPage(): JSX.Element {
       {notificationContextHolder}
       <div>
         <PageTitle title="TOPIK 쓰기 문제은행" />
-        <Paragraph type="secondary" style={{ marginBottom: 16 }}>
-          AI 배치 생성 문항을 문제 번호별로 검수하고, 검수 완료 문항의 운영 상태를
-          후속 관리합니다. 검수 큐는 2depth 검수 페이지로 이어지고, 문항 관리는 빠른
-          상세 Drawer에서 상태 조치를 지원합니다.
-        </Paragraph>
 
         <ListSummaryCards items={summaryItems} />
 

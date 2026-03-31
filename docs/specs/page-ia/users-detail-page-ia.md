@@ -1,4 +1,4 @@
-# Users > 회원 상세 상세 IA
+﻿# Users > 회원 상세 IA
 
 ## 1. 문서 목적
 
@@ -17,7 +17,7 @@
 | 라우트 | /users/:userId |
 | 주요 권한 | users.read, users.memo.write, users.suspend |
 | 주요 role | SUPER_ADMIN, OPS_ADMIN, CS_MANAGER |
-| 연관 문서 | docs/specs/admin-page-analysis.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md, docs/specs/admin-user-detail-page-structure.md |
+| 연관 문서 | docs/architecture/admin-overview.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
 
 ## 3. 페이지 목표와 비목표
 
@@ -131,3 +131,4 @@
 
 - `프로필` 탭의 사용자명 필드는 `이름 (ID)` 형식을 유지합니다.
 - 같은 상세 영역 안에 사용자 ID가 별도 필드로 있더라도, 이름 필드에서는 항상 ID를 괄호로 함께 표기합니다.
+

@@ -1,4 +1,4 @@
-# Operation > 공지사항 상세 IA
+﻿# Operation > 공지사항 상세 IA
 
 ## 1. 문서 목적
 
@@ -16,7 +16,7 @@
 | 라우트 | `/operation/notices`, `/operation/notices/create`, `/operation/notices/create/:noticeId` |
 | 주요 권한 | `operation.notices.manage` |
 | 주요 role | `SUPER_ADMIN`, `OPS_ADMIN` |
-| 연관 문서 | `docs/specs/admin-page-analysis.md`, `docs/specs/admin-page-tables.md`, `docs/specs/admin-data-usage-map.md`, `docs/specs/admin-page-flows-mermaid.md` |
+| 연관 문서 | `docs/architecture/admin-overview.md`, `docs/specs/admin-page-tables.md`, `docs/specs/admin-data-usage-map.md`, `docs/specs/admin-page-flows-mermaid.md` |
 
 ## 3. 페이지 목표와 비목표
 
@@ -122,3 +122,4 @@
 - 사용 컴포넌트: `PageTitle`, `AdminListCard`, `AdminDataTable`, `HtmlPreviewModal`, `ConfirmAction`, `AuditLogLink`, TinyMCE HTML Editor
 - 관련 코드: `src/features/operation/pages/operation-notices-page.tsx`, `src/features/operation/pages/operation-notice-create-page.tsx`, `src/features/operation/api/notices-service.ts`
 - 미리보기 Modal 푸터의 `공지 수정` 버튼은 공지사항 페이지에서만 사용하는 page-level 액션 슬롯입니다.
+

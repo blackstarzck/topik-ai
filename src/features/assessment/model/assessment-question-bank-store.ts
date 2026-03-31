@@ -1,11 +1,14 @@
 import { create } from 'zustand';
 
+import { assessmentQuestionReviewDocumentsByQuestionId } from './assessment-question-review-documents';
 import type {
   AssessmentQuestion,
   AssessmentQuestionAuditAction,
   AssessmentQuestionAuditEvent,
   AssessmentQuestionOperationStatus,
-  AssessmentQuestionReviewStatus
+  AssessmentQuestionReviewDocument,
+  AssessmentQuestionReviewStatus,
+  AssessmentQuestionRevisionHistoryItem
 } from './assessment-question-bank-types';
 
 const CURRENT_ACTOR = 'admin_current';
@@ -88,6 +91,27 @@ function mapOperationAction(
   return 'operation_excluded';
 }
 
+function formatReviewDocumentDateTime(value: string): string {
+  return value.slice(0, 16).replace('T', ' ');
+}
+
+function mapReviewDocumentRevisionHistory(
+  questionId: string,
+  reviewDocument: AssessmentQuestionReviewDocument
+): AssessmentQuestionRevisionHistoryItem[] {
+  return reviewDocument.edit_history.map((item, index) => ({
+    id: `${questionId}-REV-${String(index + 1).padStart(3, '0')}`,
+    changedAt: item.edited_at,
+    changedBy: item.edited_by,
+    summary: item.summary
+  }));
+}
+
+const reviewDocument54001 =
+  assessmentQuestionReviewDocumentsByQuestionId['AQ-54001'];
+const reviewDocument54002 =
+  assessmentQuestionReviewDocumentsByQuestionId['AQ-54002'];
+
 const initialQuestions: AssessmentQuestion[] = [
   {
     questionId: 'AQ-51001',
@@ -136,7 +160,8 @@ const initialQuestions: AssessmentQuestion[] = [
       choices: ['말해야 합니다', '이야기합시다', '이용해야 합니다', '이야기해야 합니다'],
       answer: '이야기해야 합니다',
       reviewPoints: ['존댓말 활용이 자연스러운지 확인', '오답 선택지가 지나치게 약하지 않은지 확인']
-    }
+    },
+    reviewDocument: null
   },
   {
     questionId: 'AQ-51002',
@@ -191,7 +216,8 @@ const initialQuestions: AssessmentQuestion[] = [
       choices: ['보관됩니다', '확인합니다', '연결됩니다', '선택합니다'],
       answer: '보관됩니다',
       reviewPoints: ['수동/능동 표현이 섞이지 않는지 확인', '문장 종결 어미 일관성 확인']
-    }
+    },
+    reviewDocument: null
   },
   {
     questionId: 'AQ-52001',
@@ -246,7 +272,8 @@ const initialQuestions: AssessmentQuestion[] = [
       choices: ['이어 가고 싶다', '늦추어야 한다', '비교할 수 없다', '만족시켜야 한다'],
       answer: '이어 가고 싶다',
       reviewPoints: ['연결 표현이 52번 난이도에 맞는지 확인', '불필요한 중의성이 없는지 검토']
-    }
+    },
+    reviewDocument: null
   },
   {
     questionId: 'AQ-52002',
@@ -301,7 +328,8 @@ const initialQuestions: AssessmentQuestion[] = [
       choices: ['연습하려고 한다', '줄어드는 편이다', '마무리된 상태다', '설명할 수도 있다'],
       answer: '연습하려고 한다',
       reviewPoints: ['1인칭 화자의 의도 표현이 자연스러운지 확인', '정답과 오답의 문법 범주 일치 확인']
-    }
+    },
+    reviewDocument: null
   },
   {
     questionId: 'AQ-53001',
@@ -359,7 +387,8 @@ const initialQuestions: AssessmentQuestion[] = [
       answerGuide:
         '전체적인 증가 추세를 먼저 쓰고, 증가 폭이 가장 큰 도시와 가장 낮은 도시를 비교해 설명합니다.',
       reviewPoints: ['모든 핵심 수치가 지문과 답안 가이드에 반영됐는지 확인', '53번 분량 지시가 자연스러운지 확인']
-    }
+    },
+    reviewDocument: null
   },
   {
     questionId: 'AQ-53002',
@@ -417,13 +446,14 @@ const initialQuestions: AssessmentQuestion[] = [
       answerGuide:
         '만족도가 가장 높은 연령대와 가장 낮은 연령대를 비교하고, 보통 응답 비율을 보조 포인트로 정리합니다.',
       reviewPoints: ['표 설명과 답안 가이드가 일치하는지 확인', '핵심 비교 포인트가 최소 2개 이상인지 확인']
-    }
+    },
+    reviewDocument: null
   },
   {
     questionId: 'AQ-54001',
     questionNumber: '54',
-    topic: '온라인 학습의 장단점 의견 제시',
-    domain: '학습',
+    topic: reviewDocument54001.approved_topic_seed.topic_seed_title,
+    domain: reviewDocument54001.meta.domain,
     questionTypeLabel: '의견 서술',
     difficultyLevel: '상',
     sourceType: 'AI 자동 생성',
@@ -436,45 +466,50 @@ const initialQuestions: AssessmentQuestion[] = [
     validationSignals: ['조건 줄 수 확인', '의견형 구조 확인'],
     usageCount: 0,
     linkedExamCount: 0,
-    reviewMemo: '조건과 주제는 적절합니다. 주제 중복 여부만 확인하면 됩니다.',
-    managementNote: '검수 완료 전 사용처 없음',
-    coreMeaning: '온라인 학습과 오프라인 학습의 효과를 비교해 자신의 입장을 서술하는 논술형 문항입니다.',
-    keyIssue: '주제 범위는 적절하지만 최근 세트와의 주제 중복 여부 확인이 필요합니다.',
-    modelAnswer:
-      '입장을 명확히 밝힌 뒤 접근성, 집중도, 상호작용을 근거로 장단점을 비교하고 결론에서 현실적인 판단을 제시해야 합니다.',
+    reviewMemo: reviewDocument54001.review_memo,
+    managementNote: reviewDocument54001.approved_topic_seed.why_exam_worthy,
+    coreMeaning: reviewDocument54001.context_notes.row1_value,
+    keyIssue: reviewDocument54001.context_notes.row2_value,
+    modelAnswer: reviewDocument54001.model_answer,
     scoringCriteria: [
-      '입장을 서론에서 분명히 밝혔는지',
-      '본론에서 최소 두 가지 근거를 구체적으로 전개했는지',
-      '조건 줄과 결론 제안을 모두 충족했는지'
+      reviewDocument54001.rubric.content,
+      reviewDocument54001.rubric.language,
+      reviewDocument54001.rubric.structure
     ],
-    revisionHistory: [
-      {
-        id: 'AQ-54001-REV-001',
-        changedAt: '2026-03-29 14:15',
-        changedBy: 'system_batch',
-        summary: '초기 생성본 등록'
-      }
-    ],
-    generatedAt: '2026-03-29 14:15',
-    updatedAt: '2026-03-29 14:15',
-    updatedBy: 'system_batch',
+    revisionHistory: mapReviewDocumentRevisionHistory('AQ-54001', reviewDocument54001),
+    generatedAt: formatReviewDocumentDateTime(reviewDocument54001.created_at),
+    updatedAt:
+      reviewDocument54001.edit_history[
+        reviewDocument54001.edit_history.length - 1
+      ]?.edited_at ?? formatReviewDocumentDateTime(reviewDocument54001.created_at),
+    updatedBy:
+      reviewDocument54001.edit_history[
+        reviewDocument54001.edit_history.length - 1
+      ]?.edited_by ?? 'codex',
     reviewerName: '김소연',
     content: {
       kind: '54',
-      learnerPrompt:
-        '다음 주제에 대해 자신의 생각을 600~700자로 쓰십시오.',
-      topicPrompt: '온라인 학습이 오프라인 학습보다 효과적인 경우가 많다는 주장에 대한 자신의 의견',
-      conditionLines: ['서론-본론-결론 구조 유지', '구체적인 예시 1개 이상 포함', '찬성/반대 근거를 명확히 제시'],
+      learnerPrompt: '다음 주제에 대해 자신의 생각을 600~700자로 쓰십시오.',
+      topicPrompt: reviewDocument54001.approved_topic_seed.topic_seed_title,
+      conditionLines: [
+        reviewDocument54001.scenario_logic.chart_a_focus,
+        reviewDocument54001.scenario_logic.chart_b_focus,
+        reviewDocument54001.scenario_logic.cross_chart_bridge
+      ],
       outlineGuide:
-        '서론에서 입장을 밝히고, 본론에서 접근성/집중도/상호작용 같은 관점을 비교한 뒤 결론에서 자신의 판단을 정리합니다.',
-      reviewPoints: ['주제 범위가 과도하게 넓지 않은지 확인', '조건 줄이 평가 포인트와 중복되지 않는지 확인']
-    }
+        reviewDocument54001.scenario_logic.writing_reason,
+      reviewPoints: [
+        reviewDocument54001.context_notes.cause,
+        reviewDocument54001.context_notes.status
+      ]
+    },
+    reviewDocument: reviewDocument54001
   },
   {
     questionId: 'AQ-54002',
     questionNumber: '54',
-    topic: '지역 축제 보존과 변화에 대한 의견',
-    domain: '문화',
+    topic: reviewDocument54002.approved_topic_seed.topic_seed_title,
+    domain: reviewDocument54002.meta.domain,
     questionTypeLabel: '의견 서술',
     difficultyLevel: '상',
     sourceType: 'AI 자동 생성',
@@ -487,45 +522,44 @@ const initialQuestions: AssessmentQuestion[] = [
     validationSignals: ['조건과 주제는 적합하나 최근 사용 주제와 유사'],
     usageCount: 2,
     linkedExamCount: 1,
-    reviewMemo: '문항 품질은 충분하지만 최근 세트와 주제 유사도가 높아 운영 제외로 둡니다.',
-    managementNote: '차기 배치 생성 시 주제 다양성 필터 강화 필요',
-    coreMeaning: '지역 축제의 전통 보존과 현대화 사이에서 의견을 제시하게 하는 사회문화형 논술 문항입니다.',
-    keyIssue: '품질은 충분하지만 최근 운영 세트와의 주제 유사도가 높습니다.',
-    modelAnswer:
-      '전통 보존과 현대화의 장단점을 모두 다룬 뒤, 지역 정체성을 지키면서도 현대적 요소를 부분 도입하는 절충안을 제시하는 구조가 적절합니다.',
+    reviewMemo: reviewDocument54002.review_memo,
+    managementNote: reviewDocument54002.approved_topic_seed.why_exam_worthy,
+    coreMeaning: reviewDocument54002.context_notes.row1_value,
+    keyIssue: reviewDocument54002.context_notes.row2_value,
+    modelAnswer: reviewDocument54002.model_answer,
     scoringCriteria: [
-      '찬반 입장과 이유를 분명히 제시했는지',
-      '전통 유지와 변화의 장단점을 균형 있게 다뤘는지',
-      '결론에서 현실적 제안을 포함했는지'
+      reviewDocument54002.rubric.content,
+      reviewDocument54002.rubric.language,
+      reviewDocument54002.rubric.structure
     ],
-    revisionHistory: [
-      {
-        id: 'AQ-54002-REV-001',
-        changedAt: '2026-03-29 14:18',
-        changedBy: 'system_batch',
-        summary: '초기 생성본 등록'
-      },
-      {
-        id: 'AQ-54002-REV-002',
-        changedAt: '2026-03-30 09:40',
-        changedBy: 'admin_current',
-        summary: '주제 유사도로 운영 제외 처리'
-      }
-    ],
-    generatedAt: '2026-03-29 14:18',
-    updatedAt: '2026-03-30 09:40',
-    updatedBy: 'admin_current',
+    revisionHistory: mapReviewDocumentRevisionHistory('AQ-54002', reviewDocument54002),
+    generatedAt: formatReviewDocumentDateTime(reviewDocument54002.created_at),
+    updatedAt:
+      reviewDocument54002.edit_history[
+        reviewDocument54002.edit_history.length - 1
+      ]?.edited_at ?? formatReviewDocumentDateTime(reviewDocument54002.created_at),
+    updatedBy:
+      reviewDocument54002.edit_history[
+        reviewDocument54002.edit_history.length - 1
+      ]?.edited_by ?? 'codex',
     reviewerName: '이한나',
     content: {
       kind: '54',
-      learnerPrompt:
-        '다음 주제에 대해 자신의 생각을 600~700자로 쓰십시오.',
-      topicPrompt: '지역 축제를 전통 그대로 유지해야 하는지, 현대적으로 바꿔야 하는지에 대한 의견',
-      conditionLines: ['자신의 입장을 분명히 밝힐 것', '전통 유지와 변화의 장단점을 모두 언급할 것', '결론에서 현실적 제안을 포함할 것'],
+      learnerPrompt: '다음 주제에 대해 자신의 생각을 600~700자로 쓰십시오.',
+      topicPrompt: reviewDocument54002.approved_topic_seed.topic_seed_title,
+      conditionLines: [
+        reviewDocument54002.scenario_logic.chart_a_focus,
+        reviewDocument54002.scenario_logic.chart_b_focus,
+        reviewDocument54002.scenario_logic.cross_chart_bridge
+      ],
       outlineGuide:
-        '서론에서 축제의 역할을 제시하고, 본론에서 전통 보존과 현대화의 장단점을 비교한 뒤 결론에서 현실적인 절충안을 제안합니다.',
-      reviewPoints: ['최근 기출/내부 세트와 주제 중복 여부 확인', '조건 줄이 실제 채점 기준과 연결되는지 확인']
-    }
+        reviewDocument54002.scenario_logic.writing_reason,
+      reviewPoints: [
+        reviewDocument54002.context_notes.cause,
+        reviewDocument54002.context_notes.status
+      ]
+    },
+    reviewDocument: reviewDocument54002
   }
 ];
 
@@ -575,6 +609,12 @@ export const useAssessmentQuestionBankStore = create<AssessmentQuestionBankStore
           updatedQuestion = {
             ...question,
             reviewStatus: nextStatus,
+            reviewDocument: question.reviewDocument
+              ? {
+                  ...question.reviewDocument,
+                  review_passed: nextStatus === '검수 완료'
+                }
+              : null,
             updatedAt: formatNow(),
             updatedBy: CURRENT_ACTOR
           };
@@ -616,6 +656,12 @@ export const useAssessmentQuestionBankStore = create<AssessmentQuestionBankStore
           updatedQuestion = {
             ...question,
             reviewMemo,
+            reviewDocument: question.reviewDocument
+              ? {
+                  ...question.reviewDocument,
+                  review_memo: reviewMemo
+                }
+              : null,
             updatedAt: formatNow(),
             updatedBy: CURRENT_ACTOR
           };

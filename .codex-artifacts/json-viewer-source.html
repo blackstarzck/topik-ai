@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TOPIK II 쓰기 53번 동적 뷰어</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f5f6fa; --surface: #ffffff; --surface2: #f0f2f7; --border: #dde1ea;
+  --text: #1f2933; --text2: #616e7c; --accent: #2563eb; --accent2: #059669;
+  --gradient1: linear-gradient(135deg, #2563eb, #7c3aed);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* Header */
+.top-bar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 32px; position: sticky; top: 0; z-index: 100; backdrop-filter: blur(12px); display: flex; align-items: center; gap: 12px; }
+.top-bar h1 { font-size: 22px; font-weight: 700; background: var(--gradient1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.top-bar .subtitle { font-size: 13px; color: var(--text2); }
+
+/* Landing */
+.landing { max-width: 700px; margin: 60px auto; text-align: center; padding: 40px; }
+.landing h2 { font-size: 28px; font-weight: 700; margin-bottom: 8px; background: var(--gradient1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.landing p { color: var(--text2); margin-bottom: 24px; font-size: 14px; }
+.landing textarea { width: 100%; height: 200px; border: 2px dashed var(--border); border-radius: 14px; padding: 18px; font-family: 'Consolas', monospace; font-size: 12px; resize: vertical; background: var(--surface); color: var(--text); transition: border-color 0.3s; }
+.landing textarea:focus { outline: none; border-color: var(--accent); }
+.landing .actions { display: flex; gap: 12px; justify-content: center; margin-top: 20px; }
+.btn { padding: 12px 28px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; font-family: inherit; }
+.btn-primary { background: var(--gradient1); color: #fff; }
+.btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+.file-label { display: inline-flex; align-items: center; gap: 6px; }
+.file-label input { display: none; }
+.error-msg { color: #e53e3e; margin-top: 12px; font-size: 13px; display: none; }
+.or-divider { color: var(--text2); font-size: 13px; margin: 16px 0; }
+
+/* Stats Bar */
+.stats-bar { display: flex; gap: 16px; padding: 16px 32px; background: var(--surface); border-bottom: 1px solid var(--border); flex-wrap: wrap; align-items: center; }
+.stat-chip { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 18px; font-size: 13px; }
+.stat-chip .val { font-weight: 700; color: var(--accent); font-size: 18px; }
+.stat-chip.excluded .val { color: #e53e3e; }
+.stat-chip.passed .val { color: #059669; }
+
+/* Filters */
+.filter-bar { display: flex; gap: 12px; padding: 16px 32px; background: var(--surface2); border-bottom: 1px solid var(--border); flex-wrap: wrap; align-items: center; }
+.filter-bar label { font-size: 13px; color: var(--text2); }
+.filter-bar select, .filter-bar input { background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 8px 14px; border-radius: 8px; font-size: 13px; font-family: inherit; }
+.filter-bar select:focus, .filter-bar input:focus { outline: none; border-color: var(--accent); }
+.filter-bar input[type=text] { width: 220px; }
+#result-count { font-size: 13px; color: var(--accent2); font-weight: 600; }
+.filter-right { display: flex; gap: 8px; align-items: center; margin-left: auto; }
+.btn-back { }
+
+/* Exclusion feature */
+.card-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.btn-pass, .btn-exclude { padding: 5px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--text2); transition: all 0.2s; font-family: inherit; }
+.btn-pass:hover { border-color: #059669; color: #059669; background: #f0fdf4; }
+.btn-pass.passed { background: #059669; color: #fff; border-color: #059669; }
+.btn-pass.passed:hover { background: #047857; border-color: #047857; }
+.btn-exclude { margin-left: 0; }
+.btn-exclude:hover { border-color: #e53e3e; color: #e53e3e; background: #fff5f5; }
+.btn-exclude.excluded { background: #e53e3e; color: #fff; border-color: #e53e3e; }
+.btn-exclude.excluded:hover { background: #c53030; }
+.question-card.is-excluded { opacity: 0.55; border-color: #e53e3e; }
+.question-card.is-excluded .card-header { background: #fff5f5; }
+.question-card.is-passed { border-color: #10b981; }
+.question-card.is-passed .card-header { background: #f0fdf4; }
+.badge-excluded { background: #e53e3e !important; }
+.badge-passed { background: #059669 !important; }
+.btn-toggle-excluded { font-size: 13px; }
+.btn-toggle-excluded.active { background: #e53e3e; color: #fff; border-color: #e53e3e; }
+.btn-export-excluded { font-size: 12px; padding: 7px 14px; }
+
+/* Card body layout: two columns */
+.card-body { display: flex; gap: 0; }
+.card-content { flex: 1; min-width: 0; }
+
+/* Memo - right side panel */
+.memo-section { width: 260px; min-width: 260px; background: #fffbe6; border-left: 2px solid #f5e6a3; padding: 16px; display: flex; flex-direction: column; }
+.memo-section textarea { width: 100%; flex: 1; min-height: 120px; border: 2px solid #f0d87a; border-radius: 10px; padding: 12px 14px; font-family: 'Noto Sans KR', sans-serif; font-size: 13px; resize: none; background: #fff9e0; color: var(--text); transition: border-color 0.3s; line-height: 1.6; }
+.memo-section textarea:focus { outline: none; border-color: #f59e0b; }
+.memo-section textarea::placeholder { color: #b8a06a; }
+.memo-section .memo-label { font-size: 12px; font-weight: 600; color: #b8860b; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.memo-section .memo-saved { font-size: 11px; color: #059669; font-weight: 400; opacity: 0; transition: opacity 0.3s; }
+.memo-section .memo-saved.show { opacity: 1; }
+.memo-section .memo-hint { font-size: 11px; color: #b8a06a; margin-top: 8px; line-height: 1.4; }
+
+/* Edit history */
+.history-list { display: grid; gap: 10px; padding: 14px; background: var(--surface2); border: 1px solid var(--border); border-top: none; border-radius: 0 0 10px 10px; }
+.history-item { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+.history-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.history-pill { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; background: #e8eefc; color: var(--accent); }
+.history-pill.subtle { background: #edf2f7; color: var(--text2); }
+.history-summary { font-size: 12.5px; line-height: 1.7; color: var(--text); }
+.history-fields { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.history-field { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 11px; background: #eefbf6; color: var(--accent2); border: 1px solid #cdeee0; }
+.history-review { margin-top: 10px; font-size: 12px; line-height: 1.7; color: var(--text2); white-space: pre-wrap; }
+.history-review strong { color: var(--text); }
+
+/* Pagination */
+.pagination { display: flex; gap: 6px; justify-content: center; padding: 20px; flex-wrap: wrap; }
+.pagination button { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; font-family: inherit; transition: all 0.2s; }
+.pagination button:hover { border-color: var(--accent); color: var(--accent); }
+.pagination button.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+
+/* Cards */
+.cards-container { padding: 20px 32px; }
+.question-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 0; margin-bottom: 24px; overflow: hidden; transition: box-shadow 0.3s; }
+.question-card:hover { box-shadow: 0 4px 20px rgba(37, 99, 235, 0.1); }
+.card-header { display: flex; align-items: center; gap: 14px; padding: 16px 22px; background: var(--surface2); border-bottom: 1px solid var(--border); }
+.card-num { font-size: 20px; font-weight: 700; color: var(--accent); min-width: 60px; }
+.card-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+.badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; color: #fff; }
+.badge-domain { background: #2a7abf; }
+.badge-diff { background: #6b7280; }
+
+/* Charts */
+.charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 14px 20px; }
+.chart-panel { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+.chart-title { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+.chart-source { font-size: 10px; color: var(--text2); margin-bottom: 6px; }
+
+/* Context Table */
+.context-table { width: calc(100% - 44px); margin: 0 22px 16px; border-collapse: collapse; border-radius: 10px; overflow: hidden; }
+.context-table th, .context-table td { border: 1px solid var(--border); padding: 12px 16px; font-size: 13px; }
+.context-table th { width: 100px; background: rgba(79,140,255,0.12); color: var(--accent); font-weight: 600; text-align: center; }
+.context-table td { background: var(--surface2); }
+
+/* Prompt & Details */
+.prompt-section { padding: 0 22px 14px; }
+.section-label { font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 6px; }
+.prompt-box { background: var(--surface2); border-left: 4px solid var(--accent); border-radius: 0 10px 10px 0; padding: 14px 18px; font-size: 13.5px; line-height: 1.8; white-space: pre-line; }
+details { margin: 0 22px 14px; }
+summary { cursor: pointer; padding: 10px 16px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; font-size: 13px; font-weight: 500; color: var(--text2); transition: all 0.2s; }
+summary:hover { color: var(--accent); border-color: var(--accent); }
+details[open] summary { border-radius: 10px 10px 0 0; border-bottom: none; color: var(--accent); }
+.answer-box { background: var(--surface2); border: 1px solid var(--border); border-top: none; border-radius: 0 0 10px 10px; padding: 16px 18px; font-size: 13.5px; line-height: 1.9; }
+.rubric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 14px; background: var(--surface2); border: 1px solid var(--border); border-top: none; border-radius: 0 0 10px 10px; }
+.rubric-item { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-size: 12px; line-height: 1.6; }
+.rubric-item strong { display: block; margin-bottom: 4px; color: var(--accent); font-size: 12px; }
+
+.scroll-top { position: fixed; bottom: 30px; right: 30px; width: 48px; height: 48px; border-radius: 50%; background: var(--accent); color: #fff; border: none; cursor: pointer; font-size: 20px; box-shadow: 0 4px 16px rgba(37,99,235,0.25); z-index: 200; display: none; transition: opacity 0.3s; }
+
+@media (max-width: 1100px) {
+  .card-body { flex-direction: column; }
+  .memo-section { width: 100%; min-width: unset; border-left: none; border-top: 2px solid #f5e6a3; }
+  .memo-section textarea { min-height: 60px; resize: vertical; }
+}
+@media (max-width: 900px) {
+  .charts-row { grid-template-columns: 1fr; }
+  .rubric-grid { grid-template-columns: 1fr; }
+  .cards-container, .filter-bar, .stats-bar, .top-bar { padding-left: 16px; padding-right: 16px; }
+}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <h1>TOPIK II 쓰기 53번</h1>
+  <span class="subtitle" id="header-subtitle">동적 뷰어</span>
+</div>
+
+<!-- Landing Page -->
+<div id="landing" class="landing">
+  <h2>📄 JSON 데이터 로드</h2>
+  <p>생성된 TOPIK 53번 문항 JSON 파일을 업로드하거나 붙여넣기 하세요.</p>
+  <div class="actions" style="margin-bottom:16px">
+    <label class="btn btn-secondary file-label">
+      📂 파일 선택
+      <input type="file" id="file-input" accept=".json">
+    </label>
+    <button class="btn btn-secondary" onclick="loadSample()">💾 샘플 로드 (최신 JSON)</button>
+  </div>
+  <div class="or-divider">— 또는 JSON 텍스트를 아래에 붙여넣기 —</div>
+  <textarea id="json-input" placeholder='[{"id":"...","meta":{"domain":"사회",...},"chart_a":{...},...}, ...]'></textarea>
+  <div class="actions">
+    <button class="btn btn-primary" onclick="loadFromTextarea()">🚀 로드하기</button>
+  </div>
+  <div class="error-msg" id="error-msg"></div>
+</div>
+
+<!-- Viewer (hidden until data loaded) -->
+<div id="viewer" style="display:none">
+  <div class="stats-bar" id="stats-bar"></div>
+  <div class="filter-bar">
+    <label>도메인</label>
+    <select id="f-domain"><option value="all">전체</option></select>
+    <label>유형</label>
+    <select id="f-type"><option value="all">전체</option></select>
+    <label>난이도</label>
+    <select id="f-diff">
+      <option value="all">전체</option>
+      <option value="3">3급</option>
+      <option value="4">4급</option>
+    </select>
+    <label>검색</label>
+    <input type="text" id="f-search" placeholder="제목 또는 키워드 검색...">
+    <div class="filter-right">
+      <span id="result-count"></span>
+      <button class="btn btn-secondary btn-toggle-excluded" id="btn-toggle-excluded" onclick="toggleShowExcluded()" title="제외된 문항 표시/숨김">🚫 제외 보기</button>
+      <button class="btn btn-primary btn-export-excluded" id="btn-export-excluded" onclick="exportValid()" title="유효 문항 JSON 내보내기">📥 유효 목록 내보내기</button>
+      <button class="btn btn-secondary btn-back" onclick="backToLanding()">← 다른 파일</button>
+    </div>
+  </div>
+  <div class="pagination" id="pagination-top"></div>
+  <div class="cards-container" id="cards-container"></div>
+  <div class="pagination" id="pagination-bottom"></div>
+</div>
+
+<button class="scroll-top" id="scroll-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<script>
+const COLORS = ['#4f8cff','#ff6b6b','#23c49e','#a06eff','#ff9f43','#54d5e8','#f472b6','#facc15'];
+const TYPE_LABELS = {
+  type1:'유형1: 전체동향+세부분석', type1_dual_cause:'유형1-1: 심화(원인2방향)',
+  type1_rank_flip:'유형1-2: 심화(순위역전)', type2_plan:'유형2: 현상+향후계획',
+  type3_forecast:'유형3: 비교+전망', type4_solution:'유형4: 문제+해결'
+};
+const TYPE_COLORS = {
+  type1:'#4f8cff', type1_dual_cause:'#a06eff', type1_rank_flip:'#ff6b6b',
+  type2_plan:'#23c49e', type3_forecast:'#54d5e8', type4_solution:'#ff9f43'
+};
+
+let DATA = [];
+let filtered = [];
+let currentPage = 1;
+const PER_PAGE = 10;
+let excludedSet = new Set();
+let passedSet = new Set();
+let showExcluded = false;
+let memoMap = {};  // idx -> memo string
+
+// ── File input handler ──
+document.getElementById('file-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try { loadData(JSON.parse(ev.target.result)); }
+    catch(err) { showError('JSON 파싱 오류: ' + err.message); }
+  };
+  reader.readAsText(file, 'UTF-8');
+});
+
+function loadFromTextarea() {
+  const text = document.getElementById('json-input').value.trim();
+  if (!text) { showError('JSON 데이터를 입력하세요.'); return; }
+  try { loadData(JSON.parse(text)); }
+  catch(err) { showError('JSON 파싱 오류: ' + err.message); }
+}
+
+async function loadSample() {
+  showError('');
+  try {
+    // Try to find latest JSON in same directory
+    const r = await fetch('topik53_20260319_152902_1000.json');
+    if (!r.ok) throw new Error('File not found');
+    const d = await r.json();
+    loadData(d);
+  } catch(err) { showError('샘플 파일을 찾을 수 없습니다: ' + err.message); }
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  el.textContent = msg; el.style.display = msg ? 'block' : 'none';
+}
+
+function normalizeLoadedData(data) {
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.items)) return data.items;
+  return null;
+}
+
+function formatPromptText(text) {
+  return String(text || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\n?\s*(\d+\))/g, '\n$1')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function backToLanding() {
+  document.getElementById('viewer').style.display = 'none';
+  document.getElementById('landing').style.display = '';
+  document.getElementById('header-subtitle').textContent = '동적 뷰어';
+}
+
+// ── Load and render data ──
+function loadData(data) {
+  const normalized = normalizeLoadedData(data);
+  if (!Array.isArray(normalized) || normalized.length === 0) { showError('유효한 배열 데이터가 필요합니다.'); return; }
+  DATA = normalized;
+  filtered = [];
+  currentPage = 1;
+  excludedSet = new Set();
+  passedSet = new Set();
+  showExcluded = false;
+  memoMap = {};
+  DATA.forEach((q, i) => {
+    if (typeof q.review_memo === 'string') memoMap[i] = q.review_memo;
+    if (q.review_passed === true) passedSet.add(i);
+  });
+  document.getElementById('btn-toggle-excluded').classList.remove('active');
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('viewer').style.display = '';
+  document.getElementById('header-subtitle').textContent = `${DATA.length}문항 뷰어`;
+  buildStats();
+  buildFilterOptions();
+  applyFilters();
+}
+
+function buildStats() {
+  const domains = new Set(DATA.map(q => q.meta?.domain));
+  const qtypes = new Set(DATA.map(q => q.meta?.question_type));
+  const exCount = excludedSet.size;
+  const passedCount = passedSet.size;
+  document.getElementById('stats-bar').innerHTML = `
+    <div class="stat-chip">총 문항 <span class="val">${DATA.length}</span></div>
+    <div class="stat-chip">도메인 <span class="val">${domains.size}</span>개</div>
+    <div class="stat-chip">유형 <span class="val">${qtypes.size}</span>개</div>
+    <div class="stat-chip passed">완전 통과 <span class="val">${passedCount}</span>문항</div>
+    <div class="stat-chip excluded">제외됨 <span class="val">${exCount}</span>문항</div>
+    <div class="stat-chip">유효 <span class="val">${DATA.length - exCount}</span>문항</div>
+  `;
+}
+
+function buildFilterOptions() {
+  const domains = [...new Set(DATA.map(q => q.meta?.domain).filter(Boolean))].sort();
+  const types = [...new Set(DATA.map(q => q.meta?.question_type).filter(Boolean))].sort();
+  const domSel = document.getElementById('f-domain');
+  domSel.innerHTML = '<option value="all">전체</option>' + domains.map(d => `<option value="${d}">${d}</option>`).join('');
+  const typSel = document.getElementById('f-type');
+  typSel.innerHTML = '<option value="all">전체</option>' + types.map(t => `<option value="${t}">${t}</option>`).join('');
+}
+
+// ── Filters & Pagination ──
+function applyFilters() {
+  const d = document.getElementById('f-domain').value;
+  const t = document.getElementById('f-type').value;
+  const df = document.getElementById('f-diff').value;
+  const s = document.getElementById('f-search').value.toLowerCase().trim();
+  filtered = DATA.map((q, i) => i).filter(i => {
+    const q = DATA[i];
+    // Exclusion filter: hide excluded unless showExcluded is true
+    if (!showExcluded && excludedSet.has(i)) return false;
+    if (d !== 'all' && q.meta?.domain !== d) return false;
+    if (t !== 'all' && q.meta?.question_type !== t) return false;
+    if (df !== 'all' && String(q.meta?.difficulty) !== df) return false;
+    if (s) {
+      const text = JSON.stringify(q).toLowerCase();
+      if (!text.includes(s)) return false;
+    }
+    return true;
+  });
+  document.getElementById('result-count').textContent = filtered.length + '문항';
+  currentPage = 1;
+  renderPage();
+}
+
+function renderPage() {
+  const totalPages = Math.ceil(filtered.length / PER_PAGE) || 1;
+  if (currentPage > totalPages) currentPage = totalPages;
+  const start = (currentPage - 1) * PER_PAGE;
+  const pageItems = filtered.slice(start, start + PER_PAGE);
+  const container = document.getElementById('cards-container');
+  container.innerHTML = pageItems.map(i => renderCard(i, DATA[i])).join('');
+  renderPagination('pagination-top', totalPages);
+  renderPagination('pagination-bottom', totalPages);
+}
+
+function renderPagination(id, totalPages) {
+  const el = document.getElementById(id);
+  if (totalPages <= 1) { el.innerHTML = ''; return; }
+  let html = '';
+  const show = [1];
+  for (let p = Math.max(2, currentPage-2); p <= Math.min(totalPages-1, currentPage+2); p++) show.push(p);
+  show.push(totalPages);
+  const unique = [...new Set(show)].sort((a,b) => a-b);
+  if (currentPage > 1) html += `<button onclick="goPage(${currentPage-1})">◀</button>`;
+  let last = 0;
+  unique.forEach(p => {
+    if (last && p - last > 1) html += `<button disabled>…</button>`;
+    html += `<button class="${p===currentPage?'active':''}" onclick="goPage(${p})">${p}</button>`;
+    last = p;
+  });
+  if (currentPage < totalPages) html += `<button onclick="goPage(${currentPage+1})">▶</button>`;
+  el.innerHTML = html;
+}
+
+function goPage(p) { currentPage = p; renderPage(); window.scrollTo({top:0,behavior:'smooth'}); }
+
+// ── Event listeners ──
+document.getElementById('f-domain').addEventListener('change', applyFilters);
+document.getElementById('f-type').addEventListener('change', applyFilters);
+document.getElementById('f-diff').addEventListener('change', applyFilters);
+let st; document.getElementById('f-search').addEventListener('input', () => { clearTimeout(st); st = setTimeout(applyFilters, 300); });
+window.addEventListener('scroll', () => { document.getElementById('scroll-top').style.display = window.scrollY > 400 ? 'block' : 'none'; });
+
+// ── Exclusion feature ──
+function toggleExclude(idx) {
+  if (excludedSet.has(idx)) {
+    excludedSet.delete(idx);
+  } else {
+    excludedSet.add(idx);
+  }
+  buildStats();
+  // Re-render current page to reflect change
+  if (!showExcluded) {
+    applyFilters();
+  } else {
+    renderPage();
+  }
+}
+
+function togglePassed(idx) {
+  if (passedSet.has(idx)) {
+    passedSet.delete(idx);
+  } else {
+    passedSet.add(idx);
+  }
+  if (DATA[idx]) DATA[idx].review_passed = passedSet.has(idx);
+  buildStats();
+  renderPage();
+}
+
+function toggleShowExcluded() {
+  showExcluded = !showExcluded;
+  const btn = document.getElementById('btn-toggle-excluded');
+  btn.classList.toggle('active', showExcluded);
+  btn.textContent = showExcluded ? '🚫 제외 숨기기' : '🚫 제외 보기';
+  applyFilters();
+}
+
+function exportValid() {
+  const validItems = DATA.map((q, i) => ({...q, _originalIndex: i})).filter(q => !excludedSet.has(q._originalIndex));
+  if (validItems.length === 0) {
+    alert('유효한 문항이 없습니다.');
+    return;
+  }
+  // Attach memos to each item
+  const output = validItems.map(q => {
+    const item = {...q};
+    const memo = memoMap[item._originalIndex];
+    const hasMemo = Object.prototype.hasOwnProperty.call(memoMap, item._originalIndex);
+    item.review_passed = passedSet.has(item._originalIndex);
+    delete item._originalIndex;
+    if (hasMemo) {
+      if (typeof memo === 'string' && memo.trim()) item.review_memo = memo.trim();
+      else delete item.review_memo;
+    }
+    return item;
+  });
+  const json = JSON.stringify(output, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `valid_questions_${validItems.length}items_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function saveMemo(idx) {
+  const el = document.getElementById('memo-' + idx);
+  if (!el) return;
+  memoMap[idx] = el.value;
+  // Show saved indicator briefly
+  const saved = document.getElementById('memo-saved-' + idx);
+  if (saved) {
+    saved.classList.add('show');
+    clearTimeout(saved._timer);
+    saved._timer = setTimeout(() => saved.classList.remove('show'), 1500);
+  }
+}
+
+// ── Card rendering ──
+function renderCard(idx, q) {
+  const meta = q.meta || {};
+  const qtype = meta.question_type || 'type1';
+  const diff = meta.difficulty || 3;
+  const domain = meta.domain || '';
+  const stars = '⭐'.repeat(diff);
+  const typeLabel = TYPE_LABELS[qtype] || qtype;
+  const typeColor = TYPE_COLORS[qtype] || '#4f8cff';
+  const ca = q.chart_a || {};
+  const cb = q.chart_b || {};
+  const cn = q.context_notes || {};
+  const ans = q.model_answer || '';
+  const rubric = q.rubric || {};
+  const prompt = formatPromptText(q.prompt_text || '');
+  const reviewMemo = Object.prototype.hasOwnProperty.call(memoMap, idx) ? memoMap[idx] : (q.review_memo || '');
+  const historyHtml = renderEditHistory(q.edit_history || []);
+
+  const isExcluded = excludedSet.has(idx);
+  const isPassed = passedSet.has(idx);
+  return `<div class="question-card ${isExcluded ? 'is-excluded' : ''} ${isPassed ? 'is-passed' : ''}" id="card-${idx}">
+  <div class="card-header">
+    <div class="card-num">#${idx+1}</div>
+    <div class="card-badges">
+      <span class="badge badge-domain">${esc(domain)}</span>
+      <span class="badge" style="background:${typeColor}">${esc(typeLabel)}</span>
+      <span class="badge badge-diff">${stars} ${diff}급</span>
+      ${isPassed ? '<span class="badge badge-passed">완전 통과</span>' : ''}
+      ${isExcluded ? '<span class="badge badge-excluded">제외됨</span>' : ''}
+    </div>
+    <div class="card-actions">
+      <button class="btn-pass ${isPassed ? 'passed' : ''}" onclick="togglePassed(${idx})" title="${isPassed ? '완전 통과 해제' : '완전 통과 표시'}">${isPassed ? '통과 해제' : '완전 통과'}</button>
+      <button class="btn-exclude ${isExcluded ? 'excluded' : ''}" onclick="toggleExclude(${idx})" title="${isExcluded ? '복원하기' : '리스트에서 제외'}">${isExcluded ? '↩ 복원' : '❌ 제외'}</button>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="card-content">
+      <div class="prompt-section" style="padding-top:14px">
+        <div class="section-label">📝 지시문</div>
+        <div class="prompt-box">${esc(prompt)}</div>
+      </div>
+      <div class="charts-row">
+        <div class="chart-panel">
+          <div class="chart-title">${esc(ca.title||'')}</div>
+          <div class="chart-source">출처: ${esc(ca.survey_org||'')} | 단위: ${esc(ca.unit||'')}</div>
+          ${renderChart(ca)}
+        </div>
+        <div class="chart-panel">
+          <div class="chart-title">${esc(cb.title||'')}</div>
+          <div class="chart-source">출처: ${esc(cb.survey_org||'')} | 단위: ${esc(cb.unit||'')}</div>
+          ${renderChart(cb)}
+        </div>
+      </div>
+      <table class="context-table">
+        <tr><th>${esc(cn.row1_label||'원인')}</th><td>${esc(cn.row1_value||'')}</td></tr>
+        ${cn.row2_value ? `<tr><th>${esc(cn.row2_label||'현황')}</th><td>${esc(cn.row2_value||'')}</td></tr>` : ''}
+      </table>
+      <details>
+        <summary>📘 모범답안 보기 (${ans.length}자)</summary>
+        <div class="answer-box">${esc(ans)}</div>
+      </details>
+      <details>
+        <summary>📋 채점기준</summary>
+        <div class="rubric-grid">
+          <div class="rubric-item"><strong>내용</strong>${esc(rubric.content||'')}</div>
+          <div class="rubric-item"><strong>언어</strong>${esc(rubric.language||'')}</div>
+          <div class="rubric-item"><strong>구성</strong>${esc(rubric.structure||'')}</div>
+        </div>
+      </details>
+      ${historyHtml}
+    </div>
+    <div class="memo-section">
+      <div class="memo-label">📝 검수 메모 <span class="memo-saved" id="memo-saved-${idx}">✓ 저장됨</span></div>
+      <textarea id="memo-${idx}" placeholder="수정 의견이나 메모를 남겨주세요..." oninput="saveMemo(${idx})">${esc(reviewMemo)}</textarea>
+      <div class="memo-hint">내보내기 시 review_memo로 포함됩니다</div>
+    </div>
+  </div>
+</div>`;
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function renderEditHistory(entries) {
+  if (!Array.isArray(entries) || !entries.length) return '';
+  return `<details>
+    <summary>수정 히스토리 (${entries.length}건)</summary>
+    <div class="history-list">
+      ${entries.map(entry => {
+        const changedFields = Array.isArray(entry?.changed_fields) ? entry.changed_fields : [];
+        return `<div class="history-item">
+          <div class="history-meta">
+            ${entry?.edited_at ? `<span class="history-pill">${esc(entry.edited_at)}</span>` : ''}
+            ${entry?.edit_type ? `<span class="history-pill subtle">${esc(entry.edit_type)}</span>` : ''}
+            ${entry?.edited_by ? `<span class="history-pill subtle">${esc(entry.edited_by)}</span>` : ''}
+          </div>
+          ${entry?.summary ? `<div class="history-summary">${esc(entry.summary)}</div>` : ''}
+          ${changedFields.length ? `<div class="history-fields">${changedFields.map(field => `<span class="history-field">${esc(field)}</span>`).join('')}</div>` : ''}
+          ${entry?.basis ? `<div class="history-review"><strong>적용 근거</strong>\n${esc(entry.basis)}</div>` : ''}
+          ${entry?.review_snapshot ? `<div class="history-review"><strong>반영 리뷰</strong>\n${esc(entry.review_snapshot)}</div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>
+  </details>`;
+}
+
+// ── SVG Chart renderer ──
+function renderChart(chart) {
+  const type = chart.chart_type || 'bar';
+  const years = chart.year_range || [];
+  const series = chart.series || [];
+  if (type === 'pie' || type === 'donut') return renderPie(series, type === 'donut');
+  if (type === 'line') return renderLine(years, series);
+  return renderBar(years, series);
+}
+
+function renderBar(years, series) {
+  const W=340, H=160, ML=44, MR=10, MT=20, MB=30;
+  const pw=W-ML-MR, ph=H-MT-MB;
+  const n=years.length; if(!n) return '';
+  const allVals = series.flatMap(s => s.values||[]);
+  const maxV = Math.max(...allVals, 1);
+  const nSeries = series.length;
+  const gapRatio = 0.25;
+  const groupW = pw / n;
+  const barW = (groupW * (1-gapRatio)) / nSeries;
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;max-height:160px;">`;
+  // Grid lines
+  for (let i=0; i<=4; i++) {
+    const y = MT + (ph * i / 4);
+    const v = Math.round(maxV * (4-i) / 4);
+    svg += `<line x1="${ML}" y1="${y}" x2="${W-MR}" y2="${y}" stroke="#e8ecf1" stroke-width="0.8"/>`;
+    svg += `<text x="${ML-4}" y="${y+4}" text-anchor="end" font-size="10" fill="#8892a4">${v}</text>`;
+  }
+  svg += `<line x1="${ML}" y1="${MT+ph}" x2="${W-MR}" y2="${MT+ph}" stroke="#c1c9d6" stroke-width="1.2"/>`;
+
+  // X labels
+  years.forEach((yr, i) => {
+    const cx = ML + groupW * (i + 0.5);
+    svg += `<text x="${cx}" y="${H-2}" text-anchor="middle" font-size="10" fill="#555">${esc(String(yr))}</text>`;
+  });
+
+  // Bars
+  series.forEach((s, si) => {
+    const color = COLORS[si % COLORS.length];
+    (s.values||[]).forEach((v, vi) => {
+      if (vi >= n) return;
+      const bh = (v / maxV) * ph;
+      const x = ML + groupW * vi + groupW * gapRatio/2 + barW * si;
+      const y = MT + ph - bh;
+      svg += `<rect x="${x}" y="${y}" width="${barW-1}" height="${bh}" fill="${color}" rx="2"><title>${esc(s.label||'')}: ${v}</title></rect>`;
+      svg += `<text x="${x+barW/2}" y="${y-3}" text-anchor="middle" font-size="8" fill="#333">${v}</text>`;
+    });
+  });
+
+  // Legend
+  series.forEach((s, si) => {
+    const lx = ML + 20 + si * 80;
+    svg += `<rect x="${lx}" y="4" width="8" height="8" fill="${COLORS[si%COLORS.length]}" rx="2"/>`;
+    svg += `<text x="${lx+12}" y="12" font-size="9" fill="#555">${esc(s.label||'')}</text>`;
+  });
+
+  svg += '</svg>';
+  return svg;
+}
+
+function renderLine(years, series) {
+  const W=340, H=160, ML=44, MR=10, MT=20, MB=30;
+  const pw=W-ML-MR, ph=H-MT-MB;
+  const n=years.length; if(!n) return '';
+  const allVals = series.flatMap(s => s.values||[]);
+  const maxV = Math.max(...allVals, 1);
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;max-height:160px;">`;
+  for (let i=0; i<=4; i++) {
+    const y = MT + (ph * i / 4);
+    const v = Math.round(maxV * (4-i) / 4);
+    svg += `<line x1="${ML}" y1="${y}" x2="${W-MR}" y2="${y}" stroke="#e8ecf1" stroke-width="0.8"/>`;
+    svg += `<text x="${ML-4}" y="${y+4}" text-anchor="end" font-size="10" fill="#8892a4">${v}</text>`;
+  }
+  svg += `<line x1="${ML}" y1="${MT+ph}" x2="${W-MR}" y2="${MT+ph}" stroke="#c1c9d6" stroke-width="1.2"/>`;
+  years.forEach((yr, i) => {
+    const cx = ML + pw * i / (n-1||1);
+    svg += `<text x="${cx}" y="${H-2}" text-anchor="middle" font-size="10" fill="#555">${esc(String(yr))}</text>`;
+  });
+
+  series.forEach((s, si) => {
+    const color = COLORS[si % COLORS.length];
+    const pts = (s.values||[]).map((v, i) => {
+      const x = ML + pw * i / (n-1||1);
+      const y = MT + ph - (v / maxV) * ph;
+      return {x, y, v};
+    });
+    if (!pts.length) return;
+    // Area
+    const areaPath = `M ${ML},${MT+ph} L ${pts.map(p=>`${p.x},${p.y}`).join(' L ')} L ${pts[pts.length-1].x},${MT+ph} Z`;
+    svg += `<path d="${areaPath}" fill="${color}" opacity="0.08"/>`;
+    svg += `<polyline points="${pts.map(p=>`${p.x},${p.y}`).join(' ')}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round"/>`;
+    pts.forEach(p => {
+      svg += `<circle cx="${p.x}" cy="${p.y}" r="4" fill="#fff" stroke="${color}" stroke-width="2"/>`;
+      svg += `<text x="${p.x}" y="${p.y-8}" text-anchor="middle" font-size="8" fill="#333">${p.v}</text>`;
+    });
+  });
+
+  series.forEach((s, si) => {
+    const lx = ML + 20 + si * 80;
+    svg += `<rect x="${lx}" y="4" width="8" height="8" fill="${COLORS[si%COLORS.length]}" rx="2"/>`;
+    svg += `<text x="${lx+12}" y="12" font-size="9" fill="#555">${esc(s.label||'')}</text>`;
+  });
+  svg += '</svg>';
+  return svg;
+}
+
+function renderPie(series, isDonut) {
+  const W=340, H=170, CX=120, CY=85, R=60, IR=isDonut?32:0;
+  const total = series.reduce((s, e) => s + ((e.values||[])[0]||0), 0) || 1;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;max-height:170px;">`;
+  let angle = -Math.PI/2;
+  series.forEach((s, i) => {
+    const v = (s.values||[])[0]||0;
+    const pct = v / total;
+    const a1 = angle;
+    const a2 = angle + pct * 2 * Math.PI;
+    const large = pct > 0.5 ? 1 : 0;
+    const color = COLORS[i % COLORS.length];
+
+    if (isDonut) {
+      const ox1=CX+R*Math.cos(a1), oy1=CY+R*Math.sin(a1);
+      const ox2=CX+R*Math.cos(a2), oy2=CY+R*Math.sin(a2);
+      const ix2=CX+IR*Math.cos(a2), iy2=CY+IR*Math.sin(a2);
+      const ix1=CX+IR*Math.cos(a1), iy1=CY+IR*Math.sin(a1);
+      svg += `<path d="M ${ox1},${oy1} A ${R},${R} 0 ${large},1 ${ox2},${oy2} L ${ix2},${iy2} A ${IR},${IR} 0 ${large},0 ${ix1},${iy1} Z" fill="${color}" stroke="#fff" stroke-width="2"><title>${esc(s.label)}: ${v}%</title></path>`;
+    } else {
+      const x1=CX+R*Math.cos(a1), y1=CY+R*Math.sin(a1);
+      const x2=CX+R*Math.cos(a2), y2=CY+R*Math.sin(a2);
+      svg += `<path d="M ${CX},${CY} L ${x1},${y1} A ${R},${R} 0 ${large},1 ${x2},${y2} Z" fill="${color}" stroke="#fff" stroke-width="2"><title>${esc(s.label)}: ${v}%</title></path>`;
+    }
+
+    // Label
+    const mid=(a1+a2)/2;
+    const lr = R + 18;
+    const lx=CX+lr*Math.cos(mid), ly=CY+lr*Math.sin(mid);
+    svg += `<text x="${lx}" y="${ly}" text-anchor="middle" font-size="9" fill="#333">${v}%</text>`;
+    angle = a2;
+  });
+
+  // Legend
+  series.forEach((s, i) => {
+    svg += `<rect x="210" y="${20+i*18}" width="10" height="10" fill="${COLORS[i%COLORS.length]}" rx="2"/>`;
+    svg += `<text x="224" y="${30+i*18}" font-size="10" fill="#555">${esc(s.label||'')}</text>`;
+  });
+  svg += '</svg>';
+  return svg;
+}
+</script>
+</body>
+</html>

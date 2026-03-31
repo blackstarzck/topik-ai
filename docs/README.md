@@ -19,20 +19,19 @@
 - `admin-ux-ui-design.md`
 
 ### `docs/architecture`
-- `admin-information-architecture.md`
-- `admin-dev-stack.md`
-- `admin-frontend-architecture.md`
+- `admin-overview.md`
 - `admin-data-source-transition.md`
 
+### `docs/harness`
+- `index.md`
+
 ### `docs/specs`
-- `admin-page-analysis.md`
 - `admin-data-contract.md`
 - `admin-page-gap-register.md`
 - `admin-page-ia-change-log.md`
 - `admin-page-tables.md`
 - `admin-policy-source-map.md`
 - `admin-page-flows-mermaid.md`
-- `admin-user-detail-page-structure.md`
 - `admin-action-log.md`
 - `admin-data-usage-map.md`
 - `page-ia/analytics-overview-page-ia.md`
@@ -81,8 +80,13 @@
 - 문서 변경 로그: `logs/admin-doc-update-log.md`
 
 ## 관리 규칙
+- 상위 개요, 메뉴 구조, 라우팅, 역할, 페이지 상태는 `docs/architecture/admin-overview.md`를 우선 확인한다.
+- 하네스 구조와 기본 검증 명령은 `docs/harness/index.md`를 우선 확인한다.
 - `docs/**` 문서를 추가/삭제/이동하면 같은 작업에서 `docs/README.md`를 반드시 갱신한다.
 - MD 문서를 수정하면 `logs/admin-doc-update-log.md`에 변경 요약을 기록한다.
+- 사용자 요구사항이 MD 문서 수정/삭제와 직접 관련되면 같은 작업에서 해당 MD를 즉시 갱신한다.
+- 운영/정책 관련 내용은 구현과 별개로 지속 모니터링 대상으로 두고, 변경 여부와 영향도를 결과에 기록한다.
+- 구조/문서 드리프트 검증은 기본적으로 `npm run harness:check`를 사용한다.
 - 행 클릭 상세 Drawer 규칙이 바뀌면 `docs/guidelines/admin-detail-drawer-guidelines.md`와 관련 IA 문서를 함께 갱신한다.
 - 관리자 테이블/정책/B2C 노출 위치가 바뀌면 `docs/specs/admin-data-usage-map.md`를 함께 평가하고 반영한다.
 - 엔티티명, 테이블명 후보, 컬럼/필드명, 변수명, enum/code table 후보, schema candidate 분류가 바뀌면 `docs/specs/admin-data-contract.md`를 함께 평가하고 반영한다.

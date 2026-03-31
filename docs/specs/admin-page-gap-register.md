@@ -29,17 +29,16 @@
 
 - `src/app/router/app-router.tsx`
 - 아래 라우트는 아직 `AdminPlaceholderPage`에 머물러 있어 운영/기능/정책 계약이 코드에 고정되지 않았다.
-- `Operation > 챗봇`
-- `Commerce > 스토어`
-- `Assessment > 문제 은행`
-- `Assessment > EPS-TOPIK 문제 은행`
+- `Operation > 챗봇 설정`
+- `Commerce > 이커머스 관리`
+- `Assessment > EPS TOPIK`
 - `Assessment > 레벨 테스트`
-- `Content > 콘텐츠 라이브러리`
+- `Content > 콘텐츠 관리`
 - `Content > 배지`
-- `Content > 어휘`
-- `Content > 소나기 어휘`
-- `Content > 객관식 어휘`
-- `Content > 미션`
+- `Content > 단어장`
+- `Content > 소나기`
+- `Content > 객관식 선택`
+- `Content > 학습 미션`
 - 우선순위: `미확정 + 누락`
 - 필요 조치: 각 페이지 IA, 데이터 계약, 감사 로그 계약, URL 복원 규칙, 상태 UX, 상세 진입 패턴을 실제 구현 전 문서와 함께 확정해야 한다.
 
@@ -368,14 +367,17 @@
 
 - 대상 파일: `src/features/assessment/pages/assessment-question-bank-page.tsx`, `src/features/assessment/api/assessment-question-bank-service.ts`, `src/features/assessment/model/assessment-question-bank-store.ts`, `src/app/router/app-router.tsx`
 - 현 상태
-  - `TOPIK 쓰기 문제은행`은 mock service/store 기반 실페이지로 전환되었고, `검수 큐 -> 2depth 검수 페이지`, `문항 관리 -> 빠른 상세 Drawer` 역할 분리와 `53/54번` 카드형 검수 워크스페이스, `검수 메모 저장 -> 검수 상태 변경` 흐름까지 반영되었다.
+  - `TOPIK 쓰기 문제은행`은 mock service/store 기반 실페이지로 전환되었고, `검수 큐 -> 2depth 검수 페이지`, `문항 관리 -> 빠른 상세 Drawer` 역할 분리와 `53/54번` 카드형 검수 워크스페이스, `검수 메모 입력 -> 검수 완료 / 수정 필요 / 보류` 흐름까지 반영되었다.
   - `EPS TOPIK`, `레벨 테스트`는 아직 Placeholder
 - 미확정/누락/오구현
-    - `TOPIK 쓰기 문제은행`
-      - 검수 상태와 운영 상태는 분리 구현됐지만, 최종 공개/숨김 정책과 승인 체계는 아직 확정되지 않았다.
-      - AI 재생성, 배치 재시도, 프롬프트 버전 비교, 검수 히스토리 diff는 아직 구현되지 않았다.
-      - EPS TOPIK / 레벨 테스트 세트 편성 화면에서 검수 완료 문항을 소비하는 계약은 후속 구현이 필요하다.
-      - `53/54번` 카드형 검수 워크스페이스와 목록 검색바 재구성은 반영됐지만, JSON 업로드/내보내기와 배치별 대량 검수 액션은 아직 관리자 SoT에 연결되지 않았다.
+  - `TOPIK 쓰기 문제은행`
+    - 검수 상태와 운영 상태는 분리 구현됐지만, 최종 공개/숨김 정책과 승인 체계는 아직 확정되지 않았다.
+    - `51/52`, `53`, `54` 문항별 검수 필드 집합이 아직 UI/데이터 구조에서 독립적으로 분리되지 않았다. 현재 공통 필드가 과다 노출될 수 있어 문제 번호별 review field profile 계약이 필요하다.
+    - `검수 완료` 문항을 JSON으로 내보내는 실행 위치와 파일 스키마가 아직 고정되지 않았다.
+    - `수정 히스토리`는 과거 검수 메모와 AI 반영 설명을 분리해 보여주지만, 필드별 diff와 버전 간 비교 뷰는 아직 없다.
+    - AI 재생성, 배치 재시도, 프롬프트 버전 비교, 검수 히스토리 diff는 아직 구현되지 않았다.
+    - EPS TOPIK / 레벨 테스트 세트 편성 화면에서 검수 완료 문항을 소비하는 계약은 후속 구현이 필요하다.
+    - `53/54번` 2depth 검수 페이지는 JSON 매핑 검수 문서(`reviewDocument`) 구조까지 반영됐지만, JSON 업로드/내보내기와 배치별 대량 검수 액션은 아직 관리자 SoT에 연결되지 않았다.
   - `EPS TOPIK`, `레벨 테스트`
     - 여전히 Placeholder이며, 편성/배점/발행/결과 정책의 화면 SoT와 데이터 source 경계가 미정이다.
 - 분류
@@ -505,3 +507,4 @@
 - 2026-03-25 | 전역 입력형 `Descriptions` 행 높이 불일치 해소 | `src/styles/global.css`에서 `admin-form-descriptions`, `message-template-form-descriptions`의 bordered row `th/td` 기본 높이를 `56px`로 통일하고 `vertical-align: middle`을 적용해, 텍스트 셀과 `Select`/`Switch` 셀이 섞여 있어도 라벨 셀 높이가 들쭉날쭉하지 않도록 보정했습니다.
 
 - 2026-03-27 | `System > 메타데이터 관리` Tree 삭제 affordance/운영 값 수정 Modal 삭제 버튼 해소 | `src/features/system/pages/system-metadata-page.tsx`, `src/features/system/model/system-metadata-store.ts`, `src/features/system/api/system-metadata-service.ts`, `tests/e2e/system-metadata.spec.ts`를 기준으로 `설정 구조` Tree 노드 hover 삭제와 `운영 값 수정` Modal 삭제 버튼을 같은 ConfirmAction 흐름으로 연결했습니다. 삭제 후 `item_deleted` 이력, 감사 로그, Tree/테이블 갱신이 함께 반영되도록 정리했습니다.
+

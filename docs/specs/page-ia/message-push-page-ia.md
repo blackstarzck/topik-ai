@@ -1,4 +1,4 @@
-# Message > 푸시 상세 IA
+﻿# Message > 푸시 상세 IA
 
 ## 1. 문서 목적
 
@@ -14,10 +14,10 @@
 | 페이지명 | 푸시 |
 | 현재 상태 | 구현됨 |
 | 페이지 유형 | 정책/시나리오 편집형 + 목록 운영형 혼합 |
-| 라우트 | /messages/push, /messages/push/create/:templateId |
+| 라우트 | /messages/push, /messages/push/create, /messages/push/create/:templateId |
 | 주요 권한 | message.push.manage |
 | 주요 role | SUPER_ADMIN, OPS_ADMIN |
-| 연관 문서 | docs/specs/admin-page-analysis.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
+| 연관 문서 | docs/architecture/admin-overview.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
 
 ## 3. 페이지 목표와 비목표
 
@@ -163,3 +163,4 @@
 ## 14. 오픈 이슈
 
 - 예약 발송 시간대와 과발송 제한 정책 미정
+

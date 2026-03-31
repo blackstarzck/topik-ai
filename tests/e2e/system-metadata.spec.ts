@@ -1,31 +1,12 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
-async function getVisibleModal(page: Page): Promise<Locator> {
-  const modal = page.locator('.ant-modal:visible').last();
-  await expect(modal).toBeVisible();
-  return modal;
-}
-
-async function getVisibleDrawer(page: Page): Promise<Locator> {
-  const drawer = page.locator('.ant-drawer-content-wrapper:visible').last();
-  await expect(drawer).toBeVisible();
-  return drawer;
-}
-
-async function fillTextboxAt(container: Locator, index: number, value: string) {
-  await container.getByRole('textbox').nth(index).fill(value);
-}
-
-async function submitVisibleModal(page: Page, testId: string) {
-  const modal = await getVisibleModal(page);
-  await modal.getByTestId(testId).click();
-}
-
-async function confirmVisibleReasonModal(page: Page, reason: string) {
-  const modal = await getVisibleModal(page);
-  await modal.getByRole('textbox').fill(reason);
-  await modal.locator('.ant-modal-footer .ant-btn-primary').click();
-}
+import {
+  confirmVisibleReasonModal,
+  fillTextboxAt,
+  getVisibleDrawer,
+  getVisibleModal,
+  submitVisibleModal
+} from './harness/admin-flow-helpers';
 
 test('metadata catalog create/detail/audit flow works', async ({ page }) => {
   const uniqueSuffix = Date.now().toString().slice(-6);

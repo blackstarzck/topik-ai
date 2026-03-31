@@ -1,4 +1,4 @@
-# Users > 강사 관리 상세 IA
+﻿# Users > 강사 관리 상세 IA
 
 ## 1. 문서 목적
 
@@ -17,7 +17,7 @@
 | 라우트 | /users/groups |
 | 주요 권한 | users.groups.manage |
 | 주요 role | SUPER_ADMIN, OPS_ADMIN |
-| 연관 문서 | docs/specs/admin-page-analysis.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
+| 연관 문서 | docs/architecture/admin-overview.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
 
 ## 3. 페이지 목표와 비목표
 
@@ -138,3 +138,4 @@
 
 - 강사 상세 Drawer의 이름 필드는 단독 이름이 아니라 `이름 (ID)` 형식을 유지합니다.
 - 강사 목록에서 계정 식별이 필요한 경우에도 raw ID 단독 노출보다 이름 기반 식별을 우선합니다.
+

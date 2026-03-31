@@ -1,4 +1,4 @@
-# TOPIK AI Admin 데이터 소스 전환 가이드
+﻿# TOPIK AI Admin 데이터 소스 전환 가이드
 
 ## 1. 목적
 
@@ -134,7 +134,7 @@ src/features/<feature>/
 ### 7.1 API, mock, repository/service 경계가 바뀐 경우
 
 - 반드시 `docs/architecture/admin-data-source-transition.md`를 평가하고 반영한다.
-- 통신/상태/재시도/fail-safe 기준이 바뀌면 `docs/architecture/admin-dev-stack.md`와 `docs/guidelines/admin-coding-guidelines-antigravity.md`도 함께 평가한다.
+- 통신/상태/재시도/fail-safe 기준이 바뀌면 `docs/architecture/admin-overview.md`와 `docs/guidelines/admin-coding-guidelines-antigravity.md`도 함께 평가한다.
 
 ### 7.2 화면의 목록/상세 필드, 검색 조건, 정렬, 테이블 source가 바뀐 경우
 
@@ -212,6 +212,7 @@ src/features/<feature>/
     - `src/features/assessment/model/assessment-question-bank-store.ts`
     - `src/features/assessment/model/assessment-question-bank-schema.ts`
     - `src/features/assessment/model/assessment-question-bank-types.ts`
+    - `src/features/assessment/model/assessment-question-review-documents.ts`
     - `src/features/assessment/model/assessment-question-bank-presenter.ts`
     - `src/features/assessment/pages/assessment-question-bank-page.tsx`
     - `src/features/assessment/pages/assessment-question-review-page.tsx`
@@ -220,6 +221,7 @@ src/features/<feature>/
     - 목록 페이지는 service 조회 결과를 사용하고, 검수 상세는 `/review/:questionId` 2depth route에서 단건 조회 결과를 사용합니다.
     - 검수 메모 저장, 검수 상태 변경, 운영 상태 변경은 같은 store write path를 사용하고, 조치 결과는 `AssessmentQuestion` 감사 로그 이벤트로 적재합니다.
     - 문제 번호, 도메인, 유형, 난이도, 검수 상태, 운영 상태, 자동 점검 상태 메타데이터는 schema 파일에서 단일 SoT로 관리합니다.
+    - 54번 검수 상세는 flat 필드만으로 렌더링하지 않고, `assessment-question-review-documents.ts`의 `reviewDocument` fixture를 같은 `AssessmentQuestion` 엔티티에 중첩해 사용합니다. API/DB 전환 시에도 이 중첩 구조는 별도 상세 payload 또는 JSONB/문서 컬럼 후보로 유지하는 편이 안전합니다.
   - API/DB 전환 후보
     - `GET /assessment/questions`
     - `GET /assessment/questions/:questionId`
@@ -231,3 +233,4 @@ src/features/<feature>/
   - `reviewStatus`와 `operationStatus`는 같은 컬럼으로 합치지 않고 별도 필드로 유지합니다.
   - `generationBatchId`, `promptVersion`, `generationModel`은 AI 생성 출처 추적용 메타데이터로 유지합니다.
   - 검수 이력 diff, 재생성 배치, 시험 세트 편성 연결은 후속 API로 확장하되 현재 route/service 계약은 유지합니다.
+

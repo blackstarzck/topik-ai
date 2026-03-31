@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+﻿import { expect, test, type Locator, type Page } from '@playwright/test';
 
 async function getVisibleDrawer(page: Page): Promise<Locator> {
   const drawer = page.locator('.ant-drawer-content-wrapper:visible').last();
@@ -49,15 +49,28 @@ test('검수 큐 검색바는 도메인 유형 난이도 키워드 조건으로 
 }) => {
   await page.goto('/assessment/question-bank?questionNo=53');
 
-  await expect(page.getByLabel('도메인 필터')).toBeVisible();
-  await expect(page.getByLabel('유형 필터')).toBeVisible();
-  await expect(page.getByLabel('난이도 필터')).toBeVisible();
   await expect(page.getByLabel('문항 검색어')).toBeVisible();
+  await page.getByRole('button', { name: '상세' }).click();
 
-  await page.getByLabel('도메인 필터').selectOption('학습');
-  await page.getByLabel('유형 필터').selectOption('자료 설명');
-  await page.getByLabel('난이도 필터').selectOption('중');
+  const domainFilter = page.getByLabel('도메인 필터').first();
+  const typeFilter = page.getByLabel('유형 필터').first();
+  const difficultyFilter = page.getByLabel('난이도 필터').first();
+
+  await expect(domainFilter).toBeVisible();
+  await expect(typeFilter).toBeVisible();
+  await expect(difficultyFilter).toBeVisible();
+
+  await domainFilter.click();
+  await page.getByRole('option', { name: '학습' }).click();
+
+  await typeFilter.click();
+  await page.getByRole('option', { name: '자료 설명' }).click();
+
+  await difficultyFilter.click();
+  await page.getByRole('option', { name: '중' }).click();
+
   await page.getByLabel('문항 검색어').fill('온라인');
+  await page.getByRole('button', { name: '적용' }).click();
 
   await expect(page).toHaveURL(/questionNo=53/);
   await expect(page.locator('tbody tr').filter({ hasText: 'AQ-53002' })).toBeVisible();
@@ -72,13 +85,15 @@ test('검수 큐 검색바는 도메인 유형 난이도 키워드 조건으로 
 
   await page.getByRole('button', { name: '목록으로 돌아가기' }).click();
   await expect(page).toHaveURL(/\/assessment\/question-bank\?/);
-  await expect(page.getByLabel('도메인 필터')).toHaveValue('학습');
-  await expect(page.getByLabel('유형 필터')).toHaveValue('자료 설명');
-  await expect(page.getByLabel('난이도 필터')).toHaveValue('중');
   await expect(page.getByLabel('문항 검색어')).toHaveValue('온라인');
+
+  await page.getByRole('button', { name: '상세' }).click();
+  await expect(page.getByLabel('도메인 필터').first()).toContainText('학습');
+  await expect(page.getByLabel('유형 필터').first()).toContainText('자료 설명');
+  await expect(page.getByLabel('난이도 필터').first()).toContainText('중');
 });
 
-test('2depth 검수 페이지는 카드형 검수 UI와 검수 메모 저장 게이트를 제공한다', async ({
+test('2depth 검수 페이지는 검수 상태 변경 액션과 후속 감사 로그 경로를 제공한다', async ({
   page
 }) => {
   await page.goto('/assessment/question-bank/review/AQ-54001?questionNo=54&tab=review');
@@ -87,32 +102,51 @@ test('2depth 검수 페이지는 카드형 검수 UI와 검수 메모 저장 게
     page.getByRole('heading', { name: 'TOPIK 54번 문항 검수' })
   ).toBeVisible();
   await expect(page.getByText('지시문', { exact: true })).toBeVisible();
-  await expect(page.getByText('출처', { exact: true })).toBeVisible();
+  await expect(page.getByText('출처 / 단위', { exact: true })).toBeVisible();
   await expect(page.getByText('핵심 의미', { exact: true })).toBeVisible();
   await expect(page.getByText('핵심 문제', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: '모범답안 보기' })).toBeVisible();
-  await expect(page.getByRole('button', { name: '채점 기준' })).toBeVisible();
-  await expect(page.getByRole('button', { name: '수정 히스토리' })).toBeVisible();
+  await expect(page.getByText('모범답안', { exact: true })).toBeVisible();
+  await expect(page.getByText('채점기준', { exact: true })).toBeVisible();
+  await expect(page.getByText('수정 히스토리 (4건)', { exact: true })).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: '요약' })).toHaveCount(0);
+  await expect(page.getByRole('columnheader', { name: '반영 소스' })).toHaveCount(0);
+
+  await page
+    .locator('.assessment-review-page__history-table .ant-table-row-expand-icon')
+    .first()
+    .click();
+  await expect(page.getByText('검수자 메모', { exact: true })).toBeVisible();
+  await expect(page.getByText('반영 리뷰', { exact: true })).toBeVisible();
+  await expect(page.getByText('반영 필드', { exact: true })).toBeVisible();
+  await expect(page.getByText('prompt_text', { exact: true })).toBeVisible();
 
   const reviewMemoField = page.getByLabel('검수 메모 입력');
   const completeButton = page.getByRole('button', { name: '검수 완료' });
 
+  await expect(page.getByRole('button', { name: '보류' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '수정 필요' })).toBeVisible();
+  await expect(
+    page
+      .locator('.assessment-review-page__side')
+      .getByRole('link', { name: '감사 로그 확인' })
+  ).toHaveCount(0);
+
   await reviewMemoField.fill(
     '논제 범위는 적절하지만 최근 배치와 주제 중복 여부를 한 번 더 확인해야 합니다.'
   );
-  await expect(completeButton).toBeDisabled();
-  await expect(page.getByText('저장되지 않은 변경사항이 있습니다.')).toBeVisible();
-
-  await page.getByRole('button', { name: '검수 메모 저장' }).click();
-  await expect(page.getByText('검수 메모를 저장했습니다.')).toBeVisible();
   await expect(completeButton).toBeEnabled();
 
   await completeButton.click();
   const modal = await getVisibleModal(page);
   await expect(modal).toContainText('검수 완료 처리');
-  await modal.locator('.ant-modal-close').click();
+  await confirmVisibleReasonModal(page, 'e2e 검수 완료');
+  await expect(page.getByText('검수 완료 처리했습니다.')).toBeVisible();
 
-  await page.getByRole('link', { name: '감사 로그 확인' }).click();
+  await page
+    .locator('.ant-notification-notice:visible')
+    .getByRole('link', { name: '감사 로그 확인' })
+    .last()
+    .click();
   await expect(page).toHaveURL(
     /\/system\/audit-logs\?targetType=AssessmentQuestion&targetId=AQ-54001/
   );

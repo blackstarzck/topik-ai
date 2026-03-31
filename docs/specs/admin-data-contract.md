@@ -243,7 +243,7 @@
 ### 9.6 Assessment
 
 - `Assessment > TOPIK 쓰기 문제은행`
-  - query: `tab`, `questionNo`, `searchField`, `keyword`, `startDate`, `endDate`, `reviewStatus`, `operationStatus`, `selected`
+  - query: `tab`, 반복 `questionNo`, `searchField`, `keyword`, `startDate`, `endDate`, `reviewStatus`, `operationStatus`, `selected`
   - 엔티티 후보
   - `AssessmentQuestion`
   - `AssessmentQuestionGenerationBatch`
@@ -253,12 +253,23 @@
     - `assessment_question_generation_batches`
     - `assessment_question_audits`
   - 핵심 필드
-    - `questionId`, `questionNumber`, `topic`, `domain`, `questionTypeLabel`, `difficultyLevel`, `sourceType`, `generationBatchId`, `promptVersion`, `generationModel`, `reviewStatus`, `operationStatus`, `validationStatus`, `validationSignals`, `usageCount`, `linkedExamCount`, `reviewMemo`, `managementNote`, `coreMeaning`, `keyIssue`, `modelAnswer`, `scoringCriteria`, `revisionHistory`, `generatedAt`, `updatedAt`, `updatedBy`
+    - `questionId`, `questionNumber`, `topic`, `domain`, `questionTypeLabel`, `difficultyLevel`, `sourceType`, `generationBatchId`, `promptVersion`, `generationModel`, `reviewStatus`, `operationStatus`, `validationStatus`, `validationSignals`, `usageCount`, `linkedExamCount`, `reviewMemo`, `managementNote`, `coreMeaning`, `keyIssue`, `modelAnswer`, `scoringCriteria`, `revisionHistory`, `reviewCompletedAt`, `reviewExportStatus`, `generatedAt`, `updatedAt`, `updatedBy`
+    - `reviewDocument.id`, `reviewDocument.created_at`, `reviewDocument.meta`, `reviewDocument.review_workflow`, `reviewDocument.approved_topic_seed`, `reviewDocument.approved_graph_logic`, `reviewDocument.approved_rubric`, `reviewDocument.chart_roles`, `reviewDocument.scenario_logic`, `reviewDocument.relation`, `reviewDocument.chart_a`, `reviewDocument.chart_b`, `reviewDocument.context_notes`, `reviewDocument.narrative`, `reviewDocument.prompt_text`, `reviewDocument.model_answer`, `reviewDocument.rubric`, `reviewDocument.review_memo`, `reviewDocument.edit_history`, `reviewDocument.review_passed`
+  - 검수 계약 메모
+    - `reviewMemo`는 현재 검수자가 문항 적합성을 판단한 결과를 저장하는 필드로 해석합니다.
+    - `reviewStatus = 검수 완료`는 검수 종료를 의미하며, 후속 JSON 내보내기 대상 조건으로 사용됩니다.
+    - `revisionHistory`, `reviewDocument.edit_history`는 단순 변경 로그가 아니라 `과거 검수 메모 + AI 재생성 반영 설명` 세트를 담는 schema candidate입니다.
+    - 문제 번호별 검수 필드 집합은 분리해서 관리합니다.
+      - `51/52`: `instruction`, `learnerPrompt`, `choices[]`, `answer`
+      - `53`: `learnerPrompt`, `chartTitle`, `sourceSummary`, `keyFigures[]`, `answerGuide`, `chart_a/chart_b.unit`, `context_notes`
+      - `54`: `learnerPrompt`, `topicPrompt`, `conditionLines[]`, `outlineGuide`
+    - `54`는 `출처/단위`, `핵심 의미`, `핵심 문제`를 기본 검수 필드로 강제하지 않습니다.
   - enum / code table candidate
     - `questionNumber`: `51`, `52`, `53`, `54`
-    - `domain`: `생활`, `학습`, `사회`, `문화`
+    - `domain`: `생활`, `학습`, `사회`, `문화`, `경제`, `교육`, `환경`, `기술`
     - `questionTypeLabel`: `빈칸 완성`, `연결 표현`, `자료 설명`, `의견 서술`
     - `difficultyLevel`: `상`, `중`, `하`
+    - `reviewDocument.meta.question_type`: `importance_problem_effort`, `advantage_problem_solution`, `background_problem_response`
     - `reviewStatus`: `검수 대기`, `검수 중`, `보류`, `검수 완료`, `수정 필요`
     - `operationStatus`: `미지정`, `노출 후보`, `숨김 후보`, `운영 제외`
     - `validationStatus`: `정상`, `주의`, `재검토`

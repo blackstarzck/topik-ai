@@ -1,4 +1,4 @@
-# Operation > 이벤트 상세 IA
+﻿# Operation > 이벤트 상세 IA
 
 ## 1. 문서 목적
 
@@ -18,7 +18,7 @@
 | 목표 상세 라우트 | `/operation/events/create`, `/operation/events/create/:eventId` |
 | 주요 권한 | `operation.events.manage` |
 | 주요 role | `SUPER_ADMIN`, `OPS_ADMIN` |
-| 연관 문서 | `docs/specs/admin-page-analysis.md`, `docs/specs/admin-page-tables.md`, `docs/specs/admin-data-contract.md`, `docs/specs/admin-data-usage-map.md`, `docs/specs/admin-page-flows-mermaid.md` |
+| 연관 문서 | `docs/architecture/admin-overview.md`, `docs/specs/admin-page-tables.md`, `docs/specs/admin-data-contract.md`, `docs/specs/admin-data-usage-map.md`, `docs/specs/admin-page-flows-mermaid.md` |
 
 ## 3. 페이지 목표와 비목표
 
@@ -238,3 +238,4 @@
 - 보상 수단과 지급 승인 체계 미정
 - 종료 후 복구 가능 여부 미정
 - `Target Type = Operation` 유지 여부와 엔티티 단위 분리 시점 미정
+

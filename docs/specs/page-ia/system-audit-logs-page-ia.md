@@ -1,4 +1,4 @@
-# System > 감사 로그 상세 IA
+﻿# System > 감사 로그 상세 IA
 
 ## 1. 문서 목적
 
@@ -17,7 +17,7 @@
 | 라우트 | /system/audit-logs |
 | 주요 권한 | system.audit.read |
 | 주요 role | SUPER_ADMIN, OPS_ADMIN, CONTENT_MANAGER, CS_MANAGER, READ_ONLY |
-| 연관 문서 | docs/specs/admin-page-analysis.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md, docs/specs/admin-action-log.md |
+| 연관 문서 | docs/architecture/admin-overview.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md, docs/specs/admin-action-log.md |
 
 ## 3. 페이지 목표와 비목표
 
@@ -130,3 +130,4 @@
 - `대상 ID` 컬럼이 `Users` 대상을 가리키는 경우 raw ID를 단독 노출하지 않고 `이름 (ID)` 형식의 파란 링크로 표시합니다.
 - 사용자 대상 링크는 `Users > 회원 상세`로 이동하는 단일 동선을 사용합니다.
 - 감사 로그 상세 Modal에서도 `Users` 대상 식별자는 `이름 (ID)` 형식을 유지합니다.
+

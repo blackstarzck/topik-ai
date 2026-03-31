@@ -22,7 +22,9 @@ type SearchBarProps = {
   searchField: string;
   searchFieldOptions: SearchBarOption[];
   showSingleFieldSelect?: boolean;
+  searchFieldAriaLabel?: string;
   keyword: string;
+  keywordAriaLabel?: string;
   onSearchFieldChange: (value: string) => void;
   onKeywordChange: (event: ChangeEvent<HTMLInputElement>) => void;
   keywordPlaceholder?: string;
@@ -36,7 +38,6 @@ type SearchBarProps = {
   actions?: ReactNode;
   fieldWidth?: number;
   keywordWidth?: number;
-  hideSearchControls?: boolean;
 };
 
 type SearchBarDetailFieldProps = {
@@ -54,7 +55,9 @@ export function SearchBar({
   searchField,
   searchFieldOptions,
   showSingleFieldSelect = false,
+  searchFieldAriaLabel,
   keyword,
+  keywordAriaLabel,
   onSearchFieldChange,
   onKeywordChange,
   keywordPlaceholder = '검색어...',
@@ -67,8 +70,7 @@ export function SearchBar({
   summary,
   actions,
   fieldWidth = 112,
-  keywordWidth = 230,
-  hideSearchControls = false
+  keywordWidth = 230
 }: SearchBarProps): JSX.Element {
   const [detailOpen, setDetailOpen] = useState(false);
   const hasDetailControls = Boolean(detailContent) || Boolean(onReset);
@@ -87,64 +89,64 @@ export function SearchBar({
 
   return (
     <div className="search-bar">
-      {hideSearchControls ? null : (
-        <div className="search-bar-main">
-          <Space.Compact className="search-bar-compact">
-            {shouldShowFieldSelect ? (
-              <Select
-                value={searchField}
-                options={searchFieldOptions}
-                onChange={onSearchFieldChange}
-                style={{ width: fieldWidth }}
-              />
-            ) : null}
-            <Input
-              allowClear
-              value={keyword}
-              onChange={onKeywordChange}
-              placeholder={keywordPlaceholder}
-              prefix={<SearchOutlined />}
-              style={{ width: keywordWidth }}
+      <div className="search-bar-main">
+        <Space.Compact className="search-bar-compact">
+          {shouldShowFieldSelect ? (
+            <Select
+              value={searchField}
+              aria-label={searchFieldAriaLabel}
+              options={searchFieldOptions}
+              onChange={onSearchFieldChange}
+              style={{ width: fieldWidth }}
             />
-          </Space.Compact>
-          {hasDetailControls ? (
-            <Popover
-              open={detailOpen}
-              onOpenChange={handleDetailOpenChange}
-              trigger="click"
-              placement="bottomLeft"
-              title={detailTitle}
-              overlayClassName="search-bar-popover"
-              content={
-                <div className="search-bar-detail-content">
-                  {detailContent}
-                  <div className="search-bar-detail-actions">
-                    {onReset ? (
-                      <Button
-                        className="search-bar-detail-reset"
-                        icon={<ReloadOutlined />}
-                        onClick={onReset}
-                      >
-                        필터 초기화
-                      </Button>
-                    ) : null}
-                    <Button type="primary" onClick={handleApply}>
-                      적용
-                    </Button>
-                  </div>
-                </div>
-              }
-            >
-              <Button
-                className="search-bar-detail-trigger"
-                icon={<FilterOutlined />}
-              >
-                상세
-              </Button>
-            </Popover>
           ) : null}
-        </div>
-      )}
+          <Input
+            allowClear
+            value={keyword}
+            onChange={onKeywordChange}
+            aria-label={keywordAriaLabel}
+            placeholder={keywordPlaceholder}
+            prefix={<SearchOutlined />}
+            style={{ width: keywordWidth }}
+          />
+        </Space.Compact>
+        {hasDetailControls ? (
+          <Popover
+            open={detailOpen}
+            onOpenChange={handleDetailOpenChange}
+            trigger="click"
+            placement="bottomLeft"
+            title={detailTitle}
+            overlayClassName="search-bar-popover"
+            content={
+              <div className="search-bar-detail-content">
+                {detailContent}
+                <div className="search-bar-detail-actions">
+                  {onReset ? (
+                    <Button
+                      className="search-bar-detail-reset"
+                      icon={<ReloadOutlined />}
+                      onClick={onReset}
+                    >
+                      필터 초기화
+                    </Button>
+                  ) : null}
+                  <Button type="primary" onClick={handleApply}>
+                    적용
+                  </Button>
+                </div>
+              </div>
+            }
+          >
+            <Button
+              className="search-bar-detail-trigger"
+              icon={<FilterOutlined />}
+            >
+              상세
+            </Button>
+          </Popover>
+        ) : null}
+      </div>
       {extra ? <div className="search-bar-extra">{extra}</div> : null}
       {summary || actions ? (
         <div className="search-bar-side">
@@ -191,4 +193,3 @@ export function SearchBarDateRange({
     />
   );
 }
-

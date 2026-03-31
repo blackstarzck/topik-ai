@@ -10,10 +10,13 @@ type AdminListCardProps = {
 export function AdminListCard({
   toolbar,
   children,
+  className,
   ...cardProps
 }: AdminListCardProps): JSX.Element {
+  const mergedClassName = ['admin-list-card', className].filter(Boolean).join(' ');
+
   return (
-    <Card {...cardProps}>
+    <Card {...cardProps} className={mergedClassName}>
       {toolbar ? <div className="admin-list-card-toolbar">{toolbar}</div> : null}
       {children}
     </Card>

@@ -1,4 +1,4 @@
-# Commerce > 이커머스 관리 상세 IA
+﻿# Commerce > 이커머스 관리 상세 IA
 
 ## 1. 문서 목적
 
@@ -17,7 +17,7 @@
 | 라우트 | /commerce/store |
 | 주요 권한 | commerce.store.manage |
 | 주요 role | SUPER_ADMIN, OPS_ADMIN |
-| 연관 문서 | docs/specs/admin-page-analysis.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
+| 연관 문서 | docs/architecture/admin-overview.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
 
 ## 3. 페이지 목표와 비목표
 
@@ -119,3 +119,4 @@
 ## 14. 오픈 이슈
 
 - 상품 유형별 입력 구조와 판매 상태 정의 미정
+

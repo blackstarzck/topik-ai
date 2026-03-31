@@ -1,4 +1,4 @@
-# Analytics > 통계 개요 상세 IA
+﻿# Analytics > 통계 개요 상세 IA
 
 ## 1. 문서 목적
 
@@ -17,7 +17,7 @@
 | 라우트 | /analytics/overview |
 | 주요 권한 | analytics.read |
 | 주요 role | SUPER_ADMIN, OPS_ADMIN, CONTENT_MANAGER, READ_ONLY |
-| 연관 문서 | docs/specs/admin-page-analysis.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
+| 연관 문서 | docs/architecture/admin-overview.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
 
 ## 3. 페이지 목표와 비목표
 
@@ -121,3 +121,4 @@
 ## 14. 오픈 이슈
 
 - 지표 캐시 주기와 대시보드 역할 경계 추가 정리 필요
+

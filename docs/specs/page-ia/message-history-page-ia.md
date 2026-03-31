@@ -1,4 +1,4 @@
-# Message > 발송 이력 상세 IA
+﻿# Message > 발송 이력 상세 IA
 
 ## 1. 문서 목적
 
@@ -17,7 +17,7 @@
 | 라우트 | /messages/history |
 | 주요 권한 | message.history.read |
 | 주요 role | SUPER_ADMIN, OPS_ADMIN, CS_MANAGER, READ_ONLY |
-| 연관 문서 | docs/specs/admin-page-analysis.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
+| 연관 문서 | docs/architecture/admin-overview.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
 
 ## 3. 페이지 목표와 비목표
 
@@ -142,3 +142,4 @@
 - 상세 Drawer의 `수신자 목록` 테이블은 사용자 셀을 raw ID로 두지 않고 `이름 (ID)` 형식의 파란 링크로 표시합니다.
 - 수신자 링크는 `Users > 회원 상세`로 이동하는 단일 동선을 사용합니다.
 - 수신자 검색은 사용자 이름과 ID를 함께 기준으로 유지합니다.
+

@@ -1,4 +1,4 @@
-# Message > 대상 그룹 상세 IA
+﻿# Message > 대상 그룹 상세 IA
 
 ## 1. 문서 목적
 
@@ -17,7 +17,7 @@
 | 라우트 | /messages/groups |
 | 주요 권한 | message.groups.manage |
 | 주요 role | SUPER_ADMIN, OPS_ADMIN |
-| 연관 문서 | docs/specs/admin-page-analysis.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
+| 연관 문서 | docs/architecture/admin-overview.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
 
 ## 3. 페이지 목표와 비목표
 
@@ -144,3 +144,4 @@
 ## 14. 오픈 이슈
 
 - 실제 백엔드 세그먼트 DSL/SQL 계약이 확정되면 현재 프론트엔드의 query builder 구조(`queryBuilderConfig`)와 저장 포맷(`queryBuilderText`)을 서버 스키마 기준으로 다시 정렬해야 합니다.
+

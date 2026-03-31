@@ -715,6 +715,7 @@ export function AdminShell(): JSX.Element {
         <Content
           style={{
             padding: 20,
+            flex: 1,
             display: 'flex',
             flexDirection: 'column',
             minHeight: 0
@@ -736,5 +737,4 @@ export function AdminShell(): JSX.Element {
     </Layout>
   );
 }
-
 

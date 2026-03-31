@@ -1,4 +1,4 @@
-# Users > 회원 목록 상세 IA
+﻿# Users > 회원 목록 상세 IA
 
 ## 1. 문서 목적
 
@@ -17,7 +17,7 @@
 | 라우트 | /users |
 | 주요 권한 | users.read, users.suspend |
 | 주요 role | SUPER_ADMIN, OPS_ADMIN, CS_MANAGER, READ_ONLY |
-| 연관 문서 | docs/specs/admin-page-analysis.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
+| 연관 문서 | docs/architecture/admin-overview.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
 
 ## 3. 페이지 목표와 비목표
 
@@ -132,3 +132,4 @@
 - 목록 본문 테이블의 첫 번째 사용자 식별 컬럼은 raw ID 대신 `이름 (ID)` 형식의 파란 링크를 사용합니다.
 - 회원 링크는 `Users > 회원 상세`로 이동하는 단일 동선으로 유지합니다.
 - 검색 조건은 이름과 ID를 모두 지원하되, 셀 표시 자체는 `이름 (ID)` 형식을 기본으로 합니다.
+

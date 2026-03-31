@@ -636,6 +636,42 @@ body {
   margin-bottom: 0;
 }
 
+.route-transition-container {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 100%;
+  min-width: 0;
+  animation: route-fade-in 220ms ease-out;
+  transform-origin: 50% 0;
+}
+
+.route-transition-container > :where(div, main, section):has(.page-title-block) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 100%;
+  min-width: 0;
+}
+
+.admin-list-card.ant-card,
+.admin-page-fill-card.ant-card {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.admin-list-card.ant-card .ant-card-body,
+.admin-page-fill-card.ant-card .ant-card-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
 .message-channel-card-toolbar {
   display: flex;
   flex-direction: column;
@@ -644,6 +680,32 @@ body {
 
 .message-channel-card-tabs {
   margin-bottom: 0;
+}
+
+.admin-list-card.ant-card .admin-data-table.ant-table-wrapper {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.admin-list-card.ant-card .admin-data-table.ant-table-wrapper .ant-spin-nested-loading,
+.admin-list-card.ant-card .admin-data-table.ant-table-wrapper .ant-spin-container,
+.admin-list-card.ant-card .admin-data-table.ant-table-wrapper .ant-table,
+.admin-list-card.ant-card .admin-data-table.ant-table-wrapper .ant-table-container {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+}
+
+.admin-list-card.ant-card .admin-data-table.ant-table-wrapper .ant-table-body,
+.admin-list-card.ant-card .admin-data-table.ant-table-wrapper .ant-table-content {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
 }
 
 .message-history-recipient-status-filter {
@@ -1287,16 +1349,6 @@ body {
   min-width: 0;
 }
 
-.route-transition-container {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  animation: route-fade-in 220ms ease-out;
-  min-height: 0;
-  min-width: 0;
-  transform-origin: 50% 0;
-}
-
 .route-loading-fallback {
   min-height: 50vh;
   display: grid;
@@ -1306,55 +1358,6 @@ body {
   border-radius: 12px;
 }
 
-.assessment-question-searchbar {
-  display: flex;
-  align-items: flex-end;
-  flex-wrap: wrap;
-  gap: 12px 16px;
-}
-
-.assessment-question-searchbar__field {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.assessment-question-searchbar__field--search {
-  flex: 1 1 280px;
-  min-width: 240px;
-}
-
-.assessment-question-searchbar__label {
-  color: #475467;
-  font-size: 14px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.assessment-question-searchbar__native-select,
-.assessment-question-searchbar__field--search .ant-input-affix-wrapper,
-.assessment-question-searchbar__field--search .ant-input {
-  min-height: 40px;
-}
-
-.assessment-question-searchbar__native-select {
-  min-width: 74px;
-  padding: 0 12px;
-  border: 1px solid #d0d5dd;
-  border-radius: 10px;
-  background: #fff;
-  color: #101828;
-  font: inherit;
-}
-
-.assessment-question-searchbar__native-select--wide {
-  min-width: 220px;
-}
-
-.assessment-question-searchbar__field--search .ant-input-affix-wrapper {
-  border-radius: 10px;
-}
-
 .assessment-review-page {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
@@ -1362,46 +1365,214 @@ body {
   align-items: start;
 }
 
+.assessment-review-page__document {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
 .assessment-review-page__header-actions {
-  margin: 0 0 16px;
+  grid-column: 1 / -1;
   display: flex;
   justify-content: flex-end;
 }
 
-.assessment-review-page__question-card,
-.assessment-review-page__memo-card {
-  border-radius: 16px;
+.assessment-review-page__main {
+  min-width: 0;
 }
 
-.assessment-review-page__field {
+.assessment-review-page__document-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e8edf5;
+}
+
+.assessment-review-page__document-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.assessment-review-page__document-number {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  color: #2563eb;
+}
+
+.assessment-review-page__document-title-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.assessment-review-page__document-title {
+  font-size: 20px;
+}
+
+.assessment-review-page__descriptions .ant-descriptions-view {
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid #dbe4f0;
+  background: #fff;
+}
+
+.assessment-review-page__descriptions .ant-descriptions-row > th,
+.assessment-review-page__descriptions .ant-descriptions-row > td {
+  padding: 16px 18px;
+}
+
+.assessment-review-page__descriptions .ant-descriptions-item-label {
+  width: 132px;
+  background: #f5f8ff;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.assessment-review-page__descriptions .ant-descriptions-item-content {
+  line-height: 1.7;
+  background: #fff;
+}
+
+.assessment-review-page__descriptions .ant-descriptions-item-content > *,
+.assessment-review-page__history-descriptions .ant-descriptions-item-content > * {
+  margin-bottom: 0 !important;
+}
+
+.assessment-review-page__descriptions .ant-typography,
+.assessment-review-page__history-descriptions .ant-typography,
+.assessment-review-page__description-paragraph.ant-typography {
+  margin-bottom: 0 !important;
+}
+
+.assessment-review-page__description-paragraph,
+.assessment-review-page__source-detail {
+  margin-bottom: 0;
+  line-height: 1.75;
+  white-space: pre-wrap;
+}
+
+.assessment-review-page__description-stack {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
-.assessment-review-page__instruction {
-  margin-bottom: 0;
-  padding: 16px;
-  border-left: 3px solid #2563eb;
-  border-radius: 12px;
-  background: #f8faff;
+.assessment-review-page__criteria-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.assessment-review-page__criteria-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.assessment-review-page__description-meta {
+  display: flex;
+  align-items: center;
+}
+
+.assessment-review-page__choice-answer.ant-typography {
+  color: #2563eb;
+  font-weight: 700;
+}
+
+.assessment-review-page__meta-pill,
+.assessment-review-page__difficulty-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.assessment-review-page__meta-pill--primary {
+  color: #fff;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+
+.assessment-review-page__meta-pill--secondary {
+  color: #fff;
+  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+}
+
+.assessment-review-page__meta-pill--neutral,
+.assessment-review-page__difficulty-pill {
+  color: #fff;
+  background: linear-gradient(135deg, #6b7280 0%, #475569 100%);
+}
+
+.assessment-review-page__difficulty-stars {
+  display: inline-flex;
+  gap: 2px;
+  color: #fbbf24;
+}
+
+.assessment-review-page__source-detail {
+  display: block;
 }
 
 .assessment-review-page__memo-card {
+  position: sticky;
+  top: 88px;
+  border-radius: 16px;
   border-color: #ffe58f;
-  background: linear-gradient(180deg, #fffdf0 0%, #fff7d6 100%);
+  background: #fffbe6;
 }
 
 .assessment-review-page__memo-card .ant-card-head {
   border-bottom-color: rgba(250, 173, 20, 0.2);
 }
 
-.assessment-review-page__list {
-  margin: 0;
-  padding-left: 20px;
+.assessment-review-page__history-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
+}
+
+.assessment-review-page__history-title.ant-typography {
+  margin: 0;
+}
+
+.assessment-review-page__history-table .ant-table-wrapper,
+.assessment-review-page__history-table .ant-table-container {
+  border-radius: 12px;
+}
+
+.assessment-review-page__history-expanded {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.assessment-review-page__history-descriptions .ant-descriptions-view {
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.assessment-review-page__history-descriptions .ant-descriptions-item-label {
+  width: 140px;
+  background: #fafafa;
+}
+
+.assessment-review-page__history-descriptions .ant-descriptions-item-content {
+  background: #fff;
+}
+
+.assessment-review-page__history-field-list {
+  margin-top: 0;
 }
 
 .assessment-review-page__collapse .ant-collapse-item {
@@ -1411,6 +1582,68 @@ body {
 
 .assessment-review-page__collapse .ant-collapse-header {
   font-weight: 600;
+}
+
+.assessment-review-page__collapse-paragraph,
+.assessment-review-page__criteria-body,
+.assessment-review-page__history-summary,
+.assessment-review-page__history-snapshot {
+  margin-bottom: 0;
+  line-height: 1.75;
+  white-space: pre-wrap;
+}
+
+.assessment-review-page__criteria-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.assessment-review-page__criteria-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 100%;
+  padding: 16px;
+  border: 1px solid #dbe4f0;
+  border-radius: 14px;
+  background: #f8fbff;
+}
+
+.assessment-review-page__history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.assessment-review-page__history-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid #dbe4f0;
+  border-radius: 14px;
+  background: #f8fbff;
+}
+
+.assessment-review-page__history-meta,
+.assessment-review-page__history-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.assessment-review-page__history-field-tag {
+  margin-inline-end: 0;
+  border-radius: 999px;
+  color: #15803d;
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.assessment-review-page__memo-footnote {
+  display: block;
+  font-size: 12px;
 }
 
 @keyframes route-fade-in {
@@ -1432,6 +1665,14 @@ body {
     grid-template-columns: 1fr;
   }
 
+  .assessment-review-page__memo-card {
+    position: static;
+  }
+
+  .assessment-review-page__criteria-grid {
+    grid-template-columns: 1fr;
+  }
+
   .message-groups-editor-row {
     grid-template-columns: 1fr;
   }
@@ -1446,6 +1687,26 @@ body {
 }
 
 @media (max-width: 768px) {
+  .assessment-review-page__document-header,
+  .assessment-review-page__document-title-row {
+    flex-direction: column;
+  }
+
+  .assessment-review-page__document-header,
+  .assessment-review-page__document-title-row {
+    display: flex;
+  }
+
+  .assessment-review-page__descriptions .ant-descriptions-row > th,
+  .assessment-review-page__descriptions .ant-descriptions-row > td {
+    display: block;
+    width: 100%;
+  }
+
+  .assessment-review-page__descriptions .ant-descriptions-item-label {
+    border-bottom: 1px solid #e8edf5;
+  }
+
   .assessment-question-searchbar {
     align-items: stretch;
   }

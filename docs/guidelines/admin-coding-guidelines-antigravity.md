@@ -3,18 +3,16 @@
 ## 문서 계약
 
 - 기준 모듈: Dashboard, Users, Community, Message, Operation, Commerce, Assessment, Content, Analytics, System
-- 메뉴명은 `Users`(복수형)로 표기하며, `User` 단수형 사용을 금지합니다. (참조: `docs/architecture/admin-information-architecture.md:63`)
-- 감사 로그 용어는 `감사 로그`로 통일합니다. (참조: `docs/architecture/admin-information-architecture.md:64`, `docs/specs/admin-action-log.md:4`)
-- `시스템 로그`는 기술 로그로 감사 로그와 구분합니다. (참조: `docs/architecture/admin-information-architecture.md:65`)
-- Users 상세 탭 고정: `프로필`, `활동`, `결제`, `커뮤니티`, `로그`, `관리자 메모` (참조: `docs/architecture/admin-information-architecture.md:66`)
-- 확장 모듈 포함: `Commerce`, `Assessment`, `Content` (참조: `docs/architecture/admin-information-architecture.md`)
+- 메뉴명은 `Users`(복수형)로 표기하며, `User` 단수형 사용을 금지합니다. (참조: `docs/architecture/admin-overview.md`)
+- 감사 로그 용어는 `감사 로그`로 통일합니다. (참조: `docs/architecture/admin-overview.md`, `docs/specs/admin-action-log.md:4`)
+- `시스템 로그`는 기술 로그로 감사 로그와 구분합니다. (참조: `docs/architecture/admin-overview.md`)
+- Users 상세 탭 고정: `프로필`, `활동`, `결제`, `커뮤니티`, `로그`, `관리자 메모` (참조: `docs/architecture/admin-overview.md`)
+- 확장 모듈 포함: `Commerce`, `Assessment`, `Content` (참조: `docs/architecture/admin-overview.md`)
 
 ## 근거 문서
 
-- `docs/architecture/admin-information-architecture.md`
-- `docs/specs/admin-page-analysis.md`
+- `docs/architecture/admin-overview.md`
 - `docs/specs/admin-page-tables.md`
-- `docs/specs/admin-user-detail-page-structure.md`
 - `docs/specs/admin-action-log.md`
 - `docs/guidelines/typescript-essential-checklist.md`
 - `docs/guidelines/comments-rule.md`
@@ -186,4 +184,5 @@ messageApi.success('게시글 숨김 완료');
 ## 제외 범위
 
 - 백엔드 아키텍처, 배포/인프라, DB 스키마 설계는 본 지침 범위에서 제외합니다.
+
 

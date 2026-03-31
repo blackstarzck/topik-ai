@@ -1,4 +1,4 @@
-# Operation > 챗봇 설정 상세 IA
+﻿# Operation > 챗봇 설정 상세 IA
 
 ## 1. 문서 목적
 
@@ -17,7 +17,7 @@
 | 라우트 | /operation/chatbot |
 | 주요 권한 | operation.chatbot.manage |
 | 주요 role | SUPER_ADMIN, OPS_ADMIN, CONTENT_MANAGER |
-| 연관 문서 | docs/specs/admin-page-analysis.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
+| 연관 문서 | docs/architecture/admin-overview.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
 
 ## 3. 페이지 목표와 비목표
 
@@ -119,3 +119,4 @@
 ## 14. 오픈 이슈
 
 - 시나리오 버전 정책과 상담 전환 기준 미정
+

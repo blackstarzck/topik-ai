@@ -2,7 +2,7 @@
 
 ## 1. 목적
 - 이 문서는 TOPIK AI Admin 프론트엔드 구현 시 Codex가 따라야 하는 실행 규칙이다.
-- 원문 기반: `docs/guidelines/admin-coding-guidelines-antigravity.md`
+- 원문 기반: `docs/architecture/admin-overview.md`, `docs/guidelines/admin-coding-guidelines-antigravity.md`
 - 충돌 시 우선순위: 사용자 직접 요청 > 본 문서 > 기타 일반 규칙
 
 ## 2. 적용 범위
@@ -21,7 +21,7 @@
 ## 4. 공통 강제 원칙
 - 운영 흐름 `검색 -> 상세 -> 조치 -> 감사 로그 확인`을 훼손하지 않는다.
 - 전역에서 공통 사용하는 레이아웃/패턴의 디자인 일관성은 개별 페이지 편의보다 우선한다.
-- 페이지 작업 요청은 항상 `docs/guidelines/admin-ux-ui-design.md`, `docs/guidelines/admin-detail-drawer-guidelines.md`, `docs/specs/admin-page-tables.md` 같은 공통 일관성 문서를 먼저 확인한 뒤, 해당 페이지 IA와 구현 파일을 본다.
+- 페이지 작업 요청은 항상 `docs/architecture/admin-overview.md`, `docs/guidelines/admin-ux-ui-design.md`, `docs/guidelines/admin-detail-drawer-guidelines.md`, `docs/specs/admin-page-tables.md` 같은 공통 일관성 문서를 먼저 확인한 뒤, 해당 페이지 IA와 구현 파일을 본다.
 - 사용자가 특정 화면의 UI 변경을 요청하더라도, 먼저 그 변경이 전역 공통 레이아웃/공용 컴포넌트/공통 스타일 규칙에 속하는지 판별한다.
 - 사용자가 `~을 참고해서`, `~와 비슷하게`, `~처럼 맞춰서`처럼 레퍼런스 기반 표현을 쓰더라도, 명시적 예외 요구가 없는 한 기존 전역 공통 레이아웃/공용 컴포넌트/일관성 규칙을 우선한다.
 - 아래 중 하나라도 해당하면 전역 공통 작업 후보로 간주하고, `shared` 컴포넌트/공통 레이아웃/전역 스타일/공통 문서를 먼저 조사한다:
@@ -47,7 +47,7 @@
 - 코드 주석 정책 원문: `docs/guidelines/comments-rule.md`
 - React 최적화 원문: `docs/guidelines/react-optimization-rule.md`
 - 행 클릭 상세 Drawer 레이아웃 원문: `docs/guidelines/admin-detail-drawer-guidelines.md`
-- 상태/아키텍처 원문: `docs/architecture/admin-dev-stack.md`, `docs/architecture/admin-frontend-architecture.md`
+- 상태/아키텍처 원문: `docs/architecture/admin-overview.md`
 - 데이터 소스 전환 원문: `docs/architecture/admin-data-source-transition.md`
 - 데이터 계약/명명 기준 원문: `docs/specs/admin-data-contract.md`
 - 페이지별 미확정/누락/오구현 레지스트리: `docs/specs/admin-page-gap-register.md`
@@ -55,6 +55,7 @@
 - 페이지별 상세 IA 변경 로그: `docs/specs/admin-page-ia-change-log.md`
 - 관리 데이터/B2C 노출 추적 원문: `docs/specs/admin-data-usage-map.md`
 - 운영 점검 요약 허브: `docs/checklists/admin-essential-checklist.md`
+- 검증 하네스 문서: `docs/harness/index.md`
 - 본 문서는 실행 지침과 리뷰 게이트만 유지하며, 상세 기술 규칙은 원문에서 단일 관리한다.
 - 상태관리 구현체는 `Zustand` 단일 원칙을 유지한다.
 
@@ -88,8 +89,9 @@
 - 정보가 부족하면 부족한 항목을 명시하고, 추정이 필요한 경우 가정과 리스크를 명확히 밝힌다.
 - 코드베이스 기준으로 요청이 잘못되었거나 불일치하면 반드시 그 사실을 짚고, 근거(파일/구조/동작)를 제시한 뒤 대안을 제안한다.
 - 작업 시작 전: 영향 모듈, 품질 축(최소 1개), 파괴적 액션 여부를 먼저 식별한다.
+- 작업 시작 전: 사용자 요구사항이 프로젝트에 미칠 영향 범위를 최소 `영향 모듈`, `데이터 계약`, `공통 UI`, `운영/정책`, `검증 범위` 기준으로 먼저 정리한다.
 - 작업 시작 전: 요청을 `전역 공통 작업` / `특정 페이지 작업` / `특정 컴포넌트 작업` 중 무엇으로 볼지 먼저 분류하고, 그렇게 판단한 코드/문서 근거를 제시한다.
-- 작업 시작 전: 페이지 작업이면 공통 일관성 문서(`admin-ux-ui-design`, `admin-detail-drawer-guidelines`, `admin-page-tables`)를 먼저 확인하고, 그 기준에서 예외가 필요한지부터 판별한다.
+- 작업 시작 전: 페이지 작업이면 공통 일관성 문서(`admin-overview`, `admin-ux-ui-design`, `admin-detail-drawer-guidelines`, `admin-page-tables`)를 먼저 확인하고, 그 기준에서 예외가 필요한지부터 판별한다.
 - 작업 시작 전: 사용자가 사이드바 기준 순차 검수를 진행 중인 것으로 보고, 현재 요청 페이지의 데이터/용어/키워드/변수명 정합성을 `docs/specs/admin-data-contract.md` 기준으로 먼저 점검한다.
 - 작업 시작 전: 현재 요청이 `docs/specs/admin-page-gap-register.md`의 기존 항목을 해소/변경하거나 새 항목을 추가해야 하는 작업인지 먼저 판별하고, 해당되면 같은 작업에서 문서 갱신을 완료 조건에 포함한다.
 - 전역 공통 작업 후보라면, 페이지 파일부터 고치지 말고 공용 컴포넌트, 공통 스타일, 공통 가이드 문서에 이미 같은 책임이 있는지 먼저 확인한다.
@@ -109,10 +111,13 @@
 - 기존 미확정/누락/오구현 항목을 해소하거나 상태를 바꾸거나, 새 항목을 발견하면 `docs/specs/admin-page-gap-register.md`를 같은 작업에서 반드시 갱신한다.
 - 문서 파일(`docs/**`)을 추가/삭제/이동한 경우 `docs/README.md` 인덱스를 같은 작업에서 반드시 갱신한다.
 - MD를 수정한 경우 `logs/admin-doc-update-log.md`에 변경 요약을 1건 기록한다.
+- 운영/정책 관련 내용이 바뀌면 관련 MD를 지속 모니터링 대상으로 평가하고, 반영 여부 또는 미반영 사유를 결과에 남긴다.
+- 작업 완료 직전에는 기본적으로 `npm run harness:check`를 실행해 구조/문서 드리프트를 먼저 점검한다.
 - 작업 완료 직전에는 반드시 변경 영향 핵심 플로우 e2e 테스트를 실행하고, 통과/실패/차단 여부와 근거를 결과에 기록한다.
 - e2e 결과 보고에는 기능 통과 여부와 별도로, 어떤 공통 일관성 문서를 기준으로 어떤 UI baseline을 확인했는지와 예외 여부를 함께 기록한다.
 - 구현 중: 6장 리뷰 게이트 위반 시 즉시 대안 구현으로 전환한다.
 - 작업 완료 시: 적용한 품질 축과 게이트 충족 여부를 결과에 명시한다.
+- 작업 완료 시: 사용자 요구사항이 프로젝트에 미친 영향 범위를 변경 요약과 별도로 명시한다.
 
 ## 8. 전역 Do / Do Not
 DO
@@ -180,4 +185,3 @@ DO NOT
 - React 최적화 판단의 상세 기준은 `docs/guidelines/react-optimization-rule.md`를 단일 원문으로 사용한다.
 - 성능/렌더링 관련 변경은 6.2 React 최적화 게이트를 통과해야 한다.
 - 상태관리 구현체는 `Zustand` 원칙을 유지하고, 서버 상태 라이브러리 관련 세부는 프로젝트 채택안에 맞춰 해석한다.
-

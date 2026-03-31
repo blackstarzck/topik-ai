@@ -1,17 +1,18 @@
-import {
+﻿import {
   Alert,
   Button,
   Card,
-  Collapse,
   Descriptions,
   Empty,
+  Grid,
   Input,
   Space,
   Tag,
-  Timeline,
+  Table,
   Typography,
   notification
 } from 'antd';
+import type { DescriptionsProps, TableColumnsType } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
@@ -27,11 +28,11 @@ import {
 import {
   getQuestionInstructionLabel,
   getQuestionInstructionText,
-  getQuestionSourceSummary,
-  getQuestionUsageSummary
+  getQuestionSourceSummary
 } from '../model/assessment-question-bank-presenter';
 import type {
   AssessmentQuestion,
+  AssessmentQuestionReviewDocument,
   AssessmentQuestionReviewStatus
 } from '../model/assessment-question-bank-types';
 import type { AsyncState } from '../../../shared/model/async-state';
@@ -43,9 +44,15 @@ import { PageTitle } from '../../../shared/ui/page-title/page-title';
 
 const { Paragraph, Text } = Typography;
 const { TextArea } = Input;
+const { useBreakpoint } = Grid;
+
+type ReviewActionableStatus = Extract<
+  AssessmentQuestionReviewStatus,
+  '검수 완료' | '보류' | '수정 필요'
+>;
 
 type ReviewActionState = {
-  nextStatus: AssessmentQuestionReviewStatus;
+  nextStatus: ReviewActionableStatus;
 } | null;
 
 type ReviewActionCopy = {
@@ -56,45 +63,79 @@ type ReviewActionCopy = {
   reasonPlaceholder: string;
 };
 
-function getReviewActionCopy(
-  nextStatus: AssessmentQuestionReviewStatus
-): ReviewActionCopy {
-  if (nextStatus === '검수 완료') {
-    return {
-      title: '검수 완료 처리',
-      description:
-        '이 문항을 검수 완료로 전환합니다. 저장된 검수 메모와 확인 사유는 감사 로그로 남습니다.',
-      confirmText: '검수 완료',
-      successMessage: '검수 완료 처리되었습니다.',
-      reasonPlaceholder: '검수 완료 근거를 입력해 주세요.'
-    };
-  }
+type ReviewSourceCard = {
+  key: string;
+  source: string;
+  unit: string;
+  detail?: string;
+};
 
-  if (nextStatus === '보류') {
-    return {
-      title: '보류 처리',
-      description:
-        '이 문항을 보류 상태로 전환합니다. 후속 재검토를 위해 사유를 남겨야 합니다.',
-      confirmText: '보류',
-      successMessage: '보류 처리되었습니다.',
-      reasonPlaceholder: '보류 사유를 입력해 주세요.'
-    };
-  }
+type ReviewCriterionCard = {
+  key: string;
+  title: string;
+  body: string;
+};
 
-  return {
+type ReviewHistoryCard = {
+  key: string;
+  editedAt: string;
+  editedBy: string;
+  editType: string;
+  reviewerMemo: string;
+  changedFields: string[];
+  reflectedReview: string;
+};
+
+type ReviewDescriptionItem = NonNullable<DescriptionsProps['items']>[number];
+
+type ReviewViewModel = {
+  title: string;
+  instructionLabel: string;
+  instructionText: string;
+  domainLabel: string;
+  typeLabel: string;
+  difficultyText: string;
+  sourceCards: ReviewSourceCard[];
+  keyMeaningLabel: string;
+  keyMeaning: string;
+  keyIssueLabel: string;
+  keyIssue: string;
+  modelAnswer: string;
+  criteria: ReviewCriterionCard[];
+  history: ReviewHistoryCard[];
+};
+
+const REVIEW_ACTION_COPY_BY_STATUS: Record<
+  ReviewActionableStatus,
+  ReviewActionCopy
+> = {
+  '검수 완료': {
+    title: '검수 완료 처리',
+    description:
+      '이 문항을 검수 완료로 전환합니다. 저장된 검수 메모와 확인 사유는 감사 로그로 남습니다.',
+    confirmText: '검수 완료',
+    successMessage: '검수 완료 처리했습니다.',
+    reasonPlaceholder: '검수 완료 사유를 입력해 주세요.'
+  },
+  보류: {
+    title: '보류 처리',
+    description:
+      '이 문항을 보류로 전환합니다. 추가 확인이 필요한 사유와 최신 검수 메모는 감사 로그로 남습니다.',
+    confirmText: '보류',
+    successMessage: '보류 처리했습니다.',
+    reasonPlaceholder: '보류 사유를 입력해 주세요.'
+  },
+  '수정 필요': {
     title: '수정 필요 처리',
     description:
-      '이 문항을 수정 필요 상태로 전환합니다. 핵심 문제를 기준으로 수정 사유를 남겨야 합니다.',
+      '이 문항을 수정 필요로 전환합니다. 재생성 또는 수동 수정이 필요한 이유와 최신 검수 메모는 감사 로그로 남습니다.',
     confirmText: '수정 필요',
-    successMessage: '수정 필요 처리되었습니다.',
+    successMessage: '수정 필요 처리했습니다.',
     reasonPlaceholder: '수정 필요 사유를 입력해 주세요.'
-  };
-}
+  }
+};
 
-function buildQuestionBankListHref(
-  search: string,
-  question: AssessmentQuestion | null
-): string {
+function buildQuestionBankListHref(search: string): string {
   const params = new URLSearchParams(search);
 
   params.delete('selected');
@@ -103,110 +144,309 @@ function buildQuestionBankListHref(
     params.set('tab', 'review');
   }
 
-  if (question && !params.get('questionNo')) {
-    params.set('questionNo', question.questionNumber);
-  }
-
   const nextSearch = params.toString();
   return nextSearch ? `/assessment/question-bank?${nextSearch}` : '/assessment/question-bank';
 }
 
-function renderQuestionSpecificReviewBlock(
+function buildReviewSourceCards(
+  reviewDocument: AssessmentQuestionReviewDocument | null,
   question: AssessmentQuestion
-): JSX.Element {
+): ReviewSourceCard[] {
+  if (!reviewDocument) {
+    return [
+      {
+        key: 'legacy-source',
+        source: getQuestionSourceSummary(question),
+        unit: question.content.kind === '53' ? '그래프형 자료' : '-',
+        detail:
+          question.content.kind === '53'
+            ? question.content.sourceSummary
+            : undefined
+      }
+    ];
+  }
+
+  const sourceCards = [
+    {
+      key: 'chart-a',
+      source: reviewDocument.chart_a.survey_org || '-',
+      unit: reviewDocument.chart_a.unit || '-',
+      detail:
+        [reviewDocument.chart_a.chart_type, reviewDocument.chart_a.title]
+          .filter(Boolean)
+          .join(' · ') || undefined
+    },
+    {
+      key: 'chart-b',
+      source: reviewDocument.chart_b.survey_org || '-',
+      unit: reviewDocument.chart_b.unit || '-',
+      detail:
+        [reviewDocument.chart_b.chart_type, reviewDocument.chart_b.title]
+          .filter(Boolean)
+          .join(' · ') || undefined
+    }
+  ].filter((card) => card.source !== '-' || card.unit !== '-' || card.detail);
+
+  return sourceCards.length > 0
+    ? sourceCards
+    : [
+      {
+        key: 'chart-fallback',
+        source: '-',
+        unit: '-'
+      }
+    ];
+}
+
+function buildReviewCriteria(
+  reviewDocument: AssessmentQuestionReviewDocument | null,
+  question: AssessmentQuestion
+): ReviewCriterionCard[] {
+  if (!reviewDocument) {
+    return question.scoringCriteria.map((criterion, index) => ({
+      key: `criterion-${index + 1}`,
+      title: `기준 ${index + 1}`,
+      body: criterion
+    }));
+  }
+
+  return [
+    {
+      key: 'content',
+      title: '내용',
+      body: reviewDocument.rubric.content
+    },
+    {
+      key: 'language',
+      title: '언어',
+      body: reviewDocument.rubric.language
+    },
+    {
+      key: 'structure',
+      title: '구성',
+      body: reviewDocument.rubric.structure
+    }
+  ];
+}
+
+function buildReviewHistory(
+  reviewDocument: AssessmentQuestionReviewDocument | null,
+  question: AssessmentQuestion
+): ReviewHistoryCard[] {
+  if (!reviewDocument) {
+    return question.revisionHistory.map((item) => ({
+      key: item.id,
+      editedAt: item.changedAt,
+      editedBy: item.changedBy,
+      editType: 'revision',
+      reviewerMemo: item.summary,
+      changedFields: [],
+      reflectedReview: ''
+    }));
+  }
+
+  return reviewDocument.edit_history.map((item, index) => ({
+    key: `${reviewDocument.id}-${index}`,
+    editedAt: item.edited_at,
+    editedBy: item.edited_by,
+    editType: item.edit_type,
+    reviewerMemo: item.summary,
+    changedFields: item.changed_fields,
+    reflectedReview: item.review_snapshot
+  }));
+}
+
+function buildReviewHistoryColumns(): TableColumnsType<ReviewHistoryCard> {
+  return [
+    {
+      title: '수정 일시',
+      dataIndex: 'editedAt',
+      key: 'editedAt',
+      width: 160
+    },
+    {
+      title: '수정자',
+      dataIndex: 'editedBy',
+      key: 'editedBy',
+      width: 120
+    },
+    {
+      title: '수정 유형',
+      dataIndex: 'editType',
+      key: 'editType',
+      width: 140
+    }
+  ];
+}
+
+function buildReviewHistoryDescriptionItems(
+  item: ReviewHistoryCard
+): DescriptionsProps['items'] {
+  return [
+    {
+      key: 'reviewerMemo',
+      label: '검수자 메모',
+      children: (
+        <Paragraph className="assessment-review-page__description-paragraph">
+          {item.reviewerMemo || '-'}
+        </Paragraph>
+      )
+    },
+    {
+      key: 'reflectedReview',
+      label: '반영 리뷰',
+      children: (
+        <Paragraph className="assessment-review-page__description-paragraph">
+          {item.reflectedReview || '-'}
+        </Paragraph>
+      )
+    },
+    {
+      key: 'changedFields',
+      label: '반영 필드',
+      children:
+        item.changedFields.length > 0 ? (
+          <Space
+            wrap
+            size={[6, 6]}
+            className="assessment-review-page__history-field-list"
+          >
+            {item.changedFields.map((field) => (
+              <Tag key={field} className="assessment-review-page__history-field-tag">
+                {field}
+              </Tag>
+            ))}
+          </Space>
+        ) : (
+          '-'
+        )
+    }
+  ];
+}
+
+function buildReviewViewModel(question: AssessmentQuestion): ReviewViewModel {
+  const reviewDocument = question.reviewDocument;
+
+  if (!reviewDocument) {
+    return {
+      title: question.topic,
+      instructionLabel: getQuestionInstructionLabel(question),
+      instructionText: getQuestionInstructionText(question),
+      domainLabel: question.domain,
+      typeLabel: question.questionTypeLabel,
+      difficultyText: question.difficultyLevel,
+      sourceCards: buildReviewSourceCards(null, question),
+      keyMeaningLabel: '핵심 의미',
+      keyMeaning: question.coreMeaning,
+      keyIssueLabel: '핵심 문제',
+      keyIssue: question.keyIssue,
+      modelAnswer: question.modelAnswer,
+      criteria: buildReviewCriteria(null, question),
+      history: buildReviewHistory(null, question)
+    };
+  }
+
+  return {
+    title: reviewDocument.approved_topic_seed.topic_seed_title,
+    instructionLabel: '지시문',
+    instructionText: reviewDocument.prompt_text,
+    domainLabel: question.domain,
+    typeLabel: question.questionTypeLabel,
+    difficultyText: question.difficultyLevel,
+    sourceCards: buildReviewSourceCards(reviewDocument, question),
+    keyMeaningLabel: reviewDocument.context_notes.row1_label || '핵심 의미',
+    keyMeaning: reviewDocument.context_notes.row1_value,
+    keyIssueLabel: reviewDocument.context_notes.row2_label || '핵심 문제',
+    keyIssue: reviewDocument.context_notes.row2_value,
+    modelAnswer: reviewDocument.model_answer,
+    criteria: buildReviewCriteria(reviewDocument, question),
+    history: buildReviewHistory(reviewDocument, question)
+  };
+}
+
+function buildUnifiedQuestionSpecificDescriptionItems(
+  question: AssessmentQuestion
+): ReviewDescriptionItem[] {
   if (question.content.kind === '51' || question.content.kind === '52') {
-    return (
-      <Descriptions
-        bordered
-        size="small"
-        column={1}
-        items={[
-          {
-            key: 'choices',
-            label: '보기',
-            children: (
-              <ol style={{ margin: 0, paddingLeft: 20 }}>
-                {question.content.choices.map((choice) => (
-                  <li key={choice}>
-                    <Text>{choice}</Text>
-                  </li>
-                ))}
-              </ol>
-            )
-          },
-          {
-            key: 'answer',
-            label: '정답',
-            children: question.content.answer
-          }
-        ]}
-      />
-    );
+    return [
+      {
+        key: 'choices',
+        label: '보기',
+        span: 2,
+        children: (
+          <ol style={{ margin: 0, paddingLeft: 20 }}>
+            {question.content.choices.map((choice) => (
+              <li key={choice}>
+                <Text
+                  className={
+                    choice === question.content.answer
+                      ? 'assessment-review-page__choice-answer'
+                      : undefined
+                  }
+                >
+                  {choice}
+                </Text>
+              </li>
+            ))}
+          </ol>
+        )
+      }
+    ];
   }
 
   if (question.content.kind === '53') {
-    return (
-      <Descriptions
-        bordered
-        size="small"
-        column={1}
-        items={[
-          {
-            key: 'chartTitle',
-            label: '자료 제목',
-            children: question.content.chartTitle
-          },
-          {
-            key: 'sourceSummary',
-            label: '자료 설명',
-            children: question.content.sourceSummary
-          },
-          {
-            key: 'keyFigures',
-            label: '핵심 수치',
-            children: (
-              <ul style={{ margin: 0, paddingLeft: 20 }}>
-                {question.content.keyFigures.map((figure) => (
-                  <li key={figure}>{figure}</li>
-                ))}
-              </ul>
-            )
-          }
-        ]}
-      />
-    );
+    return [
+      {
+        key: 'chartTitle',
+        label: '자료 제목',
+        children: question.content.chartTitle
+      },
+      {
+        key: 'sourceSummary',
+        label: '자료 설명',
+        children: question.content.sourceSummary
+      },
+      {
+        key: 'keyFigures',
+        label: '핵심 수치',
+        span: 2,
+        children: (
+          <ul style={{ margin: 0, paddingLeft: 20 }}>
+            {question.content.keyFigures.map((figure) => (
+              <li key={figure}>{figure}</li>
+            ))}
+          </ul>
+        )
+      }
+    ];
   }
 
-  return (
-    <Descriptions
-      bordered
-      size="small"
-      column={1}
-      items={[
-        {
-          key: 'topicPrompt',
-          label: '논제',
-          children: question.content.topicPrompt
-        },
-        {
-          key: 'conditionLines',
-          label: '조건 줄',
-          children: (
-            <ul style={{ margin: 0, paddingLeft: 20 }}>
-              {question.content.conditionLines.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-          )
-        },
-        {
-          key: 'outlineGuide',
-          label: '개요 가이드',
-          children: question.content.outlineGuide
-        }
-      ]}
-    />
-  );
+  return [
+    {
+      key: 'topicPrompt',
+      label: '논제',
+      span: 2,
+      children: question.content.topicPrompt
+    },
+    {
+      key: 'conditionLines',
+      label: '조건',
+      span: 2,
+      children: (
+        <ul style={{ margin: 0, paddingLeft: 20 }}>
+          {question.content.conditionLines.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+      )
+    },
+    {
+      key: 'outlineGuide',
+      label: '개요 가이드',
+      span: 2,
+      children: question.content.outlineGuide
+    }
+  ];
 }
 
 export default function AssessmentQuestionReviewPage(): JSX.Element {
@@ -225,6 +465,7 @@ export default function AssessmentQuestionReviewPage(): JSX.Element {
   const [actionState, setActionState] = useState<ReviewActionState>(null);
   const [notificationApi, notificationContextHolder] =
     notification.useNotification();
+  const screens = useBreakpoint();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -269,8 +510,13 @@ export default function AssessmentQuestionReviewPage(): JSX.Element {
   const hasUnsavedReviewMemo = Boolean(
     question && reviewMemoDraft !== question.reviewMemo
   );
-  const backHref = buildQuestionBankListHref(location.search, question);
-  const actionCopy = actionState ? getReviewActionCopy(actionState.nextStatus) : null;
+  const backHref = buildQuestionBankListHref(location.search);
+  const actionCopy = actionState
+    ? REVIEW_ACTION_COPY_BY_STATUS[actionState.nextStatus]
+    : null;
+  const reviewView = question ? buildReviewViewModel(question) : null;
+  const descriptionColumn = screens.lg ? 2 : 1;
+  const historyColumns = buildReviewHistoryColumns();
 
   const syncQuestion = useCallback((updatedQuestion: AssessmentQuestion) => {
     setQuestionState({
@@ -282,7 +528,7 @@ export default function AssessmentQuestionReviewPage(): JSX.Element {
     setReviewMemoDraft(updatedQuestion.reviewMemo);
   }, []);
 
-  const handleSaveReviewMemo = useCallback(async () => {
+  const handleRequestReviewAction = useCallback(async (nextStatus: ReviewActionableStatus) => {
     if (!question) {
       return;
     }
@@ -291,47 +537,33 @@ export default function AssessmentQuestionReviewPage(): JSX.Element {
 
     if (!nextReviewMemo) {
       notificationApi.warning({
-        message: '검수 메모를 먼저 입력하세요.',
+        message: '검수 메모를 먼저 입력해 주세요.',
         description:
-          '검수 상태를 변경하기 전에 판단 근거와 수정 포인트를 검수 메모에 저장해야 합니다.'
+          '검수 상태를 변경하기 전에 문항 적합성 판단과 확인 사유를 검수 메모에 남겨야 합니다.'
       });
       return;
     }
 
-    if (!hasUnsavedReviewMemo) {
-      return;
-    }
-
-    setIsSavingReviewMemo(true);
-    const result = await updateAssessmentQuestionReviewMemoSafe({
-      questionId: question.questionId,
-      reviewMemo: nextReviewMemo
-    });
-    setIsSavingReviewMemo(false);
-
-    if (!result.ok) {
-      notificationApi.error({
-        message: '검수 메모를 저장하지 못했습니다.',
-        description: result.error.message
+    if (hasUnsavedReviewMemo) {
+      setIsSavingReviewMemo(true);
+      const result = await updateAssessmentQuestionReviewMemoSafe({
+        questionId: question.questionId,
+        reviewMemo: nextReviewMemo
       });
-      return;
+      setIsSavingReviewMemo(false);
+
+      if (!result.ok) {
+        notificationApi.error({
+          message: '검수 메모를 저장하지 못했습니다.',
+          description: result.error.message
+        });
+        return;
+      }
+
+      syncQuestion(result.data);
     }
 
-    syncQuestion(result.data);
-    notificationApi.success({
-      message: '검수 메모를 저장했습니다.',
-      description: (
-        <Space direction="vertical" size={4}>
-          <Text>대상 유형: {getTargetTypeLabel('AssessmentQuestion')}</Text>
-          <Text>대상 ID: {result.data.questionId}</Text>
-          <Text>저장 메모: {nextReviewMemo}</Text>
-          <AuditLogLink
-            targetType="AssessmentQuestion"
-            targetId={result.data.questionId}
-          />
-        </Space>
-      )
-    });
+    setActionState({ nextStatus });
   }, [
     hasUnsavedReviewMemo,
     notificationApi,
@@ -339,35 +571,6 @@ export default function AssessmentQuestionReviewPage(): JSX.Element {
     reviewMemoDraft,
     syncQuestion
   ]);
-
-  const openReviewAction = useCallback(
-    (nextStatus: AssessmentQuestionReviewStatus) => {
-      if (!question) {
-        return;
-      }
-
-      if (hasUnsavedReviewMemo) {
-        notificationApi.warning({
-          message: '검수 메모를 저장한 뒤 상태를 변경하세요.',
-          description:
-            '현재 페이지에서 수정한 검수 메모가 아직 저장되지 않았습니다. 메모를 저장한 뒤 검수 상태를 변경해 주세요.'
-        });
-        return;
-      }
-
-      if (!question.reviewMemo.trim()) {
-        notificationApi.warning({
-          message: '검수 메모 없이 상태를 변경할 수 없습니다.',
-          description:
-            '검수는 검수 메모를 기준으로 진행합니다. 먼저 검수 메모를 입력하고 저장해 주세요.'
-        });
-        return;
-      }
-
-      setActionState({ nextStatus });
-    },
-    [hasUnsavedReviewMemo, notificationApi, question]
-  );
 
   const handleConfirmReviewAction = useCallback(
     async (reason: string) => {
@@ -389,7 +592,8 @@ export default function AssessmentQuestionReviewPage(): JSX.Element {
         return;
       }
 
-      const successMessage = getReviewActionCopy(actionState.nextStatus).successMessage;
+      const successMessage =
+        REVIEW_ACTION_COPY_BY_STATUS[actionState.nextStatus].successMessage;
       syncQuestion(result.data);
       setActionState(null);
       notificationApi.success({
@@ -418,16 +622,6 @@ export default function AssessmentQuestionReviewPage(): JSX.Element {
       {notificationContextHolder}
       <div>
         <PageTitle title={pageTitle} />
-        <Paragraph type="secondary" style={{ marginBottom: 24 }}>
-          문항 카드 안에서 지시문, 출처, 핵심 의미, 핵심 문제를 한 번에 검토하고,
-          우측 패널에서 검수 메모 저장과 상태 결정을 진행합니다.
-        </Paragraph>
-
-        <div className="assessment-review-page__header-actions">
-          <Button size="large" onClick={() => navigate(backHref)}>
-            목록으로 돌아가기
-          </Button>
-        </div>
 
         <AdminListCard>
           {questionState.status === 'error' ? (
@@ -461,115 +655,181 @@ export default function AssessmentQuestionReviewPage(): JSX.Element {
             />
           ) : null}
 
-          {question ? (
+          {question && reviewView ? (
             <div className="assessment-review-page">
-              <Card
-                className="assessment-review-page__question-card"
-                title={
-                  <Space align="center" size={12} wrap>
-                    <Text strong>{question.questionId}</Text>
-                    <Tag color="blue">TOPIK {question.questionNumber}번</Tag>
-                    <Tag>{question.domain}</Tag>
-                    <Tag>{question.questionTypeLabel}</Tag>
-                    <Tag>{question.difficultyLevel}</Tag>
-                  </Space>
-                }
-                extra={
-                  <Space size={8} wrap>
-                    <Tag color={getReviewStatusColor(question.reviewStatus)}>
-                      {question.reviewStatus}
-                    </Tag>
-                    <Tag color={getValidationStatusColor(question.validationStatus)}>
-                      {question.validationStatus}
-                    </Tag>
-                  </Space>
-                }
-              >
-                <Space direction="vertical" size={20} style={{ width: '100%' }}>
-                  <Alert
-                    type="info"
-                    showIcon
-                    message="검수 카드"
-                    description="지시문과 핵심 정보, 모범답안, 채점 기준, 수정 히스토리를 한 카드 안에서 연속으로 검토합니다."
-                  />
+              <div className="assessment-review-page__header-actions">
+                <Button size="large" onClick={() => navigate(backHref)}>
+                  목록으로 돌아가기
+                </Button>
+              </div>
 
-                  <div className="assessment-review-page__field">
-                    <Text strong>{getQuestionInstructionLabel(question)}</Text>
-                    <Paragraph className="assessment-review-page__instruction">
-                      {getQuestionInstructionText(question)}
-                    </Paragraph>
-                  </div>
-
+              <div className="assessment-review-page__main">
+                <div className="assessment-review-page__document">
                   <Descriptions
                     bordered
                     size="small"
-                    column={1}
+                    column={descriptionColumn}
+                    className="assessment-review-page__descriptions"
                     items={[
                       {
-                        key: 'source',
-                        label: '출처',
-                        children: getQuestionSourceSummary(question)
+                        key: 'questionNumber',
+                        label: '문항 번호',
+                        children: `#${question.questionNumber}`
                       },
                       {
-                        key: 'coreMeaning',
-                        label: '핵심 의미',
-                        children: question.coreMeaning
+                        key: 'questionMeta',
+                        label: '문항 분류',
+                        children: [
+                          reviewView.domainLabel,
+                          reviewView.typeLabel,
+                          reviewView.difficultyText
+                        ].join(' · ')
+                      },
+                      {
+                        key: 'reviewStatus',
+                        label: '상태',
+                        children: (
+                          <Space
+                            wrap
+                            size={8}
+                            className="assessment-review-page__description-meta"
+                          >
+                            <Tag color={getReviewStatusColor(question.reviewStatus)}>
+                              {question.reviewStatus}
+                            </Tag>
+                            <Tag color={getValidationStatusColor(question.validationStatus)}>
+                              {question.validationStatus}
+                            </Tag>
+                          </Space>
+                        )
+                      },
+                      {
+                        key: 'questionId',
+                        label: '문항 ID',
+                        children: question.questionId
+                      },
+                      {
+                        key: 'questionTitle',
+                        label: '문항 제목',
+                        span: 2,
+                        children: reviewView.title
+                      },
+                      {
+                        key: 'instruction',
+                        label: reviewView.instructionLabel,
+                        span: 2,
+                        children: (
+                          <Paragraph className="assessment-review-page__description-paragraph">
+                            {reviewView.instructionText}
+                          </Paragraph>
+                        )
+                      },
+                      ...buildUnifiedQuestionSpecificDescriptionItems(question),
+                      ...reviewView.sourceCards.map((sourceCard, index) => ({
+                        key: sourceCard.key,
+                        label:
+                          reviewView.sourceCards.length === 1
+                            ? '출처 / 단위'
+                            : `출처 / 단위 ${index + 1}`,
+                        span: 2,
+                        children: (
+                          <div className="assessment-review-page__description-stack">
+                            <Text>{sourceCard.source}</Text>
+                            <Text type="secondary">단위: {sourceCard.unit}</Text>
+                            {sourceCard.detail ? (
+                              <Text
+                                type="secondary"
+                                className="assessment-review-page__source-detail"
+                              >
+                                {sourceCard.detail}
+                              </Text>
+                            ) : null}
+                          </div>
+                        )
+                      })),
+                      {
+                        key: 'keyMeaning',
+                        label: reviewView.keyMeaningLabel,
+                        children: reviewView.keyMeaning
                       },
                       {
                         key: 'keyIssue',
-                        label: '핵심 문제',
-                        children: question.keyIssue
-                      }
-                    ]}
-                  />
-
-                  {renderQuestionSpecificReviewBlock(question)}
-
-                  <Collapse
-                    className="assessment-review-page__collapse"
-                    items={[
+                        label: reviewView.keyIssueLabel,
+                        children: reviewView.keyIssue
+                      },
                       {
-                        key: 'model-answer',
-                        label: '모범답안 보기',
+                        key: 'modelAnswer',
+                        label: '모범답안',
+                        span: 2,
                         children: (
-                          <Paragraph style={{ marginBottom: 0 }}>
-                            {question.modelAnswer}
+                          <Paragraph className="assessment-review-page__description-paragraph">
+                            {reviewView.modelAnswer}
                           </Paragraph>
                         )
                       },
                       {
-                        key: 'scoring-criteria',
-                        label: '채점 기준',
+                        key: 'criteria',
+                        label: '채점기준',
+                        span: 2,
                         children: (
-                          <ul className="assessment-review-page__list">
-                            {question.scoringCriteria.map((criterion) => (
-                              <li key={criterion}>{criterion}</li>
+                          <div className="assessment-review-page__criteria-list">
+                            {reviewView.criteria.map((criterion) => (
+                              <div
+                                key={criterion.key}
+                                className="assessment-review-page__criteria-item"
+                              >
+                                <Text strong>{criterion.title}</Text>
+                                <Paragraph className="assessment-review-page__description-paragraph">
+                                  {criterion.body}
+                                </Paragraph>
+                              </div>
                             ))}
-                          </ul>
-                        )
-                      },
-                      {
-                        key: 'revision-history',
-                        label: '수정 히스토리',
-                        children: (
-                          <Timeline
-                            items={question.revisionHistory.map((item) => ({
-                              children: (
-                                <Space direction="vertical" size={2}>
-                                  <Text strong>{item.summary}</Text>
-                                  <Text type="secondary">
-                                    {item.changedAt} · {item.changedBy}
-                                  </Text>
-                                </Space>
-                              )
-                            }))}
-                          />
+                          </div>
                         )
                       }
                     ]}
                   />
-                </Space>
-              </Card>
+
+                  <div className="assessment-review-page__history-section">
+                    <Text
+                      strong
+                      className="assessment-review-page__history-title"
+                    >
+                      수정 히스토리 ({reviewView.history.length}건)
+                    </Text>
+                    <Table
+                      rowKey="key"
+                      size="small"
+                      pagination={false}
+                      className="assessment-review-page__history-table"
+                      columns={historyColumns}
+                      dataSource={reviewView.history}
+                      locale={{ emptyText: '수정 이력이 없습니다.' }}
+                      scroll={{ x: 920 }}
+                      expandable={{
+                        expandedRowRender: (item) => (
+                          <div className="assessment-review-page__history-expanded">
+                            <Descriptions
+                              bordered
+                              column={1}
+                              size="small"
+                              className="assessment-review-page__history-descriptions"
+                              items={buildReviewHistoryDescriptionItems(item)}
+                            />
+                          </div>
+                        ),
+                        rowExpandable: (item) =>
+                          Boolean(
+                            item.reviewerMemo ||
+                            item.reflectedReview ||
+                            item.changedFields.length > 0
+                          )
+                      }}
+                    />
+                  </div>
+
+                </div>
+              </div>
 
               <div className="assessment-review-page__side">
                 <Card
@@ -581,7 +841,7 @@ export default function AssessmentQuestionReviewPage(): JSX.Element {
                 >
                   <Space direction="vertical" size={16} style={{ width: '100%' }}>
                     <Text type="secondary">
-                      검수 판단 근거와 수정 포인트를 먼저 저장한 뒤 상태를 결정합니다.
+                      JSON `review_memo`를 기준으로 수정 포인트를 보강한 뒤 상태를 결정합니다.
                     </Text>
                     <TextArea
                       aria-label="검수 메모 입력"
@@ -594,64 +854,49 @@ export default function AssessmentQuestionReviewPage(): JSX.Element {
                     />
                     <Text type={hasUnsavedReviewMemo ? 'warning' : 'secondary'}>
                       {hasUnsavedReviewMemo
-                        ? '저장되지 않은 변경사항이 있습니다.'
-                        : '저장된 메모가 상태 변경의 기준으로 사용됩니다.'}
+                        ? '검수 상태 변경 전에 최신 검수 메모가 함께 저장됩니다.'
+                        : '입력한 검수 메모를 기준으로 검수 상태를 변경합니다.'}
                     </Text>
-                    <Button
-                      type="primary"
-                      size="large"
-                      onClick={handleSaveReviewMemo}
-                      loading={isSavingReviewMemo}
-                      disabled={!reviewMemoDraft.trim() || !hasUnsavedReviewMemo}
+                    <Space
+                      direction="vertical"
+                      size={8}
+                      style={{ width: '100%' }}
                     >
-                      검수 메모 저장
-                    </Button>
-                    <Descriptions
-                      bordered
-                      size="small"
-                      column={1}
-                      items={[
-                        {
-                          key: 'usage',
-                          label: '사용 현황',
-                          children: getQuestionUsageSummary(question)
-                        },
-                        {
-                          key: 'managementNote',
-                          label: '운영 메모',
-                          children: question.managementNote || '등록된 운영 메모가 없습니다.'
-                        }
-                      ]}
-                    />
-                    <Space direction="vertical" size={8} style={{ width: '100%' }}>
                       <Button
                         size="large"
-                        onClick={() => openReviewAction('보류')}
-                        disabled={hasUnsavedReviewMemo || !question.reviewMemo.trim()}
-                      >
-                        보류
-                      </Button>
-                      <Button
                         type="primary"
-                        size="large"
-                        onClick={() => openReviewAction('검수 완료')}
-                        disabled={hasUnsavedReviewMemo || !question.reviewMemo.trim()}
+                        block
+                        onClick={() => handleRequestReviewAction('검수 완료')}
+                        loading={isSavingReviewMemo}
+                        disabled={!reviewMemoDraft.trim()}
                       >
                         검수 완료
                       </Button>
                       <Button
-                        danger
                         size="large"
-                        onClick={() => openReviewAction('수정 필요')}
-                        disabled={hasUnsavedReviewMemo || !question.reviewMemo.trim()}
+                        block
+                        onClick={() => handleRequestReviewAction('수정 필요')}
+                        loading={isSavingReviewMemo}
+                        disabled={!reviewMemoDraft.trim()}
                       >
                         수정 필요
                       </Button>
+                      <Button
+                        size="large"
+                        block
+                        onClick={() => handleRequestReviewAction('보류')}
+                        loading={isSavingReviewMemo}
+                        disabled={!reviewMemoDraft.trim()}
+                      >
+                        보류
+                      </Button>
                     </Space>
-                    <AuditLogLink
-                      targetType="AssessmentQuestion"
-                      targetId={question.questionId}
-                    />
+                    <Text
+                      type="secondary"
+                      className="assessment-review-page__memo-footnote"
+                    >
+                      내보내기 시 `review_memo` 필드가 함께 포함됩니다.
+                    </Text>
                   </Space>
                 </Card>
               </div>

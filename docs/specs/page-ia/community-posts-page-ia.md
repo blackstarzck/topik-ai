@@ -1,4 +1,4 @@
-# Community > 게시글 관리 상세 IA
+﻿# Community > 게시글 관리 상세 IA
 
 ## 1. 문서 목적
 
@@ -17,7 +17,7 @@
 | 라우트 | /community/posts |
 | 주요 권한 | community.posts.hide, community.posts.delete |
 | 주요 role | SUPER_ADMIN, OPS_ADMIN |
-| 연관 문서 | docs/specs/admin-page-analysis.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
+| 연관 문서 | docs/architecture/admin-overview.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
 
 ## 3. 페이지 목표와 비목표
 
@@ -150,3 +150,4 @@
 - `작성자` 컬럼은 raw 사용자 ID를 직접 노출하지 않고 `이름 (ID)` 형식의 파란 링크로 표시합니다.
 - 작성자 링크는 `Users > 회원 상세`로 이동하는 단일 동선으로 유지합니다.
 - 게시글 상세 Drawer와 게시글 원문 보기 Modal의 작성자 필드도 `이름 (ID)` 형식의 링크 스타일을 유지합니다.
+

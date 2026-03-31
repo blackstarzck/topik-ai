@@ -1,4 +1,4 @@
-# Commerce > 결제 내역 상세 IA
+﻿# Commerce > 결제 내역 상세 IA
 
 ## 1. 문서 목적
 
@@ -17,7 +17,7 @@
 | 라우트 | /commerce/payments |
 | 주요 권한 | commerce.payments.read |
 | 주요 role | SUPER_ADMIN, OPS_ADMIN, CS_MANAGER, READ_ONLY |
-| 연관 문서 | docs/specs/admin-page-analysis.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
+| 연관 문서 | docs/architecture/admin-overview.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
 
 ## 3. 페이지 목표와 비목표
 
@@ -132,3 +132,4 @@
 - `회원` 컬럼은 raw ID 대신 `이름 (ID)` 형식의 파란 링크로 표시합니다.
 - 회원 링크는 `Users > 회원 상세`의 결제 탭으로 이동합니다.
 - 결제 상세 Modal의 회원 필드는 `이름 (ID)` 형식을 유지합니다.
+

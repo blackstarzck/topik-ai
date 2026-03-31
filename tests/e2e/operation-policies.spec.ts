@@ -1,5 +1,7 @@
 import { expect, test, type Page } from 'playwright/test';
 
+import { confirmVisibleReasonModal } from './harness/admin-flow-helpers';
+
 const policyType = '이용약관';
 
 async function fillPolicyForm(
@@ -45,10 +47,6 @@ async function fillPolicyForm(
   await editorBody.waitFor();
   await editorBody.click();
   await editorBody.fill(input.body);
-}
-
-async function fillOpenConfirmReason(page: Page, reason: string) {
-  await page.locator('.ant-modal textarea').last().fill(reason);
 }
 
 async function closePreviewModal(page: Page, titlePattern: RegExp) {
@@ -133,15 +131,13 @@ test('정책 등록 후 요약 카드 필터, 미리보기, 게시, 삭제까지
   );
 
   await detailDrawer.getByRole('button', { name: '게시', exact: true }).click();
-  await fillOpenConfirmReason(page, '정책 검토 완료 후 게시');
-  await page.locator('.ant-modal').getByRole('button', { name: '게시 실행' }).click();
+  await confirmVisibleReasonModal(page, '정책 검토 완료 후 게시');
 
   await expect(historyRows).toHaveCount(2);
   await expect(detailDrawer.getByRole('button', { name: '숨김', exact: true })).toBeVisible();
 
   await detailDrawer.getByRole('button', { name: '정책 삭제', exact: true }).click();
-  await fillOpenConfirmReason(page, '검토 완료 후 테스트 데이터 정리');
-  await page.locator('.ant-modal').getByRole('button', { name: '삭제 실행' }).click();
+  await confirmVisibleReasonModal(page, '검토 완료 후 테스트 데이터 정리');
 
   await expect(page.getByText(policyTitle, { exact: true })).toHaveCount(0);
 });
@@ -204,8 +200,7 @@ test('내용 수정, 새 버전 등록, 히스토리 본문 보기와 이 버전
   await closePreviewModal(page, /정책 본문 미리보기 · v/);
 
   await historySection.getByRole('button', { name: '이 버전 게시' }).first().click();
-  await fillOpenConfirmReason(page, '검토 완료된 히스토리 버전으로 노출 전환');
-  await page.locator('.ant-modal').getByRole('button', { name: '이 버전 게시' }).click();
+  await confirmVisibleReasonModal(page, '검토 완료된 히스토리 버전으로 노출 전환');
 
   await expect(historyRows).toHaveCount(3);
   await expect(detailDrawer.getByRole('button', { name: '숨김', exact: true })).toBeVisible();
