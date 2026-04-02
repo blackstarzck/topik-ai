@@ -96,6 +96,12 @@ function getAuditActionLabel(action: string): string {
   if (action === 'review_memo_saved') {
     return '검수 메모 저장';
   }
+  if (action === 'review_passed_marked') {
+    return '검수 통과';
+  }
+  if (action === 'review_passed_unmarked') {
+    return '검수 미통과';
+  }
   if (action === 'review_completed') {
     return '검수 완료';
   }
@@ -105,14 +111,11 @@ function getAuditActionLabel(action: string): string {
   if (action === 'review_revision_requested') {
     return '수정 필요';
   }
-  if (action === 'operation_candidate_exposed') {
-    return '노출 후보';
+  if (action === 'visibility_published') {
+    return '공개';
   }
-  if (action === 'operation_candidate_hidden') {
-    return '숨김 후보';
-  }
-  if (action === 'operation_excluded') {
-    return '운영 제외';
+  if (action === 'visibility_unpublished') {
+    return '비공개';
   }
   return action;
 }
