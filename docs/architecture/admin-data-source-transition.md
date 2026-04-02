@@ -19,7 +19,7 @@
 - `Operation > 이벤트`는 `events-service.ts`를 통해 조회/상세/저장/게시 예약/즉시 게시/종료를 감싸고, `bodyHtml`을 포함한 이벤트 원본 콘텐츠의 mock SoT는 `operation-store.ts`의 `events` 컬렉션에 유지한다.
 - `Operation > 이벤트 등록 상세`는 현재 `MessageGroup`, `MessageTemplate`, 이벤트 보상 정책 schema를 참조하는 선택형 입력을 사용한다. 다만 message store/schema를 직접 읽는 mock 단계이므로, DB/API 단계에서는 이벤트 전용 service 응답 뒤로 숨기는 구조로 전환해야 한다.
 - `Commerce > 쿠폰 관리`는 `coupons-service.ts`를 통해 쿠폰/정기 쿠폰 템플릿의 조회/저장/발행 중지/재개/삭제를 감싸고, mock SoT는 `coupon-store.ts`, 정적 정책값은 `coupon-form-schema.ts`와 `coupon-template-form-schema.ts`에 유지한다.
-- `Assessment > TOPIK 쓰기 문제은행`은 `assessment-question-bank-service.ts`를 통해 목록 조회, 단건 조회, `review_memo` 저장, `review_passed` 변경을 감싸고, mock SoT는 `assessment-question-bank-documents.json`을 import하는 `assessment-question-bank-store.ts`에 유지한다. query parser와 상태 라벨 helper는 `assessment-question-bank-schema.ts`에 유지한다.
+- `Assessment > TOPIK 쓰기 문제은행`은 `assessment-question-bank-service.ts`를 통해 목록 조회, 단건 조회, 검수 메모 저장, 검수 상태/운영 상태 변경을 감싸고, mock SoT는 `assessment-question-bank-store.ts`, 정적 정책값과 query metadata는 `assessment-question-bank-schema.ts`에 유지한다.
 
 ### 2.2 아직 페이지 내부에 남아 있는 패턴
 
@@ -209,27 +209,28 @@ src/features/<feature>/
 - 대상 화면: `Assessment > TOPIK 쓰기 문제은행`
   - 현재 SoT
     - `src/features/assessment/api/assessment-question-bank-service.ts`
-    - `src/features/assessment/model/assessment-question-bank-documents.json`
     - `src/features/assessment/model/assessment-question-bank-store.ts`
     - `src/features/assessment/model/assessment-question-bank-schema.ts`
     - `src/features/assessment/model/assessment-question-bank-types.ts`
+    - `src/features/assessment/model/assessment-question-review-documents.ts`
     - `src/features/assessment/model/assessment-question-bank-presenter.ts`
     - `src/features/assessment/pages/assessment-question-bank-page.tsx`
     - `src/features/assessment/pages/assessment-question-review-page.tsx`
   - 현재 구조
-    - store는 `assessment-question-bank-documents.json`을 그대로 불러와 `AssessmentQuestion[]` initial state로 복제하고, 페이지는 service를 통해 단일 source를 조회합니다.
-    - 목록과 검토 상세는 같은 JSON 문서 shape를 사용하고, 별도 `reviewDocument` 중첩 fixture를 두지 않습니다.
-    - 목록 필터 옵션과 요약 카드는 현재 JSON 값(`meta.*`, `review_passed`)에서 동적으로 계산합니다.
-    - `review_memo` 저장과 `review_passed` 토글만 같은 store write path를 사용하고, 조치 결과는 `AssessmentQuestion` 감사 로그 이벤트로 적재합니다.
-    - `reviewStatus`, `visibilityStatus`, `validationStatus`, `questionNumber`, `generationBatchId` 같은 synthetic 운영 메타데이터는 현재 SoT에서 제거했습니다.
+    - 페이지는 문항 seed를 직접 소유하지 않고 service를 통해 단일 source를 조회합니다.
+    - 목록 페이지는 service 조회 결과를 사용하고, 검수 상세는 `/review/:questionId` 2depth route에서 단건 조회 결과를 사용합니다.
+    - 검수 메모 저장, 검수 상태 변경, 운영 상태 변경은 같은 store write path를 사용하고, 조치 결과는 `AssessmentQuestion` 감사 로그 이벤트로 적재합니다.
+    - 문제 번호, 도메인, 유형, 난이도, 검수 상태, 운영 상태, 자동 점검 상태 메타데이터는 schema 파일에서 단일 SoT로 관리합니다.
+    - 54번 검수 상세는 flat 필드만으로 렌더링하지 않고, `assessment-question-review-documents.ts`의 `reviewDocument` fixture를 같은 `AssessmentQuestion` 엔티티에 중첩해 사용합니다. API/DB 전환 시에도 이 중첩 구조는 별도 상세 payload 또는 JSONB/문서 컬럼 후보로 유지하는 편이 안전합니다.
   - API/DB 전환 후보
     - `GET /assessment/questions`
     - `GET /assessment/questions/:questionId`
     - `PATCH /assessment/questions/:questionId/review-memo`
-    - `PATCH /assessment/questions/:questionId/review-passed`
+    - `PATCH /assessment/questions/:questionId/review-status`
+    - `PATCH /assessment/questions/:questionId/operation-status`
+    - `GET /assessment/question-batches`
 - 전환 메모
-  - API/DB 응답은 현재 JSON key shape(`id`, `meta`, `review_workflow`, `approved_*`, `chart_*`, `context_notes`, `narrative`, `prompt_text`, `model_answer`, `rubric`, `review_memo`, `edit_history`, `review_passed`)를 유지하고, 화면 표시용 synthetic 필드를 섞지 않습니다.
-  - `review_memo`와 `review_passed`는 write path로 유지하고, 나머지 JSON 영역은 현재 display-only 문서 payload로 봅니다.
-  - 미래에 배치 메타나 공개 상태 같은 운영 정보가 필요하면 현재 JSON 문서와 분리된 별도 관리자 계약으로 추가해야 합니다.
-  - JSON 업로드/내보내기, 배치 재시도, 시험 세트 편성 연결, 이력 diff는 후속 API 범위입니다.
+  - `reviewStatus`와 `operationStatus`는 같은 컬럼으로 합치지 않고 별도 필드로 유지합니다.
+  - `generationBatchId`, `promptVersion`, `generationModel`은 AI 생성 출처 추적용 메타데이터로 유지합니다.
+  - 검수 이력 diff, 재생성 배치, 시험 세트 편성 연결은 후속 API로 확장하되 현재 route/service 계약은 유지합니다.
 

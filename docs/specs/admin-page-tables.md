@@ -29,8 +29,6 @@
 - 드롭다운 안의 기간 값 변경은 draft로만 유지하고, 테이블 재조회와 URL 갱신은 `적용` 버튼 클릭 시점에만 수행합니다.
 - `page`, `pageSize`를 URL/store와 함께 관리하는 목록은 페이지네이션 변경 시 목록을 다시 조회하고, 테이블 위에 loading 애니메이션을 표시합니다.
 - 페이지네이션 재조회 중에는 직전 성공 데이터를 유지하고, 실패해도 화면 전체를 비우지 않습니다.
-- 1depth 목록 페이지의 초기 조회 `pending`은 shared `AdminDataTable`의 `loading`으로 처리합니다. 첫 데이터가 아직 없으면 테이블 empty 상태와 loading 오버레이를 함께 보여주고, 본문 위 별도 로딩 `Alert`는 두지 않습니다.
-- 마지막 성공 데이터가 남아 있는 재조회 `pending`에서는 기존 행을 유지한 채 info `Alert`를 선택적으로 추가할 수 있습니다. 이 경우에도 테이블 자체는 계속 렌더링되어야 하며, 초기 로딩 규칙과 혼용하지 않습니다.
 - 단순한 관련 화면 이동은 우측 상단 버튼보다 안내 문구 링크나 테이블 셀 링크를 우선 사용합니다.
 - 컬럼 필터는 코드값, 정책값, 상태값처럼 운영 기준이 이미 정해진 고정값 집합 컬럼에만 둡니다.
 - 제목, 이름, ID, 자유 텍스트, 숫자, 금액, 건수, 비율, 날짜/시각 컬럼은 컬럼 필터를 두지 않고 정렬과 상단 검색/기간 필터로만 제어합니다.
@@ -313,21 +311,26 @@
 
 ## 19) 평가 > TOPIK 쓰기 문제은행
 
-- 현재 상태: 구현됨 (mock service/store + repo-local JSON fixture 기반)
-- 목표 화면 구조: `PageTitle -> ListSummaryCards -> AdminListCard(toolbar=SearchBar(summary + 상세 검색), body=안내 Alert -> Table)` + `/review/:questionId` 2depth 검토 페이지
+- 현재 상태: 구현됨 (mock service/store 기반)
+- 목표 화면 구조: `PageTitle -> ListSummaryCards -> AdminListCard(toolbar=주 탭 -> 문제 번호 체크박스 그룹 -> SearchBar(summary), body=안내 Alert -> Table)` + `검수 큐` 2depth 페이지 + `문항 관리` 상세 `DetailDrawer`
+- 주 탭: `검수 큐`, `문항 관리`
+- 문제 번호 체크박스 그룹: `51번`, `52번`, `53번`, `54번` 다중 선택, 기본 전체 선택
 - 상단 요약 카드
-  - `전체 문항`
-  - `검수 통과`
-  - `검수 미통과`
-- 공통 필터: SearchBar `도메인`, `question_type`, `difficulty`, `검색`, `review_passed`
-- 목록 컬럼: 문항 ID(`id`), 도메인/유형(`meta.domain`, `meta.question_type`), 주제(`approved_topic_seed.topic_seed_title`), `prompt_text` 미리보기, 최종 문항 승인(`review_workflow.final_question.status`), `review_passed`, 최근 수정(`edit_history[]` 기준)
-- 목록 진입/복귀: 문항 ID 링크 또는 문항 미리보기 hover 팝오버 푸터 `검토하기` 버튼으로 `/assessment/question-bank/review/:questionId` 2depth 검토 페이지로 이동하고, 상세에서 목록 쿼리를 그대로 복원
-- 문항 미리보기 규칙: 셀 본문은 2줄까지만 노출하고, hover/focus Popover에는 `prompt_text`, `context_notes.row1_*`, `context_notes.row2_*`만 확장 노출합니다.
-- 검토 페이지: 좌측 본문에서 `meta`, `review_workflow`, `approved_*`, `scenario_logic`, `relation`, `chart_a/chart_b`, `context_notes`, `narrative`, `prompt_text`, `model_answer`, `rubric`, `edit_history`를 그대로 렌더링하고, 우측 카드에서 `review_memo`, `review_passed`만 조치합니다.
-- 검토 메모 규칙: 2depth 검토 페이지에서만 직접 입력/저장하고, 저장되지 않은 메모가 있으면 `검수 통과`/`검수 미통과` 실행 전에 먼저 저장합니다. 빈 메모에서는 `review_passed` 변경을 막습니다.
+  - `검수 큐`: 전체 문항, 검수 대기, 보류, 검수 완료
+  - `문항 관리`: 전체 문항, 노출 후보, 숨김 후보, 운영 제외
+- 공통 필터: SearchBar `도메인`, `유형`, `난이도`, `검색`
+- 검수 큐 필터: `reviewStatus`
+- 문항 관리 필터: `operationStatus`
+- 검수 큐 컬럼: 문항 ID, 도메인/유형, 문항 미리보기, 검수 상태, 자동 점검, 최근 수정, 액션
+- 문항 관리 컬럼: 문항 ID, 주제, 검수 상태, 운영 상태, 사용 현황, 최근 수정, 액션
+- 검수 큐 행 클릭: `/assessment/question-bank/review/:questionId` 2depth 검수 페이지로 이동
+- 문항 관리 행 클릭: 상세 Drawer 열기
+- 상세 Drawer: `기본 정보`, `출처 / 상태`, `문항 핵심 요약`, `모범답안 · 메모 · 사용 현황`, 감사 로그 확인(`AssessmentQuestion`)
+- 검수 페이지: 좌측 본문에서 JSON 매핑 검수 문서(`prompt_text`, `chart_a/chart_b`, `context_notes`, `model_answer`, `rubric`, `edit_history`)를 바로 렌더링하고, 우측 `검수 메모` 카드에서 조치를 진행
+- 검수 메모 규칙: 2depth 검수 페이지에서만 직접 입력/저장하고, 저장되지 않은 메모가 있거나 메모가 비어 있으면 `검수 완료`, `보류`, `수정 필요` 조치를 막습니다.
 - 주요 액션
-  - 목록: `검토 페이지 열기`
-  - 상세: `review_memo 저장`, `검수 통과`, `검수 미통과`
+  - 검수 큐: `검수 페이지 열기`, `빠른 상세 보기`
+  - 문항 관리: `노출 후보`, `숨김 후보`, `운영 제외`
 
 ## 20) 평가 > EPS TOPIK
 

@@ -367,16 +367,17 @@
 
 - 대상 파일: `src/features/assessment/pages/assessment-question-bank-page.tsx`, `src/features/assessment/api/assessment-question-bank-service.ts`, `src/features/assessment/model/assessment-question-bank-store.ts`, `src/app/router/app-router.tsx`
 - 현 상태
-  - `TOPIK 쓰기 문제은행`은 mock service/store 기반 실페이지로 전환되었고, repo-local JSON fixture를 그대로 읽는 목록 + `/review/:questionId` 2depth 검토 페이지 구조를 사용한다.
-  - 목록/상세는 모두 같은 `AssessmentQuestion` JSON key만 렌더링하고, 현재 write path는 `review_memo 저장 -> review_passed 토글`로 제한된다.
-  - 목록 초기 pending UX는 다른 1depth 목록형 페이지와 같은 `AdminDataTable` loading 오버레이 + empty 조합으로 정렬되었다.
+  - `TOPIK 쓰기 문제은행`은 mock service/store 기반 실페이지로 전환되었고, `검수 큐 -> 2depth 검수 페이지`, `문항 관리 -> 빠른 상세 Drawer` 역할 분리와 `53/54번` 카드형 검수 워크스페이스, `검수 메모 입력 -> 검수 완료 / 수정 필요 / 보류` 흐름까지 반영되었다.
   - `EPS TOPIK`, `레벨 테스트`는 아직 Placeholder
 - 미확정/누락/오구현
   - `TOPIK 쓰기 문제은행`
-    - 외부에서 받은 JSON 파일을 repo fixture로 복제해 쓰고 있어, 업로드/동기화/파일 교체 write path는 아직 고정되지 않았다.
-    - `review_memo`, `review_passed` 변경은 현재 mock store 메모리에만 반영되고 원본 파일이나 API persistence에는 연결되지 않았다.
-    - `review_workflow.*.status`는 표시만 가능하고, 단계별 승인/반려/재검토 조치는 아직 없다.
-    - JSON 내보내기, 배치 재시도, 검수 히스토리 diff, EPS TOPIK / 레벨 테스트 세트 편성 연동은 후속 구현이 필요하다.
+    - 검수 상태와 운영 상태는 분리 구현됐지만, 최종 공개/숨김 정책과 승인 체계는 아직 확정되지 않았다.
+    - `51/52`, `53`, `54` 문항별 검수 필드 집합이 아직 UI/데이터 구조에서 독립적으로 분리되지 않았다. 현재 공통 필드가 과다 노출될 수 있어 문제 번호별 review field profile 계약이 필요하다.
+    - `검수 완료` 문항을 JSON으로 내보내는 실행 위치와 파일 스키마가 아직 고정되지 않았다.
+    - `수정 히스토리`는 과거 검수 메모와 AI 반영 설명을 분리해 보여주지만, 필드별 diff와 버전 간 비교 뷰는 아직 없다.
+    - AI 재생성, 배치 재시도, 프롬프트 버전 비교, 검수 히스토리 diff는 아직 구현되지 않았다.
+    - EPS TOPIK / 레벨 테스트 세트 편성 화면에서 검수 완료 문항을 소비하는 계약은 후속 구현이 필요하다.
+    - `53/54번` 2depth 검수 페이지는 JSON 매핑 검수 문서(`reviewDocument`) 구조까지 반영됐지만, JSON 업로드/내보내기와 배치별 대량 검수 액션은 아직 관리자 SoT에 연결되지 않았다.
   - `EPS TOPIK`, `레벨 테스트`
     - 여전히 Placeholder이며, 편성/배점/발행/결과 정책의 화면 SoT와 데이터 source 경계가 미정이다.
 - 분류

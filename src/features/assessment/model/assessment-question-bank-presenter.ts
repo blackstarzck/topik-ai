@@ -1,52 +1,57 @@
-import type {
-  AssessmentQuestion,
-  AssessmentQuestionEditHistoryItem
-} from './assessment-question-bank-types';
-
-export function getQuestionTitle(question: AssessmentQuestion): string {
-  return question.approved_topic_seed.topic_seed_title;
-}
+import type { AssessmentQuestion } from './assessment-question-bank-types';
 
 export function getQuestionPreviewText(question: AssessmentQuestion): string {
-  return question.prompt_text;
+  if (question.content.kind === '51' || question.content.kind === '52') {
+    return question.content.learnerPrompt;
+  }
+
+  if (question.content.kind === '53') {
+    return `${question.content.chartTitle} · ${question.content.sourceSummary}`;
+  }
+
+  return question.content.topicPrompt;
 }
 
-export function getQuestionWorkflowStatus(question: AssessmentQuestion): string {
-  return question.review_workflow.final_question.status;
+export function getQuestionUsageSummary(question: AssessmentQuestion): string {
+  return `사용 ${question.usageCount}회 / 시험 연결 ${question.linkedExamCount}건`;
 }
 
-export function getLatestEditEntry(
-  question: AssessmentQuestion
-): AssessmentQuestionEditHistoryItem | null {
-  return question.edit_history.length > 0
-    ? question.edit_history[question.edit_history.length - 1]
-    : null;
+export function getQuestionInstructionLabel(question: AssessmentQuestion): string {
+  if (question.content.kind === '53' || question.content.kind === '54') {
+    return '지시문';
+  }
+
+  return '문항 지시문';
 }
 
-export function getLatestEditedAt(question: AssessmentQuestion): string {
-  return getLatestEditEntry(question)?.edited_at ?? question.created_at;
+export function getQuestionInstructionText(question: AssessmentQuestion): string {
+  if (question.content.kind === '51' || question.content.kind === '52') {
+    return `${question.content.instruction} ${question.content.learnerPrompt}`;
+  }
+
+  return question.content.learnerPrompt;
 }
 
-export function getLatestEditedBy(question: AssessmentQuestion): string {
-  return getLatestEditEntry(question)?.edited_by ?? '-';
+export function getQuestionSourceSummary(question: AssessmentQuestion): string {
+  return `${question.sourceType} · ${question.generationBatchId} · ${question.generationModel} · ${question.promptVersion}`;
 }
 
 export function buildAssessmentQuestionSearchText(
   question: AssessmentQuestion
 ): string {
   return [
-    question.id,
-    question.meta.domain,
-    question.meta.question_type,
-    String(question.meta.difficulty),
-    getQuestionTitle(question),
-    question.prompt_text,
-    question.review_memo,
-    question.context_notes.row1_value,
-    question.context_notes.row2_value,
-    question.approved_topic_seed.shared_context,
-    question.approved_topic_seed.why_exam_worthy,
-    question.edit_history.map((item) => item.summary).join(' ')
+    question.questionId,
+    question.topic,
+    question.domain,
+    question.questionTypeLabel,
+    question.difficultyLevel,
+    question.generationBatchId,
+    question.promptVersion,
+    question.coreMeaning,
+    question.keyIssue,
+    question.reviewMemo,
+    question.managementNote,
+    getQuestionPreviewText(question)
   ]
     .join(' ')
     .toLowerCase();

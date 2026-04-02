@@ -243,51 +243,48 @@
 ### 9.6 Assessment
 
 - `Assessment > TOPIK 쓰기 문제은행`
-  - query: `domain`, `questionType`, `difficulty`, `keyword`, `reviewPassed`
+  - query: `tab`, 반복 `questionNo`, `searchField`, `keyword`, `startDate`, `endDate`, `reviewStatus`, `operationStatus`, `selected`
   - 엔티티 후보
-    - `AssessmentQuestion`
-    - `AssessmentQuestionAuditEvent`
+  - `AssessmentQuestion`
+  - `AssessmentQuestionGenerationBatch`
+  - `AssessmentQuestionAuditEvent`
   - 테이블 후보
     - `assessment_questions`
+    - `assessment_question_generation_batches`
     - `assessment_question_audits`
   - 핵심 필드
-    - `id`, `created_at`
-    - `meta.domain`, `meta.topic_type`, `meta.question_type`, `meta.narrative_slots[]`, `meta.difficulty`, `meta.inference_gap`, `meta.link_keywords[]`
-    - `review_workflow.stage_order[]`, `review_workflow.topic_logic`, `review_workflow.graph_logic`, `review_workflow.rubric`, `review_workflow.final_question`
-    - `approved_topic_seed.*`, `approved_graph_logic.*`, `approved_rubric.*`
-    - `chart_roles.chart_a_role`, `chart_roles.chart_b_role`
-    - `scenario_logic.*`, `relation.*`
-    - `chart_a.*`, `chart_b.*`
-    - `context_notes.*`, `narrative.*`
-    - `prompt_text`, `model_answer`, `rubric.content`, `rubric.structure`, `rubric.language`
-    - `review_memo`, `edit_history[]`, `review_passed`
-  - 파생 표시 필드
-    - `latestEditedAt`, `latestEditedBy`: `edit_history[]`의 최신 항목 기준 계산
-    - `questionPreviewText`: `prompt_text`와 `context_notes`를 기반으로 화면용 축약 문자열 생성
+    - `questionId`, `questionNumber`, `topic`, `domain`, `questionTypeLabel`, `difficultyLevel`, `sourceType`, `generationBatchId`, `promptVersion`, `generationModel`, `reviewStatus`, `operationStatus`, `validationStatus`, `validationSignals`, `usageCount`, `linkedExamCount`, `reviewMemo`, `managementNote`, `coreMeaning`, `keyIssue`, `modelAnswer`, `scoringCriteria`, `revisionHistory`, `reviewCompletedAt`, `reviewExportStatus`, `generatedAt`, `updatedAt`, `updatedBy`
+    - `reviewDocument.id`, `reviewDocument.created_at`, `reviewDocument.meta`, `reviewDocument.review_workflow`, `reviewDocument.approved_topic_seed`, `reviewDocument.approved_graph_logic`, `reviewDocument.approved_rubric`, `reviewDocument.chart_roles`, `reviewDocument.scenario_logic`, `reviewDocument.relation`, `reviewDocument.chart_a`, `reviewDocument.chart_b`, `reviewDocument.context_notes`, `reviewDocument.narrative`, `reviewDocument.prompt_text`, `reviewDocument.model_answer`, `reviewDocument.rubric`, `reviewDocument.review_memo`, `reviewDocument.edit_history`, `reviewDocument.review_passed`
   - 검수 계약 메모
-    - 이 페이지의 mock/document SoT는 `src/features/assessment/model/assessment-question-bank-documents.json`에 있는 JSON 구조를 그대로 사용합니다.
-    - `review_memo`는 현재 검토자가 문항 적합성을 판단한 결과를 저장하는 필드로 해석합니다.
-    - `review_passed`는 목록 요약/필터와 상세 조치에서 사용하는 유일한 관리자 변경 상태입니다.
-    - `review_workflow.*.status`는 JSON 원문 표시값이며, 현재 관리자 화면에서는 직접 수정하지 않습니다.
-    - `questionId`, `questionNumber`, `reviewStatus`, `visibilityStatus`, `validationStatus`, `generationBatchId`, `promptVersion`, `generationModel` 같은 synthetic 필드는 이 페이지 계약에서 제거합니다.
-    - `edit_history[]`는 JSON 원문 이력을 그대로 렌더링하며, 현재 mock write path에서는 새 항목을 추가하지 않습니다.
+    - `reviewMemo`는 현재 검수자가 문항 적합성을 판단한 결과를 저장하는 필드로 해석합니다.
+    - `reviewStatus = 검수 완료`는 검수 종료를 의미하며, 후속 JSON 내보내기 대상 조건으로 사용됩니다.
+    - `revisionHistory`, `reviewDocument.edit_history`는 단순 변경 로그가 아니라 `과거 검수 메모 + AI 재생성 반영 설명` 세트를 담는 schema candidate입니다.
+    - 문제 번호별 검수 필드 집합은 분리해서 관리합니다.
+      - `51/52`: `instruction`, `learnerPrompt`, `choices[]`, `answer`
+      - `53`: `learnerPrompt`, `chartTitle`, `sourceSummary`, `keyFigures[]`, `answerGuide`, `chart_a/chart_b.unit`, `context_notes`
+      - `54`: `learnerPrompt`, `topicPrompt`, `conditionLines[]`, `outlineGuide`
+    - `54`는 `출처/단위`, `핵심 의미`, `핵심 문제`를 기본 검수 필드로 강제하지 않습니다.
   - enum / code table candidate
-    - `meta.domain`: 현재 fixture 기준 `경제`, `교육`, `기술`, `사회`, `환경`
-    - `meta.question_type`: `importance_problem_effort`, `advantage_problem_solution`, `background_problem_response`
-    - `meta.difficulty`: 현재 fixture 기준 `5`, `6`
-    - `review_workflow.*.status`: fixture 기준 `approved` (UI 색상 매핑은 `approved`, `pending`, `rejected`를 수용)
-    - `review_passed`: `true`, `false`
+    - `questionNumber`: `51`, `52`, `53`, `54`
+    - `domain`: `생활`, `학습`, `사회`, `문화`, `경제`, `교육`, `환경`, `기술`
+    - `questionTypeLabel`: `빈칸 완성`, `연결 표현`, `자료 설명`, `의견 서술`
+    - `difficultyLevel`: `상`, `중`, `하`
+    - `reviewDocument.meta.question_type`: `importance_problem_effort`, `advantage_problem_solution`, `background_problem_response`
+    - `reviewStatus`: `검수 대기`, `검수 중`, `보류`, `검수 완료`, `수정 필요`
+    - `operationStatus`: `미지정`, `노출 후보`, `숨김 후보`, `운영 제외`
+    - `validationStatus`: `정상`, `주의`, `재검토`
+    - `sourceType`: `AI 자동 생성`
   - 하드코딩 분류
     - `schema candidate`
-      - JSON 문서 전체(`meta`, `review_workflow`, `approved_*`, `chart_*`, `context_notes`, `narrative`, `prompt_text`, `model_answer`, `rubric`, `review_memo`, `edit_history`, `review_passed`)
+      - 문항 본문, 정답/가이드, 검수 메모, 운영 메모, 검수 이력, 배치 메타데이터
     - `code table candidate`
-      - 없음. 필터 옵션과 상태 표시는 현재 JSON fixture 값에서 동적으로 계산합니다.
+      - 문제 번호, 검수 상태, 운영 상태, 자동 점검 상태
     - `ui-only`
-      - pending/empty/error 안내 문구, preview ellipsis 규칙
+      - 탭 안내 문구, empty/error/pending 메시지
   - 감사 로그 / URL 계약
     - `Target Type = AssessmentQuestion`
-    - `Target ID = id`
-    - 원본 화면 역추적 경로: `/assessment/question-bank/review/{id}`
+    - `Target ID = questionId`
+    - 원본 화면 역추적 경로: `/assessment/question-bank/review/{questionId}`
 
 ## 10. 문서 갱신 규칙
 

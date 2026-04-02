@@ -1,17 +1,27 @@
 import { AppApiError } from '../../../shared/api/api-error';
 import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
 import { useAssessmentQuestionBankStore } from '../model/assessment-question-bank-store';
-import type { AssessmentQuestion } from '../model/assessment-question-bank-types';
+import type {
+  AssessmentQuestion,
+  AssessmentQuestionOperationStatus,
+  AssessmentQuestionReviewStatus
+} from '../model/assessment-question-bank-types';
 
-type UpdateAssessmentQuestionReviewPassedPayload = {
+type UpdateAssessmentQuestionReviewStatusPayload = {
   questionId: string;
-  nextValue: boolean;
+  nextStatus: AssessmentQuestionReviewStatus;
   reason: string;
 };
 
 type UpdateAssessmentQuestionReviewMemoPayload = {
   questionId: string;
   reviewMemo: string;
+};
+
+type UpdateAssessmentQuestionOperationStatusPayload = {
+  questionId: string;
+  nextStatus: AssessmentQuestionOperationStatus;
+  reason: string;
 };
 
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
@@ -59,13 +69,31 @@ async function loadQuestion(
   signal?: AbortSignal
 ): Promise<AssessmentQuestion> {
   const questions = await loadQuestions(signal);
-  const question = questions.find((candidate) => candidate.id === questionId) ?? null;
+  const question =
+    questions.find((candidate) => candidate.questionId === questionId) ?? null;
 
   if (!question) {
     throw createQuestionNotFoundError();
   }
 
   return question;
+}
+
+async function updateReviewStatus(
+  payload: UpdateAssessmentQuestionReviewStatusPayload,
+  signal?: AbortSignal
+): Promise<AssessmentQuestion> {
+  await sleep(220, signal);
+
+  const updated = useAssessmentQuestionBankStore
+    .getState()
+    .updateReviewStatus(payload);
+
+  if (!updated) {
+    throw createQuestionNotFoundError();
+  }
+
+  return updated;
 }
 
 async function updateReviewMemo(
@@ -83,15 +111,15 @@ async function updateReviewMemo(
   return updated;
 }
 
-async function updateReviewPassed(
-  payload: UpdateAssessmentQuestionReviewPassedPayload,
+async function updateOperationStatus(
+  payload: UpdateAssessmentQuestionOperationStatusPayload,
   signal?: AbortSignal
 ): Promise<AssessmentQuestion> {
   await sleep(220, signal);
 
   const updated = useAssessmentQuestionBankStore
     .getState()
-    .updateReviewPassed(payload);
+    .updateOperationStatus(payload);
 
   if (!updated) {
     throw createQuestionNotFoundError();
@@ -115,6 +143,13 @@ export function fetchAssessmentQuestionSafe(
   );
 }
 
+export function updateAssessmentQuestionReviewStatusSafe(
+  payload: UpdateAssessmentQuestionReviewStatusPayload,
+  signal?: AbortSignal
+) {
+  return toSafeResult(() => updateReviewStatus(payload, signal));
+}
+
 export function updateAssessmentQuestionReviewMemoSafe(
   payload: UpdateAssessmentQuestionReviewMemoPayload,
   signal?: AbortSignal
@@ -122,9 +157,9 @@ export function updateAssessmentQuestionReviewMemoSafe(
   return toSafeResult(() => updateReviewMemo(payload, signal));
 }
 
-export function updateAssessmentQuestionReviewPassedSafe(
-  payload: UpdateAssessmentQuestionReviewPassedPayload,
+export function updateAssessmentQuestionOperationStatusSafe(
+  payload: UpdateAssessmentQuestionOperationStatusPayload,
   signal?: AbortSignal
 ) {
-  return toSafeResult(() => updateReviewPassed(payload, signal));
+  return toSafeResult(() => updateOperationStatus(payload, signal));
 }
