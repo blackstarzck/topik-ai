@@ -2,24 +2,22 @@ import {
   Alert,
   Button,
   Checkbox,
-  Collapse,
-  Descriptions,
   Empty,
   Form,
+  Grid,
+  Popover,
   Select,
   Space,
   Tabs,
   Tag,
-  Typography,
-  notification
+  Typography
 } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import {
-  fetchAssessmentQuestionsSafe,
-  updateAssessmentQuestionOperationStatusSafe
+  fetchAssessmentQuestionsSafe
 } from '../api/assessment-question-bank-service';
 import {
   assessmentQuestionBankTabItems,
@@ -31,7 +29,6 @@ import {
   assessmentQuestionTypeLabels,
   getOperationStatusColor,
   getReviewStatusColor,
-  getValidationStatusColor,
   parseAssessmentQuestionBankTab,
   parseAssessmentQuestionDifficulty,
   parseAssessmentQuestionDomain,
@@ -42,10 +39,7 @@ import {
 } from '../model/assessment-question-bank-schema';
 import {
   buildAssessmentQuestionSearchText,
-  getQuestionInstructionLabel,
-  getQuestionInstructionText,
-  getQuestionPreviewText,
-  getQuestionSourceSummary,
+  getQuestionText,
   getQuestionUsageSummary
 } from '../model/assessment-question-bank-presenter';
 import type {
@@ -55,13 +49,6 @@ import type {
   AssessmentQuestionReviewStatus
 } from '../model/assessment-question-bank-types';
 import type { AsyncState } from '../../../shared/model/async-state';
-import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
-import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
-import {
-  DetailDrawer,
-  DetailDrawerBody,
-  DetailDrawerSection
-} from '../../../shared/ui/detail-drawer/detail-drawer';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
@@ -75,22 +62,9 @@ import {
   createNumberSorter,
   createTextSorter
 } from '../../../shared/ui/table/table-column-utils';
-import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
 
 const { Paragraph, Text } = Typography;
-
-type ManageActionState = {
-  question: AssessmentQuestion;
-  nextStatus: AssessmentQuestionOperationStatus;
-} | null;
-
-type OperationActionCopy = {
-  title: string;
-  description: string;
-  confirmText: string;
-  successMessage: string;
-  reasonPlaceholder: string;
-};
+const { useBreakpoint } = Grid;
 
 type SearchQueryKey =
   | 'tab'
@@ -100,21 +74,36 @@ type SearchQueryKey =
   | 'difficulty'
   | 'keyword'
   | 'reviewStatus'
-  | 'operationStatus'
-  | 'selected';
+  | 'operationStatus';
 
 type SearchQueryValue = string | string[] | null;
 
-function parseSelectedId(value: string | null): string {
-  return value?.trim() ?? '';
-}
+const questionPreviewTriggerStyle = {
+  display: 'block',
+  width: '100%',
+  padding: 0,
+  border: 'none',
+  background: 'transparent',
+  textAlign: 'left' as const,
+  cursor: 'pointer'
+};
+
+const questionPreviewPopoverStyle = {
+  width: 420,
+  maxWidth: 'min(420px, calc(100vw - 48px))'
+};
+
+const questionPreviewFooterStyle = {
+  display: 'flex',
+  justifyContent: 'flex-end',
+  marginTop: 12
+};
 
 function buildReviewPageHref(
   questionId: string,
   params: URLSearchParams
 ): string {
   const nextParams = new URLSearchParams(params);
-  nextParams.delete('selected');
 
   const nextSearch = nextParams.toString();
   return nextSearch
@@ -122,146 +111,63 @@ function buildReviewPageHref(
     : `/assessment/question-bank/review/${questionId}`;
 }
 
-function getOperationActionCopy(
-  nextStatus: AssessmentQuestionOperationStatus
-): OperationActionCopy {
-  if (nextStatus === '노출 후보') {
-    return {
-      title: '노출 후보 지정',
-      description:
-        '이 문항을 노출 후보로 지정합니다. 실제 시험 연결 여부는 별도 편성 정책에 따라 결정됩니다.',
-      confirmText: '노출 후보',
-      successMessage: '노출 후보로 지정되었습니다.',
-      reasonPlaceholder: '노출 후보 판단 근거를 입력해 주세요.'
-    };
-  }
-
-  if (nextStatus === '숨김 후보') {
-    return {
-      title: '숨김 후보 지정',
-      description:
-        '이 문항을 숨김 후보로 전환합니다. 품질은 통과했지만 당장 운영 우선순위에서 제외하는 상태입니다.',
-      confirmText: '숨김 후보',
-      successMessage: '숨김 후보로 지정되었습니다.',
-      reasonPlaceholder: '숨김 후보 사유를 입력해 주세요.'
-    };
-  }
-
-  return {
-    title: '운영 제외 처리',
-    description:
-      '이 문항을 운영 제외 상태로 전환합니다. 현재 편성 대상에서는 빠지지만 이후 복구는 가능합니다.',
-    confirmText: '운영 제외',
-    successMessage: '운영 제외 처리되었습니다.',
-    reasonPlaceholder: '운영 제외 사유를 입력해 주세요.'
-  };
-}
-
-function renderPreviewParagraph(content: string): JSX.Element {
+function renderQuestionTextParagraph(content: string): JSX.Element {
   return (
-    <Paragraph ellipsis={{ rows: 2 }} style={{ marginBottom: 0 }}>
+    <Paragraph
+      className="assessment-question-bank-page__question-text"
+      ellipsis={{ rows: 1, tooltip: false }}
+      style={{ marginBottom: 0 }}
+    >
       {content}
     </Paragraph>
   );
 }
 
-function renderDrawerSpecificSummary(question: AssessmentQuestion): JSX.Element {
-  if (question.content.kind === '51' || question.content.kind === '52') {
-    return (
-      <Descriptions
-        bordered
-        size="small"
-        column={1}
-        items={[
-          {
-            key: 'choices',
-            label: '보기',
-            children: (
-              <ol style={{ margin: 0, paddingLeft: 20 }}>
-                {question.content.choices.map((choice) => (
-                  <li key={choice}>
-                    <Text>{choice}</Text>
-                  </li>
-                ))}
-              </ol>
-            )
-          },
-          {
-            key: 'answer',
-            label: '정답',
-            children: question.content.answer
-          }
-        ]}
-      />
-    );
-  }
-
-  if (question.content.kind === '53') {
-    return (
-      <Descriptions
-        bordered
-        size="small"
-        column={1}
-        items={[
-          {
-            key: 'chartTitle',
-            label: '자료 제목',
-            children: question.content.chartTitle
-          },
-          {
-            key: 'sourceSummary',
-            label: '자료 설명',
-            children: question.content.sourceSummary
-          },
-          {
-            key: 'keyFigures',
-            label: '핵심 수치',
-            children: (
-              <ul style={{ margin: 0, paddingLeft: 20 }}>
-                {question.content.keyFigures.map((figure) => (
-                  <li key={figure}>{figure}</li>
-                ))}
-              </ul>
-            )
-          }
-        ]}
-      />
-    );
-  }
-
+function renderQuestionTextCell(
+  question: AssessmentQuestion,
+  onOpenReviewPage: (questionId: string) => void
+): JSX.Element {
   return (
-    <Descriptions
-      bordered
-      size="small"
-      column={1}
-      items={[
-        {
-          key: 'topicPrompt',
-          label: '논제',
-          children: question.content.topicPrompt
-        },
-        {
-          key: 'conditionLines',
-          label: '조건 줄',
-          children: (
-            <ul style={{ margin: 0, paddingLeft: 20 }}>
-              {question.content.conditionLines.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-          )
-        },
-        {
-          key: 'outlineGuide',
-          label: '개요 가이드',
-          children: question.content.outlineGuide
-        }
-      ]}
-    />
+    <Popover
+      trigger={['hover', 'focus']}
+      placement="rightTop"
+      content={
+        <div style={questionPreviewPopoverStyle}>
+          <Paragraph
+            className="assessment-review-page__description-paragraph"
+            style={{ marginBottom: 0 }}
+          >
+            {getQuestionText(question)}
+          </Paragraph>
+          <div style={questionPreviewFooterStyle}>
+            <Button
+              size="small"
+              type="primary"
+              onClick={(event) => {
+                event.stopPropagation();
+                onOpenReviewPage(question.questionId);
+              }}
+            >
+              검수하기
+            </Button>
+          </div>
+        </div>
+      }
+    >
+      <button
+        type="button"
+        aria-label={`${question.questionId} 문항 전체 보기`}
+        className="assessment-question-bank-page__question-trigger"
+        style={questionPreviewTriggerStyle}
+      >
+        {renderQuestionTextParagraph(getQuestionText(question))}
+      </button>
+    </Popover>
   );
 }
 
 export default function AssessmentQuestionBankPage(): JSX.Element {
+  const screens = useBreakpoint();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [questionsState, setQuestionsState] = useState<
@@ -273,9 +179,6 @@ export default function AssessmentQuestionBankPage(): JSX.Element {
     errorCode: null
   });
   const [reloadKey, setReloadKey] = useState(0);
-  const [actionState, setActionState] = useState<ManageActionState>(null);
-  const [notificationApi, notificationContextHolder] =
-    notification.useNotification();
 
   const activeTab = parseAssessmentQuestionBankTab(searchParams.get('tab'));
   const activeQuestionNumbers = parseAssessmentQuestionNumbers(
@@ -289,7 +192,6 @@ export default function AssessmentQuestionBankPage(): JSX.Element {
     searchParams.get('difficulty')
   );
   const keyword = searchParams.get('keyword') ?? '';
-  const selectedId = parseSelectedId(searchParams.get('selected'));
   const reviewStatusFilter = parseAssessmentQuestionReviewStatus(
     searchParams.get('reviewStatus')
   );
@@ -408,8 +310,7 @@ export default function AssessmentQuestionBankPage(): JSX.Element {
     commitParams({
       domain: draftDomainFilter,
       questionType: draftQuestionTypeFilter,
-      difficulty: draftDifficultyFilter,
-      selected: null
+      difficulty: draftDifficultyFilter
     });
   }, [
     commitParams,
@@ -419,41 +320,6 @@ export default function AssessmentQuestionBankPage(): JSX.Element {
   ]);
 
   const hasCachedQuestions = questionsState.data.length > 0;
-
-  const selectedQuestion = useMemo(
-    () =>
-      questionsState.data.find((question) => question.questionId === selectedId) ??
-      null,
-    [questionsState.data, selectedId]
-  );
-
-  useEffect(() => {
-    if (
-      !selectedId ||
-      selectedQuestion ||
-      questionsState.status === 'pending'
-    ) {
-      return;
-    }
-
-    commitParams({ selected: null });
-  }, [commitParams, questionsState.status, selectedId, selectedQuestion]);
-
-  const syncUpdatedQuestion = useCallback((updatedQuestion: AssessmentQuestion) => {
-    setQuestionsState((prev) => {
-      const nextData = prev.data.map((question) =>
-        question.questionId === updatedQuestion.questionId ? updatedQuestion : question
-      );
-
-      return {
-        status: nextData.length === 0 ? 'empty' : 'success',
-        data: nextData,
-        errorMessage: null,
-        errorCode: null
-      };
-    });
-  }, []);
-
   const currentNumberQuestions = useMemo(
     () =>
       questionsState.data.filter(
@@ -479,8 +345,7 @@ export default function AssessmentQuestionBankPage(): JSX.Element {
         questionNo:
           nextQuestionNumbers.length === assessmentQuestionNumbers.length
             ? null
-            : nextQuestionNumbers,
-        selected: null
+            : nextQuestionNumbers
       });
     },
     [activeQuestionNumbers, commitParams]
@@ -647,17 +512,6 @@ export default function AssessmentQuestionBankPage(): JSX.Element {
     reviewStatusFilter
   ]);
 
-  const openDrawer = useCallback(
-    (questionId: string) => {
-      commitParams({ selected: questionId });
-    },
-    [commitParams]
-  );
-
-  const closeDrawer = useCallback(() => {
-    commitParams({ selected: null });
-  }, [commitParams]);
-
   const openReviewPage = useCallback(
     (questionId: string) => {
       navigate(buildReviewPageHref(questionId, searchParams));
@@ -665,62 +519,35 @@ export default function AssessmentQuestionBankPage(): JSX.Element {
     [navigate, searchParams]
   );
 
-  const triggerOperationAction = useCallback(
-    (
-      question: AssessmentQuestion,
-      nextStatus: AssessmentQuestionOperationStatus
-    ) => {
-      setActionState({
-        question,
-        nextStatus
-      });
-    },
-    []
-  );
+  const questionColumnWidth = useMemo(() => {
+    if (screens.xxl) {
+      return 560;
+    }
 
-  const handleConfirmAction = useCallback(
-    async (reason: string) => {
-      if (!actionState) {
-        return;
-      }
+    if (screens.xl) {
+      return 500;
+    }
 
-      const actionCopy = getOperationActionCopy(actionState.nextStatus);
-      const result = await updateAssessmentQuestionOperationStatusSafe({
-        questionId: actionState.question.questionId,
-        nextStatus: actionState.nextStatus,
-        reason
-      });
+    if (screens.lg) {
+      return 440;
+    }
 
-      if (!result.ok) {
-        notificationApi.error({
-          message: '운영 상태를 변경하지 못했습니다.',
-          description: result.error.message
-        });
-        return;
-      }
+    if (screens.md) {
+      return 360;
+    }
 
-      syncUpdatedQuestion(result.data);
-      notificationApi.success({
-        message: actionCopy.successMessage,
-        description: (
-          <Space direction="vertical" size={4}>
-            <Text>대상 유형: AssessmentQuestion</Text>
-            <Text>대상 ID: {result.data.questionId}</Text>
-            <AuditLogLink
-              targetType="AssessmentQuestion"
-              targetId={result.data.questionId}
-            />
-          </Space>
-        )
-      });
-
-      setActionState(null);
-    },
-    [actionState, notificationApi, syncUpdatedQuestion]
-  );
+    return 300;
+  }, [screens.lg, screens.md, screens.xl, screens.xxl]);
 
   const reviewColumns = useMemo<TableColumnsType<AssessmentQuestion>>(
     () => [
+      {
+        title: '문항 번호',
+        dataIndex: 'questionNumber',
+        width: 100,
+        sorter: createTextSorter((record) => record.questionNumber),
+        render: (questionNumber: AssessmentQuestionNumber) => `${questionNumber}번`
+      },
       {
         title: '문항 ID',
         dataIndex: 'questionId',
@@ -728,28 +555,29 @@ export default function AssessmentQuestionBankPage(): JSX.Element {
         sorter: createTextSorter((record) => record.questionId)
       },
       {
-        title: '도메인 / 유형',
+        title: '문항 주제 / 도메인',
         key: 'topicAndMeta',
         width: 280,
         sorter: createTextSorter(
-          (record) =>
-            `${record.topic} ${record.domain} ${record.questionTypeLabel} ${record.difficultyLevel}`
+          (record) => `${record.topic} ${record.domain}`
         ),
         render: (_, record) => (
           <Space direction="vertical" size={2}>
             <Text strong>{record.topic}</Text>
-            <Text type="secondary">
-              {record.domain} · {record.questionTypeLabel} · 난이도{' '}
-              {record.difficultyLevel}
-            </Text>
+            <Text type="secondary">{record.domain || '-'}</Text>
           </Space>
         )
       },
       {
-        title: '문항 미리보기',
-        key: 'preview',
-        sorter: createTextSorter((record) => getQuestionPreviewText(record)),
-        render: (_, record) => renderPreviewParagraph(getQuestionPreviewText(record))
+        title: '문항',
+        dataIndex: 'questionText',
+        key: 'questionText',
+        width: questionColumnWidth,
+        sorter: createTextSorter((record) => getQuestionText(record)),
+        onCell: () => ({
+          className: 'assessment-question-bank-page__question-cell'
+        }),
+        render: (_, record) => renderQuestionTextCell(record, openReviewPage)
       },
       {
         title: createStatusColumnTitle('검수 상태', assessmentQuestionReviewStatuses),
@@ -758,20 +586,6 @@ export default function AssessmentQuestionBankPage(): JSX.Element {
         sorter: createTextSorter((record) => record.reviewStatus),
         render: (status: AssessmentQuestionReviewStatus) => (
           <Tag color={getReviewStatusColor(status)}>{status}</Tag>
-        )
-      },
-      {
-        title: '자동 점검',
-        key: 'validation',
-        width: 160,
-        sorter: createTextSorter((record) => record.validationStatus),
-        render: (_, record) => (
-          <Space direction="vertical" size={2}>
-            <Tag color={getValidationStatusColor(record.validationStatus)}>
-              {record.validationStatus}
-            </Tag>
-            <Text type="secondary">신호 {record.validationSignals.length}건</Text>
-          </Space>
         )
       },
       {
@@ -785,39 +599,20 @@ export default function AssessmentQuestionBankPage(): JSX.Element {
             <Text type="secondary">{record.updatedBy}</Text>
           </Space>
         )
-      },
-      {
-        title: '액션',
-        key: 'actions',
-        width: 120,
-        onCell: () => ({
-          onClick: (event) => {
-            event.stopPropagation();
-          }
-        }),
-        render: (_, record) => (
-          <TableActionMenu
-            items={[
-              {
-                key: `review-page-${record.questionId}`,
-                label: '검수 페이지 열기',
-                onClick: () => openReviewPage(record.questionId)
-              },
-              {
-                key: `review-drawer-${record.questionId}`,
-                label: '빠른 상세 보기',
-                onClick: () => openDrawer(record.questionId)
-              }
-            ]}
-          />
-        )
       }
     ],
-    [openDrawer, openReviewPage]
+    [openReviewPage, questionColumnWidth]
   );
 
   const manageColumns = useMemo<TableColumnsType<AssessmentQuestion>>(
     () => [
+      {
+        title: '문항 번호',
+        dataIndex: 'questionNumber',
+        width: 100,
+        sorter: createTextSorter((record) => record.questionNumber),
+        render: (questionNumber: AssessmentQuestionNumber) => `${questionNumber}번`
+      },
       {
         title: '문항 ID',
         dataIndex: 'questionId',
@@ -871,57 +666,9 @@ export default function AssessmentQuestionBankPage(): JSX.Element {
             <Text type="secondary">{record.updatedBy}</Text>
           </Space>
         )
-      },
-      {
-        title: '액션',
-        key: 'actions',
-        width: 120,
-        onCell: () => ({
-          onClick: (event) => {
-            event.stopPropagation();
-          }
-        }),
-        render: (_, record) => (
-          <TableActionMenu
-            items={[
-              {
-                key: `manage-review-page-${record.questionId}`,
-                label: '검수 페이지 열기',
-                onClick: () => openReviewPage(record.questionId)
-              },
-              {
-                key: `manage-drawer-${record.questionId}`,
-                label: '빠른 상세 보기',
-                onClick: () => openDrawer(record.questionId)
-              },
-              {
-                key: `manage-expose-${record.questionId}`,
-                label: '노출 후보',
-                disabled: record.operationStatus === '노출 후보',
-                onClick: () => triggerOperationAction(record, '노출 후보')
-              }
-            ]}
-            footerItems={[
-              {
-                key: `manage-hide-${record.questionId}`,
-                label: '숨김 후보',
-                danger: true,
-                disabled: record.operationStatus === '숨김 후보',
-                onClick: () => triggerOperationAction(record, '숨김 후보')
-              },
-              {
-                key: `manage-exclude-${record.questionId}`,
-                label: '운영 제외',
-                danger: true,
-                disabled: record.operationStatus === '운영 제외',
-                onClick: () => triggerOperationAction(record, '운영 제외')
-              }
-            ]}
-          />
-        )
       }
     ],
-    [openDrawer, openReviewPage, triggerOperationAction]
+    []
   );
 
   const toolbar = (
@@ -941,8 +688,7 @@ export default function AssessmentQuestionBankPage(): JSX.Element {
             difficulty: null,
             keyword: null,
             reviewStatus: null,
-            operationStatus: null,
-            selected: null
+            operationStatus: null
           });
         }}
       />
@@ -976,8 +722,7 @@ export default function AssessmentQuestionBankPage(): JSX.Element {
         onSearchFieldChange={() => undefined}
         onKeywordChange={(event) =>
           commitParams({
-            keyword: event.target.value || null,
-            selected: null
+            keyword: event.target.value || null
           })
         }
         keywordPlaceholder="문항 ID, 주제, 키워드를 검색하세요."
@@ -1058,69 +803,8 @@ export default function AssessmentQuestionBankPage(): JSX.Element {
       ? '조건에 맞는 검수 대상 문항이 없습니다.'
       : '조건에 맞는 관리 대상 문항이 없습니다.';
 
-  const drawerHeaderMeta = selectedQuestion ? (
-    <Space wrap size={[8, 8]}>
-      <Tag color={getReviewStatusColor(selectedQuestion.reviewStatus)}>
-        {selectedQuestion.reviewStatus}
-      </Tag>
-      <Tag color={getOperationStatusColor(selectedQuestion.operationStatus)}>
-        {selectedQuestion.operationStatus}
-      </Tag>
-      <Tag color={getValidationStatusColor(selectedQuestion.validationStatus)}>
-        {selectedQuestion.validationStatus}
-      </Tag>
-    </Space>
-  ) : null;
-
-  const drawerFooterStart = selectedQuestion ? (
-    <Space wrap size={12}>
-      <AuditLogLink
-        targetType="AssessmentQuestion"
-        targetId={selectedQuestion.questionId}
-      />
-      <Button size="large" onClick={() => openReviewPage(selectedQuestion.questionId)}>
-        검수 페이지로 이동
-      </Button>
-    </Space>
-  ) : null;
-
-  const drawerFooterEnd =
-    activeTab === 'manage' && selectedQuestion ? (
-      <Space wrap size={8}>
-        <Button
-          size="large"
-          type="primary"
-          disabled={selectedQuestion.operationStatus === '노출 후보'}
-          onClick={() => triggerOperationAction(selectedQuestion, '노출 후보')}
-        >
-          노출 후보
-        </Button>
-        <Button
-          size="large"
-          danger
-          disabled={selectedQuestion.operationStatus === '숨김 후보'}
-          onClick={() => triggerOperationAction(selectedQuestion, '숨김 후보')}
-        >
-          숨김 후보
-        </Button>
-        <Button
-          size="large"
-          danger
-          disabled={selectedQuestion.operationStatus === '운영 제외'}
-          onClick={() => triggerOperationAction(selectedQuestion, '운영 제외')}
-        >
-          운영 제외
-        </Button>
-      </Space>
-    ) : null;
-
-  const actionCopy = actionState
-    ? getOperationActionCopy(actionState.nextStatus)
-    : null;
-
   return (
     <>
-      {notificationContextHolder}
       <div>
         <PageTitle title="TOPIK 쓰기 문제은행" />
 
@@ -1161,265 +845,22 @@ export default function AssessmentQuestionBankPage(): JSX.Element {
               rowKey="questionId"
               pagination={{ pageSize: 10 }}
               scroll={{ x: 1380 }}
+              tableLayout="fixed"
               columns={activeColumns}
               dataSource={filteredQuestions}
-              onRow={(record) => ({
-                onClick: () => {
-                  if (activeTab === 'review') {
-                    openReviewPage(record.questionId);
-                    return;
-                  }
-
-                  openDrawer(record.questionId);
-                },
-                style: { cursor: 'pointer' }
-              })}
+              onRow={
+                activeTab === 'review'
+                  ? (record) => ({
+                      onClick: () => {
+                        openReviewPage(record.questionId);
+                      },
+                      style: { cursor: 'pointer' }
+                    })
+                  : undefined
+              }
             />
           )}
         </AdminListCard>
-
-        <DetailDrawer
-          open={Boolean(selectedQuestion)}
-          onClose={closeDrawer}
-          destroyOnHidden
-          width={760}
-          title={
-            selectedQuestion
-              ? `TOPIK ${selectedQuestion.questionNumber}번 문항 · ${selectedQuestion.questionId}`
-              : '문항 상세'
-          }
-          headerMeta={drawerHeaderMeta}
-          footerStart={drawerFooterStart}
-          footerEnd={drawerFooterEnd}
-        >
-          {selectedQuestion ? (
-            <DetailDrawerBody>
-              <Alert
-                type={activeTab === 'review' ? 'info' : 'warning'}
-                showIcon
-                message={activeTab === 'review' ? '빠른 상세 보기' : '운영 관리 상세'}
-                description={
-                  activeTab === 'review'
-                    ? '실제 검수 조치는 2depth 검수 페이지에서 진행합니다. 이 Drawer는 문항 구조와 메모를 빠르게 확인하는 용도입니다.'
-                    : '운영 상태 변경 전, 문항의 핵심 의미와 최근 수정 이력, 검수 메모를 한 번 더 확인합니다.'
-                }
-              />
-
-              <DetailDrawerSection title="기본 정보">
-                <Descriptions
-                  bordered
-                  size="small"
-                  column={1}
-                  items={[
-                    {
-                      key: 'topic',
-                      label: '주제',
-                      children: selectedQuestion.topic
-                    },
-                    {
-                      key: 'questionNumber',
-                      label: '문제 번호',
-                      children: `TOPIK ${selectedQuestion.questionNumber}번`
-                    },
-                    {
-                      key: 'domain',
-                      label: '도메인 / 유형',
-                      children: `${selectedQuestion.domain} · ${selectedQuestion.questionTypeLabel}`
-                    },
-                    {
-                      key: 'difficulty',
-                      label: '난이도',
-                      children: selectedQuestion.difficultyLevel
-                    },
-                    {
-                      key: 'generatedAt',
-                      label: '생성 시각',
-                      children: selectedQuestion.generatedAt
-                    },
-                    {
-                      key: 'updatedAt',
-                      label: '최근 수정',
-                      children: `${selectedQuestion.updatedAt} · ${selectedQuestion.updatedBy}`
-                    }
-                  ]}
-                />
-              </DetailDrawerSection>
-
-              <DetailDrawerSection title="출처 / 상태">
-                <Descriptions
-                  bordered
-                  size="small"
-                  column={1}
-                  items={[
-                    {
-                      key: 'source',
-                      label: '출처',
-                      children: getQuestionSourceSummary(selectedQuestion)
-                    },
-                    {
-                      key: 'reviewStatus',
-                      label: '검수 상태',
-                      children: (
-                        <Tag color={getReviewStatusColor(selectedQuestion.reviewStatus)}>
-                          {selectedQuestion.reviewStatus}
-                        </Tag>
-                      )
-                    },
-                    {
-                      key: 'operationStatus',
-                      label: '운영 상태',
-                      children: (
-                        <Tag
-                          color={getOperationStatusColor(
-                            selectedQuestion.operationStatus
-                          )}
-                        >
-                          {selectedQuestion.operationStatus}
-                        </Tag>
-                      )
-                    },
-                    {
-                      key: 'validationStatus',
-                      label: '자동 점검',
-                      children: (
-                        <Space direction="vertical" size={4}>
-                          <Tag
-                            color={getValidationStatusColor(
-                              selectedQuestion.validationStatus
-                            )}
-                          >
-                            {selectedQuestion.validationStatus}
-                          </Tag>
-                          <Text type="secondary">
-                            신호 {selectedQuestion.validationSignals.length}건
-                          </Text>
-                        </Space>
-                      )
-                    }
-                  ]}
-                />
-              </DetailDrawerSection>
-
-              <DetailDrawerSection title="문항 핵심 요약">
-                <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                  <div>
-                    <Text strong>{getQuestionInstructionLabel(selectedQuestion)}</Text>
-                    <Paragraph style={{ marginTop: 8, marginBottom: 0 }}>
-                      {getQuestionInstructionText(selectedQuestion)}
-                    </Paragraph>
-                  </div>
-                  <Descriptions
-                    bordered
-                    size="small"
-                    column={1}
-                    items={[
-                      {
-                        key: 'coreMeaning',
-                        label: '핵심 의미',
-                        children: selectedQuestion.coreMeaning
-                      },
-                      {
-                        key: 'keyIssue',
-                        label: '핵심 문제',
-                        children: selectedQuestion.keyIssue
-                      }
-                    ]}
-                  />
-                  {renderDrawerSpecificSummary(selectedQuestion)}
-                </Space>
-              </DetailDrawerSection>
-
-              <DetailDrawerSection title="모범답안 · 메모 · 사용 현황">
-                <Descriptions
-                  bordered
-                  size="small"
-                  column={1}
-                  items={[
-                    {
-                      key: 'modelAnswer',
-                      label: '모범답안',
-                      children: selectedQuestion.modelAnswer
-                    },
-                    {
-                      key: 'reviewMemo',
-                      label: '검수 메모',
-                      children: selectedQuestion.reviewMemo || '저장된 검수 메모가 없습니다.'
-                    },
-                    {
-                      key: 'managementNote',
-                      label: '운영 메모',
-                      children:
-                        selectedQuestion.managementNote || '등록된 운영 메모가 없습니다.'
-                    },
-                    {
-                      key: 'usage',
-                      label: '사용 현황',
-                      children: getQuestionUsageSummary(selectedQuestion)
-                    }
-                  ]}
-                />
-                <Collapse
-                  className="assessment-review-page__collapse"
-                  items={[
-                    {
-                      key: 'scoring-criteria',
-                      label: '채점 기준',
-                      children: (
-                        <ul className="assessment-review-page__list">
-                          {selectedQuestion.scoringCriteria.map((criterion) => (
-                            <li key={criterion}>{criterion}</li>
-                          ))}
-                        </ul>
-                      )
-                    },
-                    {
-                      key: 'revision-history',
-                      label: '수정 히스토리',
-                      children: (
-                        <ul className="assessment-review-page__list">
-                          {selectedQuestion.revisionHistory.map((item) => (
-                            <li key={item.id}>
-                              <Text strong>{item.summary}</Text>
-                              <br />
-                              <Text type="secondary">
-                                {item.changedAt} · {item.changedBy}
-                              </Text>
-                            </li>
-                          ))}
-                        </ul>
-                      )
-                    },
-                    {
-                      key: 'validation-signals',
-                      label: '자동 점검 신호',
-                      children: (
-                        <ul className="assessment-review-page__list">
-                          {selectedQuestion.validationSignals.map((signal) => (
-                            <li key={signal}>{signal}</li>
-                          ))}
-                        </ul>
-                      )
-                    }
-                  ]}
-                />
-              </DetailDrawerSection>
-            </DetailDrawerBody>
-          ) : null}
-        </DetailDrawer>
-
-        {actionState && actionCopy ? (
-          <ConfirmAction
-            open
-            title={actionCopy.title}
-            description={actionCopy.description}
-            targetType="AssessmentQuestion"
-            targetId={actionState.question.questionId}
-            confirmText={actionCopy.confirmText}
-            reasonPlaceholder={actionCopy.reasonPlaceholder}
-            onCancel={() => setActionState(null)}
-            onConfirm={handleConfirmAction}
-          />
-        ) : null}
       </div>
     </>
   );

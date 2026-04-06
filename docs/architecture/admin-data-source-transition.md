@@ -212,7 +212,8 @@ src/features/<feature>/
     - `src/features/assessment/model/assessment-question-bank-store.ts`
     - `src/features/assessment/model/assessment-question-bank-schema.ts`
     - `src/features/assessment/model/assessment-question-bank-types.ts`
-    - `src/features/assessment/model/assessment-question-review-documents.ts`
+    - `src/features/assessment/model/assessment-question-prompt-fixture.ts`
+    - `src/features/assessment/model/fixtures/valid_questions_97items_2026-03-27.json`
     - `src/features/assessment/model/assessment-question-bank-presenter.ts`
     - `src/features/assessment/pages/assessment-question-bank-page.tsx`
     - `src/features/assessment/pages/assessment-question-review-page.tsx`
@@ -221,7 +222,13 @@ src/features/<feature>/
     - 목록 페이지는 service 조회 결과를 사용하고, 검수 상세는 `/review/:questionId` 2depth route에서 단건 조회 결과를 사용합니다.
     - 검수 메모 저장, 검수 상태 변경, 운영 상태 변경은 같은 store write path를 사용하고, 조치 결과는 `AssessmentQuestion` 감사 로그 이벤트로 적재합니다.
     - 문제 번호, 도메인, 유형, 난이도, 검수 상태, 운영 상태, 자동 점검 상태 메타데이터는 schema 파일에서 단일 SoT로 관리합니다.
-    - 54번 검수 상세는 flat 필드만으로 렌더링하지 않고, `assessment-question-review-documents.ts`의 `reviewDocument` fixture를 같은 `AssessmentQuestion` 엔티티에 중첩해 사용합니다. API/DB 전환 시에도 이 중첩 구조는 별도 상세 payload 또는 JSONB/문서 컬럼 후보로 유지하는 편이 안전합니다.
+    - `AssessmentQuestionSeed`는 feature 내부 JSON fixture item과 1:1로 대응하는 raw seed 타입입니다. 현재는 `AssessmentQuestionReviewDocument`와 같은 shape를 사용하고, `assessment-question-prompt-fixture.ts`가 questionId별 lookup helper를 제공합니다.
+    - 화면에서 직접 쓰는 row mock은 store 내부 `AssessmentQuestionMockDefinition`으로 유지합니다. 이 정의는 `AssessmentQuestionSeed`를 납작하게 복제하지 않고, JSON seed에서 끌어와야 하는 표시값과 운영용 status/meta를 조합해 현재 UI shape를 만듭니다.
+    - 현재 문제은행 mock row는 feature 내부 JSON fixture 전체(`valid_questions_97items_2026-03-27.json`, 현재 workspace 기준 97개)를 `reviewDocument`로 중첩합니다. 목록용 `questionText`, `topic`, `domain`, `reviewMemo`, `context_notes`, `model_answer`, `rubric`, `edit_history` 계열은 모두 같은 seed source를 사용합니다.
+    - 검수 큐 목록의 `문항 주제/도메인` 셀은 JSON direct key인 `approved_topic_seed.topic_seed_title`, `meta.domain`만 노출합니다. `questionTypeLabel`, `difficultyLevel`은 filter/sort용 legacy admin metadata로 남아 있지만, exact JSON key가 아니라서 목록 셀에서는 노출하지 않습니다.
+    - 검수 상세 `채점 기준`은 같은 JSON fixture의 `rubric`를 questionId 기준으로 우선 조회합니다. `reviewDocument`가 없는 row도 page helper를 통해 동일 rubric source를 소비하고, fixture가 없을 때만 기존 store `scoringCriteria`로 fallback합니다.
+    - direct key가 없는 값은 store에 빈 문자열/빈 배열로 두고, 화면 렌더 단계에서 `-`로 통일합니다. 현재 상세 페이지에서는 `51/52`의 `문항 지시문`, 공통 요약 row의 `출처`, `검수자`가 이 규칙을 따릅니다.
+    - JSON 기반 검수 문서는 `assessmentQuestionSeeds` JSON fixture item 자체를 같은 `AssessmentQuestion` 엔티티의 `reviewDocument`로 중첩해 사용합니다. 현재 상세 페이지에서는 `문항 주제`, `문항`, `핵심 의미`, `핵심 문제`, `모범답안`, `채점 기준`, `수정 히스토리` 같은 검수 블록이 이 중첩 문서를 우선 소비합니다. API/DB 전환 시에도 이 중첩 구조는 별도 상세 payload 또는 JSONB/문서 컬럼 후보로 유지하는 편이 안전합니다.
   - API/DB 전환 후보
     - `GET /assessment/questions`
     - `GET /assessment/questions/:questionId`
@@ -233,4 +240,3 @@ src/features/<feature>/
   - `reviewStatus`와 `operationStatus`는 같은 컬럼으로 합치지 않고 별도 필드로 유지합니다.
   - `generationBatchId`, `promptVersion`, `generationModel`은 AI 생성 출처 추적용 메타데이터로 유지합니다.
   - 검수 이력 diff, 재생성 배치, 시험 세트 편성 연결은 후속 API로 확장하되 현재 route/service 계약은 유지합니다.
-

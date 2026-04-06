@@ -367,12 +367,12 @@
 
 - 대상 파일: `src/features/assessment/pages/assessment-question-bank-page.tsx`, `src/features/assessment/api/assessment-question-bank-service.ts`, `src/features/assessment/model/assessment-question-bank-store.ts`, `src/app/router/app-router.tsx`
 - 현 상태
-  - `TOPIK 쓰기 문제은행`은 mock service/store 기반 실페이지로 전환되었고, `검수 큐 -> 2depth 검수 페이지`, `문항 관리 -> 빠른 상세 Drawer` 역할 분리와 `53/54번` 카드형 검수 워크스페이스, `검수 메모 입력 -> 검수 완료 / 수정 필요 / 보류` 흐름까지 반영되었다.
+  - `TOPIK 쓰기 문제은행`은 mock service/store 기반 실페이지로 전환되었고, `검수 큐 -> 2depth 검수 페이지`, `문항 관리 -> 목록 비교 전용 탭` 구조와 `53/54번` 카드형 검수 워크스페이스, `검수 메모 입력 -> 검수 완료 / 수정 필요 / 보류` 흐름까지 반영되었다.
   - `EPS TOPIK`, `레벨 테스트`는 아직 Placeholder
 - 미확정/누락/오구현
   - `TOPIK 쓰기 문제은행`
     - 검수 상태와 운영 상태는 분리 구현됐지만, 최종 공개/숨김 정책과 승인 체계는 아직 확정되지 않았다.
-    - `51/52`, `53`, `54` 문항별 검수 필드 집합이 아직 UI/데이터 구조에서 독립적으로 분리되지 않았다. 현재 공통 필드가 과다 노출될 수 있어 문제 번호별 review field profile 계약이 필요하다.
+    - `51/52`, `53`, `54` 문항별 검수 필드는 현재 이미지 기준 공통 row + 조건부 row(`51/52`의 `문항`, `54`의 `문항 질문`) 구조로 정리되었지만, mock/API 데이터 구조는 여전히 page-local helper에 의존한다. 장기적으로는 문제 번호별 review field profile schema를 별도 계약으로 승격할 필요가 있다.
     - `검수 완료` 문항을 JSON으로 내보내는 실행 위치와 파일 스키마가 아직 고정되지 않았다.
     - `수정 히스토리`는 과거 검수 메모와 AI 반영 설명을 분리해 보여주지만, 필드별 diff와 버전 간 비교 뷰는 아직 없다.
     - AI 재생성, 배치 재시도, 프롬프트 버전 비교, 검수 히스토리 diff는 아직 구현되지 않았다.
@@ -507,4 +507,3 @@
 - 2026-03-25 | 전역 입력형 `Descriptions` 행 높이 불일치 해소 | `src/styles/global.css`에서 `admin-form-descriptions`, `message-template-form-descriptions`의 bordered row `th/td` 기본 높이를 `56px`로 통일하고 `vertical-align: middle`을 적용해, 텍스트 셀과 `Select`/`Switch` 셀이 섞여 있어도 라벨 셀 높이가 들쭉날쭉하지 않도록 보정했습니다.
 
 - 2026-03-27 | `System > 메타데이터 관리` Tree 삭제 affordance/운영 값 수정 Modal 삭제 버튼 해소 | `src/features/system/pages/system-metadata-page.tsx`, `src/features/system/model/system-metadata-store.ts`, `src/features/system/api/system-metadata-service.ts`, `tests/e2e/system-metadata.spec.ts`를 기준으로 `설정 구조` Tree 노드 hover 삭제와 `운영 값 수정` Modal 삭제 버튼을 같은 ConfirmAction 흐름으로 연결했습니다. 삭제 후 `item_deleted` 이력, 감사 로그, Tree/테이블 갱신이 함께 반영되도록 정리했습니다.
-

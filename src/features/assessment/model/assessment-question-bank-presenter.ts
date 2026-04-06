@@ -1,15 +1,7 @@
 import type { AssessmentQuestion } from './assessment-question-bank-types';
 
-export function getQuestionPreviewText(question: AssessmentQuestion): string {
-  if (question.content.kind === '51' || question.content.kind === '52') {
-    return question.content.learnerPrompt;
-  }
-
-  if (question.content.kind === '53') {
-    return `${question.content.chartTitle} · ${question.content.sourceSummary}`;
-  }
-
-  return question.content.topicPrompt;
+export function getQuestionText(question: AssessmentQuestion): string {
+  return question.questionText;
 }
 
 export function getQuestionUsageSummary(question: AssessmentQuestion): string {
@@ -51,7 +43,7 @@ export function buildAssessmentQuestionSearchText(
     question.keyIssue,
     question.reviewMemo,
     question.managementNote,
-    getQuestionPreviewText(question)
+    getQuestionText(question)
   ]
     .join(' ')
     .toLowerCase();

@@ -165,6 +165,8 @@ export type AssessmentQuestionReviewDocument = {
   review_passed: boolean;
 };
 
+export type AssessmentQuestionSeed = AssessmentQuestionReviewDocument;
+
 type AssessmentQuestionBaseContent = {
   learnerPrompt: string;
   reviewPoints: string[];
@@ -209,6 +211,7 @@ export type AssessmentQuestion = {
   questionId: string;
   questionNumber: AssessmentQuestionNumber;
   topic: string;
+  questionText: string;
   domain: AssessmentQuestionDomain;
   questionTypeLabel: AssessmentQuestionTypeLabel;
   difficultyLevel: AssessmentQuestionDifficulty;

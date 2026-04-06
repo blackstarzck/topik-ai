@@ -253,23 +253,34 @@
     - `assessment_question_generation_batches`
     - `assessment_question_audits`
   - 핵심 필드
-    - `questionId`, `questionNumber`, `topic`, `domain`, `questionTypeLabel`, `difficultyLevel`, `sourceType`, `generationBatchId`, `promptVersion`, `generationModel`, `reviewStatus`, `operationStatus`, `validationStatus`, `validationSignals`, `usageCount`, `linkedExamCount`, `reviewMemo`, `managementNote`, `coreMeaning`, `keyIssue`, `modelAnswer`, `scoringCriteria`, `revisionHistory`, `reviewCompletedAt`, `reviewExportStatus`, `generatedAt`, `updatedAt`, `updatedBy`
-    - `reviewDocument.id`, `reviewDocument.created_at`, `reviewDocument.meta`, `reviewDocument.review_workflow`, `reviewDocument.approved_topic_seed`, `reviewDocument.approved_graph_logic`, `reviewDocument.approved_rubric`, `reviewDocument.chart_roles`, `reviewDocument.scenario_logic`, `reviewDocument.relation`, `reviewDocument.chart_a`, `reviewDocument.chart_b`, `reviewDocument.context_notes`, `reviewDocument.narrative`, `reviewDocument.prompt_text`, `reviewDocument.model_answer`, `reviewDocument.rubric`, `reviewDocument.review_memo`, `reviewDocument.edit_history`, `reviewDocument.review_passed`
+    - `questionId`, `questionNumber`, `topic`, `questionText`, `domain`, `questionTypeLabel`, `difficultyLevel`, `sourceType`, `generationBatchId`, `promptVersion`, `generationModel`, `reviewStatus`, `operationStatus`, `validationStatus`, `validationSignals`, `usageCount`, `linkedExamCount`, `reviewMemo`, `managementNote`, `coreMeaning`, `keyIssue`, `modelAnswer`, `scoringCriteria`, `revisionHistory`, `reviewCompletedAt`, `reviewExportStatus`, `generatedAt`, `updatedAt`, `updatedBy`
+    - `reviewDocument.id`, `reviewDocument.created_at`, `reviewDocument.review_workflow`, `reviewDocument.meta`, `reviewDocument.approved_topic_seed`, `reviewDocument.approved_graph_logic`, `reviewDocument.approved_rubric`, `reviewDocument.chart_roles`, `reviewDocument.scenario_logic`, `reviewDocument.relation`, `reviewDocument.chart_a`, `reviewDocument.chart_b`, `reviewDocument.context_notes`, `reviewDocument.narrative`, `reviewDocument.prompt_text`, `reviewDocument.model_answer`, `reviewDocument.rubric`, `reviewDocument.review_memo`, `reviewDocument.edit_history`, `reviewDocument.review_passed`
   - 검수 계약 메모
+    - `AssessmentQuestionSeed`는 feature 내부 JSON fixture item과 1:1로 대응하는 raw seed 타입이며, 현재는 `AssessmentQuestionReviewDocument`와 같은 shape를 사용합니다.
+    - 화면에 직접 쓰는 row mock은 별도 `AssessmentQuestionMockDefinition`(`Omit<AssessmentQuestion, 'questionText'>`)으로 분리합니다. `AssessmentQuestionSeed`를 flat UI row 타입으로 재사용하지 않습니다.
     - `reviewMemo`는 현재 검수자가 문항 적합성을 판단한 결과를 저장하는 필드로 해석합니다.
     - `reviewStatus = 검수 완료`는 검수 종료를 의미하며, 후속 JSON 내보내기 대상 조건으로 사용됩니다.
     - `revisionHistory`, `reviewDocument.edit_history`는 단순 변경 로그가 아니라 `과거 검수 메모 + AI 재생성 반영 설명` 세트를 담는 schema candidate입니다.
+    - `questionText`는 목록형 `문항` 컬럼의 표시 필드이며, 현재 mock 단계에서는 feature 내부 JSON fixture의 `prompt_text`를 questionId별로 매핑해 사용합니다.
+    - 검수 큐 목록의 `문항 주제/도메인` 셀은 JSON direct key인 `approved_topic_seed.topic_seed_title`, `meta.domain`만 노출합니다. `questionTypeLabel`, `difficultyLevel`은 현재 filter/sort용 legacy admin metadata로 남아 있지만, exact JSON key가 아니라서 목록 셀에서는 노출하지 않습니다.
+    - `채점 기준`은 `reviewDocument` 유무와 별개로 feature 내부 JSON fixture의 `rubric`를 questionId별로 우선 조회하고, fixture가 없을 때만 `scoringCriteria` fallback을 사용합니다.
+    - 현재 문제은행 mock row는 feature 내부 JSON fixture 전체(`valid_questions_97items_2026-03-27.json`, 현재 workspace 기준 97개)를 `reviewDocument`로 중첩해 사용합니다. `topic`, `domain`, `reviewMemo`, `managementNote`, `coreMeaning`, `keyIssue`, `modelAnswer`, `scoringCriteria`, `revisionHistory`, `generatedAt`, `updatedAt`, `updatedBy`는 JSON seed에서 직접 읽습니다.
+    - 현재 화면에서 direct key가 없는 표시값은 store에 빈 문자열로 두고 렌더 단계에서 `-`로 통일합니다. 대표적으로 `51/52`의 `문항 지시문`, 공통 요약 row의 `출처`, `검수자`가 여기에 해당합니다.
     - 문제 번호별 검수 필드 집합은 분리해서 관리합니다.
-      - `51/52`: `instruction`, `learnerPrompt`, `choices[]`, `answer`
-      - `53`: `learnerPrompt`, `chartTitle`, `sourceSummary`, `keyFigures[]`, `answerGuide`, `chart_a/chart_b.unit`, `context_notes`
-      - `54`: `learnerPrompt`, `topicPrompt`, `conditionLines[]`, `outlineGuide`
-    - `54`는 `출처/단위`, `핵심 의미`, `핵심 문제`를 기본 검수 필드로 강제하지 않습니다.
+      - `51/52`: `questionText(prompt_text)`, `approved_topic_seed.topic_seed_title`, `context_notes`, `model_answer`, `rubric`, `review_memo`, `edit_history`
+      - `53`: `questionText(prompt_text)`, `approved_topic_seed.topic_seed_title`, `context_notes`, `model_answer`, `rubric`, `review_memo`, `edit_history`
+      - `54`: `questionText(prompt_text)`, `approved_topic_seed.topic_seed_title`, `approved_topic_seed.shared_context`, `scenario_logic`, `context_notes`, `model_answer`, `rubric`, `review_memo`, `edit_history`
+    - 검수 상세 `Descriptions`는 공통 상단(`문항 번호`, `문항 주제`, `문항 형태`, `문항 ID`, `문항 지시문`)과 이미지 기준 공통 요약 row(`출처`, `핵심 의미`, `핵심 문제`, `모범답안`, `채점 기준`)를 기본으로 둡니다.
+    - 조건부 row는 `51/52`의 `문항`, `54`의 `문항 질문`만 허용합니다. `51/52`의 `문항`은 `questionText(prompt_text)`를 사용하고, `54`의 `문항 질문`은 `approved_topic_seed.shared_context` + `scenario_logic`를 사용합니다.
   - enum / code table candidate
     - `questionNumber`: `51`, `52`, `53`, `54`
     - `domain`: `생활`, `학습`, `사회`, `문화`, `경제`, `교육`, `환경`, `기술`
     - `questionTypeLabel`: `빈칸 완성`, `연결 표현`, `자료 설명`, `의견 서술`
     - `difficultyLevel`: `상`, `중`, `하`
     - `reviewDocument.meta.question_type`: `importance_problem_effort`, `advantage_problem_solution`, `background_problem_response`
+    - `reviewDocument.meta.topic_type`: `importance_problem_effort`, `advantage_problem_solution`, `background_problem_response`
+    - `reviewDocument.approved_topic_seed.expected_question_type`: `importance_problem_effort`, `advantage_problem_solution`, `background_problem_response`
+    - `reviewDocument.meta.difficulty`: 숫자형 난이도 원천값 (`4`, `5`, `6` 등)
     - `reviewStatus`: `검수 대기`, `검수 중`, `보류`, `검수 완료`, `수정 필요`
     - `operationStatus`: `미지정`, `노출 후보`, `숨김 후보`, `운영 제외`
     - `validationStatus`: `정상`, `주의`, `재검토`

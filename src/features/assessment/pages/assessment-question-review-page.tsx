@@ -21,14 +21,13 @@ import {
   updateAssessmentQuestionReviewMemoSafe,
   updateAssessmentQuestionReviewStatusSafe
 } from '../api/assessment-question-bank-service';
+import { getAssessmentQuestionRubric } from '../model/assessment-question-prompt-fixture';
 import {
   getReviewStatusColor,
   getValidationStatusColor
 } from '../model/assessment-question-bank-schema';
 import {
-  getQuestionInstructionLabel,
-  getQuestionInstructionText,
-  getQuestionSourceSummary
+  getQuestionText
 } from '../model/assessment-question-bank-presenter';
 import type {
   AssessmentQuestion,
@@ -63,13 +62,6 @@ type ReviewActionCopy = {
   reasonPlaceholder: string;
 };
 
-type ReviewSourceCard = {
-  key: string;
-  source: string;
-  unit: string;
-  detail?: string;
-};
-
 type ReviewCriterionCard = {
   key: string;
   title: string;
@@ -88,22 +80,34 @@ type ReviewHistoryCard = {
 
 type ReviewDescriptionItem = NonNullable<DescriptionsProps['items']>[number];
 
+type ReviewProfileKey = '51-52' | '53' | '54';
+
 type ReviewViewModel = {
   title: string;
-  instructionLabel: string;
   instructionText: string;
-  domainLabel: string;
-  typeLabel: string;
-  difficultyText: string;
-  sourceCards: ReviewSourceCard[];
-  keyMeaningLabel: string;
-  keyMeaning: string;
+  sourceText: string;
+  coreMeaningLabel: string;
+  coreMeaningText: string;
   keyIssueLabel: string;
-  keyIssue: string;
+  keyIssueText: string;
+  questionPromptIntro?: string;
   modelAnswer: string;
   criteria: ReviewCriterionCard[];
   history: ReviewHistoryCard[];
 };
+
+function getDisplayText(value: string | null | undefined): string {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : '-';
+}
+
+function renderDescriptionParagraph(value: string | null | undefined): JSX.Element {
+  return (
+    <Paragraph className="assessment-review-page__description-paragraph">
+      {getDisplayText(value)}
+    </Paragraph>
+  );
+}
 
 const REVIEW_ACTION_COPY_BY_STATUS: Record<
   ReviewActionableStatus,
@@ -148,85 +152,37 @@ function buildQuestionBankListHref(search: string): string {
   return nextSearch ? `/assessment/question-bank?${nextSearch}` : '/assessment/question-bank';
 }
 
-function buildReviewSourceCards(
-  reviewDocument: AssessmentQuestionReviewDocument | null,
-  question: AssessmentQuestion
-): ReviewSourceCard[] {
-  if (!reviewDocument) {
-    return [
-      {
-        key: 'legacy-source',
-        source: getQuestionSourceSummary(question),
-        unit: question.content.kind === '53' ? '그래프형 자료' : '-',
-        detail:
-          question.content.kind === '53'
-            ? question.content.sourceSummary
-            : undefined
-      }
-    ];
-  }
-
-  const sourceCards = [
-    {
-      key: 'chart-a',
-      source: reviewDocument.chart_a.survey_org || '-',
-      unit: reviewDocument.chart_a.unit || '-',
-      detail:
-        [reviewDocument.chart_a.chart_type, reviewDocument.chart_a.title]
-          .filter(Boolean)
-          .join(' · ') || undefined
-    },
-    {
-      key: 'chart-b',
-      source: reviewDocument.chart_b.survey_org || '-',
-      unit: reviewDocument.chart_b.unit || '-',
-      detail:
-        [reviewDocument.chart_b.chart_type, reviewDocument.chart_b.title]
-          .filter(Boolean)
-          .join(' · ') || undefined
-    }
-  ].filter((card) => card.source !== '-' || card.unit !== '-' || card.detail);
-
-  return sourceCards.length > 0
-    ? sourceCards
-    : [
-      {
-        key: 'chart-fallback',
-        source: '-',
-        unit: '-'
-      }
-    ];
-}
-
 function buildReviewCriteria(
   reviewDocument: AssessmentQuestionReviewDocument | null,
   question: AssessmentQuestion
 ): ReviewCriterionCard[] {
-  if (!reviewDocument) {
-    return question.scoringCriteria.map((criterion, index) => ({
-      key: `criterion-${index + 1}`,
-      title: `기준 ${index + 1}`,
-      body: criterion
-    }));
+  const rubric = reviewDocument?.rubric ?? getAssessmentQuestionRubric(question.questionId);
+
+  if (rubric) {
+    return [
+      {
+        key: 'content',
+        title: '내용',
+        body: rubric.content
+      },
+      {
+        key: 'language',
+        title: '언어',
+        body: rubric.language
+      },
+      {
+        key: 'structure',
+        title: '구성',
+        body: rubric.structure
+      }
+    ];
   }
 
-  return [
-    {
-      key: 'content',
-      title: '내용',
-      body: reviewDocument.rubric.content
-    },
-    {
-      key: 'language',
-      title: '언어',
-      body: reviewDocument.rubric.language
-    },
-    {
-      key: 'structure',
-      title: '구성',
-      body: reviewDocument.rubric.structure
-    }
-  ];
+  return question.scoringCriteria.map((criterion, index) => ({
+    key: `criterion-${index + 1}`,
+    title: `기준 ${index + 1}`,
+    body: criterion
+  }));
 }
 
 function buildReviewHistory(
@@ -286,20 +242,12 @@ function buildReviewHistoryDescriptionItems(
     {
       key: 'reviewerMemo',
       label: '검수자 메모',
-      children: (
-        <Paragraph className="assessment-review-page__description-paragraph">
-          {item.reviewerMemo || '-'}
-        </Paragraph>
-      )
+      children: renderDescriptionParagraph(item.reviewerMemo)
     },
     {
       key: 'reflectedReview',
       label: '반영 리뷰',
-      children: (
-        <Paragraph className="assessment-review-page__description-paragraph">
-          {item.reflectedReview || '-'}
-        </Paragraph>
-      )
+      children: renderDescriptionParagraph(item.reflectedReview)
     },
     {
       key: 'changedFields',
@@ -330,16 +278,15 @@ function buildReviewViewModel(question: AssessmentQuestion): ReviewViewModel {
   if (!reviewDocument) {
     return {
       title: question.topic,
-      instructionLabel: getQuestionInstructionLabel(question),
-      instructionText: getQuestionInstructionText(question),
-      domainLabel: question.domain,
-      typeLabel: question.questionTypeLabel,
-      difficultyText: question.difficultyLevel,
-      sourceCards: buildReviewSourceCards(null, question),
-      keyMeaningLabel: '핵심 의미',
-      keyMeaning: question.coreMeaning,
+      instructionText:
+        question.content.kind === '53' || question.content.kind === '54'
+          ? getQuestionText(question)
+          : '',
+      sourceText: '',
+      coreMeaningLabel: '핵심 의미',
+      coreMeaningText: question.coreMeaning,
       keyIssueLabel: '핵심 문제',
-      keyIssue: question.keyIssue,
+      keyIssueText: question.keyIssue,
       modelAnswer: question.modelAnswer,
       criteria: buildReviewCriteria(null, question),
       history: buildReviewHistory(null, question)
@@ -348,104 +295,194 @@ function buildReviewViewModel(question: AssessmentQuestion): ReviewViewModel {
 
   return {
     title: reviewDocument.approved_topic_seed.topic_seed_title,
-    instructionLabel: '지시문',
-    instructionText: reviewDocument.prompt_text,
-    domainLabel: question.domain,
-    typeLabel: question.questionTypeLabel,
-    difficultyText: question.difficultyLevel,
-    sourceCards: buildReviewSourceCards(reviewDocument, question),
-    keyMeaningLabel: reviewDocument.context_notes.row1_label || '핵심 의미',
-    keyMeaning: reviewDocument.context_notes.row1_value,
+    instructionText:
+      question.content.kind === '53' || question.content.kind === '54'
+        ? reviewDocument.prompt_text
+        : '',
+    sourceText: '',
+    coreMeaningLabel: reviewDocument.context_notes.row1_label || '핵심 의미',
+    coreMeaningText:
+      reviewDocument.context_notes.row1_value || question.coreMeaning,
     keyIssueLabel: reviewDocument.context_notes.row2_label || '핵심 문제',
-    keyIssue: reviewDocument.context_notes.row2_value,
+    keyIssueText: reviewDocument.context_notes.row2_value || question.keyIssue,
+    questionPromptIntro:
+      reviewDocument.approved_topic_seed.shared_context || question.content.learnerPrompt,
     modelAnswer: reviewDocument.model_answer,
     criteria: buildReviewCriteria(reviewDocument, question),
     history: buildReviewHistory(reviewDocument, question)
   };
 }
 
-function buildUnifiedQuestionSpecificDescriptionItems(
-  question: AssessmentQuestion
+function getReviewProfileKey(question: AssessmentQuestion): ReviewProfileKey {
+  if (question.content.kind === '53') {
+    return '53';
+  }
+
+  if (question.content.kind === '54') {
+    return '54';
+  }
+
+  return '51-52';
+}
+
+function getQuestionFormText(question: AssessmentQuestion): string {
+  if (question.reviewDocument) {
+    return '53형';
+  }
+
+  const profileKey = getReviewProfileKey(question);
+
+  if (profileKey === '51-52') {
+    return '51·52 공통형';
+  }
+
+  if (profileKey === '53') {
+    return '53형';
+  }
+
+  return '54형';
+}
+
+function buildCriteriaContent(criteria: ReviewCriterionCard[]): JSX.Element {
+  if (criteria.length === 0) {
+    return renderDescriptionParagraph('');
+  }
+
+  return (
+    <div className="assessment-review-page__criteria-grid">
+      {criteria.map((criterion) => (
+        <div key={criterion.key} className="assessment-review-page__criteria-card">
+          <Text strong>{criterion.title}</Text>
+          <Paragraph className="assessment-review-page__criteria-body">
+            {criterion.body}
+          </Paragraph>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function buildSharedDescriptionItems(
+  question: AssessmentQuestion,
+  reviewView: ReviewViewModel
 ): ReviewDescriptionItem[] {
+  return [
+    {
+      key: 'questionNumber',
+      label: '문항 번호',
+      children: getDisplayText(question.questionNumber)
+    },
+    {
+      key: 'questionTopic',
+      label: '문항 주제',
+      children: getDisplayText(reviewView.title)
+    },
+    {
+      key: 'questionForm',
+      label: '문항 형태',
+      children: getDisplayText(getQuestionFormText(question))
+    },
+    {
+      key: 'questionId',
+      label: '문항 ID',
+      children: getDisplayText(question.questionId)
+    },
+    {
+      key: 'instruction',
+      label: '문항 지시문',
+      span: 2,
+      children: renderDescriptionParagraph(reviewView.instructionText)
+    }
+  ];
+}
+
+function buildCommonReviewDescriptionItems(
+  reviewView: ReviewViewModel
+): ReviewDescriptionItem[] {
+  return [
+    {
+      key: 'source',
+      label: '출처',
+      span: 2,
+      children: renderDescriptionParagraph(reviewView.sourceText)
+    },
+    {
+      key: 'coreMeaning',
+      label: reviewView.coreMeaningLabel,
+      children: renderDescriptionParagraph(reviewView.coreMeaningText)
+    },
+    {
+      key: 'keyIssue',
+      label: reviewView.keyIssueLabel,
+      children: renderDescriptionParagraph(reviewView.keyIssueText)
+    },
+    {
+      key: 'modelAnswer',
+      label: '모범답안',
+      span: 2,
+      children: renderDescriptionParagraph(reviewView.modelAnswer)
+    },
+    {
+      key: 'criteria',
+      label: '채점 기준',
+      span: 2,
+      children: buildCriteriaContent(reviewView.criteria)
+    }
+  ];
+}
+
+function buildReviewDescriptionItems(
+  question: AssessmentQuestion,
+  reviewView: ReviewViewModel
+): ReviewDescriptionItem[] {
+  const sharedItems = buildSharedDescriptionItems(question, reviewView);
+  const commonItems = buildCommonReviewDescriptionItems(reviewView);
+
   if (question.content.kind === '51' || question.content.kind === '52') {
     return [
+      ...sharedItems,
       {
-        key: 'choices',
-        label: '보기',
+        key: 'reviewPassage',
+        label: '문항',
         span: 2,
         children: (
-          <ol style={{ margin: 0, paddingLeft: 20 }}>
-            {question.content.choices.map((choice) => (
-              <li key={choice}>
-                <Text
-                  className={
-                    choice === question.content.answer
-                      ? 'assessment-review-page__choice-answer'
-                      : undefined
-                  }
-                >
-                  {choice}
-                </Text>
-              </li>
-            ))}
-          </ol>
+          <div className="assessment-review-page__highlight-panel">
+            {renderDescriptionParagraph(getQuestionText(question))}
+          </div>
         )
-      }
+      },
+      ...commonItems
     ];
   }
 
   if (question.content.kind === '53') {
-    return [
-      {
-        key: 'chartTitle',
-        label: '자료 제목',
-        children: question.content.chartTitle
-      },
-      {
-        key: 'sourceSummary',
-        label: '자료 설명',
-        children: question.content.sourceSummary
-      },
-      {
-        key: 'keyFigures',
-        label: '핵심 수치',
-        span: 2,
-        children: (
-          <ul style={{ margin: 0, paddingLeft: 20 }}>
-            {question.content.keyFigures.map((figure) => (
-              <li key={figure}>{figure}</li>
-            ))}
-          </ul>
-        )
-      }
-    ];
+    return [...sharedItems, ...commonItems];
   }
 
   return [
+    ...sharedItems,
     {
-      key: 'topicPrompt',
-      label: '논제',
+      key: 'questionPrompt',
+      label: '문항 질문',
       span: 2,
-      children: question.content.topicPrompt
-    },
-    {
-      key: 'conditionLines',
-      label: '조건',
-      span: 2,
-      children: (
-        <ul style={{ margin: 0, paddingLeft: 20 }}>
-          {question.content.conditionLines.map((line) => (
-            <li key={line}>{line}</li>
-          ))}
-        </ul>
-      )
-    },
-    {
-      key: 'outlineGuide',
-      label: '개요 가이드',
-      span: 2,
-      children: question.content.outlineGuide
-    }
+        children: (
+          <div className="assessment-review-page__description-stack">
+            {renderDescriptionParagraph(
+              reviewView.questionPromptIntro ?? question.content.learnerPrompt
+            )}
+          <ol className="assessment-review-page__ordered-list">
+            {question.content.conditionLines.map((line) => (
+              <li key={line}>
+                <Text className="assessment-review-page__description-paragraph">
+                  {getDisplayText(line)}
+                </Text>
+              </li>
+            ))}
+          </ol>
+          </div>
+        )
+      },
+    ...commonItems
   ];
 }
 
@@ -670,124 +707,7 @@ export default function AssessmentQuestionReviewPage(): JSX.Element {
                     size="small"
                     column={descriptionColumn}
                     className="assessment-review-page__descriptions"
-                    items={[
-                      {
-                        key: 'questionNumber',
-                        label: '문항 번호',
-                        children: `#${question.questionNumber}`
-                      },
-                      {
-                        key: 'questionMeta',
-                        label: '문항 분류',
-                        children: [
-                          reviewView.domainLabel,
-                          reviewView.typeLabel,
-                          reviewView.difficultyText
-                        ].join(' · ')
-                      },
-                      {
-                        key: 'reviewStatus',
-                        label: '상태',
-                        children: (
-                          <Space
-                            wrap
-                            size={8}
-                            className="assessment-review-page__description-meta"
-                          >
-                            <Tag color={getReviewStatusColor(question.reviewStatus)}>
-                              {question.reviewStatus}
-                            </Tag>
-                            <Tag color={getValidationStatusColor(question.validationStatus)}>
-                              {question.validationStatus}
-                            </Tag>
-                          </Space>
-                        )
-                      },
-                      {
-                        key: 'questionId',
-                        label: '문항 ID',
-                        children: question.questionId
-                      },
-                      {
-                        key: 'questionTitle',
-                        label: '문항 제목',
-                        span: 2,
-                        children: reviewView.title
-                      },
-                      {
-                        key: 'instruction',
-                        label: reviewView.instructionLabel,
-                        span: 2,
-                        children: (
-                          <Paragraph className="assessment-review-page__description-paragraph">
-                            {reviewView.instructionText}
-                          </Paragraph>
-                        )
-                      },
-                      ...buildUnifiedQuestionSpecificDescriptionItems(question),
-                      ...reviewView.sourceCards.map((sourceCard, index) => ({
-                        key: sourceCard.key,
-                        label:
-                          reviewView.sourceCards.length === 1
-                            ? '출처 / 단위'
-                            : `출처 / 단위 ${index + 1}`,
-                        span: 2,
-                        children: (
-                          <div className="assessment-review-page__description-stack">
-                            <Text>{sourceCard.source}</Text>
-                            <Text type="secondary">단위: {sourceCard.unit}</Text>
-                            {sourceCard.detail ? (
-                              <Text
-                                type="secondary"
-                                className="assessment-review-page__source-detail"
-                              >
-                                {sourceCard.detail}
-                              </Text>
-                            ) : null}
-                          </div>
-                        )
-                      })),
-                      {
-                        key: 'keyMeaning',
-                        label: reviewView.keyMeaningLabel,
-                        children: reviewView.keyMeaning
-                      },
-                      {
-                        key: 'keyIssue',
-                        label: reviewView.keyIssueLabel,
-                        children: reviewView.keyIssue
-                      },
-                      {
-                        key: 'modelAnswer',
-                        label: '모범답안',
-                        span: 2,
-                        children: (
-                          <Paragraph className="assessment-review-page__description-paragraph">
-                            {reviewView.modelAnswer}
-                          </Paragraph>
-                        )
-                      },
-                      {
-                        key: 'criteria',
-                        label: '채점기준',
-                        span: 2,
-                        children: (
-                          <div className="assessment-review-page__criteria-list">
-                            {reviewView.criteria.map((criterion) => (
-                              <div
-                                key={criterion.key}
-                                className="assessment-review-page__criteria-item"
-                              >
-                                <Text strong>{criterion.title}</Text>
-                                <Paragraph className="assessment-review-page__description-paragraph">
-                                  {criterion.body}
-                                </Paragraph>
-                              </div>
-                            ))}
-                          </div>
-                        )
-                      }
-                    ]}
+                    items={buildReviewDescriptionItems(question, reviewView)}
                   />
 
                   <div className="assessment-review-page__history-section">
@@ -835,13 +755,26 @@ export default function AssessmentQuestionReviewPage(): JSX.Element {
                 <Card
                   className="assessment-review-page__memo-card"
                   title="검수 메모"
-                  extra={
-                    <Text type="secondary">검수자 {question.reviewerName}</Text>
-                  }
                 >
                   <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                    <div className="assessment-review-page__reviewer-meta">
+                      <Text type="secondary">검수자</Text>
+                      <Text strong>{getDisplayText(question.reviewerName)}</Text>
+                    </div>
+                    <Space
+                      wrap
+                      size={8}
+                      className="assessment-review-page__description-meta"
+                    >
+                      <Tag color={getReviewStatusColor(question.reviewStatus)}>
+                        {question.reviewStatus}
+                      </Tag>
+                      <Tag color={getValidationStatusColor(question.validationStatus)}>
+                        {question.validationStatus}
+                      </Tag>
+                    </Space>
                     <Text type="secondary">
-                      JSON `review_memo`를 기준으로 수정 포인트를 보강한 뒤 상태를 결정합니다.
+                      검수 메모를 기준으로 문항 적합성 판단과 후속 조치 사유를 함께 기록합니다.
                     </Text>
                     <TextArea
                       aria-label="검수 메모 입력"
@@ -875,20 +808,20 @@ export default function AssessmentQuestionReviewPage(): JSX.Element {
                       <Button
                         size="large"
                         block
-                        onClick={() => handleRequestReviewAction('수정 필요')}
-                        loading={isSavingReviewMemo}
-                        disabled={!reviewMemoDraft.trim()}
-                      >
-                        수정 필요
-                      </Button>
-                      <Button
-                        size="large"
-                        block
                         onClick={() => handleRequestReviewAction('보류')}
                         loading={isSavingReviewMemo}
                         disabled={!reviewMemoDraft.trim()}
                       >
                         보류
+                      </Button>
+                      <Button
+                        size="large"
+                        block
+                        onClick={() => handleRequestReviewAction('수정 필요')}
+                        loading={isSavingReviewMemo}
+                        disabled={!reviewMemoDraft.trim()}
+                      >
+                        수정 필요
                       </Button>
                     </Space>
                     <Text

@@ -317,6 +317,24 @@ body {
   align-items: flex-start;
 }
 
+.assessment-question-bank-page__question-cell {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.assessment-question-bank-page__question-trigger {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.assessment-question-bank-page__question-text.ant-typography {
+  width: 100%;
+  max-width: 100%;
+}
+
 .admin-data-table--loading .ant-spin-container {
   opacity: 0.72;
   filter: saturate(0.86);
@@ -1483,6 +1501,34 @@ body {
 .assessment-review-page__choice-answer.ant-typography {
   color: #2563eb;
   font-weight: 700;
+}
+
+.assessment-review-page__highlight-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 14px;
+  background: transparent;
+}
+
+.assessment-review-page__ordered-list,
+.assessment-review-page__bullet-list {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.assessment-review-page__ordered-list li,
+.assessment-review-page__bullet-list li {
+  margin: 0;
+  padding: 0;
+}
+
+.assessment-review-page__reviewer-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .assessment-review-page__meta-pill,
