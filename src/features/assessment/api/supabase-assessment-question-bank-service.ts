@@ -3,6 +3,7 @@ import type {
   AssessmentQuestion,
   AssessmentQuestionContent,
   AssessmentQuestionDifficulty,
+  AssessmentQuestionDomain,
   AssessmentQuestionNumber,
   AssessmentQuestionReviewStatus,
   AssessmentQuestionTypeLabel
@@ -15,7 +16,8 @@ import type {
  *
  * The topik-ai AssessmentQuestion is a RICHER object than v13 problems, so many
  * fields have NO v13 source and are filled with HONEST sentinels (not fabricated):
- *   domain '미분류' (topic_category_code unset — D-B owner-ratify), questionTypeLabel
+ *   domain mapped from topic_category_code via the owner-ratified code set (D-B,
+ *   2026-06-08); '미분류' when the code is null/unknown. questionTypeLabel
  *   derived from the question number (TOPIK form is fixed by number), difficultyLevel
  *   '미상' for null, operationStatus '미지정' (lifecycle_status not applied yet),
  *   validationStatus '미검증', sourceType '미상', usage counts 0, generation/review
@@ -75,6 +77,26 @@ function mapDifficulty(d: number | null): AssessmentQuestionDifficulty {
   return '하';               // 1-2 low (D-G display bands)
 }
 
+// D-B: v13 problems.topic_category_code (SUBJECT axis, owner-ratified 2026-06-08) ->
+// topik-ai domain label. 'uncategorized'/null/unknown -> '미분류' (honest fallback,
+// not fabricated). This is the SUBJECT category, distinct from problems.domain (the
+// skill area: reading/listening/writing).
+const TOPIC_CATEGORY_LABEL: Record<string, AssessmentQuestionDomain> = {
+  life: '생활',
+  study: '학습',
+  society: '사회',
+  culture: '문화',
+  economy: '경제',
+  education: '교육',
+  environment: '환경',
+  technology: '기술',
+  uncategorized: '미분류'
+};
+
+function mapDomain(code: string | null): AssessmentQuestionDomain {
+  return (code && TOPIC_CATEGORY_LABEL[code]) || '미분류';
+}
+
 function toDateTime(ts: string | null): string {
   return ts ? ts.slice(0, 16).replace('T', ' ') : '';
 }
@@ -113,7 +135,7 @@ function mapRow(row: ProblemRow): AssessmentQuestion {
     questionNumber: kind,
     topic: row.title ?? '',
     questionText: prompt,
-    domain: '미분류',
+    domain: mapDomain(row.topic_category_code),
     questionTypeLabel: TYPE_LABEL_BY_NUMBER[kind] ?? '빈칸 완성',
     difficultyLevel: mapDifficulty(row.difficulty),
     sourceType: '미상',
