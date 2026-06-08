@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 export type PaymentStatus = '완료' | '취소' | '환불';
-export type PaymentMethod = '카드' | '계좌이체' | '간편결제';
+export type PaymentMethod = '카드' | '계좌이체' | '간편결제' | '미확인';
 export type RefundStatus = '처리 대기' | '승인' | '거절';
 
 export type PaymentRow = {

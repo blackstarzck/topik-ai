@@ -1,15 +1,19 @@
 import {
+  Alert,
   Button,
   Space,
   Typography,
   notification
 } from 'antd';
 import type { TableColumnsType } from 'antd';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import { useCommerceStore } from '../model/commerce-store';
 import type { RefundRow, RefundStatus } from '../model/commerce-store';
+import { fetchRefundsSafe } from '../api/billing-service';
+import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
+import type { AsyncState } from '../../../shared/model/async-state';
 import { getMockUserById } from '../../users/api/mock-users';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
@@ -70,9 +74,35 @@ function getRefundUserName(record: Pick<RefundRow, 'userId' | 'userNickname'>): 
 }
 
 export default function BillingRefundsPage(): JSX.Element {
-  const refunds = useCommerceStore((state) => state.refunds);
   const approveRefund = useCommerceStore((state) => state.approveRefund);
   const rejectRefund = useCommerceStore((state) => state.rejectRefund);
+  const [refundsState, setRefundsState] = useState<AsyncState<RefundRow[]>>({
+    status: 'pending',
+    data: [],
+    errorMessage: null,
+    errorCode: null
+  });
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetchRefundsSafe(controller.signal).then((result) => {
+      if (controller.signal.aborted) return;
+      if (result.ok) {
+        setRefundsState({
+          status: result.data.length === 0 ? 'empty' : 'success',
+          data: result.data,
+          errorMessage: null,
+          errorCode: null
+        });
+      } else {
+        setRefundsState((prev) => ({ ...prev, status: 'error', errorMessage: result.error.message, errorCode: result.error.code }));
+      }
+    });
+    return () => controller.abort();
+  }, [reloadKey]);
+
+  const refunds = refundsState.data;
   const [searchParams, setSearchParams] = useSearchParams();
   const searchField = searchParams.get('searchField') ?? 'all';
   const keyword = searchParams.get('keyword') ?? '';
@@ -228,6 +258,7 @@ export default function BillingRefundsPage(): JSX.Element {
         )
       });
 
+      setReloadKey((key) => key + 1);
       setPendingAction(null);
     },
     [approveRefund, pendingAction, rejectRefund]
@@ -302,7 +333,7 @@ export default function BillingRefundsPage(): JSX.Element {
         key: 'actions',
         width: 180,
         render: (_, record) =>
-          record.status === '처리 대기' ? (
+          record.status === '처리 대기' && !isSupabaseConfigured ? (
             <Space onClick={(event) => event.stopPropagation()}>
               <Button type="link" onClick={() => setPendingAction({ type: 'approve', refund: record })}>
                 승인
@@ -328,6 +359,23 @@ export default function BillingRefundsPage(): JSX.Element {
   return (
     <div>
       <PageTitle title="환불 관리" />
+      {refundsState.status === 'error' ? (
+        <Alert
+          type="error"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message="환불 내역을 불러오지 못했습니다."
+          description={refundsState.errorMessage ?? ''}
+        />
+      ) : null}
+      {isSupabaseConfigured ? (
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message="읽기 전용: 연동된 결제 환불 내역입니다. 승인/거절 처리는 비활성화되어 있습니다."
+        />
+      ) : null}
       <ListSummaryCards items={refundSummaryCards} />
 
       <AdminListCard

@@ -1,10 +1,11 @@
-import { Typography } from 'antd';
+import { Alert, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
-import { useCommerceStore } from '../model/commerce-store';
-import type { PaymentRow, PaymentStatus } from '../model/commerce-store';
+import type { PaymentRow, PaymentStatus, RefundRow } from '../model/commerce-store';
+import { fetchPaymentsSafe, fetchRefundsSafe } from '../api/billing-service';
+import type { AsyncState } from '../../../shared/model/async-state';
 import { getMockUserById } from '../../users/api/mock-users';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
@@ -55,8 +56,50 @@ function getPaymentUserName(record: Pick<PaymentRow, 'userId' | 'userNickname'>)
 }
 
 export default function BillingPaymentsPage(): JSX.Element {
-  const payments = useCommerceStore((state) => state.payments);
-  const refunds = useCommerceStore((state) => state.refunds);
+  const [paymentsState, setPaymentsState] = useState<AsyncState<PaymentRow[]>>({
+    status: 'pending',
+    data: [],
+    errorMessage: null,
+    errorCode: null
+  });
+  const [refundsState, setRefundsState] = useState<AsyncState<RefundRow[]>>({
+    status: 'pending',
+    data: [],
+    errorMessage: null,
+    errorCode: null
+  });
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetchPaymentsSafe(controller.signal).then((result) => {
+      if (controller.signal.aborted) return;
+      if (result.ok) {
+        setPaymentsState({
+          status: result.data.length === 0 ? 'empty' : 'success',
+          data: result.data,
+          errorMessage: null,
+          errorCode: null
+        });
+      } else {
+        setPaymentsState((prev) => ({ ...prev, status: 'error', errorMessage: result.error.message, errorCode: result.error.code }));
+      }
+    });
+    void fetchRefundsSafe(controller.signal).then((result) => {
+      if (controller.signal.aborted) return;
+      if (result.ok) {
+        setRefundsState({
+          status: result.data.length === 0 ? 'empty' : 'success',
+          data: result.data,
+          errorMessage: null,
+          errorCode: null
+        });
+      }
+    });
+    return () => controller.abort();
+  }, []);
+
+  const payments = paymentsState.data;
+  const refunds = refundsState.data;
   const [searchParams, setSearchParams] = useSearchParams();
   const searchField = searchParams.get('searchField') ?? 'all';
   const startDate = parseSearchDate(searchParams.get('startDate'));
@@ -244,6 +287,15 @@ export default function BillingPaymentsPage(): JSX.Element {
   return (
     <div>
       <PageTitle title="결제 내역" />
+      {paymentsState.status === 'error' ? (
+        <Alert
+          type="error"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message="결제 내역을 불러오지 못했습니다."
+          description={paymentsState.errorMessage ?? ''}
+        />
+      ) : null}
       <ListSummaryCards items={paymentSummaryCards} />
 
       <AdminListCard
