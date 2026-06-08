@@ -1,5 +1,5 @@
 import type { UserStatus, UserSummary } from '../model/types';
-import { mockUsers } from './mock-users';
+import { getMockUserById, mockUsers } from './mock-users';
 import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
 import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
 import { loadUsersFromSupabase, setUserStatusViaRpc } from './supabase-users-service';
@@ -53,5 +53,16 @@ export function setUserStatusSafe(userId: string, nextStatus: UserStatus) {
     if (isSupabaseConfigured) {
       await setUserStatusViaRpc(userId, nextStatus);
     }
+  });
+}
+
+/** Detail read — single member. Real directory lookup when connected, else mock. */
+export function fetchUserByIdSafe(userId: string, signal?: AbortSignal) {
+  return toSafeResult(async () => {
+    if (isSupabaseConfigured) {
+      const users = await loadUsersFromSupabase(signal);
+      return users.find((item) => item.id === userId) ?? null;
+    }
+    return getMockUserById(userId) ?? null;
   });
 }

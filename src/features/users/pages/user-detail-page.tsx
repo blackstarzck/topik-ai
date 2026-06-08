@@ -5,6 +5,7 @@ import {
   Empty,
   notification,
   Space,
+  Spin,
   Table,
   Tabs,
   Typography
@@ -13,8 +14,10 @@ import type { TableColumnsType, TabsProps } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 
-import { getMockUserById } from '../api/mock-users';
-import type { UserStatus } from '../model/types';
+import { fetchUserByIdSafe, setUserStatusSafe } from '../api/users-service';
+import type { UserStatus, UserSummary } from '../model/types';
+import type { AsyncState } from '../../../shared/model/async-state';
+import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
@@ -102,12 +105,43 @@ export default function UserDetailPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
   const [notificationApi, notificationContextHolder] = notification.useNotification();
 
-  const user = useMemo(() => getMockUserById(userId), [userId]);
+  const [userState, setUserState] = useState<AsyncState<UserSummary | null>>({
+    status: 'pending',
+    data: null,
+    errorMessage: null,
+    errorCode: null
+  });
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [detailModalState, setDetailModalState] = useState<DetailModalState>(null);
-  const [currentStatus, setCurrentStatus] = useState<UserStatus>(
-    user?.status ?? '정상'
-  );
+  const [currentStatus, setCurrentStatus] = useState<UserStatus>('정상');
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setUserState((prev) => ({ ...prev, status: 'pending', errorMessage: null, errorCode: null }));
+    void fetchUserByIdSafe(userId, controller.signal).then((result) => {
+      if (controller.signal.aborted) {
+        return;
+      }
+      if (result.ok) {
+        setUserState({
+          status: result.data ? 'success' : 'empty',
+          data: result.data,
+          errorMessage: null,
+          errorCode: null
+        });
+        return;
+      }
+      setUserState((prev) => ({
+        ...prev,
+        status: 'error',
+        errorMessage: result.error.message,
+        errorCode: result.error.code
+      }));
+    });
+    return () => controller.abort();
+  }, [userId]);
+
+  const user = userState.data ?? undefined;
 
   useEffect(() => {
     if (!user) {
@@ -157,6 +191,29 @@ export default function UserDetailPage(): JSX.Element {
       }
 
       const meta = actionMeta[pendingAction];
+
+      // withdraw(탈퇴) write stays blocked pending the owner's decision (D-F);
+      // the server rejects 'deleted' too.
+      if (pendingAction === 'withdraw') {
+        notificationApi.warning({
+          message: '탈퇴 처리는 현재 비활성화되어 있습니다',
+          description: '탈퇴(withdraw) 처리는 정책 확정 전까지 차단됩니다 (D-F).'
+        });
+        setPendingAction(null);
+        return;
+      }
+
+      // Persist via the audited RPC (admin_set_user_status). Mock mode = no-op success.
+      const result = await setUserStatusSafe(user.id, meta.nextStatus);
+      if (!result.ok) {
+        notificationApi.error({
+          message: `${meta.title} 실패`,
+          description: result.error.message
+        });
+        setPendingAction(null);
+        return;
+      }
+
       setCurrentStatus(meta.nextStatus);
       notificationApi.success({
         message: `${meta.title} 완료`,
@@ -642,10 +699,23 @@ export default function UserDetailPage(): JSX.Element {
     ]
   );
 
+  if (userState.status === 'pending') {
+    return (
+      <Card>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
+          <Spin />
+        </div>
+      </Card>
+    );
+  }
+
   if (!user) {
     return (
       <Card>
-        <Empty description="회원 정보를 찾을 수 없습니다." image={Empty.PRESENTED_IMAGE_SIMPLE}>
+        <Empty
+          description={userState.errorMessage ?? '회원 정보를 찾을 수 없습니다.'}
+          image={Empty.PRESENTED_IMAGE_SIMPLE}
+        >
           <Link to="/users">Users 목록으로 이동</Link>
         </Empty>
       </Card>
@@ -676,7 +746,16 @@ export default function UserDetailPage(): JSX.Element {
               >
                 {isAccountSuspended ? '정지 해제' : '계정 정지'}
               </Button>
-              <Button danger onClick={() => setPendingAction('withdraw')}>
+              <Button
+                danger
+                disabled={isSupabaseConfigured || pendingAction !== null}
+                title={
+                  isSupabaseConfigured
+                    ? '탈퇴 처리는 정책 확정 전까지 비활성화됩니다 (D-F)'
+                    : undefined
+                }
+                onClick={() => setPendingAction('withdraw')}
+              >
                 탈퇴 처리
               </Button>
               <AuditLogLink targetType="Users" targetId={user.id} />

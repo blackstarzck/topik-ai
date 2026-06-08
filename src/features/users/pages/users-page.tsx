@@ -13,7 +13,7 @@ import {
 import type { TableColumnsType } from 'antd';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
-import { fetchUsersSafe } from '../api/users-service';
+import { fetchUsersSafe, setUserStatusSafe } from '../api/users-service';
 import {
   defaultUsersQuery,
   useUsersQueryStore
@@ -277,6 +277,18 @@ export default function UsersPage(): JSX.Element {
         actionState.type === 'suspend' ? '정지' : '정상';
       const actionLabel =
         actionState.type === 'suspend' ? '회원 정지' : '회원 정지 해제';
+
+      // Phase B: persist via the audited RPC (admin_set_user_status). Real actor +
+      // permission enforced server-side; mock mode is a no-op success.
+      const result = await setUserStatusSafe(actionState.user.id, nextStatus);
+      if (!result.ok) {
+        notificationApi.error({
+          message: `${actionLabel} 실패`,
+          description: result.error.message
+        });
+        setActionState(null);
+        return;
+      }
 
       setUsersState((prev) => {
         const nextData = prev.data.map((item) =>
