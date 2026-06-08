@@ -15,9 +15,12 @@ export type AssessmentQuestionOperationStatus =
   | '숨김 후보'
   | '운영 제외';
 
-export type AssessmentQuestionValidationStatus = '정상' | '주의' | '재검토';
+// '미검증' (unverified) is the admin-integration sentinel for v13 problems that
+// have no validation source yet (Phase C — PROPOSED, owner-ratify later).
+export type AssessmentQuestionValidationStatus = '정상' | '주의' | '재검토' | '미검증';
 
-export type AssessmentQuestionSourceType = 'AI 자동 생성';
+// '미상' = source unknown (v13 problems do not surface a generation source).
+export type AssessmentQuestionSourceType = 'AI 자동 생성' | '미상';
 export type AssessmentQuestionDomain =
   | '생활'
   | '학습'
@@ -26,13 +29,15 @@ export type AssessmentQuestionDomain =
   | '경제'
   | '교육'
   | '환경'
-  | '기술';
+  | '기술'
+  | '미분류';
 export type AssessmentQuestionTypeLabel =
   | '빈칸 완성'
   | '연결 표현'
   | '자료 설명'
   | '의견 서술';
-export type AssessmentQuestionDifficulty = '상' | '중' | '하';
+// '미상' = difficulty unknown (v13 problems.difficulty is null for some rows).
+export type AssessmentQuestionDifficulty = '상' | '중' | '하' | '미상';
 
 export type AssessmentQuestionRevisionHistoryItem = {
   id: string;

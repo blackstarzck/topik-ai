@@ -1,5 +1,7 @@
 import { AppApiError } from '../../../shared/api/api-error';
 import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
+import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
+import { loadAssessmentQuestionsFromSupabase } from './supabase-assessment-question-bank-service';
 import { useAssessmentQuestionBankStore } from '../model/assessment-question-bank-store';
 import type {
   AssessmentQuestion,
@@ -59,6 +61,11 @@ function createQuestionNotFoundError(): AppApiError {
 }
 
 async function loadQuestions(signal?: AbortSignal): Promise<AssessmentQuestion[]> {
+  // Phase C (read-first): real v13 writing question bank when connected; mock otherwise.
+  if (isSupabaseConfigured) {
+    return loadAssessmentQuestionsFromSupabase(signal);
+  }
+
   await sleep(220, signal);
 
   return useAssessmentQuestionBankStore.getState().questions;
