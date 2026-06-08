@@ -34,6 +34,7 @@ type PermissionStore = {
   admins: AdminPermissionAssignment[];
   audits: PermissionAuditEvent[];
   setCurrentAdminId: (adminId: string) => void;
+  setSessionAdmin: (assignment: AdminPermissionAssignment | null) => void;
   grantPermissions: (payload: GrantPermissionPayload) => PermissionAuditEvent | null;
   updatePermissions: (payload: UpdatePermissionPayload) => PermissionAuditEvent | null;
   revokePermissions: (payload: RevokePermissionPayload) => PermissionAuditEvent | null;
@@ -189,6 +190,18 @@ export const usePermissionStore = create<PermissionStore>((set, get) => ({
 
     set({ currentAdminId: adminId });
   },
+  setSessionAdmin: (assignment) =>
+    set((state) => {
+      // Auth (Phase A) injects/replaces a synthetic session admin so the existing
+      // shell menu gating resolves from the real v13 role. null = mock fallback.
+      if (!assignment) {
+        const fallback = state.admins[0]?.adminId ?? state.currentAdminId;
+        return { currentAdminId: fallback };
+      }
+
+      const others = state.admins.filter((item) => item.adminId !== assignment.adminId);
+      return { admins: [assignment, ...others], currentAdminId: assignment.adminId };
+    }),
   grantPermissions: (payload) => {
     const target = get().admins.find((item) => item.adminId === payload.adminId);
     if (!target) {

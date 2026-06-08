@@ -3,6 +3,7 @@ import koKR from 'antd/locale/ko_KR';
 import { BrowserRouter } from 'react-router-dom';
 
 import { AppRouter } from './router/app-router';
+import { AuthGate } from '../features/auth/ui/auth-gate';
 import { AppErrorBoundary } from '../shared/ui/error-boundary/app-error-boundary';
 import '../shared/api/http-client';
 
@@ -18,7 +19,9 @@ export function App(): JSX.Element {
       <AntApp>
         <AppErrorBoundary>
           <BrowserRouter>
-            <AppRouter />
+            <AuthGate>
+              <AppRouter />
+            </AuthGate>
           </BrowserRouter>
         </AppErrorBoundary>
       </AntApp>
