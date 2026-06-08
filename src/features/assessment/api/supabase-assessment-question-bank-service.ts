@@ -142,16 +142,17 @@ function mapRow(row: ProblemRow): AssessmentQuestion {
   };
 }
 
+const PROBLEM_COLUMNS =
+  'id, question_no, title, prompt, difficulty, review_status, review_workflow_status, ' +
+  'topic_category_code, explanation, answer_key, rubric, created_at, updated_at';
+
 export async function loadAssessmentQuestionsFromSupabase(signal?: AbortSignal): Promise<AssessmentQuestion[]> {
   if (!supabaseClient) {
     throw new Error('Supabase client not configured');
   }
   const { data, error } = await supabaseClient
     .from('problems')
-    .select(
-      'id, question_no, title, prompt, difficulty, review_status, review_workflow_status, ' +
-        'topic_category_code, explanation, answer_key, rubric, created_at, updated_at'
-    )
+    .select(PROBLEM_COLUMNS)
     .in('question_no', [51, 52, 53, 54])
     .order('created_at', { ascending: false });
   if (signal?.aborted) {
@@ -161,4 +162,79 @@ export async function loadAssessmentQuestionsFromSupabase(signal?: AbortSignal):
     throw new Error(error.message);
   }
   return ((data ?? []) as unknown as ProblemRow[]).map(mapRow);
+}
+
+/**
+ * Phase C (write slice) — re-read a single question after a write, so the page
+ * reflects the LIVE v13 row (proves the write landed). content_admin SELECTs
+ * `problems` by id directly under RLS (same path as the bulk read, no RPC).
+ */
+export async function loadAssessmentQuestionFromSupabase(
+  questionId: string,
+  signal?: AbortSignal
+): Promise<AssessmentQuestion> {
+  if (!supabaseClient) {
+    throw new Error('Supabase client not configured');
+  }
+  const { data, error } = await supabaseClient
+    .from('problems')
+    .select(PROBLEM_COLUMNS)
+    .eq('id', questionId)
+    .maybeSingle();
+  if (signal?.aborted) {
+    throw new DOMException('Request aborted', 'AbortError');
+  }
+  if (error) {
+    throw new Error(error.message);
+  }
+  if (!data) {
+    throw new Error('문항 대상을 찾을 수 없습니다.');
+  }
+  return mapRow(data as unknown as ProblemRow);
+}
+
+// ---------------------------------------------------------------------
+// Phase C (write slice) — review status writes via the audited admin_update_problem
+// RPC (content_admin only). v13 records the real auth.uid() actor + a column diff in
+// admin_audit_logs; there are NO direct table writes and unknown patch keys are
+// ignored server-side. topik-ai's flat 5-state review workflow maps to v13's
+// review_status (FINAL curation result) + review_workflow_status (in-progress stage)
+// per D-C — no 5->3 collapse. PROPOSED ASCII codes (R2) until the owner ratifies.
+// ---------------------------------------------------------------------
+
+type ProblemReviewPatch = {
+  review_status?: string;
+  review_workflow_status: string;
+};
+
+// topik-ai review action -> v13 patch (D-C). '보류' moves ONLY the workflow stage and
+// preserves review_status (the final result) per the D-C separation; '검수 완료'/'수정
+// 필요' also set the final review_status. (검수 대기/검수 중 are not actionable from the
+// review page today but are mapped for completeness.)
+const REVIEW_STATUS_WRITE_MAP: Record<AssessmentQuestionReviewStatus, ProblemReviewPatch> = {
+  '검수 대기': { review_workflow_status: 'not_started' },
+  '검수 중': { review_workflow_status: 'in_progress' },
+  보류: { review_workflow_status: 'on_hold' },
+  '검수 완료': { review_status: 'approved', review_workflow_status: 'done' },
+  '수정 필요': { review_status: 'rejected', review_workflow_status: 'revision_requested' }
+};
+
+export async function setReviewStatusViaRpc(
+  questionId: string,
+  nextStatus: AssessmentQuestionReviewStatus
+): Promise<void> {
+  if (!supabaseClient) {
+    throw new Error('Supabase client not configured');
+  }
+  const patch = REVIEW_STATUS_WRITE_MAP[nextStatus];
+  if (!patch) {
+    throw new Error(`지원하지 않는 검수 상태입니다: ${nextStatus}`);
+  }
+  const { error } = await supabaseClient.rpc('admin_update_problem', {
+    problem_id: questionId,
+    patch
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
 }
