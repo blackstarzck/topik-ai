@@ -266,7 +266,8 @@
     - `questionTypeLabel`은 `question_no`의 TOPIK 쓰기 형식 규칙으로 파생하고, `difficultyLevel`은 `problems.difficulty` 숫자 구간으로 파생합니다.
     - `modelAnswer`는 `answer_key.text` 또는 문자열형 `answer_key`에서 읽고, `scoringCriteria`는 `problems.rubric` 배열을 문자열 배열로 매핑합니다.
     - `reviewStatus`는 `review_workflow_status`가 있으면 workflow stage를 우선하고, 없으면 `review_status`를 `검수 대기/검수 완료/수정 필요`로 매핑합니다.
-    - `reviewStatus = 검수 완료`는 검수 종료를 의미합니다. 후속 내보내기/배포 실행 위치와 파일/API 스키마는 현재 코드 source가 아니며 후속 계약에서만 확정합니다.
+    - `reviewStatus = 검수 완료`는 검수 종료를 의미하며, 운영정책 `POL-017`에 따라 상류 `TalkPik AI Service`로의 배포(API 업로드) 대상 조건입니다. `problems`는 검수 원본 SoT이고, 사용자 노출본은 상류 Writing API(`GET /api/writing/tasks`)의 작문 과제입니다. 과거 파일 내보내기 방식은 폐기되었고, 상류 업로드/upsert 엔드포인트 경로와 배포 실행 트리거는 후속 계약에서 확정합니다(`docs/architecture/admin-data-source-transition.md` §10.3, `docs/specs/topik-ai-service-api-reference.md`).
+    - 배포 연동 필드 후보(현재 `problems`/화면 모델에 없음, 후속 계약 시 추가): `reviewExportStatus`(미배포/배포됨/재배포 필요), `reviewExportedAt`, 상류 작문 과제 식별자 `publishedTaskId`. 사용자 노출본 작문 과제 모델(Writing API `GenerateProblemResponse`)과 `problems` 매핑은 `docs/architecture/admin-data-source-transition.md` §10.3를 SoT로 둡니다.
     - `reviewMemo`는 v13 `problems`에 내부 검수 메모 컬럼이 없어 현재 UI-local annotation으로만 유지됩니다. 영구 저장이 필요하면 별도 컬럼/API 계약을 먼저 확정해야 합니다.
     - `operationStatus`는 `lifecycle_status` 적용 전까지 `미지정` sentinel로만 노출하고, 운영 상태 변경 write path는 비활성화되어 있습니다. 문항 관리 페이지(`/assessment/question-bank/manage`)에는 운영 조치(노출 후보/숨김 후보/운영 제외) UI가 비활성(disabled) 스캐폴딩으로 존재하며, 확인+사유 → 감사 로그 흐름(ConfirmAction + AuditLogLink)이 코드에 미리 연결되어 있으나 `lifecycle_status` 도착 시 `OPERATION_WRITE_ENABLED` 플래그 활성화 + 서비스 un-stub로 한 번에 켜집니다. 그 전까지는 페이지 상단에 "운영 상태 관리는 준비 중입니다" 경고 Alert를 노출합니다.
     - 검수 페이지와 문항 관리 페이지는 동일한 Supabase `problems`(question_no 51-54) 조회 결과를 공유 hook으로 공유하므로, 아래 Supabase 원천 / 화면 모델 필드 매핑은 두 페이지에서 변경 없이 동일하게 적용됩니다.

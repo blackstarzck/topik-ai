@@ -9,7 +9,7 @@ status: "구현됨"
 primary_entity: "AssessmentQuestion"
 primary_table_candidate: "problems"
 owner_agent_scope: "shared"
-last_reviewed_at: "2026-06-01"
+last_reviewed_at: "2026-06-09"
 ---
 
 ## 1. 문서 목적
@@ -37,9 +37,9 @@ last_reviewed_at: "2026-06-01"
 
 ### 목적
 
-- 문항 목록 비교, 검수 메모, 검수 완료, 수정 히스토리, 후속 내보내기/배포 후보를 관리합니다.
-- Supabase `problems`의 `prompt`, `rubric`, `answer_key`, 검수 상태를 관리자 기준으로 추적합니다.
-- 시험/문제 풀이 화면 데이터 원천에 노출 예정으로 연결됩니다.
+- 문항 목록 비교, 검수 메모, 검수 완료, 수정 히스토리를 관리하고, 검수 완료 문항을 운영정책 `POL-017`에 따라 상류 서비스로 배포(API 업로드)하는 흐름의 관리자 기점입니다.
+- Supabase `problems`의 `prompt`, `rubric`, `answer_key`, 검수 상태를 관리자 기준으로 추적합니다(`problems` = 검수 원본 SoT).
+- 검수 완료 → 상류 `TalkPik AI Service` API 업로드(배포) → Writing 작문 과제(`GET /api/writing/tasks`)로 사용자에게 노출됩니다. 사용자 노출(노출/숨김) 통제는 형제 라우트인 문항 관리 페이지(`/assessment/question-bank/manage`)의 운영 상태가 담당합니다(상류 API 원문 `docs/specs/topik-ai-service-api-reference.md`).
 
 ### 비목표
 
@@ -80,7 +80,7 @@ last_reviewed_at: "2026-06-01"
 
 | 사용자 화면 후보 | 영향 상태 | 관리자 데이터 | 사용자 화면에 반영되는 방식 | 동기화 필요 시점 | 비고 |
 | --- | --- | --- | --- | --- | --- |
-| TOPIK 쓰기 시험 화면, 문제 풀이 화면, 결과/해설 화면 | 노출 예정 | `problems.prompt`, `rubric`, `answer_key`, 검수 상태 | 시험/문제 풀이 화면 데이터 원천에 노출 예정으로 연결됩니다. | 관리자 변경 후 또는 원본 데이터 갱신 후 | 실제 사용자 화면 저장소 확인 전까지 추정은 추정으로 유지 |
+| TOPIK 쓰기 시험 화면, 문제 풀이 화면, 결과/해설 화면 | 노출 예정 | `problems.prompt`, `rubric`, `answer_key`, 검수 상태 | 검수 완료 → 상류 API 업로드(배포) → Writing 작문 과제(`GET /api/writing/tasks`)로 노출. 노출/숨김은 `/manage` 운영 상태로 통제(`POL-017`). | 검수 완료 후 배포 시 또는 운영 상태 변경 후 | 상류 업로드 엔드포인트 확정 전까지 추정은 추정으로 유지 |
 
 ## 8. 이 페이지와 연관있는 페이지(예상)
 
@@ -142,4 +142,5 @@ last_reviewed_at: "2026-06-01"
 
 | 항목 | 미확정 내용 | 필요한 결정 주체 | 관리자 페이지 영향 | 사용자 화면 영향 | 추적 문서 |
 | --- | --- | --- | --- | --- | --- |
-| TOPIK 쓰기 문제은행 최종 계약 | 검수 완료 후 후속 내보내기/실제 시험 배포 API 계약은 추가 확정이 필요합니다. | 기획/백엔드/프론트 | 필터/액션/감사 로그 계약 변동 가능 | 시험/문제 풀이 화면 데이터 원천에 노출 예정으로 연결됩니다. | docs/specs/page-ia/assessment-question-bank-page-ia.md |
+| 상류 배포(업로드) 엔드포인트 | 배포 방향·대상은 `POL-017`로 확정(관리자 → 상류 Writing API 업로드). 남은 미확정은 상류 업로드/upsert 엔드포인트 경로와 배포 실행 트리거(자동 vs 별도 액션)입니다. | 기획/백엔드/프론트 | 배포 액션/감사 로그 계약 변동 가능 | 상류 Writing API(`GET /api/writing/tasks`)로 노출 | docs/specs/admin-policy-source-map.md, docs/architecture/admin-data-source-transition.md §10.3, docs/specs/topik-ai-service-api-reference.md |
+| 운영 상태 ↔ 사용자 노출 연동 | `/manage` 운영 상태(노출/숨김/운영 제외)를 상류 노출에 반영하는 연동 계약과 토글 엔드포인트가 미확정입니다(v13 `lifecycle_status` 대기). | 기획/백엔드/프론트 | 운영 조치 활성화/감사 로그 계약 | 사용자 노출 on/off | docs/specs/page-ia/assessment-question-manage-page-ia.md |

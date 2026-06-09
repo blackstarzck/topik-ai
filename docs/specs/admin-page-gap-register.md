@@ -372,12 +372,12 @@
   - `EPS TOPIK`, `레벨 테스트`는 아직 Placeholder
 - 미확정/누락/오구현
   - `TOPIK 쓰기 문제 검수`
-    - 검수 상태와 운영 상태는 분리 구현됐지만, 최종 공개/숨김 정책과 승인 체계는 아직 확정되지 않았다.
+    - 검수 상태와 운영 상태는 분리 구현됐다. 사용자 공개/숨김 통제 책임은 운영정책 `POL-017`로 문항 관리 페이지(`/assessment/question-bank/manage`) 운영 상태에 확정되었으나(`docs/specs/admin-policy-source-map.md`), 운영 상태 write 활성화(v13 `lifecycle_status` 대기)와 배포 승인 체계는 아직 미확정이다.
     - `51/52`, `53`, `54` 문항별 검수 필드는 현재 이미지 기준 공통 row + 조건부 row(`51/52`의 `문항`, `54`의 `문항 질문`) 구조로 정리되었지만, 현재 Supabase `problems` payload에는 일부 상세 필드 source가 없어 sentinel/빈 이력으로 표시한다. 장기적으로는 문제 번호별 review field profile schema를 별도 계약으로 승격할 필요가 있다.
-    - `검수 완료` 문항을 후속 내보내기/배포 대상으로 넘기는 실행 위치와 파일/API 스키마가 아직 고정되지 않았다.
+    - `검수 완료` 문항 배포의 방향·대상은 `POL-017`로 확정되었다(관리자 → 상류 `TalkPik AI Service` API 업로드 → Writing 작문 과제 `GET /api/writing/tasks`, 파일 내보내기 방식 폐기). 남은 미확정은 상류 업로드/upsert 엔드포인트 경로와 배포 실행 트리거(자동 vs 별도 액션)이며, 상류 API 원문은 `docs/specs/topik-ai-service-api-reference.md`, 전환 메모는 `docs/architecture/admin-data-source-transition.md` §10.3다.
     - `수정 히스토리`는 현재 Supabase 문제은행 조회 source가 없어 빈 이력으로 표시하며, 필드별 diff와 버전 간 비교 뷰도 아직 없다.
     - AI 재생성, 배치 재시도, 프롬프트 버전 비교, 검수 히스토리 diff는 아직 구현되지 않았다.
-    - EPS TOPIK / 레벨 테스트 세트 편성 화면에서 검수 완료 문항을 소비하는 계약은 후속 구현이 필요하다.
+    - 1차 사용자 노출 경로는 `POL-017`에 따라 상류 Writing API(`GET /api/writing/tasks`)로 확정되었다. EPS TOPIK / 레벨 테스트 세트 편성 화면에서 검수/배포 완료 문항을 소비하는 계약은 여전히 후속 구현이 필요하다.
     - `53/54번` 2depth 검수 페이지는 Supabase `problems` 매핑 기준으로 동작하지만, 배치별 대량 검수 액션과 후속 내보내기/배포 액션은 아직 관리자 SoT에 연결되지 않았다.
   - `TOPIK 쓰기 문항 관리`
     - 운영 상태 조치(`노출 후보` / `숨김 후보` / `운영 제외`)는 v13 `lifecycle_status` 미적용으로 현재 비활성(스캐폴딩) 상태다. 페이지 상단 `운영 상태 관리는 준비 중입니다` 경고 Alert와 disabled 운영 조치 버튼만 노출되고, `operationStatus`는 모든 문항에서 `미지정` sentinel로만 표시된다.

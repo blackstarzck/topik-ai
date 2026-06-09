@@ -21,7 +21,7 @@
 | 검수 라우트 | `/assessment/question-bank/review/:questionId` |
 | 주요 권한 | `assessment.question-bank.manage` |
 | 주요 role | `SUPER_ADMIN`, `CONTENT_MANAGER` |
-| 연관 문서 | `docs/specs/page-ia/assessment-question-manage-page-ia.md`, `docs/specs/admin-page-tables.md`, `docs/specs/admin-data-contract.md`, `docs/specs/admin-action-log.md`, `docs/architecture/admin-data-source-transition.md` |
+| 연관 문서 | `docs/specs/page-ia/assessment-question-manage-page-ia.md`, `docs/specs/admin-page-tables.md`, `docs/specs/admin-data-contract.md`, `docs/specs/admin-action-log.md`, `docs/architecture/admin-data-source-transition.md`, `docs/specs/admin-policy-source-map.md`, `docs/specs/admin-data-usage-map.md`, `docs/specs/topik-ai-service-api-reference.md` |
 
 ## 3. 페이지 목표와 비목표
 
@@ -29,7 +29,7 @@
 
 - AI 배치가 자동 생성한 TOPIK 쓰기 `51~54번` 문항을 문제 번호 단위로 검수한다.
 - 검수 메모를 통해 각 문항의 적합성 판단과 수정 근거를 기록한다.
-- `검수 완료`는 해당 문항의 검수가 종료되었음을 의미하며, 후속 내보내기/배포 대상 조건으로 사용된다.
+- `검수 완료`는 해당 문항의 검수가 종료되었음을 의미하며, 상류 서비스로의 배포(API 업로드) 대상 조건으로 사용된다(운영정책 `POL-017`, 아래 §8.1).
 - `수정 히스토리`를 통해 과거 검수 메모와 그 메모가 AI 재생성에 어떻게 반영되었는지 추적한다.
 - 검수 상태와 운영 상태는 분리 관리한다. 운영 상태 조회/조치는 문항 관리 페이지(`docs/specs/page-ia/assessment-question-manage-page-ia.md`)의 책임이다.
 - 검수 완료는 `AssessmentQuestion + questionId` 감사 로그 계약으로 추적한다.
@@ -166,11 +166,22 @@
 | 검수 상태 | `검수 대기`, `검수 중`, `보류`, `검수 완료`, `수정 필요` | 운영 상태와 분리 유지 |
 | 운영 상태 | (이 페이지 비표시) | 운영 상태 조회/조치는 문항 관리 페이지(`docs/specs/page-ia/assessment-question-manage-page-ia.md`)가 담당 |
 | 검수 메모 의미 | 검수자가 문항 적합성을 판단한 근거 | 단순 메모가 아니라 검수 판단 기록 |
-| 검수 완료 의미 | 해당 문항 검수가 종료되었음을 의미 | 후속 내보내기/배포 대상 조건 |
+| 검수 완료 의미 | 해당 문항 검수가 종료되었음을 의미 | 상류 서비스 배포(API 업로드) 대상 조건 (`POL-017`, §8.1) |
 | 검수 상태 변경 UX | 별도 `검수 메모 저장` 버튼 없이 `검수 완료`, `수정 필요`, `보류` 실행 시 최신 메모를 먼저 저장한 뒤 상태를 변경 | 2depth 검수 페이지에서만 적용 |
 | 수정 히스토리 의미 | 과거 검수 메모와 AI 반영 설명을 함께 보여줌 | 재생성 적합성 검토용 |
 | 문제 번호별 검수 필드 | `51/52`, `53`, `54`는 서로 다른 검수 필드 집합을 사용 | 현재는 검수 페이지 `Descriptions` profile로 분기, 장기적으로는 mock/API schema 분리 검토 |
 | 검수 목록 상세 방식 | 행 클릭 또는 `문항` hover 툴팁의 `검수하기` 버튼으로 2depth 검수 페이지에 진입 | 목록에서는 액션 컬럼과 Drawer를 두지 않음 |
+
+## 8.1 검수·배포 운영정책 (POL-017)
+
+> 정책 SoT는 `docs/specs/admin-policy-source-map.md`의 `POL-017`이며, 이 섹션은 검수 페이지 관점 요약이다. 상류 API 계약은 `docs/specs/topik-ai-service-api-reference.md`(Swagger `http://58.236.187.135:9009/docs#/`의 Writing 파트)를 단일 원문으로 사용한다.
+
+- 운영 흐름은 `검수(관리자) -> 배포(API 업로드) -> 노출 통제/운영 관리(관리자)`로 고정한다.
+- **검수**: 이 페이지(`/assessment/question-bank`)에서 AI 생성 TOPIK 쓰기 `51~54번` 문항(Supabase `problems`)을 `검수 완료`/`수정 필요`/`보류`로 검수한다. 관리자 `problems`는 검수 원본 SoT다.
+- **배포(업로드)**: `검수 완료` 문항은 관리자에서 상류 `TalkPik AI Service`로 API 업로드(push)되어 사용자 노출용 작문 과제(`GET /api/writing/tasks`, `GET /api/writing/tasks/{task_type}`)로 등록된다. 즉 과거 오픈 이슈였던 "후속 내보내기/배포"는 파일 내보내기가 아니라 상류 서비스로의 API 업로드로 확정한다. 업로드 결과물의 사용자 노출 데이터 모델은 Writing API(`GenerateProblemResponse`: `task_type`/`title`/`instruction`/`topic`/`max_score`/`difficulty` + 과제별 추가 키)를 따른다.
+- **노출 통제/운영 관리**: 사용자에게 보여지는 부분(노출/숨김)의 통제와 운영 관리는 이 페이지가 아니라 문항 관리 페이지(`/assessment/question-bank/manage`)의 운영 상태(`노출 후보`/`숨김 후보`/`운영 제외`)가 담당한다(`docs/specs/page-ia/assessment-question-manage-page-ia.md`).
+- 검수와 배포/노출은 분리한다. 이 페이지는 검수 상태 변경까지만 책임지고, 배포된 작문 과제의 사용자 노출 on/off는 관리 페이지 책임이다.
+- 후속 확정(후보): 배포 실행 트리거(`검수 완료` 시 자동 vs 별도 `배포` 액션)와 상류 업로드/upsert 엔드포인트 경로는 아직 상류 스냅샷에 없으므로 후속 구현에서 확정한다. 배포 조치를 별도 액션으로 두면 `AssessmentQuestion + questionId` 감사 로그 계약을 따른다(`docs/specs/admin-action-log.md`).
 
 ## 9. URL/상태 복원
 
@@ -215,9 +226,9 @@
 
 ## 12. 오픈 이슈
 
-- 최종 공개/숨김 정책과 승인 체계는 아직 확정되지 않았다.
-- `검수 완료 -> 후속 내보내기/배포`의 실행 위치와 파일 스키마는 아직 고정되지 않았다.
+- 사용자 노출(공개/숨김) 통제 위치는 `POL-017`로 확정되어 문항 관리 페이지(`/assessment/question-bank/manage`)의 운영 상태가 담당한다. 다만 운영 상태 write는 v13 `lifecycle_status` 도착 전까지 비활성이며, 배포 승인 체계(누가 어떤 단계에서 배포를 승인하는지)는 아직 미확정이다.
+- `검수 완료 -> 배포`의 방향과 대상은 `POL-017`로 확정되었다(관리자 -> 상류 `TalkPik AI Service` API 업로드 -> Writing 작문 과제). 남은 미확정은 배포 실행 트리거(자동 vs 별도 액션)와 상류 업로드/upsert 엔드포인트 경로이며, 파일 내보내기 방식은 폐기되었다.
 - 문제 번호별 검수 필드는 현재 `Descriptions` profile helper로 분기한다. mock/API 단계에서 별도 review field profile schema로 승격할지는 후속 구현에서 확정해야 한다.
 - AI 재생성, 배치 재시도, 프롬프트 버전 비교, 대량 검수 액션은 후속 범위다.
 - Supabase 미설정/조회 실패 시 JSON fallback을 제공하지 않고 error/retry 상태를 노출한다.
-- EPS TOPIK / 레벨 테스트 편성 화면에서 검수 완료 문항을 소비하는 계약은 별도 후속 문서가 필요하다.
+- 1차 사용자 노출 경로는 `POL-017`에 따라 Writing API(`GET /api/writing/tasks`)이며, EPS TOPIK / 레벨 테스트 편성 화면에서 검수/배포 완료 문항을 소비하는 계약은 여전히 별도 후속 문서가 필요하다.

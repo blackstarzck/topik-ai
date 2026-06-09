@@ -18,7 +18,7 @@
 | 라우트 | `/assessment/question-bank/manage` |
 | 주요 권한 | `assessment.question-bank.manage` |
 | 주요 role | `SUPER_ADMIN`, `CONTENT_MANAGER` |
-| 연관 문서 | `docs/specs/page-ia/assessment-question-bank-page-ia.md`, `docs/specs/admin-page-tables.md`, `docs/specs/admin-data-contract.md`, `docs/architecture/admin-data-source-transition.md`, `docs/specs/admin-page-gap-register.md` |
+| 연관 문서 | `docs/specs/page-ia/assessment-question-bank-page-ia.md`, `docs/specs/admin-page-tables.md`, `docs/specs/admin-data-contract.md`, `docs/architecture/admin-data-source-transition.md`, `docs/specs/admin-page-gap-register.md`, `docs/specs/admin-policy-source-map.md`, `docs/specs/admin-data-usage-map.md`, `docs/specs/topik-ai-service-api-reference.md` |
 
 ## 3. 페이지 목표와 비목표
 
@@ -26,6 +26,8 @@
 
 - AI 배치가 생성한 TOPIK 쓰기 `51~54번` 문항을 문제 번호 단위로 운영 관점에서 비교한다.
 - 운영 상태(노출 후보/숨김 후보/운영 제외)와 사용 현황을 한 화면에서 비교·관리한다.
+- `POL-017`에 따라 이 페이지가 **사용자에게 보여지는 부분(노출/숨김)의 통제 책임**을 가진다. 검수 완료 후 상류 `TalkPik AI Service`로 배포(API 업로드)되어 Writing 작문 과제(`GET /api/writing/tasks`)가 된 문항의 사용자 노출 on/off를 운영 상태로 통제한다.
+- 이 페이지가 다루는 사용자 노출 데이터 모델은 Swagger(`http://58.236.187.135:9009/docs#/`)의 Writing 파트를 기준으로 하며, 정리본은 `docs/specs/topik-ai-service-api-reference.md`다(작문 과제 모델: `task_type`/`title`/`instruction`/`topic`/`max_score`/`difficulty`).
 - 검수 상태는 읽기 전용 컬럼으로 함께 노출하여 검수 진척과 운영 상태를 대조한다.
 - 운영 상태 변경은 `AssessmentQuestion + questionId` 감사 로그 계약으로 추적한다.
 
@@ -125,6 +127,24 @@
 - 확인+사유 -> 감사 로그(`ConfirmAction` + `AuditLogLink`) 흐름은 코드에 미리 연결되어 있으나, 감사 RPC(`admin_update_problem`) write path는 데이터 계약상 비활성이다.
 - `lifecycle_status` 도착 시 `OPERATION_WRITE_ENABLED` 플래그 활성화 및 서비스 un-stub로 운영 조치를 한 번에 활성화한다. 즉 운영 상태 변경은 "후속 활성화" 상태이지 지금 동작하지 않는다.
 
+### 7.4 검수·배포·노출 운영정책 (POL-017)
+
+> 정책 SoT는 `docs/specs/admin-policy-source-map.md`의 `POL-017`, 상류 API 원문은 `docs/specs/topik-ai-service-api-reference.md`(Swagger `http://58.236.187.135:9009/docs#/`의 Writing 파트)다.
+
+- 운영 흐름 `검수 -> 배포(API 업로드) -> 노출 통제`에서 이 페이지는 마지막 단계인 **노출 통제/운영 관리**를 담당한다.
+- 검수는 검수 페이지(`/assessment/question-bank`), 배포(검수 완료 문항을 상류 서비스로 API 업로드)는 검수 완료 이후 단계, 노출/숨김 통제는 이 페이지의 운영 상태가 책임진다.
+- 이 페이지가 통제하는 대상은 배포되어 Writing 작문 과제가 된 문항의 **사용자 노출 여부**다. 운영 상태와 사용자 노출의 대응(후보)은 다음과 같다.
+
+| 운영 상태 | 사용자 노출(Writing API) 의미(후보) |
+| --- | --- |
+| `노출 후보` | 사용자 작문 과제 풀(`GET /api/writing/tasks`)에 노출 대상 |
+| `숨김 후보` | 배포되었으나 사용자 노출에서 임시 제외 대상 |
+| `운영 제외` | 사용자 노출/배포 대상에서 영구 제외 |
+| `미지정` | 운영 단계 미지정 기본값 (현재 모든 문항의 sentinel) |
+
+- 사용자 노출 작문 과제의 필드 모델은 Writing API(`GenerateProblemResponse`: `task_type`/`title`/`instruction`/`topic`/`max_score`/`difficulty` + 과제별 추가 키)를 따른다. 관리자 `problems` 화면 모델과의 매핑 후보는 `docs/specs/admin-data-contract.md` §9.6를 단일 SoT로 둔다.
+- 후속 확정(후보): 운영 상태↔Writing API 노출의 실제 연동 계약과 상류 업로드/노출 토글 엔드포인트는 v13 `lifecycle_status` 적용 및 상류 엔드포인트 확정 이후 고정한다.
+
 ## 8. URL/상태 복원
 
 - 유지 대상
@@ -161,6 +181,6 @@
 
 - v13 `lifecycle_status` 적용 후 `OPERATION_WRITE_ENABLED` 플래그와 서비스 un-stub로 운영 조치(노출 후보/숨김 후보/운영 제외)를 활성화해야 한다.
 - 운영 조치 활성화 전까지 `operationStatus`는 `미지정` sentinel로 고정되고 `admin_update_problem` write path는 비활성이다.
-- 최종 공개/숨김 정책과 승인 체계는 아직 확정되지 않았다.
+- 공개/숨김 통제 책임은 `POL-017`로 이 페이지에 확정되었으나, 운영 상태↔Writing API(`GET /api/writing/tasks`) 사용자 노출의 실제 연동 계약과 배포 승인 체계는 아직 미확정이다.
 - 사용 현황 컬럼의 정식 source 계약은 후속 데이터 적용 시 확정해야 한다.
 - Supabase 미설정/조회 실패 시 JSON fallback을 제공하지 않고 error/retry 상태를 노출한다.

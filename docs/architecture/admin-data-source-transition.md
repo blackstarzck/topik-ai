@@ -246,3 +246,26 @@ src/features/<feature>/
   - 운영 상태 쓰기 활성화는 "후속 활성화" 상태입니다. 관리 페이지의 운영 조치 UI와 ConfirmAction + AuditLogLink 흐름은 이미 연결돼 있으므로, v13 `lifecycle_status`가 도착하면 `OPERATION_WRITE_ENABLED` 플래그를 켜고 service write path를 un-stub하는 한 번의 변경으로 활성화합니다. 그 전까지는 disabled 스캐폴딩과 `미지정` sentinel을 유지합니다.
   - `generationBatchId`, `promptVersion`, `generationModel`은 AI 생성 출처 추적용 메타데이터로 유지합니다.
   - 검수 이력 diff, 재생성 배치, 시험 세트 편성 연결은 후속 API로 확장하되 현재 route/service 계약은 유지합니다.
+
+## 10.3 2026-06-09 검수 완료 문항 배포(업로드) 전환 메모 (POL-017)
+
+- 대상 정책: `POL-017` (`docs/specs/admin-policy-source-map.md`). 운영 흐름은 `검수(관리자) -> 배포(API 업로드) -> 노출 통제(관리자 /manage)`로 고정한다.
+- 상류 API 원문: `docs/specs/topik-ai-service-api-reference.md`(Swagger `http://58.236.187.135:9009/docs#/`의 Writing 파트). 사용자 노출 데이터 모델은 이 문서를 단일 SoT로 사용한다.
+- 데이터 방향
+  - 관리자 `problems`(Supabase, v13, question_no 51-54)는 **검수 원본 SoT**다.
+  - `검수 완료` 문항은 관리자에서 상류 `TalkPik AI Service`로 **API 업로드(push, 단방향)**되어 사용자 노출용 작문 과제로 등록된다. 즉 과거 "후속 내보내기/배포(파일 스키마)"는 폐기하고, 상류 서비스로의 API 업로드로 확정한다.
+  - 사용자 노출은 상류 Writing API(`GET /api/writing/tasks`, `GET /api/writing/tasks/{task_type}`)가 담당하며, 관리자 프론트엔드가 직접 사용자 화면 데이터를 서빙하지 않는다.
+- 사용자 노출 작문 과제 모델(Writing API `GenerateProblemResponse`)과 관리자 화면 모델 매핑 후보
+  - `task_type` ← `problems.question_no`(51/52/53/54 → 캠페인 `Q51..Q54` / 연습 `task51`,`task53`,`task54`)
+  - `title` ← `problems.title`
+  - `instruction` ← `problems.prompt`
+  - `topic` ← `problems.topic_category_code`(코드 라벨)
+  - `difficulty` ← `problems.difficulty`(숫자 → `easy/medium/hard` 구간)
+  - `max_score` ← 문제 번호 규칙(Q51/Q52=10, Q53=30, Q54=50) 파생
+- 상류 API/DB 전환 후보(신설/확정 필요)
+  - 검수 완료 문항 업로드/upsert 엔드포인트: 현재 상류 스냅샷에 관리자용 작문 과제 생성 엔드포인트가 없어 신설 또는 확정이 필요한 후보다.
+  - 사용자 노출 토글(노출/숨김)을 상류에 반영하는 엔드포인트: `/manage` 운영 상태와 연동할 후보다.
+- 전환 메모
+  - 배포 실행 트리거(`검수 완료` 시 자동 업로드 vs 별도 `배포` 액션)는 후속 구현에서 확정한다. 별도 액션으로 둘 경우 `Target Type = AssessmentQuestion`, `Target ID = questionId` 감사 계약을 따른다(`docs/specs/admin-action-log.md`).
+  - 노출/숨김(운영 상태) write 활성화는 v13 `lifecycle_status` 도착 및 `OPERATION_WRITE_ENABLED` 플래그 활성화에 종속된다(§10.2와 동일 게이트).
+  - `problems`(검수 원본)와 상류 작문 과제(사용자 노출본)는 서로 다른 저장소이므로, 업로드 시 양쪽 식별자 매핑(예: `publishedTaskId` 후보)을 유지해 재배포/역추적이 가능해야 한다.
