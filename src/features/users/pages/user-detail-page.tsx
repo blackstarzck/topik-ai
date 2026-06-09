@@ -29,12 +29,13 @@ import {
   createTextSorter
 } from '../../../shared/ui/table/table-column-utils';
 import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
-import { formatUserDisplayName } from '../../../shared/ui/user/user-reference';
 
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 
 const { Text } = Typography;
+
+const emptyProfileValue = '-';
 
 const detailPaymentStatusFilterValues = ['완료', '취소', '환불'] as const;
 const detailCommunityBoardFilterValues = ['자유게시판', '후기', '질문'] as const;
@@ -61,6 +62,11 @@ type DetailModalState = {
   title: string;
   record: Record<string, unknown>;
 } | null;
+
+function renderProfileValue(value: string): string {
+  const trimmed = value.trim();
+  return trimmed ? trimmed : emptyProfileValue;
+}
 
 const allowedTabs: readonly UsersDetailTabKey[] = [
   'profile',
@@ -570,10 +576,10 @@ export default function UserDetailPage(): JSX.Element {
                   {
                     key: 'realName',
                     label: '이름',
-                    children: formatUserDisplayName(user.realName, user.id)
+                    children: renderProfileValue(user.realName)
                   },
                   { key: 'email', label: '이메일', children: user.email },
-              { key: 'nickname', label: '닉네임', children: user.nickname },
+              { key: 'nickname', label: '닉네임', children: renderProfileValue(user.nickname) },
               { key: 'joinedAt', label: '가입일', children: user.joinedAt },
               { key: 'lastLoginAt', label: '최근 로그인', children: user.lastLoginAt },
               {

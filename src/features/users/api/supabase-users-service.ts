@@ -4,8 +4,9 @@ import type { SubscriptionStatus, UserStatus, UserSummary, UserTier } from '../m
 /**
  * Phase B (members) — read/write the v13 members directory via admin RPCs.
  *
- * Reads: get_admin_users (platform_admin, SECURITY DEFINER, joins auth.users.email
- * + last_sign_in_at). Writes: admin_set_user_status (active|blocked only, audited).
+ * Reads: get_admin_users (platform_admin, SECURITY DEFINER, joins auth.users.email,
+ * profiles.display_name/nickname + last_sign_in_at). Writes: admin_set_user_status
+ * (active|blocked only, audited).
  * All mappings are PROPOSED (R2) until topik-ai internal codes are ratified.
  */
 
@@ -13,6 +14,7 @@ type AdminUserRow = {
   user_id: string;
   email: string | null;
   display_name: string | null;
+  nickname?: string | null;
   app_role: string;
   plan_label: string | null;
   status: string;
@@ -21,6 +23,11 @@ type AdminUserRow = {
   last_sign_in_at: string | null;
   created_at: string;
   total_count: number;
+};
+
+type ProfileNicknameRow = {
+  id: string;
+  nickname: string | null;
 };
 
 // v13 profiles.status -> topik-ai UserStatus
@@ -47,16 +54,23 @@ function toDateString(ts: string | null): string {
   return ts ? ts.slice(0, 10) : '';
 }
 
+function nonEmpty(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
 function mapRowToUserSummary(row: AdminUserRow): UserSummary {
   const tier = mapTier(row.plan_label);
   const subscriptionStatus: SubscriptionStatus = tier === '프리미엄' ? '구독' : '미구독';
+  const displayName = nonEmpty(row.display_name);
+  const nickname = nonEmpty(row.nickname);
   return {
     id: row.user_id,
-    realName: row.display_name ?? row.email ?? row.user_id,
+    realName: displayName ?? '',
     email: row.email ?? '',
-    // GAP: get_admin_users does NOT return profiles.nickname (would need an additive RPC change).
-    // Fallback to display_name / email local-part so the column is not empty.
-    nickname: row.display_name ?? (row.email ? row.email.split('@')[0] : row.user_id),
+    // Preserve profiles.nickname exactly. Null/empty values are rendered as an
+    // empty-state marker in the UI, not replaced with display_name/email fallbacks.
+    nickname: nickname ?? '',
     joinedAt: toDateString(row.created_at),
     lastLoginAt: toDateString(row.last_sign_in_at),
     status: mapStatus(row.status),
@@ -65,6 +79,42 @@ function mapRowToUserSummary(row: AdminUserRow): UserSummary {
     // subscription state (would need a subscriptions join / additive RPC).
     subscriptionStatus
   };
+}
+
+async function loadProfileNicknameMap(userIds: string[]): Promise<Map<string, string | null>> {
+  if (!supabaseClient || userIds.length === 0) {
+    return new Map();
+  }
+
+  const { data, error } = await supabaseClient
+    .from('profiles')
+    .select('id,nickname')
+    .in('id', userIds);
+
+  if (error) {
+    return new Map();
+  }
+
+  return new Map(
+    ((data ?? []) as ProfileNicknameRow[]).map((profile) => [
+      profile.id,
+      nonEmpty(profile.nickname)
+    ])
+  );
+}
+
+function mergeProfileNicknames(
+  rows: AdminUserRow[],
+  profileNicknameMap: Map<string, string | null>
+): AdminUserRow[] {
+  if (profileNicknameMap.size === 0) {
+    return rows;
+  }
+
+  return rows.map((row) => ({
+    ...row,
+    nickname: nonEmpty(row.nickname) ?? profileNicknameMap.get(row.user_id) ?? null
+  }));
 }
 
 export async function loadUsersFromSupabase(signal?: AbortSignal): Promise<UserSummary[]> {
@@ -85,7 +135,12 @@ export async function loadUsersFromSupabase(signal?: AbortSignal): Promise<UserS
   if (error) {
     throw new Error(error.message);
   }
-  return ((data ?? []) as AdminUserRow[]).map(mapRowToUserSummary);
+  const rows = (data ?? []) as AdminUserRow[];
+  const profileNicknameMap = await loadProfileNicknameMap(rows.map((row) => row.user_id));
+  if (signal?.aborted) {
+    throw new DOMException('Request aborted', 'AbortError');
+  }
+  return mergeProfileNicknames(rows, profileNicknameMap).map(mapRowToUserSummary);
 }
 
 /**

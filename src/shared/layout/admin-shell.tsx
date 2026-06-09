@@ -215,6 +215,12 @@ const menuConfig: MenuNode[] = [
         permissionKeys: ['assessment.question-bank.manage']
       },
       {
+        key: '/assessment/question-bank/manage',
+        label: adminMenuLabels.assessmentQuestionManage,
+        to: '/assessment/question-bank/manage',
+        permissionKeys: ['assessment.question-bank.manage']
+      },
+      {
         key: '/assessment/question-bank/eps-topik',
         label: adminMenuLabels.assessmentEpsTopik,
         to: '/assessment/question-bank/eps-topik',
@@ -431,6 +437,9 @@ function resolveSelectedKey(pathname: string): string {
   }
   if (pathname.startsWith('/assessment/question-bank/eps-topik')) {
     return '/assessment/question-bank/eps-topik';
+  }
+  if (pathname.startsWith('/assessment/question-bank/manage')) {
+    return '/assessment/question-bank/manage';
   }
   if (pathname.startsWith('/assessment/question-bank')) {
     return '/assessment/question-bank';

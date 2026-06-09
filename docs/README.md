@@ -8,6 +8,46 @@
 
 ### `docs/templates`
 - `admin-page-ia-template.md`
+- `admin-page-sync-template.md`
+
+### `docs/page-sync`
+- `README.md`
+- `analytics-overview-page-sync.md`
+- `assessment-level-tests-page-sync.md`
+- `assessment-question-bank-eps-topik-page-sync.md`
+- `assessment-question-bank-page-sync.md`
+- `commerce-coupons-page-sync.md`
+- `commerce-payments-page-sync.md`
+- `commerce-points-page-sync.md`
+- `commerce-refunds-page-sync.md`
+- `commerce-store-page-sync.md`
+- `community-posts-page-sync.md`
+- `community-reports-page-sync.md`
+- `content-badges-page-sync.md`
+- `content-library-page-sync.md`
+- `content-missions-page-sync.md`
+- `content-vocabulary-multiple-choice-page-sync.md`
+- `content-vocabulary-page-sync.md`
+- `content-vocabulary-sonagi-page-sync.md`
+- `dashboard-page-sync.md`
+- `message-groups-page-sync.md`
+- `message-history-page-sync.md`
+- `message-mail-page-sync.md`
+- `message-push-page-sync.md`
+- `operation-chatbot-page-sync.md`
+- `operation-events-page-sync.md`
+- `operation-faq-page-sync.md`
+- `operation-notices-page-sync.md`
+- `operation-policies-page-sync.md`
+- `system-admins-page-sync.md`
+- `system-audit-logs-page-sync.md`
+- `system-logs-page-sync.md`
+- `system-metadata-page-sync.md`
+- `system-permissions-page-sync.md`
+- `users-detail-page-sync.md`
+- `users-instructor-management-page-sync.md`
+- `users-list-page-sync.md`
+- `users-referrals-page-sync.md`
 
 ### `docs/guidelines`
 - `admin-coding-guidelines-antigravity.md`
@@ -26,6 +66,7 @@
 - `index.md`
 
 ### `docs/specs`
+- `topik-ai-service-api-reference.md`
 - `admin-data-contract.md`
 - `admin-page-gap-register.md`
 - `admin-page-ia-change-log.md`
@@ -38,6 +79,7 @@
 - `page-ia/assessment-level-tests-page-ia.md`
 - `page-ia/assessment-question-bank-eps-topik-page-ia.md`
 - `page-ia/assessment-question-bank-page-ia.md`
+- `page-ia/assessment-question-manage-page-ia.md`
 - `page-ia/commerce-coupons-page-ia.md`
 - `page-ia/commerce-payments-page-ia.md`
 - `page-ia/commerce-points-page-ia.md`

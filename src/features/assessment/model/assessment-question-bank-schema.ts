@@ -1,7 +1,6 @@
 import type { TabsProps } from 'antd';
 
 import type {
-  AssessmentQuestionBankTab,
   AssessmentQuestionDifficulty,
   AssessmentQuestionDomain,
   AssessmentQuestionNumber,
@@ -10,11 +9,6 @@ import type {
   AssessmentQuestionTypeLabel,
   AssessmentQuestionValidationStatus
 } from './assessment-question-bank-types';
-
-export const assessmentQuestionBankTabItems: TabsProps['items'] = [
-  { key: 'review', label: '검수 큐' },
-  { key: 'manage', label: '문항 관리' }
-];
 
 export const assessmentQuestionNumberTabItems: TabsProps['items'] = [
   { key: '51', label: '51번' },
@@ -74,12 +68,6 @@ export const assessmentQuestionDifficultyLevels: AssessmentQuestionDifficulty[] 
   '중',
   '하'
 ];
-
-export function parseAssessmentQuestionBankTab(
-  value: string | null
-): AssessmentQuestionBankTab {
-  return value === 'manage' ? 'manage' : 'review';
-}
 
 export function parseAssessmentQuestionNumber(
   value: string | null

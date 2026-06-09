@@ -3,7 +3,6 @@ import type { TableColumnsType } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
-import { useAssessmentQuestionBankStore } from '../../assessment/model/assessment-question-bank-store';
 import { useCouponStore } from '../../commerce/model/coupon-store';
 import { getMockUserById } from '../../users/api/mock-users';
 import { usePermissionStore } from '../model/permission-store';
@@ -182,7 +181,7 @@ function getTargetRoute(targetType: string, targetId: string): string | null {
     return '/assessment/question-bank';
   }
   if (targetType === 'AssessmentQuestion') {
-    return `/assessment/question-bank/review/${targetId}?tab=review`;
+    return `/assessment/question-bank/review/${targetId}`;
   }
   if (targetType === 'Content') {
     if (targetId.startsWith('VOC-SON-')) {
@@ -220,7 +219,6 @@ function getAuditTargetDisplay(record: AuditLogRow): string {
 export default function SystemAuditLogsPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedRow, setSelectedRow] = useState<AuditLogRow | null>(null);
-  const assessmentAudits = useAssessmentQuestionBankStore((state) => state.audits);
   const permissionAudits = usePermissionStore((state) => state.audits);
   const couponAudits = useCouponStore((state) => state.audits);
   const metadataAudits = useSystemMetadataStore((state) => state.audits);
@@ -239,16 +237,6 @@ export default function SystemAuditLogsPage(): JSX.Element {
   } = useSearchBarDateDraft(startDate, endDate);
 
   const mergedRows = useMemo(() => {
-    const assessmentRows: AuditLogRow[] = assessmentAudits.map((audit) => ({
-      logId: audit.id,
-      targetType: audit.targetType,
-      targetId: audit.targetId,
-      action: getAuditActionLabel(audit.action),
-      actor: audit.changedBy,
-      reason: audit.reason,
-      createdAt: audit.createdAt
-    }));
-
     const permissionRows: AuditLogRow[] = permissionAudits.map((audit) => ({
       logId: audit.id,
       targetType: audit.targetType,
@@ -279,14 +267,18 @@ export default function SystemAuditLogsPage(): JSX.Element {
       createdAt: audit.createdAt
     }));
 
+    const normalizedStaticRows = staticRows.map((row) => ({
+      ...row,
+      action: getAuditActionLabel(row.action)
+    }));
+
     return [
       ...metadataRows,
       ...couponRows,
       ...permissionRows,
-      ...assessmentRows,
-      ...staticRows
+      ...normalizedStaticRows
     ].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
-  }, [assessmentAudits, couponAudits, metadataAudits, permissionAudits]);
+  }, [couponAudits, metadataAudits, permissionAudits]);
 
   const filteredRows = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();

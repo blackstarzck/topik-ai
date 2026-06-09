@@ -82,6 +82,9 @@ const AssessmentQuestionBankPage = lazy(
 const AssessmentQuestionReviewPage = lazy(
   () => import('../../features/assessment/pages/assessment-question-review-page')
 );
+const AssessmentQuestionManagePage = lazy(
+  () => import('../../features/assessment/pages/assessment-question-manage-page')
+);
 const AnalyticsOverviewPage = lazy(
   () => import('../../features/analytics/pages/analytics-overview-page')
 );
@@ -231,6 +234,10 @@ export function AppRouter(): JSX.Element {
         <Route
           path="/assessment/question-bank"
           element={<AssessmentQuestionBankPage />}
+        />
+        <Route
+          path="/assessment/question-bank/manage"
+          element={<AssessmentQuestionManagePage />}
         />
         <Route
           path="/assessment/question-bank/review/:questionId"

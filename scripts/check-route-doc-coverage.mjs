@@ -21,7 +21,8 @@ const DISALLOWED_SECOND_SEGMENTS = new Set([
   'scripts',
   'specs',
   'styles',
-  'templates'
+  'templates',
+  'ui'
 ]);
 
 async function listMarkdownFiles(directoryPath) {

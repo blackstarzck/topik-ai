@@ -159,8 +159,7 @@ function mapRow(row: ProblemRow): AssessmentQuestion {
     updatedAt: toDateTime(row.updated_at),
     updatedBy: '',
     reviewerName: '',
-    content: buildContent(kind, prompt),
-    reviewDocument: null
+    content: buildContent(kind, prompt)
   };
 }
 

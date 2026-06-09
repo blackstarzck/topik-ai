@@ -52,7 +52,7 @@
 
 ## 1) 회원 관리 > 회원 목록
 
-- 테이블 컬럼: 회원 ID, 이메일, 닉네임, 가입일, 최근 접속, 회원 상태, 등급, 구독 상태
+- 테이블 컬럼: 회원명, 이메일, 닉네임, 가입일, 최근 접속, 회원 상태, 등급, 구독 상태
 - 필터: 검색어, 가입 기간
 - 정렬: 가입일, 최근 접속, 회원 상태
 - 액션: 회원 상세, 회원 정지/해제, 관리자 메모
@@ -309,37 +309,48 @@
   - 운영 정보: 노출 상태, 판매량, 연결 쿠폰/포인트
   - 액션: 상품 등록, 수정, 노출 제어, 판매 중지
 
-## 19) 평가 > TOPIK 쓰기 문제은행
+## 19) 평가 > TOPIK 쓰기 문제 검수
 
-- 현재 상태: 구현됨 (mock service/store 기반)
-- 목표 화면 구조: `PageTitle -> ListSummaryCards -> AdminListCard(toolbar=주 탭 -> 문제 번호 체크박스 그룹 -> SearchBar(summary), body=안내 Alert -> Table)` + `검수 큐` 2depth 페이지
-- 주 탭: `검수 큐`, `문항 관리`
+- 현재 상태: 구현됨 (Supabase `problems` 조회 기반, JSON fixture/store fallback 없음)
+- 라우트: `/assessment/question-bank` (검수 페이지)
+- 목표 화면 구조: `PageTitle -> ListSummaryCards -> AdminListCard(toolbar=문제 번호 체크박스 그룹 -> SearchBar(summary), body=안내 Alert -> Table)` + 2depth 검수 페이지
 - 문제 번호 체크박스 그룹: `51번`, `52번`, `53번`, `54번` 다중 선택, 기본 전체 선택
-- 상단 요약 카드
-  - `검수 큐`: 전체 문항, 검수 대기, 보류, 검수 완료
-  - `문항 관리`: 전체 문항, 노출 후보, 숨김 후보, 운영 제외
-- 공통 필터: SearchBar `도메인`, `유형`, `난이도`, `검색`
-- 검수 큐 필터: `reviewStatus`
-- 문항 관리 필터: `operationStatus`
-- 검수 큐 컬럼: 문항 번호, 문항 ID, 문항 주제/도메인, 문항, 검수 상태, 최근 수정
-  - `문항` 셀: 기본 목록에서는 1줄 말줄임으로 노출한다. hover/focus 시 우측 툴팁에서 문항 전문을 확인하고, 하단 `검수하기` 버튼으로 동일 2depth 검수 페이지에 진입할 수 있다. 툴팁 본문은 검수 상세 `문항 지시문`과 같은 줄바꿈/문단 표현을 유지하며, mock SoT 기준으로 목록용 문항 텍스트는 feature 내부 JSON fixture의 `prompt_text`를 우선 사용한다.
-  - `문항 주제/도메인` 셀은 JSON direct key인 `approved_topic_seed.topic_seed_title`, `meta.domain`만 노출한다. 기존 mock `questionTypeLabel(빈칸 완성/연결 표현/자료 설명/의견 서술)`과 `difficultyLevel(상/중/하)`은 exact JSON key가 아니라서 현재 목록 셀에서는 노출하지 않는다.
-- 문항 관리 컬럼: 문항 번호, 문항 ID, 주제, 검수 상태, 운영 상태, 사용 현황, 최근 수정
-- 검수 큐 행 클릭: `/assessment/question-bank/review/:questionId` 2depth 검수 페이지로 이동
-- 문항 관리 행 클릭: 별도 동작 없음
+- 상단 요약 카드: 전체 문항, 검수 대기, 보류, 검수 완료
+- 필터: SearchBar `도메인`, `유형`, `난이도`, `검색` + `reviewStatus` 요약 카드 필터
+- 컬럼: 문항 번호, 문항 ID, 문항 주제/도메인, 문항, 검수 상태, 최근 수정
+  - `문항` 셀: 기본 목록에서는 1줄 말줄임으로 노출한다. hover/focus 시 우측 툴팁에서 문항 전문을 확인하고, 하단 `검수하기` 버튼으로 동일 2depth 검수 페이지에 진입할 수 있다. 툴팁 본문은 검수 상세 `문항 지시문`과 같은 줄바꿈/문단 표현을 유지하며, 목록용 문항 텍스트는 Supabase `problems.prompt`를 사용한다.
+  - `문항 주제/도메인` 셀은 Supabase `problems.title`과 `topic_category_code` 라벨을 노출한다. `questionTypeLabel`은 문제 번호 규칙, `difficultyLevel`은 `problems.difficulty`에서 파생하지만 현재 목록 셀에는 노출하지 않는다.
+- 행 클릭/툴팁 `검수하기`: `/assessment/question-bank/review/:questionId` 2depth 검수 페이지로 이동
 - 검수 페이지: 좌측 본문은 `Descriptions` 기반 검수 문서형 레이아웃을 사용하고, 공통 상단(`문항 번호`, `문항 주제`, `문항 형태`, `문항 ID`, `문항 지시문`) 아래에 문제 번호별 profile을 렌더링한다.
   - 공통 상단 아래에는 이미지 기준 공통 요약 row `출처`, `핵심 의미`, `핵심 문제`, `모범답안`, `채점 기준`을 유지한다.
-  - 현재 문제은행 mock row는 feature 내부 JSON fixture 전체(`valid_questions_97items_2026-03-27.json`, 현재 workspace 기준 97개)를 `reviewDocument`로 붙이며, `문항 주제`, `문항`, `핵심 의미`, `핵심 문제`, `모범답안`, `채점 기준`, `수정 히스토리`는 JSON direct key를 우선 사용한다.
-  - direct key가 없는 표시값은 빈값으로 두고 화면에서는 `-`로 표시한다. 현재 `51/52`의 `문항 지시문`, 공통 `출처`, `검수자`가 이 규칙을 따른다.
-  - `채점 기준`은 feature 내부 JSON fixture 또는 중첩 `reviewDocument`의 `rubric`를 우선 사용하며, rubric 3항목(`내용`, `언어`, `구성`)을 카드형으로 묶어 보여준다.
-  - `51/52`: 공통 row + `문항` (`prompt_text` / `questionText`)
+  - 현재 문제은행 row는 Supabase `problems`에서 읽은 값을 화면 모델로 매핑한다. `문항 주제`는 `title`, `문항`과 profile별 `문항 지시문` source는 `prompt`, `모범답안`은 `answer_key`, `채점 기준`은 `rubric`를 사용한다.
+  - Supabase source가 없는 표시값은 임의 생성하지 않고 화면에서 `-`, `미상`, `미지정` 같은 sentinel로 표시한다. 현재 `출처`, `검수자`, `수정 히스토리` 상세 항목이 이 규칙을 따른다.
+  - `채점 기준`은 Supabase `problems.rubric` 배열을 `scoringCriteria[]`로 매핑해 카드형으로 보여준다. JSON fixture 또는 store fallback은 사용하지 않는다.
+  - `51/52`: 공통 row + `문항` (`problems.prompt` / `questionText`). 공통 `문항 지시문`은 현재 source가 없어 `-`로 표시한다.
   - `53`: 공통 row만 사용
-  - `54`: 공통 row + `문항 질문` (`approved_topic_seed.shared_context` + `scenario_logic`)
-  - `수정 히스토리`는 하단 별도 테이블로 유지한다.
+  - `54`: 공통 row + `문항 질문` (현재 Supabase source가 없으면 `-`와 빈 조건 목록)
+  - `수정 히스토리`는 하단 별도 테이블로 유지하되, 현재 Supabase 문제은행 조회에서는 빈 이력으로 표시한다.
 - 검수 메모 규칙: 2depth 검수 페이지에서만 직접 입력/저장하고, 저장되지 않은 메모가 있거나 메모가 비어 있으면 `검수 완료`, `보류`, `수정 필요` 조치를 막습니다.
-- 주요 액션
-  - 검수 큐: `검수 페이지 열기`, `빠른 상세 보기`
-  - 문항 관리: `노출 후보`, `숨김 후보`, `운영 제외`
+- 주요 액션: `검수 페이지 열기`, `빠른 상세 보기`
+- URL 복원 메모: `questionNo`(반복), `domain`, `questionType`, `difficulty`, `keyword`, `reviewStatus`. `tab` 쿼리는 사용하지 않고 라우트 자체가 URL 상태를 보존합니다.
+- 분리 메모: `문항 관리`는 형제 라우트 `/assessment/question-bank/manage`로 분리되어 #19-1로 별도 정의합니다. 두 페이지는 동일한 Supabase `problems`(question_no 51-54) 조회 결과를 공유 hook으로 사용합니다.
+
+## 19-1) 평가 > TOPIK 쓰기 문항 관리
+
+- 현재 상태: 구현됨 (Supabase `problems` 조회 기반, JSON fixture/store fallback 없음)
+- 라우트: `/assessment/question-bank/manage`
+- 목표 화면 구조: `PageTitle -> ListSummaryCards -> AdminListCard(toolbar=문제 번호 체크박스 그룹 -> SearchBar(summary), body=안내 Alert -> Table)`
+- 문제 번호 체크박스 그룹: `51번`, `52번`, `53번`, `54번` 다중 선택, 기본 전체 선택
+- 상단 요약 카드: 전체 문항, 노출 후보, 숨김 후보, 운영 제외
+- 필터: SearchBar `도메인`, `유형`, `난이도`, `검색` + `operationStatus` 요약 카드 필터
+- 컬럼: 문항 번호, 문항 ID, 주제, 검수 상태, 운영 상태, 사용 현황, 운영 조치, 최근 수정
+  - `운영 상태` 셀: v13 `lifecycle_status`가 적용되기 전까지 모든 문항에서 `미지정` sentinel로 표시한다.
+  - `운영 조치` 컬럼: `노출 후보`, `숨김 후보`, `운영 제외` 버튼을 노출하되, 현재 v13 `lifecycle_status` 미적용으로 모두 disabled(준비 중) 상태이다. 확인+사유 -> 감사 로그 흐름(`ConfirmAction` + `AuditLogLink`)은 미리 연결되어 있으나, `OPERATION_WRITE_ENABLED` 플래그와 서비스 un-stub으로 `lifecycle_status` 도착 시 한 번에 활성화한다.
+- 행 클릭: 별도 동작 없음
+- 안내 Alert: 페이지 상단에 `운영 상태 관리는 준비 중입니다` 경고 Alert를 노출한다. 감사 RPC(`admin_update_problem`) write path는 데이터 계약상 비활성이다.
+- 주요 액션: `노출 후보`, `숨김 후보`, `운영 제외` (현재 모두 disabled)
+- URL 복원 메모: `questionNo`(반복), `domain`, `questionType`, `difficulty`, `keyword`, `operationStatus`. `tab` 쿼리는 사용하지 않고 라우트 자체가 URL 상태를 보존합니다.
+- 분리 메모: `검수` 페이지는 형제 라우트 `/assessment/question-bank`(#19)로 분리되어 있으며, 두 페이지는 동일한 Supabase `problems`(question_no 51-54) 조회 결과를 공유 hook으로 사용합니다.
 
 ## 20) 평가 > EPS TOPIK
 
@@ -457,9 +468,10 @@
 
 ## 사용자 표시 공통 규칙
 
-- 테이블에서 사용자 참조 셀은 raw ID를 단독 노출하지 않고 `이름 (ID)` 형식의 공통 `table-navigation-link`로 표시합니다.
+- 테이블에서 사용자 참조 셀은 raw ID를 단독 노출하지 않고 공통 `table-navigation-link`로 표시합니다.
 - 사용자 참조 링크는 항상 `Users > 회원 상세`로 이동하고, 상세 탭이 정해진 경우에만 탭 쿼리를 추가합니다.
 - Drawer, Modal, Descriptions 등 상세 정보 영역에서 사용자명이 들어가는 필드는 가능하면 `이름 (ID)` 형식의 공통 `table-navigation-link`를 유지하고, 클릭 시 `Users > 회원 상세`로 이동합니다.
+- 단, `Users > 회원 목록`과 `Users > 회원 상세`처럼 동일 화면에 사용자 ID가 별도 컬럼/필드로 존재하는 경우 회원명 셀/필드는 `이름`만 표시하고 UUID를 괄호로 반복하지 않습니다. `profiles.display_name`/`profiles.nickname`이 `NULL`이면 이메일/ID/local-part로 대체하지 않고 `-`로 표시합니다.
 
 ## 34) 2026-03-26 보정 메모 > 커머스 > 포인트 관리
 

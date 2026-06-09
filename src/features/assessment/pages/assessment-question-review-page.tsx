@@ -21,7 +21,6 @@ import {
   updateAssessmentQuestionReviewMemoSafe,
   updateAssessmentQuestionReviewStatusSafe
 } from '../api/assessment-question-bank-service';
-import { getAssessmentQuestionRubric } from '../model/assessment-question-prompt-fixture';
 import {
   getReviewStatusColor,
   getValidationStatusColor
@@ -31,7 +30,6 @@ import {
 } from '../model/assessment-question-bank-presenter';
 import type {
   AssessmentQuestion,
-  AssessmentQuestionReviewDocument,
   AssessmentQuestionReviewStatus
 } from '../model/assessment-question-bank-types';
 import type { AsyncState } from '../../../shared/model/async-state';
@@ -143,41 +141,13 @@ function buildQuestionBankListHref(search: string): string {
   const params = new URLSearchParams(search);
 
   params.delete('selected');
-
-  if (!params.get('tab')) {
-    params.set('tab', 'review');
-  }
+  params.delete('tab');
 
   const nextSearch = params.toString();
   return nextSearch ? `/assessment/question-bank?${nextSearch}` : '/assessment/question-bank';
 }
 
-function buildReviewCriteria(
-  reviewDocument: AssessmentQuestionReviewDocument | null,
-  question: AssessmentQuestion
-): ReviewCriterionCard[] {
-  const rubric = reviewDocument?.rubric ?? getAssessmentQuestionRubric(question.questionId);
-
-  if (rubric) {
-    return [
-      {
-        key: 'content',
-        title: '내용',
-        body: rubric.content
-      },
-      {
-        key: 'language',
-        title: '언어',
-        body: rubric.language
-      },
-      {
-        key: 'structure',
-        title: '구성',
-        body: rubric.structure
-      }
-    ];
-  }
-
+function buildReviewCriteria(question: AssessmentQuestion): ReviewCriterionCard[] {
   return question.scoringCriteria.map((criterion, index) => ({
     key: `criterion-${index + 1}`,
     title: `기준 ${index + 1}`,
@@ -185,30 +155,15 @@ function buildReviewCriteria(
   }));
 }
 
-function buildReviewHistory(
-  reviewDocument: AssessmentQuestionReviewDocument | null,
-  question: AssessmentQuestion
-): ReviewHistoryCard[] {
-  if (!reviewDocument) {
-    return question.revisionHistory.map((item) => ({
-      key: item.id,
-      editedAt: item.changedAt,
-      editedBy: item.changedBy,
-      editType: 'revision',
-      reviewerMemo: item.summary,
-      changedFields: [],
-      reflectedReview: ''
-    }));
-  }
-
-  return reviewDocument.edit_history.map((item, index) => ({
-    key: `${reviewDocument.id}-${index}`,
-    editedAt: item.edited_at,
-    editedBy: item.edited_by,
-    editType: item.edit_type,
+function buildReviewHistory(question: AssessmentQuestion): ReviewHistoryCard[] {
+  return question.revisionHistory.map((item) => ({
+    key: item.id,
+    editedAt: item.changedAt,
+    editedBy: item.changedBy,
+    editType: 'revision',
     reviewerMemo: item.summary,
-    changedFields: item.changed_fields,
-    reflectedReview: item.review_snapshot
+    changedFields: [],
+    reflectedReview: ''
   }));
 }
 
@@ -273,43 +228,20 @@ function buildReviewHistoryDescriptionItems(
 }
 
 function buildReviewViewModel(question: AssessmentQuestion): ReviewViewModel {
-  const reviewDocument = question.reviewDocument;
-
-  if (!reviewDocument) {
-    return {
-      title: question.topic,
-      instructionText:
-        question.content.kind === '53' || question.content.kind === '54'
-          ? getQuestionText(question)
-          : '',
-      sourceText: '',
-      coreMeaningLabel: '핵심 의미',
-      coreMeaningText: question.coreMeaning,
-      keyIssueLabel: '핵심 문제',
-      keyIssueText: question.keyIssue,
-      modelAnswer: question.modelAnswer,
-      criteria: buildReviewCriteria(null, question),
-      history: buildReviewHistory(null, question)
-    };
-  }
-
   return {
-    title: reviewDocument.approved_topic_seed.topic_seed_title,
+    title: question.topic,
     instructionText:
       question.content.kind === '53' || question.content.kind === '54'
-        ? reviewDocument.prompt_text
+        ? getQuestionText(question)
         : '',
     sourceText: '',
-    coreMeaningLabel: reviewDocument.context_notes.row1_label || '핵심 의미',
-    coreMeaningText:
-      reviewDocument.context_notes.row1_value || question.coreMeaning,
-    keyIssueLabel: reviewDocument.context_notes.row2_label || '핵심 문제',
-    keyIssueText: reviewDocument.context_notes.row2_value || question.keyIssue,
-    questionPromptIntro:
-      reviewDocument.approved_topic_seed.shared_context || question.content.learnerPrompt,
-    modelAnswer: reviewDocument.model_answer,
-    criteria: buildReviewCriteria(reviewDocument, question),
-    history: buildReviewHistory(reviewDocument, question)
+    coreMeaningLabel: '핵심 의미',
+    coreMeaningText: question.coreMeaning,
+    keyIssueLabel: '핵심 문제',
+    keyIssueText: question.keyIssue,
+    modelAnswer: question.modelAnswer,
+    criteria: buildReviewCriteria(question),
+    history: buildReviewHistory(question)
   };
 }
 
@@ -326,10 +258,6 @@ function getReviewProfileKey(question: AssessmentQuestion): ReviewProfileKey {
 }
 
 function getQuestionFormText(question: AssessmentQuestion): string {
-  if (question.reviewDocument) {
-    return '53형';
-  }
-
   const profileKey = getReviewProfileKey(question);
 
   if (profileKey === '51-52') {

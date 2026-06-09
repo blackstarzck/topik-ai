@@ -162,6 +162,7 @@
 - `Users > 회원 목록`
   - query: `page`, `pageSize`, `sort`, `status`, `searchField`, `startDate`, `endDate`, `keyword`
   - 핵심 필드: `id`, `realName`, `email`, `nickname`, `joinedAt`, `lastLoginAt`, `status`, `tier`, `subscriptionStatus`
+  - v13 source: `realName`은 `profiles.display_name`, `nickname`은 `profiles.nickname`을 사용한다. `get_admin_users` RPC가 `nickname`을 누락하는 경우 service 계층에서 `profiles(id,nickname)`을 보강 조회하며, 두 필드가 `NULL`이면 이메일/ID/local-part fallback을 만들지 않고 UI에서 `-`로 표시한다.
 - `Users > 강사 관리`
   - query: `page`, `pageSize`, `sort`, `status`, `activityStatus`, `country`, `organization`, `searchField`, `startDate`, `endDate`, `keyword`
   - 핵심 필드: `id`, `realName`, `email`, `organization`, `country`, `status`, `activityStatus`, `assignmentStatus`, `courseCount`, `studentCount`, `lastActivityAt`, `lastActionAt`
@@ -242,45 +243,40 @@
 
 ### 9.6 Assessment
 
-- `Assessment > TOPIK 쓰기 문제은행`
-  - query: `tab`, 반복 `questionNo`, `searchField`, `keyword`, `startDate`, `endDate`, `reviewStatus`, `operationStatus`, `selected`
+- `Assessment > TOPIK 쓰기 문제 검수` / `Assessment > TOPIK 쓰기 문항 관리`
+  - 라우트 분리: 기존 단일 페이지의 `tab` 쿼리 토글을 제거하고 두 개의 형제 라우트/페이지로 분리했습니다. 검수 페이지 `/assessment/question-bank`(path 유지), 관리 페이지 `/assessment/question-bank/manage`. 검수 상세 2depth는 `/assessment/question-bank/review/{questionId}`로 변경 없음.
+  - query (공통, 두 페이지): 반복 `questionNo`, `domain`, `questionType`, `difficulty`, `keyword`
+  - query (검수 전용, `/assessment/question-bank`): `reviewStatus`
+  - query (관리 전용, `/assessment/question-bank/manage`): `operationStatus`
+  - 각 라우트는 자체 URL 상태를 보존하며 `tab` 쿼리 파라미터는 더 이상 사용하지 않습니다.
   - 엔티티 후보
-  - `AssessmentQuestion`
-  - `AssessmentQuestionGenerationBatch`
-  - `AssessmentQuestionAuditEvent`
-  - 테이블 후보
-    - `assessment_questions`
-    - `assessment_question_generation_batches`
-    - `assessment_question_audits`
+    - `AssessmentQuestion`
+    - `AssessmentQuestionAuditEvent`
+  - 현재 Supabase source
+    - `problems`
+    - `admin_update_problem` RPC
+    - `admin_audit_logs` (RPC write 감사 로그)
   - 핵심 필드
-    - `questionId`, `questionNumber`, `topic`, `questionText`, `domain`, `questionTypeLabel`, `difficultyLevel`, `sourceType`, `generationBatchId`, `promptVersion`, `generationModel`, `reviewStatus`, `operationStatus`, `validationStatus`, `validationSignals`, `usageCount`, `linkedExamCount`, `reviewMemo`, `managementNote`, `coreMeaning`, `keyIssue`, `modelAnswer`, `scoringCriteria`, `revisionHistory`, `reviewCompletedAt`, `reviewExportStatus`, `generatedAt`, `updatedAt`, `updatedBy`
-    - `reviewDocument.id`, `reviewDocument.created_at`, `reviewDocument.review_workflow`, `reviewDocument.meta`, `reviewDocument.approved_topic_seed`, `reviewDocument.approved_graph_logic`, `reviewDocument.approved_rubric`, `reviewDocument.chart_roles`, `reviewDocument.scenario_logic`, `reviewDocument.relation`, `reviewDocument.chart_a`, `reviewDocument.chart_b`, `reviewDocument.context_notes`, `reviewDocument.narrative`, `reviewDocument.prompt_text`, `reviewDocument.model_answer`, `reviewDocument.rubric`, `reviewDocument.review_memo`, `reviewDocument.edit_history`, `reviewDocument.review_passed`
+    - Supabase 원천: `problems.id`, `question_no`, `title`, `prompt`, `difficulty`, `review_status`, `review_workflow_status`, `topic_category_code`, `explanation`, `answer_key`, `rubric`, `created_at`, `updated_at`
+    - 화면 모델: `questionId`, `questionNumber`, `topic`, `questionText`, `domain`, `questionTypeLabel`, `difficultyLevel`, `sourceType`, `reviewStatus`, `operationStatus`, `validationStatus`, `usageCount`, `linkedExamCount`, `reviewMemo`, `managementNote`, `modelAnswer`, `scoringCriteria`, `revisionHistory`, `generatedAt`, `updatedAt`
   - 검수 계약 메모
-    - `AssessmentQuestionSeed`는 feature 내부 JSON fixture item과 1:1로 대응하는 raw seed 타입이며, 현재는 `AssessmentQuestionReviewDocument`와 같은 shape를 사용합니다.
-    - 화면에 직접 쓰는 row mock은 별도 `AssessmentQuestionMockDefinition`(`Omit<AssessmentQuestion, 'questionText'>`)으로 분리합니다. `AssessmentQuestionSeed`를 flat UI row 타입으로 재사용하지 않습니다.
-    - `reviewMemo`는 현재 검수자가 문항 적합성을 판단한 결과를 저장하는 필드로 해석합니다.
-    - `reviewStatus = 검수 완료`는 검수 종료를 의미하며, 후속 JSON 내보내기 대상 조건으로 사용됩니다.
-    - `revisionHistory`, `reviewDocument.edit_history`는 단순 변경 로그가 아니라 `과거 검수 메모 + AI 재생성 반영 설명` 세트를 담는 schema candidate입니다.
-    - `questionText`는 목록형 `문항` 컬럼의 표시 필드이며, 현재 mock 단계에서는 feature 내부 JSON fixture의 `prompt_text`를 questionId별로 매핑해 사용합니다.
-    - 검수 큐 목록의 `문항 주제/도메인` 셀은 JSON direct key인 `approved_topic_seed.topic_seed_title`, `meta.domain`만 노출합니다. `questionTypeLabel`, `difficultyLevel`은 현재 filter/sort용 legacy admin metadata로 남아 있지만, exact JSON key가 아니라서 목록 셀에서는 노출하지 않습니다.
-    - `채점 기준`은 `reviewDocument` 유무와 별개로 feature 내부 JSON fixture의 `rubric`를 questionId별로 우선 조회하고, fixture가 없을 때만 `scoringCriteria` fallback을 사용합니다.
-    - 현재 문제은행 mock row는 feature 내부 JSON fixture 전체(`valid_questions_97items_2026-03-27.json`, 현재 workspace 기준 97개)를 `reviewDocument`로 중첩해 사용합니다. `topic`, `domain`, `reviewMemo`, `managementNote`, `coreMeaning`, `keyIssue`, `modelAnswer`, `scoringCriteria`, `revisionHistory`, `generatedAt`, `updatedAt`, `updatedBy`는 JSON seed에서 직접 읽습니다.
-    - 현재 화면에서 direct key가 없는 표시값은 store에 빈 문자열로 두고 렌더 단계에서 `-`로 통일합니다. 대표적으로 `51/52`의 `문항 지시문`, 공통 요약 row의 `출처`, `검수자`가 여기에 해당합니다.
-    - 문제 번호별 검수 필드 집합은 분리해서 관리합니다.
-      - `51/52`: `questionText(prompt_text)`, `approved_topic_seed.topic_seed_title`, `context_notes`, `model_answer`, `rubric`, `review_memo`, `edit_history`
-      - `53`: `questionText(prompt_text)`, `approved_topic_seed.topic_seed_title`, `context_notes`, `model_answer`, `rubric`, `review_memo`, `edit_history`
-      - `54`: `questionText(prompt_text)`, `approved_topic_seed.topic_seed_title`, `approved_topic_seed.shared_context`, `scenario_logic`, `context_notes`, `model_answer`, `rubric`, `review_memo`, `edit_history`
-    - 검수 상세 `Descriptions`는 공통 상단(`문항 번호`, `문항 주제`, `문항 형태`, `문항 ID`, `문항 지시문`)과 이미지 기준 공통 요약 row(`출처`, `핵심 의미`, `핵심 문제`, `모범답안`, `채점 기준`)를 기본으로 둡니다.
-    - 조건부 row는 `51/52`의 `문항`, `54`의 `문항 질문`만 허용합니다. `51/52`의 `문항`은 `questionText(prompt_text)`를 사용하고, `54`의 `문항 질문`은 `approved_topic_seed.shared_context` + `scenario_logic`를 사용합니다.
+    - `AssessmentQuestionSeed`, feature 내부 JSON fixture, Zustand 문제은행 store는 현재 source 계약에서 제거되었습니다. Supabase 조회가 실패해도 JSON fixture를 fallback으로 읽지 않습니다.
+    - `questionText`는 목록형 `문항` 컬럼의 표시 필드이며, Supabase `problems.prompt`를 사용합니다. 검수 상세에서는 문제 번호별 profile에 따라 공통 `문항 지시문` 또는 전용 `문항` row에 같은 source를 표시합니다.
+    - `topic`은 `problems.title`, `domain`은 `problems.topic_category_code`를 코드 라벨로 매핑해 사용합니다.
+    - `questionTypeLabel`은 `question_no`의 TOPIK 쓰기 형식 규칙으로 파생하고, `difficultyLevel`은 `problems.difficulty` 숫자 구간으로 파생합니다.
+    - `modelAnswer`는 `answer_key.text` 또는 문자열형 `answer_key`에서 읽고, `scoringCriteria`는 `problems.rubric` 배열을 문자열 배열로 매핑합니다.
+    - `reviewStatus`는 `review_workflow_status`가 있으면 workflow stage를 우선하고, 없으면 `review_status`를 `검수 대기/검수 완료/수정 필요`로 매핑합니다.
+    - `reviewStatus = 검수 완료`는 검수 종료를 의미합니다. 후속 내보내기/배포 실행 위치와 파일/API 스키마는 현재 코드 source가 아니며 후속 계약에서만 확정합니다.
+    - `reviewMemo`는 v13 `problems`에 내부 검수 메모 컬럼이 없어 현재 UI-local annotation으로만 유지됩니다. 영구 저장이 필요하면 별도 컬럼/API 계약을 먼저 확정해야 합니다.
+    - `operationStatus`는 `lifecycle_status` 적용 전까지 `미지정` sentinel로만 노출하고, 운영 상태 변경 write path는 비활성화되어 있습니다. 문항 관리 페이지(`/assessment/question-bank/manage`)에는 운영 조치(노출 후보/숨김 후보/운영 제외) UI가 비활성(disabled) 스캐폴딩으로 존재하며, 확인+사유 → 감사 로그 흐름(ConfirmAction + AuditLogLink)이 코드에 미리 연결되어 있으나 `lifecycle_status` 도착 시 `OPERATION_WRITE_ENABLED` 플래그 활성화 + 서비스 un-stub로 한 번에 켜집니다. 그 전까지는 페이지 상단에 "운영 상태 관리는 준비 중입니다" 경고 Alert를 노출합니다.
+    - 검수 페이지와 문항 관리 페이지는 동일한 Supabase `problems`(question_no 51-54) 조회 결과를 공유 hook으로 공유하므로, 아래 Supabase 원천 / 화면 모델 필드 매핑은 두 페이지에서 변경 없이 동일하게 적용됩니다.
+    - 과거 JSON 검수 문서용 `reviewDocument` 타입과 화면 분기는 제거되었습니다. 상세 payload/JSONB 문서가 다시 필요하면 새 Supabase/API 계약을 확정한 뒤 별도 타입으로 추가합니다.
+    - 현재 화면에서 Supabase source가 없는 표시값은 임의 생성하지 않고 `-`, `미상`, `미지정`, 빈 배열 같은 sentinel로 표시합니다.
   - enum / code table candidate
     - `questionNumber`: `51`, `52`, `53`, `54`
     - `domain`: `생활`, `학습`, `사회`, `문화`, `경제`, `교육`, `환경`, `기술`
     - `questionTypeLabel`: `빈칸 완성`, `연결 표현`, `자료 설명`, `의견 서술`
     - `difficultyLevel`: `상`, `중`, `하`
-    - `reviewDocument.meta.question_type`: `importance_problem_effort`, `advantage_problem_solution`, `background_problem_response`
-    - `reviewDocument.meta.topic_type`: `importance_problem_effort`, `advantage_problem_solution`, `background_problem_response`
-    - `reviewDocument.approved_topic_seed.expected_question_type`: `importance_problem_effort`, `advantage_problem_solution`, `background_problem_response`
-    - `reviewDocument.meta.difficulty`: 숫자형 난이도 원천값 (`4`, `5`, `6` 등)
     - `reviewStatus`: `검수 대기`, `검수 중`, `보류`, `검수 완료`, `수정 필요`
     - `operationStatus`: `미지정`, `노출 후보`, `숨김 후보`, `운영 제외`
     - `validationStatus`: `정상`, `주의`, `재검토`
@@ -291,7 +287,7 @@
     - `code table candidate`
       - 문제 번호, 검수 상태, 운영 상태, 자동 점검 상태
     - `ui-only`
-      - 탭 안내 문구, empty/error/pending 메시지
+      - 페이지 안내 문구, 운영 상태 준비 중 경고 Alert, empty/error/pending 메시지
   - 감사 로그 / URL 계약
     - `Target Type = AssessmentQuestion`
     - `Target ID = questionId`

@@ -365,23 +365,29 @@
 
 ### 4.7 Assessment
 
-- 대상 파일: `src/features/assessment/pages/assessment-question-bank-page.tsx`, `src/features/assessment/api/assessment-question-bank-service.ts`, `src/features/assessment/model/assessment-question-bank-store.ts`, `src/app/router/app-router.tsx`
+- 대상 파일: `src/features/assessment/pages/assessment-question-review-page.tsx`, `src/features/assessment/pages/assessment-question-manage-page.tsx`, `src/features/assessment/api/assessment-question-bank-service.ts`, `src/features/assessment/api/supabase-assessment-question-bank-service.ts`, `src/app/router/app-router.tsx`
 - 현 상태
-  - `TOPIK 쓰기 문제은행`은 mock service/store 기반 실페이지로 전환되었고, `검수 큐 -> 2depth 검수 페이지`, `문항 관리 -> 목록 비교 전용 탭` 구조와 `53/54번` 카드형 검수 워크스페이스, `검수 메모 입력 -> 검수 완료 / 수정 필요 / 보류` 흐름까지 반영되었다.
+  - `TOPIK 쓰기 문제은행` 단일 페이지(`tab` 쿼리 토글)는 두 형제 라우트로 분리되었다. `Assessment > TOPIK 쓰기 문제 검수`(`/assessment/question-bank`)와 `Assessment > TOPIK 쓰기 문항 관리`(`/assessment/question-bank/manage`)가 동일한 Supabase `problems`(question_no 51-54) 조회 결과를 공유 hook으로 함께 쓰며, JSON fixture/store fallback은 제거되었다.
+  - 검수 페이지는 `reviewStatus 요약 카드+필터 -> 목록 -> 2depth 검수 페이지(/assessment/question-bank/review/:questionId)`와 `검수 메모 입력 -> 검수 완료 / 수정 필요 / 보류` 흐름을 유지한다. `tab` 쿼리는 제거되고 각 라우트가 자체 URL 상태(공통 `questionNo`/`domain`/`questionType`/`difficulty`/`keyword`, 검수 전용 `reviewStatus`, 관리 전용 `operationStatus`)를 복원한다.
   - `EPS TOPIK`, `레벨 테스트`는 아직 Placeholder
 - 미확정/누락/오구현
-  - `TOPIK 쓰기 문제은행`
+  - `TOPIK 쓰기 문제 검수`
     - 검수 상태와 운영 상태는 분리 구현됐지만, 최종 공개/숨김 정책과 승인 체계는 아직 확정되지 않았다.
-    - `51/52`, `53`, `54` 문항별 검수 필드는 현재 이미지 기준 공통 row + 조건부 row(`51/52`의 `문항`, `54`의 `문항 질문`) 구조로 정리되었지만, mock/API 데이터 구조는 여전히 page-local helper에 의존한다. 장기적으로는 문제 번호별 review field profile schema를 별도 계약으로 승격할 필요가 있다.
-    - `검수 완료` 문항을 JSON으로 내보내는 실행 위치와 파일 스키마가 아직 고정되지 않았다.
-    - `수정 히스토리`는 과거 검수 메모와 AI 반영 설명을 분리해 보여주지만, 필드별 diff와 버전 간 비교 뷰는 아직 없다.
+    - `51/52`, `53`, `54` 문항별 검수 필드는 현재 이미지 기준 공통 row + 조건부 row(`51/52`의 `문항`, `54`의 `문항 질문`) 구조로 정리되었지만, 현재 Supabase `problems` payload에는 일부 상세 필드 source가 없어 sentinel/빈 이력으로 표시한다. 장기적으로는 문제 번호별 review field profile schema를 별도 계약으로 승격할 필요가 있다.
+    - `검수 완료` 문항을 후속 내보내기/배포 대상으로 넘기는 실행 위치와 파일/API 스키마가 아직 고정되지 않았다.
+    - `수정 히스토리`는 현재 Supabase 문제은행 조회 source가 없어 빈 이력으로 표시하며, 필드별 diff와 버전 간 비교 뷰도 아직 없다.
     - AI 재생성, 배치 재시도, 프롬프트 버전 비교, 검수 히스토리 diff는 아직 구현되지 않았다.
     - EPS TOPIK / 레벨 테스트 세트 편성 화면에서 검수 완료 문항을 소비하는 계약은 후속 구현이 필요하다.
-    - `53/54번` 2depth 검수 페이지는 JSON 매핑 검수 문서(`reviewDocument`) 구조까지 반영됐지만, JSON 업로드/내보내기와 배치별 대량 검수 액션은 아직 관리자 SoT에 연결되지 않았다.
+    - `53/54번` 2depth 검수 페이지는 Supabase `problems` 매핑 기준으로 동작하지만, 배치별 대량 검수 액션과 후속 내보내기/배포 액션은 아직 관리자 SoT에 연결되지 않았다.
+  - `TOPIK 쓰기 문항 관리`
+    - 운영 상태 조치(`노출 후보` / `숨김 후보` / `운영 제외`)는 v13 `lifecycle_status` 미적용으로 현재 비활성(스캐폴딩) 상태다. 페이지 상단 `운영 상태 관리는 준비 중입니다` 경고 Alert와 disabled 운영 조치 버튼만 노출되고, `operationStatus`는 모든 문항에서 `미지정` sentinel로만 표시된다.
+    - 확인+사유 -> 감사 로그 흐름(`ConfirmAction` + `AuditLogLink`)과 `admin_update_problem` write path는 코드에 미리 연결되어 있으나 데이터 계약상 비활성이며, `OPERATION_WRITE_ENABLED` 플래그 + 서비스 un-stub로 후속 활성화 예정이다. 즉 운영 상태 변경은 지금 동작하지 않는다.
+    - 운영 상태 조치를 실제로 켜려면 v13 `lifecycle_status` 적용과 `admin_update_problem` write 활성화가 선행되어야 하며, 이전까지 `operationStatus` 요약 카드/필터는 sentinel 기준 분포만 보여 준다.
   - `EPS TOPIK`, `레벨 테스트`
     - 여전히 Placeholder이며, 편성/배점/발행/결과 정책의 화면 SoT와 데이터 source 경계가 미정이다.
 - 분류
   - `부분 구현 + 미확정`
+  - 문항 관리 운영 상태 조치: `누락` (write path 후속 활성화 대기)
 
 ### 4.8 Content
 
@@ -486,6 +492,7 @@
 
 ## 7. 최근 해소 이력
 
+- 2026-06-09 | `Assessment > TOPIK 쓰기 문제은행` 검수/관리 단일 페이지 `tab` 토글 분리 | `src/features/assessment/pages/assessment-question-review-page.tsx`, `src/features/assessment/pages/assessment-question-manage-page.tsx`, `src/features/assessment/api/assessment-question-bank-service.ts`, `src/features/assessment/api/supabase-assessment-question-bank-service.ts`, `src/app/router/app-router.tsx`, `docs/specs/page-ia/assessment-question-bank-page-ia.md`, `docs/specs/page-ia/assessment-question-manage-page-ia.md`를 기준으로 `tab` 쿼리로 `검수 큐`/`문항 관리`를 토글하던 단일 페이지를 `Assessment > TOPIK 쓰기 문제 검수`(`/assessment/question-bank`)와 `Assessment > TOPIK 쓰기 문항 관리`(`/assessment/question-bank/manage`) 두 형제 라우트로 분리했습니다. `tab` 쿼리를 제거하고 각 라우트가 자체 URL 상태(공통 `questionNo`/`domain`/`questionType`/`difficulty`/`keyword`, 검수 전용 `reviewStatus`, 관리 전용 `operationStatus`)를 복원하게 정리했고, 두 페이지는 동일한 Supabase `problems`(question_no 51-54) 조회 결과를 공유 hook으로 함께 씁니다. 다만 문항 관리 운영 상태 조치는 v13 `lifecycle_status` 미적용으로 비활성(스캐폴딩) 상태로 신규 갭에 남겼습니다.
 - 2026-03-27 | `System > 메타데이터 관리` 관리 위치 계층 UX 보강 | `src/features/system/pages/system-metadata-page.tsx`, `src/features/system/model/system-metadata-store.ts`, `docs/specs/page-ia/system-metadata-page-ia.md`, `docs/specs/admin-page-tables.md`를 기준으로 목록의 `관리 위치`를 `route > 세부 위치` 형태로 읽히게 바꾸고, 상세 Drawer에는 Breadcrumb 기반 위치 카드와 `설정 그룹 -> 관리 위치 -> 운영 값 -> 사용자 영향` Tree를 추가했습니다. 메타데이터가 계층형 구조를 가진다는 점을 비개발자 운영자도 한눈에 이해할 수 있도록 위치 정보와 구조 정보를 같은 화면에서 검수하게 정리했습니다.
 - 2026-03-27 | `System > 메타데이터 관리` 목록 압축과 Tree 기반 운영 값 관리 보강 | `src/features/system/pages/system-metadata-page.tsx`, `src/features/system/model/system-metadata-store.ts`, `tests/e2e/system-metadata.spec.ts`, `docs/specs/page-ia/system-metadata-page-ia.md`, `docs/specs/admin-page-tables.md`를 기준으로 목록 행에서 그룹 ID/설명/관리 방식/총 개수 같은 보조 텍스트를 제거하고, 상세 Drawer `설정 구조`를 `설정 그룹 -> 운영 값 -> 추가` Tree로 단순화했습니다. 운영 값은 Tree와 테이블에서 모두 드래그 정렬할 수 있게 바꾸고, 순서 변경은 `item_reordered` 이력과 감사 로그로 추적하도록 정리했습니다.
 - 2026-03-27 | `System > 메타데이터 관리` mock 기준 운영 값 중복 체크 추가 | `src/features/system/pages/system-metadata-page.tsx`, `src/features/system/api/system-metadata-service.ts`, `tests/e2e/system-metadata.spec.ts`, `docs/specs/page-ia/system-metadata-page-ia.md`, `docs/specs/admin-page-tables.md`, `docs/specs/admin-data-contract.md`를 기준으로 운영 값 등록/수정 Modal에 같은 설정 그룹 안의 코드/라벨 중복 validator를 추가하고, 저장 시 service에서도 한 번 더 차단하도록 정리했습니다. 실제 DB unique 제약은 아직 없지만 mock 단계에서도 중복 데이터가 섞이지 않도록 입력 UX와 write path를 같이 맞췄습니다.

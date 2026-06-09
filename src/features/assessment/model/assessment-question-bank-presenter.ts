@@ -1,4 +1,10 @@
-import type { AssessmentQuestion } from './assessment-question-bank-types';
+import type {
+  AssessmentQuestion,
+  AssessmentQuestionDifficulty,
+  AssessmentQuestionDomain,
+  AssessmentQuestionNumber,
+  AssessmentQuestionTypeLabel
+} from './assessment-question-bank-types';
 
 export function getQuestionText(question: AssessmentQuestion): string {
   return question.questionText;
@@ -47,4 +53,47 @@ export function buildAssessmentQuestionSearchText(
   ]
     .join(' ')
     .toLowerCase();
+}
+
+export type CommonQuestionFilter = {
+  domain: AssessmentQuestionDomain | null;
+  questionType: AssessmentQuestionTypeLabel | null;
+  difficulty: AssessmentQuestionDifficulty | null;
+  keyword: string;
+};
+
+export function filterQuestionsByNumbers(
+  questions: AssessmentQuestion[],
+  activeQuestionNumbers: AssessmentQuestionNumber[]
+): AssessmentQuestion[] {
+  return questions.filter((question) =>
+    activeQuestionNumbers.includes(question.questionNumber)
+  );
+}
+
+export function applyCommonQuestionFilters(
+  questions: AssessmentQuestion[],
+  filter: CommonQuestionFilter
+): AssessmentQuestion[] {
+  const normalizedKeyword = filter.keyword.trim().toLowerCase();
+
+  return questions.filter((question) => {
+    if (filter.domain && question.domain !== filter.domain) {
+      return false;
+    }
+
+    if (filter.questionType && question.questionTypeLabel !== filter.questionType) {
+      return false;
+    }
+
+    if (filter.difficulty && question.difficultyLevel !== filter.difficulty) {
+      return false;
+    }
+
+    if (!normalizedKeyword) {
+      return true;
+    }
+
+    return buildAssessmentQuestionSearchText(question).includes(normalizedKeyword);
+  });
 }

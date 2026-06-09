@@ -231,11 +231,14 @@ export function buildAdminBreadcrumbItems(
   if (pathname.startsWith('/assessment/question-bank/eps-topik')) {
     return [
       breadcrumbLinkItem(adminMenuLabels.assessment, '/assessment/question-bank'),
-      breadcrumbLinkItem(
-        adminMenuLabels.assessmentQuestionBank,
-        '/assessment/question-bank'
-      ),
       breadcrumbTextItem(adminMenuLabels.assessmentEpsTopik)
+    ];
+  }
+
+  if (pathname.startsWith('/assessment/question-bank/manage')) {
+    return [
+      breadcrumbLinkItem(adminMenuLabels.assessment, '/assessment/question-bank'),
+      breadcrumbTextItem(adminMenuLabels.assessmentQuestionManage)
     ];
   }
 

@@ -54,6 +54,7 @@ import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 const { Text } = Typography;
 
 const pageSizeOptions = ['20', '50', '100'];
+const emptyProfileValue = '-';
 const userTierFilterValues = ['일반', '프리미엄'] as const;
 const userSubscriptionStatusFilterValues = ['구독', '미구독'] as const;
 const userStatusFilterValues = ['정상', '정지', '탈퇴'] as const;
@@ -70,6 +71,11 @@ type ListActionState =
   | { type: 'suspend'; user: UserSummary }
   | { type: 'unsuspend'; user: UserSummary }
   | null;
+
+function renderProfileValue(value: string): string {
+  const trimmed = value.trim();
+  return trimmed ? trimmed : emptyProfileValue;
+}
 
 function parsePositiveNumber(value: string | null, fallback: number): number {
   if (!value) {
@@ -348,8 +354,9 @@ export default function UsersPage(): JSX.Element {
         render: (_, record) => (
           <UserNavigationLink
             stopPropagation
+            withId={false}
             userId={record.id}
-            userName={record.realName}
+            userName={renderProfileValue(record.realName)}
           />
         )
       },
@@ -363,6 +370,7 @@ export default function UsersPage(): JSX.Element {
         title: '닉네임',
         dataIndex: 'nickname',
         width: 160,
+        render: (value: string) => renderProfileValue(value),
         sorter: createTextSorter((record) => record.nickname)
       },
       {
@@ -548,9 +556,9 @@ export default function UsersPage(): JSX.Element {
             description="필터 조건을 확인하거나 잠시 후 다시 조회해주세요."
           />
         ) : null}
-      <AdminDataTable<UserSummary>
-        rowKey="id"
-        columns={columns}
+        <AdminDataTable<UserSummary>
+          rowKey="id"
+          columns={columns}
           dataSource={filteredUsers}
           onRow={handleRowClick}
           loading={usersState.status === 'pending'}
@@ -595,7 +603,7 @@ export default function UsersPage(): JSX.Element {
         cancelText="취소"
         onCancel={closeMemoModal}
         onOk={handleMemoSubmit}
-      destroyOnHidden
+        destroyOnHidden
       >
         <Form form={memoForm} layout="vertical">
           <Text type="secondary">
@@ -614,5 +622,3 @@ export default function UsersPage(): JSX.Element {
     </div>
   );
 }
-
-
