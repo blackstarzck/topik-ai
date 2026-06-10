@@ -94,6 +94,9 @@ select column_name from information_schema.columns
 - 채점자: 프로젝트 오너 위임 실행(2026-06-10 지시).
 - 증적 형식 메모(적대적 검증 반영): freeze 가드 5곳은 같은 작업 사본에서 "미채택 신설 → 채택 해제"가 한 배치로 일어나 커밋 이력상 미채택 상태가 존재하지 않는다. 따라서 P0-3 증적은 "git diff의 전이"가 아니라 ① 본 커밋의 최종 상태(채택 확정 문구) + ② `logs/admin-doc-update-log.md`의 2026-06-10 거버넌스 동기화(미채택 신설)·P0 실행(해제) 2개 연속 기록으로 갈음한다. P0-2의 v13 합의 원문은 외부 repo 파일(`topik-project/v13/supabase/migrations/20260609130000_remove_v13_admin_island.sql`)이며 핵심 문구는 결정 기록 §2.1에 인용 보존했다.
 
-### P0-5 확정 증적 (커밋 후 추기)
+### P0-5 확정 증적 (커밋 후 추기 — 2026-06-10)
 
-- (커밋 후 본 절에 해시·harness 로그 추기)
+- 원자 커밋: `346e56e` — "docs(transition): confirm Phase 0 decisions (D-1~D-13), release freeze guards, record v13 boundary agreement" (20 files, +1626/-13: 기준 문서 2건 + 실행계획안 + 결정 기록 + 증적 로그 + 요청서 2건 + SoT 9건 + AGENTS.md + README + 로그 2건 + run-sql.mjs).
+- `npm run harness:check` 통과(커밋 직전 실행): mojibake 검출 0건 / doc crosslink 103개 문서 검증 통과 / route-doc coverage 52라우트-37 IA 문서 통과 / eslint 0건 / tsc 0건.
+- 적대적 검증 2종(채점 반박·정합성 검토) 실행 결과 블로커 1건(미커밋 상태 자체)과 마이너 7건이 보고됐고, 마이너 지적 전건(스코어카드 미기록·§3.3 사전 포인터·90문항 잔존 표기·12건/13건 로그 오류·page-tables 로그 누락·lifecycle_status/admin_update_problem 잔존 모순 5곳·source 분포 미확인)을 커밋 전에 수정 반영했다.
+- **P0-5 = PASS 확정. P0 종합 판정 = PASS** (필수 5건 PASS, 권장 P0-6 부분 — 종합 미산입, 후속 계획은 §12.4 메모).
