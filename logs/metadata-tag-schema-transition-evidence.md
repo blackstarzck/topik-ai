@@ -178,11 +178,20 @@ select count(*), count(*) filter (where tag_group='서비스_노출상태') from
 
 - **추출(§6.2-1)**: `npm run etl:extract` — `problems` 51~54 전수 470행 덤프(.omx/evidence/etl/problems-dump.json). 분포 실측이 D-9 확정치와 일치: 51 90+1 / 52 5+72 / 53 46+17 / 54 81+158 (approved+pending), 전수 `source='curated'`.
 - **구조 실측**: 재조립 가능성 사전 검증 — 51: 90/90(blanks→resolved_text), 52: 76/76(검수 메모 따옴표 스팬 파싱→model_answer 재조립). 53: 62/62 chart_a+chart_b·글자수·과제 파싱. 54: 238/238 번호 질문·글자수 파싱(단, 154행은 scenario 축약형 — 입력표가 essay_type 등 공급). 적재 보류 확정 대상: `audit_seed` 예시 4행(materials/answer_key 부재).
-- **D-3 재분류 입력표(draft)**: `data/etl/reclassification-input.json` 466행 — 분류 에이전트 24배치(본문 기반, 기계 변환 금지) + 17×85 사전·번호별 enum 전수 검증 위반 0건. 54번 1행은 출력 누락분 수동 보완. **번호별 표본 적대 감사 패스는 세션 리밋으로 미수행**(입력표 meta.status에 기록, 다음 세션 보완).
+- **D-3 재분류 입력표(draft)**: `data/etl/reclassification-input.json` 466행 — 분류 에이전트 24배치(본문 기반, 기계 변환 금지) + 17×85 사전·번호별 enum 전수 검증 위반 0건. 54번 1행은 출력 누락분 수동 보완. ~~번호별 표본 적대 감사 패스는 세션 리밋으로 미수행~~ → **3차 세션(2026-06-10)에서 수행 완료(아래 절)**.
 - **ETL 4스크립트(§6.2)**: `scripts/etl/` extract/transform/load/verify + 순수 코어 `lib/transform-core.mjs`(D-2 사전·D-4 채번·빌더·NOT NULL 보류 판정·재조립 검증). 드라이런(빈 입력표)으로 보류 경로·채번 결정성 확인.
 - **P2-7(권장) 선행**: vitest 도입 + `tests/unit/transform-core.test.mjs` 43개 전부 PASS(`npm run test:unit`).
 - **P2-6 준비**: 델타 리허설 시뮬레이터 `.omx/evidence/etl/make-delta-sim.mjs`(problems 무변경 — 덤프 사본 변형 방식) 작성.
 
+### D-3 입력표 표본 적대 감사 패스 (2026-06-10 3차 세션, 수행 완료)
+
+- 방식: 번호별 15행×4=60행 결정적 표본(id 정렬+균등 간격, 54번 수동 보완 행 강제 포함) → 워크플로 `wf_d7d3d7f6-753`(에이전트 48개) — 적대 감사관 4인(본문 원문 대조) + 플래그별 독립 판정관 2인 재판정.
+- 결과: 플래그 22건(wrong 5·questionable 17) → **교체 20건 + topic 스왑 후속 rationale 재작성 2건 반영, 유지 2건**. 판정 규칙: 2인 일치=채택/유지, 분열 2건·문구차 1건=주 루프 판정(근거 영구 기록). 인용 조작·환각 0건(rationale 무근거 단정 3건은 교정).
+- 주요 정정 유형: q52 cf/ref 중복·스왑 기입(6행), topic 주·보조 역전(2행 — `7a6857b3` 도서관/`c7d836fa` 정전기), q54 essay_type 경계 정렬(3행), q53 난이도 자체모순(1행), rationale 본문 외 인용·단정(3행), secondary 누락(1행).
+- 반영 후 전 행 재검증(사전 쌍·enum·화살표·주보조 중복) 위반 0건, `npm run test:unit` 43개 PASS 유지. topic 분포 변화: 일상생활 67→66, 기후 1→0, 주거와 환경 42→43, 전문 분야 15→16.
+- 증적(비추적, `.omx/evidence/etl/audit/`): 표본 `sample-{51..54}.json`, 워크플로 전체 출력 `audit-workflow-output.txt`, 판정·근거 전문 `audit-decisions.json`, 반영 도구 `apply-audit-corrections.mjs`. 커밋 산출물은 입력표 본체(meta.status에 감사 완료 기록).
+- 후속 권고(채점 비차단): q52 cf=ref 동일값 잔여 22행 표적 감사(표본 내 중복 4행이 4/4 오류) + 원천 title/hints 오염 3행 gap-register 기록 — 핸드오프 §2.3·§3-1.
+
 ### 잔여 (P2 채점 전 필수)
 
-- 본 적재(transform→load) + 검증 5종(verify) + P2-1 idempotency 2회 로그 + P2-6 리허설 실행 + P2-3 보류 발주 기록 + P2-5 콘텐츠팀 샘플 승인(발주서 미발신 시 CONDITIONAL 사유).
+- 본 적재(transform→load) + 검증 5종(verify) + P2-1 idempotency 2회 로그 + P2-6 리허설 실행 + P2-3 보류 발주 기록 + P2-5 콘텐츠팀 샘플 승인(발주서 미발신 시 CONDITIONAL 사유). 권장 선행: q52 cf=ref 잔여 22행 표적 감사(위 절).

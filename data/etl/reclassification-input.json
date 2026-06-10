@@ -3,8 +3,8 @@
   "name": "D-3 재분류 입력표 (분류 초안)",
   "generated_at": "2026-06-10",
   "source": "v13 problems 51~54 전수 470행 중 분류 대상 466행 (audit_seed 예시 4행은 적재 보류 트랙)",
-  "method": "문항 본문(title/prompt/scenario 힌트) 기반 분류 — topic_category_code 기계 변환 미사용(D-3). 분류 24배치 + 17주제×85세부 고정 사전·번호별 enum 전수 검증(위반 0건). 난이도/목표급수는 51=source_difficulty_target, 52~54=normalized_difficulty 파생 초안. 54번 1행(68f40294)은 분류 출력 누락분 수동 보완.",
-  "status": "draft — 번호별 표본 적대 감사 패스 미수행(2026-06-10 세션 리밋, 다음 세션 수행 예정). 적재는 가능(전 행 internal_test)하나 감사 후 확정 권장.",
+  "method": "문항 본문(title/prompt/scenario 힌트) 기반 분류 — topic_category_code 기계 변환 미사용(D-3). 분류 24배치 + 17주제×85세부 고정 사전·번호별 enum 전수 검증(위반 0건). 난이도/목표급수는 51=source_difficulty_target, 52~54=normalized_difficulty 파생 초안. 54번 1행(68f40294)은 분류 출력 누락분 수동 보완. 감사 보정 21건 반영(2026-06-10).",
+  "status": "draft — 번호별 표본 적대 감사 패스 완료(2026-06-10, 워크플로 wf_d7d3d7f6-753: 60행 감사·플래그 22건·2인 재판정, 교체 19건+재작성 2건 반영 — audit-decisions.json). 잔여 권고: q52 cf=ref 동일값 22행 표적 감사(표본 내 중복 4행이 4/4 오류였음 — 본 적재 전 수행 권장).",
   "approval": "콘텐츠팀 P2-5 샘플 승인 대기 — 승인 전 적재분은 service_status=internal_test 유지(D-6)",
   "counts": {
    "total": 466,
@@ -210,7 +210,7 @@
    "difficulty_level": 3,
    "target_level": "TOPIK 3급",
    "question_type_name": "빈칸 완성",
-   "rationale": "'토론 대회가 열립니다', '방청을 원하시는 분들은 행사 시작 10분 전까지 대기실로'처럼 학생 대상 교내 행사(토론 대회) 방청 안내가 중심 상황이다."
+   "rationale": "'토론 대회가 열립니다', '방청을 원하시는 분들은 행사 시작 10분 전까지 대기실로'처럼 토론 대회 방청 절차(대기실 집결, 안내 자료 배부, 방청석 이동) 안내가 중심 상황이다."
   },
   {
    "legacy_problem_id": "3aae0c67-b211-4b24-a3ae-0b502452264f",
@@ -621,8 +621,8 @@
    "title": "사진 전시회 준비 공지",
    "topic_main": "여가와 오락",
    "topic_detail": "전시회ㆍ박물관",
-   "secondary_topic_main": null,
-   "secondary_topic_detail": null,
+   "secondary_topic_main": "일상생활",
+   "secondary_topic_detail": "학교생활",
    "difficulty_level": 3,
    "target_level": "TOPIK 3급",
    "question_type_name": "빈칸 완성",
@@ -1039,14 +1039,14 @@
    "legacy_problem_id": "7a6857b3-9f8e-46e0-b797-5046329e4209",
    "question_no": 51,
    "title": "회의 일정 변경 요청",
-   "topic_main": "일상생활",
-   "topic_detail": "학교생활",
-   "secondary_topic_main": "주거와 환경",
-   "secondary_topic_detail": "생활 편의 시설",
+   "topic_main": "주거와 환경",
+   "topic_detail": "생활 편의 시설",
+   "secondary_topic_main": "일상생활",
+   "secondary_topic_detail": "학교생활",
    "difficulty_level": 3,
    "target_level": "TOPIK 3급",
    "question_type_name": "빈칸 완성",
-   "rationale": "'다음 주부터 중간고사 기간'과 '학생들의 시험공부를 돕기 위해'라는 표현처럼 학교생활 지원 안내가 중심이고, '도서관 이용 시간' 연장이라는 시설 운영 변경이 보조 주제다."
+   "rationale": "'도서관에서 안내 말씀드립니다', '도서관 이용 시간을 ( ㄱ )'처럼 도서관 이용 시간 변경 공지가 중심 상황이고, '다음 주부터 중간고사 기간'·'학생들의 시험공부를 돕기 위해'라는 학교 맥락은 변경 사유로 보조 주제다."
   },
   {
    "legacy_problem_id": "7bdfa7df-f0e9-49ff-9910-88dcd2ea7d44",
@@ -1298,7 +1298,7 @@
    "difficulty_level": 3,
    "target_level": "TOPIK 3급",
    "question_type_name": "빈칸 완성",
-   "rationale": "'상담 시간을 다음 주로 ( ㄱ )?'라며 상담 일정 변경을 요청하는 글로, 동일 시나리오의 상담 선생님과의 일정 조율이라는 학교생활 상황이 중심이므로 일상생활/학교생활로 분류했다."
+   "rationale": "'상담 시간을 다음 주로 ( ㄱ )?'라며 '내일 오후에 갑자기 병원 예약이 생겨서' 약속 시간에 참석하기 어려워 상담 일정 변경을 요청하는 메일이 중심 상황이다."
   },
   {
    "legacy_problem_id": "e2f235cf-74b4-4685-bfc9-2718dc97882e",
@@ -1334,7 +1334,7 @@
    "q52": {
     "completion_unit": "구",
     "connection_function": "이유 설명",
-    "required_expression_function": "이유 설명",
+    "required_expression_function": "목적 제시",
     "answer_scope_type": "유사표현 허용형"
    }
   },
@@ -1771,8 +1771,8 @@
    "rationale": "'일의 효율을 높이려면 순서를 정해 한 가지씩 차례대로 끝내야 한다'처럼 일 처리 방식이 중심 상황이고, '집중력이 쉽게 끊긴다'는 심리적 근거가 보조 주제다.",
    "q52": {
     "completion_unit": "구",
-    "connection_function": "결과 제시",
-    "required_expression_function": "조건 제시",
+    "connection_function": "조건 제시",
+    "required_expression_function": "결과 제시",
     "answer_scope_type": "유사표현 허용형"
    }
   },
@@ -1885,7 +1885,7 @@
    "rationale": "'음식을 천천히 꼭꼭 씹어 먹어야 한다'는 식사 속도 조절이 중심 상황이고, '과식'을 막아 '우리의 건강을 지켜 주는' 효과가 보조 주제다.",
    "q52": {
     "completion_unit": "구",
-    "connection_function": "이유 설명",
+    "connection_function": "목적 제시",
     "required_expression_function": "이유 설명",
     "answer_scope_type": "유사표현 허용형"
    }
@@ -1999,8 +1999,8 @@
    "rationale": "'낮잠은 이십 분 안팎으로 짧게' 자야 '피로를 풀어 주고 머리를 맑게' 한다는 수면을 통한 몸 관리가 중심 상황이다.",
    "q52": {
     "completion_unit": "구",
-    "connection_function": "대조 연결",
-    "required_expression_function": "결과 제시",
+    "connection_function": "결과 제시",
+    "required_expression_function": "조건 제시",
     "answer_scope_type": "유사표현 허용형"
    }
   },
@@ -2076,7 +2076,7 @@
    "q52": {
     "completion_unit": "구",
     "connection_function": "결과 제시",
-    "required_expression_function": "결과 제시",
+    "required_expression_function": "조건 제시",
     "answer_scope_type": "유사표현 허용형"
    }
   },
@@ -2141,18 +2141,18 @@
    "legacy_problem_id": "c7d836fa-d379-4939-bc92-a93982d3d67c",
    "question_no": 52,
    "title": "겨울 / 정전기",
-   "topic_main": "기후",
-   "topic_detail": "계절",
-   "secondary_topic_main": "전문 분야",
-   "secondary_topic_detail": "과학",
+   "topic_main": "전문 분야",
+   "topic_detail": "과학",
+   "secondary_topic_main": "기후",
+   "secondary_topic_detail": "계절",
    "difficulty_level": 4,
    "target_level": "TOPIK 4급",
    "question_type_name": "연결 표현",
-   "rationale": "\"겨울철에는 공기가 건조해서\"와 \"계절에 맞는 적절한 관리\"처럼 겨울이라는 계절 상황이 중심이고, \"발생 원리를 제대로 이해해야\"에서 정전기의 과학적 원리가 보조 주제로 드러난다.",
+   "rationale": "'옷이나 몸에 정전기가 쉽게 쌓이게 된다', '결국 발생 원리를 제대로 이해해야'처럼 정전기의 발생 원리와 예방 방법이 중심 상황이고, '겨울철에는 공기가 건조해서'라는 계절 배경이 보조 주제다.",
    "q52": {
     "completion_unit": "구",
     "connection_function": "목적 제시",
-    "required_expression_function": "목적 제시",
+    "required_expression_function": "결과 제시",
     "answer_scope_type": "유사표현 허용형"
    }
   },
@@ -2942,7 +2942,7 @@
    "difficulty_level": 3,
    "target_level": "TOPIK 3급",
    "question_type_name": "자료 설명",
-   "rationale": "'장바구니 사용률(전국)'의 경향과 '비닐 봉투 사용률은 줄고 장바구니 사용률은 늘어나는' 생활용품 사용 비교가 중심이므로 쇼핑/가정용품으로 분류한다.",
+   "rationale": "'장바구니 사용률(전국)'의 전체적인 경향과 '연령별 사용 비율(분석)'의 항목 간 차이를 쓰는 과제로, 장바구니라는 생활용품 사용이 중심이므로 쇼핑/가정용품으로 분류한다.",
    "q53": {
     "comparison_type": "항목 비교",
     "change_type": "추세",
@@ -3571,7 +3571,7 @@
    "q53": {
     "comparison_type": "항목 비교",
     "change_type": "증가",
-    "interpretation_difficulty": "추세 설명"
+    "interpretation_difficulty": "복수 비교"
    }
   },
   {
@@ -3937,7 +3937,7 @@
    "question_type_name": "의견 서술",
    "rationale": "'도서관, 역, 공원 같은 공공장소'에서 제공되는 무선 인터넷으로 '통신비 부담을 줄여' 주는 통신 공공 서비스가 중심 상황이므로 공공 서비스의 전화(통신)로 분류했다.",
    "q54": {
-    "essay_type": "원인·해결형",
+    "essay_type": "장단점형",
     "stance_requirement": "해결 방안 제시",
     "reasoning_pattern": "의미→주의점→안전 조건",
     "situation_summary": "이동 중에도 인터넷을 사용하는 일이 많아지면서 공공 와이파이는 통신비 부담을 줄여 줄 수 있지만 사용 환경과 보안에 대한 주의가 부족하면 새로운 걱정이 생길 수 있다."
@@ -4577,7 +4577,7 @@
    "question_type_name": "의견 서술",
    "rationale": "'일상에서 접하는 현상과 기술을 과학적 원리와 연결하여 생각하고 설명'하는 시민의 과학 이해가 중심 주제이므로 전문 분야의 과학으로 분류했다.",
    "q54": {
-    "essay_type": "원인·해결형",
+    "essay_type": "주장형",
     "stance_requirement": "해결 방안 제시",
     "reasoning_pattern": "필요성→이해 부족의 어려움→확장 방법",
     "situation_summary": "과학 기술이 생활 전반에 들어오면서 과학을 시민의 기본 이해로 보려는 인식이 커졌지만 과학이 어렵다는 인식이 강하면 일상과 과학의 연결을 놓치기 쉽다."
@@ -6154,7 +6154,7 @@
    "question_type_name": "의견 서술",
    "rationale": "'이웃이 함께 어울리고 협력하며 지역 문제를 풀어 가는 활동'이라는 지역 생활이 중심이며, '이웃 사이의 교류'라는 모임·교류가 보조 주제로 드러난다.",
    "q54": {
-    "essay_type": "원인·해결형",
+    "essay_type": "주장형",
     "stance_requirement": "해결 방안 제시",
     "reasoning_pattern": "의미→문제→대응",
     "situation_summary": null
