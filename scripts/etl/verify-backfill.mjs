@@ -40,10 +40,10 @@ const sourceMapRows = JSON.parse(readFileSync(join(IN, 'source-map.json'), 'utf8
 const holds = JSON.parse(readFileSync(join(IN, 'holds.json'), 'utf8'));
 const legacyByQuestionId = new Map(sourceMapRows.map((m) => [m.question_id, m.legacy_problem_id]));
 
-async function selectAll(table, columns = '*') {
+async function selectAll(table, columns = '*', orderBy = 'question_id') {
   const all = [];
   for (let from = 0; ; from += 1000) {
-    const { data, error } = await service.from(table).select(columns).order('question_id').range(from, from + 999);
+    const { data, error } = await service.from(table).select(columns).order(orderBy).range(from, from + 999);
     if (error) throw new Error(`${table} 조회 실패: ${error.message}`);
     all.push(...data);
     if (data.length < 1000) break;
@@ -101,7 +101,7 @@ for (const no of [51, 52]) {
 
 // 4) 축 검증: topic 쌍이 topic_master 집합에 포함
 {
-  const master = await selectAll('topik_writing_topic_master', 'topic_main, topic_detail');
+  const master = await selectAll('topik_writing_topic_master', 'topic_main, topic_detail', 'topic_main');
   const allowed = new Set(master.map((t) => `${t.topic_main}|${t.topic_detail}`));
   const fails = [];
   for (const no of [51, 52, 53, 54]) {

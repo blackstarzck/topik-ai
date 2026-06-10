@@ -287,6 +287,10 @@ src/features/<feature>/
   - 적용 수단: 이 머신에 supabase CLI 인증/DB 패스워드가 없어 CLI `db push` 대신 **Supabase Management API**(`/v1/projects/{ref}/database/query`)를 표준 적용 경로로 사용한다. 도구: `npm run db:migrate`(`scripts/db/migrate.mjs`, 적용 이력은 자체 네임스페이스 추적 테이블 `topik_writing_schema_migrations`에 기록), `npm run db:migrate:status`, 롤백 `node scripts/db/migrate.mjs --down <파일명>`(`supabase/migrations/down/` 스크립트).
   - 무변경 증명: `npm run db:snapshot`(`scripts/db/schema-snapshot.mjs`)으로 적용 전/후 스키마 표면(테이블 컬럼/함수/정책/뷰)을 스냅샷하고 `--diff --exclude-own`으로 자기 네임스페이스 제외 diff 0건을 확인한다.
   - 적용 기록(2026-06-10): 마이그레이션 12파일 전부 적용 완료, 자기 네임스페이스 제외 diff 0건, RLS 매트릭스(anon/비admin 0행·admin 허용)·RT-1 파일럿 4경로 왕복 일치 — 증적은 `logs/metadata-tag-schema-transition-evidence.md` P1 절.
+- 백필 적재 기록 (P2 — 2026-06-10 실행 완료)
+  - D-3 재분류 입력표 466행(분류 24배치 + 표본 60행·q52 cf=ref 22행 2단 적대 감사 보정 완료) 기반 ETL(extract→transform→load→verify)로 `problems` 470행을 백필: **466행 적재**(51:90/52:76/53:62/54:238) + 4행 보류(`audit_seed` 예시 행 — D-5 역분해 실패 경로), `question_source_map` 470행 전수 매핑(legacy 노출 신호 보존). 전 행 `service_status='internal_test'`(D-6 — 사용자 노출 차단), `problems`는 읽기 전용으로만 접근(P3 컷오버까지 검수 SoT 불변).
+  - 검증: 5종(재조립/보존/수량/축/RT-2 재조회 왕복) + D-6 + source_map 대사 ALL PASS, idempotency(2회 연속 적재 전 테이블 sha256 동일), 델타 재적재 리허설(덤프 사본 방식 — 검수 변경 2건 따라잡기 + 원상 수렴 발산 0건). 증적: `logs/metadata-tag-schema-transition-evidence.md` P2 절.
+  - P2 종합 판정 **CONDITIONAL** — 필수 중 P2-5(콘텐츠팀 10문항 샘플 승인)만 발주서 미발신으로 대기. 해소(오너 채널 발신→승인 회신) 후 PASS 전환 시 P3 컷오버 배포 착수 가능(코드 선행 개발은 병행 허용).
 - 가드레일 (갱신)
   - 신규 식별자의 코드 결선은 실행 계획안 §12.3 채점 규칙을 따른다: 가역적 선행 개발(스크립트·코드·문서 초안)은 허용, 비가역 실행(프로덕션 DDL 적용·실데이터 적재·컷오버 배포·write 개방·상류 호출)은 직전 페이즈 PASS 후에만 한다.
   - `service_status`(`available`/`excluded`/`internal_test`)가 유일한 물리 노출 상태다(D-6). '서비스_노출상태' 태그 그룹은 시드에서 제외하고 RPC에서 부여를 차단한다. `operationStatus` 4값 union은 P3에서 제거한다. v13 `lifecycle_status` 종속은 해소됐다(신규 스키마가 자체 노출 컬럼 보유).

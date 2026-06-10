@@ -3,8 +3,8 @@
   "name": "D-3 재분류 입력표 (분류 초안)",
   "generated_at": "2026-06-10",
   "source": "v13 problems 51~54 전수 470행 중 분류 대상 466행 (audit_seed 예시 4행은 적재 보류 트랙)",
-  "method": "문항 본문(title/prompt/scenario 힌트) 기반 분류 — topic_category_code 기계 변환 미사용(D-3). 분류 24배치 + 17주제×85세부 고정 사전·번호별 enum 전수 검증(위반 0건). 난이도/목표급수는 51=source_difficulty_target, 52~54=normalized_difficulty 파생 초안. 54번 1행(68f40294)은 분류 출력 누락분 수동 보완. 감사 보정 21건 반영(2026-06-10).",
-  "status": "draft — 번호별 표본 적대 감사 패스 완료(2026-06-10, 워크플로 wf_d7d3d7f6-753: 60행 감사·플래그 22건·2인 재판정, 교체 19건+재작성 2건 반영 — audit-decisions.json). 잔여 권고: q52 cf=ref 동일값 22행 표적 감사(표본 내 중복 4행이 4/4 오류였음 — 본 적재 전 수행 권장).",
+  "method": "문항 본문(title/prompt/scenario 힌트) 기반 분류 — topic_category_code 기계 변환 미사용(D-3). 분류 24배치 + 17주제×85세부 고정 사전·번호별 enum 전수 검증(위반 0건). 난이도/목표급수는 51=source_difficulty_target, 52~54=normalized_difficulty 파생 초안. 54번 1행(68f40294)은 분류 출력 누락분 수동 보완. 감사 보정 21건 반영(2026-06-10). 표적 감사 보정 17건 반영(2026-06-10).",
+  "status": "draft — 번호별 표본 적대 감사 패스 완료(2026-06-10, 워크플로 wf_d7d3d7f6-753: 60행 감사·플래그 22건·2인 재판정, 교체 19건+재작성 2건 반영 — audit-decisions.json). q52 cf=ref 동일값 잔여 22행 표적 적대 감사 완료(2026-06-10, 워크플로 wf_7ccb36f0-542: 플래그 17건·2인 재판정, 교체 17건·유지 0건 — audit-decisions-cfref.json).",
   "approval": "콘텐츠팀 P2-5 샘플 승인 대기 — 승인 전 적재분은 service_status=internal_test 유지(D-6)",
   "counts": {
    "total": 466,
@@ -1004,7 +1004,7 @@
    "rationale": "'뇌를 깨워서 우리가 쉽게 잠들지 못하게 만든다'와 '수면에 큰 도움이 된다'라는 표현처럼 몸의 수면 건강 습관이 중심 주제다.",
    "q52": {
     "completion_unit": "구",
-    "connection_function": "이유 설명",
+    "connection_function": "조건 제시",
     "required_expression_function": "이유 설명",
     "answer_scope_type": "유사표현 허용형"
    }
@@ -1089,7 +1089,7 @@
    "q52": {
     "completion_unit": "구",
     "connection_function": "이유 설명",
-    "required_expression_function": "이유 설명",
+    "required_expression_function": "조건 제시",
     "answer_scope_type": "유사표현 허용형"
    }
   },
@@ -1121,7 +1121,7 @@
    "q52": {
     "completion_unit": "구",
     "connection_function": "이유 설명",
-    "required_expression_function": "이유 설명",
+    "required_expression_function": "목적 제시",
     "answer_scope_type": "유사표현 허용형"
    }
   },
@@ -1140,7 +1140,7 @@
    "q52": {
     "completion_unit": "구",
     "connection_function": "이유 설명",
-    "required_expression_function": "이유 설명",
+    "required_expression_function": "조건 제시",
     "answer_scope_type": "유사표현 허용형"
    }
   },
@@ -1315,7 +1315,7 @@
    "q52": {
     "completion_unit": "구",
     "connection_function": "조건 제시",
-    "required_expression_function": "조건 제시",
+    "required_expression_function": "이유 설명",
     "answer_scope_type": "유사표현 허용형"
    }
   },
@@ -1505,7 +1505,7 @@
    "rationale": "'잠시 나갈 때도 규칙을 지켜야 한다'와 '기본 예절을 지켜야 올바른 질서를 유지할 수 있다'처럼 도서관 좌석 이용 규칙과 공공 질서가 중심 상황이다.",
    "q52": {
     "completion_unit": "구",
-    "connection_function": "이유 설명",
+    "connection_function": "조건 제시",
     "required_expression_function": "이유 설명",
     "answer_scope_type": "유사표현 허용형"
    }
@@ -1658,7 +1658,7 @@
    "q52": {
     "completion_unit": "구",
     "connection_function": "이유 설명",
-    "required_expression_function": "이유 설명",
+    "required_expression_function": "조건 제시",
     "answer_scope_type": "유사표현 허용형"
    }
   },
@@ -1867,7 +1867,7 @@
    "q52": {
     "completion_unit": "구",
     "connection_function": "결과 제시",
-    "required_expression_function": "결과 제시",
+    "required_expression_function": "조건 제시",
     "answer_scope_type": "유사표현 허용형"
    }
   },
@@ -1905,7 +1905,7 @@
    "q52": {
     "completion_unit": "구",
     "connection_function": "결과 제시",
-    "required_expression_function": "결과 제시",
+    "required_expression_function": "방법 제시",
     "answer_scope_type": "유사표현 허용형"
    }
   },
@@ -1943,7 +1943,7 @@
    "q52": {
     "completion_unit": "구",
     "connection_function": "결과 제시",
-    "required_expression_function": "결과 제시",
+    "required_expression_function": "순서 연결",
     "answer_scope_type": "유사표현 허용형"
    }
   },
@@ -2171,7 +2171,7 @@
    "q52": {
     "completion_unit": "구",
     "connection_function": "목적 제시",
-    "required_expression_function": "목적 제시",
+    "required_expression_function": "결과 제시",
     "answer_scope_type": "유사표현 허용형"
    }
   },
@@ -2190,7 +2190,7 @@
    "q52": {
     "completion_unit": "구",
     "connection_function": "목적 제시",
-    "required_expression_function": "목적 제시",
+    "required_expression_function": "결과 제시",
     "answer_scope_type": "유사표현 허용형"
    }
   },
@@ -2228,7 +2228,7 @@
    "q52": {
     "completion_unit": "구",
     "connection_function": "목적 제시",
-    "required_expression_function": "목적 제시",
+    "required_expression_function": "결과 제시",
     "answer_scope_type": "유사표현 허용형"
    }
   },
@@ -2285,7 +2285,7 @@
    "q52": {
     "completion_unit": "구",
     "connection_function": "목적 제시",
-    "required_expression_function": "목적 제시",
+    "required_expression_function": "추가 설명",
     "answer_scope_type": "유사표현 허용형"
    }
   },
@@ -2304,7 +2304,7 @@
    "q52": {
     "completion_unit": "구",
     "connection_function": "목적 제시",
-    "required_expression_function": "목적 제시",
+    "required_expression_function": "결과 제시",
     "answer_scope_type": "유사표현 허용형"
    }
   },
@@ -2323,7 +2323,7 @@
    "q52": {
     "completion_unit": "구",
     "connection_function": "조건 제시",
-    "required_expression_function": "조건 제시",
+    "required_expression_function": "결과 제시",
     "answer_scope_type": "유사표현 허용형"
    }
   },
@@ -2415,7 +2415,7 @@
    "q52": {
     "completion_unit": "구",
     "connection_function": "목적 제시",
-    "required_expression_function": "목적 제시",
+    "required_expression_function": "결과 제시",
     "answer_scope_type": "유사표현 허용형"
    }
   },

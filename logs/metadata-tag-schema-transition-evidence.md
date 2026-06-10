@@ -170,9 +170,9 @@ select count(*), count(*) filter (where tag_group='서비스_노출상태') from
 
 ---
 
-## P2 진행 메모 (2026-06-10, 중간 기록 — 채점 아님)
+## P2 증적 (2026-06-10)
 
-> P2는 **미완료·미채점**이다. 본 절은 선행 산출물(가역 작업)의 중간 증적만 기록한다. 본 적재(비가역)는 미실행 — 신규 4테이블은 0행 유지. 재개 절차는 `docs/metadata-tag-schema-transition-handoff.md` §3.
+> 선행 산출물(1~3차 세션) + 표적 감사·본 적재·idempotency·델타 리허설(4차 세션, 2026-06-10). 채점표는 본 절 말미.
 
 ### 완료된 선행 산출물
 
@@ -190,8 +190,45 @@ select count(*), count(*) filter (where tag_group='서비스_노출상태') from
 - 주요 정정 유형: q52 cf/ref 중복·스왑 기입(6행), topic 주·보조 역전(2행 — `7a6857b3` 도서관/`c7d836fa` 정전기), q54 essay_type 경계 정렬(3행), q53 난이도 자체모순(1행), rationale 본문 외 인용·단정(3행), secondary 누락(1행).
 - 반영 후 전 행 재검증(사전 쌍·enum·화살표·주보조 중복) 위반 0건, `npm run test:unit` 43개 PASS 유지. topic 분포 변화: 일상생활 67→66, 기후 1→0, 주거와 환경 42→43, 전문 분야 15→16.
 - 증적(비추적, `.omx/evidence/etl/audit/`): 표본 `sample-{51..54}.json`, 워크플로 전체 출력 `audit-workflow-output.txt`, 판정·근거 전문 `audit-decisions.json`, 반영 도구 `apply-audit-corrections.mjs`. 커밋 산출물은 입력표 본체(meta.status에 감사 완료 기록).
-- 후속 권고(채점 비차단): q52 cf=ref 동일값 잔여 22행 표적 감사(표본 내 중복 4행이 4/4 오류) + 원천 title/hints 오염 3행 gap-register 기록 — 핸드오프 §2.3·§3-1.
+- 후속 권고(채점 비차단): q52 cf=ref 동일값 잔여 22행 표적 감사(표본 내 중복 4행이 4/4 오류) + 원천 title/hints 오염 3행 gap-register 기록 — 핸드오프 §2.3·§3-1. → **두 건 모두 4차 세션(2026-06-10)에서 이행 완료**(표적 감사: 아래 절, gap-register §4.7 기록).
 
-### 잔여 (P2 채점 전 필수)
+### D-3 입력표 q52 cf=ref 표적 적대 감사 (2026-06-10 4차 세션, 수행 완료)
 
-- 본 적재(transform→load) + 검증 5종(verify) + P2-1 idempotency 2회 로그 + P2-6 리허설 실행 + P2-3 보류 발주 기록 + P2-5 콘텐츠팀 샘플 승인(발주서 미발신 시 CONDITIONAL 사유). 권장 선행: q52 cf=ref 잔여 22행 표적 감사(위 절).
+- 대상: 표본 감사 후속 권고 이행 — q52에서 `connection_function`=`required_expression_function` 동일값 잔여 22행 전수(표본 보정 4행 제외 모집단).
+- 방식: 표본 `.omx/evidence/etl/audit/sample-52-cfref.json`(22행 + 배치 원문 prompt/hints + enum + 필드 규약 동봉, 결정적 추출) → 워크플로 `wf_7ccb36f0-542`(에이전트 38개) — 적대 감사관 4인(행 분담, ㄱ/ㄴ 스팬 본문 대조) + 플래그별 독립 판정관 2인 재판정. 판정 규칙은 표본 감사와 동일(2인 일치 교체=채택, 2인 일치 유지=유지, 분열=주 루프 판정·근거 영구 기록).
+- 결과: 플래그 17건 → **교체 17건 반영**(2인 일치 16건 + 분열 1건 주 루프 판정 — `352b7c74` '-려면' 스팬의 조건/목적 분열을 라운드 내 일관성 원칙으로 '조건 제시' 채택). 무플래그 5행(`1828acb9`·`29066193`·`2f989b36`·`a5351852`·`ac7cc645`)은 ㄱ·ㄴ 기능이 실제로 같은 **정당 중복**으로 확인 — 표본 감사의 "동일값 행 자동 재검수" 가설이 17/22 오류·5/22 정당으로 실측됨.
+- 교체 내역: ref 측 15건(결과 제시 6·조건 제시 4·목적/방법/순서 연결/이유 설명/추가 설명 각 1) + cf 측 2건(`1a40115b`·`6b0c1b71` 조건 제시) — 전형 패턴(한 빈칸 기능의 두 필드 중복 기입) 17/17 재현, 인용 조작·환각 0건.
+- 반영 후: 전 행 재검증(17×85 사전 쌍·번호별 enum·화살표 체인·주보조 중복) 위반 0건, `npm run test:unit` 43개 PASS, 입력표 BOM 없음(Node 경유 기록). 반영 후 cf=ref 잔여 5행 = 정당 중복 5행과 정확히 일치. `meta.status`에 표적 감사 완료 기록.
+- 증적(비추적, `.omx/evidence/etl/audit/`): `sample-52-cfref.json`, `cfref-audit-workflow-output.txt`(워크플로 전체 출력), `audit-decisions-cfref.json`(판정·근거 전문), 도구 `make-cfref-sample.mjs`/`apply-cfref-corrections.mjs`.
+
+### 본 적재 (§6.2 transform→load→verify, 2026-06-10 4차 세션)
+
+- transform: input 470 = loaded 466 + held 4, per table 51:90/52:76/53:62/54:238, source_map 선조회 0건(전량 신규 채번). 보류 4행은 전건 `audit_seed` 예시 행(재분류 입력표 없음 + 필수 컬럼 역분해 실패 — D-5 예정 경로), 사유 포함 목록 `transform-out/holds.json`.
+- load 1회차(`.omx/evidence/etl/load-report-1781089118118.json`): upsert 466 + source_map 470. 테이블별 sha256(canonical 전 행): 51 `6136f8a8…` / 52 `fcdeb996…` / 53 `22f1f5e1…` / 54 `7caa54bb…` / source_map `b5a0e4f4…`.
+- 검증 도구 수정 1건(첫 실전 실행에서 발견): `verify-backfill.mjs`의 selectAll이 정렬 컬럼을 `question_id`로 고정해 `topic_master`(축 검증) 조회가 실패 → 정렬 컬럼 매개변수화. 검증 로직 자체는 무변경.
+- verify(`verify-report-1781089167485.json`): **8체크 ALL PASS** — 재조립 51(90행)/52(76행) 전건 일치, 보존(answer_key 원본+51 정규화) 466행 동치, 수량 470=466+4, 축 topic_master 85쌍 전수 포함, RT-2 재조회 왕복 466행 필드별 diff 0건, service_status 전 행 `internal_test`(D-6), source_map 전수 대사(매핑 470=덤프, 보류 hold_reason 4건, legacy 노출 신호 보존).
+
+### P2-1 idempotency (2026-06-10 4차 세션)
+
+- load 2회차(`load-report-1781089178877.json`): 전 테이블 rows·sha256이 1회차와 동일(**5/5 IDENTICAL** — 51/52/53/54/source_map) + verify 재실행(`verify-report-1781089199267.json`) 8체크 ALL PASS. 2회분 리포트 보존.
+
+### P2-6 델타 재적재 리허설 (2026-06-10 4차 세션)
+
+- 원칙 준수: `problems`(검수 SoT)에는 쓰기 0건 — 덤프 사본 변형 방식(`make-delta-sim.mjs`). 시뮬레이션 2건: 52 `807c0fe3` pending→approved(+publish/visibility/검수 메모/updated_at 전진), 54 `096d5849` 검수 메모 수정(+updated_at 전진).
+- 델타 적용: transform(`--batch p2-delta-rehearsal`, 기존 매핑 470건 재사용 — 채번 안정 확인) → load(`load-report-delta.json`): 51·53 해시 불변, 52·54·source_map만 변화(변경 국소성) → verify(`verify-report-delta.json`, 델타 덤프 기준) **ALL PASS** — 델타 따라잡기 RT-2 diff 0건.
+- 원상 복원: 원본 덤프로 transform→load(`load-report-restore.json`) → 해시 5종이 본 적재 1회차와 전부 동일, verify(`verify-report-restore.json`) ALL PASS — **원상 수렴 발산 0건 대사**.
+
+### P2 채점 (실행 계획안 §12.3 P2 채점표)
+
+| # | 항목 | 판정 | 증적 |
+| :-- | :---- | :--: | :---- |
+| P2-1 | ETL 4스크립트 동작 + idempotency(2회 연속 diff 0건) | PASS | load 리포트 2회분 해시 5/5 동일 + verify 재실행 ALL PASS(본 절) |
+| P2-2 | 검증 리포트 5종 + RT-2 재조회 왕복 | PASS | verify 리포트 4회분 ALL PASS(본 적재·2회차·델타·복원) |
+| P2-3 | 적재 보류 목록 산출 + 재입력 발주 | PASS | `holds.json` 4건(사유 포함) + source_map hold_reason. 전건 `audit_seed` 예시 행(실문항 아님, D-5 예정 경로)으로 **재입력 발주 대상 0건 판정** — 실문항 보류 발생 시 발주 절차는 발주서 양식 재사용 |
+| P2-4 | source_map 전수 기록(legacy 매핑) | PASS | 매핑 470 = 덤프 470, 적재 466 + 보류 4 대사, legacy 노출 신호(publish/visibility) 보존 — verify 체크 포함 |
+| P2-5 | 콘텐츠팀 샘플 승인(10문항) | **CONDITIONAL** | 발주서(`docs/requests/content-team-order-2026-06-10.md`) **미발신**. 해소 조건: 오너 채널 발신 → 10문항 샘플 승인 회신 → 재채점. 대기 중 전 행 `service_status='internal_test'`로 사용자 노출 차단 유지(D-6, 발주서 일정 연동 조항과 일치) |
+| P2-6 | 델타 재적재 리허설 1회 | PASS | 리허설 로그(따라잡기 ALL PASS + 원상 수렴 발산 0건, 본 절) |
+| P2-7 | vitest 단위 테스트(매핑/역분해 순수 함수) | PASS(권장) | 43개 PASS(표적 감사 반영 후 재실행 포함) |
+
+- 종합 판정: **CONDITIONAL** (FAIL 0건, 필수 P2-5만 외부 승인 대기 — §12.3 판정 규칙). 해소 조건·담당: 오너 채널 발주서 발신(프로젝트 오너) → 콘텐츠팀 10문항 승인 회신 → P2-5 재채점 PASS 전환. CONDITIONAL 동안 P3 컷오버 배포 착수 불가(코드 선행 개발은 병행 허용 — §7).
+- 채점자: 프로젝트 오너 위임 실행(2026-06-10 지시). 커밋 해시는 §12.4 스코어카드에 기록.

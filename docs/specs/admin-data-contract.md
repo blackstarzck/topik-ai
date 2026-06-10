@@ -379,6 +379,8 @@
 
 ### 12.2 식별자 매핑 확정 (구 충돌 후보 → D-1~D-13 결정으로 해소)
 
+> **P2 백필 적재 완료(2026-06-10)**: 아래 매핑으로 `problems` 470행 → 466행 적재(51:90/52:76/53:62/54:238) + 4행 보류(`audit_seed` 예시, hold_reason 기록), `question_source_map` 470행 전수(`legacy_problem_id` 대사 일치, `legacy_publish_status/visibility` 보존). 채번은 전량 신규(D-4 선조회 0건→idempotent 재사용 확인), 검증 5종+RT-2+idempotency+델타 리허설 ALL PASS. 전 행 `service_status='internal_test'`. 증적: `logs/metadata-tag-schema-transition-evidence.md` P2 절(종합 CONDITIONAL — P2-5 콘텐츠팀 승인 대기).
+
 | 신규 (ⓐ 채택 스키마) | 구 (ⓑ v13 `problems` / 화면 모델) | 확정 결정 |
 | --- | --- | --- |
 | `question_id` (TEXT 전역 PK, `topik-writing-{NN}-{0001}`) | `problems.id` (UUID) | D-4: `question_source_map` 선조회 idempotent 채번(`ORDER BY created_at, id`), 양방향 매핑 영구 보존 |
