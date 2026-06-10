@@ -334,6 +334,7 @@
 - 주요 액션: `검수 페이지 열기`, `빠른 상세 보기`
 - URL 복원 메모: `questionNo`(반복), `domain`, `questionType`, `difficulty`, `keyword`, `reviewStatus`. `tab` 쿼리는 사용하지 않고 라우트 자체가 URL 상태를 보존합니다.
 - 분리 메모: `문항 관리`는 형제 라우트 `/assessment/question-bank/manage`로 분리되어 #19-1로 별도 정의합니다. 두 페이지는 동일한 Supabase `problems`(question_no 51-54) 조회 결과를 공유 hook으로 사용합니다.
+- 전환 메모: 콘텐츠팀 권장 스키마(`docs/metadata-tag-schema-rule.md` v0.8)는 2026-06-10 채택 확정됐습니다. 필터 축(`도메인` 8값 → `topic_main` 17주제 2단)과 문제 번호별 검수 필드 구성은 P3 읽기·검수 컷오버 작업에서 본 표와 함께 재작성하며, 컷오버 전에는 현행 컬럼/필터 계약을 유지합니다(`docs/architecture/metadata-tag-schema-transition-decision-record.md`, `docs/메타데이터-태그-스키마-전환-실행계획안.md` §7).
 
 ## 19-1) 평가 > TOPIK 쓰기 문항 관리
 
@@ -351,6 +352,7 @@
 - 주요 액션: `노출 후보`, `숨김 후보`, `운영 제외` (현재 모두 disabled)
 - URL 복원 메모: `questionNo`(반복), `domain`, `questionType`, `difficulty`, `keyword`, `operationStatus`. `tab` 쿼리는 사용하지 않고 라우트 자체가 URL 상태를 보존합니다.
 - 분리 메모: `검수` 페이지는 형제 라우트 `/assessment/question-bank`(#19)로 분리되어 있으며, 두 페이지는 동일한 Supabase `problems`(question_no 51-54) 조회 결과를 공유 hook으로 사용합니다.
+- 전환 메모: 콘텐츠팀 권장 스키마(`docs/metadata-tag-schema-rule.md` v0.8)는 2026-06-10 채택 확정됐고 `service_status`↔`operationStatus`↔POL-017 정합은 D-6로 확정됐습니다. 운영 상태/요약 카드 구성은 P3에서 `service_status` 축 표시로, 운영 조치 write는 P4에서 본 표와 함께 재작성하며, 컷오버 전에는 현행 계약을 유지합니다(`docs/architecture/metadata-tag-schema-transition-decision-record.md`, `docs/메타데이터-태그-스키마-전환-실행계획안.md` §8).
 
 ## 20) 평가 > EPS TOPIK
 

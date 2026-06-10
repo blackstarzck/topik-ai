@@ -142,7 +142,7 @@
 | `운영 제외` | 사용자 노출/배포 대상에서 영구 제외 |
 | `미지정` | 운영 단계 미지정 기본값 (현재 모든 문항의 sentinel) |
 
-- 사용자 노출 작문 과제의 필드 모델은 Writing API(`GenerateProblemResponse`: `task_type`/`title`/`instruction`/`topic`/`max_score`/`difficulty` + 과제별 추가 키)를 따른다. 관리자 `problems` 화면 모델과의 매핑 후보는 `docs/specs/admin-data-contract.md` §9.6를 단일 SoT로 둔다.
+- 사용자 노출 작문 과제의 필드 모델은 Writing API(`GenerateProblemResponse`: `task_type`/`title`/`instruction`/`topic`/`max_score`/`difficulty` + 과제별 추가 키)를 따른다. 관리자 `problems` 화면 모델과의 매핑 후보는 `docs/architecture/admin-data-source-transition.md` §10.3를 단일 SoT로 두고, 현행 화면 모델/코드 계약은 `docs/specs/admin-data-contract.md` §9.6를 따른다.
 - 후속 확정(후보): 운영 상태↔Writing API 노출의 실제 연동 계약과 상류 업로드/노출 토글 엔드포인트는 v13 `lifecycle_status` 적용 및 상류 엔드포인트 확정 이후 고정한다.
 
 ## 8. URL/상태 복원
@@ -179,8 +179,9 @@
 
 ## 11. 오픈 이슈
 
-- v13 `lifecycle_status` 적용 후 `OPERATION_WRITE_ENABLED` 플래그와 서비스 un-stub로 운영 조치(노출 후보/숨김 후보/운영 제외)를 활성화해야 한다.
-- 운영 조치 활성화 전까지 `operationStatus`는 `미지정` sentinel로 고정되고 `admin_update_problem` write path는 비활성이다.
+- 운영 조치 활성화 경로는 2026-06-10 D-6 확정으로 변경됐다: v13 `lifecycle_status` 대기는 폐기되고, 신규 스키마의 `service_status` 컬럼 기반으로 P3(표시 전환)·P4(`OPERATION_WRITE_ENABLED` 게이트 제거 + `admin_update_topik_question` write 개방)에서 활성화한다.
+- 그 전까지 `operationStatus`는 `미지정` sentinel로 고정된다. 주의(실측 2026-06-10): 코드에 연결된 구 `admin_update_problem` RPC는 v13 admin island 제거(2026-06-09)로 라이브 DB에 존재하지 않아, 현행 운영 write 경로는 어차피 물리적으로 동작 불가다.
 - 공개/숨김 통제 책임은 `POL-017`로 이 페이지에 확정되었으나, 운영 상태↔Writing API(`GET /api/writing/tasks`) 사용자 노출의 실제 연동 계약과 배포 승인 체계는 아직 미확정이다.
 - 사용 현황 컬럼의 정식 source 계약은 후속 데이터 적용 시 확정해야 한다.
 - Supabase 미설정/조회 실패 시 JSON fallback을 제공하지 않고 error/retry 상태를 노출한다.
+- 콘텐츠팀 권장 스키마(`docs/metadata-tag-schema-rule.md` v0.8)는 **2026-06-10 채택 확정**됐고, `service_status`↔`operationStatus`↔POL-017 정합은 D-6로 확정됐다: `service_status`(`available`/`excluded`/`internal_test`) 컬럼이 유일한 물리 노출 상태이며, 이 페이지의 운영 상태 축은 P3에서 `service_status` 표시로, write 개방은 P4에서 전환된다(v13 `lifecycle_status` 종속 해소). 컷오버 전까지는 현행 운영 상태 계약을 유지한다(`docs/architecture/metadata-tag-schema-transition-decision-record.md`, `docs/메타데이터-태그-스키마-전환-실행계획안.md` §8, `docs/specs/admin-data-contract.md` §12).

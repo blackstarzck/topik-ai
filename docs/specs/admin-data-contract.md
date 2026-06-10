@@ -254,7 +254,7 @@
     - `AssessmentQuestionAuditEvent`
   - 현재 Supabase source
     - `problems`
-    - `admin_update_problem` RPC
+    - `admin_update_problem` RPC — **주의(실측 2026-06-10)**: 코드는 이 RPC를 호출하지만 v13 admin island 제거(2026-06-09)로 라이브 DB에 함수가 존재하지 않아 검수 상태 write는 현재 서버에서 실패한다. P3 컷오버에서 `admin_update_topik_question`(§12.3)으로 대체된다.
     - `admin_audit_logs` (RPC write 감사 로그)
   - 핵심 필드
     - Supabase 원천: `problems.id`, `question_no`, `title`, `prompt`, `difficulty`, `review_status`, `review_workflow_status`, `topic_category_code`, `explanation`, `answer_key`, `rubric`, `created_at`, `updated_at`
@@ -273,6 +273,7 @@
     - 검수 페이지와 문항 관리 페이지는 동일한 Supabase `problems`(question_no 51-54) 조회 결과를 공유 hook으로 공유하므로, 아래 Supabase 원천 / 화면 모델 필드 매핑은 두 페이지에서 변경 없이 동일하게 적용됩니다.
     - 과거 JSON 검수 문서용 `reviewDocument` 타입과 화면 분기는 제거되었습니다. 상세 payload/JSONB 문서가 다시 필요하면 새 Supabase/API 계약을 확정한 뒤 별도 타입으로 추가합니다.
     - 현재 화면에서 Supabase source가 없는 표시값은 임의 생성하지 않고 `-`, `미상`, `미지정`, 빈 배열 같은 sentinel로 표시합니다.
+    - 콘텐츠팀 권장 스키마(`docs/metadata-tag-schema-rule.md` v0.8)는 **2026-06-10 채택 확정**됐고 채택 계약은 §12에서 추적합니다(결정 기록: `docs/architecture/metadata-tag-schema-transition-decision-record.md`). P3 읽기·검수 컷오버 전까지는 이 §9.6 계약(엔티티 `AssessmentQuestion`, 테이블 `problems`)이 코드 SoT로 병행 유효하며, 컷오버 시 §9.6을 신규 스키마 기준으로 재작성합니다.
   - enum / code table candidate
     - `questionNumber`: `51`, `52`, `53`, `54`
     - `domain`: `생활`, `학습`, `사회`, `문화`, `경제`, `교육`, `환경`, `기술`
@@ -360,3 +361,49 @@
 - `SystemMetadataHistoryEntry.action` 후보에 `item_deleted`를 추가합니다.
 - `SystemMetadataGroup.items[]` 삭제 시 남은 값의 `sortOrder`는 1부터 다시 정규화합니다.
 - 삭제된 값이 기본값(`isDefault`)이었다면 남아 있는 첫 번째 값이 기본값으로 승격됩니다.
+
+## 12. 메타데이터·태그 스키마 전환 계약 (2026-06-10 채택 확정)
+
+> 콘텐츠팀 권장 스키마 `docs/metadata-tag-schema-rule.md`(v0.8)의 채택 계약 추적 섹션이다. **2026-06-10 채택·전면 전환이 확정됐고 Phase 0 결정 13건(D-1~D-13)이 확정됐다**(결정 기록: `docs/architecture/metadata-tag-schema-transition-decision-record.md`). 실행 SoT: `docs/메타데이터-태그-스키마-전환-실행계획안.md`. P3 컷오버 전까지 §9.6 현행 계약이 코드 SoT로 병행 유효하다.
+
+### 12.1 채택 테이블 (8개 신규 오브젝트 + 매핑 테이블, 호스트: talkpik-dev `fglggyfvzjdsbyckinqa`, 자산 소유: 이 repo `supabase/migrations`)
+
+- 번호별 분리 문제 테이블: `topik_writing_51_questions`, `topik_writing_52_questions`, `topik_writing_53_questions`, `topik_writing_54_questions` (v0.8 실측: 공통 35컬럼 + 편차 E1 `review_workflow_status` + 번호별 전용 16~21컬럼 — 51:21·52:17·53:19·54:16)
+- 태그: `topik_writing_tag_master`(태그 값 사전) + `topik_writing_question_tags`(문제-태그 매핑)
+- 주제 마스터: `topik_writing_topic_master` (17개 고정 종합 주제)
+- 추천 검색용 읽기전용 UNION 뷰: `topik_writing_question_recommendation_view` (`security_invoker=true` 필수 + admin 목록용 확장 컬럼, 편차 E4)
+- 식별자 매핑: `topik_writing_question_source_map` (편차 E2 — `question_id` PK, `item_number`, `legacy_problem_id` UNIQUE, `legacy_topic_category_code` 참고 보존, `published_task_id`, `backfill_batch`)
+- `topik_writing_question_tags`는 4분할 부모 테이블을 단일 FK로 참조할 수 없어 `question_id + item_number` 합성 참조(RPC 레벨 검증 + 부분 인덱스)로 무결성을 보장한다.
+
+### 12.2 식별자 매핑 확정 (구 충돌 후보 → D-1~D-13 결정으로 해소)
+
+| 신규 (ⓐ 채택 스키마) | 구 (ⓑ v13 `problems` / 화면 모델) | 확정 결정 |
+| --- | --- | --- |
+| `question_id` (TEXT 전역 PK, `topik-writing-{NN}-{0001}`) | `problems.id` (UUID) | D-4: `question_source_map` 선조회 idempotent 채번(`ORDER BY created_at, id`), 양방향 매핑 영구 보존 |
+| `item_number` (51~54, 테이블별 CHECK) | `question_no` | 직매핑 (51→51테이블 … 54→54테이블 라우팅) |
+| `topic_main` (17주제) + `topic_detail` | `topic_category_code` (8값 SUBJECT 축) | D-3: 자동 코드 매핑 금지. 문항 본문 기반 재분류 입력표(초안→콘텐츠팀 승인)로 적재, 원값은 source_map에 참고 보존 |
+| `review_status` ASCII 3값(`approved`/`needs_revision`/`on_hold`) + `review_workflow_status` 5값(E1) | `review_status`(`approved`/`pending`/`rejected`) + `review_workflow_status` | D-2: ASCII enum 저장 + 한국어 라벨 매핑, 2축 유지. 이관 사전: `pending`→`needs_revision`+`not_started`, `approved`→`approved`+`done`, `rejected`→`needs_revision`+`revision_requested` |
+| `service_status`(`available`/`excluded`/`internal_test`, 기본 `internal_test`) | `operationStatus` (전부 sentinel, write 비활성) | D-6: `service_status` 컬럼이 유일한 물리 노출 상태. 노출상태 태그 그룹 시드 제외, '운영 제외'=`excluded`+운영주의 태그. `lifecycle_status` 종속 해소 |
+| `blank_1/2_*` 정규화 컬럼 + 공통 `answer_key` JSONB 보존 | `answer_key`/`materials` (JSONB) | D-5: 원본 보존+정규화 병행, 필수 컬럼 역분해 실패는 적재 보류. 실측: `materials.blanks`에 정규화 원본 존재(손실 위험 하향) |
+| `recommendation_keys`, `avoid_repeat_keys`, 태그 | (source 없음) | net-new. 초기값은 ETL 파생(P2) + 태그는 P4 운영 개방 |
+| `content_team_memo` | (없음 — 검수 메모 UI-local 가짜 저장) | D-7: 공통 컬럼 영속화 + 감사 payload 동일 본문 |
+
+### 12.3 쓰기·감사 계약 (D-8)
+
+- 모든 신규 테이블 직접 write는 RLS로 차단하고, 쓰기는 SECURITY DEFINER RPC 단일 경로로만 허용: `admin_update_topik_question`(화이트리스트 patch), `admin_assign_question_tag`/`admin_remove_question_tag`(이력 보존형). RPC는 `admin_audit_logs`에 actor=`auth.uid()` + 컬럼 diff(`{col:{from,to}}`)를 기록한다 — `target_table='AssessmentQuestion'`, `target_id=question_id`.
+- 액션 코드: 검수=`review_completed`/`review_on_hold`/`review_revision_requested`/`review_memo_saved`, 운영(P4)=`service_status_changed`/`tag_assigned`/`tag_removed`, 배포(P6)=`question_published`.
+- 구 `admin_update_problem` RPC는 v13 admin island 제거(2026-06-09)로 라이브 DB에 존재하지 않음(실측). 동등 보장의 비교 대상은 v13 마이그레이션 파일의 계약 원문이다.
+
+### 12.4 v0.8 원안 대비 편차 목록 (승인 완료)
+
+| 편차 | 내용 | 사유 |
+| --- | --- | --- |
+| E1 | 4테이블 공통 컬럼 `review_workflow_status` 추가 | D-2: 현행 검수 진행 2축 보존 (v0.8 §7.1에 부재) |
+| E2 | 매핑 테이블 `topik_writing_question_source_map` 추가 (+`legacy_topic_category_code` 보존 컬럼) | D-4 채번 idempotency·레거시 역추적·배포 증적 |
+| E3 | tag_master 시드에서 '서비스_노출상태' 그룹 제외 + 운영주의 그룹 '운영 제외' 값 추가 | D-6: `service_status` 컬럼과의 이중 기록 차단 |
+| E4 | 추천 뷰에 admin 목록용 6컬럼 확장(`situation_summary`/`question_type_name`/`content_team_memo`/`review_workflow_status`/`created_at`/`updated_at`) | §7.9 12컬럼만으로 목록 화면 요구 충족 불가 |
+
+### 12.5 운영 원칙
+
+- 메타데이터(불변 사실)/태그(가변 운영값) 물리 분리 원칙을 따른다. 콘텐츠 메타(~45컬럼) 입력/저작 UI는 비범위(D-10) — 콘텐츠팀 입력표→ETL 경로 유지.
+- 공통 컬럼 집합은 P1 종료 시 계약으로 동결하고, 변경은 4테이블 동시 마이그레이션으로만 허용한다(컬럼 drift 방지).

@@ -232,3 +232,4 @@
 - AI 재생성, 배치 재시도, 프롬프트 버전 비교, 대량 검수 액션은 후속 범위다.
 - Supabase 미설정/조회 실패 시 JSON fallback을 제공하지 않고 error/retry 상태를 노출한다.
 - 1차 사용자 노출 경로는 `POL-017`에 따라 Writing API(`GET /api/writing/tasks`)이며, EPS TOPIK / 레벨 테스트 편성 화면에서 검수/배포 완료 문항을 소비하는 계약은 여전히 별도 후속 문서가 필요하다.
+- 콘텐츠팀 권장 스키마(`docs/metadata-tag-schema-rule.md` v0.8)는 **2026-06-10 채택 확정**됐다(Phase 0 결정 13건 완료 — `docs/architecture/metadata-tag-schema-transition-decision-record.md`). 이 페이지의 검수 필드/상태 계약과 필터 축(`domain` 8값 → `topic_main` 17주제 2단)은 P3 읽기·검수 컷오버 작업에서 신규 스키마 기준으로 재작성하며, 컷오버 전까지는 현행 계약을 유지한다(실행 SoT: `docs/메타데이터-태그-스키마-전환-실행계획안.md` §7, `docs/specs/admin-data-contract.md` §12).

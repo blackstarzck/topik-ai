@@ -380,14 +380,19 @@
     - 1차 사용자 노출 경로는 `POL-017`에 따라 상류 Writing API(`GET /api/writing/tasks`)로 확정되었다. EPS TOPIK / 레벨 테스트 세트 편성 화면에서 검수/배포 완료 문항을 소비하는 계약은 여전히 후속 구현이 필요하다.
     - `53/54번` 2depth 검수 페이지는 Supabase `problems` 매핑 기준으로 동작하지만, 배치별 대량 검수 액션과 후속 내보내기/배포 액션은 아직 관리자 SoT에 연결되지 않았다.
   - `TOPIK 쓰기 문항 관리`
-    - 운영 상태 조치(`노출 후보` / `숨김 후보` / `운영 제외`)는 v13 `lifecycle_status` 미적용으로 현재 비활성(스캐폴딩) 상태다. 페이지 상단 `운영 상태 관리는 준비 중입니다` 경고 Alert와 disabled 운영 조치 버튼만 노출되고, `operationStatus`는 모든 문항에서 `미지정` sentinel로만 표시된다.
-    - 확인+사유 -> 감사 로그 흐름(`ConfirmAction` + `AuditLogLink`)과 `admin_update_problem` write path는 코드에 미리 연결되어 있으나 데이터 계약상 비활성이며, `OPERATION_WRITE_ENABLED` 플래그 + 서비스 un-stub로 후속 활성화 예정이다. 즉 운영 상태 변경은 지금 동작하지 않는다.
-    - 운영 상태 조치를 실제로 켜려면 v13 `lifecycle_status` 적용과 `admin_update_problem` write 활성화가 선행되어야 하며, 이전까지 `operationStatus` 요약 카드/필터는 sentinel 기준 분포만 보여 준다.
+    - 운영 상태 조치(`노출 후보` / `숨김 후보` / `운영 제외`)는 현재 비활성(스캐폴딩) 상태다. 페이지 상단 `운영 상태 관리는 준비 중입니다` 경고 Alert와 disabled 운영 조치 버튼만 노출되고, `operationStatus`는 모든 문항에서 `미지정` sentinel로만 표시된다.
+    - 확인+사유 -> 감사 로그 흐름(`ConfirmAction` + `AuditLogLink`)은 코드에 미리 연결되어 있다. 주의(실측 2026-06-10): 코드가 참조하는 구 `admin_update_problem` RPC는 v13 admin island 제거(2026-06-09)로 라이브 DB에 존재하지 않아 구 경로 활성화는 불가능하다.
+    - 해소 경로(D-6 확정, 2026-06-10): v13 `lifecycle_status` 대기는 폐기됐다. 신규 스키마 `service_status` 축으로 P3(표시 전환)·P4(`OPERATION_WRITE_ENABLED` 게이트 제거 + `admin_update_topik_question` write 개방)에서 해소한다.
+  - `메타데이터·태그 스키마 전환` (검수/관리 공통) — **2026-06-10 Phase 0 결정 해소**
+    - 콘텐츠팀 권장 스키마(`docs/metadata-tag-schema-rule.md` v0.8) 채택·전면 전환이 2026-06-10 오너 지시로 확정됐고, Phase 0 결정 13건(D-1~D-13)이 전부 확정됐다(`docs/architecture/metadata-tag-schema-transition-decision-record.md`). 소유권은 "신규 `topik_writing_*` 오브젝트=이 repo 소유, 호스트=talkpik-dev 공유"로 택일됐고(D-1, v13 오너의 2026-06-09 admin island 제거 결정이 경계 근거), 주제 축 재분류(D-3)·채번(D-4)·역분해(D-5)·`service_status` 정합(D-6)·감사 계약(D-8)·52/53/54 실재(D-9 쿼리 확정)도 해소됐다.
+    - 잔여 갭은 "결정 대기"가 아니라 "실행 대기"다: P1(스키마)~P6(상류 연동)는 실행 계획안(`docs/메타데이터-태그-스키마-전환-실행계획안.md`) §12.3 채점 게이트(직전 페이즈 PASS)에 따라 순차 실행한다. 외부 잔여: D-11 상류 엔드포인트 요청서·콘텐츠팀 발주서 발신(`docs/requests/`).
+    - 콘텐츠 메타(~45컬럼) 입력/저작 UI는 비범위로 확정(D-10) — 갭 아님.
   - `EPS TOPIK`, `레벨 테스트`
     - 여전히 Placeholder이며, 편성/배점/발행/결과 정책의 화면 SoT와 데이터 source 경계가 미정이다.
 - 분류
   - `부분 구현 + 미확정`
   - 문항 관리 운영 상태 조치: `누락` (write path 후속 활성화 대기)
+  - 메타데이터·태그 스키마 전환: `진행 중` (Phase 0 결정 13건 확정·코드 착수 차단 해제, P1~P6 실행 단계 — 실행 계획안 §12.3 PASS 게이트 추적)
 
 ### 4.8 Content
 

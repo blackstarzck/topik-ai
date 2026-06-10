@@ -8,7 +8,8 @@
 ## 2. 적용 범위
 - 대상 모듈: `Dashboard`, `Users`, `Community`, `Message`, `Operation`, `Commerce`, `Assessment`, `Content`, `Analytics`, `System`
 - 대상 작업: 프론트엔드 구현/리팩토링/코드리뷰/테스트 보강
-- 제외 범위: 백엔드 아키텍처, 배포/인프라, DB 스키마 설계
+- 대상 작업(2026-06-10 추가): `topik_writing_*` 네임스페이스의 Supabase 스키마 자산(`supabase/migrations`, 시드, RLS/RPC)과 백필 ETL 스크립트(`scripts/etl`) — 메타데이터·태그 스키마 전환(D-1)으로 이 repo가 해당 네임스페이스의 DDL을 소유·관리한다. 경계·승인 절차는 `docs/architecture/metadata-tag-schema-transition-decision-record.md` §2를 따르고, 기존 v13 테이블 DDL 변경은 금지한다.
+- 제외 범위: 백엔드 아키텍처, 배포/인프라, v13 소유 테이블의 DB 스키마 설계(`topik_writing_*` 외)
 
 ## 3. 문서 계약 (용어/구조 고정)
 - 메뉴명은 항상 `Users`(복수형) 사용, `User` 단수형 금지

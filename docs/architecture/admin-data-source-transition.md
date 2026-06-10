@@ -267,5 +267,25 @@ src/features/<feature>/
   - 사용자 노출 토글(노출/숨김)을 상류에 반영하는 엔드포인트: `/manage` 운영 상태와 연동할 후보다.
 - 전환 메모
   - 배포 실행 트리거(`검수 완료` 시 자동 업로드 vs 별도 `배포` 액션)는 후속 구현에서 확정한다. 별도 액션으로 둘 경우 `Target Type = AssessmentQuestion`, `Target ID = questionId` 감사 계약을 따른다(`docs/specs/admin-action-log.md`).
-  - 노출/숨김(운영 상태) write 활성화는 v13 `lifecycle_status` 도착 및 `OPERATION_WRITE_ENABLED` 플래그 활성화에 종속된다(§10.2와 동일 게이트).
+  - 노출/숨김(운영 상태) write 활성화 경로는 2026-06-10 D-6 확정으로 변경됐다: v13 `lifecycle_status` 종속은 폐기되고, 신규 스키마 `service_status` 컬럼 기반으로 P4에서 `OPERATION_WRITE_ENABLED` 게이트를 제거하며 개방한다(§10.4, 결정 기록 D-6).
   - `problems`(검수 원본)와 상류 작문 과제(사용자 노출본)는 서로 다른 저장소이므로, 업로드 시 양쪽 식별자 매핑(예: `publishedTaskId` 후보)을 유지해 재배포/역추적이 가능해야 한다.
+
+## 10.4 메타데이터·태그 스키마 전환 (권장안 v0.8 — 2026-06-10 채택 확정, Phase 0 결정 완료)
+
+- 대상 문서: `docs/metadata-tag-schema-rule.md`(콘텐츠팀 권장 스키마, v0.8). 영향도 분석: `docs/메타데이터-태그-스키마-전환-영향도-보고서.md`. 실행 SoT: `docs/메타데이터-태그-스키마-전환-실행계획안.md`(P0~P6 단계·PASS 채점 게이트).
+- 상태: **2026-06-10 프로젝트 오너 지시로 v0.8 채택·전면 전환 착수가 확정됐고, Phase 0 결정 13건(D-1~D-13)이 전부 확정됐다.** 확정값·근거·실측 증거는 `docs/architecture/metadata-tag-schema-transition-decision-record.md`(이하 결정 기록)가 SoT다. 구 "미채택/코드 결선 금지" freeze 가드는 해제됐으며, 이후 착수 통제는 실행 계획안 §12.3 페이즈 채점(직전 페이즈 PASS 시에만 비가역 실행)을 따른다.
+- 세 데이터 모델 관계 (유지)
+  - ⓐ 신규 스키마: 번호별 4분리 테이블(`topik_writing_51/52/53/54_questions`) + 태그/주제 마스터 + 추천 검색용 읽기전용 UNION 뷰 + 식별자 매핑 테이블 `topik_writing_question_source_map`(편차 E2)
+  - ⓑ 구 검수 원본: v13 `problems` — P3 컷오버까지 검수 SoT, 컷오버 후 read-only 레거시 동결(일몰 조건은 결정 기록 §2.3)
+  - ⓒ 사용자 노출본: 상류 TalkPik Writing API(§10.3, POL-017) — P6 게이트(D-11 요청서 발신 추적)
+- 소유권·호스트 확정 (D-1)
+  - 신규 오브젝트는 현행 v13 Supabase 프로젝트 `fglggyfvzjdsbyckinqa`(talkpik-dev)에 생성하고, 마이그레이션 자산(`supabase/migrations`)은 이 repo(topik-ai)가 소유·관리한다(시나리오 B의 공유 호스트 변형).
+  - 경계 근거: v13 오너 결정(2026-06-09, v13 repo `supabase/migrations/20260609130000_remove_v13_admin_island.sql`) — "문제 데이터의 작성·노출 통제는 admin(topik-ai)이 담당, v13은 read-only". 공유 자산(`admin_audit_logs`, `private.is_*_admin` 헬퍼, `profiles.app_role`)은 재사용하고, 기존 v13 테이블 DDL 변경은 0건 원칙(P1 무변경 diff 게이트로 증명).
+  - v13 측 스테이징/브랜치 DB 없음(실측 — Management API branches 0건). additive 마이그레이션 + down 스크립트 + 적용 직후 무변경 diff + RT-1 파일럿 적재 왕복으로 검증을 대체한다.
+- 마이그레이션 적용 절차 (P1에서 상세화)
+  - 마이그레이션 작성 → 오너 승인(v13 오너=admin 오너 동일인, 단일 승인) → 프로덕션 적용 → §5.4 게이트(8오브젝트 스모크 + RLS 역할 매트릭스 + 뷰 anon 차단 네거티브 테스트 + 기존 테이블 무변경 diff + RT-1).
+- 가드레일 (갱신)
+  - 신규 식별자의 코드 결선은 실행 계획안 §12.3 채점 규칙을 따른다: 가역적 선행 개발(스크립트·코드·문서 초안)은 허용, 비가역 실행(프로덕션 DDL 적용·실데이터 적재·컷오버 배포·write 개방·상류 호출)은 직전 페이즈 PASS 후에만 한다.
+  - `service_status`(`available`/`excluded`/`internal_test`)가 유일한 물리 노출 상태다(D-6). '서비스_노출상태' 태그 그룹은 시드에서 제외하고 RPC에서 부여를 차단한다. `operationStatus` 4값 union은 P3에서 제거한다. v13 `lifecycle_status` 종속은 해소됐다(신규 스키마가 자체 노출 컬럼 보유).
+  - 검수 상태는 ASCII enum 저장 + admin 한국어 라벨 매핑의 2축(`review_status` 3값 + `review_workflow_status` 5값, 편차 E1)으로 확정(D-2).
+  - 채택 계약·식별자 매핑·편차 목록(E1~E4)은 `docs/specs/admin-data-contract.md` §12에서 추적한다.

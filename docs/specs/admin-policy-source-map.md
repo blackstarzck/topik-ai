@@ -33,7 +33,8 @@
 | `POL-014` | 발송 실패/재시도 정책 | 메시지/알림 | 정책 미확정 | `Message > 발송 이력`, `Message > 메일`, `Message > 푸시` | `docs/specs/page-ia/message-history-page-ia.md`, `docs/specs/admin-page-gap-register.md` |
 | `POL-015` | 관리자 권한 변경 정책 | 관리자/보안 | 문서 추적 | `System > 권한 관리`, `System > 관리자 계정`, `System > 감사 로그` | `docs/specs/page-ia/system-permissions-page-ia.md`, `docs/specs/admin-page-gap-register.md`, `src/features/system/pages/system-permissions-page.tsx` |
 | `POL-016` | 마케팅 정보 수신 동의 | 메시지/알림 | 코드 반영 | `Message > 메일`, `Message > 푸시`, `Users > 회원 상세` | `docs/specs/page-ia/message-mail-page-ia.md`, `docs/specs/page-ia/message-push-page-ia.md`, `docs/specs/admin-data-usage-map.md` |
-| `POL-017` | TOPIK 쓰기 문제 검수·배포 운영정책 | 운영/콘텐츠 | 문서 추적 | `Assessment > TOPIK 쓰기 문제 검수`, `Assessment > TOPIK 쓰기 문항 관리`, `System > 감사 로그` | `docs/specs/page-ia/assessment-question-bank-page-ia.md`, `docs/specs/page-ia/assessment-question-manage-page-ia.md`, `docs/architecture/admin-data-source-transition.md`, `docs/specs/topik-ai-service-api-reference.md` |
+| `POL-017` | TOPIK 쓰기 문제 검수·배포 운영정책 | 운영/콘텐츠 | 문서 추적 | `Assessment > TOPIK 쓰기 문제 검수`, `Assessment > TOPIK 쓰기 문항 관리`, `System > 감사 로그` | `docs/specs/page-ia/assessment-question-bank-page-ia.md`, `docs/specs/page-ia/assessment-question-manage-page-ia.md`, `docs/architecture/admin-data-source-transition.md`, `docs/specs/topik-ai-service-api-reference.md`, `docs/메타데이터-태그-스키마-전환-영향도-보고서.md` |
+| `POL-018` | TOPIK 쓰기 태그 운영·노출 제외 기준 | 운영/콘텐츠 | 문서 추적 | `Assessment > TOPIK 쓰기 문항 관리`, `Assessment > TOPIK 쓰기 문제 검수`, `System > 감사 로그` | `docs/architecture/metadata-tag-schema-transition-decision-record.md`(D-6: `service_status` 단일 노출 상태, 노출 제외 기준 3항, 노출상태 태그 그룹 시드 제외), `docs/metadata-tag-schema-rule.md` §2.2, `docs/메타데이터-태그-스키마-전환-실행계획안.md` §8 |
 
 ## 4. 운영 원칙
 

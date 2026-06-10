@@ -9,7 +9,7 @@ status: "구현됨"
 primary_entity: "AssessmentQuestion"
 primary_table_candidate: "problems"
 owner_agent_scope: "shared"
-last_reviewed_at: "2026-06-09"
+last_reviewed_at: "2026-06-10"
 ---
 
 ## 1. 문서 목적
@@ -143,4 +143,5 @@ last_reviewed_at: "2026-06-09"
 | 항목 | 미확정 내용 | 필요한 결정 주체 | 관리자 페이지 영향 | 사용자 화면 영향 | 추적 문서 |
 | --- | --- | --- | --- | --- | --- |
 | 상류 배포(업로드) 엔드포인트 | 배포 방향·대상은 `POL-017`로 확정(관리자 → 상류 Writing API 업로드). 남은 미확정은 상류 업로드/upsert 엔드포인트 경로와 배포 실행 트리거(자동 vs 별도 액션)입니다. | 기획/백엔드/프론트 | 배포 액션/감사 로그 계약 변동 가능 | 상류 Writing API(`GET /api/writing/tasks`)로 노출 | docs/specs/admin-policy-source-map.md, docs/architecture/admin-data-source-transition.md §10.3, docs/specs/topik-ai-service-api-reference.md |
-| 운영 상태 ↔ 사용자 노출 연동 | `/manage` 운영 상태(노출/숨김/운영 제외)를 상류 노출에 반영하는 연동 계약과 토글 엔드포인트가 미확정입니다(v13 `lifecycle_status` 대기). | 기획/백엔드/프론트 | 운영 조치 활성화/감사 로그 계약 | 사용자 노출 on/off | docs/specs/page-ia/assessment-question-manage-page-ia.md |
+| 운영 상태 ↔ 사용자 노출 연동 | `/manage` 운영 상태는 D-6 확정으로 신규 스키마 `service_status` 축으로 전환된다(P3 표시·P4 write 개방, v13 `lifecycle_status` 대기는 폐기). 남은 미확정은 `service_status` 변경을 상류 노출에 반영하는 토글 엔드포인트와 보상 정책(P6, D-11 요청서 발신 대기)입니다. | 기획/백엔드/프론트 | 운영 조치 활성화/감사 로그 계약 | 사용자 노출 on/off | docs/specs/page-ia/assessment-question-manage-page-ia.md, docs/architecture/metadata-tag-schema-transition-decision-record.md |
+| 메타데이터·태그 스키마 전환 (Phase 0 해소) | 채택·소유권·topic 재분류·역분해 처리 방침이 2026-06-10 Phase 0 결정 13건(D-1~D-13)으로 전부 확정됐습니다(코드 착수 차단 해제). 남은 것은 실행입니다: P1 스키마 → P2 백필 → P3 읽기·검수 컷오버(이 페이지 어댑터/타입/필터 축 전면 변경, 본 문서 §5~§7도 같은 작업에서 8오브젝트 기준 재작성) → P4 운영 쓰기·태그. | admin (실행 계획안 §12.3 PASS 게이트) | P3에서 어댑터/타입/필터 축 전면 변경(XL) | 추천/태그 기반 노출·추천 정책 신설 가능(P6) | docs/architecture/metadata-tag-schema-transition-decision-record.md, docs/메타데이터-태그-스키마-전환-실행계획안.md, docs/specs/admin-data-contract.md §12 |
