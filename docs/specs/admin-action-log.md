@@ -65,6 +65,15 @@
 - 메타데이터 항목 조치도 현재는 그룹 단위 추적을 우선 적용하며, 시스템 감사 로그에서 `/system/metadata?selected={groupId}` 기준으로 원본 화면을 역추적할 수 있어야 합니다.
 - 메타데이터의 `운영 값 순서 변경(item_reordered)`도 같은 계약을 사용하며, 드래그 정렬 직후 감사 로그에서 해당 그룹 단위 이력을 확인할 수 있어야 합니다.
 
+## 2026-06-10 보강 메모 > 메타데이터·태그 스키마 전환 P1 — 신규 감사 RPC 계약 예고
+
+- P1에서 신규 감사 RPC 3종이 프로덕션에 생성되었다(`supabase/migrations/20260610201200_topik_writing_admin_rpcs.sql`). 화면 결선은 P3(검수 쓰기)·P4(운영 쓰기·태그)에서 단계적으로 수행하며, 그 전까지 화면은 구 계약을 유지한다.
+- 공통 계약: SECURITY DEFINER + `private.is_content_admin` 가드, `admin_audit_logs`에 actor=`auth.uid()`, `Target Type(target_table) = AssessmentQuestion`, `Target ID = question_id`(신규 TEXT 채번 ID), 컬럼 diff `{col:{from,to}}` 기록. 검수 사유 본문은 예약 patch 키 `__note`로 전달되어 `payload.review_note`에 저장된다(D-7, 구 `admin_update_problem`의 `__note` 관행 계승).
+- 액션 코드 사전(D-8): `admin_update_topik_question` → `review_completed` / `review_revision_requested` / `review_on_hold` / `review_status_changed`(기타 워크플로 전이) / `review_memo_saved`(메모 단독) / `service_status_changed`(P4). `admin_assign_question_tag` → `tag_assigned`, `admin_remove_question_tag` → `tag_removed`. 배포(P6) → `question_published` 예약.
+- 가드: `service_status='available'` 전환은 `review_status='approved'`가 선행돼야 하며 위반 시 RPC가 거부한다(POL-018). '서비스_노출상태' 태그 그룹 부여는 RPC가 차단한다(D-6).
+- P1 검증 증적: 파일럿 왕복에서 `tag_assigned`/`review_status_changed` 감사 행과 `payload.review_note` 기록을 확인함(`logs/metadata-tag-schema-transition-evidence.md` P1 절).
+- 감사 표면(`/system/audit-logs`) 액션 라벨 맵 갱신은 P4 채점 항목(P4-5)에서 수행한다.
+
 ## 2026-03-27 보강 메모 > System 메타데이터 운영 값 삭제
 - `System > 메타데이터 관리`의 운영 값 삭제는 Tree hover 삭제와 `운영 값 수정` Modal 삭제 버튼 두 경로를 모두 지원합니다.
 - 두 경로 모두 `Target Type = SystemMetadataGroup`, `Target ID = groupId` 감사 계약을 유지합니다.

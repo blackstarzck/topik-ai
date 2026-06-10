@@ -100,3 +100,70 @@ select column_name from information_schema.columns
 - `npm run harness:check` 통과(커밋 직전 실행): mojibake 검출 0건 / doc crosslink 103개 문서 검증 통과 / route-doc coverage 52라우트-37 IA 문서 통과 / eslint 0건 / tsc 0건.
 - 적대적 검증 2종(채점 반박·정합성 검토) 실행 결과 블로커 1건(미커밋 상태 자체)과 마이너 7건이 보고됐고, 마이너 지적 전건(스코어카드 미기록·§3.3 사전 포인터·90문항 잔존 표기·12건/13건 로그 오류·page-tables 로그 누락·lifecycle_status/admin_update_problem 잔존 모순 5곳·source 분포 미확인)을 커밋 전에 수정 반영했다.
 - **P0-5 = PASS 확정. P0 종합 판정 = PASS** (필수 5건 PASS, 권장 P0-6 부분 — 종합 미산입, 후속 계획은 §12.4 메모).
+
+---
+
+## P1 증적 (2026-06-10)
+
+### P1-1 마이그레이션 12파일 + down 스크립트, 적용
+
+- 파일: `supabase/migrations/20260610200100~20260610201200` 12파일 + `supabase/migrations/down/` 동수. 내용: 주제 마스터(+17주제×세부 85행 시드), 태그 마스터(+19태그 시드), 문제 테이블 4종(공통 §7.1+E1+번호별 전용, topic FK·CHECK 제약), question_tags(활성 중복 차단 부분 유니크), source_map(E2+`legacy_publish_status/visibility` 보존), 추천 뷰(§7.9+E4, `security_invoker=true`), 인덱스, RLS 8오브젝트, 감사 RPC 3종.
+- 스테이징: v13 측 스테이징/브랜치 DB 부재(실측)로 D-1 합의에 따라 "additive 마이그레이션 + down 스크립트 + 무변경 diff + RT-1"로 대체.
+- 적용 로그(2026-06-10, `npm run db:migrate`): 12파일 전부 `ok`, 추적 테이블 `topik_writing_schema_migrations` 기록.
+
+### P1-2 승인 → 프로덕션 적용
+
+- 승인: v13 오너=admin 오너 동일인 — 오너 위임 실행(2026-06-10 지시) 단일 승인(결정 기록 §2.2). 적용 대상: talkpik-dev(`fglggyfvzjdsbyckinqa`).
+
+### P1-3 프로덕션 스모크 — RLS 역할 매트릭스 + 뷰 anon 차단
+
+- 도구: `scripts/db/p1-smoke.mjs` (53스텝 전부 PASS, 2026-06-10). 매트릭스 결과:
+
+| 역할 | 문제 4테이블 | topic_master | tag_master | question_tags | source_map | 추천 뷰 |
+| --- | --- | --- | --- | --- | --- | --- |
+| anon | 0행 | 0행 | 0행 | 0행 | 0행 | **0행(차단 — security_invoker 네거티브 통과)** |
+| 비admin(authenticated) | 0행 | 0행 | 0행 | 0행 | 0행 | 0행 |
+| admin(content_admin) | 파일럿 각 1행 | 85행 | 19행 | 1행 | 4행 | 4행 |
+
+- 쓰기 차단: 비admin 직접 INSERT → RLS 위반 오류, 비admin RPC → `forbidden: content_admin required`.
+
+### P1-4 기존 테이블 무변경 diff
+
+- `scripts/db/schema-snapshot.mjs`: 적용 전(테이블 24/함수 61/정책 55/뷰 0) → 적용 후(34/64/63/1), `--diff --exclude-own` 결과 **자기 네임스페이스 제외 차이 0건**.
+
+### P1-5 RT-1 파일럿 적재 왕복
+
+- 번호별 파일럿 1건씩(`topik-writing-{51..54}-9999`, `backfill_batch='pilot'`, `service_status='internal_test'`)을 service-role로 적재 → ① 번호별 테이블 직조회(필드 26~31개 일치) ② 추천 뷰(14필드 일치) ③ 태그 조인(`rec_first_entry`↔'첫 진입용') ④ admin RLS 경유 — 4경로 전부 입력과 필드별 diff 0건(JSONB는 키 정렬 정규화 비교). 검증 후 파일럿 행 정리(뷰 0행 확인 — P2 채번 오염 방지).
+- RPC 왕복 보강: `admin_assign_question_tag` → `tag_assigned` 감사 행, `admin_update_topik_question`(workflow `in_progress`+메모+`__note`) → `review_status_changed` 감사 행 + `payload.review_note` 기록 + 재조회 반영 확인.
+
+### P1-6 마스터 2종 시드 검증
+
+```sql
+select count(distinct topic_main), count(*) from topik_writing_topic_master;            -- 17 / 85
+select count(*), count(*) filter (where tag_group='서비스_노출상태') from topik_writing_tag_master; -- 19 / 0
+```
+
+- 17주제 전수·세부 85행, 태그 19종(6그룹), '서비스_노출상태' 그룹 0건(D-6/E3 준수) 확인.
+
+### P1-7 (권장) db 스크립트 + 절차 문서화
+
+- `package.json`: `db:migrate`/`db:migrate:status`/`db:snapshot`/`db:sql` 추가. 절차는 `docs/architecture/admin-data-source-transition.md` §10.4에 기록(CLI 대신 Management API 사용 사유 포함).
+
+### D-12 시드 계정
+
+- e2e admin(`e2e-admin@topik-ai.test`, `app_role=content_admin`)·비admin 검증 계정 생성 — 자격증명은 `.env.local`(gitignored)에만 보관. `scripts/db/create-e2e-admin.mjs` 신설(프로필 승격은 보호 트리거로 인해 1회성 SQL로 수행).
+
+### P1 채점 (실행 계획안 §12.3 P1 채점표)
+
+| # | 항목 | 판정 | 증적 |
+| :-- | :---- | :--: | :---- |
+| P1-1 | 마이그레이션 12파일+down, 적용 | PASS | 본 절(스테이징 부재는 D-1 대체 검증) |
+| P1-2 | 승인 → 프로덕션 적용 | PASS | 본 절 + 결정 기록 §2.2 |
+| P1-3 | 스모크(8오브젝트+RLS 매트릭스+뷰 anon 차단) | PASS | 매트릭스 표(53스텝 ALL PASS) |
+| P1-4 | 기존 테이블 무변경 diff | PASS | diff 0건 |
+| P1-5 | RT-1 파일럿 적재 왕복 | PASS | 4경로 필드별 일치 + 정리 확인 |
+| P1-6 | 마스터 2종 시드 검증 | PASS | 시드 대사 쿼리 결과 |
+| P1-7 | db 스크립트+절차 문서화 | PASS(권장) | package.json + transition §10.4 |
+
+- 종합 판정: **PASS** (필수 6건 전부 PASS + 권장 1건 PASS).
+- 채점자: 프로젝트 오너 위임 실행(2026-06-10 지시). 커밋 해시는 §12.4 스코어카드에 기록.
