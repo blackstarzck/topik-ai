@@ -3,40 +3,44 @@ import { useSearchParams } from 'react-router-dom';
 
 import {
   assessmentQuestionNumbers,
-  parseAssessmentQuestionDifficulty,
-  parseAssessmentQuestionDomain,
+  parseAssessmentDifficultyLevel,
   parseAssessmentQuestionNumbers,
-  parseAssessmentQuestionTypeLabel
+  parseAssessmentQuestionTypeName
 } from './assessment-question-bank-schema';
-import type {
-  AssessmentQuestionDifficulty,
-  AssessmentQuestionDomain,
-  AssessmentQuestionNumber,
-  AssessmentQuestionTypeLabel
-} from './assessment-question-bank-types';
+import type { AssessmentQuestionNumber } from './assessment-question-bank-types';
 
+/**
+ * §7.2 URL 파라미터 교체: `domain`→`topicMain`(+`topicDetail`),
+ * `operationStatus`→`serviceStatus`, 난이도는 1~6 정수. `tag`는 P4 태그 필터
+ * 자리 확보용 예약 키다.
+ */
 export type QuestionFilterParamKey =
   | 'questionNo'
-  | 'domain'
+  | 'topicMain'
+  | 'topicDetail'
   | 'questionType'
   | 'difficulty'
   | 'keyword'
   | 'reviewStatus'
-  | 'operationStatus';
+  | 'serviceStatus'
+  | 'tag';
 
 type QuestionFilterParamValue = string | string[] | null;
 
 export type AssessmentQuestionFilters = {
   searchParams: URLSearchParams;
   activeQuestionNumbers: AssessmentQuestionNumber[];
-  domainFilter: AssessmentQuestionDomain | null;
-  questionTypeFilter: AssessmentQuestionTypeLabel | null;
-  difficultyFilter: AssessmentQuestionDifficulty | null;
+  topicMainFilter: string | null;
+  topicDetailFilter: string | null;
+  questionTypeFilter: string | null;
+  difficultyFilter: number | null;
   keyword: string;
-  draftDomainFilter: string | null;
+  draftTopicMainFilter: string | null;
+  draftTopicDetailFilter: string | null;
   draftQuestionTypeFilter: string | null;
   draftDifficultyFilter: string | null;
-  setDraftDomainFilter: (value: string | null) => void;
+  setDraftTopicMainFilter: (value: string | null) => void;
+  setDraftTopicDetailFilter: (value: string | null) => void;
   setDraftQuestionTypeFilter: (value: string | null) => void;
   setDraftDifficultyFilter: (value: string | null) => void;
   commitParams: (
@@ -53,10 +57,9 @@ export type AssessmentQuestionFilters = {
 
 /**
  * Common list-filter state shared by both split question-bank pages: the question
- * number multi-select, the keyword box, and the domain/type/difficulty 상세 검색
- * popover. Each page layers its own status param (reviewStatus / operationStatus)
- * on top via `commitParams`. The `tab` param is gone now that the two modes are
- * separate routes.
+ * number multi-select, the keyword box, and the 주제(종합/세부)/유형/난이도 상세
+ * 검색 popover. Each page layers its own status param (reviewStatus /
+ * serviceStatus) on top via `commitParams`.
  */
 export function useAssessmentQuestionFilters(): AssessmentQuestionFilters {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -64,30 +67,35 @@ export function useAssessmentQuestionFilters(): AssessmentQuestionFilters {
   const activeQuestionNumbers = parseAssessmentQuestionNumbers(
     searchParams.getAll('questionNo')
   );
-  const domainFilter = parseAssessmentQuestionDomain(searchParams.get('domain'));
-  const questionTypeFilter = parseAssessmentQuestionTypeLabel(
+  const topicMainFilter = searchParams.get('topicMain');
+  const topicDetailFilter = searchParams.get('topicDetail');
+  const questionTypeFilter = parseAssessmentQuestionTypeName(
     searchParams.get('questionType')
   );
-  const difficultyFilter = parseAssessmentQuestionDifficulty(
+  const difficultyFilter = parseAssessmentDifficultyLevel(
     searchParams.get('difficulty')
   );
   const keyword = searchParams.get('keyword') ?? '';
 
-  const [draftDomainFilter, setDraftDomainFilter] = useState<string | null>(
-    domainFilter
+  const [draftTopicMainFilter, setDraftTopicMainFilter] = useState<string | null>(
+    topicMainFilter
   );
+  const [draftTopicDetailFilter, setDraftTopicDetailFilter] = useState<
+    string | null
+  >(topicDetailFilter);
   const [draftQuestionTypeFilter, setDraftQuestionTypeFilter] = useState<
     string | null
   >(questionTypeFilter);
   const [draftDifficultyFilter, setDraftDifficultyFilter] = useState<
     string | null
-  >(difficultyFilter);
+  >(difficultyFilter == null ? null : String(difficultyFilter));
 
   useEffect(() => {
-    setDraftDomainFilter(domainFilter);
+    setDraftTopicMainFilter(topicMainFilter);
+    setDraftTopicDetailFilter(topicDetailFilter);
     setDraftQuestionTypeFilter(questionTypeFilter);
-    setDraftDifficultyFilter(difficultyFilter);
-  }, [difficultyFilter, domainFilter, questionTypeFilter]);
+    setDraftDifficultyFilter(difficultyFilter == null ? null : String(difficultyFilter));
+  }, [difficultyFilter, questionTypeFilter, topicDetailFilter, topicMainFilter]);
 
   const commitParams = useCallback(
     (next: Partial<Record<QuestionFilterParamKey, QuestionFilterParamValue>>) => {
@@ -156,43 +164,52 @@ export function useAssessmentQuestionFilters(): AssessmentQuestionFilters {
         return;
       }
 
-      setDraftDomainFilter(domainFilter);
+      setDraftTopicMainFilter(topicMainFilter);
+      setDraftTopicDetailFilter(topicDetailFilter);
       setDraftQuestionTypeFilter(questionTypeFilter);
-      setDraftDifficultyFilter(difficultyFilter);
+      setDraftDifficultyFilter(
+        difficultyFilter == null ? null : String(difficultyFilter)
+      );
     },
-    [difficultyFilter, domainFilter, questionTypeFilter]
+    [difficultyFilter, questionTypeFilter, topicDetailFilter, topicMainFilter]
   );
 
   const handleResetSearchDetail = useCallback(() => {
-    setDraftDomainFilter(null);
+    setDraftTopicMainFilter(null);
+    setDraftTopicDetailFilter(null);
     setDraftQuestionTypeFilter(null);
     setDraftDifficultyFilter(null);
   }, []);
 
   const handleApplySearchDetail = useCallback(() => {
     commitParams({
-      domain: draftDomainFilter,
+      topicMain: draftTopicMainFilter,
+      topicDetail: draftTopicDetailFilter,
       questionType: draftQuestionTypeFilter,
       difficulty: draftDifficultyFilter
     });
   }, [
     commitParams,
     draftDifficultyFilter,
-    draftDomainFilter,
-    draftQuestionTypeFilter
+    draftQuestionTypeFilter,
+    draftTopicDetailFilter,
+    draftTopicMainFilter
   ]);
 
   return {
     searchParams,
     activeQuestionNumbers,
-    domainFilter,
+    topicMainFilter,
+    topicDetailFilter,
     questionTypeFilter,
     difficultyFilter,
     keyword,
-    draftDomainFilter,
+    draftTopicMainFilter,
+    draftTopicDetailFilter,
     draftQuestionTypeFilter,
     draftDifficultyFilter,
-    setDraftDomainFilter,
+    setDraftTopicMainFilter,
+    setDraftTopicDetailFilter,
     setDraftQuestionTypeFilter,
     setDraftDifficultyFilter,
     commitParams,

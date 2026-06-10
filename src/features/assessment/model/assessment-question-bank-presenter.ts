@@ -1,92 +1,82 @@
+import { getReviewStatusLabel, getServiceStatusLabel } from './assessment-question-bank-schema';
 import type {
-  AssessmentQuestion,
-  AssessmentQuestionDifficulty,
-  AssessmentQuestionDomain,
   AssessmentQuestionNumber,
-  AssessmentQuestionTypeLabel
+  AssessmentQuestionSummary
 } from './assessment-question-bank-types';
 
-export function getQuestionText(question: AssessmentQuestion): string {
-  return question.questionText;
+export function getQuestionTopicText(question: AssessmentQuestionSummary): string {
+  return question.topicDetail
+    ? `${question.topicMain} / ${question.topicDetail}`
+    : question.topicMain;
 }
 
-export function getQuestionUsageSummary(question: AssessmentQuestion): string {
-  return `사용 ${question.usageCount}회 / 시험 연결 ${question.linkedExamCount}건`;
+export function getQuestionLevelText(question: AssessmentQuestionSummary): string {
+  const difficulty =
+    question.difficultyLevel == null ? '' : `난이도 ${question.difficultyLevel}`;
+  return [question.targetLevel, difficulty].filter(Boolean).join(' · ');
 }
 
-export function getQuestionInstructionLabel(question: AssessmentQuestion): string {
-  if (question.content.kind === '53' || question.content.kind === '54') {
-    return '지시문';
-  }
-
-  return '문항 지시문';
-}
-
-export function getQuestionInstructionText(question: AssessmentQuestion): string {
-  if (question.content.kind === '51' || question.content.kind === '52') {
-    return `${question.content.instruction} ${question.content.learnerPrompt}`;
-  }
-
-  return question.content.learnerPrompt;
-}
-
-export function getQuestionSourceSummary(question: AssessmentQuestion): string {
-  return `${question.sourceType} · ${question.generationBatchId} · ${question.generationModel} · ${question.promptVersion}`;
-}
-
+/**
+ * §7.2: 검색 텍스트 축 교체 — scenario_type/situation_summary/recommendation_keys를
+ * 포함하고 sentinel 전용 필드(coreMeaning 등)는 제거한다(뷰 확장 컬럼 E4 전제).
+ */
 export function buildAssessmentQuestionSearchText(
-  question: AssessmentQuestion
+  question: AssessmentQuestionSummary
 ): string {
   return [
     question.questionId,
-    question.topic,
-    question.domain,
-    question.questionTypeLabel,
-    question.difficultyLevel,
-    question.generationBatchId,
-    question.promptVersion,
-    question.coreMeaning,
-    question.keyIssue,
-    question.reviewMemo,
-    question.managementNote,
-    getQuestionText(question)
+    question.topicMain,
+    question.topicDetail,
+    question.questionTypeName,
+    question.targetLevel,
+    question.scenarioType,
+    question.situationSummary,
+    question.recommendationKeys.join(' '),
+    question.contentTeamMemo,
+    getReviewStatusLabel(question.reviewStatus),
+    getServiceStatusLabel(question.serviceStatus)
   ]
     .join(' ')
     .toLowerCase();
 }
 
 export type CommonQuestionFilter = {
-  domain: AssessmentQuestionDomain | null;
-  questionType: AssessmentQuestionTypeLabel | null;
-  difficulty: AssessmentQuestionDifficulty | null;
+  topicMain: string | null;
+  topicDetail: string | null;
+  questionType: string | null;
+  difficulty: number | null;
   keyword: string;
 };
 
-export function filterQuestionsByNumbers(
-  questions: AssessmentQuestion[],
+export function filterQuestionsByNumbers<T extends AssessmentQuestionSummary>(
+  questions: T[],
   activeQuestionNumbers: AssessmentQuestionNumber[]
-): AssessmentQuestion[] {
+): T[] {
   return questions.filter((question) =>
     activeQuestionNumbers.includes(question.questionNumber)
   );
 }
 
-export function applyCommonQuestionFilters(
-  questions: AssessmentQuestion[],
+export function applyCommonQuestionFilters<T extends AssessmentQuestionSummary>(
+  questions: T[],
   filter: CommonQuestionFilter
-): AssessmentQuestion[] {
+): T[] {
   const normalizedKeyword = filter.keyword.trim().toLowerCase();
 
   return questions.filter((question) => {
-    if (filter.domain && question.domain !== filter.domain) {
+    if (filter.topicMain && question.topicMain !== filter.topicMain) {
       return false;
     }
 
-    if (filter.questionType && question.questionTypeLabel !== filter.questionType) {
+    if (filter.topicDetail && question.topicDetail !== filter.topicDetail) {
       return false;
     }
 
-    if (filter.difficulty && question.difficultyLevel !== filter.difficulty) {
+    if (filter.questionType && question.questionTypeName !== filter.questionType) {
+      return false;
+    }
+
+    if (filter.difficulty != null && question.difficultyLevel !== filter.difficulty) {
       return false;
     }
 

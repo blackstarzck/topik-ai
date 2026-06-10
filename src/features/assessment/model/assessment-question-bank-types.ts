@@ -1,81 +1,111 @@
 export type AssessmentQuestionNumber = '51' | '52' | '53' | '54';
 
-export type AssessmentQuestionReviewStatus =
-  | '검수 대기'
-  | '검수 중'
-  | '보류'
-  | '검수 완료'
-  | '수정 필요';
+/**
+ * P3 cutover model (실행계획안 §7.2): rows come from the topik_writing_* schema
+ * (recommendation view for lists, per-number tables for detail). Statuses are the
+ * DB ASCII codes from the §3.3 storage dictionary; Korean labels live in
+ * assessment-question-bank-schema.ts. The sealed legacy `problems` adapter maps
+ * its rows into this same model with honest sentinels ('' / null) where the old
+ * schema has no source.
+ */
+export type AssessmentReviewStatus = 'approved' | 'needs_revision' | 'on_hold';
 
-export type AssessmentQuestionOperationStatus =
-  | '미지정'
-  | '노출 후보'
-  | '숨김 후보'
-  | '운영 제외';
+export type AssessmentReviewWorkflowStatus =
+  | 'not_started'
+  | 'in_progress'
+  | 'on_hold'
+  | 'done'
+  | 'revision_requested';
 
-// '미검증' (unverified) is the admin-integration sentinel for v13 problems that
-// have no validation source yet (Phase C — PROPOSED, owner-ratify later).
-export type AssessmentQuestionValidationStatus = '정상' | '주의' | '재검토' | '미검증';
+export type AssessmentServiceStatus = 'available' | 'excluded' | 'internal_test';
 
-// '미상' = source unknown (v13 problems do not surface a generation source).
-export type AssessmentQuestionSourceType = 'AI 자동 생성' | '미상';
-export type AssessmentQuestionDomain =
-  | '생활'
-  | '학습'
-  | '사회'
-  | '문화'
-  | '경제'
-  | '교육'
-  | '환경'
-  | '기술'
-  | '미분류';
-export type AssessmentQuestionTypeLabel =
-  | '빈칸 완성'
-  | '연결 표현'
-  | '자료 설명'
-  | '의견 서술';
-// '미상' = difficulty unknown (v13 problems.difficulty is null for some rows).
-export type AssessmentQuestionDifficulty = '상' | '중' | '하' | '미상';
-
-export type AssessmentQuestionRevisionHistoryItem = {
-  id: string;
-  changedAt: string;
-  changedBy: string;
-  summary: string;
+/**
+ * 목록 행 — `topik_writing_question_recommendation_view`의 18컬럼(§7.9 12 + E4 6)과
+ * 1:1. serviceStatus가 null이면 소스가 없는 legacy 행이다('미지정' 표시).
+ */
+export type AssessmentQuestionSummary = {
+  questionId: string;
+  questionNumber: AssessmentQuestionNumber;
+  targetLevel: string;
+  difficultyLevel: number | null;
+  topicMain: string;
+  topicDetail: string;
+  speechAct: string;
+  scenarioType: string;
+  situationSummary: string;
+  questionTypeName: string;
+  recommendationKeys: string[];
+  avoidRepeatKeys: string[];
+  reviewStatus: AssessmentReviewStatus;
+  reviewWorkflowStatus: AssessmentReviewWorkflowStatus;
+  serviceStatus: AssessmentServiceStatus | null;
+  contentTeamMemo: string;
+  createdAt: string;
+  updatedAt: string;
 };
 
-type AssessmentQuestionBaseContent = {
-  learnerPrompt: string;
-  reviewPoints: string[];
+export type AssessmentBlankMeta = {
+  position: string;
+  role: string;
+  blankFunction: string;
+  answerType: string;
+  canonicalAnswer: string;
+  acceptedAnswers: string[];
+  targetNote: string;
 };
 
-export type AssessmentQuestionContent51 = AssessmentQuestionBaseContent & {
+export type AssessmentQuestionContent51 = {
   kind: '51';
-  instruction: string;
-  choices: string[];
-  answer: string;
+  blankCount: number | null;
+  blank1: AssessmentBlankMeta;
+  blank2: AssessmentBlankMeta;
 };
 
-export type AssessmentQuestionContent52 = AssessmentQuestionBaseContent & {
+export type AssessmentQuestionContent52 = {
   kind: '52';
-  instruction: string;
-  choices: string[];
-  answer: string;
+  completionUnit: string;
+  connectionFunction: string;
+  requiredExpressionFunction: string;
+  clueBeforeText: string;
+  clueAfterText: string;
+  answerScopeType: string;
+  blank1CanonicalAnswer: string;
+  blank2CanonicalAnswer: string;
+  scoringNotes: string;
 };
 
-export type AssessmentQuestionContent53 = AssessmentQuestionBaseContent & {
+export type AssessmentQuestionContent53 = {
   kind: '53';
+  dataType: string;
+  dataTopic: string;
   chartTitle: string;
-  sourceSummary: string;
-  keyFigures: string[];
-  answerGuide: string;
+  chartUnit: string;
+  comparisonType: string;
+  changeType: string;
+  interpretationDifficulty: string;
+  keyFindings: string[];
+  requiredStructure: string[];
+  wordCountMin: number | null;
+  wordCountMax: number | null;
+  /** D-13 1차: source_data JSONB 수치 그대로 (시각 자산 URL은 empty state 허용). */
+  sourceData: unknown;
+  dataAssetUrl: string;
+  scoringFocus: string[];
 };
 
-export type AssessmentQuestionContent54 = AssessmentQuestionBaseContent & {
+export type AssessmentQuestionContent54 = {
   kind: '54';
-  topicPrompt: string;
-  conditionLines: string[];
-  outlineGuide: string;
+  essayType: string;
+  issueTopic: string;
+  promptQuestions: string[];
+  stanceRequirement: string;
+  requiredStructure: string[];
+  reasoningPattern: string;
+  argumentKeywords: string[];
+  wordCountMin: number | null;
+  wordCountMax: number | null;
+  scoringFocus: string[];
+  prohibitedElements: string[];
 };
 
 export type AssessmentQuestionContent =
@@ -84,46 +114,56 @@ export type AssessmentQuestionContent =
   | AssessmentQuestionContent53
   | AssessmentQuestionContent54;
 
-export type AssessmentQuestion = {
-  questionId: string;
-  questionNumber: AssessmentQuestionNumber;
-  topic: string;
-  questionText: string;
-  domain: AssessmentQuestionDomain;
-  questionTypeLabel: AssessmentQuestionTypeLabel;
-  difficultyLevel: AssessmentQuestionDifficulty;
-  sourceType: AssessmentQuestionSourceType;
-  generationBatchId: string;
-  promptVersion: string;
-  generationModel: string;
-  reviewStatus: AssessmentQuestionReviewStatus;
-  operationStatus: AssessmentQuestionOperationStatus;
-  validationStatus: AssessmentQuestionValidationStatus;
-  validationSignals: string[];
-  usageCount: number;
-  linkedExamCount: number;
-  reviewMemo: string;
-  managementNote: string;
-  coreMeaning: string;
-  keyIssue: string;
+/** 상세 행 — 번호별 테이블 전체 컬럼(공통 + 번호별 전용 content). */
+export type AssessmentQuestionDetail = AssessmentQuestionSummary & {
+  secondaryTopicMain: string | null;
+  secondaryTopicDetail: string | null;
+  textType: string;
+  learningGoalSummary: string;
+  promptText: string;
+  resolvedText: string;
   modelAnswer: string;
-  scoringCriteria: string[];
-  revisionHistory: AssessmentQuestionRevisionHistoryItem[];
-  generatedAt: string;
-  updatedAt: string;
-  updatedBy: string;
-  reviewerName: string;
+  autoChecksPassed: boolean | null;
+  reviewPassed: boolean | null;
   content: AssessmentQuestionContent;
 };
 
+export type TopikWritingTopicMasterRow = {
+  topicMain: string;
+  topicDetail: string;
+  sortOrder: number | null;
+};
+
+export type TopikWritingTagMasterRow = {
+  tagCode: string;
+  tagNameKo: string;
+  tagGroup: string;
+  description: string;
+  isActive: boolean;
+};
+
+export type TopikWritingQuestionTagRow = {
+  tagAssignmentId: number;
+  questionId: string;
+  tagCode: string;
+  tagValue: string | null;
+  assignedAt: string;
+  memo: string;
+};
+
+/** 검수 액션 → admin_update_topik_question patch 의미 (D-2/D-8). */
+export type AssessmentReviewAction = 'approved' | 'on_hold' | 'needs_revision';
+
+/** D-8 감사 액션 코드 (admin_audit_logs.action, target_table='AssessmentQuestion'). */
 export type AssessmentQuestionAuditAction =
   | 'review_memo_saved'
   | 'review_completed'
   | 'review_on_hold'
   | 'review_revision_requested'
-  | 'operation_candidate_exposed'
-  | 'operation_candidate_hidden'
-  | 'operation_excluded';
+  | 'review_status_changed'
+  | 'service_status_changed'
+  | 'tag_assigned'
+  | 'tag_removed';
 
 export type AssessmentQuestionAuditEvent = {
   id: string;

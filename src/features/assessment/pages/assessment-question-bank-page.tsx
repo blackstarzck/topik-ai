@@ -3,23 +3,28 @@ import type { TableColumnsType } from 'antd';
 import { useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { questionBankDataSource } from '../api/question-bank-data-source';
 import { useAssessmentQuestionFilters } from '../model/use-assessment-question-filters';
 import { useAssessmentQuestionList } from '../model/use-assessment-question-list';
+import { useQuestionBankTopicMaster } from '../model/use-question-bank-masters';
 import { AssessmentQuestionBankToolbar } from '../ui/assessment-question-bank-toolbar';
 import {
-  assessmentQuestionReviewStatuses,
+  REVIEW_STATUS_LABELS,
+  assessmentReviewStatuses,
   getReviewStatusColor,
-  parseAssessmentQuestionReviewStatus
+  getReviewStatusLabel,
+  getReviewWorkflowStatusLabel,
+  parseAssessmentReviewStatus
 } from '../model/assessment-question-bank-schema';
 import {
   applyCommonQuestionFilters,
   filterQuestionsByNumbers,
-  getQuestionText
+  getQuestionLevelText
 } from '../model/assessment-question-bank-presenter';
 import type {
-  AssessmentQuestion,
   AssessmentQuestionNumber,
-  AssessmentQuestionReviewStatus
+  AssessmentQuestionSummary,
+  AssessmentReviewStatus
 } from '../model/assessment-question-bank-types';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
@@ -30,6 +35,10 @@ import { createTextSorter } from '../../../shared/ui/table/table-column-utils';
 
 const { Paragraph, Text } = Typography;
 const { useBreakpoint } = Grid;
+
+const reviewStatusLabels = assessmentReviewStatuses.map(
+  (status) => REVIEW_STATUS_LABELS[status]
+);
 
 const questionPreviewTriggerStyle = {
   display: 'block',
@@ -64,20 +73,8 @@ function buildReviewPageHref(
     : `/assessment/question-bank/review/${questionId}`;
 }
 
-function renderQuestionTextParagraph(content: string): JSX.Element {
-  return (
-    <Paragraph
-      className="assessment-question-bank-page__question-text"
-      ellipsis={{ rows: 1, tooltip: false }}
-      style={{ marginBottom: 0 }}
-    >
-      {content}
-    </Paragraph>
-  );
-}
-
-function renderQuestionTextCell(
-  question: AssessmentQuestion,
+function renderSituationSummaryCell(
+  question: AssessmentQuestionSummary,
   onOpenReviewPage: (questionId: string) => void
 ): JSX.Element {
   return (
@@ -90,8 +87,11 @@ function renderQuestionTextCell(
             className="assessment-review-page__description-paragraph"
             style={{ marginBottom: 0 }}
           >
-            {getQuestionText(question)}
+            {question.situationSummary}
           </Paragraph>
+          {question.scenarioType ? (
+            <Text type="secondary">시나리오 유형: {question.scenarioType}</Text>
+          ) : null}
           <div style={questionPreviewFooterStyle}>
             <Button
               size="small"
@@ -109,11 +109,17 @@ function renderQuestionTextCell(
     >
       <button
         type="button"
-        aria-label={`${question.questionId} 문항 전체 보기`}
+        aria-label={`${question.questionId} 문항 상황 요약 보기`}
         className="assessment-question-bank-page__question-trigger"
         style={questionPreviewTriggerStyle}
       >
-        {renderQuestionTextParagraph(getQuestionText(question))}
+        <Paragraph
+          className="assessment-question-bank-page__question-text"
+          ellipsis={{ rows: 1, tooltip: false }}
+          style={{ marginBottom: 0 }}
+        >
+          {question.situationSummary}
+        </Paragraph>
       </button>
     </Popover>
   );
@@ -124,18 +130,20 @@ export default function AssessmentQuestionBankPage(): JSX.Element {
   const navigate = useNavigate();
   const filters = useAssessmentQuestionFilters();
   const { state, reload } = useAssessmentQuestionList();
+  const { topicOptions } = useQuestionBankTopicMaster();
 
   const {
     searchParams,
     activeQuestionNumbers,
-    domainFilter,
+    topicMainFilter,
+    topicDetailFilter,
     questionTypeFilter,
     difficultyFilter,
     keyword,
     commitParams
   } = filters;
 
-  const reviewStatusFilter = parseAssessmentQuestionReviewStatus(
+  const reviewStatusFilter = parseAssessmentReviewStatus(
     searchParams.get('reviewStatus')
   );
 
@@ -148,7 +156,8 @@ export default function AssessmentQuestionBankPage(): JSX.Element {
 
   const filteredQuestions = useMemo(() => {
     const common = applyCommonQuestionFilters(currentNumberQuestions, {
-      domain: domainFilter,
+      topicMain: topicMainFilter,
+      topicDetail: topicDetailFilter,
       questionType: questionTypeFilter,
       difficulty: difficultyFilter,
       keyword
@@ -160,22 +169,17 @@ export default function AssessmentQuestionBankPage(): JSX.Element {
   }, [
     currentNumberQuestions,
     difficultyFilter,
-    domainFilter,
     keyword,
     questionTypeFilter,
-    reviewStatusFilter
+    reviewStatusFilter,
+    topicDetailFilter,
+    topicMainFilter
   ]);
 
   const summaryItems = useMemo(() => {
-    const pendingCount = currentNumberQuestions.filter(
-      (question) => question.reviewStatus === '검수 대기'
-    ).length;
-    const holdCount = currentNumberQuestions.filter(
-      (question) => question.reviewStatus === '보류'
-    ).length;
-    const completedCount = currentNumberQuestions.filter(
-      (question) => question.reviewStatus === '검수 완료'
-    ).length;
+    const countOf = (status: AssessmentReviewStatus) =>
+      currentNumberQuestions.filter((question) => question.reviewStatus === status)
+        .length;
 
     return [
       {
@@ -185,27 +189,13 @@ export default function AssessmentQuestionBankPage(): JSX.Element {
         active: reviewStatusFilter === null,
         onClick: () => commitParams({ reviewStatus: null })
       },
-      {
-        key: 'review-pending',
-        label: '검수 대기',
-        value: `${pendingCount.toLocaleString()}문항`,
-        active: reviewStatusFilter === '검수 대기',
-        onClick: () => commitParams({ reviewStatus: '검수 대기' })
-      },
-      {
-        key: 'review-hold',
-        label: '보류',
-        value: `${holdCount.toLocaleString()}문항`,
-        active: reviewStatusFilter === '보류',
-        onClick: () => commitParams({ reviewStatus: '보류' })
-      },
-      {
-        key: 'review-completed',
-        label: '검수 완료',
-        value: `${completedCount.toLocaleString()}문항`,
-        active: reviewStatusFilter === '검수 완료',
-        onClick: () => commitParams({ reviewStatus: '검수 완료' })
-      }
+      ...assessmentReviewStatuses.map((status) => ({
+        key: `review-${status}`,
+        label: REVIEW_STATUS_LABELS[status],
+        value: `${countOf(status).toLocaleString()}문항`,
+        active: reviewStatusFilter === status,
+        onClick: () => commitParams({ reviewStatus: status })
+      }))
     ];
   }, [commitParams, currentNumberQuestions, reviewStatusFilter]);
 
@@ -216,27 +206,23 @@ export default function AssessmentQuestionBankPage(): JSX.Element {
     [navigate, searchParams]
   );
 
-  const questionColumnWidth = useMemo(() => {
+  const situationColumnWidth = useMemo(() => {
     if (screens.xxl) {
-      return 560;
+      return 480;
     }
 
     if (screens.xl) {
-      return 500;
+      return 420;
     }
 
     if (screens.lg) {
-      return 440;
-    }
-
-    if (screens.md) {
       return 360;
     }
 
-    return 300;
-  }, [screens.lg, screens.md, screens.xl, screens.xxl]);
+    return 280;
+  }, [screens.lg, screens.xl, screens.xxl]);
 
-  const reviewColumns = useMemo<TableColumnsType<AssessmentQuestion>>(
+  const reviewColumns = useMemo<TableColumnsType<AssessmentQuestionSummary>>(
     () => [
       {
         title: '문항 번호',
@@ -248,55 +234,71 @@ export default function AssessmentQuestionBankPage(): JSX.Element {
       {
         title: '문항 ID',
         dataIndex: 'questionId',
-        width: 130,
+        width: 200,
         sorter: createTextSorter((record) => record.questionId)
       },
       {
-        title: '문항 주제 / 도메인',
-        key: 'topicAndMeta',
-        width: 280,
-        sorter: createTextSorter((record) => `${record.topic} ${record.domain}`),
+        title: '주제(종합/세부)',
+        key: 'topicAxis',
+        width: 220,
+        sorter: createTextSorter(
+          (record) => `${record.topicMain} ${record.topicDetail}`
+        ),
         render: (_, record) => (
           <Space direction="vertical" size={2}>
-            <Text strong>{record.topic}</Text>
-            <Text type="secondary">{record.domain || '-'}</Text>
+            <Text strong>{record.topicMain}</Text>
+            <Text type="secondary">{record.topicDetail || '-'}</Text>
           </Space>
         )
       },
       {
-        title: '문항',
-        dataIndex: 'questionText',
-        key: 'questionText',
-        width: questionColumnWidth,
-        sorter: createTextSorter((record) => getQuestionText(record)),
+        title: '상황 요약',
+        dataIndex: 'situationSummary',
+        key: 'situationSummary',
+        width: situationColumnWidth,
+        sorter: createTextSorter((record) => record.situationSummary),
         onCell: () => ({
           className: 'assessment-question-bank-page__question-cell'
         }),
-        render: (_, record) => renderQuestionTextCell(record, openReviewPage)
+        render: (_, record) => renderSituationSummaryCell(record, openReviewPage)
       },
       {
-        title: createStatusColumnTitle('검수 상태', assessmentQuestionReviewStatuses),
+        title: '유형/난이도',
+        key: 'typeAndLevel',
+        width: 170,
+        sorter: createTextSorter((record) => record.questionTypeName),
+        render: (_, record) => (
+          <Space direction="vertical" size={2}>
+            <Text>{record.questionTypeName}</Text>
+            <Text type="secondary">{getQuestionLevelText(record) || '-'}</Text>
+          </Space>
+        )
+      },
+      {
+        title: createStatusColumnTitle('검수 상태', reviewStatusLabels),
         dataIndex: 'reviewStatus',
-        width: 120,
+        width: 140,
         sorter: createTextSorter((record) => record.reviewStatus),
-        render: (status: AssessmentQuestionReviewStatus) => (
-          <Tag color={getReviewStatusColor(status)}>{status}</Tag>
+        render: (_, record) => (
+          <Space direction="vertical" size={2}>
+            <Tag color={getReviewStatusColor(record.reviewStatus)}>
+              {getReviewStatusLabel(record.reviewStatus)}
+            </Tag>
+            <Text type="secondary">
+              {getReviewWorkflowStatusLabel(record.reviewWorkflowStatus)}
+            </Text>
+          </Space>
         )
       },
       {
         title: '최근 수정',
         key: 'updatedAt',
-        width: 180,
+        width: 160,
         sorter: createTextSorter((record) => record.updatedAt),
-        render: (_, record) => (
-          <Space direction="vertical" size={2}>
-            <Text>{record.updatedAt}</Text>
-            <Text type="secondary">{record.updatedBy}</Text>
-          </Space>
-        )
+        render: (_, record) => <Text>{record.updatedAt || '-'}</Text>
       }
     ],
-    [openReviewPage, questionColumnWidth]
+    [openReviewPage, situationColumnWidth]
   );
 
   return (
@@ -309,10 +311,21 @@ export default function AssessmentQuestionBankPage(): JSX.Element {
         toolbar={
           <AssessmentQuestionBankToolbar
             filters={filters}
+            topicOptions={topicOptions}
             resultCount={filteredQuestions.length}
           />
         }
       >
+        {questionBankDataSource === 'mock' ? (
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginBottom: 16 }}
+            message="모크 모드로 동작 중입니다."
+            description="Supabase가 구성되지 않아 화면 검증용 고정 데이터를 표시합니다. 실데이터·감사 로그에는 기록되지 않습니다."
+          />
+        ) : null}
+
         {state.status === 'error' ? (
           <Alert
             type="error"
@@ -343,7 +356,7 @@ export default function AssessmentQuestionBankPage(): JSX.Element {
             description="조건에 맞는 검수 대상 문항이 없습니다."
           />
         ) : (
-          <AdminDataTable<AssessmentQuestion>
+          <AdminDataTable<AssessmentQuestionSummary>
             rowKey="questionId"
             pagination={{ pageSize: 10 }}
             scroll={{ x: 1380 }}

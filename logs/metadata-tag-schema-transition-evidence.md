@@ -232,3 +232,27 @@ select count(*), count(*) filter (where tag_group='서비스_노출상태') from
 
 - 종합 판정: **CONDITIONAL** (FAIL 0건, 필수 P2-5만 외부 승인 대기 — §12.3 판정 규칙). 해소 조건·담당: 오너 채널 발주서 발신(프로젝트 오너) → 콘텐츠팀 10문항 승인 회신 → P2-5 재채점 PASS 전환. CONDITIONAL 동안 P3 컷오버 배포 착수 불가(코드 선행 개발은 병행 허용 — §7).
 - 채점자: 프로젝트 오너 위임 실행(2026-06-10 지시). 작업 커밋 `ab0aa98` — 스코어카드(§12.4) P2 행에 채점 기록(2026-06-10 채점 커밋).
+
+---
+
+## P3 진행 메모 (2026-06-11, 중간 기록 — 채점 아님)
+
+> P3는 **미완료·미채점**이다. 본 절은 §12.3 규칙이 허용하는 **코드 선행 개발(가역)** 의 중간 증적만 기록한다. **컷오버 배포는 미실행 — 기본 데이터 소스는 legacy(`problems`) 유지**, P2 PASS 전환 후에만 플립한다.
+
+### 선행 개발 완료 산출물 (§7.2 변경 파일 13종 + 신설 4종)
+
+- **컷오버 스위치**: `src/features/assessment/api/question-bank-data-source.ts`(신설) — `legacy`(기본) / `topik_writing`(env `VITE_QUESTION_BANK_SOURCE`) / `mock`(Supabase 미구성, D-12). 컷오버 = 기본값 플립 1곳, 롤백 = 동일 스위치 역플립(§12.2 — 구 어댑터는 P4 종료까지 보존).
+- **모델 재정의**: `AssessmentQuestionSummary`(추천 뷰 18컬럼 1:1)/`AssessmentQuestionDetail`(번호별 테이블) 분리, 상태는 §3.3 ASCII 코드 저장값 + 한국어 라벨 사전(`approved`=검수 완료/`needs_revision`=검수 필요/`on_hold`=사용 보류, `service_status` 3값), 번호별 content 4변형을 실컬럼으로 재구성(51 빈칸 2종 메타, 52 연결·요구 기능/단서/대표정답, 53 자료·비교·source_data, 54 글쓰기 유형·질문·채점 중점), sentinel 전용 9필드(sourceType/generationBatchId/promptVersion/validationStatus/usageCount/linkedExamCount/coreMeaning/keyIssue/revisionHistory) 제거.
+- **신규 스키마 어댑터**: 뷰 목록 1회 조회 + `question_id` 라우팅 번호별 상세 + `topic_master`/활성 태그 로더 + 검수 쓰기 `admin_update_topik_question`(액션 사전 + `__note` 감사 payload, `content_team_memo` 실영속 — D-7 가짜 저장 해소). legacy 어댑터는 신규 모델로 매핑하도록 재작성(정직 sentinel, 봉인 롤백 경로).
+- **D-12 모크 모드 결선**: 인메모리 픽스처 4문항(번호별 1건) 어댑터 + `npm run test:e2e:mock` 스크립트 — Supabase 미구성 실행에서 목록·상세·검수 write 왕복이 화면 수준으로 동작.
+- **화면**: 검수 목록(주제 종합/세부 2축·상황 요약·검수 3값 카드), 문항 관리(`service_status` 축 카드·노출 상태 컬럼·태그 수·P4 대기 조치 3종 스캐폴딩), 검수 상세(번호별 실메타 Descriptions + 메모 저장 버튼 + 검수 완료/사용 보류/검수 필요 액션), 툴바(topic_master 기반 주제 2단 셀렉트 + 난이도 1~6), `status-column-title` 사전 갱신(검수 3값+노출 3값 추가, 구 운영 4값 제거).
+
+### 검증 (2026-06-11)
+
+- `lint`/`typecheck`/`build` PASS, `test:unit` 43개 PASS.
+- e2e 재작성 5/5 PASS(`test:e2e:mock`): 목록 신규 축 렌더, 번호별 실메타 표시, **검수 메모 저장→검수 완료 write 흐름 화면 왕복**, manage P4 대기 안내, 감사 로그 역이동 차단.
+- **실DB 읽기 프로브**(비공식 — RT-3 사전 확인, 쓰기 0건): `VITE_QUESTION_BANK_SOURCE=topik_writing` + D-12 시드 admin 로그인으로 목록 466문항(뷰)·상세 4개 번호(번호별 테이블 라우팅)·manage 카드 "내부 테스트 466 / 노출 가능 0 / 노출 제외 0" 표시 확인 — P2 백필 상태와 정확히 일치. 보류 행(`*-0001` audit_seed)은 상세 조회 시 오류 표면화(정상 — 테이블 미적재). 도구: `.omx/evidence/debug-topik-writing-read.mjs`.
+
+### 잔여 (P3 채점 전 필수 — P2 PASS 전환 후)
+
+- 컷오버 절차 실행(§7.1: freeze 윈도 → 델타 재적재 → 발산 0건 대사 → 기본 소스 플립 배포 → problems read-only 동결), RT-3 실데이터 필드별 대사(번호별 ≥1건·권장 10건), RT-4 검수 쓰기 왕복(화면→DB→재반영→감사 로그 역추적), 문서 동기화(§11 P3 행: data contract §9.6 / page-tables #19·#19-1 / 양 page-IA / page-sync §5-7), P3 채점표(§12.3) 채점.

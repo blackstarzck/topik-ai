@@ -1,12 +1,12 @@
 import { Checkbox, Form, Select, Space, Typography } from 'antd';
 
 import {
-  assessmentQuestionDifficultyLevels,
-  assessmentQuestionDomains,
+  assessmentDifficultyLevels,
   assessmentQuestionNumberTabItems,
-  assessmentQuestionTypeLabels
+  assessmentQuestionTypeNames
 } from '../model/assessment-question-bank-schema';
 import type { AssessmentQuestionFilters } from '../model/use-assessment-question-filters';
+import type { TopicAxisOption } from '../model/use-question-bank-masters';
 import type { AssessmentQuestionNumber } from '../model/assessment-question-bank-types';
 import {
   SearchBar,
@@ -17,26 +17,31 @@ const { Text } = Typography;
 
 type AssessmentQuestionBankToolbarProps = {
   filters: AssessmentQuestionFilters;
+  topicOptions: TopicAxisOption[];
   resultCount: number;
 };
 
 /**
  * Shared toolbar for both split question-bank pages (검수 / 문항 관리): the
  * 51~54 question-number multi-select plus the common 목록형 `SearchBar` with the
- * 도메인/유형/난이도 상세 검색 popover. Page-specific status filters live in each
- * page's summary cards, not here.
+ * 주제(종합/세부, topic_master 기반 2단 셀렉트)/유형/난이도(1~6) 상세 검색
+ * popover (§7.2). Page-specific status filters live in each page's summary
+ * cards, not here.
  */
 export function AssessmentQuestionBankToolbar({
   filters,
+  topicOptions,
   resultCount
 }: AssessmentQuestionBankToolbarProps): JSX.Element {
   const {
     activeQuestionNumbers,
     keyword,
-    draftDomainFilter,
+    draftTopicMainFilter,
+    draftTopicDetailFilter,
     draftQuestionTypeFilter,
     draftDifficultyFilter,
-    setDraftDomainFilter,
+    setDraftTopicMainFilter,
+    setDraftTopicDetailFilter,
     setDraftQuestionTypeFilter,
     setDraftDifficultyFilter,
     commitParams,
@@ -45,6 +50,10 @@ export function AssessmentQuestionBankToolbar({
     handleResetSearchDetail,
     handleSearchDetailOpenChange
   } = filters;
+
+  const activeTopicDetails =
+    topicOptions.find((option) => option.topicMain === draftTopicMainFilter)
+      ?.topicDetails ?? [];
 
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
@@ -81,24 +90,44 @@ export function AssessmentQuestionBankToolbar({
             keyword: event.target.value || null
           })
         }
-        keywordPlaceholder="문항 ID, 주제, 키워드를 검색하세요."
+        keywordPlaceholder="문항 ID, 주제, 상황 요약, 키워드를 검색하세요."
         detailTitle="상세 검색"
         detailContent={
           <Form layout="vertical">
-            <SearchBarDetailField label="도메인">
+            <SearchBarDetailField label="주제(종합)">
               <Select
-                aria-label="도메인 필터"
+                aria-label="주제 종합 필터"
                 popupMatchSelectWidth={false}
-                value={draftDomainFilter ?? 'all'}
+                value={draftTopicMainFilter ?? 'all'}
                 options={[
                   { label: '전체', value: 'all' },
-                  ...assessmentQuestionDomains.map((domain) => ({
-                    label: domain,
-                    value: domain
+                  ...topicOptions.map((option) => ({
+                    label: option.topicMain,
+                    value: option.topicMain
+                  }))
+                ]}
+                onChange={(value) => {
+                  setDraftTopicMainFilter(value === 'all' ? null : value);
+                  setDraftTopicDetailFilter(null);
+                }}
+                style={{ width: '100%' }}
+              />
+            </SearchBarDetailField>
+            <SearchBarDetailField label="주제(세부)">
+              <Select
+                aria-label="주제 세부 필터"
+                popupMatchSelectWidth={false}
+                value={draftTopicDetailFilter ?? 'all'}
+                disabled={!draftTopicMainFilter || activeTopicDetails.length === 0}
+                options={[
+                  { label: '전체', value: 'all' },
+                  ...activeTopicDetails.map((topicDetail) => ({
+                    label: topicDetail,
+                    value: topicDetail
                   }))
                 ]}
                 onChange={(value) =>
-                  setDraftDomainFilter(value === 'all' ? null : value)
+                  setDraftTopicDetailFilter(value === 'all' ? null : value)
                 }
                 style={{ width: '100%' }}
               />
@@ -110,7 +139,7 @@ export function AssessmentQuestionBankToolbar({
                 value={draftQuestionTypeFilter ?? 'all'}
                 options={[
                   { label: '전체', value: 'all' },
-                  ...assessmentQuestionTypeLabels.map((questionType) => ({
+                  ...assessmentQuestionTypeNames.map((questionType) => ({
                     label: questionType,
                     value: questionType
                   }))
@@ -128,9 +157,9 @@ export function AssessmentQuestionBankToolbar({
                 value={draftDifficultyFilter ?? 'all'}
                 options={[
                   { label: '전체', value: 'all' },
-                  ...assessmentQuestionDifficultyLevels.map((difficulty) => ({
-                    label: difficulty,
-                    value: difficulty
+                  ...assessmentDifficultyLevels.map((difficulty) => ({
+                    label: `난이도 ${difficulty}`,
+                    value: String(difficulty)
                   }))
                 ]}
                 onChange={(value) =>

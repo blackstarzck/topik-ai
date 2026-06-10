@@ -1,22 +1,22 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { fetchAssessmentQuestionsSafe } from '../api/assessment-question-bank-service';
-import type { AssessmentQuestion } from './assessment-question-bank-types';
+import { fetchAssessmentQuestionSummariesSafe } from '../api/assessment-question-bank-service';
+import type { AssessmentQuestionSummary } from './assessment-question-bank-types';
 import type { AsyncState } from '../../../shared/model/async-state';
 
 export type UseAssessmentQuestionListResult = {
-  state: AsyncState<AssessmentQuestion[]>;
+  state: AsyncState<AssessmentQuestionSummary[]>;
   reload: () => void;
 };
 
 /**
  * Shared data source for the split question-bank pages (검수 / 문항 관리). Both
- * pages read the same Supabase `problems` (question_no 51-54) inventory and apply
- * their own status filter on top, so the fetch/abort/reload lifecycle lives here
- * once instead of being duplicated per page.
+ * pages read the same summary inventory — P3 cutover: the recommendation view
+ * (18 cols, 1 query) on the topik_writing source, `problems` on the sealed
+ * legacy source — and apply their own status filter on top.
  */
 export function useAssessmentQuestionList(): UseAssessmentQuestionListResult {
-  const [state, setState] = useState<AsyncState<AssessmentQuestion[]>>({
+  const [state, setState] = useState<AsyncState<AssessmentQuestionSummary[]>>({
     status: 'pending',
     data: [],
     errorMessage: null,
@@ -34,7 +34,7 @@ export function useAssessmentQuestionList(): UseAssessmentQuestionListResult {
       errorCode: null
     }));
 
-    void fetchAssessmentQuestionsSafe(controller.signal).then((result) => {
+    void fetchAssessmentQuestionSummariesSafe(controller.signal).then((result) => {
       if (controller.signal.aborted) {
         return;
       }

@@ -1,13 +1,10 @@
 import type { TabsProps } from 'antd';
 
 import type {
-  AssessmentQuestionDifficulty,
-  AssessmentQuestionDomain,
   AssessmentQuestionNumber,
-  AssessmentQuestionOperationStatus,
-  AssessmentQuestionReviewStatus,
-  AssessmentQuestionTypeLabel,
-  AssessmentQuestionValidationStatus
+  AssessmentReviewStatus,
+  AssessmentReviewWorkflowStatus,
+  AssessmentServiceStatus
 } from './assessment-question-bank-types';
 
 export const assessmentQuestionNumberTabItems: TabsProps['items'] = [
@@ -24,50 +21,89 @@ export const assessmentQuestionNumbers: AssessmentQuestionNumber[] = [
   '54'
 ];
 
-export const assessmentQuestionReviewStatuses: AssessmentQuestionReviewStatus[] = [
-  '검수 대기',
-  '검수 중',
-  '보류',
-  '검수 완료',
-  '수정 필요'
+// ---------------------------------------------------------------------------
+// §3.3 저장값 사전 — DB에는 ASCII 코드를 저장하고 admin은 한국어 라벨로 표시한다.
+// ---------------------------------------------------------------------------
+
+export const assessmentReviewStatuses: AssessmentReviewStatus[] = [
+  'approved',
+  'needs_revision',
+  'on_hold'
 ];
 
-export const assessmentQuestionOperationStatuses: AssessmentQuestionOperationStatus[] = [
-  '미지정',
-  '노출 후보',
-  '숨김 후보',
-  '운영 제외'
+export const REVIEW_STATUS_LABELS: Record<AssessmentReviewStatus, string> = {
+  approved: '검수 완료',
+  needs_revision: '검수 필요',
+  on_hold: '사용 보류'
+};
+
+export const assessmentReviewWorkflowStatuses: AssessmentReviewWorkflowStatus[] = [
+  'not_started',
+  'in_progress',
+  'on_hold',
+  'done',
+  'revision_requested'
 ];
 
-export const assessmentQuestionValidationStatuses: AssessmentQuestionValidationStatus[] = [
-  '정상',
-  '주의',
-  '재검토'
+export const REVIEW_WORKFLOW_STATUS_LABELS: Record<
+  AssessmentReviewWorkflowStatus,
+  string
+> = {
+  not_started: '시작 전',
+  in_progress: '진행 중',
+  on_hold: '보류',
+  done: '완료',
+  revision_requested: '수정 요청'
+};
+
+export const assessmentServiceStatuses: AssessmentServiceStatus[] = [
+  'available',
+  'excluded',
+  'internal_test'
 ];
 
-export const assessmentQuestionDomains: AssessmentQuestionDomain[] = [
-  '생활',
-  '학습',
-  '사회',
-  '문화',
-  '경제',
-  '교육',
-  '환경',
-  '기술'
-];
+export const SERVICE_STATUS_LABELS: Record<AssessmentServiceStatus, string> = {
+  available: '노출 가능',
+  excluded: '노출 제외',
+  internal_test: '내부 테스트'
+};
 
-export const assessmentQuestionTypeLabels: AssessmentQuestionTypeLabel[] = [
+/** legacy 행처럼 service_status 소스 자체가 없는 경우의 표시 라벨. */
+export const SERVICE_STATUS_UNSET_LABEL = '미지정';
+
+export function getReviewStatusLabel(status: AssessmentReviewStatus): string {
+  return REVIEW_STATUS_LABELS[status];
+}
+
+export function getReviewWorkflowStatusLabel(
+  status: AssessmentReviewWorkflowStatus
+): string {
+  return REVIEW_WORKFLOW_STATUS_LABELS[status];
+}
+
+export function getServiceStatusLabel(
+  status: AssessmentServiceStatus | null
+): string {
+  return status ? SERVICE_STATUS_LABELS[status] : SERVICE_STATUS_UNSET_LABEL;
+}
+
+// ---------------------------------------------------------------------------
+// 유형·난이도 — 유형 명칭은 입력표가 덮어쓸 수 있으나 필터 축은 번호 파생 4값이다.
+// 난이도는 1~6 정수(§3.3, 표준 교육과정 재산정)다.
+// ---------------------------------------------------------------------------
+
+export const assessmentQuestionTypeNames: string[] = [
   '빈칸 완성',
   '연결 표현',
   '자료 설명',
   '의견 서술'
 ];
 
-export const assessmentQuestionDifficultyLevels: AssessmentQuestionDifficulty[] = [
-  '상',
-  '중',
-  '하'
-];
+export const assessmentDifficultyLevels: number[] = [1, 2, 3, 4, 5, 6];
+
+// ---------------------------------------------------------------------------
+// URL 파라미터 파서
+// ---------------------------------------------------------------------------
 
 export function parseAssessmentQuestionNumber(
   value: string | null
@@ -92,100 +128,87 @@ export function parseAssessmentQuestionNumbers(
     : assessmentQuestionNumbers;
 }
 
-export function parseAssessmentQuestionReviewStatus(
+export function parseAssessmentReviewStatus(
   value: string | null
-): AssessmentQuestionReviewStatus | null {
-  return assessmentQuestionReviewStatuses.includes(
-    value as AssessmentQuestionReviewStatus
-  )
-    ? (value as AssessmentQuestionReviewStatus)
+): AssessmentReviewStatus | null {
+  return assessmentReviewStatuses.includes(value as AssessmentReviewStatus)
+    ? (value as AssessmentReviewStatus)
     : null;
 }
 
-export function parseAssessmentQuestionOperationStatus(
+export function parseAssessmentServiceStatus(
   value: string | null
-): AssessmentQuestionOperationStatus | null {
-  return assessmentQuestionOperationStatuses.includes(
-    value as AssessmentQuestionOperationStatus
-  )
-    ? (value as AssessmentQuestionOperationStatus)
+): AssessmentServiceStatus | null {
+  return assessmentServiceStatuses.includes(value as AssessmentServiceStatus)
+    ? (value as AssessmentServiceStatus)
     : null;
 }
 
-export function parseAssessmentQuestionDomain(
+export function parseAssessmentQuestionTypeName(
   value: string | null
-): AssessmentQuestionDomain | null {
-  return assessmentQuestionDomains.includes(value as AssessmentQuestionDomain)
-    ? (value as AssessmentQuestionDomain)
-    : null;
+): string | null {
+  return value && assessmentQuestionTypeNames.includes(value) ? value : null;
 }
 
-export function parseAssessmentQuestionTypeLabel(
+export function parseAssessmentDifficultyLevel(
   value: string | null
-): AssessmentQuestionTypeLabel | null {
-  return assessmentQuestionTypeLabels.includes(value as AssessmentQuestionTypeLabel)
-    ? (value as AssessmentQuestionTypeLabel)
-    : null;
+): number | null {
+  const parsed = value == null ? NaN : Number(value);
+  return assessmentDifficultyLevels.includes(parsed) ? parsed : null;
 }
 
-export function parseAssessmentQuestionDifficulty(
-  value: string | null
-): AssessmentQuestionDifficulty | null {
-  return assessmentQuestionDifficultyLevels.includes(
-    value as AssessmentQuestionDifficulty
-  )
-    ? (value as AssessmentQuestionDifficulty)
-    : null;
-}
+// ---------------------------------------------------------------------------
+// 색상맵 (Ant Design Tag 색)
+// ---------------------------------------------------------------------------
 
-export function getReviewStatusColor(status: AssessmentQuestionReviewStatus): string {
-  if (status === '검수 완료') {
+export function getReviewStatusColor(status: AssessmentReviewStatus): string {
+  if (status === 'approved') {
     return 'green';
   }
 
-  if (status === '보류') {
+  if (status === 'on_hold') {
     return 'orange';
   }
 
-  if (status === '수정 필요') {
-    return 'volcano';
+  return 'volcano';
+}
+
+export function getReviewWorkflowStatusColor(
+  status: AssessmentReviewWorkflowStatus
+): string {
+  if (status === 'done') {
+    return 'green';
   }
 
-  if (status === '검수 중') {
+  if (status === 'in_progress') {
     return 'blue';
   }
 
-  return 'gold';
-}
-
-export function getOperationStatusColor(
-  status: AssessmentQuestionOperationStatus
-): string {
-  if (status === '노출 후보') {
-    return 'green';
-  }
-
-  if (status === '숨김 후보') {
+  if (status === 'on_hold') {
     return 'orange';
   }
 
-  if (status === '운영 제외') {
+  if (status === 'revision_requested') {
     return 'volcano';
   }
 
   return 'default';
 }
 
-export function getValidationStatusColor(
-  status: AssessmentQuestionValidationStatus
+export function getServiceStatusColor(
+  status: AssessmentServiceStatus | null
 ): string {
-  if (status === '정상') {
+  if (status === 'available') {
     return 'green';
   }
 
-  if (status === '주의') {
-    return 'gold';
+  if (status === 'excluded') {
+    return 'volcano';
   }
 
-  return 'volcano';
+  if (status === 'internal_test') {
+    return 'geekblue';
+  }
+
+  return 'default';
 }
