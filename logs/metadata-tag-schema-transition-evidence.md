@@ -167,3 +167,22 @@ select count(*), count(*) filter (where tag_group='서비스_노출상태') from
 
 - 종합 판정: **PASS** (필수 6건 전부 PASS + 권장 1건 PASS).
 - 채점자: 프로젝트 오너 위임 실행(2026-06-10 지시). 커밋 해시는 §12.4 스코어카드에 기록.
+
+---
+
+## P2 진행 메모 (2026-06-10, 중간 기록 — 채점 아님)
+
+> P2는 **미완료·미채점**이다. 본 절은 선행 산출물(가역 작업)의 중간 증적만 기록한다. 본 적재(비가역)는 미실행 — 신규 4테이블은 0행 유지. 재개 절차는 `docs/metadata-tag-schema-transition-handoff.md` §3.
+
+### 완료된 선행 산출물
+
+- **추출(§6.2-1)**: `npm run etl:extract` — `problems` 51~54 전수 470행 덤프(.omx/evidence/etl/problems-dump.json). 분포 실측이 D-9 확정치와 일치: 51 90+1 / 52 5+72 / 53 46+17 / 54 81+158 (approved+pending), 전수 `source='curated'`.
+- **구조 실측**: 재조립 가능성 사전 검증 — 51: 90/90(blanks→resolved_text), 52: 76/76(검수 메모 따옴표 스팬 파싱→model_answer 재조립). 53: 62/62 chart_a+chart_b·글자수·과제 파싱. 54: 238/238 번호 질문·글자수 파싱(단, 154행은 scenario 축약형 — 입력표가 essay_type 등 공급). 적재 보류 확정 대상: `audit_seed` 예시 4행(materials/answer_key 부재).
+- **D-3 재분류 입력표(draft)**: `data/etl/reclassification-input.json` 466행 — 분류 에이전트 24배치(본문 기반, 기계 변환 금지) + 17×85 사전·번호별 enum 전수 검증 위반 0건. 54번 1행은 출력 누락분 수동 보완. **번호별 표본 적대 감사 패스는 세션 리밋으로 미수행**(입력표 meta.status에 기록, 다음 세션 보완).
+- **ETL 4스크립트(§6.2)**: `scripts/etl/` extract/transform/load/verify + 순수 코어 `lib/transform-core.mjs`(D-2 사전·D-4 채번·빌더·NOT NULL 보류 판정·재조립 검증). 드라이런(빈 입력표)으로 보류 경로·채번 결정성 확인.
+- **P2-7(권장) 선행**: vitest 도입 + `tests/unit/transform-core.test.mjs` 43개 전부 PASS(`npm run test:unit`).
+- **P2-6 준비**: 델타 리허설 시뮬레이터 `.omx/evidence/etl/make-delta-sim.mjs`(problems 무변경 — 덤프 사본 변형 방식) 작성.
+
+### 잔여 (P2 채점 전 필수)
+
+- 본 적재(transform→load) + 검증 5종(verify) + P2-1 idempotency 2회 로그 + P2-6 리허설 실행 + P2-3 보류 발주 기록 + P2-5 콘텐츠팀 샘플 승인(발주서 미발신 시 CONDITIONAL 사유).

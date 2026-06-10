@@ -1,82 +1,72 @@
-# 메타데이터·태그 스키마 전환 — HANDOFF (P1 완료 시점)
+# 메타데이터·태그 스키마 전환 — HANDOFF (P2 진행 중, 2차 중단 시점)
 
 | 항목 | 내용 |
 | :---- | :---- |
-| 작성일 | 2026-06-10 (P1 PASS 직후, 오너 지시로 작업 중지) |
-| 목적 | 다음 작업 세션이 P2(백필 ETL)부터 곧바로 이어갈 수 있도록 현재 상태·도구·다음 단계·주의사항을 인수인계 |
+| 작성일 | 2026-06-10 (P2 선행 산출물 완료 직후 오너 지시로 작업 중지 — 1차 핸드오프(P1 완료 시점)를 본 문서로 대체) |
+| 목적 | 다음 작업 세션이 P2 잔여 작업(본 적재→검증→리허설→채점)부터 곧바로 이어갈 수 있도록 상태·산출물·다음 단계·주의사항을 인수인계 |
 | 실행 SoT | `docs/메타데이터-태그-스키마-전환-실행계획안.md` (P0~P6, §12.3 PASS 채점 게이트, §12.4 스코어카드) |
 | 결정 SoT | `docs/architecture/metadata-tag-schema-transition-decision-record.md` (D-1~D-13 확정값 + v13 경계 합의) |
-| 증적 로그 | `logs/metadata-tag-schema-transition-evidence.md` (P0·P1 채점표·쿼리 원문) |
+| 증적 로그 | `logs/metadata-tag-schema-transition-evidence.md` (P0·P1 채점표 + P2 진행 메모) |
 
-## 1. 진행 상태 (2026-06-10 기준)
+## 1. 진행 상태 (2026-06-10 2차 중단 기준)
 
 | 페이즈 | 판정 | 핵심 증적 |
 | :---- | :--: | :---- |
-| P0 결정 확정 | **PASS** | 커밋 `346e56e`(원자 커밋) + `2e0caa1`(채점 기록). D-1~D-13 확정, freeze 가드 5곳 해제, AGENTS.md §2 재조정 |
-| P1 스키마 구축 | **PASS** | 마이그레이션 12파일 프로덕션 적용 완료, 무변경 diff 0건, RLS 매트릭스·RT-1 왕복 53스텝 ALL PASS (§12.4 스코어카드의 P1 행 커밋 해시 참조) |
-| P2 백필 ETL | 미착수 | **다음 작업.** P1 PASS로 실데이터 적재(비가역) 착수 가능 |
+| P0 결정 확정 | **PASS** | 커밋 `346e56e` + `2e0caa1`. D-1~D-13 확정, freeze 가드 5곳 해제 |
+| P1 스키마 구축 | **PASS** | 커밋 `c467268`. 마이그레이션 12파일 프로덕션 적용, 무변경 diff 0건, RT-1 ALL PASS |
+| P2 백필 ETL | **진행 중 (미채점)** | 선행 산출물 완료: ETL 4스크립트+단위 테스트 43개, D-3 재분류 입력표 466행(draft). **본 적재는 미실행 — 신규 4테이블은 여전히 0행** |
 | P3~P6 | 미착수 | P3 코드 선행 개발은 P2와 병행 가능(컷오버 배포는 P2 PASS 후) |
 
-## 2. 무엇이 어디에 있나
+## 2. 이번 세션(P2 선행)에서 끝난 것
 
-### 2.1 DB (talkpik-dev, `fglggyfvzjdsbyckinqa` — admin·v13 공용 프로젝트)
+### 2.1 ETL 스크립트 (`scripts/etl/`, 커밋 산출물)
 
-- 신규 오브젝트(전부 생성·RLS 적용 완료): `topik_writing_51/52/53/54_questions`, `topik_writing_topic_master`(17주제×세부 85행 시드), `topik_writing_tag_master`(19태그, '서비스_노출상태' 그룹 제외), `topik_writing_question_tags`, `topik_writing_question_source_map`, `topik_writing_question_recommendation_view`(security_invoker), 감사 RPC 3종(`admin_update_topik_question`/`admin_assign_question_tag`/`admin_remove_question_tag`), 마이그레이션 추적 테이블 `topik_writing_schema_migrations`.
-- 문제 테이블 4종은 현재 **0행**(파일럿은 검증 후 정리됨). 백필 대상 원천: `problems` 51~54 **470행** (approved 222 = published/public, pending 248 = draft/private, 전부 `source='curated'`).
-- 읽기 RLS: `private.is_admin()`(content_admin/platform_admin) 한정. 쓰기: RPC 단일 경로(직접 write는 RLS 차단, service-role만 우회 — 백필 경로).
+- `lib/env.mjs` — `.env.local` 부트스트랩(BOM 허용 아님 — 입력표 수정은 Node로만, §5-4 주의).
+- `lib/transform-core.mjs` — **순수 함수 코어**(I/O 없음): D-2 검수 사전, D-4 채번(`assignQuestionIds` — source_map 선조회 재사용+`(created_at,id)` 결정 정렬), 번호별 빌더(build51~54), 재조립 검증, NOT NULL 계약(`REQUIRED_COLUMNS`)·보류 판정, `transformAll`. 파생 규칙 근거는 함수 주석에 있음.
+- `extract-problems.mjs` / `transform-questions.mjs` / `load-questions.mjs` / `verify-backfill.mjs` — npm 스크립트 `etl:extract`/`etl:transform`/`etl:load`/`etl:verify`.
+- `tests/unit/transform-core.test.mjs` — vitest 43개 전부 PASS(`npm run test:unit`). vitest는 devDependency로 추가됨.
 
-### 2.2 Repo 자산
+### 2.2 D-3 재분류 입력표 (커밋 산출물, draft)
 
-- `supabase/migrations/*.sql` 12파일 + `supabase/migrations/down/` 롤백 스크립트.
-- `scripts/db/`: `run-sql.mjs`(Management API SQL 실행), `migrate.mjs`(`npm run db:migrate`, `--status`, `--down <파일명>`), `schema-snapshot.mjs`(`npm run db:snapshot`, `--diff a b --exclude-own`), `create-e2e-admin.mjs`(D-12 시드 계정), `p1-smoke.mjs`(RLS 매트릭스+RT-1 — P2 이후 회귀 검증에 재사용 가능. 단, 파일럿 행을 삽입·삭제하므로 본 적재 후에는 9999 ID 충돌 여부만 주의).
+- `data/etl/reclassification-input.json` — 466행(51:90/52:76/53:62/54:238). 행 구성: topic_main/topic_detail(17×85 고정 사전 전수 검증, 위반 0건)+secondary+difficulty/target(파생 초안)+question_type_name+rationale(행별 본문 인용 근거)+번호별 세부(q52: completion_unit·connection_function·required_expression_function·answer_scope_type / q53: comparison_type·change_type·interpretation_difficulty / q54: essay_type·stance_requirement·reasoning_pattern·situation_summary).
+- 작성 방법: 분류 에이전트 24배치(문항 본문 기반, 기계 변환 금지) → 사전·enum 전수 검증. **번호별 표본 적대 감사 패스는 세션 리밋으로 미수행**(meta.status에 기록) — 다음 세션 §4-1 참조.
+- 54번 1행(`68f40294-…`)은 에이전트 출력 누락분을 수동 보완 분류(rationale에 표기).
+- topic 분포: 사회 73 / 일상생활 67 / 교육 66 / 일과 직업 48 / 주거와 환경 42 / 쇼핑 34 / 건강 30 / 여가와 오락 27 / 교통 20 / 식음료 18 / 대인관계 15 / 전문 분야 15 / 공공 서비스 5 / 개인 신상 3 / 여행 2 / 기후 1 (예술 0).
 
-### 2.3 자격증명 (전부 gitignored — 커밋 금지)
+### 2.3 비추적 작업 산출물 (`.omx/evidence/etl/` — **지우지 말 것**, 정식 증적 아님)
 
-- `.env.local`(이 repo): `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY`(클라이언트), `SUPABASE_SECRET_KEY`(service-role, 서버 스크립트 전용), `E2E_ADMIN_EMAIL/PASSWORD`(content_admin 시드 계정), `E2E_USER_EMAIL/PASSWORD`(비admin 검증 계정).
-- Management API 토큰(`SUPABASE_ACCESS_TOKEN`, `sbp_...`): v13 repo의 `.env.local`(`C:\Users\admin\Desktop\workspace\topik-project\v13\.env.local`)에 있다. db 스크립트 실행 전 환경변수로 주입할 것. 주의: v13 메모에 "transcript 노출됐으므로 회전 필수" 기록이 있다 — **토큰·secret key 회전을 오너에게 권고**(회전 시 양쪽 .env.local 갱신).
-- 주의: `sb_secret` 키는 PowerShell `Invoke-RestMethod`에서 브라우저로 오인되어 거부된다 — 반드시 Node(fetch/supabase-js) 경유로 사용.
+- `problems-dump.json` — 470행 전수 덤프(재생성: `npm run etl:extract`). `extract-report.json`/`probe-out.json`/`probe2-out.json` — 구조 실측.
+- `classify/` — 분류 배치 입력 24개(`batch-*.json`, 재생성: `make-classify-batches.mjs`) + 에이전트 출력 24개(`out-batch-*.json`, **LLM 작업 결과물 — 유실 시 재분류 비용 큼**) + `topic-dictionary.json`.
+- 일회성 도구: `make-classify-batches.mjs`, `assemble-input-table.mjs`(out-batch → 입력표 조립+전수 재검증), `patch-missing-row.mjs`, `make-delta-sim.mjs`(P2-6 리허설용 — §4-4).
 
-## 3. 다음 작업: P2 백필 ETL (채점표 §12.3 P2-1~P2-7)
+### 2.4 실측 요약 (transform 설계 근거 — 상세는 probe 산출물)
 
-### 3.1 만들 것 (`scripts/etl/` 신설, Node + SUPABASE_SECRET_KEY)
+- 51(90+예시1): `materials.blanks` 완전 정규화 → 직매핑. 재조립(빈칸→`source_context.resolved_text`) 90/90 일치.
+- 52(76+1): 대표정답은 `answer_key.blank_target_giyeok/nieun`의 따옴표 스팬 파싱으로 복원 — 재조립 76/76 일치. `resolved_text`=`answer_key.model_answer`(완성 단락).
+- 53(62+1): 전 행 chart_a+chart_b → `data_type='복합 자료'`, `source_data`=charts 원본(D-13). 글자수·과제(1~3)·금지요소 prompt 파싱 62/62.
+- 54(237+1+예시1): 두 구조군 — 84행은 scenario 완전형(logic_chain 보유), 154행은 축약형(`scenario.topic_seed_title`만) → essay_type/stance/reasoning/situation_summary는 입력표(q54)가 공급. 번호 질문·글자수 파싱 238/238.
+- 적재 보류 확정 대상: `audit_seed` 예시 4행(UUID `1111…`/`2222…`/`3333…`/`4444…`, materials·answer_key 부재) — hold_reason과 함께 source_map만 기록.
+- **채번 주의**: 예시 4행이 created_at 가장 이른 행이라 `topik-writing-{nn}-0001`을 선점한다(보류 행도 question_id 선점 — source_map 계약). 51 실행 첫 행은 0002.
 
-1. `extract-problems.mjs` — `problems` 51~54 전수 덤프(+ materials JSONB).
-2. `transform-questions.mjs` — 채번(D-4)·컬럼 매핑·정규화·재분류 입력표 병합 → 테이블별 upsert payload + 적재 보류 목록 + 검증 리포트.
-3. `load-questions.mjs` — source_map 선조회 idempotent upsert(service-role), `auto_checks_passed` 기록.
-4. `verify-backfill.mjs` — 검증 5종(재조립/보존/수량/축/RT-2 재조회 diff 0건).
+## 3. 다음 작업 절차 (P2 잔여 — 순서대로)
 
-### 3.2 매핑에 쓸 원천 구조 (실측 — 증적 로그 D-5/D-13 절 참조)
+1. **(권장) 적대 감사 패스 보완**: 분류 입력표 표본 감사(번호별 15행)가 미수행 상태다. 새 워크플로(또는 에이전트 4개)로 `data/etl/reclassification-input.json`의 표본을 `.omx/evidence/etl/classify/batch-*.json` 원문 대조로 감사 → 플래그 행 재판정 → 입력표 갱신(`assemble-input-table.mjs` 재실행 또는 직접 수정) → meta.status에서 미수행 문구 제거. ※ 1차 워크플로 run(`wf_5423e011-637`)의 resume는 **같은 세션 한정**이라 불가.
+2. **본 적재**: `npm run etl:transform`(source_map 선조회 — 현재 0행이므로 전량 신규 채번) → `npm run etl:load`(upsert+source_map 동시 기록, 적재 후 테이블별 sha256 해시 출력) → `npm run etl:verify`(검증 5종: 재조립/보존/수량/축/RT-2 + service_status·source_map 대사). 산출 리포트는 `.omx/evidence/etl/`에 쌓임.
+3. **P2-1 idempotency**: `etl:load` 2회차 실행 → load-report의 테이블별 해시가 1회차와 동일 + `etl:verify` 재실행 diff 0건 — 2회분 로그를 증적으로.
+4. **P2-6 델타 리허설**: `node .omx/evidence/etl/make-delta-sim.mjs`(problems에는 **쓰지 않고** 덤프 사본에 검수 변경 2건 시뮬레이션: 52 pending→approved 1건, 54 메모 수정 1건) → `etl:transform --dump .omx/evidence/etl/problems-dump-delta.json --out .omx/evidence/etl/transform-out-delta --batch p2-delta-rehearsal` → `etl:load --in …-delta` → `etl:verify --in …-delta --dump …-delta.json`(변경 따라잡기 확인) → 원본 덤프로 transform/load/verify 재실행(원상 수렴 = 발산 0건 대사).
+5. **채점·기록**: 증적 로그 P2 절(채점표 P2-1~P2-7) + 실행계획안 §12.4 스코어카드 P2 행. **P2-5(콘텐츠팀 샘플 승인)는 발주서 미발신 상태면 CONDITIONAL** — 해소 조건(오너 채널 발신→10문항 승인)을 스코어카드에 기록. P2-2~P2-4·P2-6·P2-7은 위 절차로 충족 가능.
+6. **문서 동기화(§11 P2 행)**: transition 문서 §10.4 아래 백필 기록 추가, 데이터 계약 §12.2(식별자 매핑 확정 — 이미 반영돼 있어 적재 결과 수치만 보강), gap-register §4.7 백필 갭 메모, doc-update-log, `npm run harness:check`. 커밋은 2단계(작업 커밋 → 채점 기록 커밋) 패턴 유지.
 
-- 공통: `problems.title`→`scenario_type` 초안/`situation_summary` 재료, `prompt`→`prompt_text`, `answer_key` JSONB 보존, `review_status/review_workflow_status` 이관 사전은 데이터 계약 §12.2 D-2 행, `materials.taxonomy`(speech_act/text_type/relation/scenario_type 등), `topic_category_code`→source_map 보존.
-- 51 (90+1행): `materials.blanks.blank_1/2`에 role/function/answer_type/canonical_answer/accepted_answers/accepted_synonyms **이미 정규화돼 있음** → `blank_*` 컬럼 직매핑. `materials.source_context.resolved_text`→`resolved_text`(재조립 검증의 기준). `materials.review.validation`→`validation_result`.
-- 52 (5+72행): `materials.blanks`+`scenario`+`taxonomy`(blank_count/blank_notation_policy/link_keywords/narrative_slots/subject_domain/topic_type). `completion_unit`/`connection_function`/`required_expression_function`/`answer_scope_type`(NOT NULL)은 scenario/taxonomy에서 파생 — 파생 불가 항목은 적재 보류(D-5).
-- 53 (46+17행): `materials.charts`(수치 원본)→`source_data`(D-13), data_type/comparison_type 등 파생. `data_asset_url`은 빈 값 허용.
-- 54 (81+158행): `materials.scenario`+`taxonomy`→essay_type/issue_topic/prompt_questions/stance_requirement/required_structure/reasoning_pattern/scoring_focus(NOT NULL 다수 — 파생 규칙 설계 필요).
-- 번호별 정확한 materials 키 분포는 다음 쿼리로 재확인: `select question_no, jsonb_object_keys(materials) k, count(*) from problems where question_no in (51,52,53,54) group by 1,2 order by 1,2;` (taxonomy 하위는 `materials->'taxonomy'`로 동일 패턴).
+## 4. 미해결·주의 사항
 
-### 3.3 재분류 입력표 (D-3 — P2 선행 산출물)
+1. **외부 발신 2건 여전히 미발신**: 콘텐츠팀 발주서(`docs/requests/content-team-order-2026-06-10.md` — P2-5 게이트 의존)·상류 요청서(P6 게이트 의존). 오너 채널 발신 필요.
+2. **세션 리밋**: 이번 중단의 직접 원인. 다대수 에이전트 작업(감사 패스 등)은 리밋 리셋 후 수행 권장.
+3. **DB 상태**: 신규 4테이블·question_tags 0행, source_map 0행(파일럿은 P1에서 정리됨). 이번 세션은 **DB 쓰기 0건** — 읽기(덤프)만 수행했다. `problems`는 P3 컷오버까지 검수 SoT이므로 ETL은 계속 읽기 전용(델타 리허설도 덤프 사본 방식).
+4. **BOM 함정**: PowerShell `Set-Content`/`Out-File`로 `data/etl/reclassification-input.json`을 수정하면 BOM이 붙는다(transform은 BOM 1개는 허용하도록 방어 코드 있음). 수정은 Node 경유 권장.
+5. **자격증명**: `.env.local`(이 repo)의 `SUPABASE_SECRET_KEY` 등은 ETL 스크립트가 자동 로딩(`lib/env.mjs`). Management API 토큰(`SUPABASE_ACCESS_TOKEN`)은 v13 repo `.env.local` — db 스크립트(`db:migrate` 등)에만 필요, ETL에는 불필요. **토큰·secret 회전 권고는 여전히 유효**(이전 핸드오프 기록 — transcript 노출 이력).
+6. 현행 admin 검수 쓰기는 라이브 DB 기준 동작 불가(구 RPC 부재) — P3 컷오버가 해소 경로(변경 없음).
+7. 페이즈 산출물 커밋 규율: 작업 커밋 → 채점 커밋 2단계, 모든 MD 수정은 `logs/admin-doc-update-log.md` 기록, `npm run harness:check` 필수(AGENTS.md).
 
-- 470행 전수에 `topic_main`(17 고정)/`topic_detail`(topic_master 85값)/`difficulty_level`(1~6)/`target_level`/`question_type_name` 부여. **`topic_category_code`로부터의 기계 변환 금지** — 문항 본문 기반 분류 초안(행별 분류 근거 기록) 작성 후 콘텐츠팀 승인(P2-5 샘플 10문항)으로 확정.
-- 17주제·세부 사전은 DB `topik_writing_topic_master` 또는 `docs/metadata-tag-schema-rule.md` §4.3. topic FK 제약이 있어 사전 밖 값은 적재가 거부된다(=축 검증 자동화).
-- 51번 90행은 `materials.source_difficulty_target`("TOPIK 3급")이 `target_level` 초안이 된다. 52~54는 `normalized_difficulty`/`source_difficulty` 활용.
+## 5. P3 이후 요약 (변경 없음 — 상세는 실행계획안 §7~§10)
 
-### 3.4 P2 게이트 체크리스트 (전부 충족해야 PASS → P3 컷오버 가능)
-
-- P2-1 idempotency: 2회 연속 실행 diff 0건 로그. P2-2 검증 리포트 5종. P2-3 적재 보류 목록+발주. P2-4 source_map 전수(적재 건수=매핑 건수, `legacy_publish_status/visibility` 보존 포함). P2-5 콘텐츠팀 샘플 승인(발주서 `docs/requests/content-team-order-2026-06-10.md` — **아직 미발신**). P2-6 델타 재적재 리허설 1회. P2-7(권장) vitest 매핑/역분해 단위 테스트.
-- 전 문항 `service_status='internal_test'`로 적재(D-6 — 콘텐츠팀 승인 전 노출 차단).
-
-## 4. P3 이후 요약 (상세는 실행계획안 §7~§10)
-
-- P3: 읽기+검수 쓰기 동시 컷오버. 변경 파일 목록은 계획안 §7.2(11파일). 검수 쓰기는 `admin_update_topik_question`으로 교체(주의: **구 `admin_update_problem`은 라이브 DB에 없어 현행 검수 쓰기는 이미 깨져 있음** — 컷오버가 곧 수리다). 구 problems 어댑터는 플래그 봉인 보존(롤백 경로). RT-3/RT-4 + freeze→델타→발산 0건 대사 증적 필요. D-12 모크 모드(`VITE_SUPABASE_DISABLED`) 결선 포함.
-- P4: `OPERATION_WRITE_ENABLED` 제거 + service_status write + 태그 UI + 감사 라벨 맵(`system-audit-logs-page.tsx`)에 신규 액션 코드(`service_status_changed`/`tag_assigned`/`tag_removed`/`review_status_changed`) 추가.
-- P5: `/system/metadata`에 topic/tag 마스터 조회 그룹.
-- P6: 외부 게이트 — 상류 요청서(`docs/requests/upstream-writing-endpoints-request-2026-06-10.md`, **미발신**) 회신 필요. task52 부재 이슈 포함.
-
-## 5. 미해결·주의 사항
-
-1. **외부 발신 2건 미발신**(P0-6 부분): 콘텐츠팀 발주서(P2-5 승인 의존)·상류 요청서(P6 게이트 의존) — 오너 채널 발신 필요.
-2. **토큰 회전 권고**: §2.3 참조.
-3. 현행 admin 검수 쓰기·운영 쓰기는 라이브 DB 기준 동작 불가(구 RPC 부재) — 사용자 영향: 검수 상태 변경 시 화면 오류. P3 컷오버가 해소 경로(데이터 계약 §9.6 주의 문구 기록됨).
-4. `problems`는 P3 컷오버까지 검수 SoT, 컷오버 후 read-only 동결, 일몰은 P6 후 별도 결정(결정 기록 §2.3).
-5. 페이즈 산출물 커밋 규율: 페이즈 작업 커밋 → §12.4 스코어카드 채점 기록 커밋(2단계) 패턴을 P0·P1에서 사용 — 유지 권장. 모든 MD 수정은 `logs/admin-doc-update-log.md`(+IA 수정 시 `docs/specs/admin-page-ia-change-log.md`) 기록 의무, `npm run harness:check` 필수(AGENTS.md).
-6. `.omx/evidence/`의 스냅샷·스모크 리포트 JSON은 비추적 작업 산출물 — 정식 증적은 `logs/metadata-tag-schema-transition-evidence.md`에 옮겨 적는 방식 유지.
+- P3: 읽기+검수 쓰기 동시 컷오버(변경 파일 §7.2 11파일, RT-3/RT-4, freeze→델타→발산 0건 대사, D-12 모크 모드 결선). P4: 운영 write+태그. P5: 마스터 조회. P6: 상류 연동(요청서 회신 게이트, task52 부재 이슈).
