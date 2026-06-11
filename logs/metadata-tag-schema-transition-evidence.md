@@ -405,3 +405,16 @@ select count(*), count(*) filter (where tag_group='서비스_노출상태') from
 
 - 종합 판정: **PASS** (필수 P5-1·P5-2 전부 PASS — §12.3 판정 규칙상 권장 P5-3·P5-4는 종합 판정 비산입, 후속 계획을 §12.4에 기록). **P6(외부 공급 수신 연동)은 외부 게이트 — D-11 공급 계약 회신 확정이 선행 조건.**
 - 채점자: 프로젝트 오너 위임 실행(2026-06-11 지시 — "이어서 작업해"). 작업 커밋 `a96846b`, 스코어카드(§12.4) P5 행 기록 동반(채점 커밋).
+
+### P5-3 추기 (2026-06-11 같은 날 — 보류했던 권장 항목 실행·PASS 전환. 작업 커밋 `6cbf30b`)
+
+- **결정 확정**: 신규 Target Type = `AssessmentTagMaster`(Target ID = tag_code, 라벨 "태그 마스터", 딥링크 `/system/metadata`), 감사 액션 = `tag_master_status_changed`(diff `{is_active:{from,to}}`, payload `{note, active_assignment_count}` — 토글 시점 활성 부여 수 동봉).
+- **DB(0014 적용)**: `20260611210100_topik_writing_tag_master_admin_rpc.sql` — `admin_update_tag_master_status(p_tag_code, p_next_active, p_note)`: SECURITY DEFINER + **`private.is_platform_admin` 가드**(실행계획안 §9 확정값 — 문항 RPC의 content_admin과 분리: 마스터 사전 변경은 전 문항 부여 옵션에 영향) + 사유 RPC 단 필수 + 미존재·무변경 토글 거부 + `updated_at` 갱신. `db:migrate` 적용 + RPC 원문 대사(가드·액션·Target Type 포함 3/3 확인). down 스크립트 동반(함수 drop만 — 데이터 무변경).
+- **코드**: 어댑터 `setTopikWritingTagMasterStatus` → facade `updateTagMasterStatusSafe`(사유 공백 거부, mock/topik_writing/legacy 분기 — legacy 거부) → 카탈로그 태그 탭 토글(BinaryStatusSwitch → ConfirmAction 사유 필수 → 성공 알림 + AuditLogLink + 재조회). 감사 화면 라벨·딥링크·Target Type 라벨 결선. mock 가변 store(RPC 가드 동형 — 미존재·무변경 거부).
+- **동작 확인(§12.3 P5-3 판정 기준) — 프로브 14단계 ALL PASS** (`.omx/evidence/p5-3-tag-master-write.mjs`, 리포트 `p5-3-tag-master-write-report.json`, 대상 `flow_basic_check` — 종료 시 원복):
+  - 거부 3방향: anon RPC(unauthenticated) / 비admin RPC(forbidden: platform_admin required) / **content_admin RPC·화면 모두 거부**(문항 write가 허용되는 역할도 마스터 write는 차단 — 가드 분리 실증, 거부 후 값 불변 확인).
+  - 허용 경로: e2e 전용 시드 admin(D-12)을 일시 승격(platform_admin) → 화면 토글 비활성화(사유 필수 모달) → DB 직조회 `is_active=false`+`updated_at` → 화면 재조회 반영(스위치 해제) → 활성화 원복 → **감사 2행 역추적(DB 단)**: 액션·`AssessmentTagMaster`·tag_code·diff 양방향·payload note/active_assignment_count·actor 전부 계약 일치 → 딥링크 진입.
+  - 원복: 시드 admin 역할 content_admin 원복 확인 + 태그 활성 원복(데이터 불변 종료).
+  - 승격 메커니즘 기록: `profiles.app_role`은 v13 보호 트리거(`protect_profile_columns`)가 service-role 직접 변경을 차단(auth.uid() 없음) — admin 전면 우회 + `profiles_self_update` RLS로 **시드 admin 본인 세션 self-update** 사용. (관찰: content_admin의 self-승격이 v13 정책상 허용 — 기존 자세, 본 전환 비범위. 오너 참고용 기록.)
+- **검증 게이트**: e2e mock **9/9**(신규 — 태그 마스터 토글 사유 필수·화면 왕복·집계 반영), vitest 39/39, build·harness:check PASS.
+- **재채점**: P5-3 보류(권장) → **PASS(권장)** — P5 종합 PASS 불변(필수 산입 없음), 잔여 권장 보류는 **P5-4 단독**(D-13 자산 저장소 — 오너 결정). 문서 동기화: §11 P5 행 재동기화(action-log 신규 계약 결선·gap-register 신규 갭 ③ 해소 포함, 커밋 `6cbf30b`).
