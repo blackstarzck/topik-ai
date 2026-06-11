@@ -22,7 +22,7 @@ type AssessmentQuestionBankToolbarProps = {
 };
 
 /**
- * Shared toolbar for both split question-bank pages (검수 / 문항 관리): the
+ * Shared toolbar for both split question-bank pages (문항 목록 / 문항 관리): the
  * 51~54 question-number multi-select plus the common 목록형 `SearchBar` with the
  * 주제(종합/세부, topic_master 기반 2단 셀렉트)/유형/난이도(1~6) 상세 검색
  * popover (§7.2). Page-specific status filters live in each page's summary

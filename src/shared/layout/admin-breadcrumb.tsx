@@ -242,14 +242,16 @@ export function buildAdminBreadcrumbItems(
     ];
   }
 
-  if (pathname.startsWith('/assessment/question-bank/review/')) {
+  // 동적 상세 라우트(/assessment/question-bank/:questionId) — manage/eps-topik은
+  // 위에서 먼저 매치되므로 여기 도달하는 하위 경로는 문항 상세다.
+  if (/^\/assessment\/question-bank\/[^/]+/.test(pathname)) {
     return [
       breadcrumbLinkItem(adminMenuLabels.assessment, '/assessment/question-bank'),
       breadcrumbLinkItem(
         adminMenuLabels.assessmentQuestionBank,
         '/assessment/question-bank'
       ),
-      breadcrumbTextItem(adminMenuLabels.assessmentQuestionReview)
+      breadcrumbTextItem(adminMenuLabels.assessmentQuestionDetail)
     ];
   }
 

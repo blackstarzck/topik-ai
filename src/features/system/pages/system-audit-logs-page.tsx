@@ -92,17 +92,34 @@ const staticRows: AuditLogRow[] = [
 ];
 
 function getAuditActionLabel(action: string): string {
+  // 현행 액션 사전 (D-8 개정 — 인바운드 모델)
+  if (action === 'service_status_changed') {
+    return '노출 상태 변경';
+  }
+  if (action === 'tag_assigned') {
+    return '태그 부여';
+  }
+  if (action === 'tag_removed') {
+    return '태그 제거';
+  }
+  if (action === 'question_received') {
+    return '문항 수신';
+  }
+  // 폐기된 검수 액션 코드(2026-06-11 §0) — 기존 감사 행의 역사 렌더 전용.
   if (action === 'review_memo_saved') {
-    return '검수 메모 저장';
+    return '검수 메모 저장(구)';
   }
   if (action === 'review_completed') {
-    return '검수 완료';
+    return '검수 완료(구)';
   }
   if (action === 'review_on_hold') {
-    return '보류';
+    return '보류(구)';
   }
   if (action === 'review_revision_requested') {
-    return '수정 필요';
+    return '수정 필요(구)';
+  }
+  if (action === 'review_status_changed') {
+    return '검수 상태 변경(구)';
   }
   if (action === 'operation_candidate_exposed') {
     return '노출 후보';

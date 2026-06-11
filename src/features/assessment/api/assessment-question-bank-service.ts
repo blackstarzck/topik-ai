@@ -2,50 +2,45 @@ import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
 import { questionBankDataSource } from './question-bank-data-source';
 import {
   loadLegacyDetail,
-  loadLegacySummaries,
-  setLegacyReviewAction
+  loadLegacySummaries
 } from './supabase-assessment-question-bank-service';
 import {
   loadMockActiveQuestionTags,
   loadMockDetail,
   loadMockSummaries,
   loadMockTopicMaster,
-  saveMockReviewMemo,
-  setMockReviewAction
+  setMockServiceStatus
 } from './mock-question-bank-service';
 import {
   loadTopikWritingActiveQuestionTags,
   loadTopikWritingDetail,
   loadTopikWritingSummaries,
   loadTopikWritingTopicMaster,
-  saveTopikWritingReviewMemo,
-  setTopikWritingReviewAction
+  setTopikWritingServiceStatus
 } from './topik-writing-question-bank-service';
 import type {
   AssessmentQuestionDetail,
   AssessmentQuestionSummary,
-  AssessmentReviewAction,
   AssessmentServiceStatus,
   TopikWritingQuestionTagRow,
   TopikWritingTopicMasterRow
 } from '../model/assessment-question-bank-types';
 
 /**
- * Facade — 페이지는 이 모듈만 호출한다. 실제 경로는 P3 컷오버 스위치
- * (question-bank-data-source.ts)가 결정한다: topik_writing(신규 스키마) /
+ * Facade — 페이지는 이 모듈만 호출한다. 실제 경로는 데이터 소스 스위치
+ * (question-bank-data-source.ts)가 결정한다: topik_writing(신규 스키마, 기본) /
  * legacy(구 problems, 봉인 롤백 경로) / mock(D-12 — Supabase 미구성 시).
+ *
+ * 인바운드 모델(결정 기록 §0): 조회 + 노출 통제(service_status — P4 개방)만
+ * 제공한다. 검수 쓰기·검수 메모는 2026-06-11 검수 개념 삭제로 제거됐다.
+ * 태그 부여/제거는 P4에서 결선한다(admin_assign/remove_question_tag RPC 존재).
  */
 
-type UpdateAssessmentQuestionReviewPayload = {
-  questionId: string;
-  action: AssessmentReviewAction;
-  reason: string;
-};
-
-type SaveAssessmentQuestionReviewMemoPayload = {
-  questionId: string;
-  memo: string;
-};
+/**
+ * P4 게이트 (D-6, 실행계획안 §8): service_status write는 P4(관리 포인트 개방)
+ * 에서 이 플래그 제거와 함께 활성화한다. RPC·어댑터 경로는 결선돼 있다.
+ */
+const SERVICE_STATUS_WRITE_ENABLED = false;
 
 type UpdateAssessmentQuestionServiceStatusPayload = {
   questionId: string;
@@ -74,39 +69,6 @@ async function loadDetail(
     return loadTopikWritingDetail(questionId, signal);
   }
   return loadLegacyDetail(questionId, signal);
-}
-
-async function updateReview(
-  payload: UpdateAssessmentQuestionReviewPayload,
-  signal?: AbortSignal
-): Promise<AssessmentQuestionDetail> {
-  if (questionBankDataSource === 'mock') {
-    await setMockReviewAction(payload.questionId, payload.action);
-  } else if (questionBankDataSource === 'topik_writing') {
-    await setTopikWritingReviewAction(payload.questionId, payload.action, payload.reason);
-  } else {
-    await setLegacyReviewAction(payload.questionId, payload.action);
-  }
-  return loadDetail(payload.questionId, signal);
-}
-
-async function saveReviewMemo(
-  payload: SaveAssessmentQuestionReviewMemoPayload,
-  signal?: AbortSignal
-): Promise<AssessmentQuestionDetail> {
-  if (questionBankDataSource === 'mock') {
-    await saveMockReviewMemo(payload.questionId, payload.memo);
-    return loadDetail(payload.questionId, signal);
-  }
-  if (questionBankDataSource === 'topik_writing') {
-    // D-7: content_team_memo 실영속 + 감사 payload.review_note 동일 본문.
-    await saveTopikWritingReviewMemo(payload.questionId, payload.memo);
-    return loadDetail(payload.questionId, signal);
-  }
-  // legacy: 구 스키마에 메모 영속 컬럼이 없다 — 화면 상태로만 유지(알려진 가짜
-  // 저장, P3 컷오버가 해소). 동작 보존을 위해 재조회 후 로컬 적용한다.
-  const detail = await loadDetail(payload.questionId, signal);
-  return { ...detail, contentTeamMemo: payload.memo };
 }
 
 async function loadTopicMaster(
@@ -140,15 +102,27 @@ async function updateServiceStatus(
   payload: UpdateAssessmentQuestionServiceStatusPayload,
   signal?: AbortSignal
 ): Promise<AssessmentQuestionDetail> {
-  void payload;
-
   if (signal?.aborted) {
     throw new DOMException('Request aborted', 'AbortError');
   }
 
-  // P4 게이트: service_status write는 P4(운영 쓰기 개방)에서 OPERATION_WRITE_ENABLED
-  // 제거와 함께 활성화한다(D-6). RPC(admin_update_topik_question)는 이미 지원한다.
-  throw new Error('운영 상태(service_status) 변경은 P4 운영 쓰기 개방에서 활성화됩니다.');
+  if (!SERVICE_STATUS_WRITE_ENABLED) {
+    throw new Error('노출 상태(service_status) 변경은 P4 관리 포인트 개방에서 활성화됩니다.');
+  }
+
+  if (questionBankDataSource === 'mock') {
+    await setMockServiceStatus(payload.questionId, payload.nextStatus);
+  } else if (questionBankDataSource === 'topik_writing') {
+    await setTopikWritingServiceStatus(
+      payload.questionId,
+      payload.nextStatus,
+      payload.reason
+    );
+  } else {
+    // legacy: 구 스키마에 물리 노출 상태가 없다 — 롤백 모드에서는 쓰기 불가.
+    throw new Error('legacy 롤백 모드에서는 노출 상태를 변경할 수 없습니다.');
+  }
+  return loadDetail(payload.questionId, signal);
 }
 
 export function fetchAssessmentQuestionSummariesSafe(signal?: AbortSignal) {
@@ -164,20 +138,6 @@ export function fetchAssessmentQuestionDetailSafe(
   return toSafeResult(() =>
     withRetry(() => loadDetail(questionId, signal), { maxRetries: 1 })
   );
-}
-
-export function updateAssessmentQuestionReviewSafe(
-  payload: UpdateAssessmentQuestionReviewPayload,
-  signal?: AbortSignal
-) {
-  return toSafeResult(() => updateReview(payload, signal));
-}
-
-export function saveAssessmentQuestionReviewMemoSafe(
-  payload: SaveAssessmentQuestionReviewMemoPayload,
-  signal?: AbortSignal
-) {
-  return toSafeResult(() => saveReviewMemo(payload, signal));
 }
 
 export function fetchQuestionBankTopicMasterSafe(signal?: AbortSignal) {

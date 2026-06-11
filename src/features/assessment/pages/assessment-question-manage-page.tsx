@@ -20,12 +20,8 @@ import {
 } from '../model/use-question-bank-masters';
 import { AssessmentQuestionBankToolbar } from '../ui/assessment-question-bank-toolbar';
 import {
-  REVIEW_STATUS_LABELS,
   SERVICE_STATUS_LABELS,
-  assessmentReviewStatuses,
   assessmentServiceStatuses,
-  getReviewStatusColor,
-  getReviewStatusLabel,
   getServiceStatusColor,
   getServiceStatusLabel,
   parseAssessmentServiceStatus
@@ -53,16 +49,13 @@ import { createTextSorter } from '../../../shared/ui/table/table-column-utils';
 const { Text } = Typography;
 
 /**
- * P4 게이트 (D-6, 실행계획안 §8): `service_status` write는 P4(운영 쓰기 개방)에서
- * 이 플래그 제거와 함께 활성화한다. 신규 스키마·RPC(admin_update_topik_question)는
- * 이미 service_status patch를 지원하므로, P4에서는 이 플래그와 facade 게이트만
- * 제거하면 된다. 그때까지 모든 적재 문항은 'internal_test'(노출 차단)다.
+ * P4 게이트 (D-6, 실행계획안 2026-06-11 개정 §8): `service_status` write는
+ * P4(관리 포인트 개방)에서 이 플래그 제거와 함께 활성화한다. 신규 스키마·RPC
+ * (admin_update_topik_question)는 service_status patch를 지원하므로, P4에서는
+ * 이 플래그와 facade 게이트만 제거하면 된다. 그때까지 모든 적재 문항은
+ * 'internal_test'(노출 차단)다.
  */
 const OPERATION_WRITE_ENABLED = false;
-
-const reviewStatusLabels = assessmentReviewStatuses.map(
-  (status) => REVIEW_STATUS_LABELS[status]
-);
 
 const serviceStatusLabels = assessmentServiceStatuses.map(
   (status) => SERVICE_STATUS_LABELS[status]
@@ -91,7 +84,7 @@ const OPERATION_ACTIONS: { nextStatus: AssessmentServiceStatus; copy: OperationA
       label: '노출 가능',
       title: '노출 가능 전환',
       description:
-        '이 문항을 노출 가능(available)으로 전환합니다. 검수 완료(approved) 문항만 전환할 수 있으며(POL-018), 변경 사유는 감사 로그로 남습니다.',
+        '이 문항을 노출 가능(available)으로 전환합니다. 운영주의 태그 활성 문항은 전환 사유가 필수이며(POL-018), 변경 사유는 감사 로그로 남습니다.',
       confirmText: '노출 가능',
       successMessage: '노출 가능으로 변경했습니다.',
       reasonPlaceholder: '노출 가능 전환 사유를 입력해 주세요.'
@@ -284,17 +277,6 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
         )
       },
       {
-        title: createStatusColumnTitle('검수 상태', reviewStatusLabels),
-        dataIndex: 'reviewStatus',
-        width: 120,
-        sorter: createTextSorter((record) => record.reviewStatus),
-        render: (_, record) => (
-          <Tag color={getReviewStatusColor(record.reviewStatus)}>
-            {getReviewStatusLabel(record.reviewStatus)}
-          </Tag>
-        )
-      },
-      {
         title: createStatusColumnTitle('노출 상태', serviceStatusLabels),
         dataIndex: 'serviceStatus',
         width: 130,
@@ -387,8 +369,8 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
               type="warning"
               showIcon
               style={{ marginBottom: 16 }}
-              message="운영 상태 관리는 준비 중입니다."
-              description="노출 가능/노출 제외/내부 테스트 조치는 P4(운영 쓰기 개방)에서 활성화됩니다. 백필된 문항은 노출 상태(service_status) 'internal_test'로 사용자 노출이 차단되어 있습니다."
+              message="관리 포인트(노출 상태·태그) 조치는 준비 중입니다."
+              description="노출 가능/노출 제외/내부 테스트 조치와 태그 부여/제거는 P4(관리 포인트 개방)에서 활성화됩니다. 적재된 문항은 노출 상태(service_status) 'internal_test'로 사용자 노출이 차단되어 있습니다."
             />
           ) : null}
 

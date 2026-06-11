@@ -17,15 +17,8 @@ export const TABLES = {
   54: 'topik_writing_54_questions',
 };
 
-// D-2 / 데이터 계약 §12.2: 검수 상태 이관 사전
-export function mapReviewStatus(legacy) {
-  const dict = {
-    pending: { review_status: 'needs_revision', review_workflow_status: 'not_started' },
-    approved: { review_status: 'approved', review_workflow_status: 'done' },
-    rejected: { review_status: 'needs_revision', review_workflow_status: 'revision_requested' },
-  };
-  return dict[legacy] ?? dict.pending;
-}
+// (구 D-2 검수 상태 이관 사전은 2026-06-11 인바운드 전환·검수 개념 삭제로 제거됨 —
+//  검수 컬럼은 0013 마이그레이션에서 drop. 역사: 결정 기록 §0, git 이력)
 
 // D-4: source_map 선조회 idempotent 채번. 기존 매핑 재사용, 미매핑분만
 // (created_at, id) 결정적 정렬로 번호별 연번 이어 붙임.
@@ -115,7 +108,6 @@ export function buildCommon(r, cls, questionId) {
   const t = m.taxonomy ?? {};
   const sc = m.scenario ?? {};
   const no = r.question_no;
-  const review = mapReviewStatus(r.review_status);
   const provenance = [m.source_label, m.source_file, m.source_item_id].filter(Boolean).join(' · ') || null;
 
   const scenarioType =
@@ -165,11 +157,8 @@ export function buildCommon(r, cls, questionId) {
       : null,
     model_answer: r.answer_key?.model_answer ?? null,
     answer_key: r.answer_key ?? null,
-    review_status: review.review_status,
-    review_workflow_status: review.review_workflow_status,
-    service_status: 'internal_test', // D-6: 콘텐츠팀 승인 전 노출 차단
+    service_status: 'internal_test', // D-6: 적재 기본값 — 노출 개방은 admin 관리 포인트(P4)
     auto_checks_passed: null, // 빌더 마지막에 검증 결과로 채움
-    review_passed: r.review_status === 'approved' ? true : null,
     recommendation_keys: null, // 번호별 빌더에서 채움
     avoid_repeat_keys: null,
     content_team_memo: m.review?.review_memo ?? null,
@@ -204,7 +193,6 @@ export function build51(r, cls, questionId) {
     blank_2_accepted_answers: b2.accepted_answers ?? null,
     blank_2_accepted_synonyms: b2.accepted_synonyms ?? null,
     blank_2_target_note: m.blanks?.blank_target_nieun ?? null,
-    validation_result: m.review?.validation ?? null,
   };
   row.recommendation_keys = buildRecommendationKeys(row);
   row.avoid_repeat_keys = compact([
@@ -358,7 +346,7 @@ function buildRecommendationKeys(row, extra = []) {
 
 // 테이블별 NOT NULL 계약 (마이그레이션 0003~0006과 동기 — 변경 시 동시 수정)
 export const REQUIRED_COLUMNS = {
-  common: ['question_id', 'question_type_code', 'question_type_name', 'topic_main', 'topic_detail', 'topic_source', 'scenario_type', 'situation_summary', 'prompt_text', 'review_status', 'review_workflow_status', 'service_status'],
+  common: ['question_id', 'question_type_code', 'question_type_name', 'topic_main', 'topic_detail', 'topic_source', 'scenario_type', 'situation_summary', 'prompt_text', 'service_status'],
   51: ['blank_count', 'blank_1_position', 'blank_1_role', 'blank_1_function', 'blank_1_answer_type', 'blank_1_canonical_answer', 'blank_2_position', 'blank_2_role', 'blank_2_function', 'blank_2_answer_type', 'blank_2_canonical_answer'],
   52: ['completion_unit', 'connection_function', 'required_expression_function', 'answer_scope_type'],
   53: ['data_type', 'data_topic', 'number_expression_required', 'comparison_type', 'required_structure'],

@@ -1,27 +1,19 @@
 export type AssessmentQuestionNumber = '51' | '52' | '53' | '54';
 
 /**
- * P3 cutover model (실행계획안 §7.2): rows come from the topik_writing_* schema
+ * 인바운드 모델 (2026-06-11 결정 기록 §0): 문항은 외부(공급) API에서 완성 상태로
+ * 수신·적재되며, admin은 조회 + 관리 포인트(태그) + 노출 통제(service_status)만
+ * 수행한다. 검수 개념은 전면 삭제됐다. rows come from the topik_writing_* schema
  * (recommendation view for lists, per-number tables for detail). Statuses are the
- * DB ASCII codes from the §3.3 storage dictionary; Korean labels live in
- * assessment-question-bank-schema.ts. The sealed legacy `problems` adapter maps
- * its rows into this same model with honest sentinels ('' / null) where the old
- * schema has no source.
+ * DB ASCII codes; Korean labels live in assessment-question-bank-schema.ts. The
+ * sealed legacy `problems` adapter maps its rows into this same model with honest
+ * sentinels ('' / null) where the old schema has no source.
  */
-export type AssessmentReviewStatus = 'approved' | 'needs_revision' | 'on_hold';
-
-export type AssessmentReviewWorkflowStatus =
-  | 'not_started'
-  | 'in_progress'
-  | 'on_hold'
-  | 'done'
-  | 'revision_requested';
-
 export type AssessmentServiceStatus = 'available' | 'excluded' | 'internal_test';
 
 /**
- * 목록 행 — `topik_writing_question_recommendation_view`의 18컬럼(§7.9 12 + E4 6)과
- * 1:1. serviceStatus가 null이면 소스가 없는 legacy 행이다('미지정' 표시).
+ * 목록 행 — `topik_writing_question_recommendation_view`의 16컬럼과 1:1.
+ * serviceStatus가 null이면 소스가 없는 legacy 행이다('미지정' 표시).
  */
 export type AssessmentQuestionSummary = {
   questionId: string;
@@ -36,8 +28,6 @@ export type AssessmentQuestionSummary = {
   questionTypeName: string;
   recommendationKeys: string[];
   avoidRepeatKeys: string[];
-  reviewStatus: AssessmentReviewStatus;
-  reviewWorkflowStatus: AssessmentReviewWorkflowStatus;
   serviceStatus: AssessmentServiceStatus | null;
   contentTeamMemo: string;
   createdAt: string;
@@ -123,8 +113,8 @@ export type AssessmentQuestionDetail = AssessmentQuestionSummary & {
   promptText: string;
   resolvedText: string;
   modelAnswer: string;
+  /** 수신·적재 자동 정합 검사 표식(검수 아님 — 결정 기록 §0-3). */
   autoChecksPassed: boolean | null;
-  reviewPassed: boolean | null;
   content: AssessmentQuestionContent;
 };
 
@@ -151,19 +141,16 @@ export type TopikWritingQuestionTagRow = {
   memo: string;
 };
 
-/** 검수 액션 → admin_update_topik_question patch 의미 (D-2/D-8). */
-export type AssessmentReviewAction = 'approved' | 'on_hold' | 'needs_revision';
-
-/** D-8 감사 액션 코드 (admin_audit_logs.action, target_table='AssessmentQuestion'). */
+/**
+ * D-8 감사 액션 코드 (admin_audit_logs.action, target_table='AssessmentQuestion').
+ * 2026-06-11 개정: 검수 액션 4종·question_published 폐기, question_received는
+ * 외부 공급 API 수신 연동(P6)에서 추가.
+ */
 export type AssessmentQuestionAuditAction =
-  | 'review_memo_saved'
-  | 'review_completed'
-  | 'review_on_hold'
-  | 'review_revision_requested'
-  | 'review_status_changed'
   | 'service_status_changed'
   | 'tag_assigned'
-  | 'tag_removed';
+  | 'tag_removed'
+  | 'question_received';
 
 export type AssessmentQuestionAuditEvent = {
   id: string;

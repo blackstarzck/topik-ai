@@ -1,24 +1,18 @@
 import type {
   AssessmentQuestionDetail,
   AssessmentQuestionSummary,
-  AssessmentReviewAction,
-  AssessmentReviewStatus,
-  AssessmentReviewWorkflowStatus,
+  AssessmentServiceStatus,
   TopikWritingQuestionTagRow,
   TopikWritingTopicMasterRow
 } from '../model/assessment-question-bank-types';
 
 /**
  * D-12 모크 모드 (CI/스모크): Supabase가 구성되지 않은 실행에서 화면·e2e가
- * 결정적 픽스처로 동작하도록 하는 인메모리 어댑터다. 검수 액션·메모 저장은
- * 모듈 메모리를 변조해 RT-4형 왕복(쓰기→재조회 반영)을 화면 수준에서 재현한다.
+ * 결정적 픽스처로 동작하도록 하는 인메모리 어댑터다(인바운드 모델 — 조회 +
+ * 노출 통제). 노출 통제 쓰기는 모듈 메모리를 변조해 왕복(쓰기→재조회 반영)을
+ * 화면 수준에서 재현한다(P4 개방 전에는 facade 게이트로 호출되지 않는다).
  * 실DB·감사 로그에는 아무것도 쓰지 않으며, 페이지는 모크 모드 배너를 띄운다.
  */
-
-const REVIEW_DEFAULT: {
-  reviewStatus: AssessmentReviewStatus;
-  reviewWorkflowStatus: AssessmentReviewWorkflowStatus;
-} = { reviewStatus: 'needs_revision', reviewWorkflowStatus: 'not_started' };
 
 const mockDetails: AssessmentQuestionDetail[] = [
   {
@@ -34,7 +28,6 @@ const mockDetails: AssessmentQuestionDetail[] = [
     questionTypeName: '빈칸 완성',
     recommendationKeys: ['topic:교육', 'type:writing_51_blank_completion'],
     avoidRepeatKeys: ['scenario:공지문'],
-    ...REVIEW_DEFAULT,
     serviceStatus: 'internal_test',
     contentTeamMemo: '',
     createdAt: '2026-06-10 09:00',
@@ -49,7 +42,6 @@ const mockDetails: AssessmentQuestionDetail[] = [
       '도서관에서 안내 말씀드립니다. 다음 주부터 시험 기간이라서 이용 시간을 연장합니다. 책을 빌리고 싶은 학생은 학생증을 가져오시기 바랍니다.',
     modelAnswer: 'ㄱ: 연장합니다 / ㄴ: 학생증을 가져오시기 바랍니다',
     autoChecksPassed: true,
-    reviewPassed: null,
     content: {
       kind: '51',
       blankCount: 2,
@@ -86,7 +78,6 @@ const mockDetails: AssessmentQuestionDetail[] = [
     questionTypeName: '연결 표현',
     recommendationKeys: ['topic:건강', 'type:writing_52_sentence_completion'],
     avoidRepeatKeys: ['scenario:설명문'],
-    ...REVIEW_DEFAULT,
     serviceStatus: 'internal_test',
     contentTeamMemo: '',
     createdAt: '2026-06-10 09:00',
@@ -101,7 +92,6 @@ const mockDetails: AssessmentQuestionDetail[] = [
       '잠이 부족하면 집중력이 떨어진다. 따라서 건강을 지키려면 충분히 자야 한다. 왜냐하면 잠은 피로를 풀어 주기 때문이다.',
     modelAnswer: 'ㄱ: 지키려면 / ㄴ: 때문이다',
     autoChecksPassed: true,
-    reviewPassed: null,
     content: {
       kind: '52',
       completionUnit: '구',
@@ -128,7 +118,6 @@ const mockDetails: AssessmentQuestionDetail[] = [
     questionTypeName: '자료 설명',
     recommendationKeys: ['topic:사회', 'data:선그래프'],
     avoidRepeatKeys: ['data_topic:1인 가구'],
-    ...REVIEW_DEFAULT,
     serviceStatus: 'internal_test',
     contentTeamMemo: '',
     createdAt: '2026-06-10 09:00',
@@ -142,7 +131,6 @@ const mockDetails: AssessmentQuestionDetail[] = [
     resolvedText: '',
     modelAnswer: '',
     autoChecksPassed: true,
-    reviewPassed: null,
     content: {
       kind: '53',
       dataType: '선그래프',
@@ -181,7 +169,6 @@ const mockDetails: AssessmentQuestionDetail[] = [
     questionTypeName: '의견 서술',
     recommendationKeys: ['topic:사회', 'essay:주장형'],
     avoidRepeatKeys: ['issue:인공지능 교육'],
-    ...REVIEW_DEFAULT,
     serviceStatus: 'internal_test',
     contentTeamMemo: '',
     createdAt: '2026-06-10 09:00',
@@ -195,7 +182,6 @@ const mockDetails: AssessmentQuestionDetail[] = [
     resolvedText: '',
     modelAnswer: '',
     autoChecksPassed: true,
-    reviewPassed: null,
     content: {
       kind: '54',
       essayType: '주장형',
@@ -234,8 +220,6 @@ function toSummary(detail: AssessmentQuestionDetail): AssessmentQuestionSummary 
     questionTypeName: detail.questionTypeName,
     recommendationKeys: detail.recommendationKeys,
     avoidRepeatKeys: detail.avoidRepeatKeys,
-    reviewStatus: detail.reviewStatus,
-    reviewWorkflowStatus: detail.reviewWorkflowStatus,
     serviceStatus: detail.serviceStatus,
     contentTeamMemo: detail.contentTeamMemo,
     createdAt: detail.createdAt,
@@ -267,39 +251,13 @@ export async function loadMockActiveQuestionTags(): Promise<
   return [];
 }
 
-const MOCK_REVIEW_PATCH: Record<
-  AssessmentReviewAction,
-  { reviewStatus: AssessmentReviewStatus; reviewWorkflowStatus: AssessmentReviewWorkflowStatus }
-> = {
-  approved: { reviewStatus: 'approved', reviewWorkflowStatus: 'done' },
-  on_hold: { reviewStatus: 'on_hold', reviewWorkflowStatus: 'on_hold' },
-  needs_revision: {
-    reviewStatus: 'needs_revision',
-    reviewWorkflowStatus: 'revision_requested'
-  }
-};
-
-export async function setMockReviewAction(
+export async function setMockServiceStatus(
   questionId: string,
-  action: AssessmentReviewAction
+  nextStatus: AssessmentServiceStatus
 ): Promise<void> {
   const found = mockDetails.find((detail) => detail.questionId === questionId);
   if (!found) {
     throw new Error('문항 대상을 찾을 수 없습니다.');
   }
-  Object.assign(found, MOCK_REVIEW_PATCH[action]);
-  if (action === 'approved') {
-    found.reviewPassed = true;
-  }
-}
-
-export async function saveMockReviewMemo(
-  questionId: string,
-  memo: string
-): Promise<void> {
-  const found = mockDetails.find((detail) => detail.questionId === questionId);
-  if (!found) {
-    throw new Error('문항 대상을 찾을 수 없습니다.');
-  }
-  found.contentTeamMemo = memo;
+  found.serviceStatus = nextStatus;
 }

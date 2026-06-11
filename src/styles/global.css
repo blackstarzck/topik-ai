@@ -1376,30 +1376,30 @@ body {
   border-radius: 12px;
 }
 
-.assessment-review-page {
+.assessment-detail-page {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
   gap: 20px;
   align-items: start;
 }
 
-.assessment-review-page__document {
+.assessment-detail-page__document {
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
 
-.assessment-review-page__header-actions {
+.assessment-detail-page__header-actions {
   grid-column: 1 / -1;
   display: flex;
   justify-content: flex-end;
 }
 
-.assessment-review-page__main {
+.assessment-detail-page__main {
   min-width: 0;
 }
 
-.assessment-review-page__document-header {
+.assessment-detail-page__document-header {
   display: flex;
   justify-content: space-between;
   gap: 16px;
@@ -1408,102 +1408,102 @@ body {
   border-bottom: 1px solid #e8edf5;
 }
 
-.assessment-review-page__document-meta {
+.assessment-detail-page__document-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
 }
 
-.assessment-review-page__document-number {
+.assessment-detail-page__document-number {
   font-size: 28px;
   font-weight: 700;
   line-height: 1;
   color: #2563eb;
 }
 
-.assessment-review-page__document-title-row {
+.assessment-detail-page__document-title-row {
   display: flex;
   justify-content: space-between;
   gap: 12px;
   align-items: flex-start;
 }
 
-.assessment-review-page__document-title {
+.assessment-detail-page__document-title {
   font-size: 20px;
 }
 
-.assessment-review-page__descriptions .ant-descriptions-view {
+.assessment-detail-page__descriptions .ant-descriptions-view {
   overflow: hidden;
   border-radius: 16px;
   border: 1px solid #dbe4f0;
   background: #fff;
 }
 
-.assessment-review-page__descriptions .ant-descriptions-row > th,
-.assessment-review-page__descriptions .ant-descriptions-row > td {
+.assessment-detail-page__descriptions .ant-descriptions-row > th,
+.assessment-detail-page__descriptions .ant-descriptions-row > td {
   padding: 16px 18px;
 }
 
-.assessment-review-page__descriptions .ant-descriptions-item-label {
+.assessment-detail-page__descriptions .ant-descriptions-item-label {
   width: 132px;
   background: #f5f8ff;
   color: #1d4ed8;
   font-weight: 600;
 }
 
-.assessment-review-page__descriptions .ant-descriptions-item-content {
+.assessment-detail-page__descriptions .ant-descriptions-item-content {
   line-height: 1.7;
   background: #fff;
 }
 
-.assessment-review-page__descriptions .ant-descriptions-item-content > *,
-.assessment-review-page__history-descriptions .ant-descriptions-item-content > * {
+.assessment-detail-page__descriptions .ant-descriptions-item-content > *,
+.assessment-detail-page__history-descriptions .ant-descriptions-item-content > * {
   margin-bottom: 0 !important;
 }
 
-.assessment-review-page__descriptions .ant-typography,
-.assessment-review-page__history-descriptions .ant-typography,
-.assessment-review-page__description-paragraph.ant-typography {
+.assessment-detail-page__descriptions .ant-typography,
+.assessment-detail-page__history-descriptions .ant-typography,
+.assessment-detail-page__description-paragraph.ant-typography {
   margin-bottom: 0 !important;
 }
 
-.assessment-review-page__description-paragraph,
-.assessment-review-page__source-detail {
+.assessment-detail-page__description-paragraph,
+.assessment-detail-page__source-detail {
   margin-bottom: 0;
   line-height: 1.75;
   white-space: pre-wrap;
 }
 
-.assessment-review-page__description-stack {
+.assessment-detail-page__description-stack {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.assessment-review-page__criteria-list {
+.assessment-detail-page__criteria-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.assessment-review-page__criteria-item {
+.assessment-detail-page__criteria-item {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.assessment-review-page__description-meta {
+.assessment-detail-page__description-meta {
   display: flex;
   align-items: center;
 }
 
-.assessment-review-page__choice-answer.ant-typography {
+.assessment-detail-page__choice-answer.ant-typography {
   color: #2563eb;
   font-weight: 700;
 }
 
-.assessment-review-page__highlight-panel {
+.assessment-detail-page__highlight-panel {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1512,27 +1512,27 @@ body {
   background: transparent;
 }
 
-.assessment-review-page__ordered-list,
-.assessment-review-page__bullet-list {
+.assessment-detail-page__ordered-list,
+.assessment-detail-page__bullet-list {
   margin: 0;
   padding-left: 20px;
 }
 
-.assessment-review-page__ordered-list li,
-.assessment-review-page__bullet-list li {
+.assessment-detail-page__ordered-list li,
+.assessment-detail-page__bullet-list li {
   margin: 0;
   padding: 0;
 }
 
-.assessment-review-page__reviewer-meta {
+.assessment-detail-page__reviewer-meta {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
-.assessment-review-page__meta-pill,
-.assessment-review-page__difficulty-pill {
+.assessment-detail-page__meta-pill,
+.assessment-detail-page__difficulty-pill {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -1544,33 +1544,33 @@ body {
   line-height: 1;
 }
 
-.assessment-review-page__meta-pill--primary {
+.assessment-detail-page__meta-pill--primary {
   color: #fff;
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
 }
 
-.assessment-review-page__meta-pill--secondary {
+.assessment-detail-page__meta-pill--secondary {
   color: #fff;
   background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
 }
 
-.assessment-review-page__meta-pill--neutral,
-.assessment-review-page__difficulty-pill {
+.assessment-detail-page__meta-pill--neutral,
+.assessment-detail-page__difficulty-pill {
   color: #fff;
   background: linear-gradient(135deg, #6b7280 0%, #475569 100%);
 }
 
-.assessment-review-page__difficulty-stars {
+.assessment-detail-page__difficulty-stars {
   display: inline-flex;
   gap: 2px;
   color: #fbbf24;
 }
 
-.assessment-review-page__source-detail {
+.assessment-detail-page__source-detail {
   display: block;
 }
 
-.assessment-review-page__memo-card {
+.assessment-detail-page__memo-card {
   position: sticky;
   top: 88px;
   border-radius: 16px;
@@ -1578,74 +1578,74 @@ body {
   background: #fffbe6;
 }
 
-.assessment-review-page__memo-card .ant-card-head {
+.assessment-detail-page__memo-card .ant-card-head {
   border-bottom-color: rgba(250, 173, 20, 0.2);
 }
 
-.assessment-review-page__history-section {
+.assessment-detail-page__history-section {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.assessment-review-page__history-title.ant-typography {
+.assessment-detail-page__history-title.ant-typography {
   margin: 0;
 }
 
-.assessment-review-page__history-table .ant-table-wrapper,
-.assessment-review-page__history-table .ant-table-container {
+.assessment-detail-page__history-table .ant-table-wrapper,
+.assessment-detail-page__history-table .ant-table-container {
   border-radius: 12px;
 }
 
-.assessment-review-page__history-expanded {
+.assessment-detail-page__history-expanded {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.assessment-review-page__history-descriptions .ant-descriptions-view {
+.assessment-detail-page__history-descriptions .ant-descriptions-view {
   overflow: hidden;
   border-radius: 12px;
 }
 
-.assessment-review-page__history-descriptions .ant-descriptions-item-label {
+.assessment-detail-page__history-descriptions .ant-descriptions-item-label {
   width: 140px;
   background: #fafafa;
 }
 
-.assessment-review-page__history-descriptions .ant-descriptions-item-content {
+.assessment-detail-page__history-descriptions .ant-descriptions-item-content {
   background: #fff;
 }
 
-.assessment-review-page__history-field-list {
+.assessment-detail-page__history-field-list {
   margin-top: 0;
 }
 
-.assessment-review-page__collapse .ant-collapse-item {
+.assessment-detail-page__collapse .ant-collapse-item {
   border-radius: 12px;
   overflow: hidden;
 }
 
-.assessment-review-page__collapse .ant-collapse-header {
+.assessment-detail-page__collapse .ant-collapse-header {
   font-weight: 600;
 }
 
-.assessment-review-page__collapse-paragraph,
-.assessment-review-page__criteria-body,
-.assessment-review-page__history-summary,
-.assessment-review-page__history-snapshot {
+.assessment-detail-page__collapse-paragraph,
+.assessment-detail-page__criteria-body,
+.assessment-detail-page__history-summary,
+.assessment-detail-page__history-snapshot {
   margin-bottom: 0;
   line-height: 1.75;
   white-space: pre-wrap;
 }
 
-.assessment-review-page__criteria-grid {
+.assessment-detail-page__criteria-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
-.assessment-review-page__criteria-card {
+.assessment-detail-page__criteria-card {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1656,13 +1656,13 @@ body {
   background: #f8fbff;
 }
 
-.assessment-review-page__history-list {
+.assessment-detail-page__history-list {
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
 
-.assessment-review-page__history-card {
+.assessment-detail-page__history-card {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1672,14 +1672,14 @@ body {
   background: #f8fbff;
 }
 
-.assessment-review-page__history-meta,
-.assessment-review-page__history-fields {
+.assessment-detail-page__history-meta,
+.assessment-detail-page__history-fields {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.assessment-review-page__history-field-tag {
+.assessment-detail-page__history-field-tag {
   margin-inline-end: 0;
   border-radius: 999px;
   color: #15803d;
@@ -1687,7 +1687,7 @@ body {
   background: #f0fdf4;
 }
 
-.assessment-review-page__memo-footnote {
+.assessment-detail-page__memo-footnote {
   display: block;
   font-size: 12px;
 }
@@ -1707,15 +1707,15 @@ body {
 }
 
 @media (max-width: 960px) {
-  .assessment-review-page {
+  .assessment-detail-page {
     grid-template-columns: 1fr;
   }
 
-  .assessment-review-page__memo-card {
+  .assessment-detail-page__memo-card {
     position: static;
   }
 
-  .assessment-review-page__criteria-grid {
+  .assessment-detail-page__criteria-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1733,23 +1733,23 @@ body {
 }
 
 @media (max-width: 768px) {
-  .assessment-review-page__document-header,
-  .assessment-review-page__document-title-row {
+  .assessment-detail-page__document-header,
+  .assessment-detail-page__document-title-row {
     flex-direction: column;
   }
 
-  .assessment-review-page__document-header,
-  .assessment-review-page__document-title-row {
+  .assessment-detail-page__document-header,
+  .assessment-detail-page__document-title-row {
     display: flex;
   }
 
-  .assessment-review-page__descriptions .ant-descriptions-row > th,
-  .assessment-review-page__descriptions .ant-descriptions-row > td {
+  .assessment-detail-page__descriptions .ant-descriptions-row > th,
+  .assessment-detail-page__descriptions .ant-descriptions-row > td {
     display: block;
     width: 100%;
   }
 
-  .assessment-review-page__descriptions .ant-descriptions-item-label {
+  .assessment-detail-page__descriptions .ant-descriptions-item-label {
     border-bottom: 1px solid #e8edf5;
   }
 

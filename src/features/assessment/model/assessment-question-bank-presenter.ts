@@ -1,4 +1,4 @@
-import { getReviewStatusLabel, getServiceStatusLabel } from './assessment-question-bank-schema';
+import { getServiceStatusLabel } from './assessment-question-bank-schema';
 import type {
   AssessmentQuestionNumber,
   AssessmentQuestionSummary
@@ -17,8 +17,8 @@ export function getQuestionLevelText(question: AssessmentQuestionSummary): strin
 }
 
 /**
- * §7.2: 검색 텍스트 축 교체 — scenario_type/situation_summary/recommendation_keys를
- * 포함하고 sentinel 전용 필드(coreMeaning 등)는 제거한다(뷰 확장 컬럼 E4 전제).
+ * 검색 텍스트 축 — scenario_type/situation_summary/recommendation_keys 포함
+ * (뷰 확장 컬럼 E4 전제). 검수 라벨은 2026-06-11 검수 삭제로 제외.
  */
 export function buildAssessmentQuestionSearchText(
   question: AssessmentQuestionSummary
@@ -33,7 +33,6 @@ export function buildAssessmentQuestionSearchText(
     question.situationSummary,
     question.recommendationKeys.join(' '),
     question.contentTeamMemo,
-    getReviewStatusLabel(question.reviewStatus),
     getServiceStatusLabel(question.serviceStatus)
   ]
     .join(' ')

@@ -2,7 +2,6 @@
 // 실행: npm run test:unit  (vitest run tests/unit)
 import { describe, it, expect } from 'vitest';
 import {
-  mapReviewStatus,
   assignQuestionIds,
   parseBlankSpan,
   parseWordCount,
@@ -22,20 +21,7 @@ import {
   TOPIC_SOURCE,
 } from '../../scripts/etl/lib/transform-core.mjs';
 
-describe('mapReviewStatus (D-2 이관 사전)', () => {
-  it('pending → needs_revision + not_started', () => {
-    expect(mapReviewStatus('pending')).toEqual({ review_status: 'needs_revision', review_workflow_status: 'not_started' });
-  });
-  it('approved → approved + done', () => {
-    expect(mapReviewStatus('approved')).toEqual({ review_status: 'approved', review_workflow_status: 'done' });
-  });
-  it('rejected → needs_revision + revision_requested', () => {
-    expect(mapReviewStatus('rejected')).toEqual({ review_status: 'needs_revision', review_workflow_status: 'revision_requested' });
-  });
-  it('미지의 값은 pending 사전으로 폴백', () => {
-    expect(mapReviewStatus('weird')).toEqual(mapReviewStatus('pending'));
-  });
-});
+// (mapReviewStatus 테스트는 2026-06-11 검수 개념 삭제로 함수와 함께 제거 — 결정 기록 §0)
 
 describe('assignQuestionIds (D-4 idempotent 채번)', () => {
   const row = (id, no, createdAt) => ({ id, question_no: no, created_at: createdAt });
@@ -172,18 +158,16 @@ describe('build51', () => {
     expect(row.item_number).toBe(51);
     expect(row.question_type_code).toBe(QUESTION_TYPE_CODE[51]);
     expect(row.topic_source).toBe(TOPIC_SOURCE);
-    expect(row.review_status).toBe('approved');
-    expect(row.review_workflow_status).toBe('done');
-    expect(row.review_passed).toBe(true);
     expect(row.service_status).toBe('internal_test');
     expect(row.content_team_memo).toBe('검수 메모');
     expect(row.source_reference).toBe('D-01 · sample-51.json · topik51-0001');
   });
-  it('blank_* 직매핑 + target_note + validation_result', () => {
+  it('blank_* 직매핑 + target_note (검수 필드 비기록 — 결정 기록 §0)', () => {
     expect(row.blank_1_canonical_answer).toBe('참가하고 싶으신 분들은');
     expect(row.blank_2_function).toBe('신청 유도');
     expect(row.blank_1_target_note).toContain('ㄱ');
-    expect(row.validation_result).toEqual({ topik3_passed: true });
+    expect(row.validation_result).toBeUndefined();
+    expect(row.review_status).toBeUndefined();
   });
   it('재조립 통과 → auto_checks_passed=true, 필수 컬럼 충족', () => {
     expect(row.auto_checks_passed).toBe(true);
@@ -235,9 +219,6 @@ describe('build52', () => {
     expect(missingRequired(row)).toEqual([]);
   });
   it('pending → needs_revision + not_started, 단서 문장·응집성 파생', () => {
-    expect(row.review_status).toBe('needs_revision');
-    expect(row.review_workflow_status).toBe('not_started');
-    expect(row.review_passed).toBeNull();
     expect(row.clue_before_text).toContain('( ㄱ )');
     expect(row.cohesion_focus).toBe('접속 표현');
     expect(row.scoring_notes).toBe('자연성 평가');

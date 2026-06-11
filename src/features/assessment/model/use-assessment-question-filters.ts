@@ -10,9 +10,9 @@ import {
 import type { AssessmentQuestionNumber } from './assessment-question-bank-types';
 
 /**
- * §7.2 URL 파라미터 교체: `domain`→`topicMain`(+`topicDetail`),
- * `operationStatus`→`serviceStatus`, 난이도는 1~6 정수. `tag`는 P4 태그 필터
- * 자리 확보용 예약 키다.
+ * URL 파라미터: `topicMain`(+`topicDetail`), `serviceStatus`(노출 상태 —
+ * manage 페이지), 난이도는 1~6 정수. `tag`는 P4 태그 필터 자리 확보용 예약
+ * 키다. (`reviewStatus`는 2026-06-11 검수 개념 삭제로 제거 — 결정 기록 §0)
  */
 export type QuestionFilterParamKey =
   | 'questionNo'
@@ -21,7 +21,6 @@ export type QuestionFilterParamKey =
   | 'questionType'
   | 'difficulty'
   | 'keyword'
-  | 'reviewStatus'
   | 'serviceStatus'
   | 'tag';
 
@@ -58,8 +57,8 @@ export type AssessmentQuestionFilters = {
 /**
  * Common list-filter state shared by both split question-bank pages: the question
  * number multi-select, the keyword box, and the 주제(종합/세부)/유형/난이도 상세
- * 검색 popover. Each page layers its own status param (reviewStatus /
- * serviceStatus) on top via `commitParams`.
+ * 검색 popover. The manage page layers its serviceStatus param on top via
+ * `commitParams`.
  */
 export function useAssessmentQuestionFilters(): AssessmentQuestionFilters {
   const [searchParams, setSearchParams] = useSearchParams();

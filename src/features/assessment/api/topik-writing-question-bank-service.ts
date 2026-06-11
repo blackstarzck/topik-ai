@@ -4,19 +4,17 @@ import type {
   AssessmentQuestionDetail,
   AssessmentQuestionNumber,
   AssessmentQuestionSummary,
-  AssessmentReviewAction,
-  AssessmentReviewStatus,
-  AssessmentReviewWorkflowStatus,
   AssessmentServiceStatus,
   TopikWritingQuestionTagRow,
   TopikWritingTopicMasterRow
 } from '../model/assessment-question-bank-types';
 
 /**
- * P3 신규 스키마 어댑터 (실행계획안 §7.2): 목록은
- * `topik_writing_question_recommendation_view`(E4 확장 18컬럼) 1회 조회,
- * 상세는 question_id의 번호로 라우팅한 번호별 테이블 조회, 검수 쓰기는
- * `admin_update_topik_question` RPC 단일 경로(D-8 — 직접 write는 RLS 차단)다.
+ * 신규 스키마 어댑터 (인바운드 모델 — 결정 기록 §0): 목록은
+ * `topik_writing_question_recommendation_view`(16컬럼) 1회 조회, 상세는
+ * question_id의 번호로 라우팅한 번호별 테이블 조회. 쓰기는 노출 통제
+ * (`service_status`) 단일이며 `admin_update_topik_question` RPC 경로다
+ * (D-8 — 직접 write는 RLS 차단, 개방은 P4).
  */
 
 const TABLE_BY_NUMBER: Record<AssessmentQuestionNumber, string> = {
@@ -28,9 +26,9 @@ const TABLE_BY_NUMBER: Record<AssessmentQuestionNumber, string> = {
 
 const VIEW_COLUMNS =
   'question_id, item_number, target_level, difficulty_level, topic_main, topic_detail, ' +
-  'speech_act, scenario_type, recommendation_keys, avoid_repeat_keys, review_status, ' +
+  'speech_act, scenario_type, recommendation_keys, avoid_repeat_keys, ' +
   'service_status, situation_summary, question_type_name, content_team_memo, ' +
-  'review_workflow_status, created_at, updated_at';
+  'created_at, updated_at';
 
 type ViewRow = {
   question_id: string;
@@ -43,12 +41,10 @@ type ViewRow = {
   scenario_type: string;
   recommendation_keys: unknown;
   avoid_repeat_keys: unknown;
-  review_status: string;
   service_status: string;
   situation_summary: string;
   question_type_name: string;
   content_team_memo: string | null;
-  review_workflow_status: string;
   created_at: string | null;
   updated_at: string | null;
 };
@@ -97,8 +93,6 @@ function mapSummary(row: ViewRow): AssessmentQuestionSummary {
     questionTypeName: row.question_type_name,
     recommendationKeys: toStringArray(row.recommendation_keys),
     avoidRepeatKeys: toStringArray(row.avoid_repeat_keys),
-    reviewStatus: row.review_status as AssessmentReviewStatus,
-    reviewWorkflowStatus: row.review_workflow_status as AssessmentReviewWorkflowStatus,
     serviceStatus: row.service_status as AssessmentServiceStatus,
     contentTeamMemo: row.content_team_memo ?? '',
     createdAt: toDateTime(row.created_at),
@@ -196,8 +190,6 @@ function mapDetail(kind: AssessmentQuestionNumber, row: TableRow): AssessmentQue
     questionTypeName: toText(row.question_type_name),
     recommendationKeys: toStringArray(row.recommendation_keys),
     avoidRepeatKeys: toStringArray(row.avoid_repeat_keys),
-    reviewStatus: row.review_status as AssessmentReviewStatus,
-    reviewWorkflowStatus: row.review_workflow_status as AssessmentReviewWorkflowStatus,
     serviceStatus: row.service_status as AssessmentServiceStatus,
     contentTeamMemo: toText(row.content_team_memo),
     createdAt: toDateTime(row.created_at as string | null),
@@ -210,7 +202,6 @@ function mapDetail(kind: AssessmentQuestionNumber, row: TableRow): AssessmentQue
     resolvedText: toText(row.resolved_text),
     modelAnswer: toText(row.model_answer),
     autoChecksPassed: typeof row.auto_checks_passed === 'boolean' ? row.auto_checks_passed : null,
-    reviewPassed: typeof row.review_passed === 'boolean' ? row.review_passed : null,
     content: mapContent(kind, row)
   };
 }
@@ -318,21 +309,10 @@ export async function loadTopikWritingActiveQuestionTags(
 }
 
 // ---------------------------------------------------------------------------
-// 검수 쓰기 — admin_update_topik_question (D-2 사전 + D-7 메모 영속 + D-8 감사).
-// '__note'는 컬럼이 아니라 감사 payload.review_note로만 기록되는 예약 키다.
+// 노출 통제 쓰기 — admin_update_topik_question (D-6/D-8 개정: service_status
+// 단일 화이트리스트). '__note'는 컬럼이 아니라 감사 payload.note로만 기록되는
+// 예약 키다. facade의 P4 게이트가 열리기 전까지 호출되지 않는다.
 // ---------------------------------------------------------------------------
-
-const REVIEW_ACTION_PATCH: Record<
-  AssessmentReviewAction,
-  { review_status: AssessmentReviewStatus; review_workflow_status: AssessmentReviewWorkflowStatus }
-> = {
-  approved: { review_status: 'approved', review_workflow_status: 'done' },
-  on_hold: { review_status: 'on_hold', review_workflow_status: 'on_hold' },
-  needs_revision: {
-    review_status: 'needs_revision',
-    review_workflow_status: 'revision_requested'
-  }
-};
 
 async function callUpdateRpc(
   questionId: string,
@@ -353,17 +333,10 @@ async function callUpdateRpc(
   }
 }
 
-export async function setTopikWritingReviewAction(
+export async function setTopikWritingServiceStatus(
   questionId: string,
-  action: AssessmentReviewAction,
+  nextStatus: AssessmentServiceStatus,
   reason: string
 ): Promise<void> {
-  await callUpdateRpc(questionId, { ...REVIEW_ACTION_PATCH[action], __note: reason });
-}
-
-export async function saveTopikWritingReviewMemo(
-  questionId: string,
-  memo: string
-): Promise<void> {
-  await callUpdateRpc(questionId, { content_team_memo: memo, __note: memo });
+  await callUpdateRpc(questionId, { service_status: nextStatus, __note: reason });
 }

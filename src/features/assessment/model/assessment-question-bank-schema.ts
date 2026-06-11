@@ -2,8 +2,6 @@ import type { TabsProps } from 'antd';
 
 import type {
   AssessmentQuestionNumber,
-  AssessmentReviewStatus,
-  AssessmentReviewWorkflowStatus,
   AssessmentServiceStatus
 } from './assessment-question-bank-types';
 
@@ -22,39 +20,9 @@ export const assessmentQuestionNumbers: AssessmentQuestionNumber[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// §3.3 저장값 사전 — DB에는 ASCII 코드를 저장하고 admin은 한국어 라벨로 표시한다.
+// 저장값 사전 — DB에는 ASCII 코드를 저장하고 admin은 한국어 라벨로 표시한다.
+// (검수 상태 사전은 2026-06-11 인바운드 전환·검수 개념 삭제로 제거 — 결정 기록 §0)
 // ---------------------------------------------------------------------------
-
-export const assessmentReviewStatuses: AssessmentReviewStatus[] = [
-  'approved',
-  'needs_revision',
-  'on_hold'
-];
-
-export const REVIEW_STATUS_LABELS: Record<AssessmentReviewStatus, string> = {
-  approved: '검수 완료',
-  needs_revision: '검수 필요',
-  on_hold: '사용 보류'
-};
-
-export const assessmentReviewWorkflowStatuses: AssessmentReviewWorkflowStatus[] = [
-  'not_started',
-  'in_progress',
-  'on_hold',
-  'done',
-  'revision_requested'
-];
-
-export const REVIEW_WORKFLOW_STATUS_LABELS: Record<
-  AssessmentReviewWorkflowStatus,
-  string
-> = {
-  not_started: '시작 전',
-  in_progress: '진행 중',
-  on_hold: '보류',
-  done: '완료',
-  revision_requested: '수정 요청'
-};
 
 export const assessmentServiceStatuses: AssessmentServiceStatus[] = [
   'available',
@@ -70,16 +38,6 @@ export const SERVICE_STATUS_LABELS: Record<AssessmentServiceStatus, string> = {
 
 /** legacy 행처럼 service_status 소스 자체가 없는 경우의 표시 라벨. */
 export const SERVICE_STATUS_UNSET_LABEL = '미지정';
-
-export function getReviewStatusLabel(status: AssessmentReviewStatus): string {
-  return REVIEW_STATUS_LABELS[status];
-}
-
-export function getReviewWorkflowStatusLabel(
-  status: AssessmentReviewWorkflowStatus
-): string {
-  return REVIEW_WORKFLOW_STATUS_LABELS[status];
-}
 
 export function getServiceStatusLabel(
   status: AssessmentServiceStatus | null
@@ -128,14 +86,6 @@ export function parseAssessmentQuestionNumbers(
     : assessmentQuestionNumbers;
 }
 
-export function parseAssessmentReviewStatus(
-  value: string | null
-): AssessmentReviewStatus | null {
-  return assessmentReviewStatuses.includes(value as AssessmentReviewStatus)
-    ? (value as AssessmentReviewStatus)
-    : null;
-}
-
 export function parseAssessmentServiceStatus(
   value: string | null
 ): AssessmentServiceStatus | null {
@@ -160,40 +110,6 @@ export function parseAssessmentDifficultyLevel(
 // ---------------------------------------------------------------------------
 // 색상맵 (Ant Design Tag 색)
 // ---------------------------------------------------------------------------
-
-export function getReviewStatusColor(status: AssessmentReviewStatus): string {
-  if (status === 'approved') {
-    return 'green';
-  }
-
-  if (status === 'on_hold') {
-    return 'orange';
-  }
-
-  return 'volcano';
-}
-
-export function getReviewWorkflowStatusColor(
-  status: AssessmentReviewWorkflowStatus
-): string {
-  if (status === 'done') {
-    return 'green';
-  }
-
-  if (status === 'in_progress') {
-    return 'blue';
-  }
-
-  if (status === 'on_hold') {
-    return 'orange';
-  }
-
-  if (status === 'revision_requested') {
-    return 'volcano';
-  }
-
-  return 'default';
-}
 
 export function getServiceStatusColor(
   status: AssessmentServiceStatus | null

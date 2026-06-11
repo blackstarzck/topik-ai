@@ -21,7 +21,7 @@
 | 현재 상태 | 구현됨 — 데이터 소스는 facade 스위치(`legacy` 기본 / `topik_writing` / `mock`) 기반. 단 현행 구현은 검수 표면을 포함하며 재정의 P3에서 제거 예정 |
 | 페이지 유형 | 목록 조회형 + 2depth 문항 상세(조회 전용) |
 | 목록 라우트 | `/assessment/question-bank` |
-| 상세 라우트 | 현행 `/assessment/question-bank/review/:questionId` — 재정의 P3 구현에서 검수 명칭 없는 경로로 개명 예정(확정 경로는 P3 라우터 갱신과 동시 문서화) |
+| 상세 라우트 | `/assessment/question-bank/:questionId` (2026-06-11 재정의 P3 구현에서 구 검수 라우트 `…/review/:questionId` 개명 완료) |
 | 주요 권한 | `assessment.question-bank.manage` |
 | 주요 role | `SUPER_ADMIN`, `CONTENT_MANAGER` |
 | 연관 문서 | `docs/specs/page-ia/assessment-question-manage-page-ia.md`, `docs/specs/admin-page-tables.md`, `docs/specs/admin-data-contract.md`, `docs/specs/admin-action-log.md`, `docs/architecture/admin-data-source-transition.md`, `docs/specs/admin-policy-source-map.md`, `docs/specs/admin-data-usage-map.md`, `docs/architecture/metadata-tag-schema-transition-decision-record.md`, `docs/metadata-tag-schema-rule.md` |
@@ -64,7 +64,7 @@
 | SearchBar | 공통 목록형 검색 조건 적용 | 검색어, 상세 검색 팝오버(주제 종합/세부 · 유형 · 난이도) | 즉시 필터, 상세 검색 적용 |
 | 목록 테이블 | 수신 문항 비교·열람 | 문항 번호, 문항 ID, 주제(종합/세부), 상황 요약(hover 툴팁), 유형/난이도, 최근 수정. 목표 축으로 노출 상태·태그 컬럼을 추가한다 (현행 코드: 검수 상태 컬럼 노출 — 제거 예정, 재정의 P3) | 행 클릭으로 상세 진입 |
 
-### 5.2 문항 상세 페이지 (현행 라우트 `/assessment/question-bank/review/:questionId` — 개명 예정)
+### 5.2 문항 상세 페이지 (라우트 `/assessment/question-bank/:questionId` — 재정의 P3에서 개명 완료)
 
 | 영역 | 목적 | 주요 데이터 | 주요 액션 |
 | --- | --- | --- | --- |
@@ -199,7 +199,7 @@
 ## 12. 오픈 이슈
 
 - **외부 공급 API 미개발 — 수신 경로 미구현.** 문제 발원인 외부(공급) API가 아직 개발되지 않아 admin의 수신·적재 경로(및 `question_received` 감사 액션)는 미구현이다. 공급 계약은 요청 문서(`docs/requests/upstream-writing-endpoints-request-2026-06-10.md`, D-11 재정의)로 추진하며, 그동안 신규 공급 없이 백필 466행(초기 코퍼스)만 조회된다.
-- 검수 표면 제거가 재정의 P3 구현 범위다: 페이지 제목·요약 카드(검수 상태 축)·목록 검수 상태 컬럼·`reviewStatus` 파라미터·상세 검수 메모 카드·검수 액션 3종·검수 라우트 명칭(`/review/:questionId`) 전부(실행계획안 2026-06-11 개정 — `docs/메타데이터-태그-스키마-전환-실행계획안.md`). 검수 컬럼 물리 제거는 같은 재정의 P3 마이그레이션이다.
+- 검수 표면 제거가 재정의 P3 구현 범위다: 페이지 제목·요약 카드(검수 상태 축)·목록 검수 상태 컬럼·`reviewStatus` 파라미터·상세 검수 메모 카드·검수 액션 3종·검수 라우트 명칭 전부(실행계획안 2026-06-11 개정 — `docs/메타데이터-태그-스키마-전환-실행계획안.md`). 검수 컬럼 물리 제거는 같은 재정의 P3 마이그레이션이다.
 - 데이터 소스 스위치 기본값은 `legacy`다. `topik_writing` 플립(컷오버)은 P2 PASS 전환 후 수행하며, 그 전까지 legacy 행은 `service_status` 소스가 없어 노출 상태가 `미지정`으로 표시된다.
 - 목록의 목표 축(노출 상태·태그 컬럼/요약 카드) 구체 설계는 재정의 P3 구현에서 확정한다. `tag` 필터 활성화는 P4 범위다.
 - v13 사용자 기능의 신규 스키마 소비 경로 전환(현재 v13은 `problems`를 읽음)은 별도 트랙이며, EPS TOPIK / 레벨 테스트 편성 화면의 문항 소비 계약도 여전히 별도 후속 문서가 필요하다.
