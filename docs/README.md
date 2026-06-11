@@ -16,6 +16,7 @@
 ### `docs/requests` (외부 발신 요청·발주 문서)
 - `upstream-writing-endpoints-request-2026-06-10.md` — 상류 Writing API 업로드/노출토글 엔드포인트 신설 요청서(D-11, task52 부재 이슈 포함)
 - `content-team-order-2026-06-10.md` — 콘텐츠팀 재분류 입력표·값 사전·노출 제외 기준·편차(E1/E3) 승인 발주서(D-3/D-6)
+- `content-team-p2-5-sample-2026-06-11.md` — P2-5 콘텐츠팀 분류 초안 검토·승인 요청 10문항 샘플(초안 — 발신 전 검토용, 발주서 품목 1번 산출물). ⚠️ D-3 작성 주체 결정 보류 중
 
 ### `docs/templates`
 - `admin-page-ia-template.md`
@@ -73,6 +74,7 @@
 - `admin-overview.md`
 - `admin-data-source-transition.md`
 - `metadata-tag-schema-transition-decision-record.md` — 메타데이터·태그 스키마 전환 Phase 0 결정 확정 기록(D-1~D-13 확정값 + v13 경계 합의)
+- `d3-classification-ownership-decision-brief.md` — D-3 분류 작성 주체 재배정(콘텐츠팀→개발) 유지/철회 결정 브리프(외부 결정자 위임용 — 보류 중)
 
 ### `docs/harness`
 - `index.md`
