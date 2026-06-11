@@ -396,14 +396,14 @@
     - **신규 갭 ① — 외부 공급 API 미개발(수신 경로 미구현, 차단)**: 문항 수신·적재 경로(외부 API → Supabase)가 공급측 미개발로 구현 불가다. 공급 계약(D-11 재작성: 문항 공급(인바운드) API 계약 요청)이 확정되기 전까지 신규 문항 유입이 없고, `question_received` 감사 액션도 확정 불가다. 인터림은 P2 백필 466행 초기 코퍼스(전 행 `service_status='internal_test'`)로 운영한다. 분류: `미확정 + 누락`(외부 의존 — 차단).
     - **신규 갭 ② — 검수 표면·컬럼 제거(재정의 P3)**: 검수 화면(`/assessment/question-bank`의 검수 흐름·요약 카드·`reviewStatus` 필터, `/assessment/question-bank/review/:questionId` 상세)과 검수 감사 액션 분기가 코드에 잔존해 새 모델(검수 없음)과 어긋났던 갭. → **[2026-06-11 갱신 — 코드 측 해소 완료]** 재정의 P3 코드 컷오버(`202f905`)로 화면 재구성(question-bank=문항 목록(조회), manage=문항 관리(관리 포인트)), 상세 라우트 `/assessment/question-bank/:questionId` 개명, 검수 표면 전면 제거, 스위치 기본값 `topik_writing` 플립이 완료됐다. → **[2026-06-11 재갱신 — 갭 종결]** 검수 4컬럼(`review_status`/`review_workflow_status`/`review_passed`/`validation_result`) 물리 제거 마이그레이션 `0013`도 적용 완료(스냅샷 4테이블 검수 컬럼 0건·뷰 16컬럼·RPC 검수 참조 0건 — 증적 로그 P3 재채점 절, §12.4 P3 = PASS). 분류: `해소`.
     - **P5-1 마스터 조회 surface(2026-06-11 구현)**: 주제/태그 마스터(`topik_writing_topic_master`/`topik_writing_tag_master`) 전수(비활성 포함)를 `/system/metadata`의 `TOPIK 쓰기 마스터 데이터 (읽기 전용)` 섹션에서 조회한다(`src/features/assessment/ui/master-catalog-section.tsx` + facade 카탈로그 로더). 신규 라우트 없음 — P5-2 라우트 동기화는 해당 없음. 추천키/반복방지키 JSONB는 문항 상세 조회로 유지(D-10 비범위).
-    - **신규 갭 ③ — tag_master 활성/비활성 write 미개방(P5-3 권장 — 보류)**: 현행 감사 RPC는 문항용 3종뿐이라 tag_master write에는 전용 RPC 신설(마이그레이션)·platform_admin 가드·신규 Target Type(`admin_audit_logs`)·감사 라벨 결정이 필요하다. P5-1 카탈로그는 조회 전용으로 운영하며, write 개방은 후속 제품 결정에 따른다(실행계획안 §12.4 메모 추적). 분류: `미확정`(권장 항목 보류 — 차단 아님).
+    - **신규 갭 ③ — tag_master 활성/비활성 write 미개방(P5-3 권장)**: 현행 감사 RPC는 문항용 3종뿐이라 tag_master write에는 전용 RPC 신설(마이그레이션)·platform_admin 가드·신규 Target Type(`admin_audit_logs`)·감사 라벨 결정이 필요했다. → **[2026-06-11 같은 날 해소]** 마이그레이션 0014(`admin_update_tag_master_status` — platform_admin 가드·사유 RPC 단 필수) 적용 + 카탈로그 태그 탭 토글 UI(ConfirmAction 사유 필수) + 신규 감사 계약(`AssessmentTagMaster`/`tag_master_status_changed` — 라벨·딥링크 포함) 결선. 동작 확인 프로브 14단계 ALL PASS(가드 3방향 거부 + platform_admin 화면 왕복 + 감사 2행 역추적 + 원복 — `.omx/evidence/p5-3-tag-master-write-report.json`). 분류: `해소`.
   - `EPS TOPIK`, `레벨 테스트`
     - 여전히 Placeholder이며, 편성/배점/발행/결과 정책의 화면 SoT와 데이터 source 경계가 미정이다.
 - 분류
   - `부분 구현 + 미확정`
   - 문항 관리 운영 상태 조치: `해소` (2026-06-11 P4 관리 포인트 개방 — `service_status`+태그 write 활성, RT-4·RLS 네거티브 검증)
-  - 메타데이터·태그 스키마 전환: `진행 중` (P0~P4 PASS + P5-1 마스터 조회 surface 구현(2026-06-11) — 잔여 P5 채점·P6(외부 공급 수신 연동, D-11 회신 게이트))
-  - tag_master 활성/비활성 write: `미확정` (P5-3 권장 — 보류, 신규 갭 ③)
+  - 메타데이터·태그 스키마 전환: `진행 중` (P0~P5 PASS — 잔여 P6(외부 공급 수신 연동, D-11 회신 게이트))
+  - tag_master 활성/비활성 write: `해소` (P5-3 — 2026-06-11 개방, 신규 갭 ③ 종결 기록 참조)
   - 외부 공급 API 미개발(수신 경로): `미확정 + 누락` (공급 계약 확정 전 차단)
   - 검수 표면·컬럼 제거: `해소` (재정의 P3 코드 컷오버 `202f905` + 마이그레이션 `0013` 적용 — 신규 갭 ② 종결 기록 참조)
 

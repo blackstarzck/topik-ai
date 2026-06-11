@@ -105,6 +105,9 @@ function getAuditActionLabel(action: string): string {
   if (action === 'question_received') {
     return '문항 수신';
   }
+  if (action === 'tag_master_status_changed') {
+    return '태그 마스터 상태 변경';
+  }
   // 폐기된 검수 액션 코드(2026-06-11 §0) — 기존 감사 행의 역사 렌더 전용.
   if (action === 'review_memo_saved') {
     return '검수 메모 저장(구)';
@@ -200,6 +203,10 @@ function getTargetRoute(targetType: string, targetId: string): string | null {
   if (targetType === 'AssessmentQuestion') {
     // P3 라우트 개명(202f905): 구 /review/:questionId → /:questionId (조회 전용 상세).
     return `/assessment/question-bank/${targetId}`;
+  }
+  if (targetType === 'AssessmentTagMaster') {
+    // P5-3: 태그 마스터 토글의 원본 화면 = 마스터 카탈로그 섹션(태그 탭).
+    return '/system/metadata';
   }
   if (targetType === 'Content') {
     if (targetId.startsWith('VOC-SON-')) {

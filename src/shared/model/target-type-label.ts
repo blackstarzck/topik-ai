@@ -18,6 +18,7 @@
   Message: "메시지",
   Assessment: "평가",
   AssessmentQuestion: "TOPIK 쓰기 문항",
+  AssessmentTagMaster: "태그 마스터",
   Content: "콘텐츠",
   System: "시스템",
   Admin: "관리자",

@@ -1,10 +1,11 @@
-import { Alert, Button, Space, Tabs, Tag, Tooltip, Typography } from 'antd';
+import { Alert, Button, Space, Tabs, Tag, Tooltip, Typography, notification } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
   fetchQuestionBankTagMasterCatalogSafe,
-  fetchQuestionBankTopicMasterCatalogSafe
+  fetchQuestionBankTopicMasterCatalogSafe,
+  updateTagMasterStatusSafe
 } from '../api/assessment-question-bank-service';
 import { questionBankDataSource } from '../api/question-bank-data-source';
 import type {
@@ -12,7 +13,10 @@ import type {
   TopikWritingTopicMasterCatalogRow
 } from '../model/assessment-question-bank-types';
 import type { AsyncState } from '../../../shared/model/async-state';
+import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
+import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
+import { BinaryStatusSwitch } from '../../../shared/ui/table/binary-status-switch';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import {
   createDefinedColumnFilterProps,
@@ -22,12 +26,21 @@ import {
 const { Paragraph, Text } = Typography;
 
 /**
- * P5-1 마스터 조회 surface (실행계획안 §9): TOPIK 쓰기 주제/태그 마스터를
- * /system/metadata에 읽기 전용으로 노출한다. 모크 그룹 store(편집 가능 인메모리
- * SoT)와 달리 이 섹션의 SoT는 Supabase 실데이터이므로 편집 액션을 제공하지
- * 않는다 — tag_master 활성/비활성 write는 P5-3 후속(전용 RPC 신설 필요),
- * 추천키/반복방지키 JSONB는 문항 상세 화면에서 조회한다(D-10 비범위).
+ * P5 마스터 surface (실행계획안 §9): TOPIK 쓰기 주제/태그 마스터를
+ * /system/metadata에 노출한다. 모크 그룹 store(편집 가능 인메모리 SoT)와 달리
+ * 이 섹션의 SoT는 Supabase 실데이터다. 주제 마스터·값 편집은 조회 전용이며,
+ * 유일한 조치는 태그 마스터 활성/비활성 토글(P5-3 — platform_admin 전용 RPC
+ * `admin_update_tag_master_status`, 사유 필수, 감사 Target = AssessmentTagMaster
+ * + tag_code)이다. 추천키/반복방지키 JSONB는 문항 상세 화면에서 조회한다(D-10
+ * 비범위).
  */
+
+const TAG_MASTER_TARGET_TYPE = 'AssessmentTagMaster';
+
+type TagStatusActionState = {
+  row: TopikWritingTagMasterCatalogRow;
+  nextActive: boolean;
+} | null;
 
 const CATALOG_PAGINATION = {
   pageSize: 20,
@@ -70,8 +83,43 @@ export function AssessmentMasterCatalogSection(): JSX.Element {
     CatalogState<TopikWritingTagMasterCatalogRow>
   >(createInitialState);
   const [reloadKey, setReloadKey] = useState(0);
+  const [tagStatusAction, setTagStatusAction] = useState<TagStatusActionState>(null);
+  const [notificationApi, notificationContextHolder] = notification.useNotification();
 
   const reload = useCallback(() => setReloadKey((prev) => prev + 1), []);
+
+  const handleTagStatusAction = useCallback(
+    async (reason: string) => {
+      if (!tagStatusAction) return;
+      const { row, nextActive } = tagStatusAction;
+      const result = await updateTagMasterStatusSafe({
+        tagCode: row.tagCode,
+        nextActive,
+        reason
+      });
+      if (!result.ok) {
+        notificationApi.error({
+          message: '태그 마스터 상태 변경 실패',
+          description: result.error.message
+        });
+        return;
+      }
+      setTagStatusAction(null);
+      notificationApi.success({
+        message: `태그 마스터 ${nextActive ? '활성화' : '비활성화'} 완료`,
+        description: (
+          <Space direction="vertical">
+            <Text>Target Type: {TAG_MASTER_TARGET_TYPE}</Text>
+            <Text>Target ID: {row.tagCode}</Text>
+            <Text>사유/근거: {reason}</Text>
+            <AuditLogLink targetType={TAG_MASTER_TARGET_TYPE} targetId={row.tagCode} />
+          </Space>
+        )
+      });
+      reload();
+    },
+    [notificationApi, reload, tagStatusAction]
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -185,13 +233,20 @@ export function AssessmentMasterCatalogSection(): JSX.Element {
       {
         title: '상태',
         dataIndex: 'isActive',
-        width: 90,
+        width: 110,
         filters: [
           { text: '활성', value: true },
           { text: '비활성', value: false }
         ],
         onFilter: (value, record) => record.isActive === value,
-        render: (value: boolean) => renderActiveTag(value)
+        render: (value: boolean, record) => (
+          <BinaryStatusSwitch
+            checked={value}
+            checkedLabel="활성"
+            uncheckedLabel="비활성"
+            onToggle={() => setTagStatusAction({ row: record, nextActive: !value })}
+          />
+        )
       },
       {
         title: '설명',
@@ -270,10 +325,11 @@ export function AssessmentMasterCatalogSection(): JSX.Element {
 
   return (
     <AdminListCard
-      title="TOPIK 쓰기 마스터 데이터 (읽기 전용)"
+      title="TOPIK 쓰기 마스터 데이터"
       style={{ marginTop: 24 }}
       data-testid="assessment-master-catalog-section"
     >
+      {notificationContextHolder}
       <Alert
         type="info"
         showIcon
@@ -283,13 +339,18 @@ export function AssessmentMasterCatalogSection(): JSX.Element {
           <Space direction="vertical" size={4}>
             <Text>
               위 운영 설정 카탈로그와 달리 이 데이터의 원본은 평가 데이터베이스
-              (topik_writing_topic_master / topik_writing_tag_master)이며, 이 화면에서는
-              편집할 수 없습니다.
+              (topik_writing_topic_master / topik_writing_tag_master)입니다. 주제 마스터는
+              조회 전용이며, 마스터 값 자체의 편집은 데이터 공급 계약과 후속 운영 결정에
+              따릅니다.
+            </Text>
+            <Text>
+              유일한 조치는 태그 마스터의 활성/비활성 전환입니다(사유 필수). 비활성 태그는
+              문항 태그 부여 옵션에서 제외되고, 이미 부여된 이력은 유지됩니다. 전환 권한은
+              최고 관리자(platform_admin)로 제한되며 서버가 강제합니다.
             </Text>
             <Text>
               태그별 추천·반복방지 부여 현황은 문항 상세에서, 태그 부여/제거는 TOPIK 쓰기
-              문항 관리에서 진행합니다. 마스터 값 자체의 변경은 데이터 공급 계약과 후속
-              운영 결정에 따릅니다.
+              문항 관리에서 진행합니다.
             </Text>
           </Space>
         }
@@ -352,6 +413,27 @@ export function AssessmentMasterCatalogSection(): JSX.Element {
           }
         ]}
       />
+
+      {tagStatusAction ? (
+        <ConfirmAction
+          open
+          title={
+            tagStatusAction.nextActive
+              ? '태그 마스터 활성화'
+              : '태그 마스터 비활성화'
+          }
+          description={`'${tagStatusAction.row.tagNameKo}'(${tagStatusAction.row.tagCode}) 태그를 ${
+            tagStatusAction.nextActive
+              ? '활성화하면 문항 태그 부여 옵션에 다시 노출됩니다.'
+              : '비활성화하면 문항 태그 부여 옵션에서 제외됩니다(부여 이력은 유지).'
+          } 사유를 입력해 주세요.`}
+          targetType={TAG_MASTER_TARGET_TYPE}
+          targetId={tagStatusAction.row.tagCode}
+          confirmText={tagStatusAction.nextActive ? '활성화 실행' : '비활성화 실행'}
+          onCancel={() => setTagStatusAction(null)}
+          onConfirm={handleTagStatusAction}
+        />
+      ) : null}
     </AdminListCard>
   );
 }

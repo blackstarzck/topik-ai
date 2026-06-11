@@ -508,3 +508,26 @@ export async function removeTopikWritingQuestionTag(
     throw new Error(error.message);
   }
 }
+
+// ---------------------------------------------------------------------------
+// 태그 마스터 활성/비활성 — admin_update_tag_master_status (P5-3, 0014).
+// 가드는 전부 RPC 내장: platform_admin(문항 RPC의 content_admin보다 상위),
+// 사유 필수, 미존재·무변경 토글 거부. 감사: tag_master_status_changed +
+// target_table='AssessmentTagMaster', target_id=tag_code, payload.note.
+// ---------------------------------------------------------------------------
+
+export async function setTopikWritingTagMasterStatus(
+  tagCode: string,
+  nextActive: boolean,
+  note: string
+): Promise<void> {
+  const client = requireClient();
+  const { error } = await client.rpc('admin_update_tag_master_status', {
+    p_tag_code: tagCode,
+    p_next_active: nextActive,
+    p_note: note
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+}

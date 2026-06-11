@@ -14,7 +14,8 @@ import {
   loadMockTopicMaster,
   loadMockTopicMasterCatalog,
   removeMockQuestionTag,
-  setMockServiceStatus
+  setMockServiceStatus,
+  setMockTagMasterStatus
 } from './mock-question-bank-service';
 import {
   assignTopikWritingQuestionTag,
@@ -26,7 +27,8 @@ import {
   loadTopikWritingTopicMaster,
   loadTopikWritingTopicMasterCatalog,
   removeTopikWritingQuestionTag,
-  setTopikWritingServiceStatus
+  setTopikWritingServiceStatus,
+  setTopikWritingTagMasterStatus
 } from './topik-writing-question-bank-service';
 import type {
   AssessmentQuestionDetail,
@@ -67,6 +69,12 @@ type AssignQuestionTagPayload = {
 type RemoveQuestionTagPayload = {
   tagAssignmentId: number;
   memo: string;
+};
+
+type UpdateTagMasterStatusPayload = {
+  tagCode: string;
+  nextActive: boolean;
+  reason: string;
 };
 
 async function loadSummaries(signal?: AbortSignal): Promise<AssessmentQuestionSummary[]> {
@@ -252,6 +260,36 @@ export function fetchQuestionBankTagMasterSafe(signal?: AbortSignal) {
   return toSafeResult(() =>
     withRetry(() => loadTagMaster(signal), { maxRetries: 1 })
   );
+}
+
+/**
+ * P5-3 태그 마스터 활성/비활성 토글 — platform_admin 전용 RPC
+ * `admin_update_tag_master_status` 경유(가드·감사는 RPC 내장). 사유 필수.
+ */
+async function updateTagMasterStatus(
+  payload: UpdateTagMasterStatusPayload
+): Promise<void> {
+  if (!payload.reason.trim()) {
+    throw new Error('태그 마스터 상태 변경 사유를 입력해 주세요.');
+  }
+
+  if (questionBankDataSource === 'mock') {
+    await setMockTagMasterStatus(payload.tagCode, payload.nextActive);
+    return;
+  }
+  if (questionBankDataSource === 'topik_writing') {
+    await setTopikWritingTagMasterStatus(
+      payload.tagCode,
+      payload.nextActive,
+      payload.reason
+    );
+    return;
+  }
+  throw new Error('legacy 롤백 모드에서는 태그 마스터를 변경할 수 없습니다.');
+}
+
+export function updateTagMasterStatusSafe(payload: UpdateTagMasterStatusPayload) {
+  return toSafeResult(() => updateTagMasterStatus(payload));
 }
 
 export function fetchQuestionBankTopicMasterCatalogSafe(signal?: AbortSignal) {

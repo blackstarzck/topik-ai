@@ -339,10 +339,9 @@ export async function loadMockTopicMasterCatalog(): Promise<
   ];
 }
 
-export async function loadMockTagMasterCatalog(): Promise<
-  TopikWritingTagMasterCatalogRow[]
-> {
-  return mockTagMaster.map((row) => ({
+// P5-3 토글 왕복 재현용 가변 상태 — 편집 옵션 사전(mockTagMaster)과는 분리.
+const mockTagMasterCatalogState: TopikWritingTagMasterCatalogRow[] = mockTagMaster.map(
+  (row) => ({
     tagCode: row.tagCode,
     tagNameKo: row.tagNameKo,
     tagGroup: row.tagGroup,
@@ -351,7 +350,31 @@ export async function loadMockTagMasterCatalog(): Promise<
     exampleQuestionId: null,
     isActive: row.isActive,
     updatedAt: '2026-06-10 09:00'
-  }));
+  })
+);
+
+export async function loadMockTagMasterCatalog(): Promise<
+  TopikWritingTagMasterCatalogRow[]
+> {
+  return mockTagMasterCatalogState.map((row) => ({ ...row }));
+}
+
+/** P5-3 — RPC `admin_update_tag_master_status`의 가드(미존재·무변경 거부)를 흉내 낸다. */
+export async function setMockTagMasterStatus(
+  tagCode: string,
+  nextActive: boolean
+): Promise<void> {
+  const row = mockTagMasterCatalogState.find((item) => item.tagCode === tagCode);
+  if (!row) {
+    throw new Error(`unknown tag_code: ${tagCode}`);
+  }
+  if (row.isActive === nextActive) {
+    throw new Error(
+      `tag_master already ${nextActive ? 'active' : 'inactive'}: ${tagCode}`
+    );
+  }
+  row.isActive = nextActive;
+  row.updatedAt = '2026-06-11 00:00';
 }
 
 export async function loadMockActiveQuestionTags(): Promise<

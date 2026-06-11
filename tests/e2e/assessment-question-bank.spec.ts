@@ -215,7 +215,7 @@ test('구 검수 상세 라우트는 더 이상 검수 화면을 렌더하지 �
   await expect(page.getByRole('heading', { name: /문항 검수/ })).toHaveCount(0);
 });
 
-test('주제/태그 마스터는 /system/metadata에 읽기 전용으로 조회된다', async ({
+test('주제/태그 마스터는 /system/metadata 마스터 카탈로그에 조회된다', async ({
   page
 }) => {
   await page.goto('/system/metadata');
@@ -223,28 +223,85 @@ test('주제/태그 마스터는 /system/metadata에 읽기 전용으로 조회�
 
   const section = page.getByTestId('assessment-master-catalog-section');
   await expect(section).toBeVisible();
-  await expect(
-    section.getByText('TOPIK 쓰기 마스터 데이터 (읽기 전용)')
-  ).toBeVisible();
+  await expect(section.getByText('TOPIK 쓰기 마스터 데이터')).toBeVisible();
   await expect(section.getByText(MOCK_BANNER)).toBeVisible();
 
   // 주제 마스터 탭(기본): 전수 표시 — 비활성 행 포함(편집용 활성 필터와 다른 축).
+  // 주제 마스터는 전면 조회 전용(스위치 없음).
   await expect(section.getByText('총 5건 · 활성 4건')).toBeVisible();
   await expect(section.getByText('학교생활')).toBeVisible();
   await expect(section.getByText('[모크] 비활성 표시 검증용')).toBeVisible();
   await expect(section.getByText('비활성', { exact: true })).toBeVisible();
+  await expect(
+    section.getByTestId('topic-master-catalog').getByRole('switch')
+  ).toHaveCount(0);
 
-  // 태그 마스터 탭: 값 사전 전수(코드·그룹·사용 규칙 축).
+  // 태그 마스터 탭: 값 사전 전수(코드·그룹·사용 규칙 축) + 행별 활성/비활성 스위치(P5-3).
   await section.getByRole('tab', { name: '태그 마스터' }).click();
   await expect(section.getByText('총 6건 · 활성 6건')).toBeVisible();
   await expect(section.getByText('rec_use', { exact: true })).toBeVisible();
   await expect(
     section.getByText('ops_operation_excluded', { exact: true })
   ).toBeVisible();
+  await expect(
+    section.getByTestId('tag-master-catalog').getByRole('switch')
+  ).toHaveCount(6);
 
-  // 읽기 전용: 마스터 섹션 안에는 편집 액션(추가/수정/삭제/상태 스위치)이 없다.
-  await expect(section.getByRole('switch')).toHaveCount(0);
+  // 값 편집 표면은 없다(조치는 상태 토글 단일 — 추가/수정/삭제 버튼 부재).
   await expect(section.getByRole('button', { name: /추가|수정|삭제/ })).toHaveCount(0);
+});
+
+test('태그 마스터 활성/비활성 토글은 사유 필수 확인 모달을 거쳐 화면 왕복된다', async ({
+  page
+}) => {
+  await page.goto('/system/metadata');
+  await skipIfAuthRequired(page);
+
+  const section = page.getByTestId('assessment-master-catalog-section');
+  await section.getByRole('tab', { name: '태그 마스터' }).click();
+  const tagPane = section.getByTestId('tag-master-catalog');
+  await expect(tagPane.getByText('총 6건 · 활성 6건')).toBeVisible();
+
+  const targetRow = tagPane
+    .locator('tbody tr.ant-table-row')
+    .filter({ hasText: 'rec_use' });
+  await expect(targetRow.getByRole('switch')).toBeChecked();
+  await targetRow.getByRole('switch').click();
+
+  // 사유 미입력 시 확인 비활성(사유 필수) — Target 계약 표기 포함.
+  const modal = page
+    .locator('.ant-modal-content')
+    .filter({ hasText: '태그 마스터 비활성화' });
+  await expect(modal).toBeVisible();
+  await expect(modal.getByText('대상 ID: rec_use')).toBeVisible();
+  const confirmButton = modal.getByRole('button', { name: '비활성화 실행' });
+  await expect(confirmButton).toBeDisabled();
+  await modal
+    .getByPlaceholder('조치 사유를 입력해 주세요.')
+    .fill('e2e: 태그 마스터 토글 왕복 검증');
+  await confirmButton.click();
+
+  // 재조회 반영: 성공 알림(감사 링크) + 집계·행 스위치 상태 변경.
+  await expect(page.getByText('태그 마스터 비활성화 완료')).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: '감사 로그 확인' }).first()
+  ).toBeVisible();
+  await expect(tagPane.getByText('총 6건 · 활성 5건')).toBeVisible();
+  await expect(targetRow.getByRole('switch')).not.toBeChecked();
+
+  // 원복(활성화) — 같은 사유 필수 흐름.
+  await targetRow.getByRole('switch').click();
+  const revertModal = page
+    .locator('.ant-modal-content')
+    .filter({ hasText: '태그 마스터 활성화' });
+  await expect(revertModal).toBeVisible();
+  await revertModal
+    .getByPlaceholder('조치 사유를 입력해 주세요.')
+    .fill('e2e: 태그 마스터 토글 원복');
+  await revertModal.getByRole('button', { name: '활성화 실행' }).click();
+  await expect(page.getByText('태그 마스터 활성화 완료')).toBeVisible();
+  await expect(tagPane.getByText('총 6건 · 활성 6건')).toBeVisible();
+  await expect(targetRow.getByRole('switch')).toBeChecked();
 });
 
 test('AssessmentQuestion 감사 로그는 삭제된 문제은행 store audit으로 역이동하지 않는다', async ({

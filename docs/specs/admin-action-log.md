@@ -64,7 +64,10 @@
   - 주의(기지 갭 — `docs/specs/admin-page-gap-register.md` §4.10.2): 감사 로그 화면은 현재 모크 store SoT라 실 `admin_audit_logs` 행이 화면에 표시되지 않습니다. 실데이터 역추적은 DB 단(`admin_audit_logs` 조회)으로 검증하며, 화면 실데이터 연동은 후속 범위입니다.
 - 폐기(화면 제거 완료): `검수 완료`/`보류`/`수정 필요` 조치와 `검수 메모 저장`(메모 본문을 `Reason`으로 사용) 계약은 2026-06-11 검수 개념 삭제로 폐기됐습니다. 구 2depth 검수 페이지는 재정의 P3에서 제거 완료됐고(`202f905` — 기존 감사 행은 "(구)" 역사 라벨로 표시), DB측 `admin_update_topik_question` RPC의 검수 액션 경로도 마이그레이션 `0013`에서 제거 완료됐습니다(2026-06-11 적용 — RPC 원문 검수 참조 0건). 운영 메모는 태그 부여/제거 사유 `question_tags.memo`로만 기록합니다.
 - 폐기: 운영정책 `POL-017` 구판의 `배포(API 업로드)` 후보 액션(`question_published`, `publishedTaskId` 근거 포함)은 상류 push 폐기(2026-06-11 §0)로 철회됐습니다. `POL-017`은 "TOPIK 쓰기 문항 수신·관리 운영정책"(수신(외부 API, 미개발) → 적재 → 관리 포인트(태그) + 노출(`service_status`) → v13 read-only)으로 재정의됐고, 수신·적재가 구현되면 `question_received` 액션이 같은 `Target Type = AssessmentQuestion`, `Target ID = questionId` 계약으로 기록돼야 합니다.
-- 마스터 카탈로그(P5-1 — 2026-06-11): `/system/metadata`의 `TOPIK 쓰기 마스터 데이터 (읽기 전용)` 섹션은 **조회 전용이라 감사 액션이 없습니다**(write 부재). tag_master 활성/비활성 write가 개방되면(전환 실행계획안 P5-3 — 보류) 전용 RPC 신설과 함께 신규 Target Type(예: `AssessmentTagMaster`)·감사 라벨을 이 문서에서 결정·추가해야 합니다.
+- 태그 마스터 조치 로그(P5-3 — 2026-06-11 개방)는 `Target Type = AssessmentTagMaster`, `Target ID = tagCode`를 사용합니다.
+  - 액션 = `tag_master_status_changed`(라벨 "태그 마스터 상태 변경"). 원본 화면 역추적 경로 = `/system/metadata`(마스터 카탈로그 섹션 태그 탭).
+  - write 계약: `/system/metadata` 마스터 카탈로그의 활성/비활성 토글 단일 — RPC `admin_update_tag_master_status`(마이그레이션 0014, SECURITY DEFINER) 경유. 가드 = **platform_admin**(문항 RPC의 content_admin과 분리 — 마스터 사전 변경은 전 문항 부여 옵션에 영향) + 사유 필수(RPC 단 강제) + 미존재·무변경 토글 거부. diff는 `{is_active:{from,to}}`, payload는 `{note, active_assignment_count}`(토글 시점 활성 부여 수 — 부여 이력은 유지) 형식입니다. 성공 피드백은 대상 식별 정보 + `감사 로그 확인` 링크(`/system/audit-logs?targetType=AssessmentTagMaster&targetId={tagCode}`)를 노출합니다.
+  - 주제 마스터와 마스터 값 편집(이름·설명 등)은 여전히 조회 전용이라 감사 액션이 없습니다.
 - 메타데이터 그룹/항목 조치 로그는 `Target Type = SystemMetadataGroup`, `Target ID = groupId`를 사용합니다.
 - 메타데이터 항목 조치도 현재는 그룹 단위 추적을 우선 적용하며, 시스템 감사 로그에서 `/system/metadata?selected={groupId}` 기준으로 원본 화면을 역추적할 수 있어야 합니다.
 - 메타데이터의 `운영 값 순서 변경(item_reordered)`도 같은 계약을 사용하며, 드래그 정렬 직후 감사 로그에서 해당 그룹 단위 이력을 확인할 수 있어야 합니다.
