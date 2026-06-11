@@ -9,14 +9,14 @@
 ### `docs` (루트 보고서·작업 안내서)
 - `metadata-tag-schema-rule.md` — 콘텐츠팀용 TOPIK 쓰기 51~54 메타데이터·태그 작업 안내서 + 개발팀 전달용 테이블 스키마(권장안, v0.8)
 - `메타데이터-태그-스키마-전환-영향도-보고서.md` — 위 권장 스키마로 DB·관리체계 전환 시의 영향도 분석 보고서
-- `메타데이터-태그-스키마-전환-실행계획안.md` — 전환 착수 확정(2026-06-10) 후속 실행 계획안: P0~P6 단계, 결정 테이블(D-1~D-13), 마이그레이션/백필/코드 전환 작업 패키지와 검증 게이트(§12.3 PASS 채점)
+- `메타데이터-태그-스키마-전환-실행계획안.md` — 전환 실행 계획안(2026-06-11 인바운드 개정): P0~P6 단계 — P3=읽기 컷오버+검수 표면·컬럼 제거, P4=관리 포인트(태그·노출) 개방, P6=외부 공급 API 수신 연동 — 와 검증 게이트(§12.3 PASS 채점)
 - `v13-admin-상호보완-분석-보고서.html` — v13 ↔ admin 상호보완·커버리지 분석 보고서
-- `metadata-tag-schema-transition-handoff.md` — 전환 작업 인수인계 문서(P1 PASS 시점 상태·도구·P2 다음 단계·주의사항)
+- `metadata-tag-schema-transition-handoff.md` — 전환 작업 인수인계 문서(인바운드 전환 직후 상태·재정의 P3 절차·주의사항)
 
 ### `docs/requests` (외부 발신 요청·발주 문서)
-- `upstream-writing-endpoints-request-2026-06-10.md` — 상류 Writing API 업로드/노출토글 엔드포인트 신설 요청서(D-11, task52 부재 이슈 포함)
-- `content-team-order-2026-06-10.md` — 콘텐츠팀 재분류 입력표·값 사전·노출 제외 기준·편차(E1/E3) 승인 발주서(D-3/D-6)
-- `content-team-p2-5-sample-2026-06-11.md` — P2-5 콘텐츠팀 분류 초안 검토·승인 요청 10문항 샘플(초안 — 발신 전 검토용, 발주서 품목 1번 산출물). ⚠️ D-3 작성 주체 결정 보류 중
+- `upstream-writing-endpoints-request-2026-06-10.md` — TOPIK 쓰기 문항 공급(인바운드) API 계약 요청서(D-11 재정의 — 2026-06-11 재작성, 구 push 업로드 요청 폐기)
+- `content-team-order-2026-06-10.md` — [폐기] 콘텐츠팀 재분류 입력표 승인 발주서(인바운드 전환으로 트랙 소멸 — 미발신 종결, 역사 보존)
+- `content-team-p2-5-sample-2026-06-11.md` — [폐기] P2-5 10문항 샘플 검토 시트(인바운드 전환으로 게이트 소멸 — 미발신 종결, 역사 보존)
 
 ### `docs/templates`
 - `admin-page-ia-template.md`
@@ -73,8 +73,8 @@
 ### `docs/architecture`
 - `admin-overview.md`
 - `admin-data-source-transition.md`
-- `metadata-tag-schema-transition-decision-record.md` — 메타데이터·태그 스키마 전환 Phase 0 결정 확정 기록(D-1~D-13 확정값 + v13 경계 합의)
-- `d3-classification-ownership-decision-brief.md` — D-3 분류 작성 주체 재배정(콘텐츠팀→개발) 유지/철회 결정 브리프(외부 결정자 위임용 — 보류 중)
+- `metadata-tag-schema-transition-decision-record.md` — 메타데이터·태그 스키마 전환 결정 기록(**§0 = 2026-06-11 인바운드 모델 전환 확정** + D-1~D-13 처분 + v13 경계 합의)
+- `d3-classification-ownership-decision-brief.md` — [폐기] D-3 분류 작성 주체 결정 브리프(인바운드 전환으로 목적 소멸 — 역사 보존)
 
 ### `docs/harness`
 - `index.md`

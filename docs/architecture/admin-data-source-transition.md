@@ -207,7 +207,9 @@ src/features/<feature>/
 
 ## 10.2 2026-03-30 Assessment TOPIK 쓰기 문제은행 전환 메모
 
-- 대상 화면: `Assessment > TOPIK 쓰기 문제 검수`(`/assessment/question-bank`), `Assessment > TOPIK 쓰기 문항 관리`(`/assessment/question-bank/manage`)
+> **[2026-06-11 인바운드 전환 주의]** 본 절은 현행 코드 동작의 사실 기록이다. 단, 아래 서술 중 **검수 표면·검수 쓰기(검수 페이지, `reviewStatus` 축, 검수 상태 변경 RPC, 검수 메모)는 2026-06-11 인바운드 전환(§10.3, 결정 기록 §0)으로 전부 제거 예정**(재정의 P3 구현)이며, 페이지 정체성은 "문항 목록(조회)" + "문항 관리(관리 포인트: 태그·노출)"로 재정의됐다.
+
+- 대상 화면: `Assessment > TOPIK 쓰기 문제 검수`(`/assessment/question-bank` — 재정의: "TOPIK 쓰기 문항 목록"), `Assessment > TOPIK 쓰기 문항 관리`(`/assessment/question-bank/manage`)
   - 현재 SoT
     - `src/features/assessment/api/assessment-question-bank-service.ts`
     - `src/features/assessment/model/assessment-question-bank-schema.ts`
@@ -247,37 +249,35 @@ src/features/<feature>/
   - `generationBatchId`, `promptVersion`, `generationModel`은 AI 생성 출처 추적용 메타데이터로 유지합니다.
   - 검수 이력 diff, 재생성 배치, 시험 세트 편성 연결은 후속 API로 확장하되 현재 route/service 계약은 유지합니다.
 
-## 10.3 2026-06-09 검수 완료 문항 배포(업로드) 전환 메모 (POL-017)
+## 10.3 TOPIK 쓰기 문항 데이터 흐름 — 인바운드 수신 모델 (POL-017, 2026-06-11 전면 개정)
 
-- 대상 정책: `POL-017` (`docs/specs/admin-policy-source-map.md`). 운영 흐름은 `검수(관리자) -> 배포(API 업로드) -> 노출 통제(관리자 /manage)`로 고정한다.
-- 상류 API 원문: `docs/specs/topik-ai-service-api-reference.md`(Swagger `http://58.236.187.135:9009/docs#/`의 Writing 파트). 사용자 노출 데이터 모델은 이 문서를 단일 SoT로 사용한다.
-- 데이터 방향
-  - 관리자 `problems`(Supabase, v13, question_no 51-54)는 **검수 원본 SoT**다.
-  - `검수 완료` 문항은 관리자에서 상류 `TalkPik AI Service`로 **API 업로드(push, 단방향)**되어 사용자 노출용 작문 과제로 등록된다. 즉 과거 "후속 내보내기/배포(파일 스키마)"는 폐기하고, 상류 서비스로의 API 업로드로 확정한다.
-  - 사용자 노출은 상류 Writing API(`GET /api/writing/tasks`, `GET /api/writing/tasks/{task_type}`)가 담당하며, 관리자 프론트엔드가 직접 사용자 화면 데이터를 서빙하지 않는다.
-- 사용자 노출 작문 과제 모델(Writing API `GenerateProblemResponse`)과 관리자 화면 모델 매핑 후보
-  - `task_type` ← `problems.question_no`(51/52/53/54 → 캠페인 `Q51..Q54` / 연습 `task51`,`task53`,`task54`)
-  - `title` ← `problems.title`
-  - `instruction` ← `problems.prompt`
-  - `topic` ← `problems.topic_category_code`(코드 라벨)
-  - `difficulty` ← `problems.difficulty`(숫자 → `easy/medium/hard` 구간)
-  - `max_score` ← 문제 번호 규칙(Q51/Q52=10, Q53=30, Q54=50) 파생
-- 상류 API/DB 전환 후보(신설/확정 필요)
-  - 검수 완료 문항 업로드/upsert 엔드포인트: 현재 상류 스냅샷에 관리자용 작문 과제 생성 엔드포인트가 없어 신설 또는 확정이 필요한 후보다.
-  - 사용자 노출 토글(노출/숨김)을 상류에 반영하는 엔드포인트: `/manage` 운영 상태와 연동할 후보다.
+> **2026-06-11 오너 결정으로 본 절의 종전 아웃바운드 push 모델(`검수 → 배포(API 업로드) → 노출 통제`)은 폐기·대체됐다.** 확정 근거·재정의 전모는 `docs/architecture/metadata-tag-schema-transition-decision-record.md` §0. 본 개정으로 admin 문서는 2026-06-09 v13 경계 결정 원문("admin이 외부 API로부터 문제를 받아와, 노출 관리 포인트를 적용해, Supabase에 쓴다; v13은 read-only")과 같은 방향이 됐다.
+
+- 대상 정책: `POL-017`(재정의 — "TOPIK 쓰기 문항 수신·관리 운영정책", `docs/specs/admin-policy-source-map.md`). 운영 흐름은 `수신(외부 공급 API) -> 적재(Supabase) -> 관리 포인트(태그) + 노출 통제(service_status) -> v13 read-only 소비`로 고정한다.
+- 데이터 방향 (인바운드)
+  - **문제 발원 = 외부(공급) API.** 문제 본문·정답·메타데이터(`docs/metadata-tag-schema-rule.md` §4 메타데이터 + §7 테이블 스키마, §7.9 제외·검수 필드 제외)가 **완성 상태로** 공급된다. admin은 문제를 저작·생성·분류·검수하지 않는다.
+  - **외부 공급 API는 미개발 상태**다. 공급 계약은 `docs/requests/upstream-writing-endpoints-request-2026-06-10.md`(2026-06-11 인바운드 기준 재작성)로 요청하며, 수신 연동 구현은 계약 회신 게이트에 종속된다.
+  - admin은 수신분을 Supabase `topik_writing_51/52/53/54_questions` + `question_source_map`에 적재하고(idempotent), **관리 포인트(태그 — schema-rule §2)**와 **노출 통제(`service_status` — D-6)**를 부여한다.
+  - v13 사용자 기능은 admin이 적재·관리한 데이터를 **read-only**로 소비한다. 관리자 프론트엔드가 직접 사용자 화면 데이터를 서빙하지 않는다.
+- 검수 개념 삭제 (결정 기록 §0-3)
+  - `review_status`/`review_workflow_status`(편차 E1 철회)/`review_passed`/`validation_result`와 검수 화면·검수 쓰기·검수 감사 액션은 admin에서 제거한다. 컬럼 물리 제거는 재정의 P3 마이그레이션. 문제 품질·상태 표현은 태그(관리 포인트)로만 한다.
+  - 현행 코드에는 검수 페이지·검수 쓰기 경로가 아직 존재한다(§10.2) — 재정의 P3 구현에서 제거 예정.
+- 인터림 상태 (외부 API 미개발 동안)
+  - P2 백필 466행 = **초기 코퍼스**(유효 저장 데이터, 전 행 `service_status='internal_test'`). 신규 공급은 API 가동 후 수신 경로로만 받는다.
+  - `problems`는 v13 사용자 기능이 읽는 동안 보존한다(일몰 조건은 결정 기록 §2.3 — "검수 SoT" 위상은 소멸, 레거시 원천).
 - 전환 메모
-  - 배포 실행 트리거(`검수 완료` 시 자동 업로드 vs 별도 `배포` 액션)는 후속 구현에서 확정한다. 별도 액션으로 둘 경우 `Target Type = AssessmentQuestion`, `Target ID = questionId` 감사 계약을 따른다(`docs/specs/admin-action-log.md`).
-  - 노출/숨김(운영 상태) write 활성화 경로는 2026-06-10 D-6 확정으로 변경됐다: v13 `lifecycle_status` 종속은 폐기되고, 신규 스키마 `service_status` 컬럼 기반으로 P4에서 `OPERATION_WRITE_ENABLED` 게이트를 제거하며 개방한다(§10.4, 결정 기록 D-6).
-  - `problems`(검수 원본)와 상류 작문 과제(사용자 노출본)는 서로 다른 저장소이므로, 업로드 시 양쪽 식별자 매핑(예: `publishedTaskId` 후보)을 유지해 재배포/역추적이 가능해야 한다.
+  - 노출 통제 write는 신규 스키마 `service_status` 기반으로 P4(재정의)에서 `OPERATION_WRITE_ENABLED` 게이트를 제거하며 개방한다(§10.4, 결정 기록 D-6 — 검수 결합 가드 ①은 삭제).
+  - 수신·적재 시 `question_source_map`에 공급측 식별자를 보존해 재수신(idempotent)·역추적을 보장한다. `published_task_id` 컬럼은 구 push 모델 잔재로 용도 재검토 예정.
+  - 수신 감사: 공급 연동 구현 시 `question_received` 감사 액션을 추가한다(결정 기록 D-8 개정).
 
 ## 10.4 메타데이터·태그 스키마 전환 (권장안 v0.8 — 2026-06-10 채택 확정, Phase 0 결정 완료)
 
 - 대상 문서: `docs/metadata-tag-schema-rule.md`(콘텐츠팀 권장 스키마, v0.8). 영향도 분석: `docs/메타데이터-태그-스키마-전환-영향도-보고서.md`. 실행 SoT: `docs/메타데이터-태그-스키마-전환-실행계획안.md`(P0~P6 단계·PASS 채점 게이트).
 - 상태: **2026-06-10 프로젝트 오너 지시로 v0.8 채택·전면 전환 착수가 확정됐고, Phase 0 결정 13건(D-1~D-13)이 전부 확정됐다.** 확정값·근거·실측 증거는 `docs/architecture/metadata-tag-schema-transition-decision-record.md`(이하 결정 기록)가 SoT다. 구 "미채택/코드 결선 금지" freeze 가드는 해제됐으며, 이후 착수 통제는 실행 계획안 §12.3 페이즈 채점(직전 페이즈 PASS 시에만 비가역 실행)을 따른다.
-- 세 데이터 모델 관계 (유지)
-  - ⓐ 신규 스키마: 번호별 4분리 테이블(`topik_writing_51/52/53/54_questions`) + 태그/주제 마스터 + 추천 검색용 읽기전용 UNION 뷰 + 식별자 매핑 테이블 `topik_writing_question_source_map`(편차 E2)
-  - ⓑ 구 검수 원본: v13 `problems` — P3 컷오버까지 검수 SoT, 컷오버 후 read-only 레거시 동결(일몰 조건은 결정 기록 §2.3)
-  - ⓒ 사용자 노출본: 상류 TalkPik Writing API(§10.3, POL-017) — P6 게이트(D-11 요청서 발신 추적)
+- 세 데이터 모델 관계 (2026-06-11 인바운드 전환 개정)
+  - ⓐ 신규 스키마: 번호별 4분리 테이블(`topik_writing_51/52/53/54_questions`) + 태그/주제 마스터 + 추천 검색용 읽기전용 UNION 뷰 + 식별자 매핑 테이블 `topik_writing_question_source_map`(편차 E2) — **admin 문항·운영 SoT(수신·태그·노출)**
+  - ⓑ 레거시 원천: v13 `problems` — 인터림 코퍼스의 백필 원천(역사), 컷오버 후 read-only 레거시 동결(일몰 조건은 결정 기록 §2.3 — "검수 SoT" 위상은 2026-06-11 §0으로 소멸)
+  - ⓒ 외부(공급) API: **문제 발원 주체 — 미개발**(§10.3, POL-017 재정의, D-11 공급 계약 요청 추적). 종전 "상류 노출본(push 대상)" 위상은 폐기
 - 소유권·호스트 확정 (D-1)
   - 신규 오브젝트는 현행 v13 Supabase 프로젝트 `fglggyfvzjdsbyckinqa`(talkpik-dev)에 생성하고, 마이그레이션 자산(`supabase/migrations`)은 이 repo(topik-ai)가 소유·관리한다(시나리오 B의 공유 호스트 변형).
   - 경계 근거: v13 오너 결정(2026-06-09, v13 repo `supabase/migrations/20260609130000_remove_v13_admin_island.sql`) — "문제 데이터의 작성·노출 통제는 admin(topik-ai)이 담당, v13은 read-only". 공유 자산(`admin_audit_logs`, `private.is_*_admin` 헬퍼, `profiles.app_role`)은 재사용하고, 기존 v13 테이블 DDL 변경은 0건 원칙(P1 무변경 diff 게이트로 증명).
@@ -288,11 +288,11 @@ src/features/<feature>/
   - 무변경 증명: `npm run db:snapshot`(`scripts/db/schema-snapshot.mjs`)으로 적용 전/후 스키마 표면(테이블 컬럼/함수/정책/뷰)을 스냅샷하고 `--diff --exclude-own`으로 자기 네임스페이스 제외 diff 0건을 확인한다.
   - 적용 기록(2026-06-10): 마이그레이션 12파일 전부 적용 완료, 자기 네임스페이스 제외 diff 0건, RLS 매트릭스(anon/비admin 0행·admin 허용)·RT-1 파일럿 4경로 왕복 일치 — 증적은 `logs/metadata-tag-schema-transition-evidence.md` P1 절.
 - 백필 적재 기록 (P2 — 2026-06-10 실행 완료)
-  - D-3 재분류 입력표 466행(분류 24배치 + 표본 60행·q52 cf=ref 22행 2단 적대 감사 보정 완료) 기반 ETL(extract→transform→load→verify)로 `problems` 470행을 백필: **466행 적재**(51:90/52:76/53:62/54:238) + 4행 보류(`audit_seed` 예시 행 — D-5 역분해 실패 경로), `question_source_map` 470행 전수 매핑(legacy 노출 신호 보존). 전 행 `service_status='internal_test'`(D-6 — 사용자 노출 차단), `problems`는 읽기 전용으로만 접근(P3 컷오버까지 검수 SoT 불변).
+  - D-3 재분류 입력표 466행(분류 24배치 + 표본 60행·q52 cf=ref 22행 2단 적대 감사 보정 완료) 기반 ETL(extract→transform→load→verify)로 `problems` 470행을 백필: **466행 적재**(51:90/52:76/53:62/54:238) + 4행 보류(`audit_seed` 예시 행 — D-5 역분해 실패 경로), `question_source_map` 470행 전수 매핑(legacy 노출 신호 보존). 전 행 `service_status='internal_test'`(D-6 — 사용자 노출 차단), `problems`는 읽기 전용으로만 접근(당시 기준 — "검수 SoT" 위상은 2026-06-11 §0으로 소멸).
   - 검증: 5종(재조립/보존/수량/축/RT-2 재조회 왕복) + D-6 + source_map 대사 ALL PASS, idempotency(2회 연속 적재 전 테이블 sha256 동일), 델타 재적재 리허설(덤프 사본 방식 — 검수 변경 2건 따라잡기 + 원상 수렴 발산 0건). 증적: `logs/metadata-tag-schema-transition-evidence.md` P2 절.
-  - P2 종합 판정 **CONDITIONAL** — 필수 중 P2-5(콘텐츠팀 10문항 샘플 승인)만 발주서 미발신으로 대기. 해소(오너 채널 발신→승인 회신) 후 PASS 전환 시 P3 컷오버 배포 착수 가능(코드 선행 개발은 병행 허용).
-- 가드레일 (갱신)
-  - 신규 식별자의 코드 결선은 실행 계획안 §12.3 채점 규칙을 따른다: 가역적 선행 개발(스크립트·코드·문서 초안)은 허용, 비가역 실행(프로덕션 DDL 적용·실데이터 적재·컷오버 배포·write 개방·상류 호출)은 직전 페이즈 PASS 후에만 한다.
-  - `service_status`(`available`/`excluded`/`internal_test`)가 유일한 물리 노출 상태다(D-6). '서비스_노출상태' 태그 그룹은 시드에서 제외하고 RPC에서 부여를 차단한다. `operationStatus` 4값 union은 P3에서 제거한다. v13 `lifecycle_status` 종속은 해소됐다(신규 스키마가 자체 노출 컬럼 보유).
-  - 검수 상태는 ASCII enum 저장 + admin 한국어 라벨 매핑의 2축(`review_status` 3값 + `review_workflow_status` 5값, 편차 E1)으로 확정(D-2).
-  - 채택 계약·식별자 매핑·편차 목록(E1~E4)은 `docs/specs/admin-data-contract.md` §12에서 추적한다.
+  - P2 종합 판정: 2026-06-10 채점 시점 **CONDITIONAL**(P2-5 콘텐츠팀 샘플 승인 대기) → **2026-06-11 인바운드 전환으로 P2-5 게이트 폐기(트랙 소멸), P2 재채점 PASS**(증적 로그 추기 참조). 인터림 코퍼스 466행은 초기 코퍼스로 유지.
+- 가드레일 (2026-06-11 갱신)
+  - 신규 식별자의 코드 결선은 실행 계획안 §12.3 채점 규칙을 따른다: 가역적 선행 개발(스크립트·코드·문서 초안)은 허용, 비가역 실행(프로덕션 DDL 적용·실데이터 적재·컷오버 배포·write 개방·외부 연동 호출)은 직전 페이즈 PASS 후에만 한다.
+  - `service_status`(`available`/`excluded`/`internal_test`)가 유일한 물리 노출 상태다(D-6 유지). '서비스_노출상태' 태그 그룹은 시드에서 제외하고 RPC에서 부여를 차단한다. `operationStatus` 4값 union은 재정의 P3에서 제거한다. v13 `lifecycle_status` 종속은 해소됐다(신규 스키마가 자체 노출 컬럼 보유).
+  - ~~검수 상태 2축(D-2)~~ — **2026-06-11 §0으로 철회**(검수 개념 삭제, 편차 E1 철회). `review_status`/`review_workflow_status`/`review_passed`/`validation_result` 컬럼 물리 제거는 재정의 P3 마이그레이션.
+  - 채택 계약·식별자 매핑·편차 목록(E2~E4 — E1 철회)은 `docs/specs/admin-data-contract.md` §12에서 추적한다.

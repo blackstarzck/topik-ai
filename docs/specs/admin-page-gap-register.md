@@ -368,32 +368,40 @@
 - 대상 파일: `src/features/assessment/pages/assessment-question-review-page.tsx`, `src/features/assessment/pages/assessment-question-manage-page.tsx`, `src/features/assessment/api/assessment-question-bank-service.ts`, `src/features/assessment/api/supabase-assessment-question-bank-service.ts`, `src/app/router/app-router.tsx`
 - 현 상태
   - `TOPIK 쓰기 문제은행` 단일 페이지(`tab` 쿼리 토글)는 두 형제 라우트로 분리되었다. `Assessment > TOPIK 쓰기 문제 검수`(`/assessment/question-bank`)와 `Assessment > TOPIK 쓰기 문항 관리`(`/assessment/question-bank/manage`)가 동일한 Supabase `problems`(question_no 51-54) 조회 결과를 공유 hook으로 함께 쓰며, JSON fixture/store fallback은 제거되었다.
-  - 검수 페이지는 `reviewStatus 요약 카드+필터 -> 목록 -> 2depth 검수 페이지(/assessment/question-bank/review/:questionId)`와 `검수 메모 입력 -> 검수 완료 / 수정 필요 / 보류` 흐름을 유지한다. `tab` 쿼리는 제거되고 각 라우트가 자체 URL 상태(공통 `questionNo`/`domain`/`questionType`/`difficulty`/`keyword`, 검수 전용 `reviewStatus`, 관리 전용 `operationStatus`)를 복원한다.
+  - 검수 페이지는 `reviewStatus 요약 카드+필터 -> 목록 -> 2depth 검수 페이지(/assessment/question-bank/review/:questionId)`와 `검수 메모 입력 -> 검수 완료 / 수정 필요 / 보류` 흐름을 유지한다. `tab` 쿼리는 제거되고 각 라우트가 자체 URL 상태(공통 `questionNo`/`domain`/`questionType`/`difficulty`/`keyword`, 검수 전용 `reviewStatus`, 관리 전용 `operationStatus`)를 복원한다. ※ 2026-06-11 인바운드 전환으로 이 검수 표면은 제거 예정(재정의 P3)이며, 현 단락은 코드 사실 기록이다.
   - `EPS TOPIK`, `레벨 테스트`는 아직 Placeholder
 - 미확정/누락/오구현
-  - `TOPIK 쓰기 문제 검수`
-    - 검수 상태와 운영 상태는 분리 구현됐다. 사용자 공개/숨김 통제 책임은 운영정책 `POL-017`로 문항 관리 페이지(`/assessment/question-bank/manage`) 운영 상태에 확정되었으나(`docs/specs/admin-policy-source-map.md`), 운영 상태 write 활성화(v13 `lifecycle_status` 대기)와 배포 승인 체계는 아직 미확정이다.
-    - `51/52`, `53`, `54` 문항별 검수 필드는 현재 이미지 기준 공통 row + 조건부 row(`51/52`의 `문항`, `54`의 `문항 질문`) 구조로 정리되었지만, 현재 Supabase `problems` payload에는 일부 상세 필드 source가 없어 sentinel/빈 이력으로 표시한다. 장기적으로는 문제 번호별 review field profile schema를 별도 계약으로 승격할 필요가 있다.
-    - `검수 완료` 문항 배포의 방향·대상은 `POL-017`로 확정되었다(관리자 → 상류 `TalkPik AI Service` API 업로드 → Writing 작문 과제 `GET /api/writing/tasks`, 파일 내보내기 방식 폐기). 남은 미확정은 상류 업로드/upsert 엔드포인트 경로와 배포 실행 트리거(자동 vs 별도 액션)이며, 상류 API 원문은 `docs/specs/topik-ai-service-api-reference.md`, 전환 메모는 `docs/architecture/admin-data-source-transition.md` §10.3다.
-    - `수정 히스토리`는 현재 Supabase 문제은행 조회 source가 없어 빈 이력으로 표시하며, 필드별 diff와 버전 간 비교 뷰도 아직 없다.
-    - AI 재생성, 배치 재시도, 프롬프트 버전 비교, 검수 히스토리 diff는 아직 구현되지 않았다.
-    - 1차 사용자 노출 경로는 `POL-017`에 따라 상류 Writing API(`GET /api/writing/tasks`)로 확정되었다. EPS TOPIK / 레벨 테스트 세트 편성 화면에서 검수/배포 완료 문항을 소비하는 계약은 여전히 후속 구현이 필요하다.
-    - `53/54번` 2depth 검수 페이지는 Supabase `problems` 매핑 기준으로 동작하지만, 배치별 대량 검수 액션과 후속 내보내기/배포 액션은 아직 관리자 SoT에 연결되지 않았다.
+  - `TOPIK 쓰기 문제 검수` — **[2026-06-11 인바운드 전환으로 블록 전체 폐기/대체]** 검수 개념이 admin에서 전면 삭제돼(결정 기록 §0) 아래 갭들은 트랙 소멸로 닫혔다. 잔여 실작업은 후술 신규 갭 ②(검수 표면·컬럼 제거 미구현)로 승계된다.
+    - **[대체]** 검수 상태와 운영 상태는 분리 구현됐다. 사용자 공개/숨김 통제 책임은 운영정책 `POL-017`로 문항 관리 페이지(`/assessment/question-bank/manage`)에 확정되었으나, 구판 POL-017의 "배포 승인 체계" 미확정은 push 트랙 폐기로 소멸했다. POL-017은 "TOPIK 쓰기 문항 수신·관리 운영정책"으로 재정의됐고, 노출 통제는 `service_status` 축(write 활성화는 재정의 P4)으로 일원화됐다.
+    - **[폐기]** ~~문제 번호별 review field profile schema를 별도 계약으로 승격할 필요~~ — 검수 표면 자체가 제거 대상이라 승격 트랙 소멸. (현재 검수 상세가 sentinel/빈 이력로 표시되는 것은 코드 사실로 유효 — 신규 갭 ②에서 화면 제거/재구성으로 해소)
+    - **[폐기]** ~~`검수 완료` 문항 배포(관리자 → 상류 `TalkPik AI Service` API 업로드 → Writing 작문 과제 `GET /api/writing/tasks`)와 상류 업로드/upsert 엔드포인트·배포 트리거 미확정~~ — 상류 push(업로드/배포) 트랙 자체가 2026-06-11 폐기됐다. Writing API는 v13 사용자 노출용이며, admin 통합 방향은 인바운드 수신(공급 API 신설 요청 중 — 미개발, 신규 갭 ①)이다.
+    - **[폐기]** ~~`수정 히스토리` 빈 이력, 필드별 diff·버전 간 비교 뷰 부재~~ — 검수 상세 표면 제거 대상에 흡수(신규 갭 ②).
+    - **[폐기]** ~~AI 재생성, 배치 재시도, 프롬프트 버전 비교, 검수 히스토리 diff~~ — admin은 문항을 저작·생성·검수하지 않는다(인바운드 모델). 트랙 소멸.
+    - **[대체]** 1차 사용자 노출 경로의 구판 서술(POL-017 구판: 상류 Writing API 배포)은 폐기됐다. v13 사용자 기능은 Supabase 적재분을 read-only로 소비하며, EPS TOPIK / 레벨 테스트 세트 편성 화면의 문항 소비 계약(태그·`service_status` 기준)은 여전히 후속 구현이 필요하다.
+    - **[폐기]** ~~배치별 대량 검수 액션과 후속 내보내기/배포 액션의 관리자 SoT 연결~~ — 검수 액션·배포 액션 모두 폐기(감사 액션 개정: 검수 4종·`question_published` 폐기).
   - `TOPIK 쓰기 문항 관리`
     - 운영 상태 조치(`노출 후보` / `숨김 후보` / `운영 제외`)는 현재 비활성(스캐폴딩) 상태다. 페이지 상단 `운영 상태 관리는 준비 중입니다` 경고 Alert와 disabled 운영 조치 버튼만 노출되고, `operationStatus`는 모든 문항에서 `미지정` sentinel로만 표시된다.
     - 확인+사유 -> 감사 로그 흐름(`ConfirmAction` + `AuditLogLink`)은 코드에 미리 연결되어 있다. 주의(실측 2026-06-10): 코드가 참조하는 구 `admin_update_problem` RPC는 v13 admin island 제거(2026-06-09)로 라이브 DB에 존재하지 않아 구 경로 활성화는 불가능하다.
-    - 해소 경로(D-6 확정, 2026-06-10): v13 `lifecycle_status` 대기는 폐기됐다. 신규 스키마 `service_status` 축으로 P3(표시 전환)·P4(`OPERATION_WRITE_ENABLED` 게이트 제거 + `admin_update_topik_question` write 개방)에서 해소한다.
+    - 해소 경로(D-6 확정, 2026-06-10): v13 `lifecycle_status` 대기는 폐기됐다. 신규 스키마 `service_status` 축으로 재정의 P3(표시 전환)·재정의 P4(`OPERATION_WRITE_ENABLED` 게이트 제거 + `admin_update_topik_question` write 개방 — 쓰기 계약은 태그+`service_status`로 한정, 2026-06-11 §0)에서 해소한다.
   - `메타데이터·태그 스키마 전환` (검수/관리 공통) — **2026-06-10 Phase 0 결정 해소**
-    - 콘텐츠팀 권장 스키마(`docs/metadata-tag-schema-rule.md` v0.8) 채택·전면 전환이 2026-06-10 오너 지시로 확정됐고, Phase 0 결정 13건(D-1~D-13)이 전부 확정됐다(`docs/architecture/metadata-tag-schema-transition-decision-record.md`). 소유권은 "신규 `topik_writing_*` 오브젝트=이 repo 소유, 호스트=talkpik-dev 공유"로 택일됐고(D-1, v13 오너의 2026-06-09 admin island 제거 결정이 경계 근거), 주제 축 재분류(D-3)·채번(D-4)·역분해(D-5)·`service_status` 정합(D-6)·감사 계약(D-8)·52/53/54 실재(D-9 쿼리 확정)도 해소됐다.
-    - 잔여 갭은 "결정 대기"가 아니라 "실행 대기"다: P1(스키마)~P6(상류 연동)는 실행 계획안(`docs/메타데이터-태그-스키마-전환-실행계획안.md`) §12.3 채점 게이트(직전 페이즈 PASS)에 따라 순차 실행한다. 진행 실적(2026-06-10): P1 PASS(마이그레이션 12파일 프로덕션 적용), **P2 백필 적재 완료**(466행 + 보류 4행, 검증·idempotency·델타 리허설 ALL PASS, 전 행 `service_status='internal_test'`) — 종합 CONDITIONAL(P2-5 콘텐츠팀 샘플 승인 대기). 외부 잔여: D-11 상류 엔드포인트 요청서·콘텐츠팀 발주서 발신(`docs/requests/`).
-    - 백필 원천 데이터 품질 메모(P2 표본 적대 감사 실측, 2026-06-10 — 분류 오류 아님): 구 `problems`의 title/hints가 본문과 전혀 다른 시나리오로 오염된 행 3건 — `0027601f`(힌트 '전통 음악 공연 추천' vs 본문 수강 신청), `7a6857b3`(title '회의 일정 변경 요청' vs 본문 도서관 공지), `aae581e2`(힌트 '컴퓨터실 임시 등록' vs 본문 주차 등록). 신규 스키마 분류·rationale은 본문 기준이라 적재 무영향이나, title을 그대로 표시하는 구 problems 기반 화면에서는 혼동 소지가 있다. 콘텐츠팀 회신 시 원천 정정 여부 확인 대상.
-    - 콘텐츠 메타(~45컬럼) 입력/저작 UI는 비범위로 확정(D-10) — 갭 아님.
+    - 콘텐츠팀 권장 스키마(`docs/metadata-tag-schema-rule.md` v0.8) 채택·전면 전환이 2026-06-10 오너 지시로 확정됐고, Phase 0 결정 13건(D-1~D-13)이 전부 확정됐다(`docs/architecture/metadata-tag-schema-transition-decision-record.md`). 소유권은 "신규 `topik_writing_*` 오브젝트=이 repo 소유, 호스트=talkpik-dev 공유"로 택일됐고(D-1, v13 오너의 2026-06-09 admin island 제거 결정이 경계 근거), 주제 축 재분류(D-3)·채번(D-4)·역분해(D-5)·`service_status` 정합(D-6)·감사 계약(D-8)·52/53/54 실재(D-9 쿼리 확정)도 해소됐다. ※ 2026-06-11 §0 인바운드 전환으로 D-2·D-7·편차 E1 철회, D-3 트랙 폐기, D-8·D-10·D-11 재정의 — 후술 2026-06-11 기록 참조.
+    - 잔여 갭은 "결정 대기"가 아니라 "실행 대기"다: P1(스키마)~P6(상류 연동)는 실행 계획안 §12.3 채점 게이트(직전 페이즈 PASS)에 따라 순차 실행한다. 진행 실적(2026-06-10): P1 PASS(마이그레이션 12파일 프로덕션 적용), **P2 백필 적재 완료**(466행 + 보류 4행, 검증·idempotency·델타 리허설 ALL PASS, 전 행 `service_status='internal_test'`) — 종합 CONDITIONAL(P2-5 콘텐츠팀 샘플 승인 대기). 외부 잔여: D-11 상류 엔드포인트 요청서·콘텐츠팀 발주서 발신(`docs/requests/`). → **[2026-06-11 갱신]** P2-5 승인 게이트·콘텐츠팀 발주서는 인바운드 전환으로 **폐기**(트랙 소멸 — 466행은 초기 코퍼스로 확정), D-11은 "문항 공급(인바운드) API 계약 요청"으로 재작성, 페이즈 구성은 실행계획안 2026-06-11 개정 기준으로 재정의됐다(구 P6 상류 push 폐기).
+    - 백필 원천 데이터 품질 메모(P2 표본 적대 감사 실측, 2026-06-10 — 분류 오류 아님): 구 `problems`의 title/hints가 본문과 전혀 다른 시나리오로 오염된 행 3건 — `0027601f`(힌트 '전통 음악 공연 추천' vs 본문 수강 신청), `7a6857b3`(title '회의 일정 변경 요청' vs 본문 도서관 공지), `aae581e2`(힌트 '컴퓨터실 임시 등록' vs 본문 주차 등록). 신규 스키마 분류·rationale은 본문 기준이라 적재 무영향이나, title을 그대로 표시하는 구 problems 기반 화면에서는 혼동 소지가 있다. → **[2026-06-11 갱신]** 콘텐츠팀 회신 트랙 폐기 — 해당 3건은 인터림 코퍼스 참고 기록으로만 유지(구 `problems` 기반 화면은 재정의 P3 컷오버로 해소).
+    - 콘텐츠 메타(~45컬럼) 입력/저작 UI는 비범위로 확정(D-10, 2026-06-11 재정의에서도 원칙 유지 — 메타데이터는 외부 공급) — 갭 아님.
+  - `2026-06-11 인바운드 모델 전환` (오너 결정 — 결정 기록 `docs/architecture/metadata-tag-schema-transition-decision-record.md` §0, 실행계획안 2026-06-11 개정)
+    - 전환 결정: 문제 발원 = 외부(공급) API(**미개발**) — 문제 본문+메타데이터(schema-rule §4 + §7, §7.9·검수 필드 제외)가 **완성 상태로 공급**된다. admin은 문항을 저작·생성·분류·검수하지 않으며, admin 역할 = ①수신·적재(외부 API → Supabase `topik_writing_51/52/53/54_questions`+`question_source_map`) ②관리 포인트=태그(부여/제거 + 사유 `memo`) ③노출 통제=`service_status`(기본 `internal_test`)다. v13은 read-only 소비.
+    - 검수 개념 전면 삭제: `review_status`·`review_workflow_status`(편차 E1 철회)·`review_passed`·`validation_result` 필드와 검수 화면·검수 쓰기·검수 감사 액션 4종·검수 메모를 admin 표면·스키마·계약·정책에서 제거한다(컬럼 물리 제거는 재정의 P3 마이그레이션). 품질·상태 표현은 태그로만 한다. 상류 push(업로드/배포) 트랙·`question_published`도 폐기. POL-017은 "TOPIK 쓰기 문항 수신·관리 운영정책"으로 재정의, POL-018은 검수 결합 기준 ① 삭제·운영주의 태그 사유 필수·반복과다 `excluded` 권고 유지로 개정.
+    - 소멸·해소로 닫힌 기존 갭: ①검수 메모 영구화(구 D-7 — UI-local 가짜 저장 문제는 개념 삭제로 소멸, 운영 메모는 `question_tags.memo`) ②P2-5 콘텐츠팀 샘플 승인 대기 ③상류 업로드/upsert 엔드포인트·배포 트리거 미확정 ④문제 번호별 review field profile schema 승격 ⑤배포 승인 체계 — 전부 트랙 소멸로 폐기 처리(상단 `TOPIK 쓰기 문제 검수` 블록 마킹 참조).
+    - **신규 갭 ① — 외부 공급 API 미개발(수신 경로 미구현, 차단)**: 문항 수신·적재 경로(외부 API → Supabase)가 공급측 미개발로 구현 불가다. 공급 계약(D-11 재작성: 문항 공급(인바운드) API 계약 요청)이 확정되기 전까지 신규 문항 유입이 없고, `question_received` 감사 액션도 확정 불가다. 인터림은 P2 백필 466행 초기 코퍼스(전 행 `service_status='internal_test'`)로 운영한다. 분류: `미확정 + 누락`(외부 의존 — 차단).
+    - **신규 갭 ② — 검수 표면·컬럼 제거 미구현(재정의 P3)**: 검수 화면(`/assessment/question-bank`의 검수 흐름·요약 카드·`reviewStatus` 필터, `/assessment/question-bank/review/:questionId` 상세)과 검수 필드(`review_status`/`review_workflow_status` — DB에 값 적재 상태)·검수 감사 액션 분기가 코드·DB에 물리 잔존해 새 모델(검수 없음)과 어긋난다. 재정의 P3에서 컬럼 제거 마이그레이션 + 화면 재구성(question-bank=문항 목록(조회), manage=문항 관리(관리 포인트), `/review/:questionId` 라우트 개명)으로 해소 예정이다. 분류: `오구현`(모델과 구현 불일치 — 제거 예정 명시로 추적).
   - `EPS TOPIK`, `레벨 테스트`
     - 여전히 Placeholder이며, 편성/배점/발행/결과 정책의 화면 SoT와 데이터 source 경계가 미정이다.
 - 분류
   - `부분 구현 + 미확정`
-  - 문항 관리 운영 상태 조치: `누락` (write path 후속 활성화 대기)
-  - 메타데이터·태그 스키마 전환: `진행 중` (P0·P1 PASS, P2 백필 적재 완료·CONDITIONAL — 콘텐츠팀 샘플 승인 대기, P3~P6 실행 대기 — 실행 계획안 §12.3 PASS 게이트 추적)
+  - 문항 관리 운영 상태 조치: `누락` (write path 후속 활성화 대기 — 재정의 P4 `service_status` write 개방)
+  - 메타데이터·태그 스키마 전환: `진행 중` (P0·P1 PASS, P2 백필 적재 완료 — P2-5 승인 게이트는 2026-06-11 폐기, 466행은 초기 코퍼스로 확정. 이후 페이즈는 실행계획안 2026-06-11 개정 기준으로 재정의 P3부터 실행 대기)
+  - 외부 공급 API 미개발(수신 경로): `미확정 + 누락` (공급 계약 확정 전 차단)
+  - 검수 표면·컬럼 제거: `오구현` (2026-06-11 검수 개념 삭제 대비 잔존 — 재정의 P3 해소 예정)
 
 ### 4.8 Content
 

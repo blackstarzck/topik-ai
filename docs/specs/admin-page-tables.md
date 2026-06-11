@@ -309,50 +309,52 @@
   - 운영 정보: 노출 상태, 판매량, 연결 쿠폰/포인트
   - 액션: 상품 등록, 수정, 노출 제어, 판매 중지
 
-## 19) 평가 > TOPIK 쓰기 문제 검수
+## 19) 평가 > TOPIK 쓰기 문항 목록 (구 TOPIK 쓰기 문제 검수)
 
+- 2026-06-11 재정의: 인바운드 전환(`docs/architecture/metadata-tag-schema-transition-decision-record.md` §0)으로 이 페이지는 `TOPIK 쓰기 문항 목록`(조회 전용)으로 재정의됐습니다. admin은 문제를 저작·생성·분류·검수하지 않으며(문제 본문+메타데이터는 외부(공급) API가 완성 상태로 공급 — 미개발 상태), 아래 검수 표면(검수 축 요약 카드, 검수 상태 컬럼, 검수 메모, 2depth 검수 페이지) 서술은 현행 코드 사실로 유지하되 전부 제거 예정입니다(재정의 P3). 목표 컬럼/필터 축은 주제(topic_main/topic_detail)·노출 상태(`service_status`)·태그입니다.
 - 현재 상태: 구현됨 (Supabase `problems` 조회 기반, JSON fixture/store fallback 없음)
-- 라우트: `/assessment/question-bank` (검수 페이지)
-- 목표 화면 구조: `PageTitle -> ListSummaryCards -> AdminListCard(toolbar=문제 번호 체크박스 그룹 -> SearchBar(summary), body=안내 Alert -> Table)` + 2depth 검수 페이지
+- 라우트: `/assessment/question-bank` (현행 검수 목록 페이지 — 조회 전용 목록으로 재정의)
+- 목표 화면 구조: `PageTitle -> ListSummaryCards -> AdminListCard(toolbar=문제 번호 체크박스 그룹 -> SearchBar(summary), body=안내 Alert -> Table)` + 2depth 상세 페이지(현행 코드는 2depth 검수 페이지 — 조회 전용 상세로 재정의, 검수 입력 표면 제거 예정 재정의 P3)
 - 문제 번호 체크박스 그룹: `51번`, `52번`, `53번`, `54번` 다중 선택, 기본 전체 선택
-- 상단 요약 카드: 전체 문항, 검수 대기, 보류, 검수 완료
-- 필터: SearchBar `도메인`, `유형`, `난이도`, `검색` + `reviewStatus` 요약 카드 필터
-- 컬럼: 문항 번호, 문항 ID, 문항 주제/도메인, 문항, 검수 상태, 최근 수정
-  - `문항` 셀: 기본 목록에서는 1줄 말줄임으로 노출한다. hover/focus 시 우측 툴팁에서 문항 전문을 확인하고, 하단 `검수하기` 버튼으로 동일 2depth 검수 페이지에 진입할 수 있다. 툴팁 본문은 검수 상세 `문항 지시문`과 같은 줄바꿈/문단 표현을 유지하며, 목록용 문항 텍스트는 Supabase `problems.prompt`를 사용한다.
+- 상단 요약 카드: 전체 문항, 검수 대기, 보류, 검수 완료 (현행 코드 — 검수 축 카드는 제거 예정, 재정의 P3에서 노출 상태(`service_status`)·태그 축으로 재작성)
+- 필터: SearchBar `도메인`, `유형`, `난이도`, `검색` + `reviewStatus` 요약 카드 필터 (현행 코드 — `reviewStatus` 축은 제거 예정, 재정의 P3에서 주제(`topic_main` 17주제 2단)·노출 상태·태그 축으로 재작성)
+- 컬럼: 문항 번호, 문항 ID, 문항 주제/도메인, 문항, 검수 상태, 최근 수정 (`검수 상태` 컬럼은 현행 코드 — 제거 예정, 재정의 P3에서 주제·노출 상태(`service_status`)·태그 축으로 재작성)
+  - `문항` 셀: 기본 목록에서는 1줄 말줄임으로 노출한다. hover/focus 시 우측 툴팁에서 문항 전문을 확인하고, 하단 `검수하기` 버튼(라벨 — 조회 전용 `상세 보기`로 개명 예정)으로 동일 2depth 상세 페이지에 진입할 수 있다. 툴팁 본문은 상세 `문항 지시문`과 같은 줄바꿈/문단 표현을 유지하며, 목록용 문항 텍스트는 Supabase `problems.prompt`를 사용한다.
   - `문항 주제/도메인` 셀은 Supabase `problems.title`과 `topic_category_code` 라벨을 노출한다. `questionTypeLabel`은 문제 번호 규칙, `difficultyLevel`은 `problems.difficulty`에서 파생하지만 현재 목록 셀에는 노출하지 않는다.
-- 행 클릭/툴팁 `검수하기`: `/assessment/question-bank/review/:questionId` 2depth 검수 페이지로 이동
-- 검수 페이지: 좌측 본문은 `Descriptions` 기반 검수 문서형 레이아웃을 사용하고, 공통 상단(`문항 번호`, `문항 주제`, `문항 형태`, `문항 ID`, `문항 지시문`) 아래에 문제 번호별 profile을 렌더링한다.
+- 행 클릭/툴팁 `검수하기`: `/assessment/question-bank/review/:questionId` 2depth 페이지로 이동 (현행 라우트 — 조회 전용 상세로 재정의, 라우트 개명은 재정의 P3 예정)
+- 2depth 상세 페이지(현행 코드는 검수 페이지 — 조회 전용으로 재정의): 좌측 본문은 `Descriptions` 기반 문서형 레이아웃을 사용하고, 공통 상단(`문항 번호`, `문항 주제`, `문항 형태`, `문항 ID`, `문항 지시문`) 아래에 문제 번호별 profile을 렌더링한다.
   - 공통 상단 아래에는 이미지 기준 공통 요약 row `출처`, `핵심 의미`, `핵심 문제`, `모범답안`, `채점 기준`을 유지한다.
-  - 현재 문제은행 row는 Supabase `problems`에서 읽은 값을 화면 모델로 매핑한다. `문항 주제`는 `title`, `문항`과 profile별 `문항 지시문` source는 `prompt`, `모범답안`은 `answer_key`, `채점 기준`은 `rubric`를 사용한다.
-  - Supabase source가 없는 표시값은 임의 생성하지 않고 화면에서 `-`, `미상`, `미지정` 같은 sentinel로 표시한다. 현재 `출처`, `검수자`, `수정 히스토리` 상세 항목이 이 규칙을 따른다.
+  - 현재 문항 row는 Supabase `problems`에서 읽은 값을 화면 모델로 매핑한다. `문항 주제`는 `title`, `문항`과 profile별 `문항 지시문` source는 `prompt`, `모범답안`은 `answer_key`, `채점 기준`은 `rubric`를 사용한다.
+  - Supabase source가 없는 표시값은 임의 생성하지 않고 화면에서 `-`, `미상`, `미지정` 같은 sentinel로 표시한다. 현재 `출처`, `검수자`(검수 개념 삭제로 항목 자체 제거 예정 — 재정의 P3), `수정 히스토리` 상세 항목이 이 규칙을 따른다.
   - `채점 기준`은 Supabase `problems.rubric` 배열을 `scoringCriteria[]`로 매핑해 카드형으로 보여준다. JSON fixture 또는 store fallback은 사용하지 않는다.
   - `51/52`: 공통 row + `문항` (`problems.prompt` / `questionText`). 공통 `문항 지시문`은 현재 source가 없어 `-`로 표시한다.
   - `53`: 공통 row만 사용
   - `54`: 공통 row + `문항 질문` (현재 Supabase source가 없으면 `-`와 빈 조건 목록)
-  - `수정 히스토리`는 하단 별도 테이블로 유지하되, 현재 Supabase 문제은행 조회에서는 빈 이력으로 표시한다.
-- 검수 메모 규칙: 2depth 검수 페이지에서만 직접 입력/저장하고, 저장되지 않은 메모가 있거나 메모가 비어 있으면 `검수 완료`, `보류`, `수정 필요` 조치를 막습니다.
-- 주요 액션: `검수 페이지 열기`, `빠른 상세 보기`
-- URL 복원 메모: `questionNo`(반복), `domain`, `questionType`, `difficulty`, `keyword`, `reviewStatus`. `tab` 쿼리는 사용하지 않고 라우트 자체가 URL 상태를 보존합니다.
-- 분리 메모: `문항 관리`는 형제 라우트 `/assessment/question-bank/manage`로 분리되어 #19-1로 별도 정의합니다. 두 페이지는 동일한 Supabase `problems`(question_no 51-54) 조회 결과를 공유 hook으로 사용합니다.
-- 전환 메모: 콘텐츠팀 권장 스키마(`docs/metadata-tag-schema-rule.md` v0.8)는 2026-06-10 채택 확정됐습니다. 필터 축(`도메인` 8값 → `topic_main` 17주제 2단)과 문제 번호별 검수 필드 구성은 P3 읽기·검수 컷오버 작업에서 본 표와 함께 재작성하며, 컷오버 전에는 현행 컬럼/필터 계약을 유지합니다(`docs/architecture/metadata-tag-schema-transition-decision-record.md`, `docs/메타데이터-태그-스키마-전환-실행계획안.md` §7).
+  - `수정 히스토리`는 하단 별도 테이블로 유지하되, 현재 Supabase 문항 조회에서는 빈 이력으로 표시한다.
+- 검수 메모 규칙(현행 코드 — 제거 예정): 2depth 검수 페이지에서만 직접 입력/저장하고, 저장되지 않은 메모가 있거나 메모가 비어 있으면 `검수 완료`, `보류`, `수정 필요` 조치를 막습니다. 검수 메모·검수 조치 표면은 2026-06-11 검수 개념 삭제로 전부 제거 예정입니다(재정의 P3 — 운영 메모는 태그 사유 `question_tags.memo`로만, `/manage` 담당).
+- 주요 액션: `검수 페이지 열기`(현행 — 조회 전용 `상세 보기`로 개명 예정), `빠른 상세 보기`
+- URL 복원 메모: `questionNo`(반복), `domain`, `questionType`, `difficulty`, `keyword`, `reviewStatus`(현행 — 검수 축 제거 예정, 재정의 P3). `tab` 쿼리는 사용하지 않고 라우트 자체가 URL 상태를 보존합니다.
+- 분리 메모: `문항 관리`(관리 포인트: 태그 + 노출)는 형제 라우트 `/assessment/question-bank/manage`로 분리되어 #19-1로 별도 정의합니다. 두 페이지는 동일한 Supabase `problems`(question_no 51-54) 조회 결과를 공유 hook으로 사용합니다.
+- 전환 메모: 2026-06-11 인바운드 전환(결정 기록 §0)으로 P3가 재정의됐습니다(검수 컷오버 → 조회 컷오버 + 검수 표면·컬럼 제거). 필터 축(`도메인` 8값 → `topic_main` 17주제 2단)과 문제 번호별 상세 필드 구성(검수 필드 제외)은 재정의 P3 컷오버 작업에서 본 표와 함께 재작성하며, 컷오버 전에는 현행 컬럼/필터 계약을 유지합니다(`docs/architecture/metadata-tag-schema-transition-decision-record.md` §0, 실행계획안 2026-06-11 개정).
 
 ## 19-1) 평가 > TOPIK 쓰기 문항 관리
 
+- 2026-06-11 재정의: 인바운드 전환(결정 기록 §0)으로 이 페이지는 admin의 **관리 포인트** 페이지로 재정의됐습니다 — ① 태그 부여/제거(schema-rule §2 tag_master 사전 기반 `question_tags` + 사유 memo), ② 노출 통제(`service_status` 컬럼: available/excluded/internal_test, 기본 internal_test — D-6 유지). 현행 화면은 P4 write 개방 전 disabled 스캐폴딩입니다.
 - 현재 상태: 구현됨 (Supabase `problems` 조회 기반, JSON fixture/store fallback 없음)
 - 라우트: `/assessment/question-bank/manage`
 - 목표 화면 구조: `PageTitle -> ListSummaryCards -> AdminListCard(toolbar=문제 번호 체크박스 그룹 -> SearchBar(summary), body=안내 Alert -> Table)`
 - 문제 번호 체크박스 그룹: `51번`, `52번`, `53번`, `54번` 다중 선택, 기본 전체 선택
-- 상단 요약 카드: 전체 문항, 노출 후보, 숨김 후보, 운영 제외
-- 필터: SearchBar `도메인`, `유형`, `난이도`, `검색` + `operationStatus` 요약 카드 필터
-- 컬럼: 문항 번호, 문항 ID, 주제, 검수 상태, 운영 상태, 사용 현황, 운영 조치, 최근 수정
-  - `운영 상태` 셀: v13 `lifecycle_status`가 적용되기 전까지 모든 문항에서 `미지정` sentinel로 표시한다.
-  - `운영 조치` 컬럼: `노출 후보`, `숨김 후보`, `운영 제외` 버튼을 노출하되, 현재 v13 `lifecycle_status` 미적용으로 모두 disabled(준비 중) 상태이다. 확인+사유 -> 감사 로그 흐름(`ConfirmAction` + `AuditLogLink`)은 미리 연결되어 있으나, `OPERATION_WRITE_ENABLED` 플래그와 서비스 un-stub으로 `lifecycle_status` 도착 시 한 번에 활성화한다.
+- 상단 요약 카드: 전체 문항, 노출 후보, 숨김 후보, 운영 제외 (현행 코드 — 재정의 P3에서 `service_status` 축(available/excluded/internal_test) 카드로 재작성)
+- 필터: SearchBar `도메인`, `유형`, `난이도`, `검색` + `operationStatus` 요약 카드 필터 (`operationStatus` 4값 union은 재정의 P3에서 `service_status` 축으로 제거 — D-6. 주제 축은 `topic_main` 17주제 2단으로 재작성, 태그 필터는 P4에서 추가 예정)
+- 컬럼: 문항 번호, 문항 ID, 주제, 검수 상태, 운영 상태, 사용 현황, 운영 조치, 최근 수정 (`검수 상태` 컬럼은 현행 코드 — 2026-06-11 검수 개념 삭제로 제거 예정, 재정의 P3. 재정의 후 축은 주제·태그·노출 상태(`service_status`))
+  - `운영 상태` 셀: 현행 코드는 모든 문항에서 `미지정` sentinel로 표시한다(구 v13 `lifecycle_status` 대기 전제는 D-6로 폐기). 재정의 P3에서 `service_status` 표시로 전환한다.
+  - `운영 조치` 컬럼: `노출 후보`, `숨김 후보`, `운영 제외` 버튼을 노출하되, 현재 모두 disabled(준비 중) 상태이다. 확인+사유 -> 감사 로그 흐름(`ConfirmAction` + `AuditLogLink`)은 미리 연결되어 있으며, `OPERATION_WRITE_ENABLED` 플래그와 서비스 un-stub으로 P4 `service_status` write 개방 시 한 번에 활성화한다. '운영 제외'는 `service_status='excluded'` + 운영주의 태그 값 '운영 제외'로 구분한다(D-6).
 - 행 클릭: 별도 동작 없음
-- 안내 Alert: 페이지 상단에 `운영 상태 관리는 준비 중입니다` 경고 Alert를 노출한다. 감사 RPC(`admin_update_problem`) write path는 데이터 계약상 비활성이다.
-- 주요 액션: `노출 후보`, `숨김 후보`, `운영 제외` (현재 모두 disabled)
-- URL 복원 메모: `questionNo`(반복), `domain`, `questionType`, `difficulty`, `keyword`, `operationStatus`. `tab` 쿼리는 사용하지 않고 라우트 자체가 URL 상태를 보존합니다.
-- 분리 메모: `검수` 페이지는 형제 라우트 `/assessment/question-bank`(#19)로 분리되어 있으며, 두 페이지는 동일한 Supabase `problems`(question_no 51-54) 조회 결과를 공유 hook으로 사용합니다.
-- 전환 메모: 콘텐츠팀 권장 스키마(`docs/metadata-tag-schema-rule.md` v0.8)는 2026-06-10 채택 확정됐고 `service_status`↔`operationStatus`↔POL-017 정합은 D-6로 확정됐습니다. 운영 상태/요약 카드 구성은 P3에서 `service_status` 축 표시로, 운영 조치 write는 P4에서 본 표와 함께 재작성하며, 컷오버 전에는 현행 계약을 유지합니다(`docs/architecture/metadata-tag-schema-transition-decision-record.md`, `docs/메타데이터-태그-스키마-전환-실행계획안.md` §8).
+- 안내 Alert: 페이지 상단에 `운영 상태 관리는 준비 중입니다` 경고 Alert를 노출한다. write path는 데이터 계약상 비활성이며(현행 문서·코드가 참조하던 구 `admin_update_problem`은 2026-06-09 v13 admin island 제거로 라이브 DB에서 이미 삭제됨), P4 개방 시 신규 RPC(`admin_update_topik_question`(service_status)/`admin_assign_question_tag`/`admin_remove_question_tag`) 기준으로 결선한다.
+- 주요 액션: `노출 후보`, `숨김 후보`, `운영 제외` (현재 모두 disabled — P4 개방 예정). 태그 부여/제거 액션(확인 + 사유 memo)은 P4에서 본 표에 추가 예정
+- URL 복원 메모: `questionNo`(반복), `domain`, `questionType`, `difficulty`, `keyword`, `operationStatus`(재정의 P3에서 `service_status` 축으로 교체 예정). `tab` 쿼리는 사용하지 않고 라우트 자체가 URL 상태를 보존합니다.
+- 분리 메모: 조회 전용 `문항 목록` 페이지는 형제 라우트 `/assessment/question-bank`(#19)로 분리되어 있으며, 두 페이지는 동일한 Supabase `problems`(question_no 51-54) 조회 결과를 공유 hook으로 사용합니다(재정의 P3 컷오버에서 신규 4테이블 기준으로 전환).
+- 전환 메모: 2026-06-11 인바운드 전환으로 POL-017은 "TOPIK 쓰기 문항 수신·관리 운영정책"(수신(외부 API, 미개발) → 적재 → 관리 포인트(태그) + 노출(`service_status`) → v13 read-only)으로 재정의됐고, `service_status` 정합은 D-6로 유지됩니다(검수 선행 기준 ①만 삭제). 운영 상태/요약 카드 구성은 재정의 P3에서 `service_status` 축 표시로, 태그·노출 write는 P4에서 본 표와 함께 재작성하며, 컷오버 전에는 현행 계약을 유지합니다(`docs/architecture/metadata-tag-schema-transition-decision-record.md` §0, 실행계획안 2026-06-11 개정).
 
 ## 20) 평가 > EPS TOPIK
 

@@ -3,9 +3,10 @@
 ## 1. 문서 목적
 
 - `Assessment > TOPIK 쓰기 문항 관리`의 목록 운영 구조를 하나의 SoT로 고정한다.
-- 운영 기본 흐름 `검색 -> 비교 -> 운영 조치 -> 감사 로그 확인`을 유지하되, 운영 상태(노출/숨김/운영 제외)와 사용 현황을 비교·관리하는 목록 운영 화면으로 한정한다.
-- 검수 워크플로우는 별도 검수 페이지 `/assessment/question-bank` 소관이며, 이 페이지는 검수 큐/검수 메모/검수 상태 변경 책임을 가지지 않는다.
-- `51~54번` 문제 유형 차이를 반영하면서도 검색 파라미터, 감사 로그 역추적, URL 복원 계약을 검수 페이지와 일관되게 유지한다.
+- 2026-06-11 인바운드 모델 전환(`docs/architecture/metadata-tag-schema-transition-decision-record.md` §0)에 따라 이 페이지는 **admin의 핵심 관리 surface**다: 외부(공급) API가 완성 상태로 공급해 적재된 문항에 대해 admin이 가진 두 가지 통제 수단 — ① **관리 포인트 = 태그**(`tag_master` 사전 기반 `question_tags` 부여/제거 + 사유 memo) ② **노출 통제 = `service_status`**(D-6: `available`/`excluded`/`internal_test`, 기본 `internal_test`) — 를 실행하는 화면이다.
+- 운영 기본 흐름은 `검색 -> 비교 -> 관리 조치(태그/노출) -> 감사 로그 확인`이다. 현행 코드의 조치 write는 P4 개방 전 disabled 스캐폴딩 상태다.
+- 문항·메타데이터 열람은 문항 목록 페이지 `/assessment/question-bank`(조회 전용) 소관이며, 검수 개념(검수 큐/검수 메모/검수 상태 변경)은 2026-06-11 §0으로 admin 전체에서 삭제됐다.
+- `51~54번` 문제 유형 차이를 반영하면서도 검색 파라미터, 감사 로그 역추적, URL 복원 계약을 문항 목록 페이지와 일관되게 유지한다.
 
 ## 2. 문서 메타
 
@@ -13,38 +14,40 @@
 | --- | --- |
 | 모듈 | Assessment |
 | 페이지명 | TOPIK 쓰기 문항 관리 |
-| 현재 상태 | 구현됨 (Supabase `problems` 조회 기반, JSON fixture/store fallback 없음) / 운영 조치 write는 준비 중 |
+| 현재 상태 | 구현됨 — 조회 + 관리 조치 disabled 스캐폴딩(`OPERATION_WRITE_ENABLED=false`, P4 개방 예정). 데이터 소스는 facade 스위치(`legacy` 기본 / `topik_writing` / `mock`) |
 | 페이지 유형 | 목록 운영형 |
 | 라우트 | `/assessment/question-bank/manage` |
 | 주요 권한 | `assessment.question-bank.manage` |
 | 주요 role | `SUPER_ADMIN`, `CONTENT_MANAGER` |
-| 연관 문서 | `docs/specs/page-ia/assessment-question-bank-page-ia.md`, `docs/specs/admin-page-tables.md`, `docs/specs/admin-data-contract.md`, `docs/architecture/admin-data-source-transition.md`, `docs/specs/admin-page-gap-register.md`, `docs/specs/admin-policy-source-map.md`, `docs/specs/admin-data-usage-map.md`, `docs/specs/topik-ai-service-api-reference.md` |
+| 연관 문서 | `docs/specs/page-ia/assessment-question-bank-page-ia.md`, `docs/specs/admin-page-tables.md`, `docs/specs/admin-data-contract.md`, `docs/specs/admin-action-log.md`, `docs/architecture/admin-data-source-transition.md`, `docs/specs/admin-page-gap-register.md`, `docs/specs/admin-policy-source-map.md`, `docs/specs/admin-data-usage-map.md`, `docs/architecture/metadata-tag-schema-transition-decision-record.md`, `docs/metadata-tag-schema-rule.md` |
 
 ## 3. 페이지 목표와 비목표
 
 ### 목표
 
-- AI 배치가 생성한 TOPIK 쓰기 `51~54번` 문항을 문제 번호 단위로 운영 관점에서 비교한다.
-- 운영 상태(노출 후보/숨김 후보/운영 제외)와 사용 현황을 한 화면에서 비교·관리한다.
-- `POL-017`에 따라 이 페이지가 **사용자에게 보여지는 부분(노출/숨김)의 통제 책임**을 가진다. 검수 완료 후 상류 `TalkPik AI Service`로 배포(API 업로드)되어 Writing 작문 과제(`GET /api/writing/tasks`)가 된 문항의 사용자 노출 on/off를 운영 상태로 통제한다.
-- 이 페이지가 다루는 사용자 노출 데이터 모델은 Swagger(`http://58.236.187.135:9009/docs#/`)의 Writing 파트를 기준으로 하며, 정리본은 `docs/specs/topik-ai-service-api-reference.md`다(작문 과제 모델: `task_type`/`title`/`instruction`/`topic`/`max_score`/`difficulty`).
-- 검수 상태는 읽기 전용 컬럼으로 함께 노출하여 검수 진척과 운영 상태를 대조한다.
-- 운영 상태 변경은 `AssessmentQuestion + questionId` 감사 로그 계약으로 추적한다.
+- 수신·적재된 TOPIK 쓰기 `51~54번` 문항을 문제 번호 단위로 운영 관점에서 비교하고, admin의 관리 포인트를 실행한다.
+- **태그 부여/제거(관리 포인트)**: `docs/metadata-tag-schema-rule.md` §2의 `tag_master` 사전(추천목적/반복방지/학습흐름/운영주의/대표문제/추천사용)을 기반으로 `question_tags`를 부여/제거하고 사유를 memo로 남긴다. 문항 품질·상태 표현은 태그로만 한다. (편집 UI는 P4 개방 — 현행 코드는 활성 태그 수 표시까지)
+- **노출 통제(`service_status`)**: 사용자에게 보여지는 부분의 통제 책임을 이 페이지가 가진다. `available`(노출 가능)/`excluded`(노출 제외)/`internal_test`(내부 테스트, 기본값) 전환으로 v13 read-only 소비의 노출 여부를 결정한다.
+- 노출 상태별 건수와 태그 부여 현황을 한 화면에서 비교한다.
+- 관리 조치는 `AssessmentQuestion + questionId` 감사 로그 계약(`service_status_changed`/`tag_assigned`/`tag_removed` — D-8 개정)으로 추적한다.
 
 ### 비목표
 
-- 검수 큐, 검수 메모, 검수 상태 변경(`검수 완료`/`수정 필요`/`보류`)은 이 화면 책임이 아니며 검수 페이지 `/assessment/question-bank` 소관이다.
-- 이 화면에서 직접 문항을 수동 생성하지 않는다.
+- 검수하지 않는다. 검수 큐/검수 메모/검수 상태 변경은 2026-06-11 검수 개념 전면 삭제로 admin에 존재하지 않는다(현행 코드의 검수 상태 잔존 표시는 재정의 P3에서 제거 예정 — §6.2).
+- 이 화면에서 문항을 수동 생성·저작·분류하지 않는다(문항 본문·메타데이터는 외부에서 완성 상태로 공급).
+- 수신·적재 실행은 이 화면 책임이 아니다(외부 공급 API 연동 트랙 — 미개발, §11 오픈 이슈).
+- 상류 서비스로의 배포(API 업로드/push)는 폐기된 개념이다(2026-06-11 §0 — 구 §7.4 배포 정책 폐기, 아래 §7.4로 대체).
 - EPS TOPIK, 레벨 테스트 세트 편성을 이 화면 책임으로 가져오지 않는다.
 - JSON 업로드, JSON fallback 조회, 배치 재생성, 대량 일괄 운영 액션은 포함하지 않는다.
 
 ## 4. 운영자 사용 시나리오
 
-- 시나리오 1: 운영자가 상단 요약 카드에서 `operationStatus`별 건수를 확인하고, 카드 클릭으로 운영 상태 기준 필터를 좁힌다.
-- 시나리오 2: 운영자가 문제 번호(`51`, `52`, `53`, `54`) 다중 선택과 SearchBar 상세 검색(도메인/유형/난이도)으로 비교 대상을 좁힌다.
-- 시나리오 3: 운영자가 목록 테이블에서 `검수 상태`(읽기 전용)와 `운영 상태`, `사용 현황`을 나란히 비교한다.
-- 시나리오 4: 운영자가 `운영 조치`(노출 후보/숨김 후보/운영 제외)를 실행하려 하면 확인+사유 모달을 거쳐 `AssessmentQuestion + questionId` 감사 로그로 기록되도록 설계되어 있으나, 현재는 v13 `lifecycle_status` 미적용으로 운영 조치 버튼이 비활성(준비 중)이다.
-- 시나리오 5: 운영 조치가 활성화된 이후 운영자는 성공 피드백에 포함된 `감사 로그 확인` 링크로 이동해 동일 문항의 운영 이력을 검증한다.
+- 시나리오 1: 운영자가 상단 요약 카드에서 노출 상태(`serviceStatus`)별 건수(`전체 문항`/`노출 가능`/`노출 제외`/`내부 테스트`)를 확인하고, 카드 클릭으로 노출 상태 기준 필터를 좁힌다.
+- 시나리오 2: 운영자가 문제 번호(`51`, `52`, `53`, `54`) 다중 선택과 SearchBar 상세 검색(주제 종합/세부 · 유형 · 난이도)으로 비교 대상을 좁힌다.
+- 시나리오 3: 운영자가 목록 테이블에서 `노출 상태`와 `태그`(활성 태그 수)를 나란히 비교해 조치 대상을 식별한다.
+- 시나리오 4: 운영자가 운영 조치(`노출 가능`/`노출 제외`/`내부 테스트`)를 실행하면 확인+사유 모달을 거쳐 `AssessmentQuestion + questionId` 감사 로그로 기록되도록 설계되어 있으나, 현재는 P4 개방 전이라 조치 버튼이 비활성(disabled 스캐폴딩)이다.
+- 시나리오 5 (P4 개방 예정): 운영자가 태그를 부여/제거하고 사유 memo를 남긴다 — 현행 코드는 태그 수 표시까지만 구현되어 있고 편집 UI는 P4 범위다.
+- 시나리오 6: 조치가 활성화된 이후 운영자는 성공 피드백에 포함된 `감사 로그 확인` 링크로 이동해 동일 문항의 운영 이력을 검증한다.
 
 ## 5. 화면 구조
 
@@ -52,12 +55,12 @@
 
 | 영역 | 목적 | 주요 데이터 | 주요 액션 |
 | --- | --- | --- | --- |
-| `PageTitle` | 페이지 식별 | 페이지 제목/설명 (`TOPIK 쓰기 문항 관리`) | 없음 |
-| 상단 요약 카드 | 운영 상태 범위 파악 | `전체 문항`(필터 해제) + `노출 후보`/`숨김 후보`/`운영 제외` 건수 | 카드 클릭 필터 |
+| `PageTitle` | 페이지 식별 | 페이지 제목 `TOPIK 쓰기 문항 관리` | 없음 |
+| 상단 요약 카드 | 노출 상태 범위 파악 | `전체 문항`(필터 해제) + `노출 가능`/`노출 제외`/`내부 테스트` 건수 | 카드 클릭 필터 |
 | 공유 toolbar - 문제 번호 체크박스 그룹 | `51`, `52`, `53`, `54` 범위 전환 | 문제 번호 | 다중 선택 전환, 기본 전체 선택 |
-| 공유 toolbar - SearchBar | 공통 목록형 검색 조건 적용 | `전체` 선택기, 검색어, 상세 검색 팝오버(도메인/유형/난이도) | 즉시 필터, 상세 검색 적용 |
-| 준비 중 경고 Alert | 운영 조치 비활성 상태 안내 (목록 카드 본문 상단, 목록 테이블 직전) | "운영 상태 관리는 준비 중입니다" 경고 | 없음 |
-| 목록 테이블 | 운영 상태/사용 현황 비교 | 문항 번호, 문항 ID, 주제, 검수 상태, 운영 상태, 사용 현황, 운영 조치, 최근 수정 | `운영 조치`(현재 disabled) |
+| 공유 toolbar - SearchBar | 공통 목록형 검색 조건 적용 | 검색어, 상세 검색 팝오버(주제 종합/세부 · 유형 · 난이도) | 즉시 필터, 상세 검색 적용 |
+| 준비 중 경고 Alert | 조치 비활성 상태 안내 (목록 카드 본문 상단) | "운영 상태 관리는 준비 중입니다" — P4 개방 안내 + 백필 문항 `internal_test` 차단 상태 안내 | 없음 |
+| 목록 테이블 | 노출 상태/태그 비교와 조치 | 문항 번호, 문항 ID, 주제(종합/세부), 유형/난이도, 노출 상태, 태그, 운영 조치, 최근 수정 (현행 코드: `검수 상태` 컬럼 잔존 — 제거 예정, 재정의 P3) | `운영 조치`(현재 disabled) |
 
 ## 6. 데이터 블록 정의
 
@@ -65,96 +68,94 @@
 
 - `questionId`
 - `questionNumber`
-- `topic`
-- `domain`
-- `questionTypeLabel`
-- `difficultyLevel`
-- `reviewStatus`
-- `operationStatus`
-- `usageSummary`
+- `topicMain` / `topicDetail`
+- `questionTypeName`
+- `targetLevel` / `difficultyLevel`(1~6)
+- `serviceStatus` (legacy 소스 행은 null — `미지정` 표시)
+- 활성 태그 수 (`question_tags` 집계 — `topik_writing` 소스 전용, legacy 소스는 빈 값)
 - `updatedAt`
-- `updatedBy`
-- 현재 목록 셀에서는 Supabase `problems.title`과 `topic_category_code` 라벨을 노출하고, `검수 상태`는 읽기 전용으로 함께 표시한다.
 
 ### 6.2 목록 테이블 컬럼
 
 | 컬럼 | 의미 | source/표시 |
 | --- | --- | --- |
-| 문항 번호 | 문제 번호(`51~54`) | `problems.question_no` |
-| 문항 ID | 문항 식별자 | `problems.id` |
-| 주제 | 문항 주제 | `problems.title` |
-| 검수 상태 | 검수 진척(읽기 전용) | `problems.review_status` / `review_workflow_status` |
-| 운영 상태 | 노출/숨김/운영 제외 단계 | 현재 전부 `미지정` sentinel (v13 `lifecycle_status` 미적용) |
-| 사용 현황 | 운영 활용 상태 + 운영 메모 | `사용 N회 / 시험 연결 N건` 형식과 `managementNote`(`problems.explanation`). 현재 usage/연결 count source가 없어 `사용 0회 / 시험 연결 0건`으로 표시 |
-| 운영 조치 | 노출 후보/숨김 후보/운영 제외 액션 | 현재 disabled (준비 중) |
-| 최근 수정 | 최종 수정 시각 | `problems.updated_at` |
+| 문항 번호 | 문제 번호(`51~54`) | 화면 모델 `questionNumber` |
+| 문항 ID | 문항 식별자 | `questionId` (신규 스키마 채번 `topik-writing-{번호}-{연번}` — D-4. legacy 소스는 `problems.id`) |
+| 주제(종합/세부) | 주제 축 2단 | `topic_main` / `topic_detail` |
+| 유형/난이도 | 유형 명칭 + 급수·난이도 | `question_type_name`, `targetLevel`/`difficultyLevel` |
+| (현행 코드 잔존 — 제거 예정, 재정의 P3) 검수 상태 | 구 모델의 검수 진척 표시 | `review_status` 기반. 2026-06-11 검수 개념 삭제로 컬럼 표시·물리 컬럼 모두 제거 대상 |
+| 노출 상태 | `available`/`excluded`/`internal_test` | `service_status`. legacy 소스는 물리 컬럼이 없어 `미지정` 표시 |
+| 태그 | 활성 태그 수 | `question_tags` 활성 행 집계(`N개`, 없으면 `-`). 태그 상세·편집은 P4 |
+| 운영 조치 | `노출 가능`/`노출 제외`/`내부 테스트` 전환 액션 | 현재 disabled (P4 개방 — §7.3) |
+| 최근 수정 | 최종 수정 시각 | `updatedAt` |
 
 ### 6.3 검색/선택 데이터
 
 - 공통 쿼리
   - `questionNo` 반복 파라미터
-  - `domain`
+  - `topicMain` / `topicDetail`
   - `questionType`
   - `difficulty`
   - `keyword`
 - 문항 관리 전용
-  - `operationStatus`
-- `tab` 쿼리 파라미터는 사용하지 않는다.
+  - `serviceStatus`
+- `tag`는 P4 태그 필터 자리 확보용 예약 키(현재 미사용)이며, `tab` 쿼리 파라미터는 사용하지 않는다.
 
-## 7. 운영 조치/상태 규칙
+## 7. 관리 조치/상태 규칙
 
-### 7.1 운영 상태 값
+### 7.1 노출 상태 값 (`service_status` — D-6)
 
-| 운영 상태 | 의미 |
+| 노출 상태 | 의미 |
 | --- | --- |
-| `미지정` | 운영 단계가 지정되지 않은 기본값 (현재 모든 문항의 sentinel) |
-| `노출 후보` | 노출 후보로 분류된 단계 |
-| `숨김 후보` | 숨김 후보로 분류된 단계 |
-| `운영 제외` | 운영에서 제외된 단계 |
+| `internal_test`(내부 테스트) | 기본값. 사용자 노출 차단 — 백필(초기 코퍼스) 466행 전부 이 상태로 적재됨 |
+| `available`(노출 가능) | v13 read-only 소비에 노출 가능 |
+| `excluded`(노출 제외) | 사용자 노출에서 제외 |
+| `미지정` | legacy 소스 행처럼 `service_status` 물리 컬럼 자체가 없는 경우의 표시 라벨 |
 
-### 7.2 운영 조치 액션
+- `service_status` 컬럼이 **유일한 물리 노출 상태**다. '서비스_노출상태' 태그 그룹은 시드에서 제외하고 태그 RPC에서 부여를 차단한다(이중 기록 방지). '운영 제외'는 `excluded` + 운영주의 태그 값 '운영 제외' 부여로 구분한다.
 
-| 액션 | 대상 식별 기준 | 확인/사유 | 성공 후 피드백 | 감사 로그 확인 경로 |
-| --- | --- | --- | --- | --- |
-| 노출 후보 | `AssessmentQuestion + questionId` | 확인 + 사유 필수 | 대상 식별 정보와 감사 로그 링크 노출 | `/system/audit-logs?targetType=AssessmentQuestion&targetId={questionId}` |
-| 숨김 후보 | `AssessmentQuestion + questionId` | 확인 + 사유 필수 | 대상 식별 정보와 감사 로그 링크 노출 | 동일 |
-| 운영 제외 | `AssessmentQuestion + questionId` | 확인 + 사유 필수 | 대상 식별 정보와 감사 로그 링크 노출 | 동일 |
+### 7.2 관리 조치 액션
+
+| 액션 | 감사 액션 코드 | 대상 식별 기준 | 확인/사유 | 성공 후 피드백 | 감사 로그 확인 경로 |
+| --- | --- | --- | --- | --- | --- |
+| 노출 가능 전환 | `service_status_changed` | `AssessmentQuestion + questionId` | 확인 + 사유 필수 | 대상 식별 정보와 감사 로그 링크 노출 | `/system/audit-logs?targetType=AssessmentQuestion&targetId={questionId}` |
+| 노출 제외 전환 | `service_status_changed` | `AssessmentQuestion + questionId` | 확인 + 사유 필수 | 대상 식별 정보와 감사 로그 링크 노출 | 동일 |
+| 내부 테스트 전환 | `service_status_changed` | `AssessmentQuestion + questionId` | 확인 + 사유 필수 | 대상 식별 정보와 감사 로그 링크 노출 | 동일 |
+| 태그 부여 (P4) | `tag_assigned` | `AssessmentQuestion + questionId` | 사유 memo 필수(`question_tags.memo`) | 대상 식별 정보와 감사 로그 링크 노출 | 동일 |
+| 태그 제거 (P4) | `tag_removed` | `AssessmentQuestion + questionId` | 사유 memo 필수 | 대상 식별 정보와 감사 로그 링크 노출 | 동일 |
+
+> 검수 감사 액션 4종과 배포 `question_published`는 2026-06-11 §0(D-8 개정)으로 폐기됐다. 수신 감사 액션 `question_received`는 외부 공급 API 연동 시 추가한다(`docs/specs/admin-action-log.md`).
 
 ### 7.3 현재 비활성(준비 중) 규칙
 
-- 현재 v13 `lifecycle_status`가 적용되기 전이므로 `operationStatus`는 모든 문항에서 `미지정` sentinel로 표시된다.
-- 운영 조치 버튼(노출 후보/숨김 후보/운영 제외)은 전부 disabled이며, 페이지 상단에 "운영 상태 관리는 준비 중입니다" 경고 Alert를 노출한다.
-- 확인+사유 -> 감사 로그(`ConfirmAction` + `AuditLogLink`) 흐름은 코드에 미리 연결되어 있으나, 감사 RPC(`admin_update_problem`) write path는 데이터 계약상 비활성이다.
-- `lifecycle_status` 도착 시 `OPERATION_WRITE_ENABLED` 플래그 활성화 및 서비스 un-stub로 운영 조치를 한 번에 활성화한다. 즉 운영 상태 변경은 "후속 활성화" 상태이지 지금 동작하지 않는다.
+- 조치 버튼(노출 가능/노출 제외/내부 테스트)은 전부 disabled(`OPERATION_WRITE_ENABLED=false`)이며, 페이지 상단에 "운영 상태 관리는 준비 중입니다" 경고 Alert를 노출한다.
+- 확인+사유 -> 감사 로그(`ConfirmAction` + `AuditLogLink`) 흐름은 코드에 미리 연결되어 있고, 신규 스키마 RPC(`admin_update_topik_question`)는 이미 `service_status` patch를 지원한다. P4(운영 쓰기 개방)에서 플래그·facade 게이트 제거로 한 번에 활성화한다.
+- 태그 편집 UI(부여/제거 + memo)는 P4 범위다 — 현행 코드는 활성 태그 수 카운트 표시까지 구현되어 있다.
+- 그 전까지 적재 문항은 전부 `internal_test`(노출 차단)이고, legacy 소스 행의 노출 상태는 `미지정` sentinel로 표시된다.
+- 주의(현행 코드 사실 — 수정 예정, 재정의 P3): disabled 스캐폴딩의 `노출 가능 전환` 확인 모달 문구에 "검수 완료(approved) 문항만 전환" 구 기준이 남아 있다. 이 기준은 POL-018 개정으로 삭제됐으므로(§7.4) P4 개방 전 재정의 P3에서 문구를 함께 정리한다.
 
-### 7.4 검수·배포·노출 운영정책 (POL-017)
+### 7.4 수신·관리 운영정책 (POL-017 — 2026-06-11 재정의) + 노출 제외 기준 (POL-018)
 
-> 정책 SoT는 `docs/specs/admin-policy-source-map.md`의 `POL-017`, 상류 API 원문은 `docs/specs/topik-ai-service-api-reference.md`(Swagger `http://58.236.187.135:9009/docs#/`의 Writing 파트)다.
+> 정책 SoT는 `docs/specs/admin-policy-source-map.md`의 `POL-017`("TOPIK 쓰기 문항 수신·관리 운영정책"으로 재정의)·`POL-018`이다. 종전 §7.4 "검수·배포·노출 운영정책"(push 모델: `검수 -> 배포(API 업로드) -> 노출 통제`)은 2026-06-11 §0으로 폐기됐고, 본 섹션이 대체한다. 결정 원문은 `docs/architecture/metadata-tag-schema-transition-decision-record.md` §0.
 
-- 운영 흐름 `검수 -> 배포(API 업로드) -> 노출 통제`에서 이 페이지는 마지막 단계인 **노출 통제/운영 관리**를 담당한다.
-- 검수는 검수 페이지(`/assessment/question-bank`), 배포(검수 완료 문항을 상류 서비스로 API 업로드)는 검수 완료 이후 단계, 노출/숨김 통제는 이 페이지의 운영 상태가 책임진다.
-- 이 페이지가 통제하는 대상은 배포되어 Writing 작문 과제가 된 문항의 **사용자 노출 여부**다. 운영 상태와 사용자 노출의 대응(후보)은 다음과 같다.
-
-| 운영 상태 | 사용자 노출(Writing API) 의미(후보) |
-| --- | --- |
-| `노출 후보` | 사용자 작문 과제 풀(`GET /api/writing/tasks`)에 노출 대상 |
-| `숨김 후보` | 배포되었으나 사용자 노출에서 임시 제외 대상 |
-| `운영 제외` | 사용자 노출/배포 대상에서 영구 제외 |
-| `미지정` | 운영 단계 미지정 기본값 (현재 모든 문항의 sentinel) |
-
-- 사용자 노출 작문 과제의 필드 모델은 Writing API(`GenerateProblemResponse`: `task_type`/`title`/`instruction`/`topic`/`max_score`/`difficulty` + 과제별 추가 키)를 따른다. 관리자 `problems` 화면 모델과의 매핑 후보는 `docs/architecture/admin-data-source-transition.md` §10.3를 단일 SoT로 두고, 현행 화면 모델/코드 계약은 `docs/specs/admin-data-contract.md` §9.6를 따른다.
-- 후속 확정(후보): 운영 상태↔Writing API 노출의 실제 연동 계약과 상류 업로드/노출 토글 엔드포인트는 v13 `lifecycle_status` 적용 및 상류 엔드포인트 확정 이후 고정한다.
+- 운영 흐름은 `수신(외부 공급 API — 미개발) -> 적재(Supabase topik_writing_51/52/53/54_questions + question_source_map) -> 관리 포인트(태그) + 노출 통제(service_status) -> v13 read-only 소비`다. 이 페이지는 **관리 포인트 + 노출 통제** 단계를 담당한다.
+- 상류 배포(API 업로드/push) 단계는 존재하지 않는다. 사용자 노출 여부는 별도 업로드 없이 `service_status` 값 하나로 결정되고, v13 사용자 기능이 적재 데이터를 read-only로 소비한다.
+- **노출 제외 기준(POL-018, 2026-06-11 개정)**:
+  - ① (삭제) ~~검수 미완료 문항의 `available` 전환 불가~~ — 검수 개념 삭제로 철회.
+  - ② 운영주의 태그(`표현 주의`/`난이도 애매` 등) 활성 문항의 `available` 전환은 사유 필수.
+  - ③ 반복 노출 회피 대상(반복방지 태그 활성 과다)은 `excluded` 권고.
+  - 각 기준은 `tag_master.usage_rule`과 POL-018에 기록한다.
 
 ## 8. URL/상태 복원
 
 - 유지 대상
   - `questionNo` 반복 파라미터
-  - `domain`
+  - `topicMain` / `topicDetail`
   - `questionType`
   - `difficulty`
   - `keyword`
-  - `operationStatus`
-- `tab` 파라미터는 사용하지 않으며, 이 라우트가 자체 URL 상태를 보존한다.
+  - `serviceStatus`
+- `tag`는 P4 태그 필터 예약 키, `tab` 파라미터는 사용하지 않으며, 이 라우트가 자체 URL 상태를 보존한다.
 - `questionNo`가 없으면 `51~54` 전체 선택으로 해석하고, 부분 선택일 때만 반복 파라미터를 남긴다.
 
 ## 9. 네트워크 상태와 fail-safe
@@ -163,25 +164,27 @@
 - success: 현재 필터 결과를 렌더링한다.
 - empty: 조건에 맞는 문항이 없음을 Empty 상태로 안내한다.
 - error: 오류 메시지와 `다시 시도`를 제공하고, 가능한 경우 마지막 성공 목록을 유지한다.
-- abort/retry: 화면 이탈 시 요청 취소, 조회 실패 시 수동 재시도, (운영 조치 활성화 후) 조치 버튼 중복 제출 방지를 적용한다.
+- abort/retry: 화면 이탈 시 요청 취소, 조회 실패 시 수동 재시도, (조치 활성화 후) 조치 버튼 중복 제출 방지를 적용한다.
+- mock 모드: Supabase 미구성 시 "모크 모드로 동작 중" Alert를 노출하고 결정적 픽스처를 표시한다(실데이터·감사 로그 미기록).
 
 ## 10. 구현 메모
 
 - 문항 관리 페이지 파일
   - `src/features/assessment/pages/assessment-question-manage-page.tsx`
-- 공유 모델/조회 (검수 페이지와 동일 조회 결과 공유)
+- 공유 모델/조회 (문항 목록 페이지와 동일 조회 결과 공유)
   - `src/features/assessment/model/use-assessment-question-list.ts`
   - `src/features/assessment/model/use-assessment-question-filters.ts`
+  - `src/features/assessment/model/use-question-bank-masters.ts` (주제 마스터 + 활성 태그 집계)
 - 공유 toolbar
   - `src/features/assessment/ui/assessment-question-bank-toolbar.tsx`
 - 데이터 source
-  - Supabase `problems`(question_no 51-54) 조회 기반, JSON/store fallback 없음. 검수 페이지 `/assessment/question-bank`와 동일한 조회 결과를 공유한다.
+  - facade(`src/features/assessment/api/assessment-question-bank-service.ts`) + 컷오버 스위치(`question-bank-data-source.ts`, 기본 `legacy`). `topik_writing` 소스는 신규 스키마(노출 상태·태그 실값), `legacy` 소스는 v13 `problems` 어댑터(노출 상태 `미지정`·태그 빈 값), `mock`은 D-12 결정적 픽스처. 문항 목록 페이지 `/assessment/question-bank`와 동일한 조회 결과를 공유한다.
 
 ## 11. 오픈 이슈
 
-- 운영 조치 활성화 경로는 2026-06-10 D-6 확정으로 변경됐다: v13 `lifecycle_status` 대기는 폐기되고, 신규 스키마의 `service_status` 컬럼 기반으로 P3(표시 전환)·P4(`OPERATION_WRITE_ENABLED` 게이트 제거 + `admin_update_topik_question` write 개방)에서 활성화한다.
-- 그 전까지 `operationStatus`는 `미지정` sentinel로 고정된다. 주의(실측 2026-06-10): 코드에 연결된 구 `admin_update_problem` RPC는 v13 admin island 제거(2026-06-09)로 라이브 DB에 존재하지 않아, 현행 운영 write 경로는 어차피 물리적으로 동작 불가다.
-- 공개/숨김 통제 책임은 `POL-017`로 이 페이지에 확정되었으나, 운영 상태↔Writing API(`GET /api/writing/tasks`) 사용자 노출의 실제 연동 계약과 배포 승인 체계는 아직 미확정이다.
-- 사용 현황 컬럼의 정식 source 계약은 후속 데이터 적용 시 확정해야 한다.
-- Supabase 미설정/조회 실패 시 JSON fallback을 제공하지 않고 error/retry 상태를 노출한다.
-- 콘텐츠팀 권장 스키마(`docs/metadata-tag-schema-rule.md` v0.8)는 **2026-06-10 채택 확정**됐고, `service_status`↔`operationStatus`↔POL-017 정합은 D-6로 확정됐다: `service_status`(`available`/`excluded`/`internal_test`) 컬럼이 유일한 물리 노출 상태이며, 이 페이지의 운영 상태 축은 P3에서 `service_status` 표시로, write 개방은 P4에서 전환된다(v13 `lifecycle_status` 종속 해소). 컷오버 전까지는 현행 운영 상태 계약을 유지한다(`docs/architecture/metadata-tag-schema-transition-decision-record.md`, `docs/메타데이터-태그-스키마-전환-실행계획안.md` §8, `docs/specs/admin-data-contract.md` §12).
+- **외부 공급 API 미개발 — 수신 경로 미구현.** 이 페이지가 관리할 신규 문항의 공급원이 아직 없어, 인터림 동안 관리 대상은 백필 466행(초기 코퍼스)뿐이다. 공급 계약은 요청 문서(`docs/requests/upstream-writing-endpoints-request-2026-06-10.md`, D-11 재정의)로 추진하며, 수신 감사 액션 `question_received`도 연동 시 추가한다.
+- 조치 개방 경로: 노출 상태 write와 태그 편집 UI는 P4(운영 쓰기 개방 — `OPERATION_WRITE_ENABLED` 게이트 제거 + `admin_update_topik_question` write 개방)에서 활성화한다(실행계획안 2026-06-11 개정 — `docs/메타데이터-태그-스키마-전환-실행계획안.md`).
+- 데이터 소스 스위치 기본값은 `legacy`다. `topik_writing` 플립(컷오버)은 P2 PASS 전환 후 수행하며, 그 전까지 노출 상태는 `미지정`, 태그는 빈 값으로 표시된다. 참고(실측 2026-06-10): legacy 경로에 연결됐던 구 `admin_update_problem` RPC는 v13 admin island 제거(2026-06-09)로 라이브 DB에 존재하지 않아, legacy 운영 write는 물리적으로 동작 불가다.
+- 현행 코드의 `검수 상태` 컬럼 잔존(§6.2)과 확인 모달의 구 POL-018 기준 ① 문구(§7.3)는 2026-06-11 검수 개념 삭제에 따라 재정의 P3에서 제거·정리한다.
+- POL-018 기준 ②(운영주의 태그 활성 시 `available` 전환 사유 필수)·③(반복과다 `excluded` 권고)의 화면 강제(전환 시 태그 활성 여부 검사 등)는 P4 구현에서 확정한다.
+- Supabase 미설정 시 JSON fallback 대신 명시적 mock 모드, 조회 실패 시 error/retry 상태를 노출한다.
