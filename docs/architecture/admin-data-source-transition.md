@@ -265,8 +265,9 @@ src/features/<feature>/
 - 인터림 상태 (외부 API 미개발 동안)
   - P2 백필 466행 = **초기 코퍼스**(유효 저장 데이터, 전 행 `service_status='internal_test'`). 신규 공급은 API 가동 후 수신 경로로만 받는다.
   - `problems`는 v13 사용자 기능이 읽는 동안 보존한다(일몰 조건은 결정 기록 §2.3 — "검수 SoT" 위상은 소멸, 레거시 원천).
+  - **`problems` read-only 동결 선언(2026-06-11, §7.1-6 이행)**: P3 컷오버 완료에 따라 `problems`는 admin 기준 read-only 레거시로 동결됐다(신규 admin write 금지 — 코드상 write 경로는 원래 부재, 선언·기록만). 공지 초안: `docs/requests/problems-read-only-freeze-notice-2026-06-11.md`(발신은 오너 채널). 구 읽기 어댑터는 env `VITE_QUESTION_BANK_SOURCE=legacy` 봉인으로 P4 종료까지 보존(롤백 경로, 실행계획안 §12.2).
 - 전환 메모
-  - 노출 통제 write는 신규 스키마 `service_status` 기반으로 P4(재정의)에서 `OPERATION_WRITE_ENABLED` 게이트를 제거하며 개방한다(§10.4, 결정 기록 D-6 — 검수 결합 가드 ①은 삭제).
+  - **운영 write 경계(P4 개방 완료 — 2026-06-11)**: 관리 포인트 write는 `/assessment/question-bank/manage` 단일 화면에서 RPC 단일 경로로만 수행한다 — 노출 통제 `admin_update_topik_question`(화이트리스트 `service_status` 단일) + 태그 `admin_assign_question_tag`/`admin_remove_question_tag`(사유 `question_tags.memo` 필수). `OPERATION_WRITE_ENABLED`/`SERVICE_STATUS_WRITE_ENABLED` 게이트는 제거됐고, 직접 테이블 write는 RLS(쓰기 정책 0건)로 전면 차단된다(P4-4 네거티브 검증). legacy 롤백 소스는 읽기 전용(조치 불가 — facade 명시 오류). POL-018 ②③ 화면 가드 포함. 증적: `logs/metadata-tag-schema-transition-evidence.md` P4 절.
   - 수신·적재 시 `question_source_map`에 공급측 식별자를 보존해 재수신(idempotent)·역추적을 보장한다. `published_task_id` 컬럼은 구 push 모델 잔재로 용도 재검토 예정.
   - 수신 감사: 공급 연동 구현 시 `question_received` 감사 액션을 추가한다(결정 기록 D-8 개정).
 

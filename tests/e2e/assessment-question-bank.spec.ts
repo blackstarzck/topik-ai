@@ -1,10 +1,12 @@
 import { expect, test, type Page } from '@playwright/test';
 
 /**
- * 재정의 P3 spec (인바운드 모델 — 결정 기록 §0, 실행계획안 2026-06-11 개정 §7):
- * Supabase가 구성되지 않은 실행은 D-12 모크 모드로 동작한다 — 결정적 픽스처
- * 4문항(번호별 1건)으로 문항 목록·상세(조회 전용)·관리 페이지를 검증한다.
- * 검수 표면은 제거됐다(검수 시나리오 없음 — 관리 쓰기 왕복은 P4 RT-4).
+ * P3(조회)·P4(관리 포인트 write) spec (인바운드 모델 — 결정 기록 §0, 실행계획안
+ * §7~§8): Supabase가 구성되지 않은 실행은 D-12 모크 모드로 동작한다 — 결정적
+ * 픽스처 4문항(번호별 1건) + 인메모리 태그 store로 문항 목록·상세(조회 전용)·
+ * 관리 페이지의 write 흐름(노출 상태 전환, 태그 부여/제거, POL-018 ② 가드)을
+ * 화면 수준에서 검증한다(실DB 왕복은 P4 RT-4 — 별도 프로브).
+ * 검수 표면은 제거됐다(검수 시나리오 없음).
  * Supabase가 구성된 실행은 로그인 자격증명이 없으므로 skip한다.
  */
 
@@ -80,7 +82,7 @@ test('문항 상세는 번호별 실메타를 조회 전용으로 표시하고 �
   await expect(page.getByRole('button', { name: '다시 시도' })).toBeVisible();
 });
 
-test('TOPIK 쓰기 문항 관리는 service_status 축과 P4 대기 안내를 노출한다', async ({
+test('TOPIK 쓰기 문항 관리는 P4 관리 포인트(노출 조치·태그 편집)를 개방 상태로 렌더한다', async ({
   page
 }) => {
   await page.goto('/assessment/question-bank/manage');
@@ -89,21 +91,115 @@ test('TOPIK 쓰기 문항 관리는 service_status 축과 P4 대기 안내를 �
   await expect(
     page.getByRole('heading', { name: 'TOPIK 쓰기 문항 관리' })
   ).toBeVisible();
+  // P4 개방: 준비 중 안내는 제거됐다.
   await expect(
     page.getByText('관리 포인트(노출 상태·태그) 조치는 준비 중입니다.')
-  ).toBeVisible();
-  await expect(
-    page.getByText('P4(관리 포인트 개방)에서 활성화됩니다.', { exact: false })
-  ).toBeVisible();
+  ).toHaveCount(0);
   await expect(page.getByRole('columnheader', { name: /노출 상태/ })).toBeVisible();
   await expect(page.getByRole('columnheader', { name: /검수 상태/ })).toHaveCount(0);
   await expect(page.getByLabel('문항 검색어')).toBeVisible();
 
-  const firstActionButton = page
+  const firstRow = page.locator('tbody tr.ant-table-row').first();
+  // 픽스처는 internal_test — 동일 상태 버튼만 비활성, 전환 버튼은 활성.
+  await expect(firstRow.getByRole('button', { name: '노출 가능' })).toBeEnabled();
+  await expect(firstRow.getByRole('button', { name: '노출 제외' })).toBeEnabled();
+  await expect(firstRow.getByRole('button', { name: '내부 테스트' })).toBeDisabled();
+  await expect(firstRow.getByRole('button', { name: '태그 편집' })).toBeEnabled();
+});
+
+test('노출 상태 전환은 사유 필수 확인 모달을 거쳐 화면 왕복(쓰기→재조회 반영)된다', async ({
+  page
+}) => {
+  await page.goto('/assessment/question-bank/manage');
+  await skipIfAuthRequired(page);
+
+  const targetRow = page
     .locator('tbody tr.ant-table-row')
-    .first()
-    .getByRole('button', { name: '노출 가능' });
-  await expect(firstActionButton).toBeDisabled();
+    .filter({ hasText: 'topik-writing-51-9901' });
+  await expect(targetRow.locator('.ant-tag')).toHaveText('내부 테스트');
+
+  await targetRow.getByRole('button', { name: '노출 제외' }).click();
+
+  const modal = page.locator('.ant-modal-content').filter({ hasText: '노출 제외 전환' });
+  await expect(modal).toBeVisible();
+  // 사유 미입력 시 확인 비활성(사유 필수).
+  const confirmButton = modal.getByRole('button', { name: '노출 제외' });
+  await expect(confirmButton).toBeDisabled();
+  await modal
+    .getByPlaceholder('노출 제외 사유를 입력해 주세요.')
+    .fill('e2e: 노출 제외 전환 왕복 검증');
+  await confirmButton.click();
+
+  await expect(page.getByText('노출 제외로 변경했습니다.')).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: '감사 로그 확인' }).first()
+  ).toBeVisible();
+  // 재조회 반영: 모크 store가 변조돼 행 상태 태그가 바뀐다.
+  await expect(targetRow.locator('.ant-tag')).toHaveText('노출 제외');
+  await expect(targetRow.getByRole('button', { name: '노출 제외' })).toBeDisabled();
+});
+
+test('태그 부여/제거는 사유 필수로 동작하고 POL-018 ② 가드가 available 전환 모달에 표시된다', async ({
+  page
+}) => {
+  await page.goto('/assessment/question-bank/manage');
+  await skipIfAuthRequired(page);
+
+  const targetRow = page
+    .locator('tbody tr.ant-table-row')
+    .filter({ hasText: 'topik-writing-52-9901' });
+  await targetRow.getByRole('button', { name: '태그 편집' }).click();
+
+  const tagModal = page.locator('.ant-modal-content').filter({ hasText: '태그 편집' });
+  await expect(tagModal).toBeVisible();
+  await expect(tagModal.getByText('활성 태그가 없습니다.')).toBeVisible();
+
+  // 부여: 태그 + 사유 입력 전까지 비활성.
+  const assignButton = tagModal.getByRole('button', { name: '태그 부여' });
+  await expect(assignButton).toBeDisabled();
+  await tagModal.locator('.ant-select').click();
+  await page.locator('.ant-select-dropdown').getByText('표현 주의 (ops_expression_caution)').click();
+  await expect(assignButton).toBeDisabled();
+  await tagModal
+    .getByPlaceholder(/태그 부여 사유를 입력해 주세요/)
+    .fill('e2e: 운영주의 태그 부여(POL-018 ② 가드 검증)');
+  await assignButton.click();
+
+  await expect(page.getByText("'표현 주의' 태그를 부여했습니다.")).toBeVisible();
+  await expect(tagModal.getByText('활성 태그가 없습니다.')).toHaveCount(0);
+  await tagModal.getByRole('button', { name: 'Close' }).click();
+
+  // 행 태그 수 반영.
+  await expect(targetRow.getByText('1개')).toBeVisible();
+
+  // POL-018 ②: 운영주의 태그 활성 문항의 available 전환 모달에 가드 문구.
+  await targetRow.getByRole('button', { name: '노출 가능' }).click();
+  const availableModal = page
+    .locator('.ant-modal-content')
+    .filter({ hasText: '노출 가능 전환' });
+  await expect(availableModal).toBeVisible();
+  await expect(
+    availableModal.getByText(/운영주의 태그\(표현 주의\)가 활성입니다/)
+  ).toBeVisible();
+  await availableModal.getByRole('button', { name: '취소' }).click();
+
+  // 제거: ConfirmAction 사유 필수.
+  await targetRow.getByRole('button', { name: '태그 편집' }).click();
+  await tagModal.getByRole('button', { name: '태그 제거: 표현 주의' }).click();
+  const removeModal = page
+    .locator('.ant-modal-content')
+    .filter({ hasText: '태그 제거' })
+    .filter({ hasText: '사유/근거' });
+  await expect(removeModal).toBeVisible();
+  const removeConfirm = removeModal.getByRole('button', { name: '태그 제거' });
+  await expect(removeConfirm).toBeDisabled();
+  await removeModal
+    .getByPlaceholder('태그 제거 사유를 입력해 주세요.')
+    .fill('e2e: 태그 제거 왕복 검증');
+  await removeConfirm.click();
+
+  await expect(page.getByText("'표현 주의' 태그를 제거했습니다.")).toBeVisible();
+  await expect(tagModal.getByText('활성 태그가 없습니다.')).toBeVisible();
 });
 
 test('구 검수 상세 라우트는 더 이상 검수 화면을 렌더하지 않는다', async ({

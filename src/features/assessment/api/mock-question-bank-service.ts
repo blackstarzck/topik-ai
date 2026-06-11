@@ -3,14 +3,16 @@ import type {
   AssessmentQuestionSummary,
   AssessmentServiceStatus,
   TopikWritingQuestionTagRow,
+  TopikWritingTagMasterRow,
   TopikWritingTopicMasterRow
 } from '../model/assessment-question-bank-types';
 
 /**
  * D-12 모크 모드 (CI/스모크): Supabase가 구성되지 않은 실행에서 화면·e2e가
  * 결정적 픽스처로 동작하도록 하는 인메모리 어댑터다(인바운드 모델 — 조회 +
- * 노출 통제). 노출 통제 쓰기는 모듈 메모리를 변조해 왕복(쓰기→재조회 반영)을
- * 화면 수준에서 재현한다(P4 개방 전에는 facade 게이트로 호출되지 않는다).
+ * 관리 포인트). 노출 통제·태그 쓰기는 모듈 메모리를 변조해 왕복(쓰기→재조회
+ * 반영)을 화면 수준에서 재현하며, RPC 가드(중복 활성 부여 차단, 노출상태 그룹
+ * 차단)도 같은 규칙으로 흉내 낸다(P4 RT-4의 실DB 왕복과는 별개 — D-12).
  * 실DB·감사 로그에는 아무것도 쓰지 않으며, 페이지는 모크 모드 배너를 띄운다.
  */
 
@@ -245,10 +247,70 @@ export async function loadMockTopicMaster(): Promise<TopikWritingTopicMasterRow[
   return mockTopicMaster;
 }
 
+// 시드(0002 마이그레이션)의 대표 부분집합 — 그룹별 동작 검증용. '서비스_노출상태'
+// 그룹은 실 시드와 동일하게 부재(D-6/E3).
+const mockTagMaster: TopikWritingTagMasterRow[] = [
+  {
+    tagCode: 'rec_use',
+    tagNameKo: '추천 사용',
+    tagGroup: '추천사용',
+    description: '추천 엔진에서 사용할 수 있는 문제.',
+    usageRule: '노출 가능 문항 중 추천 후보로 쓸 문제에 부여한다.',
+    isActive: true
+  },
+  {
+    tagCode: 'rec_first_entry',
+    tagNameKo: '첫 진입용',
+    tagGroup: '추천목적',
+    description: '처음 진입한 학습자에게 적합한 문제.',
+    usageRule: '난이도가 낮고 상황이 보편적인 문제에 부여한다.',
+    isActive: true
+  },
+  {
+    tagCode: 'avoid_same_situation',
+    tagNameKo: '같은상황주의',
+    tagGroup: '반복방지',
+    description: '비슷한 상황 문제의 연속 노출을 피해야 하는 문제.',
+    usageRule: '동일 시나리오가 많은 풀에서 부여한다.',
+    isActive: true
+  },
+  {
+    tagCode: 'avoid_same_answer',
+    tagNameKo: '같은정답주의',
+    tagGroup: '반복방지',
+    description: '비슷한 정답 표현의 연속 노출을 피해야 하는 문제.',
+    usageRule: '대표 정답 표현이 겹치는 문제군에 부여한다.',
+    isActive: true
+  },
+  {
+    tagCode: 'ops_expression_caution',
+    tagNameKo: '표현 주의',
+    tagGroup: '운영주의',
+    description: '표현·어감에 주의가 필요한 문제.',
+    usageRule: '노출 제외 기준 ②: 이 태그가 활성인 문항의 available 전환은 사유 입력이 필수다.',
+    isActive: true
+  },
+  {
+    tagCode: 'ops_operation_excluded',
+    tagNameKo: '운영 제외',
+    tagGroup: '운영주의',
+    description: '운영상 영구 제외로 결정한 문제(E3).',
+    usageRule: 'service_status=excluded와 함께 부여해 "일시 제외"와 "운영 제외"를 구분한다(D-6).',
+    isActive: true
+  }
+];
+
+let mockTagAssignmentSeq = 1;
+const mockQuestionTags: TopikWritingQuestionTagRow[] = [];
+
+export async function loadMockTagMaster(): Promise<TopikWritingTagMasterRow[]> {
+  return mockTagMaster.map((row) => ({ ...row }));
+}
+
 export async function loadMockActiveQuestionTags(): Promise<
   TopikWritingQuestionTagRow[]
 > {
-  return [];
+  return mockQuestionTags.map((row) => ({ ...row }));
 }
 
 export async function setMockServiceStatus(
@@ -260,4 +322,45 @@ export async function setMockServiceStatus(
     throw new Error('문항 대상을 찾을 수 없습니다.');
   }
   found.serviceStatus = nextStatus;
+}
+
+export async function assignMockQuestionTag(
+  questionId: string,
+  tagCode: string,
+  memo: string
+): Promise<void> {
+  if (!mockDetails.some((detail) => detail.questionId === questionId)) {
+    throw new Error('문항 대상을 찾을 수 없습니다.');
+  }
+  const master = mockTagMaster.find((row) => row.tagCode === tagCode);
+  if (!master) {
+    throw new Error(`unknown tag_code: ${tagCode}`);
+  }
+  if (
+    mockQuestionTags.some(
+      (row) => row.questionId === questionId && row.tagCode === tagCode
+    )
+  ) {
+    throw new Error(`tag already active on this question: ${tagCode}`);
+  }
+  mockQuestionTags.push({
+    tagAssignmentId: mockTagAssignmentSeq++,
+    questionId,
+    tagCode,
+    tagValue: null,
+    assignedAt: '2026-06-11 00:00',
+    memo
+  });
+}
+
+export async function removeMockQuestionTag(
+  tagAssignmentId: number
+): Promise<void> {
+  const index = mockQuestionTags.findIndex(
+    (row) => row.tagAssignmentId === tagAssignmentId
+  );
+  if (index < 0) {
+    throw new Error(`tag assignment not found: ${tagAssignmentId}`);
+  }
+  mockQuestionTags.splice(index, 1);
 }

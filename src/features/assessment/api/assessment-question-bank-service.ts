@@ -5,17 +5,23 @@ import {
   loadLegacySummaries
 } from './supabase-assessment-question-bank-service';
 import {
+  assignMockQuestionTag,
   loadMockActiveQuestionTags,
   loadMockDetail,
   loadMockSummaries,
+  loadMockTagMaster,
   loadMockTopicMaster,
+  removeMockQuestionTag,
   setMockServiceStatus
 } from './mock-question-bank-service';
 import {
+  assignTopikWritingQuestionTag,
   loadTopikWritingActiveQuestionTags,
   loadTopikWritingDetail,
   loadTopikWritingSummaries,
+  loadTopikWritingTagMaster,
   loadTopikWritingTopicMaster,
+  removeTopikWritingQuestionTag,
   setTopikWritingServiceStatus
 } from './topik-writing-question-bank-service';
 import type {
@@ -23,6 +29,7 @@ import type {
   AssessmentQuestionSummary,
   AssessmentServiceStatus,
   TopikWritingQuestionTagRow,
+  TopikWritingTagMasterRow,
   TopikWritingTopicMasterRow
 } from '../model/assessment-question-bank-types';
 
@@ -31,21 +38,29 @@ import type {
  * (question-bank-data-source.ts)가 결정한다: topik_writing(신규 스키마, 기본) /
  * legacy(구 problems, 봉인 롤백 경로) / mock(D-12 — Supabase 미구성 시).
  *
- * 인바운드 모델(결정 기록 §0): 조회 + 노출 통제(service_status — P4 개방)만
- * 제공한다. 검수 쓰기·검수 메모는 2026-06-11 검수 개념 삭제로 제거됐다.
- * 태그 부여/제거는 P4에서 결선한다(admin_assign/remove_question_tag RPC 존재).
+ * 인바운드 모델(결정 기록 §0): 조회 + 관리 포인트 — 노출 통제(service_status)
+ * + 태그 부여/제거 — 를 제공한다(P4 개방, 실행계획안 §8). 검수 쓰기·검수
+ * 메모는 2026-06-11 검수 개념 삭제로 제거됐다. 모든 write는 RPC 경유
+ * (admin_update_topik_question / admin_assign·remove_question_tag — D-8 감사
+ * 계약)이며, 사유 입력이 필수다(서버 가드: '서비스_노출상태' 그룹 부여 차단,
+ * 중복 활성 부여 차단 — D-6).
  */
-
-/**
- * P4 게이트 (D-6, 실행계획안 §8): service_status write는 P4(관리 포인트 개방)
- * 에서 이 플래그 제거와 함께 활성화한다. RPC·어댑터 경로는 결선돼 있다.
- */
-const SERVICE_STATUS_WRITE_ENABLED = false;
 
 type UpdateAssessmentQuestionServiceStatusPayload = {
   questionId: string;
   nextStatus: AssessmentServiceStatus;
   reason: string;
+};
+
+type AssignQuestionTagPayload = {
+  questionId: string;
+  tagCode: string;
+  memo: string;
+};
+
+type RemoveQuestionTagPayload = {
+  tagAssignmentId: number;
+  memo: string;
 };
 
 async function loadSummaries(signal?: AbortSignal): Promise<AssessmentQuestionSummary[]> {
@@ -86,6 +101,21 @@ async function loadTopicMaster(
   );
 }
 
+async function loadTagMaster(
+  signal?: AbortSignal
+): Promise<TopikWritingTagMasterRow[]> {
+  if (questionBankDataSource === 'mock') {
+    return loadMockTagMaster();
+  }
+  if (questionBankDataSource === 'topik_writing') {
+    const rows = await loadTopikWritingTagMaster(signal);
+    // D-6 방어: '서비스_노출상태' 그룹은 시드 제외가 원칙이지만, 사전에 끼어
+    // 들어도 부여 옵션으로 노출하지 않는다(부여 차단은 RPC에도 내장).
+    return rows.filter((row) => row.tagGroup !== '서비스_노출상태');
+  }
+  return [];
+}
+
 async function loadActiveQuestionTags(
   signal?: AbortSignal
 ): Promise<TopikWritingQuestionTagRow[]> {
@@ -106,8 +136,8 @@ async function updateServiceStatus(
     throw new DOMException('Request aborted', 'AbortError');
   }
 
-  if (!SERVICE_STATUS_WRITE_ENABLED) {
-    throw new Error('노출 상태(service_status) 변경은 P4 관리 포인트 개방에서 활성화됩니다.');
+  if (!payload.reason.trim()) {
+    throw new Error('노출 상태 변경 사유를 입력해 주세요.');
   }
 
   if (questionBankDataSource === 'mock') {
@@ -123,6 +153,43 @@ async function updateServiceStatus(
     throw new Error('legacy 롤백 모드에서는 노출 상태를 변경할 수 없습니다.');
   }
   return loadDetail(payload.questionId, signal);
+}
+
+async function assignQuestionTag(payload: AssignQuestionTagPayload): Promise<void> {
+  // 사유 memo 필수(question_tags.memo — 결정 기록 D-7 개정: 운영 메모의 유일한 기록처).
+  if (!payload.memo.trim()) {
+    throw new Error('태그 부여 사유를 입력해 주세요.');
+  }
+
+  if (questionBankDataSource === 'mock') {
+    await assignMockQuestionTag(payload.questionId, payload.tagCode, payload.memo);
+    return;
+  }
+  if (questionBankDataSource === 'topik_writing') {
+    await assignTopikWritingQuestionTag(
+      payload.questionId,
+      payload.tagCode,
+      payload.memo
+    );
+    return;
+  }
+  throw new Error('legacy 롤백 모드에서는 태그를 편집할 수 없습니다.');
+}
+
+async function removeQuestionTag(payload: RemoveQuestionTagPayload): Promise<void> {
+  if (!payload.memo.trim()) {
+    throw new Error('태그 제거 사유를 입력해 주세요.');
+  }
+
+  if (questionBankDataSource === 'mock') {
+    await removeMockQuestionTag(payload.tagAssignmentId);
+    return;
+  }
+  if (questionBankDataSource === 'topik_writing') {
+    await removeTopikWritingQuestionTag(payload.tagAssignmentId, payload.memo);
+    return;
+  }
+  throw new Error('legacy 롤백 모드에서는 태그를 편집할 수 없습니다.');
 }
 
 export function fetchAssessmentQuestionSummariesSafe(signal?: AbortSignal) {
@@ -146,6 +213,12 @@ export function fetchQuestionBankTopicMasterSafe(signal?: AbortSignal) {
   );
 }
 
+export function fetchQuestionBankTagMasterSafe(signal?: AbortSignal) {
+  return toSafeResult(() =>
+    withRetry(() => loadTagMaster(signal), { maxRetries: 1 })
+  );
+}
+
 export function fetchQuestionBankActiveTagsSafe(signal?: AbortSignal) {
   return toSafeResult(() =>
     withRetry(() => loadActiveQuestionTags(signal), { maxRetries: 1 })
@@ -157,4 +230,12 @@ export function updateAssessmentQuestionServiceStatusSafe(
   signal?: AbortSignal
 ) {
   return toSafeResult(() => updateServiceStatus(payload, signal));
+}
+
+export function assignQuestionTagSafe(payload: AssignQuestionTagPayload) {
+  return toSafeResult(() => assignQuestionTag(payload));
+}
+
+export function removeQuestionTagSafe(payload: RemoveQuestionTagPayload) {
+  return toSafeResult(() => removeQuestionTag(payload));
 }

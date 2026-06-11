@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
   fetchQuestionBankActiveTagsSafe,
+  fetchQuestionBankTagMasterSafe,
   fetchQuestionBankTopicMasterSafe
 } from '../api/assessment-question-bank-service';
 import type {
   TopikWritingQuestionTagRow,
+  TopikWritingTagMasterRow,
   TopikWritingTopicMasterRow
 } from './assessment-question-bank-types';
 
@@ -68,13 +70,19 @@ export function useQuestionBankTopicMaster(): UseQuestionBankTopicMasterResult {
   return { topicOptions, status };
 }
 
-export type UseQuestionTagCountsResult = {
+export type UseQuestionBankTagsResult = {
+  tagsByQuestionId: Record<string, TopikWritingQuestionTagRow[]>;
   tagCountByQuestionId: Record<string, number>;
+  reload: () => void;
 };
 
-/** 활성 태그 일괄 조인(목록 1회) — manage 목록의 태그 수 표시용(P4 편집 전 단계). */
-export function useQuestionTagCounts(): UseQuestionTagCountsResult {
+/**
+ * 활성 태그 일괄 조인(목록 1회) — manage 목록의 태그 수 표시 + 태그 편집(P4
+ * 관리 포인트)의 활성 태그 소스. write 후 reload로 재조회한다.
+ */
+export function useQuestionBankTags(): UseQuestionBankTagsResult {
   const [tags, setTags] = useState<TopikWritingQuestionTagRow[]>([]);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -89,7 +97,19 @@ export function useQuestionTagCounts(): UseQuestionTagCountsResult {
     return () => {
       controller.abort();
     };
+  }, [reloadKey]);
+
+  const reload = useCallback(() => {
+    setReloadKey((prev) => prev + 1);
   }, []);
+
+  const tagsByQuestionId = useMemo(() => {
+    const byQuestion: Record<string, TopikWritingQuestionTagRow[]> = {};
+    tags.forEach((tag) => {
+      (byQuestion[tag.questionId] ??= []).push(tag);
+    });
+    return byQuestion;
+  }, [tags]);
 
   const tagCountByQuestionId = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -99,5 +119,38 @@ export function useQuestionTagCounts(): UseQuestionTagCountsResult {
     return counts;
   }, [tags]);
 
-  return { tagCountByQuestionId };
+  return { tagsByQuestionId, tagCountByQuestionId, reload };
+}
+
+export type UseQuestionBankTagMasterResult = {
+  tagMasterRows: TopikWritingTagMasterRow[];
+  status: 'pending' | 'success' | 'error';
+};
+
+/** 태그 값 사전 로딩 — 태그 편집 옵션 축 + 그룹 판정(POL-018 ②③ 화면 가드). */
+export function useQuestionBankTagMaster(): UseQuestionBankTagMasterResult {
+  const [tagMasterRows, setTagMasterRows] = useState<TopikWritingTagMasterRow[]>([]);
+  const [status, setStatus] = useState<'pending' | 'success' | 'error'>('pending');
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    void fetchQuestionBankTagMasterSafe(controller.signal).then((result) => {
+      if (controller.signal.aborted) {
+        return;
+      }
+      if (!result.ok) {
+        setStatus('error');
+        return;
+      }
+      setTagMasterRows(result.data);
+      setStatus('success');
+    });
+
+    return () => {
+      controller.abort();
+    };
+  }, []);
+
+  return { tagMasterRows, status };
 }

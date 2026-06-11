@@ -6,6 +6,7 @@ import type {
   AssessmentQuestionSummary,
   AssessmentServiceStatus,
   TopikWritingQuestionTagRow,
+  TopikWritingTagMasterRow,
   TopikWritingTopicMasterRow
 } from '../model/assessment-question-bank-types';
 
@@ -274,6 +275,42 @@ export async function loadTopikWritingTopicMaster(
   );
 }
 
+/** 태그 값 사전 — 태그 편집 UI 옵션 축(schema-rule §2, '서비스_노출상태' 그룹은 시드 제외·D-6). */
+export async function loadTopikWritingTagMaster(
+  signal?: AbortSignal
+): Promise<TopikWritingTagMasterRow[]> {
+  const client = requireClient();
+  const { data, error } = await client
+    .from('topik_writing_tag_master')
+    .select('tag_code, tag_name_ko, tag_group, description, usage_rule, is_active')
+    .eq('is_active', true)
+    .order('tag_group')
+    .order('tag_code');
+  if (signal?.aborted) {
+    throw new DOMException('Request aborted', 'AbortError');
+  }
+  if (error) {
+    throw new Error(error.message);
+  }
+  return (
+    (data ?? []) as {
+      tag_code: string;
+      tag_name_ko: string;
+      tag_group: string;
+      description: string;
+      usage_rule: string | null;
+      is_active: boolean;
+    }[]
+  ).map((row) => ({
+    tagCode: row.tag_code,
+    tagNameKo: row.tag_name_ko,
+    tagGroup: row.tag_group,
+    description: row.description,
+    usageRule: row.usage_rule ?? '',
+    isActive: row.is_active
+  }));
+}
+
 /** 활성 태그 전수 — 목록 화면 태그 수 표시용(§7.2 manage 사용 현황 대체, P4 편집 전 단계). */
 export async function loadTopikWritingActiveQuestionTags(
   signal?: AbortSignal
@@ -339,4 +376,46 @@ export async function setTopikWritingServiceStatus(
   reason: string
 ): Promise<void> {
   await callUpdateRpc(questionId, { service_status: nextStatus, __note: reason });
+}
+
+// ---------------------------------------------------------------------------
+// 태그 부여/제거 — admin_assign/remove_question_tag (P4 관리 포인트, D-8).
+// 사전 존재·활성, '서비스_노출상태' 그룹 차단(D-6), (question_id, item_number)
+// 합성 참조 검증, 중복 활성 부여 차단 가드는 전부 RPC에 내장돼 있다.
+// 감사: tag_assigned / tag_removed + 사유는 question_tags.memo·payload.tag_memo.
+// ---------------------------------------------------------------------------
+
+export async function assignTopikWritingQuestionTag(
+  questionId: string,
+  tagCode: string,
+  memo: string
+): Promise<void> {
+  const client = requireClient();
+  const kind = itemNumberOfQuestionId(questionId);
+  if (!kind) {
+    throw new Error('문항 대상을 찾을 수 없습니다.');
+  }
+  const { error } = await client.rpc('admin_assign_question_tag', {
+    p_question_id: questionId,
+    p_item_number: Number(kind),
+    p_tag_code: tagCode,
+    p_memo: memo
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function removeTopikWritingQuestionTag(
+  tagAssignmentId: number,
+  memo: string
+): Promise<void> {
+  const client = requireClient();
+  const { error } = await client.rpc('admin_remove_question_tag', {
+    p_tag_assignment_id: tagAssignmentId,
+    p_memo: memo
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
 }

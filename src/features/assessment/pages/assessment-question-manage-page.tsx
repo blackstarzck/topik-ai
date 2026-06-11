@@ -15,12 +15,17 @@ import { questionBankDataSource } from '../api/question-bank-data-source';
 import { useAssessmentQuestionFilters } from '../model/use-assessment-question-filters';
 import { useAssessmentQuestionList } from '../model/use-assessment-question-list';
 import {
-  useQuestionBankTopicMaster,
-  useQuestionTagCounts
+  useQuestionBankTagMaster,
+  useQuestionBankTags,
+  useQuestionBankTopicMaster
 } from '../model/use-question-bank-masters';
 import { AssessmentQuestionBankToolbar } from '../ui/assessment-question-bank-toolbar';
+import { QuestionTagEditModal } from '../ui/question-tag-edit-modal';
 import {
+  REPEAT_AVOID_EXCESS_THRESHOLD,
   SERVICE_STATUS_LABELS,
+  TAG_GROUP_OPERATION_CAUTION,
+  TAG_GROUP_REPEAT_AVOID,
   assessmentServiceStatuses,
   getServiceStatusColor,
   getServiceStatusLabel,
@@ -49,13 +54,12 @@ import { createTextSorter } from '../../../shared/ui/table/table-column-utils';
 const { Text } = Typography;
 
 /**
- * P4 게이트 (D-6, 실행계획안 2026-06-11 개정 §8): `service_status` write는
- * P4(관리 포인트 개방)에서 이 플래그 제거와 함께 활성화한다. 신규 스키마·RPC
- * (admin_update_topik_question)는 service_status patch를 지원하므로, P4에서는
- * 이 플래그와 facade 게이트만 제거하면 된다. 그때까지 모든 적재 문항은
- * 'internal_test'(노출 차단)다.
+ * P4 관리 포인트 개방 (실행계획안 §8, 2026-06-11): 노출 통제(service_status)와
+ * 태그 부여/제거가 admin의 유일한 문항 write 표면이다. 모든 write는 RPC 경유
+ * (admin_update_topik_question / admin_assign·remove_question_tag)로 감사 로그에
+ * 남고, 사유 입력이 필수다. POL-018 화면 가드: ② 운영주의 태그 활성 문항의
+ * available 전환 경고(+사유 필수) ③ 반복방지 태그 활성 과다 시 excluded 권고.
  */
-const OPERATION_WRITE_ENABLED = false;
 
 const serviceStatusLabels = assessmentServiceStatuses.map(
   (status) => SERVICE_STATUS_LABELS[status]
@@ -120,8 +124,11 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
   const filters = useAssessmentQuestionFilters();
   const { state, reload } = useAssessmentQuestionList();
   const { topicOptions } = useQuestionBankTopicMaster();
-  const { tagCountByQuestionId } = useQuestionTagCounts();
+  const { tagsByQuestionId, tagCountByQuestionId, reload: reloadTags } =
+    useQuestionBankTags();
+  const { tagMasterRows } = useQuestionBankTagMaster();
   const [actionState, setActionState] = useState<OperationActionState>(null);
+  const [tagEditQuestionId, setTagEditQuestionId] = useState<string | null>(null);
   const [notificationApi, notificationContextHolder] =
     notification.useNotification();
 
@@ -194,6 +201,49 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
       }))
     ];
   }, [commitParams, currentNumberQuestions, serviceStatusFilter]);
+
+  const tagGroupByCode = useMemo(() => {
+    const byCode: Record<string, string> = {};
+    tagMasterRows.forEach((row) => {
+      byCode[row.tagCode] = row.tagGroup;
+    });
+    return byCode;
+  }, [tagMasterRows]);
+
+  const tagNameByCode = useMemo(() => {
+    const byCode: Record<string, string> = {};
+    tagMasterRows.forEach((row) => {
+      byCode[row.tagCode] = row.tagNameKo;
+    });
+    return byCode;
+  }, [tagMasterRows]);
+
+  const handleTagMutated = useCallback(
+    (action: 'tag_assigned' | 'tag_removed', tagLabel: string) => {
+      if (!tagEditQuestionId) {
+        return;
+      }
+
+      reloadTags();
+      notificationApi.success({
+        message:
+          action === 'tag_assigned'
+            ? `'${tagLabel}' 태그를 부여했습니다.`
+            : `'${tagLabel}' 태그를 제거했습니다.`,
+        description: (
+          <Space direction="vertical" size={4}>
+            <Text>대상 유형: {getTargetTypeLabel('AssessmentQuestion')}</Text>
+            <Text>대상 ID: {tagEditQuestionId}</Text>
+            <AuditLogLink
+              targetType="AssessmentQuestion"
+              targetId={tagEditQuestionId}
+            />
+          </Space>
+        )
+      });
+    },
+    [notificationApi, reloadTags, tagEditQuestionId]
+  );
 
   const handleConfirmOperationAction = useCallback(
     async (reason: string) => {
@@ -290,10 +340,21 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
       {
         title: '태그',
         key: 'tags',
-        width: 100,
+        width: 150,
         render: (_, record) => {
           const count = tagCountByQuestionId[record.questionId] ?? 0;
-          return count > 0 ? <Text>{count}개</Text> : <Text type="secondary">-</Text>;
+          return (
+            <Space size={6}>
+              {count > 0 ? <Text>{count}개</Text> : <Text type="secondary">-</Text>}
+              <Button
+                size="small"
+                aria-label={`태그 편집: ${record.questionId}`}
+                onClick={() => setTagEditQuestionId(record.questionId)}
+              >
+                태그 편집
+              </Button>
+            </Space>
+          );
         }
       },
       {
@@ -306,7 +367,7 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
               <Button
                 key={action.nextStatus}
                 size="small"
-                disabled={!OPERATION_WRITE_ENABLED}
+                disabled={record.serviceStatus === action.nextStatus}
                 onClick={() =>
                   setActionState({
                     questionId: record.questionId,
@@ -337,6 +398,42 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
       )?.copy ?? null
     : null;
 
+  // POL-018 화면 가드: available 전환 대상의 활성 태그를 검사해 ②(운영주의 태그
+  // 활성 — 사유 필수 경고)·③(반복방지 태그 활성 과다 — excluded 권고) 문구를
+  // 모달 설명에 덧붙인다. 사유 입력은 ConfirmAction에서 항상 필수다.
+  const actionDescription = useMemo(() => {
+    if (!actionState || !actionCopy) {
+      return '';
+    }
+    if (actionState.nextStatus !== 'available') {
+      return actionCopy.description;
+    }
+
+    const activeTags = tagsByQuestionId[actionState.questionId] ?? [];
+    const cautionTagNames = activeTags
+      .filter((tag) => tagGroupByCode[tag.tagCode] === TAG_GROUP_OPERATION_CAUTION)
+      .map((tag) => tagNameByCode[tag.tagCode] ?? tag.tagCode);
+    const repeatAvoidCount = activeTags.filter(
+      (tag) => tagGroupByCode[tag.tagCode] === TAG_GROUP_REPEAT_AVOID
+    ).length;
+
+    const guards: string[] = [];
+    if (cautionTagNames.length > 0) {
+      guards.push(
+        `이 문항에는 운영주의 태그(${cautionTagNames.join(', ')})가 활성입니다 — 전환 사유가 필수입니다(POL-018 ②).`
+      );
+    }
+    if (repeatAvoidCount >= REPEAT_AVOID_EXCESS_THRESHOLD) {
+      guards.push(
+        `반복방지 태그가 ${repeatAvoidCount}개 활성입니다 — 반복 노출 회피 대상 과다 문항은 노출 제외(excluded)를 권고합니다(POL-018 ③).`
+      );
+    }
+
+    return guards.length > 0
+      ? `${actionCopy.description} ${guards.join(' ')}`
+      : actionCopy.description;
+  }, [actionCopy, actionState, tagGroupByCode, tagNameByCode, tagsByQuestionId]);
+
   return (
     <>
       {notificationContextHolder}
@@ -361,16 +458,6 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
               style={{ marginBottom: 16 }}
               message="모크 모드로 동작 중입니다."
               description="Supabase가 구성되지 않아 화면 검증용 고정 데이터를 표시합니다. 실데이터·감사 로그에는 기록되지 않습니다."
-            />
-          ) : null}
-
-          {!OPERATION_WRITE_ENABLED ? (
-            <Alert
-              type="warning"
-              showIcon
-              style={{ marginBottom: 16 }}
-              message="관리 포인트(노출 상태·태그) 조치는 준비 중입니다."
-              description="노출 가능/노출 제외/내부 테스트 조치와 태그 부여/제거는 P4(관리 포인트 개방)에서 활성화됩니다. 적재된 문항은 노출 상태(service_status) 'internal_test'로 사용자 노출이 차단되어 있습니다."
             />
           ) : null}
 
@@ -419,13 +506,24 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
           <ConfirmAction
             open
             title={actionCopy.title}
-            description={actionCopy.description}
+            description={actionDescription}
             targetType="AssessmentQuestion"
             targetId={actionState.questionId}
             confirmText={actionCopy.confirmText}
             reasonPlaceholder={actionCopy.reasonPlaceholder}
             onCancel={() => setActionState(null)}
             onConfirm={handleConfirmOperationAction}
+          />
+        ) : null}
+
+        {tagEditQuestionId ? (
+          <QuestionTagEditModal
+            open
+            questionId={tagEditQuestionId}
+            activeTags={tagsByQuestionId[tagEditQuestionId] ?? []}
+            tagMasterRows={tagMasterRows}
+            onClose={() => setTagEditQuestionId(null)}
+            onMutated={handleTagMutated}
           />
         ) : null}
       </div>

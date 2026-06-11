@@ -198,7 +198,8 @@ function getTargetRoute(targetType: string, targetId: string): string | null {
     return '/assessment/question-bank';
   }
   if (targetType === 'AssessmentQuestion') {
-    return `/assessment/question-bank/review/${targetId}`;
+    // P3 라우트 개명(202f905): 구 /review/:questionId → /:questionId (조회 전용 상세).
+    return `/assessment/question-bank/${targetId}`;
   }
   if (targetType === 'Content') {
     if (targetId.startsWith('VOC-SON-')) {

@@ -566,7 +566,7 @@ export default function AssessmentQuestionDetailPage(): JSX.Element {
                   </Space>
                   <Text type="secondary">
                     이 페이지는 조회 전용입니다. 태그 부여/제거와 노출 상태 변경은
-                    문항 관리 페이지에서 수행합니다(P4 개방 예정).
+                    문항 관리 페이지에서 수행합니다.
                   </Text>
                   {question.contentTeamMemo ? (
                     <div>

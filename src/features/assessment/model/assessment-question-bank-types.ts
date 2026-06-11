@@ -129,6 +129,8 @@ export type TopikWritingTagMasterRow = {
   tagNameKo: string;
   tagGroup: string;
   description: string;
+  /** D-6 노출 제외 기준 등 태그별 운영 가이드(시드 usage_rule). */
+  usageRule: string;
   isActive: boolean;
 };
 

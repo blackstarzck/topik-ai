@@ -15,6 +15,7 @@
 
 ### `docs/requests` (외부 발신 요청·발주 문서)
 - `upstream-writing-endpoints-request-2026-06-10.md` — TOPIK 쓰기 문항 공급(인바운드) API 계약 요청서(D-11 재정의 — 2026-06-11 재작성, 구 push 업로드 요청 폐기)
+- `problems-read-only-freeze-notice-2026-06-11.md` — v13 `problems` read-only 동결 선언 공지 초안(§7.1-6 이행 — 오너 채널 발신용, 코드 0줄)
 - `content-team-order-2026-06-10.md` — [폐기] 콘텐츠팀 재분류 입력표 승인 발주서(인바운드 전환으로 트랙 소멸 — 미발신 종결, 역사 보존)
 - `content-team-p2-5-sample-2026-06-11.md` — [폐기] P2-5 10문항 샘플 검토 시트(인바운드 전환으로 게이트 소멸 — 미발신 종결, 역사 보존)
 

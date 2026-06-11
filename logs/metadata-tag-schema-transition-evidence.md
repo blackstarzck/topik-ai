@@ -311,3 +311,40 @@ select count(*), count(*) filter (where tag_group='서비스_노출상태') from
 - **재채점**: P3-4 → **PASS**(마이그레이션 적용 + 뷰 재생성 + ETL 갱신 + 잔존 0건 검증 — 증적 위 항목). P3-1·2·3·5·6·7 PASS 유지 → FAIL 0건·대기 0건 — **종합 PASS 전환. P4(관리 포인트 개방) 착수 가능.**
 - 롤백 경로 비고: down 스크립트 존재(`supabase/migrations/down/…drop_review_columns.sql` — 컬럼 구조 복원만, 값 복원 불가. 값 원본은 source_map·legacy `problems`에 보존).
 - 채점자: 프로젝트 오너 위임 실행(2026-06-11 지시 — 토큰 제공으로 해소 조건 이행). 스코어카드(§12.4) P3 행 PASS 갱신 동반.
+
+---
+
+## problems read-only 동결 선언 (2026-06-11 — §7.1-6 이행, 채점 외 기록)
+
+- **선언**: P3 PASS(0013 적용 포함)에 따라 v13 `problems`를 admin 기준 **read-only 레거시로 동결**한다(결정 기록 §2.3-2). admin 코드의 `problems` write 경로는 원래 부재(구 admin RPC는 2026-06-09 v13 측에서 drop, legacy 어댑터는 읽기 전용)이므로 **코드 0줄 — 선언·기록만**.
+- 공지 초안: `docs/requests/problems-read-only-freeze-notice-2026-06-11.md` (v13 채널 발신은 오너 수행 — 발신 일시는 해당 문서에 추기).
+- 기록 반영: `docs/architecture/admin-data-source-transition.md` §10.3 인터림 상태 절에 동결 선언 행 추가.
+- 보존·일몰 규율 재확인: v13 사용자 기능이 읽는 동안 `problems` 행 삭제/아카이브 금지(§2.3-3), 일몰은 P6 PASS 후 별도 오너 결정(§2.3-4). 구 읽기 어댑터 봉인(`VITE_QUESTION_BANK_SOURCE=legacy`)은 P4 종료까지 보존.
+
+---
+
+## P4 증적 (2026-06-11 — 관리 포인트 개방)
+
+### P4 실행 (코드 — 실행계획안 §8)
+
+- **노출 write 개방(P4-1)**: facade `SERVICE_STATUS_WRITE_ENABLED` 게이트 + manage 페이지 `OPERATION_WRITE_ENABLED` 플래그·"준비 중" 경고 Alert 제거. 조치 3종(노출 가능/노출 제외/내부 테스트) 활성 — 현재 상태와 같은 전환 버튼만 비활성(무의미 전환 차단). 경로: `updateAssessmentQuestionServiceStatusSafe` → `setTopikWritingServiceStatus` → RPC `admin_update_topik_question`(사유 `__note`→`payload.note`). facade에서 사유 공백 거부.
+- **태그 부여/제거(P4-2)**: facade 함수 신설 `assignQuestionTagSafe`/`removeQuestionTagSafe`(+`fetchQuestionBankTagMasterSafe` 태그 사전 로더 — '서비스_노출상태' 그룹 필터) → 어댑터 `assignTopikWritingQuestionTag`/`removeTopikWritingQuestionTag` → RPC `admin_assign_question_tag`/`admin_remove_question_tag`. UI = `question-tag-edit-modal.tsx` 신설(manage 행별 `태그 편집` 버튼): 활성 태그 목록+memo 표시, 제거 ConfirmAction(사유 필수), 사전 기반 부여(그룹 옵션·검색·이미 활성 비활성화·usage_rule 안내, 태그+사유 입력 전 비활성). 사유 memo 필수(`question_tags.memo`+`payload.tag_memo`). mock 경로(인메모리 태그 store) 동반.
+- **POL-018 화면 가드**: ② `available` 전환 모달이 대상 문항의 운영주의 그룹 활성 태그를 검사해 태그명 명시 경고 표시(사유는 전 조치 필수). ③ 반복방지 그룹 활성 태그 임계(`REPEAT_AVOID_EXCESS_THRESHOLD=2`) 이상 시 전환 모달·태그 편집 모달에 `excluded` 권고 표시.
+- **감사 표면(P4-5)**: 액션 라벨 4종(`service_status_changed`/`tag_assigned`/`tag_removed`/`question_received`) 확인 + **딥링크 버그 수정** — `system-audit-logs-page.tsx`의 AssessmentQuestion Target 링크가 제거된 구 라우트(`/assessment/question-bank/review/{id}`)를 가리키던 것을 P3 개명 라우트(`/assessment/question-bank/{id}`)로 교정. 상세 페이지 "(P4 개방 예정)" 안내 문구 정리.
+
+### RT-4 관리 쓰기 왕복 (P4-3 — §12.0, 실DB)
+
+- 수행: dev 서버(4179) + D-12 시드 admin 화면 로그인, 대상 `topik-writing-51-0002`(인터림 코퍼스 1행 — 사전 상태 internal_test·활성 태그 0건 확인 후 진행, 종료 시 원복). 도구 `.omx/evidence/rt4-write-roundtrip.mjs`, 리포트 `rt4-write-roundtrip-report.json`.
+- **12단계 ALL PASS**: ① 화면 노출 제외 전환(사유 필수 모달) → DB 직조회 `excluded` ② 화면 재조회 반영(행 태그 '노출 제외') ③ 화면 태그 부여(`ops_expression_caution` 표현 주의 + memo) → DB `question_tags` 활성 행+memo 일치 ④ POL-018 ② 가드 문구 실데이터 표시 확인(노출 가능 모달 — 취소) ⑤ 화면 태그 제거(ConfirmAction 사유) → DB `is_active=false`+`removed_at`+제거 memo(이력 보존) ⑥ 내부 테스트 원복 → DB `internal_test` ⑦ **감사 4행 역추적(DB 단)**: 액션 순서 `service_status_changed`→`tag_assigned`→`tag_removed`→`service_status_changed`, diff(`{service_status:{from,to}}`/`{tag:{from,to}}`)·payload(`note`/`tag_memo`)·actor(`admin_user_id`)·`target_table='AssessmentQuestion'` 전부 계약 일치 ⑧ 감사 딥링크(`/system/audit-logs?targetType=AssessmentQuestion&targetId=…`) 진입 확인.
+- **정직 표기**: 감사 로그 **화면**은 모크 store SoT(기지 갭 gap-register §4.10.2 — 감사 SoT 혼합)라 실 `admin_audit_logs` 행이 화면 목록에 표시되지 않는다. P4 계약(라벨 맵·딥링크·문서)은 충족하며, 실 감사 행 역추적 증적은 DB 단 대사(⑦)로 남겼다. 화면 실데이터 연동은 후속 범위(action-log 문서에 주의 병기).
+- 데이터 불변 조건 갱신: 인터림 466행 전 행 `internal_test` 유지(원복 확인). `question_tags`는 **활성 0행 + 이력 1행**(RT-4 제거 이력 — 이력 보존 설계상 정상), 감사 로그에 RT-4 4행 잔존(append-only 설계상 정상).
+
+### RLS 직접 write 차단 네거티브 (P4-4 — §12.1, 실DB)
+
+- 도구 `.omx/evidence/rt4-rls-negative.mjs`, 리포트 `rt4-rls-negative-report.json`. **18단계 ALL PASS**.
+- 역할 3종 × 직접 write: anon/비admin(E2E_USER)/admin(E2E_ADMIN — RPC 우회 직접 테이블) 모두 번호별 테이블 UPDATE·`question_tags` INSERT/DELETE·`tag_master` UPDATE 차단(0011 설계 — 쓰기 정책 0건). RPC 가드: anon `admin_update_topik_question` 거부(unauthenticated), 비admin RPC 2종 거부(`forbidden: content_admin required`), 노출상태 그룹 태그 부여 거부(시드 제외 — unknown tag_code). 값 불변 재확인(service-role 재조회 + 프로브 memo 행 0건).
+
+### 검증 게이트 (P4-6)
+
+- write e2e: `test:e2e:mock` **7/7 PASS** — 신규 3종(관리 조치 개방 렌더 / 노출 전환 화면 왕복(사유 필수·재조회 반영) / 태그 부여·제거+POL-018 ② 가드 표시) + 기존 조회·부재 네거티브 4종.
+- vitest 39/39, `npm run build` PASS, `npm run harness:check`(mojibake/crosslinks/route-coverage/lint/typecheck) 전 항목 PASS.
