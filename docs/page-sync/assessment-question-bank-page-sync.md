@@ -17,7 +17,7 @@ last_reviewed_at: "2026-06-11"
 - 이 문서는 `TOPIK 쓰기 문항 목록`(구 `TOPIK 쓰기 문제은행`) 관리자 페이지와 사용자 화면 개발 사이의 동기화 기준을 정리합니다.
 - 운영자가 이 페이지에서 어떤 관리 포인트를 다루는지, 그 데이터가 사용자 화면에 어떻게 이어질 수 있는지 추적합니다.
 - 이 문서는 실제 DB 스키마 확정 문서가 아니며, 현재 관리자 프론트엔드/문서 기준의 후보 계약입니다.
-- 2026-06-11 인바운드 전환(`docs/architecture/metadata-tag-schema-transition-decision-record.md` §0)에 따라 목적/가능 작업/CRUD/감사 계약을 수신·관리 모델 기준으로 재작성했습니다. 같은 날 재정의 P3 코드 컷오버(커밋 `202f905`)로 검수 표면이 제거 완료되어 "제거 예정" 병기는 "제거 완료"로 갱신했습니다(잔여 = 검수 4컬럼 물리 제거 마이그레이션 `0013` 적용 대기).
+- 2026-06-11 인바운드 전환(`docs/architecture/metadata-tag-schema-transition-decision-record.md` §0)에 따라 목적/가능 작업/CRUD/감사 계약을 수신·관리 모델 기준으로 재작성했습니다. 같은 날 재정의 P3 코드 컷오버(커밋 `202f905`)로 검수 표면이 제거 완료되어 "제거 예정" 병기는 "제거 완료"로 갱신했습니다(검수 4컬럼 물리 제거 마이그레이션 `0013`도 2026-06-11 적용 완료).
 
 ## 2. 페이지 요약
 
@@ -66,7 +66,7 @@ last_reviewed_at: "2026-06-11"
 
 | 엔티티 후보 | 테이블 후보 | CRUD | 관리자 UI 진입점 | 주요 필드 후보 | 감사 로그 Target | 사용자 화면 영향 | 미확정/차이 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| AssessmentQuestion | topik_writing_51/52/53/54_questions + topik_writing_question_source_map(+목록용 추천 뷰) | Create(수신 적재 — 후속), Read | TOPIK 쓰기 문항 목록/상세 | question_id, item_number, topic_main/topic_detail, scenario_type, situation_summary, service_status, 태그(question_tags 경유), auto_checks_passed(수신 정합 검사), content_team_memo(수신 메타데이터 — admin 쓰기 없음), created_at, updated_at | AssessmentQuestion + questionId | 노출 예정(v13 read-only 소비) | 재정의 P3 컷오버 완료(`202f905`): 현행 코드 source는 신규 4테이블 + 추천 뷰(facade 기본 `topik_writing`). 검수 컬럼(review_status 등)은 화면·코드에서 제거 완료, 물리 제거는 마이그레이션 `0013` 적용 대기 |
+| AssessmentQuestion | topik_writing_51/52/53/54_questions + topik_writing_question_source_map(+목록용 추천 뷰) | Create(수신 적재 — 후속), Read | TOPIK 쓰기 문항 목록/상세 | question_id, item_number, topic_main/topic_detail, scenario_type, situation_summary, service_status, 태그(question_tags 경유), auto_checks_passed(수신 정합 검사), content_team_memo(수신 메타데이터 — admin 쓰기 없음), created_at, updated_at | AssessmentQuestion + questionId | 노출 예정(v13 read-only 소비) | 재정의 P3 컷오버 완료(`202f905`): 현행 코드 source는 신규 4테이블 + 추천 뷰(facade 기본 `topik_writing`). 검수 컬럼(review_status 등)은 화면·코드에서 제거 완료, 물리 제거도 마이그레이션 `0013`으로 완료(2026-06-11 적용) |
 
 ### CRUD 상세
 
@@ -74,7 +74,7 @@ last_reviewed_at: "2026-06-11"
 | --- | --- | --- | --- | --- | --- |
 | Create | `후속(수신 적재)` | 외부(공급) API 수신 → Supabase 적재. 외부 API 미개발 — 공급 계약 회신 게이트(D-11 재정의)에 종속하며, 화면에서 직접 문항을 생성하지 않음 | 수신 파이프라인(후속) + `question_source_map` idempotency(D-4) | 목록, 상세, 감사 로그(`question_received`) | 수신 정합 검사(auto_checks_passed) 실패분 적재 보류 |
 | Read | `지원` | 문항 목록(추천 뷰)/상세(번호별 테이블) 조회 | 신규 4테이블 + 추천 뷰(재정의 P3 컷오버 완료 — 롤백 시 legacy `problems` 읽기 전용 어댑터) | URL/필터 복원 | empty/error 처리, JSON fallback 없음 |
-| Update | `이 페이지 미지원` | 태그 부여/제거 + `service_status` 변경은 `/manage`에서 P4 개방 예정. 검수 상태 변경 쓰기는 화면·facade에서 제거 완료(재정의 P3 — `202f905`), DB측 RPC의 검수 화이트리스트는 마이그레이션 `0013`에서 제거(적용 대기) | `admin_update_topik_question`(service_status)/`admin_assign_question_tag`/`admin_remove_question_tag` | 목록, 상세, 감사 로그 | 실패 시 재조회 또는 오류 안내 |
+| Update | `이 페이지 미지원` | 태그 부여/제거 + `service_status` 변경은 `/manage`에서 P4 개방 예정. 검수 상태 변경 쓰기는 화면·facade에서 제거 완료(재정의 P3 — `202f905`), DB측 RPC의 검수 화이트리스트도 마이그레이션 `0013`에서 제거 완료(2026-06-11 적용) | `admin_update_topik_question`(service_status)/`admin_assign_question_tag`/`admin_remove_question_tag` | 목록, 상세, 감사 로그 | 실패 시 재조회 또는 오류 안내 |
 | Delete | `미지원` | 물리 삭제 없음. 노출 제외는 `/manage`의 `service_status='excluded'` 전환으로 처리 | 없음 | 목록, 상세, 감사 로그, 사용자 노출 | 확인 모달, 사유 필수(`/manage` 계약) |
 
 ## 6. 관리자 조치와 감사 로그 계약
@@ -87,7 +87,7 @@ last_reviewed_at: "2026-06-11"
 | 태그 부여/제거(`tag_assigned`/`tag_removed`) — `/manage` 담당 | 아니요 | 필수 | 필수(`question_tags.memo`) | AssessmentQuestion | 대상 ID | /system/audit-logs?targetType=AssessmentQuestion&targetId={targetId} |
 | 노출 상태 변경(`service_status_changed`) — `/manage` 담당 | 예 | 필수 | 필수 | AssessmentQuestion | 대상 ID | /system/audit-logs?targetType=AssessmentQuestion&targetId={targetId} |
 
-- 폐기: 검수 액션 4종과 `question_published`(push)는 2026-06-11 §0으로 폐기됐습니다. 검수 페이지 코드는 재정의 P3에서 제거 완료(`202f905` — 기존 감사 행은 "(구)" 역사 라벨로 표시)이고, DB측 RPC(`admin_update_topik_question`)의 검수 액션 경로는 마이그레이션 `0013`(작성 완료 — 적용 대기)에서 제거됩니다.
+- 폐기: 검수 액션 4종과 `question_published`(push)는 2026-06-11 §0으로 폐기됐습니다. 검수 페이지 코드는 재정의 P3에서 제거 완료(`202f905` — 기존 감사 행은 "(구)" 역사 라벨로 표시)이고, DB측 RPC(`admin_update_topik_question`)의 검수 액션 경로도 마이그레이션 `0013`에서 제거 완료됐습니다(2026-06-11 적용 — RPC 원문 검수 참조 0건).
 
 ## 7. 사용자 화면 동기화 포인트
 

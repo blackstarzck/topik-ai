@@ -299,3 +299,15 @@ select count(*), count(*) filter (where tag_group='서비스_노출상태') from
 - 종합 판정: **CONDITIONAL** (FAIL 0건 — 필수 P3-4만 토큰 부재로 마이그레이션 적용 대기, §12.3 판정 규칙). **P4 착수 불가.** 해소 조건·담당·기한: P3-4 행 참조 — 적용·검증 후 재채점으로 PASS 전환해야 P4(관리 포인트 개방) 진행.
 - 신규 코드는 검수 컬럼을 select하지 않아 0013 적용 전 DB와도 호환(운영 리스크 없음 — 잔여는 순수 DB 정리·증적 확보).
 - 채점자: 프로젝트 오너 위임 실행(2026-06-11 지시). 스코어카드(§12.4) P3 행 기록 동반.
+
+### P3 재채점 (2026-06-11 — P3-4 해소: 0013 마이그레이션 적용. 종합 **PASS** 전환)
+
+- **해소 경위**: 오너가 `SUPABASE_ACCESS_TOKEN`(sbp_…)을 `.env.local`에 제공 → `npm run db:migrate:status`(12 applied + 0013 pending 확인) → **`npm run db:migrate` 적용 성공**(`20260611190100_topik_writing_drop_review_columns.sql`).
+- **잔존 0건 검증 (P3-4 후반부)**:
+  - 스키마 스냅샷(`npm run db:snapshot` → `.omx/evidence/schema-snapshot-post-0013.json`, 검증기 `check-post-0013-snapshot.mjs`): **4테이블 검수 컬럼 존재 0건**(51: 53컬럼/52: 50/53: 52/54: 49 — review_status·review_workflow_status·review_passed·validation_result 전무), **추천 뷰 정확히 16컬럼**(review 컬럼 없음) — RESULT: PASS.
+  - RPC 원문 대사(`pg_get_functiondef` → `.omx/evidence/post-0013-rpc-defs.json`): `admin_update_topik_question`/`admin_assign_question_tag`/`admin_remove_question_tag` **검수 참조 0건**(화이트리스트 `service_status` 단일·가드 ① 삭제 확정).
+- **RT-3 재확인**: `rt3-field-reconcile.mjs` 재실행 — **190필드 ALL PASS**(10문항, 뷰 6+테이블 10+정합 3, 쓰기 0건). 적용 후 DB 기준 무손실 재확인.
+- **ETL 정합(선택 검증)**: `etl:transform`(로컬 재생성 — 갱신 transform, 검수 필드 미기록) → `etl:verify` **8체크 ALL PASS**(재조립 51/52·보존 466행·수량 470=466+4·축·**RT-2 재조회 466행 diff 0건**·internal_test 전 행·source_map 전수 — `verify-report-1781158071651.json`). ※ 첫 verify는 RT-2 1건 FAIL이었으나 원인은 0013 이전 델타 재적재 시점의 payload 산출물(검수 필드 포함)과의 비교 — transform 재생성으로 해소(데이터 이상 아님, 보류 4행 = 기지 `audit_seed` 예시 행). `etl:load`는 불필요한 프로덕션 쓰기라 생략(RT-2가 동일 보장 제공).
+- **재채점**: P3-4 → **PASS**(마이그레이션 적용 + 뷰 재생성 + ETL 갱신 + 잔존 0건 검증 — 증적 위 항목). P3-1·2·3·5·6·7 PASS 유지 → FAIL 0건·대기 0건 — **종합 PASS 전환. P4(관리 포인트 개방) 착수 가능.**
+- 롤백 경로 비고: down 스크립트 존재(`supabase/migrations/down/…drop_review_columns.sql` — 컬럼 구조 복원만, 값 복원 불가. 값 원본은 source_map·legacy `problems`에 보존).
+- 채점자: 프로젝트 오너 위임 실행(2026-06-11 지시 — 토큰 제공으로 해소 조건 이행). 스코어카드(§12.4) P3 행 PASS 갱신 동반.

@@ -329,7 +329,7 @@
 - 주요 액션: `상세 보기`(행 클릭/툴팁 버튼 — 조회 전용. 쓰기 액션 없음)
 - URL 복원 메모: `questionNo`(반복), `topicMain`, `topicDetail`, `questionType`, `difficulty`, `keyword` (구 `domain`·`reviewStatus` 축은 재정의 P3에서 제거 완료). `tab` 쿼리는 사용하지 않고 라우트 자체가 URL 상태를 보존합니다.
 - 분리 메모: `문항 관리`(관리 포인트: 태그 + 노출)는 형제 라우트 `/assessment/question-bank/manage`로 분리되어 #19-1로 별도 정의합니다. 두 페이지는 동일한 신규 스키마 조회 결과(facade 공유 hook)를 사용합니다.
-- 전환 메모: 2026-06-11 인바운드 전환(결정 기록 §0)으로 재정의된 P3(조회 컷오버 + 검수 표면·컬럼 제거)의 코드 컷오버·표 재작성은 완료됐습니다(`202f905`). 잔여 = 검수 4컬럼 물리 제거 마이그레이션 `0013` 적용(작성 완료 — 적용 대기. `docs/architecture/metadata-tag-schema-transition-decision-record.md` §0, 실행계획안 2026-06-11 개정).
+- 전환 메모: 2026-06-11 인바운드 전환(결정 기록 §0)으로 재정의된 P3(조회 컷오버 + 검수 표면·컬럼 제거)의 코드 컷오버·표 재작성은 완료됐습니다(`202f905`). 검수 4컬럼 물리 제거 마이그레이션 `0013`도 2026-06-11 적용 완료(`docs/architecture/metadata-tag-schema-transition-decision-record.md` §0, 실행계획안 2026-06-11 개정 — §12.4 P3 = PASS).
 
 ## 19-1) 평가 > TOPIK 쓰기 문항 관리
 
