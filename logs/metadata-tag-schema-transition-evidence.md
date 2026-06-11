@@ -253,6 +253,12 @@ select count(*), count(*) filter (where tag_group='서비스_노출상태') from
 - e2e 재작성 5/5 PASS(`test:e2e:mock`): 목록 신규 축 렌더, 번호별 실메타 표시, **검수 메모 저장→검수 완료 write 흐름 화면 왕복**, manage P4 대기 안내, 감사 로그 역이동 차단.
 - **실DB 읽기 프로브**(비공식 — RT-3 사전 확인, 쓰기 0건): `VITE_QUESTION_BANK_SOURCE=topik_writing` + D-12 시드 admin 로그인으로 목록 466문항(뷰)·상세 4개 번호(번호별 테이블 라우팅)·manage 카드 "내부 테스트 466 / 노출 가능 0 / 노출 제외 0" 표시 확인 — P2 백필 상태와 정확히 일치. 보류 행(`*-0001` audit_seed)은 상세 조회 시 오류 표면화(정상 — 테이블 미적재). 도구: `.omx/evidence/debug-topik-writing-read.mjs`.
 
+### RT-3 읽기 전용 필드 대사 (2026-06-11 6차 세션 — 선행, 미채점)
+
+- 범위: P2-5 10문항 샘플(번호 51:2/52:3/53:2/54:3 전수, topic_main 10종 distinct). **화면 데이터 소스를 DB 직조회**(dev 서버 불필요) — 목록 소스 = 추천 뷰(`topik_writing_question_recommendation_view`), 상세 소스 = 번호별 테이블 — 후 **저작 입력표(`reclassification-input.json`)·원문 덤프와 필드별 대사**.
+- 결과: **240필드 ALL PASS(diff 0)** — 문항당 뷰 8필드(topic_main/topic_detail/difficulty_level/target_level/question_type_name/review_status/review_workflow_status/service_status) + 테이블 12필드(+secondary_topic_main/detail·prompt_text·item_number) + 목록↔상세 정합 4필드. `review_status`/`review_workflow_status`는 D-9 이관 사전(approved→approved/done, pending→needs_revision/not_started) 일치, 전 행 `service_status='internal_test'`(D-6), `prompt_text`=원문 `prompt` 일치. **쓰기 0건**. 도구 `.omx/evidence/rt3-field-reconcile.mjs`(읽기 전용).
+- 의의: 신규 스키마 읽기 경로(뷰·번호별 테이블)가 저작 값을 **무손실·충실히 표현**함을 확인 — RT-2(transform 산출물↔DB)에 더해 **표시 소스↔저작 입력**까지 대사. presenter의 ASCII→한국어 라벨 매핑은 vitest(43)+세션5 브라우저 프로브로 별도 커버. **정식 RT-3 채점은 P3 컷오버(P2 PASS 후) 시점** — 본 절은 선행 증적.
+
 ### 잔여 (P3 채점 전 필수 — P2 PASS 전환 후)
 
-- 컷오버 절차 실행(§7.1: freeze 윈도 → 델타 재적재 → 발산 0건 대사 → 기본 소스 플립 배포 → problems read-only 동결), RT-3 실데이터 필드별 대사(번호별 ≥1건·권장 10건), RT-4 검수 쓰기 왕복(화면→DB→재반영→감사 로그 역추적), 문서 동기화(§11 P3 행: data contract §9.6 / page-tables #19·#19-1 / 양 page-IA / page-sync §5-7), P3 채점표(§12.3) 채점.
+- 컷오버 절차 실행(§7.1: freeze 윈도 → 델타 재적재 → 발산 0건 대사 → 기본 소스 플립 배포 → problems read-only 동결), RT-3 정식 채점(읽기 전용 선행 대사 완료 — 위 절; 컷오버 후 배포본 기준 재확인 + 권장 시 브라우저 렌더 경로 포함), RT-4 검수 쓰기 왕복(화면→DB→재반영→감사 로그 역추적), 문서 동기화(§11 P3 행: data contract §9.6 / page-tables #19·#19-1 / 양 page-IA / page-sync §5-7), P3 채점표(§12.3) 채점.

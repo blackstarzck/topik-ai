@@ -61,7 +61,7 @@
    3. 신·구 발산 0건 대사: verify 리포트(RT-2 diff 0건) + `review_status`/`review_workflow_status`/메모 영향 컬럼 — P2-6 리허설에서 검증된 경로.
    4. `question-bank-data-source.ts` 기본값 'topik_writing' 플립 → `npm run harness:check`+`build` → 배포(작업 커밋).
    5. `problems` read-only 동결(v13 합의 절차 — 결정 기록 §2) — 구 읽기 어댑터는 삭제하지 않고 봉인 유지.
-3. **RT-3 실데이터 화면 표시 대사**: 번호별 ≥1건(권장 10건)의 목록·상세 표시값을 DB 행/입력표와 필드별 대사. `.omx/evidence/debug-topik-writing-read.mjs`를 필드 비교형으로 확장하면 됨. ※ 각 번호 `-0001`은 audit_seed 보류 행(테이블 미적재) — `-0002`부터 사용.
+3. **RT-3 실데이터 화면 표시 대사** — ✅ **읽기 전용 선행 대사 완료(6차)**: 10문항 샘플(번호 전수·topic 10종)을 추천 뷰(목록 소스)+번호별 테이블(상세 소스)에서 직조회해 저작 입력표·원문과 **240필드 ALL PASS(diff 0)** — 도구 `.omx/evidence/rt3-field-reconcile.mjs`, 증적 로그 RT-3 절. 정식 RT-3 채점은 컷오버 후 배포본 기준 재확인(+권장 시 브라우저 렌더 경로). ※ 각 번호 `-0001`은 audit_seed 보류 행(테이블 미적재) — `-0002`부터 사용.
 4. **RT-4 검수 쓰기 왕복**: 화면 검수 액션(메모 저장→검수 완료 등) → DB 직조회(번호별 테이블) → 화면 재반영 → `admin_audit_logs` 역추적(action·diff·payload.review_note) 1사이클. e2e admin 계정(`.env.local`) 사용. **실데이터 검수 상태가 바뀌므로** 대상 행·원상 복구 여부를 증적에 기록.
 5. **문서 동기화 (§11 P3 행)**: 데이터 계약 §9.6, `admin-page-tables.md` #19/#19-1, 양 page-IA 매핑 블록, page-sync §5-7 후보 표, transition 문서 §10.4, doc-update-log, `harness:check`.
 6. **P3 채점·기록**: §12.3 P3 채점표(P3-1~P3-7) → 증적 로그 + §12.4 스코어카드, 2단계 커밋(작업→채점).
