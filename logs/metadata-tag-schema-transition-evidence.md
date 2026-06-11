@@ -348,3 +348,23 @@ select count(*), count(*) filter (where tag_group='서비스_노출상태') from
 
 - write e2e: `test:e2e:mock` **7/7 PASS** — 신규 3종(관리 조치 개방 렌더 / 노출 전환 화면 왕복(사유 필수·재조회 반영) / 태그 부여·제거+POL-018 ② 가드 표시) + 기존 조회·부재 네거티브 4종.
 - vitest 39/39, `npm run build` PASS, `npm run harness:check`(mojibake/crosslinks/route-coverage/lint/typecheck) 전 항목 PASS.
+
+### 문서 동기화 — §11 P4 행 (작업 커밋 `6846309`)
+
+- IA 2종(관리 IA §7.3 "조치 활성 규칙" 재작성·오픈 이슈 2건 해소 / 목록 IA P4 마커 갱신 — IA 체인지로그 동반), page-tables #19-1 액션·태그 편집 모달 재작성, action-log P4 write 계약(payload 키·역추적 경로·감사 화면 모크 SoT 주의 병기), page-sync P4 개방 완료 표기, data-contract §9.6 쓰기 계약·§12.3 화면 결선 완료, gap-register §4.7 write 게이트 해소(+P3 잔존 분류 표기 정리), policy-source-map **POL-018 → 코드 반영 승격**, data-source-transition §10.3 운영 write 경계 재작성. 기록: `logs/admin-doc-update-log.md` + `docs/specs/admin-page-ia-change-log.md`.
+
+### P4 채점 (실행 계획안 §12.3 P4 채점표 — 2026-06-11)
+
+| # | 항목 | 판정 | 증적 |
+| :-- | :---- | :--: | :---- |
+| P4-1 | `service_status` write 개방 + `OPERATION_WRITE_ENABLED` 게이트 제거 | PASS | 코드 diff `6846309`(facade `SERVICE_STATUS_WRITE_ENABLED`·manage `OPERATION_WRITE_ENABLED`·"준비 중" Alert 제거) + 동작 확인(RT-4 ①·②: 화면 전환 → DB `excluded` → 화면 재반영, e2e 노출 전환 왕복) |
+| P4-2 | 태그 부여/제거 UI+RPC(노출상태 그룹 차단 가드 포함) | PASS | `question-tag-edit-modal.tsx` + facade/어댑터 결선(코드 diff `6846309`), 동작 확인(RT-4 ③·⑤: 부여 memo 일치·제거 이력 보존), 가드 테스트(RLS 네거티브: 노출상태 그룹 부여 거부 + facade 옵션 필터·RPC 가드 이중 차단, 사유 공백 거부) |
+| P4-3 | **RT-4 관리 쓰기 왕복(태그·service_status)** | PASS | 본 로그 RT-4 절 — 12단계 ALL PASS(화면 write → DB 직조회 → 화면 재반영 → 감사 4행 역추적(DB 단, 액션 순서·diff·payload·actor 계약 일치) + 딥링크 진입), internal_test 1행 수행 후 원복. 리포트 `.omx/evidence/rt4-write-roundtrip-report.json`. 정직 표기: 감사 **화면**의 실 행 표시는 기지 갭 §4.10.2(모크 store SoT — 후속 범위) |
+| P4-4 | RLS 직접 write 차단 재확인 | PASS | 본 로그 RLS 네거티브 절 — 18단계 ALL PASS(anon/비admin/admin × UPDATE/INSERT/DELETE 차단 + RPC unauthenticated/forbidden 거부 + 값 불변 재확인). 리포트 `.omx/evidence/rt4-rls-negative-report.json` |
+| P4-5 | 감사 표면 갱신(액션 라벨·딥링크) + action-log 문서 계약 | PASS | 라벨 4종 확인 + AssessmentQuestion 딥링크 구 `/review/` 경로 버그 수정(코드 diff `6846309`) + action-log P4 write 계약 추가(문서 diff `6846309`) |
+| P4-6 | write e2e 통과 | PASS | `test:e2e:mock` 7/7(write 시나리오 3종 — 사유 필수·재조회 반영·POL-018 ② 가드 어서션) + 실DB 화면 경로는 RT-4 브라우저 프로브로 보강 |
+| P4-7 | 노출 제외 기준 운영 가이드 반영(D-6 후속) | PASS(권장) | `tag_master.usage_rule`에 기준 ②③ 기록(P1 시드)·태그 편집 모달이 선택 태그의 usage_rule 안내 표시·POL-018 정책 행 코드 반영 승격·관리 IA §7.4 가이드 병기 |
+
+- 종합 판정: **PASS** (필수 P4-1~P4-6 전부 PASS + 권장 P4-7 PASS). **P5(마스터 관리·신규 surface) 착수 가능.**
+- §12.2 후속 판단 포인터(채점 외): P4 종료 시점의 구 problems 어댑터 플래그 봉인 제거 여부는 오너 판단 대기 — 권고: 읽기 전용·저비용이므로 P6(공급 연동) 전까지 봉인 보존 유지.
+- 채점자: 프로젝트 오너 위임 실행(2026-06-11 지시 — "남은 작업을 이어가"). 스코어카드(§12.4) P4 행 기록 동반.
