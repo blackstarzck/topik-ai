@@ -169,6 +169,7 @@
 ## 콘텐츠팀 회신 가이드
 
 - 행별로 **승인** 또는 **수정**(수정 시: 권장 `topic_main`/`topic_detail`/`secondary`/`difficulty`/`target_level` 명시).
+- **본 시트의 승인은 콘텐츠팀이 해당 분류를 *자신의 저작으로 확정*하는 행위입니다**(개발 초안의 단순 추인이 아님 — 결정기록 D-3, 2026-06-11 정정). 아래 초안값은 시작 편의용 제안이며 채택·수정 권한은 전적으로 콘텐츠팀에 있습니다.
 - 분류·논리·정합성 판단은 콘텐츠팀 결정이며, 개발 측은 확정 회신값을 그대로 반영한다.
 - 승인 회신 도착 시: 수정분은 입력표(`reclassification-input.json`)에 반영 → ETL 재실행(transform→load→verify, idempotent) → P2-5 PASS 재채점 → P2 종합 PASS 전환.
 - 승인 전까지 적재 466행 전부 `service_status=internal_test`로 사용자 노출 차단 유지(D-6, 발주서 일정 연동 조항).

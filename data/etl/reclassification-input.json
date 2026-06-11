@@ -4,8 +4,8 @@
   "generated_at": "2026-06-10",
   "source": "v13 problems 51~54 전수 470행 중 분류 대상 466행 (audit_seed 예시 4행은 적재 보류 트랙)",
   "method": "문항 본문(title/prompt/scenario 힌트) 기반 분류 — topic_category_code 기계 변환 미사용(D-3). 분류 24배치 + 17주제×85세부 고정 사전·번호별 enum 전수 검증(위반 0건). 난이도/목표급수는 51=source_difficulty_target, 52~54=normalized_difficulty 파생 초안. 54번 1행(68f40294)은 분류 출력 누락분 수동 보완. 감사 보정 21건 반영(2026-06-10). 표적 감사 보정 17건 반영(2026-06-10).",
-  "status": "draft — 번호별 표본 적대 감사 패스 완료(2026-06-10, 워크플로 wf_d7d3d7f6-753: 60행 감사·플래그 22건·2인 재판정, 교체 19건+재작성 2건 반영 — audit-decisions.json). q52 cf=ref 동일값 잔여 22행 표적 적대 감사 완료(2026-06-10, 워크플로 wf_7ccb36f0-542: 플래그 17건·2인 재판정, 교체 17건·유지 0건 — audit-decisions-cfref.json).",
-  "approval": "콘텐츠팀 P2-5 샘플 승인 대기 — 승인 전 적재분은 service_status=internal_test 유지(D-6)",
+  "status": "draft(콘텐츠팀 소유 시작 초안 — authorship pending P2-5) — 분류값은 콘텐츠팀 확정 대상이고 개발은 충실 추출만 한다(분류 판정 없음). 본문 기반 시작 초안 + 적대 감사 보정(표본 60행 wf_d7d3d7f6-753 / q52 cf=ref 22행 wf_7ccb36f0-542 — audit-decisions*.json)은 추출 품질 증적이지 콘텐츠팀 저작을 대체하지 않는다. 작성 주체 정정: 결정기록 D-3(2026-06-11 6차) + d3-classification-ownership-decision-brief.md(옵션 3 절충).",
+  "approval": "콘텐츠팀 P2-5 채택·승인 대기(시작 초안을 채택·수정·승인하는 것이 콘텐츠팀의 분류 저작 행사) — 승인 전 적재분은 service_status=internal_test 유지(D-6)",
   "counts": {
    "total": 466,
    "perNo": {
