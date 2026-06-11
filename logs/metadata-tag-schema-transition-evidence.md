@@ -266,6 +266,14 @@ select count(*), count(*) filter (where tag_group='서비스_노출상태') from
 - 결과: **240필드 ALL PASS(diff 0)** — 문항당 뷰 8필드(topic_main/topic_detail/difficulty_level/target_level/question_type_name/review_status/review_workflow_status/service_status) + 테이블 12필드(+secondary_topic_main/detail·prompt_text·item_number) + 목록↔상세 정합 4필드. `review_status`/`review_workflow_status`는 D-9 이관 사전(approved→approved/done, pending→needs_revision/not_started) 일치, 전 행 `service_status='internal_test'`(D-6), `prompt_text`=원문 `prompt` 일치. **쓰기 0건**. 도구 `.omx/evidence/rt3-field-reconcile.mjs`(읽기 전용).
 - 의의: 신규 스키마 읽기 경로(뷰·번호별 테이블)가 저작 값을 **무손실·충실히 표현**함을 확인 — RT-2(transform 산출물↔DB)에 더해 **표시 소스↔저작 입력**까지 대사. presenter의 ASCII→한국어 라벨 매핑은 vitest(43)+세션5 브라우저 프로브로 별도 커버. **정식 RT-3 채점은 P3 컷오버(P2 PASS 후) 시점** — 본 절은 선행 증적.
 
+### 재정의 P3 실행 (2026-06-11 — 인바운드 모델, 커밋 `202f905`. 미채점)
+
+- **§7.1 컷오버 1~4단계 수행**: ① freeze(레거시 쓰기는 이미 불능 — 절차 선언) ② 델타 재적재: `etl:extract`(신규 덤프 470행, 분포 불변) → `etl:transform` → `etl:load` — **테이블 해시 5종이 P2 본 적재와 전부 동일(드리프트 0)** ③ `etl:verify` 8체크 ALL PASS(`verify-report-1781153139018.json`) ④ **데이터 소스 스위치 기본값 'topik_writing' 플립**(`question-bank-data-source.ts` — 롤백은 env `VITE_QUESTION_BANK_SOURCE=legacy`, 구 어댑터 봉인 보존).
+- **검수 표면 코드 제거 완료**: 타입·스키마 사전·presenter·URL 파라미터(`reviewStatus`)·facade(검수 쓰기/메모 제거)·신규 어댑터(16컬럼 뷰 select + `setTopikWritingServiceStatus` P4 진입점)·legacy 어댑터(읽기 전용화)·mock·목록 페이지("TOPIK 쓰기 문항 목록" 조회 전용, 번호별 카드, 노출 상태 컬럼)·상세 페이지(파일 개명 `assessment-question-detail-page.tsx`, 검수 메모/액션 삭제)·manage(검수 컬럼/문구 제거)·라우트 개명(`/review/:questionId`→`/:questionId`)·라벨/브레드크럼/상태 사전·감사 라벨(신 액션 + 구 검수 코드 "(구)" 역사 렌더)·CSS 클래스 개명.
+- **0013 마이그레이션 작성**(`20260611190100_topik_writing_drop_review_columns.sql` + down): 검수 4컬럼 drop(4테이블) + 뷰 16컬럼 재생성 + RPC 화이트리스트 `service_status` 단일 축소(가드 ① 삭제, payload.note). **적용 미실행 — `SUPABASE_ACCESS_TOKEN` 부재(이번 세션 미보유)**. 신규 코드는 검수 컬럼을 select하지 않아 적용 전 DB와도 호환(적용 순서 안전).
+- **ETL 갱신**: `transform-core.mjs` 검수 필드 기록 중지(`mapReviewStatus` 제거, REQUIRED_COLUMNS 정리).
+- **검증**: typecheck·lint·build PASS, vitest 39/39, e2e 5/5(`test:e2e:mock` — 조회 전용 어서션 + 검수 표면 부재 네거티브 + 구 라우트 비렌더), **RT-3 재실행(갱신 도구) 190필드 ALL PASS**(검수 필드 제외 기준 — 뷰 6+테이블 10+정합 3 × 10문항), harness:check 전 항목, src 검수 잔존 = 폐기 선언 주석만(표시 문자열 0건).
+
 ### 잔여 (P3 채점 전 필수 — P2 PASS 전환 후)
 
 - 컷오버 절차 실행(§7.1: freeze 윈도 → 델타 재적재 → 발산 0건 대사 → 기본 소스 플립 배포 → problems read-only 동결), RT-3 정식 채점(읽기 전용 선행 대사 완료 — 위 절; 컷오버 후 배포본 기준 재확인 + 권장 시 브라우저 렌더 경로 포함), RT-4 검수 쓰기 왕복(화면→DB→재반영→감사 로그 역추적), 문서 동기화(§11 P3 행: data contract §9.6 / page-tables #19·#19-1 / 양 page-IA / page-sync §5-7), P3 채점표(§12.3) 채점.
