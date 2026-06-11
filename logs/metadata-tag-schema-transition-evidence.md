@@ -368,3 +368,40 @@ select count(*), count(*) filter (where tag_group='서비스_노출상태') from
 - 종합 판정: **PASS** (필수 P4-1~P4-6 전부 PASS + 권장 P4-7 PASS). **P5(마스터 관리·신규 surface) 착수 가능.**
 - §12.2 후속 판단 포인터(채점 외): P4 종료 시점의 구 problems 어댑터 플래그 봉인 제거 여부는 오너 판단 대기 — 권고: 읽기 전용·저비용이므로 P6(공급 연동) 전까지 봉인 보존 유지.
 - 채점자: 프로젝트 오너 위임 실행(2026-06-11 지시 — "남은 작업을 이어가"). 스코어카드(§12.4) P4 행 기록 동반.
+
+---
+
+## P5 증적 (2026-06-11 — 마스터 관리·신규 surface)
+
+### P5-1 실행 (코드 — 실행계획안 §9, 작업 커밋 `a96846b`)
+
+- **경로 선택**: 1차 권장 경로 = **기존 `/system/metadata` 확장**(신규 라우트·메뉴·권한 키 0건 — P5-2는 "해당 없음" 경로). 모크 그룹 store(편집 가능 인메모리 SoT)에 끼우지 않고 **Supabase 실데이터 읽기 전용 별도 섹션**으로 분리 — 같은 표에 합치면 편집 액션이 거짓 동작하기 때문(핸드오프 §3-1 구조 주의 ②, `MetadataModule` enum 확장도 불필요해짐).
+- **데이터 계층**: 전수 카탈로그 로더 2종 신설 `loadTopikWritingTopicMasterCatalog`/`loadTopikWritingTagMasterCatalog`(`topik-writing-question-bank-service.ts`) — 기존 편집용 로더와 달리 **is_active·'서비스_노출상태' 그룹 필터 없음**(마스터 행 자체를 표시). facade `fetchQuestionBankTopicMasterCatalogSafe`/`fetchQuestionBankTagMasterCatalogSafe`(mock/topik_writing/legacy 분기 — legacy는 마스터 테이블이 없어 빈 배열 = 화면 empty 안내). 카탈로그 행 타입 2종(`TopikWritingTopicMasterCatalogRow`/`TopikWritingTagMasterCatalogRow`) + 모크 카탈로그(D-12 — 비활성 예시 1행 포함, 비활성 렌더 검증용).
+- **UI**: `src/features/assessment/ui/master-catalog-section.tsx` 신설(평가 도메인 데이터라 assessment feature 소유, 시스템 페이지가 마운트) — `TOPIK 쓰기 마스터 데이터 (읽기 전용)` 카드: 주제/태그 탭, 컬럼 필터(종합 주제·그룹·활성)·정렬, 탭별 `총 N건 · 활성 M건` 집계, 탭별 독립 AsyncState(pending/empty/error+재시도), 모크 배너. **편집 액션 0**(write 없음 — 감사 계약 영향 없음).
+- **추천키/반복방지키**: 문항 상세 JSONB 조회로 유지(D-10 비범위 — 실행계획안 §9 "조회만" 원칙, 마스터 화면에 편집 진입점 없음).
+
+### P5-1 화면 확인 (실DB — §12.3 판정 기준 "화면 확인")
+
+- 수행: dev 서버(4179) + D-12 시드 admin 화면 로그인. 도구 `.omx/evidence/p5-master-catalog-surface.mjs`, 리포트 `p5-master-catalog-surface-report.json`. **쓰기 0건**(service-role은 직조회 집계만).
+- **8단계 ALL PASS**: ⓐ DB 직조회 — topic_master 전수 85행·17개 종합 주제·활성 85 ⓑ tag_master 전수 19행·6그룹·활성 19('서비스_노출상태' 그룹 부재 = D-6 시드 원칙 확인) ① 섹션 렌더 ② 주제 탭 화면 집계 `총 85건 · 활성 85건` = DB 대사 + 표본 행(개인 신상/이름, sort 101 — 시드 첫 행) ③ 태그 탭 화면 집계 `총 19건 · 활성 19건` = DB 대사 + 표본 행(rec_use/추천 사용, 그룹 추천사용) ④ 읽기 전용 — 섹션 내 상태 스위치 0 + 추가/수정/삭제 버튼 0.
+
+### 검증 게이트
+
+- e2e: `test:e2e:mock` **8/8 PASS** — 신규 1종(주제/태그 마스터 `/system/metadata` 읽기 전용 조회: 모크 배너·전수 표시(비활성 행 포함)·탭 전환·편집 액션 부재 어서션) + 기존 7종 회귀 무손상.
+- vitest 39/39, `npm run build` PASS, `npm run harness:check`(mojibake / crosslinks 107문서 / **route-coverage 52라우트·37 IA** / lint / typecheck) 전 항목 PASS.
+
+### 문서 동기화 — §11 P5 행 (작업 커밋 `a96846b`)
+
+- page-IA(`system-metadata-page-ia.md` §6 화면 구조 행·§7 데이터 블록·§10 Assessment 영향·§14 구현 메모·§17 보강 메모 — IA 체인지로그 동반), page-tables **#40 신규 표**, data-contract §9.6 마스터 카탈로그 계약 행, data-source-transition §10.3 마스터 조회 surface 행, action-log(마스터 카탈로그 = 감사 액션 없음 + P5-3 개방 시 신규 Target Type 결정 의무), gap-register §4.7(P5-1 구현 기록 + **신규 갭 ③** tag_master write 보류 + 분류 갱신). 기록: `logs/admin-doc-update-log.md`.
+
+### P5 채점 (실행 계획안 §12.3 P5 채점표 — 2026-06-11)
+
+| # | 항목 | 판정 | 증적 |
+| :-- | :---- | :--: | :---- |
+| P5-1 | 주제/태그 마스터 admin 조회 surface 가동 | PASS | 본 로그 P5-1 화면 확인 절 — 8단계 ALL PASS(DB 직조회 85행/17주제·19태그/6그룹 ↔ 화면 집계·표본 행·읽기 전용 대사). 리포트 `.omx/evidence/p5-master-catalog-surface-report.json` + e2e mock 8/8(모크 경로 화면 검증) |
+| P5-2 | 신규 라우트 발생 시 page-IA·메뉴·권한·감사 동기화 + 라우트 커버리지 하네스 통과 | PASS(해당 없음) | 신규 라우트 0건(기존 `/system/metadata` 확장 — §12.3 기준 "라우트 없으면 해당 없음=PASS"). `harness:check` 로그: route-coverage 52라우트/37 IA PASS(기존 IA 문서 동기화는 P5-1 증적에 포함) |
+| P5-3 | tag_master 활성/비활성 write(+Target Type 결정) | 보류(권장) | 미수행 — 후속 계획: 전용 write RPC 마이그레이션 신설(`db:migrate` 토큰 필요) + platform_admin 가드 + 신규 Target Type(예: `AssessmentTagMaster`) 결정 + 감사 라벨 추가(action-log 의무 병기됨). 추적: gap-register §4.7 신규 갭 ③ + §12.4 메모 |
+| P5-4 | D-13 후속(53번 자산 저장소) 결정 실행 | 보류(권장) | 오너 결정 미결(Storage 버킷/CDN 채택은 오너 몫 — 실행계획안 §9). 현행 유지: 53번 자료는 수치 JSONB 렌더 + empty state. 결정 시 업로드 경로·`data_asset_url` 채움 정책 확정. 추적: §12.4 메모 + 리스크 R10 |
+
+- 종합 판정: **PASS** (필수 P5-1·P5-2 전부 PASS — §12.3 판정 규칙상 권장 P5-3·P5-4는 종합 판정 비산입, 후속 계획을 §12.4에 기록). **P6(외부 공급 수신 연동)은 외부 게이트 — D-11 공급 계약 회신 확정이 선행 조건.**
+- 채점자: 프로젝트 오너 위임 실행(2026-06-11 지시 — "이어서 작업해"). 작업 커밋 `a96846b`, 스코어카드(§12.4) P5 행 기록 동반(채점 커밋).
