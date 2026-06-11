@@ -365,10 +365,10 @@
 
 ### 4.7 Assessment
 
-- 대상 파일: `src/features/assessment/pages/assessment-question-review-page.tsx`, `src/features/assessment/pages/assessment-question-manage-page.tsx`, `src/features/assessment/api/assessment-question-bank-service.ts`, `src/features/assessment/api/supabase-assessment-question-bank-service.ts`, `src/app/router/app-router.tsx`
+- 대상 파일: `src/features/assessment/pages/assessment-question-bank-page.tsx`, `src/features/assessment/pages/assessment-question-detail-page.tsx`(구 `assessment-question-review-page.tsx` — 재정의 P3 개명), `src/features/assessment/pages/assessment-question-manage-page.tsx`, `src/features/assessment/api/assessment-question-bank-service.ts`, `src/features/assessment/api/topik-writing-question-bank-service.ts`, `src/features/assessment/api/supabase-assessment-question-bank-service.ts`(legacy 롤백 어댑터), `src/app/router/app-router.tsx`
 - 현 상태
   - `TOPIK 쓰기 문제은행` 단일 페이지(`tab` 쿼리 토글)는 두 형제 라우트로 분리되었다. `Assessment > TOPIK 쓰기 문제 검수`(`/assessment/question-bank`)와 `Assessment > TOPIK 쓰기 문항 관리`(`/assessment/question-bank/manage`)가 동일한 Supabase `problems`(question_no 51-54) 조회 결과를 공유 hook으로 함께 쓰며, JSON fixture/store fallback은 제거되었다.
-  - 검수 페이지는 `reviewStatus 요약 카드+필터 -> 목록 -> 2depth 검수 페이지(/assessment/question-bank/review/:questionId)`와 `검수 메모 입력 -> 검수 완료 / 수정 필요 / 보류` 흐름을 유지한다. `tab` 쿼리는 제거되고 각 라우트가 자체 URL 상태(공통 `questionNo`/`domain`/`questionType`/`difficulty`/`keyword`, 검수 전용 `reviewStatus`, 관리 전용 `operationStatus`)를 복원한다. ※ 2026-06-11 인바운드 전환으로 이 검수 표면은 제거 예정(재정의 P3)이며, 현 단락은 코드 사실 기록이다.
+  - 검수 페이지는 `reviewStatus 요약 카드+필터 -> 목록 -> 2depth 검수 페이지(/assessment/question-bank/review/:questionId)`와 `검수 메모 입력 -> 검수 완료 / 수정 필요 / 보류` 흐름을 유지한다. `tab` 쿼리는 제거되고 각 라우트가 자체 URL 상태(공통 `questionNo`/`domain`/`questionType`/`difficulty`/`keyword`, 검수 전용 `reviewStatus`, 관리 전용 `operationStatus`)를 복원한다. ※ 2026-06-11 인바운드 전환에 따라 이 검수 표면은 재정의 P3 코드 컷오버(`202f905`)에서 제거 완료됐으며, 현 단락은 역사 기록이다.
   - `EPS TOPIK`, `레벨 테스트`는 아직 Placeholder
 - 미확정/누락/오구현
   - `TOPIK 쓰기 문제 검수` — **[2026-06-11 인바운드 전환으로 블록 전체 폐기/대체]** 검수 개념이 admin에서 전면 삭제돼(결정 기록 §0) 아래 갭들은 트랙 소멸로 닫혔다. 잔여 실작업은 후술 신규 갭 ②(검수 표면·컬럼 제거 미구현)로 승계된다.
@@ -393,7 +393,7 @@
     - 검수 개념 전면 삭제: `review_status`·`review_workflow_status`(편차 E1 철회)·`review_passed`·`validation_result` 필드와 검수 화면·검수 쓰기·검수 감사 액션 4종·검수 메모를 admin 표면·스키마·계약·정책에서 제거한다(컬럼 물리 제거는 재정의 P3 마이그레이션). 품질·상태 표현은 태그로만 한다. 상류 push(업로드/배포) 트랙·`question_published`도 폐기. POL-017은 "TOPIK 쓰기 문항 수신·관리 운영정책"으로 재정의, POL-018은 검수 결합 기준 ① 삭제·운영주의 태그 사유 필수·반복과다 `excluded` 권고 유지로 개정.
     - 소멸·해소로 닫힌 기존 갭: ①검수 메모 영구화(구 D-7 — UI-local 가짜 저장 문제는 개념 삭제로 소멸, 운영 메모는 `question_tags.memo`) ②P2-5 콘텐츠팀 샘플 승인 대기 ③상류 업로드/upsert 엔드포인트·배포 트리거 미확정 ④문제 번호별 review field profile schema 승격 ⑤배포 승인 체계 — 전부 트랙 소멸로 폐기 처리(상단 `TOPIK 쓰기 문제 검수` 블록 마킹 참조).
     - **신규 갭 ① — 외부 공급 API 미개발(수신 경로 미구현, 차단)**: 문항 수신·적재 경로(외부 API → Supabase)가 공급측 미개발로 구현 불가다. 공급 계약(D-11 재작성: 문항 공급(인바운드) API 계약 요청)이 확정되기 전까지 신규 문항 유입이 없고, `question_received` 감사 액션도 확정 불가다. 인터림은 P2 백필 466행 초기 코퍼스(전 행 `service_status='internal_test'`)로 운영한다. 분류: `미확정 + 누락`(외부 의존 — 차단).
-    - **신규 갭 ② — 검수 표면·컬럼 제거 미구현(재정의 P3)**: 검수 화면(`/assessment/question-bank`의 검수 흐름·요약 카드·`reviewStatus` 필터, `/assessment/question-bank/review/:questionId` 상세)과 검수 필드(`review_status`/`review_workflow_status` — DB에 값 적재 상태)·검수 감사 액션 분기가 코드·DB에 물리 잔존해 새 모델(검수 없음)과 어긋난다. 재정의 P3에서 컬럼 제거 마이그레이션 + 화면 재구성(question-bank=문항 목록(조회), manage=문항 관리(관리 포인트), `/review/:questionId` 라우트 개명)으로 해소 예정이다. 분류: `오구현`(모델과 구현 불일치 — 제거 예정 명시로 추적).
+    - **신규 갭 ② — 검수 표면·컬럼 제거(재정의 P3)**: 검수 화면(`/assessment/question-bank`의 검수 흐름·요약 카드·`reviewStatus` 필터, `/assessment/question-bank/review/:questionId` 상세)과 검수 감사 액션 분기가 코드에 잔존해 새 모델(검수 없음)과 어긋났던 갭. → **[2026-06-11 갱신 — 코드 측 해소 완료]** 재정의 P3 코드 컷오버(`202f905`)로 화면 재구성(question-bank=문항 목록(조회), manage=문항 관리(관리 포인트)), 상세 라우트 `/assessment/question-bank/:questionId` 개명, 검수 표면 전면 제거, 스위치 기본값 `topik_writing` 플립이 완료됐다. **잔여 = 검수 4컬럼(`review_status`/`review_workflow_status`/`review_passed`/`validation_result`) 물리 제거 마이그레이션 `0013` 적용**(작성 완료 — `SUPABASE_ACCESS_TOKEN` 확보 대기. 신규 코드는 해당 컬럼을 select하지 않아 적용 전 DB와도 호환). 분류: `오구현 → 잔여 DB 정리`(P3-4 채점 항목으로 추적).
   - `EPS TOPIK`, `레벨 테스트`
     - 여전히 Placeholder이며, 편성/배점/발행/결과 정책의 화면 SoT와 데이터 source 경계가 미정이다.
 - 분류

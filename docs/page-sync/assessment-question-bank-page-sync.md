@@ -17,7 +17,7 @@ last_reviewed_at: "2026-06-11"
 - 이 문서는 `TOPIK 쓰기 문항 목록`(구 `TOPIK 쓰기 문제은행`) 관리자 페이지와 사용자 화면 개발 사이의 동기화 기준을 정리합니다.
 - 운영자가 이 페이지에서 어떤 관리 포인트를 다루는지, 그 데이터가 사용자 화면에 어떻게 이어질 수 있는지 추적합니다.
 - 이 문서는 실제 DB 스키마 확정 문서가 아니며, 현재 관리자 프론트엔드/문서 기준의 후보 계약입니다.
-- 2026-06-11 인바운드 전환(`docs/architecture/metadata-tag-schema-transition-decision-record.md` §0)에 따라 목적/가능 작업/CRUD/감사 계약을 수신·관리 모델 기준으로 재작성했습니다. 현행 코드 동작 서술은 사실대로 유지하고 제거 예정 표시를 병기합니다.
+- 2026-06-11 인바운드 전환(`docs/architecture/metadata-tag-schema-transition-decision-record.md` §0)에 따라 목적/가능 작업/CRUD/감사 계약을 수신·관리 모델 기준으로 재작성했습니다. 같은 날 재정의 P3 코드 컷오버(커밋 `202f905`)로 검수 표면이 제거 완료되어 "제거 예정" 병기는 "제거 완료"로 갱신했습니다(잔여 = 검수 4컬럼 물리 제거 마이그레이션 `0013` 적용 대기).
 
 ## 2. 페이지 요약
 
@@ -25,13 +25,13 @@ last_reviewed_at: "2026-06-11"
 | --- | --- |
 | 모듈 | `Assessment` |
 | 페이지명 | `TOPIK 쓰기 문항 목록` (2026-06-11 재정의, 구 `TOPIK 쓰기 문제은행`) |
-| 라우트 | `/assessment/question-bank`, `/assessment/question-bank/review/:questionId`(상세 — 조회 전용으로 재정의, 라우트 개명은 재정의 P3 예정) |
-| 현재 상태 | `구현됨` (현행 코드는 2depth 검수 페이지 표면 포함 — 2026-06-11 인바운드 전환으로 제거 예정, 재정의 P3) |
-| 페이지 유형 | `목록 운영형 + 2depth 상세(조회 전용)` — 현행 코드는 2depth 검수 페이지로 구현됨(제거 예정) |
+| 라우트 | `/assessment/question-bank`, `/assessment/question-bank/:questionId`(상세 — 재정의 P3에서 구 `…/review/:questionId` 개명 완료) |
+| 현재 상태 | `구현됨` (2depth 검수 페이지 표면은 재정의 P3에서 제거 완료 — `202f905`) |
+| 페이지 유형 | `목록 조회형 + 2depth 상세(조회 전용)` — 구 2depth 검수 페이지는 조회 전용 상세로 재작성 완료 |
 | 페이지 목적 한 줄 요약 | 외부(공급) API에서 수신·적재된 TOPIK 쓰기 문항(51~54)을 조회 전용으로 비교·확인하는 화면입니다. 관리 포인트(태그)와 노출 통제(`service_status`)는 형제 라우트 `/assessment/question-bank/manage`가 담당합니다. |
 | 주요 운영자 | `CONTENT_MANAGER, SUPER_ADMIN` |
 | 주요 권한 | `assessment.questions.manage` |
-| 코드 근거 | `src/features/assessment/pages/assessment-question-bank-page.tsx, src/features/assessment/pages/assessment-question-review-page.tsx`(후자 = 현행 검수 페이지 — 조회 전용 상세로 재정의, 검수 표면 제거 예정 재정의 P3) |
+| 코드 근거 | `src/features/assessment/pages/assessment-question-bank-page.tsx, src/features/assessment/pages/assessment-question-detail-page.tsx`(후자 = 조회 전용 상세 — 재정의 P3에서 구 검수 페이지를 개명·재작성 완료) |
 | 연관 SoT 문서 | `docs/specs/page-ia/assessment-question-bank-page-ia.md`, `docs/specs/admin-data-contract.md`, `docs/specs/admin-data-usage-map.md`, `docs/specs/admin-page-tables.md`, `docs/architecture/metadata-tag-schema-transition-decision-record.md` §0 |
 
 ## 3. 이 페이지의 목적
@@ -42,7 +42,7 @@ last_reviewed_at: "2026-06-11"
 - 이 페이지는 수신·적재(외부 API → Supabase `topik_writing_51/52/53/54_questions` + `question_source_map`)된 문항을 **조회 전용**으로 확인하는 관리자 기점입니다.
 - 관리 포인트는 **태그**(schema-rule §2: tag_master 사전 기반 `question_tags` 부여/제거 + 사유 memo), 노출 통제는 **`service_status` 컬럼**(D-6 유지: available/excluded/internal_test, 기본 internal_test)이며, 둘 다 형제 라우트 `/assessment/question-bank/manage`(P4 개방 예정)가 담당합니다.
 - v13 사용자 기능은 read-only로 소비합니다. 인터림(외부 API 미개발 동안): P2 백필 466행이 초기 코퍼스입니다.
-- 코드 현실: 현행 코드는 Supabase `problems` 조회 + 2depth 검수 페이지(검수 메모/검수 상태 쓰기 포함)로 구현되어 있습니다(2026-06-11 인바운드 전환으로 검수 표면 제거 예정 — 재정의 P3).
+- 코드 현실: 현행 코드는 facade 스위치 기본 `topik_writing`으로 신규 4테이블 + 추천 뷰를 조회하고, 2depth 상세는 조회 전용입니다(재정의 P3 컷오버 + 검수 표면 제거 완료 — `202f905`). 롤백 경로는 env `VITE_QUESTION_BANK_SOURCE=legacy`(`problems` 읽기 전용 어댑터)입니다.
 
 ### 비목표
 
@@ -58,7 +58,7 @@ last_reviewed_at: "2026-06-11"
 | 수신·적재(후속) | 외부(공급) API → Supabase 적재. 외부 API 미개발 상태로, 공급 연동 시 감사 액션 `question_received`와 함께 추가됩니다. | 생성(수신) | AssessmentQuestion | 적재 + 감사 로그 | 필요 |
 | 태그 부여/제거·노출 상태 변경 | 이 페이지 비대상 — `/assessment/question-bank/manage`에서 수행합니다(P4 개방 예정). | 수정 | AssessmentQuestion + questionId | 데이터 반영 | 필요(`/manage` 계약) |
 
-- 제거 예정: 현행 코드의 2depth 검수 페이지에는 검수 메모 저장·검수 상태 변경 쓰기가 존재하나, 2026-06-11 인바운드 전환(검수 개념 삭제)으로 제거 예정입니다(재정의 P3).
+- 제거 완료: 구 2depth 검수 페이지의 검수 메모 저장·검수 상태 변경 쓰기는 재정의 P3에서 제거 완료됐습니다(`202f905`). 현행 상세는 조회 전용입니다.
 
 ## 5. 관리 데이터베이스(CRUD)
 
@@ -66,15 +66,15 @@ last_reviewed_at: "2026-06-11"
 
 | 엔티티 후보 | 테이블 후보 | CRUD | 관리자 UI 진입점 | 주요 필드 후보 | 감사 로그 Target | 사용자 화면 영향 | 미확정/차이 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| AssessmentQuestion | topik_writing_51/52/53/54_questions + topik_writing_question_source_map(+목록용 추천 뷰) | Create(수신 적재 — 후속), Read | TOPIK 쓰기 문항 목록/상세 | question_id, item_number, topic_main/topic_detail, scenario_type, situation_summary, service_status, 태그(question_tags 경유), auto_checks_passed(수신 정합 검사), content_team_memo(수신 메타데이터 — admin 쓰기 없음), created_at, updated_at | AssessmentQuestion + questionId | 노출 예정(v13 read-only 소비) | 현행 코드 source는 Supabase `problems`(검수 축 포함) — 재정의 P3 컷오버에서 신규 4테이블 기준으로 전환하고 검수 컬럼(review_status 등)은 물리 제거 예정 |
+| AssessmentQuestion | topik_writing_51/52/53/54_questions + topik_writing_question_source_map(+목록용 추천 뷰) | Create(수신 적재 — 후속), Read | TOPIK 쓰기 문항 목록/상세 | question_id, item_number, topic_main/topic_detail, scenario_type, situation_summary, service_status, 태그(question_tags 경유), auto_checks_passed(수신 정합 검사), content_team_memo(수신 메타데이터 — admin 쓰기 없음), created_at, updated_at | AssessmentQuestion + questionId | 노출 예정(v13 read-only 소비) | 재정의 P3 컷오버 완료(`202f905`): 현행 코드 source는 신규 4테이블 + 추천 뷰(facade 기본 `topik_writing`). 검수 컬럼(review_status 등)은 화면·코드에서 제거 완료, 물리 제거는 마이그레이션 `0013` 적용 대기 |
 
 ### CRUD 상세
 
 | CRUD | 지원 여부 | 화면 동작 | 저장/서비스 후보 | 성공 후 동기화 대상 | 실패 시 fail-safe |
 | --- | --- | --- | --- | --- | --- |
 | Create | `후속(수신 적재)` | 외부(공급) API 수신 → Supabase 적재. 외부 API 미개발 — 공급 계약 회신 게이트(D-11 재정의)에 종속하며, 화면에서 직접 문항을 생성하지 않음 | 수신 파이프라인(후속) + `question_source_map` idempotency(D-4) | 목록, 상세, 감사 로그(`question_received`) | 수신 정합 검사(auto_checks_passed) 실패분 적재 보류 |
-| Read | `지원` | 문항 목록(뷰)/상세(번호별 테이블) 조회 | 현행 Supabase `problems` → 재정의 P3 컷오버에서 신규 4테이블 + 추천 뷰 | URL/필터/탭 복원 | empty/error 처리, JSON fallback 없음 |
-| Update | `이 페이지 미지원` | 태그 부여/제거 + `service_status` 변경은 `/manage`에서 P4 개방 예정. 현행 코드에 잔존하는 검수 상태 변경 쓰기(`admin_update_topik_question`의 검수 부분 포함)는 제거 예정(재정의 P3) | `admin_update_topik_question`(service_status)/`admin_assign_question_tag`/`admin_remove_question_tag` | 목록, 상세, 감사 로그 | 실패 시 재조회 또는 오류 안내 |
+| Read | `지원` | 문항 목록(추천 뷰)/상세(번호별 테이블) 조회 | 신규 4테이블 + 추천 뷰(재정의 P3 컷오버 완료 — 롤백 시 legacy `problems` 읽기 전용 어댑터) | URL/필터 복원 | empty/error 처리, JSON fallback 없음 |
+| Update | `이 페이지 미지원` | 태그 부여/제거 + `service_status` 변경은 `/manage`에서 P4 개방 예정. 검수 상태 변경 쓰기는 화면·facade에서 제거 완료(재정의 P3 — `202f905`), DB측 RPC의 검수 화이트리스트는 마이그레이션 `0013`에서 제거(적용 대기) | `admin_update_topik_question`(service_status)/`admin_assign_question_tag`/`admin_remove_question_tag` | 목록, 상세, 감사 로그 | 실패 시 재조회 또는 오류 안내 |
 | Delete | `미지원` | 물리 삭제 없음. 노출 제외는 `/manage`의 `service_status='excluded'` 전환으로 처리 | 없음 | 목록, 상세, 감사 로그, 사용자 노출 | 확인 모달, 사유 필수(`/manage` 계약) |
 
 ## 6. 관리자 조치와 감사 로그 계약
@@ -87,7 +87,7 @@ last_reviewed_at: "2026-06-11"
 | 태그 부여/제거(`tag_assigned`/`tag_removed`) — `/manage` 담당 | 아니요 | 필수 | 필수(`question_tags.memo`) | AssessmentQuestion | 대상 ID | /system/audit-logs?targetType=AssessmentQuestion&targetId={targetId} |
 | 노출 상태 변경(`service_status_changed`) — `/manage` 담당 | 예 | 필수 | 필수 | AssessmentQuestion | 대상 ID | /system/audit-logs?targetType=AssessmentQuestion&targetId={targetId} |
 
-- 폐기: 검수 액션 4종과 `question_published`(push)는 2026-06-11 §0으로 폐기됐습니다. 현행 RPC(`admin_update_topik_question`)와 검수 페이지 코드에 검수 액션 경로가 잔존하나 제거 예정입니다(재정의 P3).
+- 폐기: 검수 액션 4종과 `question_published`(push)는 2026-06-11 §0으로 폐기됐습니다. 검수 페이지 코드는 재정의 P3에서 제거 완료(`202f905` — 기존 감사 행은 "(구)" 역사 라벨로 표시)이고, DB측 RPC(`admin_update_topik_question`)의 검수 액션 경로는 마이그레이션 `0013`(작성 완료 — 적용 대기)에서 제거됩니다.
 
 ## 7. 사용자 화면 동기화 포인트
 
@@ -110,9 +110,9 @@ last_reviewed_at: "2026-06-11"
 
 | 연관 사용자 화면 후보 | 관계 유형 | 연관 이유 | 관리자 변경 후 예상 영향 | 확정 상태 |
 | --- | --- | --- | --- | --- |
-| TOPIK 쓰기 시험 화면 | 데이터 노출 후보 | 문항 본문+메타데이터(현행 `problems.prompt`/`rubric`/`answer_key` → 재정의 P3 신규 4테이블), `service_status`, 태그 | `service_status`·태그 변경 시 표시/접근/추천이 달라질 수 있습니다. | 노출 예정 |
-| 문제 풀이 화면 | 데이터 노출 후보 | 문항 본문+메타데이터(현행 `problems.prompt`/`rubric`/`answer_key` → 재정의 P3 신규 4테이블), `service_status`, 태그 | `service_status`·태그 변경 시 표시/접근/추천이 달라질 수 있습니다. | 노출 예정 |
-| 결과/해설 화면 | 데이터 노출 후보 | 문항 본문+메타데이터(현행 `problems.prompt`/`rubric`/`answer_key` → 재정의 P3 신규 4테이블), `service_status`, 태그 | `service_status`·태그 변경 시 표시/접근/추천이 달라질 수 있습니다. | 노출 예정 |
+| TOPIK 쓰기 시험 화면 | 데이터 노출 후보 | 문항 본문+메타데이터(신규 4테이블 — admin 조회는 재정의 P3 컷오버 완료. v13 사용자 소비 경로 전환은 후속), `service_status`, 태그 | `service_status`·태그 변경 시 표시/접근/추천이 달라질 수 있습니다. | 노출 예정 |
+| 문제 풀이 화면 | 데이터 노출 후보 | 문항 본문+메타데이터(신규 4테이블 — admin 조회는 재정의 P3 컷오버 완료. v13 사용자 소비 경로 전환은 후속), `service_status`, 태그 | `service_status`·태그 변경 시 표시/접근/추천이 달라질 수 있습니다. | 노출 예정 |
+| 결과/해설 화면 | 데이터 노출 후보 | 문항 본문+메타데이터(신규 4테이블 — admin 조회는 재정의 P3 컷오버 완료. v13 사용자 소비 경로 전환은 후속), `service_status`, 태그 | `service_status`·태그 변경 시 표시/접근/추천이 달라질 수 있습니다. | 노출 예정 |
 
 ## 9. 상태값/용어/키워드 정합성
 
@@ -122,15 +122,15 @@ last_reviewed_at: "2026-06-11"
 | 태그 그룹(추천목적/반복방지/학습흐름/운영주의/대표문제/추천사용) | tag_master 사전(schema-rule §2) | question_tags | 사용자 비노출(내부 관리 포인트) | 부여/제거는 `/manage` P4 개방, 사유는 `question_tags.memo` |
 | 문항 번호 51~54 | 문항 번호 51~54 | page-specific enum candidate | 문항 번호 51~54 | 정확한 상태 세트는 IA와 데이터 계약 문서를 우선합니다. |
 
-- 제거 예정: 현행 코드의 검수 대기/검수 완료/수정 필요/보류 상태 세트는 검수 개념 삭제(2026-06-11 §0)로 제거 예정입니다(재정의 P3). 품질·상태 표현은 태그로만 합니다.
+- 제거 완료: 구 검수 대기/검수 완료/수정 필요/보류 상태 세트는 검수 개념 삭제(2026-06-11 §0)에 따라 재정의 P3에서 제거 완료됐습니다(`202f905`). 품질·상태 표현은 태그로만 합니다.
 
 ## 10. URL/검색/복원 규칙
 
 - 기본 라우트: `/assessment/question-bank`
 - 필수 쿼리/경로 파라미터: 없음
-- 선택 쿼리 파라미터: page, pageSize, keyword, status, tab, selected 등 페이지별 후보
-- 목록 복원 기준: 목록/필터/정렬/탭/상세 대상 복원
-- 상세 Drawer/Modal/하위 라우트 복원 여부: `/assessment/question-bank/review/:questionId`(현행 라우트 — 조회 전용 재정의, 개명은 재정의 P3 예정)
+- 선택 쿼리 파라미터: `questionNo`(반복), `topicMain`, `topicDetail`, `questionType`, `difficulty`, `keyword` (+ P4 예약 `tag`. 구 `reviewStatus`는 재정의 P3에서 제거 완료)
+- 목록 복원 기준: 목록/필터/정렬/상세 대상 복원 (`tab` 쿼리는 제거됨)
+- 상세 Drawer/Modal/하위 라우트 복원 여부: `/assessment/question-bank/:questionId`(재정의 P3에서 구 `…/review/:questionId` 개명 완료 — 목록 쿼리를 보존해 진입/복귀)
 - 사용자 화면 동기화에 필요한 식별자: AssessmentQuestion + questionId
 
 ## 11. 네트워크 상태와 fail-safe
@@ -145,8 +145,8 @@ last_reviewed_at: "2026-06-11"
 ## 12. 에이전트 작업 메모
 
 - Codex 확인 포인트:
-  - `src/features/assessment/pages/assessment-question-bank-page.tsx, src/features/assessment/pages/assessment-question-review-page.tsx` 구현과 `docs/specs/page-ia/assessment-question-bank-page-ia.md` 문서 일치 확인 — 후자(검수 페이지)와 검수 쓰기 경로는 제거 예정(재정의 P3)이며, 제거 전까지 현행 동작 서술을 사실로 유지
-  - 현행 Supabase `problems` 조회 경계(컷오버 전)와 감사 로그 Target 확인
+  - `src/features/assessment/pages/assessment-question-bank-page.tsx, src/features/assessment/pages/assessment-question-detail-page.tsx` 구현과 `docs/specs/page-ia/assessment-question-bank-page-ia.md` 문서 일치 확인 — 구 검수 페이지·검수 쓰기 경로는 재정의 P3에서 제거 완료(`202f905`)
+  - 신규 4테이블 + 추천 뷰 조회 경계(facade 기본 `topik_writing`, 롤백 env=legacy)와 감사 로그 Target 확인
 - Claude 확인 포인트:
   - 시험/문제 풀이 화면 데이터 원천에 노출 예정으로 연결됩니다(v13 read-only 소비).
   - 정책 문구와 노출/비노출 기준(`service_status`) 검토

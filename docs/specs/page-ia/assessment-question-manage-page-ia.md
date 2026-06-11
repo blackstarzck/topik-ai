@@ -14,7 +14,7 @@
 | --- | --- |
 | 모듈 | Assessment |
 | 페이지명 | TOPIK 쓰기 문항 관리 |
-| 현재 상태 | 구현됨 — 조회 + 관리 조치 disabled 스캐폴딩(`OPERATION_WRITE_ENABLED=false`, P4 개방 예정). 데이터 소스는 facade 스위치(`legacy` 기본 / `topik_writing` / `mock`) |
+| 현재 상태 | 구현됨 — 조회 + 관리 조치 disabled 스캐폴딩(`OPERATION_WRITE_ENABLED=false`, P4 개방 예정). 데이터 소스는 facade 스위치(**`topik_writing` 기본** — 재정의 P3 컷오버 완료 / `legacy` 롤백(env) / `mock`) |
 | 페이지 유형 | 목록 운영형 |
 | 라우트 | `/assessment/question-bank/manage` |
 | 주요 권한 | `assessment.question-bank.manage` |
@@ -33,7 +33,7 @@
 
 ### 비목표
 
-- 검수하지 않는다. 검수 큐/검수 메모/검수 상태 변경은 2026-06-11 검수 개념 전면 삭제로 admin에 존재하지 않는다(현행 코드의 검수 상태 잔존 표시는 재정의 P3에서 제거 예정 — §6.2).
+- 검수하지 않는다. 검수 큐/검수 메모/검수 상태 변경은 2026-06-11 검수 개념 전면 삭제로 admin에 존재하지 않는다(구 검수 상태 잔존 표시는 재정의 P3에서 제거 완료 — §6.2, `202f905`).
 - 이 화면에서 문항을 수동 생성·저작·분류하지 않는다(문항 본문·메타데이터는 외부에서 완성 상태로 공급).
 - 수신·적재 실행은 이 화면 책임이 아니다(외부 공급 API 연동 트랙 — 미개발, §11 오픈 이슈).
 - 상류 서비스로의 배포(API 업로드/push)는 폐기된 개념이다(2026-06-11 §0 — 구 §7.4 배포 정책 폐기, 아래 §7.4로 대체).
@@ -59,8 +59,8 @@
 | 상단 요약 카드 | 노출 상태 범위 파악 | `전체 문항`(필터 해제) + `노출 가능`/`노출 제외`/`내부 테스트` 건수 | 카드 클릭 필터 |
 | 공유 toolbar - 문제 번호 체크박스 그룹 | `51`, `52`, `53`, `54` 범위 전환 | 문제 번호 | 다중 선택 전환, 기본 전체 선택 |
 | 공유 toolbar - SearchBar | 공통 목록형 검색 조건 적용 | 검색어, 상세 검색 팝오버(주제 종합/세부 · 유형 · 난이도) | 즉시 필터, 상세 검색 적용 |
-| 준비 중 경고 Alert | 조치 비활성 상태 안내 (목록 카드 본문 상단) | "운영 상태 관리는 준비 중입니다" — P4 개방 안내 + 백필 문항 `internal_test` 차단 상태 안내 | 없음 |
-| 목록 테이블 | 노출 상태/태그 비교와 조치 | 문항 번호, 문항 ID, 주제(종합/세부), 유형/난이도, 노출 상태, 태그, 운영 조치, 최근 수정 (현행 코드: `검수 상태` 컬럼 잔존 — 제거 예정, 재정의 P3) | `운영 조치`(현재 disabled) |
+| 준비 중 경고 Alert | 조치 비활성 상태 안내 (목록 카드 본문 상단) | "관리 포인트(노출 상태·태그) 조치는 준비 중입니다" — P4 개방 안내 + 적재 문항 `internal_test` 차단 상태 안내 | 없음 |
+| 목록 테이블 | 노출 상태/태그 비교와 조치 | 문항 번호, 문항 ID, 주제(종합/세부), 유형/난이도, 노출 상태, 태그, 운영 조치, 최근 수정 (구 `검수 상태` 컬럼은 재정의 P3에서 제거 완료) | `운영 조치`(현재 disabled) |
 
 ## 6. 데이터 블록 정의
 
@@ -83,7 +83,7 @@
 | 문항 ID | 문항 식별자 | `questionId` (신규 스키마 채번 `topik-writing-{번호}-{연번}` — D-4. legacy 소스는 `problems.id`) |
 | 주제(종합/세부) | 주제 축 2단 | `topic_main` / `topic_detail` |
 | 유형/난이도 | 유형 명칭 + 급수·난이도 | `question_type_name`, `targetLevel`/`difficultyLevel` |
-| (현행 코드 잔존 — 제거 예정, 재정의 P3) 검수 상태 | 구 모델의 검수 진척 표시 | `review_status` 기반. 2026-06-11 검수 개념 삭제로 컬럼 표시·물리 컬럼 모두 제거 대상 |
+| (제거 완료 — 재정의 P3, `202f905`) 검수 상태 | 구 모델의 검수 진척 표시 | `review_status` 기반 컬럼 표시는 제거 완료. 물리 컬럼 제거는 마이그레이션 `0013` 적용 대기 |
 | 노출 상태 | `available`/`excluded`/`internal_test` | `service_status`. legacy 소스는 물리 컬럼이 없어 `미지정` 표시 |
 | 태그 | 활성 태그 수 | `question_tags` 활성 행 집계(`N개`, 없으면 `-`). 태그 상세·편집은 P4 |
 | 운영 조치 | `노출 가능`/`노출 제외`/`내부 테스트` 전환 액션 | 현재 disabled (P4 개방 — §7.3) |
@@ -128,11 +128,11 @@
 
 ### 7.3 현재 비활성(준비 중) 규칙
 
-- 조치 버튼(노출 가능/노출 제외/내부 테스트)은 전부 disabled(`OPERATION_WRITE_ENABLED=false`)이며, 페이지 상단에 "운영 상태 관리는 준비 중입니다" 경고 Alert를 노출한다.
+- 조치 버튼(노출 가능/노출 제외/내부 테스트)은 전부 disabled(`OPERATION_WRITE_ENABLED=false`)이며, 페이지 상단에 "관리 포인트(노출 상태·태그) 조치는 준비 중입니다" 경고 Alert를 노출한다.
 - 확인+사유 -> 감사 로그(`ConfirmAction` + `AuditLogLink`) 흐름은 코드에 미리 연결되어 있고, 신규 스키마 RPC(`admin_update_topik_question`)는 이미 `service_status` patch를 지원한다. P4(운영 쓰기 개방)에서 플래그·facade 게이트 제거로 한 번에 활성화한다.
 - 태그 편집 UI(부여/제거 + memo)는 P4 범위다 — 현행 코드는 활성 태그 수 카운트 표시까지 구현되어 있다.
 - 그 전까지 적재 문항은 전부 `internal_test`(노출 차단)이고, legacy 소스 행의 노출 상태는 `미지정` sentinel로 표시된다.
-- 주의(현행 코드 사실 — 수정 예정, 재정의 P3): disabled 스캐폴딩의 `노출 가능 전환` 확인 모달 문구에 "검수 완료(approved) 문항만 전환" 구 기준이 남아 있다. 이 기준은 POL-018 개정으로 삭제됐으므로(§7.4) P4 개방 전 재정의 P3에서 문구를 함께 정리한다.
+- (해소 — 재정의 P3, `202f905`) disabled 스캐폴딩의 `노출 가능 전환` 확인 모달 문구에 남아 있던 "검수 완료(approved) 문항만 전환" 구 기준은 POL-018 개정 기준 ②(운영주의 태그 활성 문항은 전환 사유 필수) 문구로 교체 완료됐다.
 
 ### 7.4 수신·관리 운영정책 (POL-017 — 2026-06-11 재정의) + 노출 제외 기준 (POL-018)
 
@@ -178,13 +178,13 @@
 - 공유 toolbar
   - `src/features/assessment/ui/assessment-question-bank-toolbar.tsx`
 - 데이터 source
-  - facade(`src/features/assessment/api/assessment-question-bank-service.ts`) + 컷오버 스위치(`question-bank-data-source.ts`, 기본 `legacy`). `topik_writing` 소스는 신규 스키마(노출 상태·태그 실값), `legacy` 소스는 v13 `problems` 어댑터(노출 상태 `미지정`·태그 빈 값), `mock`은 D-12 결정적 픽스처. 문항 목록 페이지 `/assessment/question-bank`와 동일한 조회 결과를 공유한다.
+  - facade(`src/features/assessment/api/assessment-question-bank-service.ts`) + 컷오버 스위치(`question-bank-data-source.ts`, 기본 `topik_writing` — 재정의 P3 컷오버 완료, 롤백 env `VITE_QUESTION_BANK_SOURCE=legacy`). `topik_writing` 소스는 신규 스키마(노출 상태·태그 실값), `legacy` 소스는 v13 `problems` 읽기 전용 어댑터(노출 상태 `미지정`·태그 빈 값), `mock`은 D-12 결정적 픽스처. 문항 목록 페이지 `/assessment/question-bank`와 동일한 조회 결과를 공유한다.
 
 ## 11. 오픈 이슈
 
 - **외부 공급 API 미개발 — 수신 경로 미구현.** 이 페이지가 관리할 신규 문항의 공급원이 아직 없어, 인터림 동안 관리 대상은 백필 466행(초기 코퍼스)뿐이다. 공급 계약은 요청 문서(`docs/requests/upstream-writing-endpoints-request-2026-06-10.md`, D-11 재정의)로 추진하며, 수신 감사 액션 `question_received`도 연동 시 추가한다.
 - 조치 개방 경로: 노출 상태 write와 태그 편집 UI는 P4(운영 쓰기 개방 — `OPERATION_WRITE_ENABLED` 게이트 제거 + `admin_update_topik_question` write 개방)에서 활성화한다(실행계획안 2026-06-11 개정 — `docs/메타데이터-태그-스키마-전환-실행계획안.md`).
-- 데이터 소스 스위치 기본값은 `legacy`다. `topik_writing` 플립(컷오버)은 P2 PASS 전환 후 수행하며, 그 전까지 노출 상태는 `미지정`, 태그는 빈 값으로 표시된다. 참고(실측 2026-06-10): legacy 경로에 연결됐던 구 `admin_update_problem` RPC는 v13 admin island 제거(2026-06-09)로 라이브 DB에 존재하지 않아, legacy 운영 write는 물리적으로 동작 불가다.
-- 현행 코드의 `검수 상태` 컬럼 잔존(§6.2)과 확인 모달의 구 POL-018 기준 ① 문구(§7.3)는 2026-06-11 검수 개념 삭제에 따라 재정의 P3에서 제거·정리한다.
+- 데이터 소스 스위치 기본값은 `topik_writing`이다(재정의 P3 컷오버 완료 — `202f905`). 롤백(env `VITE_QUESTION_BANK_SOURCE=legacy`) 시 노출 상태는 `미지정`, 태그는 빈 값으로 표시된다. 참고(실측 2026-06-10): legacy 경로에 연결됐던 구 `admin_update_problem` RPC는 v13 admin island 제거(2026-06-09)로 라이브 DB에 존재하지 않아, legacy 운영 write는 물리적으로 동작 불가다(어댑터도 읽기 전용으로 봉인됨).
+- 구 `검수 상태` 컬럼 잔존(§6.2)과 확인 모달의 구 POL-018 기준 ① 문구(§7.3)는 재정의 P3에서 제거·정리 완료됐다(`202f905`). 검수 4컬럼 물리 제거는 마이그레이션 `0013`(작성 완료 — 적용 대기)이 수행한다.
 - POL-018 기준 ②(운영주의 태그 활성 시 `available` 전환 사유 필수)·③(반복과다 `excluded` 권고)의 화면 강제(전환 시 태그 활성 여부 검사 등)는 P4 구현에서 확정한다.
 - Supabase 미설정 시 JSON fallback 대신 명시적 mock 모드, 조회 실패 시 error/retry 상태를 노출한다.

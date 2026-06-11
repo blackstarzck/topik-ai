@@ -243,59 +243,56 @@
 
 ### 9.6 Assessment
 
-> **2026-06-11 인바운드 전환(결정 기록 §0)**: TOPIK 쓰기 문항의 데이터 흐름이 인바운드 수신 모델로 확정됐다. 문제 발원 = 외부(공급) API(**미개발** — 문제 본문+메타데이터가 완성 상태로 공급), admin 역할 = 수신·적재 + 관리 포인트(태그) + 노출 통제(`service_status`)이며, **검수 개념은 admin 표면·스키마·계약·정책에서 전면 삭제**됐다. 아래 §9.6 본문의 검수 관련 서술은 현행 코드/DB 사실 기록으로만 유지하며, 해당 표면·필드는 제거 예정(재정의 P3 마이그레이션)이다. 페이지 재정의: `/assessment/question-bank`=문항 목록(조회), `/assessment/question-bank/manage`=문항 관리(관리 포인트). 타깃 계약은 §12(특히 §12.3 쓰기 계약, §12.6 인바운드 수신 계약).
+> **2026-06-11 인바운드 전환(결정 기록 §0)**: TOPIK 쓰기 문항의 데이터 흐름이 인바운드 수신 모델로 확정됐다. 문제 발원 = 외부(공급) API(**미개발** — 문제 본문+메타데이터가 완성 상태로 공급), admin 역할 = 수신·적재 + 관리 포인트(태그) + 노출 통제(`service_status`)이며, **검수 개념은 admin 표면·스키마·계약·정책에서 전면 삭제**됐다. 재정의 P3 코드 컷오버(커밋 `202f905`)로 검수 표면 제거·신규 스키마 읽기 전환이 완료되어 본 §9.6은 신규 스키마 기준으로 재작성됐다(구 `problems` 기준 계약은 역사 — git 이력 참조). 잔여 = 검수 4컬럼 물리 제거 마이그레이션 `0013` 적용 대기. 페이지 재정의: `/assessment/question-bank`=문항 목록(조회), `/assessment/question-bank/manage`=문항 관리(관리 포인트). 쓰기 계약은 §12.3, 인바운드 수신 계약은 §12.6.
 
-- `Assessment > TOPIK 쓰기 문제 검수` / `Assessment > TOPIK 쓰기 문항 관리` (현행 사이드바 라벨 — 인바운드 전환에 따라 `문항 목록`/`문항 관리`로 재정의 예정)
-  - 라우트 분리: 기존 단일 페이지의 `tab` 쿼리 토글을 제거하고 두 개의 형제 라우트/페이지로 분리했습니다. `/assessment/question-bank`(path 유지)와 `/assessment/question-bank/manage`. 상세 2depth `/assessment/question-bank/review/{questionId}`는 현행 유지이나, 검수 개념 삭제에 따라 재정의 P3에서 개명 예정입니다.
-  - query (공통, 두 페이지): 반복 `questionNo`, `domain`, `questionType`, `difficulty`, `keyword`
-  - query (`/assessment/question-bank` 전용): `reviewStatus` — 검수 필터는 2026-06-11 인바운드 전환으로 제거 예정(재정의 P3)
-  - query (관리 전용, `/assessment/question-bank/manage`): `operationStatus`
+- `Assessment > TOPIK 쓰기 문항 목록` / `Assessment > TOPIK 쓰기 문항 관리` (사이드바 라벨 — 재정의 P3에서 개명 완료)
+  - 라우트: `/assessment/question-bank`(목록, 조회 전용), `/assessment/question-bank/manage`(관리 포인트), 상세 2depth `/assessment/question-bank/{questionId}`(재정의 P3에서 구 `…/review/{questionId}` 개명 완료).
+  - query (공통, 두 페이지): 반복 `questionNo`, `topicMain`, `topicDetail`, `questionType`, `difficulty`, `keyword` (+ P4 태그 필터 예약 키 `tag`)
+  - query (관리 전용, `/assessment/question-bank/manage`): `serviceStatus` (구 `operationStatus`·목록 전용 `reviewStatus`는 재정의 P3에서 제거 완료)
   - 각 라우트는 자체 URL 상태를 보존하며 `tab` 쿼리 파라미터는 더 이상 사용하지 않습니다.
   - 엔티티 후보
     - `AssessmentQuestion`
     - `AssessmentQuestionAuditEvent`
-  - 현재 Supabase source
-    - `problems`
-    - `admin_update_problem` RPC — **주의(실측 2026-06-10)**: 코드는 이 RPC를 호출하지만 v13 admin island 제거(2026-06-09)로 라이브 DB에 함수가 존재하지 않아 검수 상태 write는 현재 서버에서 실패한다. 2026-06-11 인바운드 전환으로 검수 write 자체가 폐기 대상이며, 재정의 P3 컷오버 이후 admin 쓰기 경로는 `admin_update_topik_question`(`service_status`)·태그 RPC(§12.3)로 한정된다.
-    - `admin_audit_logs` (RPC write 감사 로그)
+  - 현재 Supabase source (facade 스위치 `question-bank-data-source.ts` 기본 `topik_writing` — 재정의 P3 컷오버 완료)
+    - 목록: 추천 뷰 `topik_writing_question_recommendation_view`(E4 확장 컬럼 포함) + 활성 태그 집계(`topik_writing_question_tags`)
+    - 상세: 번호별 테이블 `topik_writing_51/52/53/54_questions`(번호별 전용 필드 포함)
+    - 마스터: `topik_writing_topic_master`(주제 17/85 — 검색 옵션), `topik_writing_tag_master`(P4 태그 편집 대비)
+    - 쓰기(P4 개방 예정): `admin_update_topik_question`(`service_status`)/`admin_assign_question_tag`/`admin_remove_question_tag` — SECURITY DEFINER 감사 RPC(§12.3), `admin_audit_logs` 기록
+    - 롤백 경로(봉인): env `VITE_QUESTION_BANK_SOURCE=legacy` 시 v13 `problems` 읽기 전용 어댑터(노출 상태 `미지정`·태그 빈 값). 구 `admin_update_problem` RPC는 라이브 DB에 존재하지 않으며 어댑터에서도 제거됨
   - 핵심 필드
-    - Supabase 원천: `problems.id`, `question_no`, `title`, `prompt`, `difficulty`, `review_status`, `review_workflow_status`, `topic_category_code`, `explanation`, `answer_key`, `rubric`, `created_at`, `updated_at` — 이 중 `review_status`/`review_workflow_status`는 물리적으로 존재·적재돼 있는 현행 사실이며, 2026-06-11 인바운드 전환으로 제거 예정(재정의 P3 마이그레이션)
-    - 화면 모델: `questionId`, `questionNumber`, `topic`, `questionText`, `domain`, `questionTypeLabel`, `difficultyLevel`, `sourceType`, `reviewStatus`, `operationStatus`, `validationStatus`, `usageCount`, `linkedExamCount`, `reviewMemo`, `managementNote`, `modelAnswer`, `scoringCriteria`, `revisionHistory`, `generatedAt`, `updatedAt` — 이 중 `reviewStatus`/`validationStatus`/`reviewMemo`는 검수 개념 삭제로 제거 예정(재정의 P3)
-  - 계약 메모 (현행 코드 사실 기준 — 검수 관련 항목은 2026-06-11 인바운드 전환으로 제거 예정)
-    - `AssessmentQuestionSeed`, feature 내부 JSON fixture, Zustand 문제은행 store는 현재 source 계약에서 제거되었습니다. Supabase 조회가 실패해도 JSON fixture를 fallback으로 읽지 않습니다.
-    - `questionText`는 목록형 `문항` 컬럼의 표시 필드이며, Supabase `problems.prompt`를 사용합니다. 검수 상세에서는 문제 번호별 profile에 따라 공통 `문항 지시문` 또는 전용 `문항` row에 같은 source를 표시합니다.
-    - `topic`은 `problems.title`, `domain`은 `problems.topic_category_code`를 코드 라벨로 매핑해 사용합니다.
-    - `questionTypeLabel`은 `question_no`의 TOPIK 쓰기 형식 규칙으로 파생하고, `difficultyLevel`은 `problems.difficulty` 숫자 구간으로 파생합니다.
-    - `modelAnswer`는 `answer_key.text` 또는 문자열형 `answer_key`에서 읽고, `scoringCriteria`는 `problems.rubric` 배열을 문자열 배열로 매핑합니다.
-    - `reviewStatus`는 `review_workflow_status`가 있으면 workflow stage를 우선하고, 없으면 `review_status`를 `검수 대기/검수 완료/수정 필요`로 매핑합니다. (현행 코드 사실 — 검수 표면·필드는 2026-06-11 인바운드 전환으로 제거 예정, 재정의 P3 마이그레이션)
+    - Supabase 원천(공통): `question_id`, `item_number`, `topic_main`/`topic_detail`(+보조 주제), `question_type_name`, `target_level`/`difficulty_level`, `scenario_type`, `situation_summary`, `learning_objective`, 문항 본문, 모범답안, `auto_checks_passed`(수신 정합 검사 — 존치), `content_team_memo`(수신 메타데이터 — admin 쓰기 없음), `service_status`, `recommendation_keys`, `created_at`, `updated_at` + 번호별 전용 컬럼(51 빈칸 메타/52 완성 단위·단서/53 자료 수치 `source_data`/54 문항 질문 등 — page-IA §5.2)
+    - 화면 모델: `questionId`, `questionNumber`, `topicMain`/`topicDetail`, `questionTypeName`, `targetLevel`/`difficultyLevel`, `scenarioType`, `situationSummary`, `serviceStatus`, `recommendationKeys`, `updatedAt` + 상세 전용(학습 목표, 문항 본문, 번호별 전용 블록, 모범답안, `autoChecksPassed`, `contentTeamMemo` 읽기 전용)
+    - (제거 완료 — 재정의 P3, `202f905`) 구 화면 모델의 `reviewStatus`/`validationStatus`/`reviewMemo`/`operationStatus`/`usageCount`/`linkedExamCount`/`revisionHistory` 등 검수·구 운영 축 필드는 제거됐다. 검수 4컬럼(`review_status`/`review_workflow_status`/`review_passed`/`validation_result`)은 DB에 물리 잔존하며 마이그레이션 `0013`(작성 완료 — 적용 대기)에서 제거된다(신규 코드는 해당 컬럼을 select하지 않음)
+  - 계약 메모
+    - `AssessmentQuestionSeed`, feature 내부 JSON fixture, Zustand 문제은행 store는 source 계약에서 제거되었습니다. Supabase 조회가 실패해도 JSON fixture를 fallback으로 읽지 않습니다(Supabase 미구성 시 명시적 `mock` 모드 — D-12).
+    - 목록 `상황 요약` 컬럼은 `situation_summary`를 1줄 말줄임 + hover 툴팁(전문/시나리오 유형)으로 표시하고, `주제(종합/세부)` 컬럼은 `topic_main`/`topic_detail` 2단으로 표시합니다.
+    - Supabase source가 없는 표시값은 임의 생성하지 않고 `-`, `미지정`, 빈 목록 sentinel로 표시합니다(legacy 롤백 소스의 `serviceStatus`=`미지정`, 태그=빈 값 포함).
     - **[폐기 — 2026-06-11 인바운드 전환]** 구판 계약("`reviewStatus = 검수 완료` → 운영정책 `POL-017`에 따라 상류 `TalkPik AI Service`로 배포(API 업로드)")은 폐기됐습니다. 상류 push(업로드/배포) 트랙 자체가 소멸했고, `POL-017`은 "TOPIK 쓰기 문항 수신·관리 운영정책"으로 재정의됐습니다. 상류 Writing API(`GET /api/writing/tasks`)의 작문 과제는 v13 사용자 노출용이며 admin 배포 대상이 아닙니다. admin의 노출 통제는 `service_status` 컬럼(§12.3), 문항 품질·상태 표현은 태그로만 합니다.
     - **[폐기 — 2026-06-11 인바운드 전환]** 배포 연동 필드 후보(`reviewExportStatus`, `reviewExportedAt`, 상류 작문 과제 식별자 `publishedTaskId`)는 push 트랙 소멸로 계약 후보에서 제거합니다. 단 `topik_writing_question_source_map.published_task_id` 컬럼은 물리적으로 존재하므로 용도 재검토 예정으로 표시합니다(§12.1).
-    - `reviewMemo`는 v13 `problems`에 내부 메모 컬럼이 없어 현재도 UI-local annotation으로만 존재합니다(영구 저장 없음). 2026-06-11 인바운드 전환으로 검수 메모 개념 자체가 삭제돼 영구화 계약(구 D-7)은 철회됐고, 해당 UI는 제거 예정(재정의 P3)입니다. 운영 메모는 태그 부여/제거 사유 `question_tags.memo`로만 기록합니다. `content_team_memo`는 수신 메타데이터로 존치하되 admin 쓰기는 없습니다.
-    - `operationStatus`는 현재 `미지정` sentinel로만 노출하고, 운영 상태 변경 write path는 비활성화되어 있습니다. 문항 관리 페이지(`/assessment/question-bank/manage`)에는 운영 조치(노출 후보/숨김 후보/운영 제외) UI가 비활성(disabled) 스캐폴딩으로 존재하며, 확인+사유 → 감사 로그 흐름(ConfirmAction + AuditLogLink)이 코드에 미리 연결되어 있습니다. 구 활성화 조건(v13 `lifecycle_status` 도착 대기)은 D-6(2026-06-10)으로 폐기됐고, 신규 스키마 `service_status` 축으로 재정의 P3(표시 전환)·P4(`OPERATION_WRITE_ENABLED` 게이트 제거 + write 개방)에서 해소합니다. 그 전까지는 페이지 상단에 "운영 상태 관리는 준비 중입니다" 경고 Alert를 노출합니다.
-    - 두 페이지(문항 목록 — 현행 라벨 `문제 검수` — 와 문항 관리)는 동일한 Supabase `problems`(question_no 51-54) 조회 결과를 공유 hook으로 공유하므로, 아래 Supabase 원천 / 화면 모델 필드 매핑은 두 페이지에서 변경 없이 동일하게 적용됩니다.
+    - (제거 완료 — 재정의 P3, `202f905`) 구 `reviewMemo` UI-local annotation과 검수 메모 영구화 계약(구 D-7)은 검수 개념 삭제로 철회·제거됐습니다. 운영 메모는 태그 부여/제거 사유 `question_tags.memo`로만 기록합니다. `content_team_memo`는 수신 메타데이터로 존치하되 admin 쓰기는 없습니다(상세 `문항 상태` 카드에 읽기 전용 표시).
+    - 노출 상태(`serviceStatus`)는 재정의 P3에서 `service_status` 실값 표시로 전환 완료됐습니다(구 `operationStatus` `미지정` sentinel 단계 종료 — legacy 롤백 소스에서만 `미지정`). 문항 관리 페이지(`/assessment/question-bank/manage`)의 운영 조치(노출 가능/노출 제외/내부 테스트) UI는 비활성(disabled) 스캐폴딩으로 존재하며, 확인+사유 → 감사 로그 흐름(ConfirmAction + AuditLogLink)이 코드에 미리 연결되어 있습니다. write 개방은 P4(`OPERATION_WRITE_ENABLED` 게이트 제거)에서 수행하며, 그 전까지 페이지 상단에 "관리 포인트(노출 상태·태그) 조치는 준비 중입니다" 경고 Alert를 노출합니다.
+    - 두 페이지(문항 목록과 문항 관리)는 동일한 신규 스키마 조회 결과(facade 공유 hook)를 공유하므로, 위 Supabase 원천 / 화면 모델 필드 매핑은 두 페이지에서 변경 없이 동일하게 적용됩니다.
     - 과거 JSON 검수 문서용 `reviewDocument` 타입과 화면 분기는 제거되었습니다. 상세 payload/JSONB 문서가 다시 필요하면 새 Supabase/API 계약을 확정한 뒤 별도 타입으로 추가합니다.
-    - 현재 화면에서 Supabase source가 없는 표시값은 임의 생성하지 않고 `-`, `미상`, `미지정`, 빈 배열 같은 sentinel로 표시합니다.
-    - 콘텐츠팀 권장 스키마(`docs/metadata-tag-schema-rule.md` v0.8)는 **2026-06-10 채택 확정**됐고 채택 계약은 §12에서 추적합니다(결정 기록: `docs/architecture/metadata-tag-schema-transition-decision-record.md` — 2026-06-11 §0 인바운드 전환 반영). 재정의 P3 읽기 컷오버(검수 컷오버 개념은 삭제 — 검수 표면은 컷오버가 아니라 제거 대상) 전까지는 이 §9.6 계약(엔티티 `AssessmentQuestion`, 테이블 `problems`)이 코드 SoT로 병행 유효하며, 컷오버 시 §9.6을 신규 스키마·인바운드 모델 기준으로 재작성합니다.
+    - 콘텐츠팀 권장 스키마(`docs/metadata-tag-schema-rule.md` v0.8)는 **2026-06-10 채택 확정**됐고 채택 계약은 §12에서 추적합니다(결정 기록: `docs/architecture/metadata-tag-schema-transition-decision-record.md` — 2026-06-11 §0 인바운드 전환 반영). 재정의 P3 읽기 컷오버 완료(`202f905`)에 따라 본 §9.6은 신규 스키마·인바운드 모델 기준으로 재작성됐고, 구 `problems` 기준 §9.6 계약은 git 이력의 역사 기록입니다(legacy 어댑터는 롤백 봉인 경로로만 잔존).
   - enum / code table candidate
     - `questionNumber`: `51`, `52`, `53`, `54`
-    - `domain`: `생활`, `학습`, `사회`, `문화`, `경제`, `교육`, `환경`, `기술`
-    - `questionTypeLabel`: `빈칸 완성`, `연결 표현`, `자료 설명`, `의견 서술`
-    - `difficultyLevel`: `상`, `중`, `하`
-    - `reviewStatus`: `검수 대기`, `검수 중`, `보류`, `검수 완료`, `수정 필요` — 검수 개념 삭제로 enum 자체가 제거 예정(재정의 P3)
-    - `operationStatus`: `미지정`, `노출 후보`, `숨김 후보`, `운영 제외` — D-6 확정에 따라 `service_status`(`available`/`excluded`/`internal_test`) 축으로 대체 예정
-    - `validationStatus`: `정상`, `주의`, `재검토` — `validation_result` 필드 제거 방침에 따라 제거 예정(재정의 P3, 수신 정합 검사는 `auto_checks_passed`로 존치)
-    - `sourceType`: `AI 자동 생성` — 인바운드 전환으로 문제 발원은 외부(공급) API로 재정의(라벨 재검토 예정)
+    - `serviceStatus`: `available`(노출 가능) / `excluded`(노출 제외) / `internal_test`(내부 테스트, 기본값) + 표시 전용 sentinel `미지정`(legacy 롤백 소스) — D-6, 유일한 물리 노출 상태
+    - `topicMain`/`topicDetail`: `topik_writing_topic_master` 시드(17주제/85세부) 기반 — 하드코딩 enum 아님
+    - `questionTypeName`: 신규 스키마 `question_type_name` 수신값 표시 — 하드코딩 enum 아님
+    - `difficultyLevel`: `1`~`6` 정수(급수 `target_level` 병기 — 구 `상`/`중`/`하` 축은 재정의 P3에서 제거 완료)
+    - 태그: `tag_master` 사전(schema-rule §2) 기반 — P4 편집 개방 전까지 활성 태그 수 집계 표시
+    - (제거 완료 — 재정의 P3) 구 `domain` 8값·`questionTypeLabel` 4값·`reviewStatus` 5값·`operationStatus` 4값·`validationStatus` 3값·`sourceType` enum은 전부 제거됐습니다
   - 하드코딩 분류
     - `schema candidate`
-      - 문항 본문, 정답/가이드, 운영 메모(태그 사유 `question_tags.memo`), 배치 메타데이터 — 검수 메모·검수 이력은 2026-06-11 검수 개념 삭제로 계약 후보에서 제외(잔존 UI는 제거 예정)
+      - 문항 본문, 정답/가이드, 운영 메모(태그 사유 `question_tags.memo`), 수신 배치 메타데이터
     - `code table candidate`
-      - 문제 번호, 운영 상태(→ `service_status`), 자동 점검 상태 — 검수 상태는 제거 예정(재정의 P3)
+      - 문제 번호, 노출 상태(`service_status`), 자동 점검 상태(`auto_checks_passed`)
     - `ui-only`
-      - 페이지 안내 문구, 운영 상태 준비 중 경고 Alert, empty/error/pending 메시지
+      - 페이지 안내 문구, 관리 포인트 준비 중 경고 Alert, empty/error/pending 메시지, mock 모드 안내
   - 감사 로그 / URL 계약
     - `Target Type = AssessmentQuestion`
     - `Target ID = questionId`
-    - 원본 화면 역추적 경로: `/assessment/question-bank/review/{questionId}` (검수 개념 삭제에 따라 재정의 P3에서 개명 예정)
+    - 원본 화면 역추적 경로: `/assessment/question-bank/{questionId}` (재정의 P3에서 구 `…/review/{questionId}` 개명 완료)
 
 ## 10. 문서 갱신 규칙
 
@@ -374,7 +371,7 @@
 
 > **P1 적용 완료(2026-06-10)**: 아래 오브젝트 전부 + 감사 RPC 3종 + RLS가 프로덕션에 생성됐고(마이그레이션 12파일, 기존 테이블 무변경 diff 0건), 주제(85행)/태그(19종) 마스터 시드 완료. 공통 컬럼 집합은 이 시점부로 동결 계약이다(변경은 4테이블 동시 마이그레이션). 증적: `logs/metadata-tag-schema-transition-evidence.md` P1 절.
 
-- 번호별 분리 문제 테이블: `topik_writing_51_questions`, `topik_writing_52_questions`, `topik_writing_53_questions`, `topik_writing_54_questions` (v0.8 실측: 공통 35컬럼 + 편차 E1 `review_workflow_status` + 번호별 전용 16~21컬럼 — 51:21·52:17·53:19·54:16). ※ 편차 E1은 2026-06-11 철회 — `review_workflow_status` 등 검수 컬럼은 P1 산출물로 물리 잔존하며 재정의 P3 마이그레이션에서 제거 예정(§12.4)
+- 번호별 분리 문제 테이블: `topik_writing_51_questions`, `topik_writing_52_questions`, `topik_writing_53_questions`, `topik_writing_54_questions` (v0.8 실측: 공통 35컬럼 + 편차 E1 `review_workflow_status` + 번호별 전용 16~21컬럼 — 51:21·52:17·53:19·54:16). ※ 편차 E1은 2026-06-11 철회 — `review_workflow_status` 등 검수 컬럼은 P1 산출물로 물리 잔존하며 재정의 P3 마이그레이션 `0013`에서 제거(작성 완료 — 적용 대기, §12.4)
 - 태그: `topik_writing_tag_master`(태그 값 사전) + `topik_writing_question_tags`(문제-태그 매핑) — 인바운드 모델의 admin 관리 포인트(부여/제거 + 사유 `memo`)
 - 주제 마스터: `topik_writing_topic_master` (17개 고정 종합 주제)
 - 추천 검색용 읽기전용 UNION 뷰: `topik_writing_question_recommendation_view` (`security_invoker=true` 필수 + admin 목록용 확장 컬럼, 편차 E4)
@@ -401,18 +398,18 @@
 ### 12.3 쓰기·감사 계약 (D-8 — 2026-06-11 개정)
 
 - admin 쓰기 계약은 **태그 + `service_status`** 2종으로 한정한다(인바운드 모델의 관리 포인트·노출 통제). 그 외 문항 본문·메타데이터는 외부 공급분이며 admin 쓰기가 없다.
-- 모든 신규 테이블 직접 write는 RLS로 차단하고, 쓰기는 SECURITY DEFINER RPC 단일 경로로만 허용: `admin_update_topik_question`(화이트리스트 patch — 재정의 후 허용 범위는 `service_status` 중심으로 축소, 검수 필드 patch는 제거 예정), `admin_assign_question_tag`/`admin_remove_question_tag`(이력 보존형, 사유 `memo` 기록). RPC는 `admin_audit_logs`에 actor=`auth.uid()` + 컬럼 diff(`{col:{from,to}}`)를 기록한다 — `target_table='AssessmentQuestion'`, `target_id=question_id`.
-- 액션 코드(2026-06-11 개정): 유지=`service_status_changed`/`tag_assigned`/`tag_removed`, 신설 예정=`question_received`(외부 공급 API 수신·적재 시점 기록 — 공급 연동 시 확정), 폐기=검수 4종(`review_completed`/`review_on_hold`/`review_revision_requested`/`review_memo_saved`)·`question_published`(상류 push). 폐기 액션의 RPC 분기는 P1 산출물에 물리 잔존하며 재정의 P3 마이그레이션에서 제거한다.
+- 모든 신규 테이블 직접 write는 RLS로 차단하고, 쓰기는 SECURITY DEFINER RPC 단일 경로로만 허용: `admin_update_topik_question`(화이트리스트 patch — 재정의 후 허용 범위는 `service_status` 중심으로 축소. DB측 검수 필드 patch 경로는 마이그레이션 `0013`(작성 완료 — 적용 대기)에서 제거, 화면 호출 경로는 재정의 P3에서 제거 완료), `admin_assign_question_tag`/`admin_remove_question_tag`(이력 보존형, 사유 `memo` 기록). RPC는 `admin_audit_logs`에 actor=`auth.uid()` + 컬럼 diff(`{col:{from,to}}`)를 기록한다 — `target_table='AssessmentQuestion'`, `target_id=question_id`.
+- 액션 코드(2026-06-11 개정): 유지=`service_status_changed`/`tag_assigned`/`tag_removed`, 신설 예정=`question_received`(외부 공급 API 수신·적재 시점 기록 — 공급 연동 시 확정), 폐기=검수 4종(`review_completed`/`review_on_hold`/`review_revision_requested`/`review_memo_saved`)·`question_published`(상류 push). 폐기 액션의 RPC 분기는 P1 산출물에 물리 잔존하며 재정의 P3 마이그레이션 `0013`(작성 완료 — 적용 대기)에서 제거한다.
 - 구 `admin_update_problem` RPC는 v13 admin island 제거(2026-06-09)로 라이브 DB에 존재하지 않음(실측). 동등 보장의 비교 대상은 v13 마이그레이션 파일의 계약 원문이다.
 
 ### 12.4 v0.8 원안 대비 편차 목록 (승인 완료 — E1은 2026-06-11 철회)
 
 | 편차 | 내용 | 사유 |
 | --- | --- | --- |
-| E1 | 4테이블 공통 컬럼 `review_workflow_status` 추가 | **[철회 — 2026-06-11]** 검수 개념 삭제로 편차 자체가 폐기. 컬럼은 P1 산출물로 물리 잔존하며 재정의 P3 마이그레이션에서 제거 예정. (종전 사유 D-2: 현행 검수 진행 2축 보존 — 역사 기록) |
+| E1 | 4테이블 공통 컬럼 `review_workflow_status` 추가 | **[철회 — 2026-06-11]** 검수 개념 삭제로 편차 자체가 폐기. 컬럼은 P1 산출물로 물리 잔존하며 재정의 P3 마이그레이션 `0013`에서 제거(작성 완료 — 적용 대기). (종전 사유 D-2: 현행 검수 진행 2축 보존 — 역사 기록) |
 | E2 | 매핑 테이블 `topik_writing_question_source_map` 추가 (+`legacy_topic_category_code` 보존 컬럼) | D-4 채번 idempotency·레거시 역추적 (구 "배포 증적" 용도는 push 폐기로 소멸 — `published_task_id` 용도 재검토 예정) |
 | E3 | tag_master 시드에서 '서비스_노출상태' 그룹 제외 + 운영주의 그룹 '운영 제외' 값 추가 | D-6: `service_status` 컬럼과의 이중 기록 차단 |
-| E4 | 추천 뷰에 admin 목록용 6컬럼 확장(`situation_summary`/`question_type_name`/`content_team_memo`/`review_workflow_status`/`created_at`/`updated_at`) | §7.9 12컬럼만으로 목록 화면 요구 충족 불가. ※ 이 중 `review_workflow_status`는 E1 철회에 따라 재정의 P3에서 뷰 컬럼 제거 예정 |
+| E4 | 추천 뷰에 admin 목록용 6컬럼 확장(`situation_summary`/`question_type_name`/`content_team_memo`/`review_workflow_status`/`created_at`/`updated_at`) | §7.9 12컬럼만으로 목록 화면 요구 충족 불가. ※ 이 중 `review_workflow_status`는 E1 철회에 따라 재정의 P3 마이그레이션 `0013`의 뷰 재생성(16컬럼)에서 제거(작성 완료 — 적용 대기. 신규 코드는 해당 컬럼을 select하지 않음) |
 
 ### 12.5 운영 원칙
 

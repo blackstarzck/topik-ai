@@ -10,7 +10,7 @@
 
 > 상위 개념어로서 "문제은행"은 목록/관리 두 페이지를 아우르는 도메인 명칭으로만 사용한다. 라우트 `/assessment/question-bank`는 문항 목록 페이지가 소유하고, 문항 관리 페이지(`/assessment/question-bank/manage`)는 `docs/specs/page-ia/assessment-question-manage-page-ia.md`가 소유한다.
 
-> 현행 코드 주의: 현행 구현은 아직 검수 표면(페이지 제목 `TOPIK 쓰기 문제 검수`, 검수 상태 축, 2depth 페이지의 검수 메모 카드·검수 액션)을 포함한다. 본 문서의 목표/정책/계약은 새 모델 기준으로 기술하고, 현행 코드 동작을 서술하는 부분은 사실대로 두되 "(2026-06-11 인바운드 전환으로 제거 예정 — 재정의 P3)"를 표시한다.
+> 현행 코드 주의(2026-06-11 갱신): 구현의 검수 표면(페이지 제목 `TOPIK 쓰기 문제 검수`, 검수 상태 축, 2depth 페이지의 검수 메모 카드·검수 액션)은 재정의 P3 코드 컷오버(커밋 `202f905`)에서 **전부 제거 완료**됐다. 잔여는 검수 4컬럼 물리 제거 마이그레이션(`0013`, 작성 완료 — 적용 대기)뿐이다. 본 문서의 "(제거 완료 — 재정의 P3)" 표기는 이 컷오버를 가리킨다.
 
 ## 2. 문서 메타
 
@@ -18,7 +18,7 @@
 | --- | --- |
 | 모듈 | Assessment |
 | 페이지명 | TOPIK 쓰기 문항 목록 (조회 전용) |
-| 현재 상태 | 구현됨 — 데이터 소스는 facade 스위치(`legacy` 기본 / `topik_writing` / `mock`) 기반. 단 현행 구현은 검수 표면을 포함하며 재정의 P3에서 제거 예정 |
+| 현재 상태 | 구현됨 — 데이터 소스는 facade 스위치(**`topik_writing` 기본** — 재정의 P3 컷오버 완료 / `legacy` 롤백(env `VITE_QUESTION_BANK_SOURCE=legacy`) / `mock`). 검수 표면은 재정의 P3에서 제거 완료(커밋 `202f905`) |
 | 페이지 유형 | 목록 조회형 + 2depth 문항 상세(조회 전용) |
 | 목록 라우트 | `/assessment/question-bank` |
 | 상세 라우트 | `/assessment/question-bank/:questionId` (2026-06-11 재정의 P3 구현에서 구 검수 라우트 `…/review/:questionId` 개명 완료) |
@@ -37,7 +37,7 @@
 
 ### 비목표
 
-- 검수하지 않는다. 검수 큐/검수 메모/검수 상태 변경은 2026-06-11 검수 개념 전면 삭제로 admin 표면에서 제거 대상이다(현행 코드의 검수 표면은 재정의 P3에서 제거 예정).
+- 검수하지 않는다. 검수 큐/검수 메모/검수 상태 변경은 2026-06-11 검수 개념 전면 삭제로 admin 표면에서 제거됐다(검수 표면은 재정의 P3에서 제거 완료 — `202f905`).
 - 이 화면에서 문항을 수동 생성·저작·분류하지 않는다(문항 본문·메타데이터는 외부에서 완성 상태로 공급).
 - 태그 부여/제거와 `service_status` 노출 통제는 이 화면 책임이 아니다(문항 관리 페이지 소관).
 - 상류 서비스로의 배포(API 업로드/push)는 폐기된 개념이며 이 화면을 포함한 admin 어디에도 존재하지 않는다(2026-06-11 §0 — 구 POL-017 push 모델 폐기).
@@ -46,10 +46,10 @@
 
 ## 4. 운영자 사용 시나리오
 
-- 시나리오 1: 운영자가 목록 페이지에서 문제 번호와 검색 조건(주제 종합/세부, 유형, 난이도, 검색어)으로 문항을 좁히고, `상황 요약` 1줄 셀 hover/focus 툴팁으로 상황 요약 전문과 시나리오 유형을 확인한 뒤 행 클릭으로 2depth 문항 상세에 들어간다. (현행 코드 사실: 툴팁 내부 진입 버튼 라벨이 `검수하기`다 — 2026-06-11 인바운드 전환으로 조회 명칭으로 교체 예정 — 재정의 P3)
+- 시나리오 1: 운영자가 목록 페이지에서 문제 번호와 검색 조건(주제 종합/세부, 유형, 난이도, 검색어)으로 문항을 좁히고, `상황 요약` 1줄 셀 hover/focus 툴팁으로 상황 요약 전문과 시나리오 유형을 확인한 뒤 행 클릭 또는 툴팁 하단 `상세 보기` 버튼으로 2depth 문항 상세에 들어간다. (구 `검수하기` 라벨은 재정의 P3에서 `상세 보기`로 교체 완료)
 - 시나리오 2: 2depth 문항 상세에서 문항 번호에 맞는 메타데이터 row만 확인한다. `51/52`, `53`, `54`는 같은 공통 상단(문항 번호/ID/주제/보조 주제/유형·급수/시나리오 유형/상황 요약/학습 목표/문항 본문)과 공통 꼬리(모범답안, `auto_checks_passed`, 추천 키)를 공유하되, 번호별 전용 row를 조건부 노출한다.
 - 시나리오 3: 운영자가 상세에서 공급 메타데이터의 정합을 열람으로 확인하고, 태그 부여/제거나 노출 상태 전환이 필요하다고 판단하면 문항 관리 페이지(`/assessment/question-bank/manage`)에서 조치한다. 이 페이지에서는 어떤 상태도 변경하지 않는다.
-- (현행 코드 사실 — 제거 예정, 재정의 P3) 현행 2depth 페이지 우측에는 `검수 메모` 카드가 있고 `검수 완료`/`사용 보류`/`검수 필요` 액션이 동작한다. 메모는 `content_team_memo`에 기록되는데, 새 모델에서 `content_team_memo`는 **수신 메타데이터(admin 쓰기 없음)**이므로 이 쓰기 경로 자체가 제거 대상이다.
+- (제거 완료 — 재정의 P3, `202f905`) 구 2depth 페이지 우측의 `검수 메모` 카드와 `검수 완료`/`사용 보류`/`검수 필요` 액션, `content_team_memo` 쓰기 경로는 제거됐다. 현행 우측은 조회 전용 `문항 상태` 카드다: 노출 상태 Tag, 조회 전용 안내 문구, 콘텐츠팀 메모(수신 메타데이터 — 읽기 전용 표시), 감사 로그 링크.
 - 두 페이지(목록/관리)는 동일한 조회 결과(공유 hook)를 사용한다.
 
 ## 5. 화면 구조
@@ -58,19 +58,19 @@
 
 | 영역 | 목적 | 주요 데이터 | 주요 액션 |
 | --- | --- | --- | --- |
-| `PageTitle` | 페이지 식별 | 목표 제목 `TOPIK 쓰기 문항 목록` (현행 코드: `TOPIK 쓰기 문제 검수` — 제거 예정, 재정의 P3) | 없음 |
-| 상단 요약 카드 | 조회 범위 파악 | 목표: 노출 상태(`service_status`)·태그 등 조회 축 건수 (현행 코드: 검수 상태(`reviewStatus`)별 건수 — 제거 예정, 재정의 P3) | 카드 클릭 필터 |
+| `PageTitle` | 페이지 식별 | 제목 `TOPIK 쓰기 문항 목록` (구 `TOPIK 쓰기 문제 검수` — 재정의 P3에서 교체 완료) | 없음 |
+| 상단 요약 카드 | 조회 범위 파악 | 현행: `전체 문항` + 번호별(`51`~`54`) 건수 — 카드 클릭은 번호 선택 토글 (구 검수 상태(`reviewStatus`)별 건수 카드는 재정의 P3에서 제거 완료. 노출 상태·태그 축 카드 확장은 P4 태그 필터와 함께 후속 검토) | 카드 클릭 필터 |
 | 문제 번호 체크박스 그룹 | `51`, `52`, `53`, `54` 범위 전환 | 문제 번호 | 다중 선택 전환, 기본 전체 선택 |
 | SearchBar | 공통 목록형 검색 조건 적용 | 검색어, 상세 검색 팝오버(주제 종합/세부 · 유형 · 난이도) | 즉시 필터, 상세 검색 적용 |
-| 목록 테이블 | 수신 문항 비교·열람 | 문항 번호, 문항 ID, 주제(종합/세부), 상황 요약(hover 툴팁), 유형/난이도, 최근 수정. 목표 축으로 노출 상태·태그 컬럼을 추가한다 (현행 코드: 검수 상태 컬럼 노출 — 제거 예정, 재정의 P3) | 행 클릭으로 상세 진입 |
+| 목록 테이블 | 수신 문항 비교·열람 | 문항 번호, 문항 ID, 주제(종합/세부), 상황 요약(hover 툴팁), 유형/난이도, **노출 상태**(`service_status` Tag — 재정의 P3에서 추가 완료), 최근 수정 (구 검수 상태 컬럼은 재정의 P3에서 제거 완료. 태그 컬럼은 P4 후속) | 행 클릭으로 상세 진입 |
 
 ### 5.2 문항 상세 페이지 (라우트 `/assessment/question-bank/:questionId` — 재정의 P3에서 개명 완료)
 
 | 영역 | 목적 | 주요 데이터 | 주요 액션 |
 | --- | --- | --- | --- |
-| `PageTitle` + 돌아가기 | 문항 문맥 식별 | 문제 번호, 목록 복귀 경로 (현행 코드 제목: `TOPIK {n}번 문항 검수` — 조회 명칭으로 교체 예정, 재정의 P3) | 목록 복귀 |
+| `PageTitle` + 돌아가기 | 문항 문맥 식별 | 제목 `TOPIK {n}번 문항 상세`, `목록으로 돌아가기` 버튼 (구 `TOPIK {n}번 문항 검수` 제목은 재정의 P3에서 교체 완료) | 목록 복귀 |
 | 메타데이터 `Descriptions` | 공급 메타데이터 조회 전용 열람 | 공통 상단(문항 번호/ID/주제(종합/세부)/보조 주제/유형 · 급수·난이도/시나리오 유형/상황 요약/학습 목표/문항 본문) + 번호별 전용 row + 공통 꼬리(모범답안, `auto_checks_passed`, 추천 키) | 본문 열람(쓰기 없음) |
-| 우측 `검수 메모` 카드 (현행 코드 사실 — 제거 예정, 재정의 P3) | (구 모델) 검수 판단 기록과 상태 변경 | 검수/진행/노출 상태 Tag, `content_team_memo` 입력, `검수 완료`/`사용 보류`/`검수 필요` 버튼 | 검수 개념 삭제로 카드 전체가 제거 대상. 노출 상태 Tag 등 조회성 정보는 상세 본문 표시로 흡수 예정 |
+| 우측 `문항 상태` 카드 (조회 전용) | 노출 상태·수신 메모 확인과 감사 역추적 | 노출 상태 Tag(`service_status`), 조회 전용 안내, 콘텐츠팀 메모(수신 메타데이터 — 읽기 전용), 감사 로그 링크 | 감사 로그 이동. (구 `검수 메모` 카드와 검수 액션 3종은 재정의 P3에서 제거 완료 — `202f905`) |
 
 - 번호별 전용 row(조회 전용, 현행 화면 모델 기준):
   - `51`: 복원문(빈칸 채움), 빈칸 ㄱ/ㄴ 메타(역할/기능/정답 유형)와 대표·허용 정답
@@ -91,7 +91,7 @@
 - `serviceStatus`(노출 상태 — legacy 소스는 null이며 `미지정` 표시)
 - `recommendationKeys`
 - `updatedAt`
-- (현행 코드 사실 — 제거 예정, 재정의 P3) `reviewStatus` / `reviewWorkflowStatus`가 화면 모델에 남아 있고 목록 `검수 상태` 컬럼에 표시된다. 컬럼 물리 제거는 재정의 P3 마이그레이션에서 수행한다.
+- (제거 완료 — 재정의 P3, `202f905`) `reviewStatus` / `reviewWorkflowStatus`는 화면 모델·목록 컬럼에서 제거됐다. 컬럼 물리 제거는 마이그레이션 `0013`(작성 완료 — 적용 대기)이 수행한다.
 
 ### 6.2 검색/선택 데이터
 
@@ -102,30 +102,29 @@
   - `difficulty` (1~6 정수)
   - `keyword`
   - `tag` — P4 태그 필터 자리 확보용 예약 키(현재 미사용)
-- 목록 페이지 전용
-  - `reviewStatus` (현행 코드 사실 — 검수 개념 삭제로 제거 예정, 재정의 P3)
+- 목록 페이지 전용 쿼리는 없다 (구 `reviewStatus` 쿼리는 검수 개념 삭제로 재정의 P3에서 제거 완료).
 - 노출 상태 쿼리(`serviceStatus`)는 문항 관리 페이지 전용이며 이 페이지에서는 사용하지 않는다(`docs/specs/page-ia/assessment-question-manage-page-ia.md`).
 - `tab` 쿼리 파라미터는 제거되었다. 각 라우트가 자체 URL 상태를 보존한다.
 
 ### 6.3 문항 상세 페이지 데이터
 
 - 데이터 소스는 facade 스위치(`question-bank-data-source.ts`)가 결정한다:
-  - `topik_writing` — 신규 스키마(`topik_writing_51/52/53/54_questions` + `question_source_map`, 주제 마스터·태그) 읽기. 컷오버 목표 경로.
-  - `legacy`(현행 기본값) — v13 `problems` 읽기를 신규 화면 모델로 매핑하는 어댑터. 컷오버 후 롤백 경로로 P4 종료까지 보존.
+  - `topik_writing`(현행 기본값 — 재정의 P3 컷오버 완료) — 신규 스키마(`topik_writing_51/52/53/54_questions` + `question_source_map`, 주제 마스터·태그) 읽기.
+  - `legacy`(롤백 경로 — env `VITE_QUESTION_BANK_SOURCE=legacy`) — v13 `problems` 읽기를 신규 화면 모델로 매핑하는 읽기 전용 어댑터. P4 종료까지 봉인 보존.
   - `mock` — Supabase 미구성/`VITE_SUPABASE_DISABLED` 시 결정적 픽스처(D-12).
 - 공통 메타데이터(수신값, 조회 전용)
   - 주제 축(`topic_main`/`topic_detail`, 보조 주제), 유형(`question_type_name`), 급수/난이도, 시나리오 유형, 상황 요약, 학습 목표, 문항 본문, 모범답안, 추천 키
   - `auto_checks_passed` — 수신·적재 자동 정합 검사 표식(존치)
   - `content_team_memo` — 수신 메타데이터(admin 쓰기 없음)
 - Supabase source가 없는 값은 임의 생성하지 않고 화면에서 `-`, 빈 목록(empty state)으로 표시한다. JSON fixture fallback은 사용하지 않는다(`mock` 소스는 Supabase 미구성 시의 명시적 모크 모드이며 fallback이 아니다).
-- (현행 코드 사실 — 제거 예정, 재정의 P3) 상세 화면 모델에 `review_status`/`review_workflow_status` 기반 표시와 검수 메모 쓰기 경로(`content_team_memo` 저장, legacy 소스에서는 영속 컬럼이 없어 화면 상태로만 유지)가 남아 있다.
+- (제거 완료 — 재정의 P3, `202f905`) 상세 화면 모델의 `review_status`/`review_workflow_status` 기반 표시와 검수 메모 쓰기 경로는 제거됐다. `content_team_memo`는 상세 `문항 상태` 카드에 읽기 전용으로만 표시한다.
 
 ## 7. 액션 정의
 
 - 이 페이지(목록·상세)는 **조회 전용**이며 쓰기 액션을 정의하지 않는다.
 - 쓰기 액션(태그 부여/제거, 노출 상태 전환)은 문항 관리 페이지(`docs/specs/page-ia/assessment-question-manage-page-ia.md`)에서 정의하고, `AssessmentQuestion + questionId` 감사 로그 계약(`service_status_changed`/`tag_assigned`/`tag_removed`)을 따른다(`docs/specs/admin-action-log.md`).
 - 수신·적재 감사 액션 `question_received`는 외부 공급 API 연동 시 추가한다(수신 경로 미구현 — §12 오픈 이슈).
-- (현행 코드 사실 — 제거 예정, 재정의 P3) 현행 상세 페이지에는 검수 액션 3종(`검수 완료`/`사용 보류`/`검수 필요`)과 메모 저장이 확인+사유 모달, 감사 로그 링크와 함께 구현되어 있다. 검수 감사 액션 4종(`review_completed`/`review_on_hold`/`review_revision_requested`/`review_memo_saved`)은 2026-06-11 §0으로 폐기됐으며, 검수 표면 제거와 함께 정리한다.
+- (제거 완료 — 재정의 P3, `202f905`) 구 상세 페이지의 검수 액션 3종(`검수 완료`/`사용 보류`/`검수 필요`)과 메모 저장은 제거됐다. 폐기된 검수 감사 액션 4종(`review_completed`/`review_on_hold`/`review_revision_requested`/`review_memo_saved`)은 기존 감사 행 표시용 "(구)" 역사 라벨로만 잔존한다(감사 로그 화면). RPC 측 검수 경로는 마이그레이션 `0013` 적용 시 제거된다.
 
 ## 8. 상태값/운영 규칙
 
@@ -134,10 +133,10 @@
 | 노출 상태(`service_status`) | `available`(노출 가능) / `excluded`(노출 제외) / `internal_test`(내부 테스트, 기본값) | 유일한 물리 노출 상태(D-6). 이 페이지는 표시만, 전환 조치는 문항 관리 페이지 책임. legacy 소스 행은 값이 없어 `미지정` 표시 |
 | 태그 | `tag_master` 사전 기반 `question_tags` 활성 태그 | 문항 품질·상태 표현은 태그로만 한다. 부여/제거+사유 memo는 관리 페이지 책임(P4 개방) |
 | `auto_checks_passed` | 수신·적재 자동 정합 검사 표식 | 존치 — 검수 개념과 무관한 적재 검증값 |
-| `content_team_memo` | 수신 메타데이터 | admin 쓰기 없음. 현행 코드의 검수 메모 쓰기 경로는 제거 예정(재정의 P3) |
+| `content_team_memo` | 수신 메타데이터 | admin 쓰기 없음. 구 검수 메모 쓰기 경로는 재정의 P3에서 제거 완료(상세 `문항 상태` 카드에 읽기 전용 표시) |
 | 번호별 메타데이터 표시 | `51/52`, `53`, `54`는 서로 다른 전용 row 집합을 사용 | 상세 `Descriptions` profile로 분기 |
 | 목록 상세 진입 방식 | 행 클릭 또는 `상황 요약` hover 툴팁의 진입 버튼으로 2depth 상세 진입 | 목록에서는 액션 컬럼과 Drawer를 두지 않음 |
-| (현행 코드 사실 — 제거 예정, 재정의 P3) 검수 상태 | `검수 완료(approved)`/`검수 필요(needs_revision)`/`사용 보류(on_hold)` + 진행 상태 5값(`review_workflow_status`) | 2026-06-11 검수 개념 전면 삭제(D-2·편차 E1 철회). 표시·쓰기 모두 제거 대상, 컬럼 물리 제거는 재정의 P3 마이그레이션 |
+| (제거 완료 — 재정의 P3, `202f905`) 검수 상태 | (구) `검수 완료(approved)`/`검수 필요(needs_revision)`/`사용 보류(on_hold)` + 진행 상태 5값(`review_workflow_status`) | 2026-06-11 검수 개념 전면 삭제(D-2·편차 E1 철회). 표시·쓰기 제거 완료, 컬럼 물리 제거는 마이그레이션 `0013` 적용 대기 |
 
 ## 8.1 수신·관리 운영정책 (POL-017 — 2026-06-11 재정의)
 
@@ -160,7 +159,7 @@
   - `questionType`
   - `difficulty`
   - `keyword`
-  - `reviewStatus` (현행 코드 사실 — 검수 개념 삭제로 제거 예정, 재정의 P3)
+  - (구 `reviewStatus`는 검수 개념 삭제로 재정의 P3에서 제거 완료)
 - `tag`는 P4 태그 필터 예약 키이며, `serviceStatus`는 문항 관리 페이지 전용이므로 이 페이지에서 복원하지 않는다. `tab` 파라미터는 제거되었다.
 - `questionNo`가 없으면 `51~54` 전체 선택으로 해석하고, 부분 선택일 때만 반복 파라미터를 남긴다.
 
@@ -183,14 +182,14 @@
 - 문항 목록 페이지 파일
   - `src/features/assessment/pages/assessment-question-bank-page.tsx`
 - 2depth 문항 상세 페이지 파일
-  - `src/features/assessment/pages/assessment-question-review-page.tsx` (검수 명칭 파일/라우트 — 재정의 P3에서 조회 전용 상세로 개명·재작성 예정)
+  - `src/features/assessment/pages/assessment-question-detail-page.tsx` (구 `assessment-question-review-page.tsx` — 재정의 P3에서 조회 전용 상세로 개명·재작성 완료)
 - 문항 관리 페이지는 별도 라우트/파일로 분리되어 있다(`docs/specs/page-ia/assessment-question-manage-page-ia.md`).
 - 모델/서비스
   - `src/features/assessment/model/assessment-question-bank-types.ts`
   - `src/features/assessment/model/assessment-question-bank-schema.ts`
   - `src/features/assessment/model/assessment-question-bank-presenter.ts`
   - `src/features/assessment/model/use-assessment-question-list.ts` / `use-assessment-question-filters.ts` / `use-question-bank-masters.ts`
-  - `src/features/assessment/api/question-bank-data-source.ts` (P3 컷오버 스위치 — 기본 `legacy`)
+  - `src/features/assessment/api/question-bank-data-source.ts` (P3 컷오버 스위치 — 기본 `topik_writing`, 롤백 env `VITE_QUESTION_BANK_SOURCE=legacy`)
   - `src/features/assessment/api/assessment-question-bank-service.ts` (facade)
   - `src/features/assessment/api/topik-writing-question-bank-service.ts` (신규 스키마)
   - `src/features/assessment/api/supabase-assessment-question-bank-service.ts` (legacy `problems` 어댑터)
@@ -199,8 +198,8 @@
 ## 12. 오픈 이슈
 
 - **외부 공급 API 미개발 — 수신 경로 미구현.** 문제 발원인 외부(공급) API가 아직 개발되지 않아 admin의 수신·적재 경로(및 `question_received` 감사 액션)는 미구현이다. 공급 계약은 요청 문서(`docs/requests/upstream-writing-endpoints-request-2026-06-10.md`, D-11 재정의)로 추진하며, 그동안 신규 공급 없이 백필 466행(초기 코퍼스)만 조회된다.
-- 검수 표면 제거가 재정의 P3 구현 범위다: 페이지 제목·요약 카드(검수 상태 축)·목록 검수 상태 컬럼·`reviewStatus` 파라미터·상세 검수 메모 카드·검수 액션 3종·검수 라우트 명칭 전부(실행계획안 2026-06-11 개정 — `docs/메타데이터-태그-스키마-전환-실행계획안.md`). 검수 컬럼 물리 제거는 같은 재정의 P3 마이그레이션이다.
-- 데이터 소스 스위치 기본값은 `legacy`다. `topik_writing` 플립(컷오버)은 P2 PASS 전환 후 수행하며, 그 전까지 legacy 행은 `service_status` 소스가 없어 노출 상태가 `미지정`으로 표시된다.
-- 목록의 목표 축(노출 상태·태그 컬럼/요약 카드) 구체 설계는 재정의 P3 구현에서 확정한다. `tag` 필터 활성화는 P4 범위다.
+- 검수 표면 제거(재정의 P3 구현 범위)는 완료됐다(`202f905`): 페이지 제목·요약 카드(검수 상태 축)·목록 검수 상태 컬럼·`reviewStatus` 파라미터·상세 검수 메모 카드·검수 액션 3종·검수 라우트 명칭 전부 제거·개명 완료. **잔여 = 검수 4컬럼 물리 제거 마이그레이션 `0013` 적용**(작성 완료 — `SUPABASE_ACCESS_TOKEN` 확보 대기).
+- 데이터 소스 스위치 기본값은 `topik_writing`이다(재정의 P3 컷오버 완료 — freeze→델타 재적재→발산 0건 대사 후 플립). 롤백은 env `VITE_QUESTION_BANK_SOURCE=legacy`이며, legacy 행은 `service_status` 소스가 없어 노출 상태가 `미지정`으로 표시된다.
+- 목록의 조회 축은 재정의 P3에서 확정·구현됐다(노출 상태 컬럼 추가, 요약 카드는 번호별 건수 축). 태그 컬럼/필터(`tag` 예약 키)와 노출 상태·태그 축 요약 카드 확장은 P4 범위다.
 - v13 사용자 기능의 신규 스키마 소비 경로 전환(현재 v13은 `problems`를 읽음)은 별도 트랙이며, EPS TOPIK / 레벨 테스트 편성 화면의 문항 소비 계약도 여전히 별도 후속 문서가 필요하다.
 - Supabase 미설정 시 JSON fallback 대신 명시적 mock 모드, 조회 실패 시 error/retry 상태를 노출한다.
