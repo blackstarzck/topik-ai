@@ -124,6 +124,29 @@ export type TopikWritingTopicMasterRow = {
   sortOrder: number | null;
 };
 
+/** 주제 마스터 전수 행 — /system/metadata 마스터 카탈로그 조회용(P5-1, 비활성 포함). */
+export type TopikWritingTopicMasterCatalogRow = {
+  topicId: number;
+  topicMain: string;
+  topicDetail: string;
+  sourceName: string;
+  isActive: boolean;
+  sortOrder: number | null;
+  memo: string | null;
+};
+
+/** 태그 마스터 전수 행 — /system/metadata 마스터 카탈로그 조회용(P5-1, 비활성·전 그룹 포함). */
+export type TopikWritingTagMasterCatalogRow = {
+  tagCode: string;
+  tagNameKo: string;
+  tagGroup: string;
+  description: string;
+  usageRule: string;
+  exampleQuestionId: string | null;
+  isActive: boolean;
+  updatedAt: string;
+};
+
 export type TopikWritingTagMasterRow = {
   tagCode: string;
   tagNameKo: string;

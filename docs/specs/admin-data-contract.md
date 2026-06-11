@@ -257,6 +257,7 @@
     - 목록: 추천 뷰 `topik_writing_question_recommendation_view`(E4 확장 컬럼 포함) + 활성 태그 집계(`topik_writing_question_tags`)
     - 상세: 번호별 테이블 `topik_writing_51/52/53/54_questions`(번호별 전용 필드 포함)
     - 마스터: `topik_writing_topic_master`(주제 17/85 — 검색 옵션), `topik_writing_tag_master`(활성 사전 — 태그 편집 옵션 축, '서비스_노출상태' 그룹은 facade에서 필터)
+    - 마스터 카탈로그(P5-1 — 2026-06-11): 동일 마스터 2테이블의 **전수 조회**(비활성·전 그룹 포함, 필터 없음) facade `fetchQuestionBankTopicMasterCatalogSafe`/`fetchQuestionBankTagMasterCatalogSafe` — `/system/metadata`의 `TOPIK 쓰기 마스터 데이터 (읽기 전용)` 섹션이 소비(write 없음, legacy 모드는 빈 배열). 화면 모델: `TopikWritingTopicMasterCatalogRow`(topicId/topicMain/topicDetail/sourceName/isActive/sortOrder/memo), `TopikWritingTagMasterCatalogRow`(tagCode/tagNameKo/tagGroup/description/usageRule/exampleQuestionId/isActive/updatedAt)
     - 쓰기(P4 개방 완료 — 2026-06-11): `admin_update_topik_question`(`service_status` 단일 화이트리스트, 사유 `__note`→`payload.note`)/`admin_assign_question_tag`/`admin_remove_question_tag`(사유 `question_tags.memo`+`payload.tag_memo` — 필수) — SECURITY DEFINER 감사 RPC(§12.3), `admin_audit_logs` 기록. facade: `updateAssessmentQuestionServiceStatusSafe`/`assignQuestionTagSafe`/`removeQuestionTagSafe`(사유 공백 거부). 직접 테이블 write는 RLS 차단(쓰기 정책 0건)
     - 롤백 경로(봉인): env `VITE_QUESTION_BANK_SOURCE=legacy` 시 v13 `problems` 읽기 전용 어댑터(노출 상태 `미지정`·태그 빈 값). 구 `admin_update_problem` RPC는 라이브 DB에 존재하지 않으며 어댑터에서도 제거됨
   - 핵심 필드

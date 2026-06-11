@@ -53,6 +53,7 @@
 | 요약 카드 | 기능 카테고리 단위로 범위 축소 | 전체 설정, 회원/권한, 메시지 발송, 운영/노출, 커머스/혜택 | 카드 선택 | 관련 기능 화면으로 사고 흐름 연결 | 직접 영향 없음 |
 | SearchBar | 설정 탐색과 상태 복원 | 검색어, 최근 수정일, 총 설정 수 | 검색, 상세 검색, 설정 추가 | 상세 Drawer 진입 대상 결정 | 직접 영향 없음 |
 | 설정 목록 테이블 | 그룹 단위 비교와 상세 진입 | 설정명, 소속 기능, 운영 값 요약, 사용자 영향, 운영 상태, 최근 수정 | 행 클릭, 상세 보기, 설정 수정, 운영 값 추가, 활성/비활성 | 각 기능의 공통 설정 변경 진입점 | 간접 영향 |
+| TOPIK 쓰기 마스터 카탈로그(읽기 전용) | 평가 주제/태그 마스터 실데이터 조회(P5-1) | 주제 마스터(종합/세부/정렬/상태/출처/메모), 태그 마스터(코드/태그명/그룹/상태/설명/사용 규칙) — Supabase 전수 조회(비활성 포함) | 없음(조회 전용 — 탭 전환·컬럼 필터만) | TOPIK 쓰기 문항 목록/관리의 필터 축·태그 부여 옵션의 기준 사전 | 추천 노출 축의 원천(간접 영향) |
 | 상세 Drawer | 설정 구조와 실제 운영 값을 관리 | 기본 정보, 설정 구조 Tree, 운영 값 테이블, 고급 정보, 변경 이력 | 운영 값 추가, 수정, 순서 변경, 상태 변경, 설정 활성/비활성, 감사 로그 이동 | System 감사 로그와 직접 연결 | 간접 또는 직접 영향 |
 | 등록/수정 Modal | 그룹/운영 값 생성과 수정 | 그룹 메타 정보, 운영 값 코드/라벨/정렬/기본값 | 저장, 취소 | 추후 관련 기능 화면 선택지에 반영 | 간접 또는 직접 영향 |
 
@@ -109,6 +110,14 @@
   - 현재 mock 데이터 기준으로 같은 설정 그룹 안의 `운영 값 코드`, `운영 값 라벨` 중복을 즉시 검사합니다.
   - 저장 시 service layer에서도 같은 조건을 다시 검증합니다.
 
+### TOPIK 쓰기 마스터 카탈로그 데이터 (P5-1, 읽기 전용)
+
+- 데이터 원천: Supabase `topik_writing_topic_master` / `topik_writing_tag_master` 전수 조회(비활성 포함) — 운영 설정 카탈로그(모크 그룹 store)와 SoT가 다릅니다.
+- `주제 마스터` 탭: 정렬, 종합 주제, 세부 내용, 상태(활성/비활성), 출처, 메모 — 17개 고정 종합 주제 축
+- `태그 마스터` 탭: 태그 코드, 태그명, 그룹, 상태, 설명, 사용 규칙, 예시 문항, 최근 수정 — 태그 부여 옵션의 값 사전
+- 편집 액션 없음: tag_master 활성/비활성 write는 후속(전환 실행계획안 P5-3), 추천키/반복방지키 JSONB는 문항 상세에서 조회(D-10 비범위)
+- 상태 UX: 탭별 독립 AsyncState + `다시 시도`. legacy 롤백 모드 empty 안내, 모크 모드 배너 표시
+
 ## 8. 액션 정의
 
 | 액션 | 성격 | 대상 식별 기준 | 확인/사유 필요 여부 | 성공 후 피드백 | 감사 로그 확인 경로 |
@@ -137,6 +146,7 @@
 | --- | --- | --- | --- |
 | System > 감사 로그 | 메타 그룹/운영 값 조치 검증 | `AuditLogLink` 딥링크 | 조치 후 필수 |
 | Commerce / Message / Users / Operation 각 설정 화면 | 공통 선택지, 상태값, 노출 규칙의 원천 참조 | 메타 그룹 참조 | 선행 관계 |
+| Assessment > TOPIK 쓰기 문항 목록/관리 | 주제 필터 축·태그 부여 옵션의 기준 마스터를 이 페이지에서 조회 | TOPIK 쓰기 마스터 카탈로그(동일 facade의 마스터 로더) | 선행 관계(조회 참조) |
 
 ## 11. 사용자 화면/B2C 영향 참고
 
@@ -165,6 +175,7 @@
 
 - 현재 코드베이스에서 재사용할 컴포넌트: `PageTitle`, `SearchBar`, `ListSummaryCards`, `AdminListCard`, `DetailDrawer`, `AdminFormDescriptions`, `AdminDataTable`, `ConfirmAction`, `AuditLogLink`
 - 예상 feature 파일: `src/features/system/pages/system-metadata-page.tsx`, `src/features/system/api/system-metadata-service.ts`, `src/features/system/model/system-metadata-store.ts`, `src/features/system/model/system-metadata-types.ts`
+- 마스터 카탈로그 섹션: `src/features/assessment/ui/master-catalog-section.tsx` (facade `assessment-question-bank-service.ts`의 마스터 카탈로그 로더를 사용 — 평가 도메인 데이터라 assessment feature에 두고 이 페이지가 마운트)
 - 권한/로그/알림 처리 메모: 생성/수정/상태 변경/순서 변경 결과는 notification과 감사 로그를 같이 유지합니다.
 
 ## 15. 미해결 이슈
@@ -179,3 +190,9 @@
 - 운영 값 노드는 hover 되었을 때만 텍스트 우측에 삭제 아이콘을 노출합니다.
 - Tree에서 삭제를 시작해도 조치 계약은 유지하며 `ConfirmAction -> Target Type = SystemMetadataGroup -> Target ID = groupId -> 감사 로그 확인` 흐름으로 이어집니다.
 - `운영 값 수정` Modal 하단에는 `운영 값 삭제` 버튼을 별도로 두고, 같은 삭제 ConfirmAction으로 연결합니다.
+
+## 17. 2026-06-11 보강 메모 > TOPIK 쓰기 마스터 카탈로그 (P5-1)
+
+- 메타데이터·태그 스키마 전환 P5-1(실행계획안 §9)로 운영 설정 카탈로그 카드 아래에 `TOPIK 쓰기 마스터 데이터 (읽기 전용)` 섹션을 추가했습니다. 신규 라우트 없이 기존 `/system/metadata`를 확장한 1차 권장 경로입니다(P5-2 라우트 동기화 = 해당 없음).
+- 모크 그룹 store에 끼워 넣지 않고 별도 섹션으로 분리한 이유: 그룹 store는 편집 가능한 인메모리 SoT인 반면 주제/태그 마스터는 Supabase 실데이터(읽기 전용)라서, 같은 표에 합치면 편집 액션이 거짓 동작하기 때문입니다.
+- 감사 계약 영향 없음: 이 섹션은 write가 없어 `SystemMetadataGroup` 감사 계약을 사용하지 않습니다. tag_master 활성/비활성 write가 개방되면(전환 실행계획안 P5-3) 신규 Target Type 결정과 함께 본 문서 §8 액션 표를 갱신합니다.

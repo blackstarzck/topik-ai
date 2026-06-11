@@ -37,6 +37,7 @@ import {
   toggleMetadataItemStatusSafe
 } from '../api/system-metadata-service';
 import { usePermissionStore } from '../model/permission-store';
+import { AssessmentMasterCatalogSection } from '../../assessment/ui/master-catalog-section';
 import type { AsyncState } from '../../../shared/model/async-state';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
@@ -1780,6 +1781,9 @@ export default function SystemMetadataPage(): JSX.Element {
 
         <AdminDataTable<SystemMetadataGroup> rowKey="groupId" pagination={false} scroll={{ x: 1480 }} loading={metadataState.status === 'pending' && !hasCachedGroups} columns={columns} dataSource={filteredGroups} onRow={(record) => ({ onClick: () => openDrawer(record.groupId), style: { cursor: 'pointer' } })} />
       </AdminListCard>
+
+      {/* P5-1 마스터 조회 surface — SoT가 Supabase 실데이터라 모크 그룹 store와 분리(읽기 전용). */}
+      <AssessmentMasterCatalogSection />
 
       <DetailDrawer
         open={Boolean(selectedGroup)}

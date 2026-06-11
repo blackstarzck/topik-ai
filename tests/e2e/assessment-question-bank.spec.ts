@@ -1,11 +1,12 @@
 import { expect, test, type Page } from '@playwright/test';
 
 /**
- * P3(조회)·P4(관리 포인트 write) spec (인바운드 모델 — 결정 기록 §0, 실행계획안
- * §7~§8): Supabase가 구성되지 않은 실행은 D-12 모크 모드로 동작한다 — 결정적
- * 픽스처 4문항(번호별 1건) + 인메모리 태그 store로 문항 목록·상세(조회 전용)·
- * 관리 페이지의 write 흐름(노출 상태 전환, 태그 부여/제거, POL-018 ② 가드)을
- * 화면 수준에서 검증한다(실DB 왕복은 P4 RT-4 — 별도 프로브).
+ * P3(조회)·P4(관리 포인트 write)·P5(마스터 조회 surface) spec (인바운드 모델 —
+ * 결정 기록 §0, 실행계획안 §7~§9): Supabase가 구성되지 않은 실행은 D-12 모크
+ * 모드로 동작한다 — 결정적 픽스처 4문항(번호별 1건) + 인메모리 태그 store로
+ * 문항 목록·상세(조회 전용)·관리 페이지의 write 흐름(노출 상태 전환, 태그
+ * 부여/제거, POL-018 ② 가드)과 /system/metadata 마스터 카탈로그(읽기 전용)를
+ * 화면 수준에서 검증한다(실DB 왕복은 P4 RT-4 / P5 화면 확인 — 별도 프로브).
  * 검수 표면은 제거됐다(검수 시나리오 없음).
  * Supabase가 구성된 실행은 로그인 자격증명이 없으므로 skip한다.
  */
@@ -212,6 +213,38 @@ test('구 검수 상세 라우트는 더 이상 검수 화면을 렌더하지 �
 
   await expect(page.getByLabel('검수 메모 입력')).toHaveCount(0);
   await expect(page.getByRole('heading', { name: /문항 검수/ })).toHaveCount(0);
+});
+
+test('주제/태그 마스터는 /system/metadata에 읽기 전용으로 조회된다', async ({
+  page
+}) => {
+  await page.goto('/system/metadata');
+  await skipIfAuthRequired(page);
+
+  const section = page.getByTestId('assessment-master-catalog-section');
+  await expect(section).toBeVisible();
+  await expect(
+    section.getByText('TOPIK 쓰기 마스터 데이터 (읽기 전용)')
+  ).toBeVisible();
+  await expect(section.getByText(MOCK_BANNER)).toBeVisible();
+
+  // 주제 마스터 탭(기본): 전수 표시 — 비활성 행 포함(편집용 활성 필터와 다른 축).
+  await expect(section.getByText('총 5건 · 활성 4건')).toBeVisible();
+  await expect(section.getByText('학교생활')).toBeVisible();
+  await expect(section.getByText('[모크] 비활성 표시 검증용')).toBeVisible();
+  await expect(section.getByText('비활성', { exact: true })).toBeVisible();
+
+  // 태그 마스터 탭: 값 사전 전수(코드·그룹·사용 규칙 축).
+  await section.getByRole('tab', { name: '태그 마스터' }).click();
+  await expect(section.getByText('총 6건 · 활성 6건')).toBeVisible();
+  await expect(section.getByText('rec_use', { exact: true })).toBeVisible();
+  await expect(
+    section.getByText('ops_operation_excluded', { exact: true })
+  ).toBeVisible();
+
+  // 읽기 전용: 마스터 섹션 안에는 편집 액션(추가/수정/삭제/상태 스위치)이 없다.
+  await expect(section.getByRole('switch')).toHaveCount(0);
+  await expect(section.getByRole('button', { name: /추가|수정|삭제/ })).toHaveCount(0);
 });
 
 test('AssessmentQuestion 감사 로그는 삭제된 문제은행 store audit으로 역이동하지 않는다', async ({

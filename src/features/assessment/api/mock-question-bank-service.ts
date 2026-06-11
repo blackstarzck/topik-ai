@@ -3,7 +3,9 @@ import type {
   AssessmentQuestionSummary,
   AssessmentServiceStatus,
   TopikWritingQuestionTagRow,
+  TopikWritingTagMasterCatalogRow,
   TopikWritingTagMasterRow,
+  TopikWritingTopicMasterCatalogRow,
   TopikWritingTopicMasterRow
 } from '../model/assessment-question-bank-types';
 
@@ -305,6 +307,51 @@ const mockQuestionTags: TopikWritingQuestionTagRow[] = [];
 
 export async function loadMockTagMaster(): Promise<TopikWritingTagMasterRow[]> {
   return mockTagMaster.map((row) => ({ ...row }));
+}
+
+/**
+ * P5-1 마스터 카탈로그 모크 — /system/metadata 조회 surface용 전수 행.
+ * 비활성 렌더 검증을 위해 비활성 예시 1행을 결정적으로 포함한다.
+ */
+export async function loadMockTopicMasterCatalog(): Promise<
+  TopikWritingTopicMasterCatalogRow[]
+> {
+  const activeRows = mockTopicMaster.map((row, index) => ({
+    topicId: index + 1,
+    topicMain: row.topicMain,
+    topicDetail: row.topicDetail,
+    sourceName: '모크 시드(D-12)',
+    isActive: true,
+    sortOrder: row.sortOrder,
+    memo: null
+  }));
+  return [
+    ...activeRows,
+    {
+      topicId: activeRows.length + 1,
+      topicMain: '예술',
+      topicDetail: '미술',
+      sourceName: '모크 시드(D-12)',
+      isActive: false,
+      sortOrder: 99,
+      memo: '[모크] 비활성 표시 검증용'
+    }
+  ];
+}
+
+export async function loadMockTagMasterCatalog(): Promise<
+  TopikWritingTagMasterCatalogRow[]
+> {
+  return mockTagMaster.map((row) => ({
+    tagCode: row.tagCode,
+    tagNameKo: row.tagNameKo,
+    tagGroup: row.tagGroup,
+    description: row.description,
+    usageRule: row.usageRule,
+    exampleQuestionId: null,
+    isActive: row.isActive,
+    updatedAt: '2026-06-10 09:00'
+  }));
 }
 
 export async function loadMockActiveQuestionTags(): Promise<

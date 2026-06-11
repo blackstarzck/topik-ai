@@ -6,7 +6,9 @@ import type {
   AssessmentQuestionSummary,
   AssessmentServiceStatus,
   TopikWritingQuestionTagRow,
+  TopikWritingTagMasterCatalogRow,
   TopikWritingTagMasterRow,
+  TopikWritingTopicMasterCatalogRow,
   TopikWritingTopicMasterRow
 } from '../model/assessment-question-bank-types';
 
@@ -308,6 +310,93 @@ export async function loadTopikWritingTagMaster(
     description: row.description,
     usageRule: row.usage_rule ?? '',
     isActive: row.is_active
+  }));
+}
+
+/**
+ * 주제 마스터 전수(비활성 포함) — /system/metadata 마스터 카탈로그 조회 전용
+ * (P5-1). 문항 필터 축용 `loadTopikWritingTopicMaster`와 달리 is_active 필터가
+ * 없으며, 마스터 행 자체(출처·메모·활성 여부)를 표시한다.
+ */
+export async function loadTopikWritingTopicMasterCatalog(
+  signal?: AbortSignal
+): Promise<TopikWritingTopicMasterCatalogRow[]> {
+  const client = requireClient();
+  const { data, error } = await client
+    .from('topik_writing_topic_master')
+    .select('topic_id, topic_main, topic_detail, source_name, is_active, sort_order, memo')
+    .order('sort_order', { ascending: true, nullsFirst: false })
+    .order('topic_detail');
+  if (signal?.aborted) {
+    throw new DOMException('Request aborted', 'AbortError');
+  }
+  if (error) {
+    throw new Error(error.message);
+  }
+  return (
+    (data ?? []) as {
+      topic_id: number;
+      topic_main: string;
+      topic_detail: string;
+      source_name: string;
+      is_active: boolean;
+      sort_order: number | null;
+      memo: string | null;
+    }[]
+  ).map((row) => ({
+    topicId: row.topic_id,
+    topicMain: row.topic_main,
+    topicDetail: row.topic_detail,
+    sourceName: row.source_name,
+    isActive: row.is_active,
+    sortOrder: row.sort_order,
+    memo: row.memo
+  }));
+}
+
+/**
+ * 태그 마스터 전수(비활성·전 그룹 포함) — /system/metadata 마스터 카탈로그
+ * 조회 전용(P5-1). 태그 편집 옵션용 `loadTopikWritingTagMaster`와 달리
+ * is_active·그룹 필터가 없다(부여 차단은 facade·RPC가 유지 — D-6).
+ */
+export async function loadTopikWritingTagMasterCatalog(
+  signal?: AbortSignal
+): Promise<TopikWritingTagMasterCatalogRow[]> {
+  const client = requireClient();
+  const { data, error } = await client
+    .from('topik_writing_tag_master')
+    .select(
+      'tag_code, tag_name_ko, tag_group, description, usage_rule, example_question_id, is_active, created_at, updated_at'
+    )
+    .order('tag_group')
+    .order('tag_code');
+  if (signal?.aborted) {
+    throw new DOMException('Request aborted', 'AbortError');
+  }
+  if (error) {
+    throw new Error(error.message);
+  }
+  return (
+    (data ?? []) as {
+      tag_code: string;
+      tag_name_ko: string;
+      tag_group: string;
+      description: string;
+      usage_rule: string | null;
+      example_question_id: string | null;
+      is_active: boolean;
+      created_at: string | null;
+      updated_at: string | null;
+    }[]
+  ).map((row) => ({
+    tagCode: row.tag_code,
+    tagNameKo: row.tag_name_ko,
+    tagGroup: row.tag_group,
+    description: row.description,
+    usageRule: row.usage_rule ?? '',
+    exampleQuestionId: row.example_question_id,
+    isActive: row.is_active,
+    updatedAt: toDateTime(row.updated_at ?? row.created_at)
   }));
 }
 

@@ -10,7 +10,9 @@ import {
   loadMockDetail,
   loadMockSummaries,
   loadMockTagMaster,
+  loadMockTagMasterCatalog,
   loadMockTopicMaster,
+  loadMockTopicMasterCatalog,
   removeMockQuestionTag,
   setMockServiceStatus
 } from './mock-question-bank-service';
@@ -20,7 +22,9 @@ import {
   loadTopikWritingDetail,
   loadTopikWritingSummaries,
   loadTopikWritingTagMaster,
+  loadTopikWritingTagMasterCatalog,
   loadTopikWritingTopicMaster,
+  loadTopikWritingTopicMasterCatalog,
   removeTopikWritingQuestionTag,
   setTopikWritingServiceStatus
 } from './topik-writing-question-bank-service';
@@ -29,7 +33,9 @@ import type {
   AssessmentQuestionSummary,
   AssessmentServiceStatus,
   TopikWritingQuestionTagRow,
+  TopikWritingTagMasterCatalogRow,
   TopikWritingTagMasterRow,
+  TopikWritingTopicMasterCatalogRow,
   TopikWritingTopicMasterRow
 } from '../model/assessment-question-bank-types';
 
@@ -112,6 +118,35 @@ async function loadTagMaster(
     // D-6 방어: '서비스_노출상태' 그룹은 시드 제외가 원칙이지만, 사전에 끼어
     // 들어도 부여 옵션으로 노출하지 않는다(부여 차단은 RPC에도 내장).
     return rows.filter((row) => row.tagGroup !== '서비스_노출상태');
+  }
+  return [];
+}
+
+/**
+ * P5-1 마스터 카탈로그(전수·비활성 포함) — /system/metadata 읽기 전용 조회
+ * surface 전용. legacy 모드는 마스터 테이블이 없으므로 빈 배열(화면 empty
+ * state)로 처리한다.
+ */
+async function loadTopicMasterCatalog(
+  signal?: AbortSignal
+): Promise<TopikWritingTopicMasterCatalogRow[]> {
+  if (questionBankDataSource === 'mock') {
+    return loadMockTopicMasterCatalog();
+  }
+  if (questionBankDataSource === 'topik_writing') {
+    return loadTopikWritingTopicMasterCatalog(signal);
+  }
+  return [];
+}
+
+async function loadTagMasterCatalog(
+  signal?: AbortSignal
+): Promise<TopikWritingTagMasterCatalogRow[]> {
+  if (questionBankDataSource === 'mock') {
+    return loadMockTagMasterCatalog();
+  }
+  if (questionBankDataSource === 'topik_writing') {
+    return loadTopikWritingTagMasterCatalog(signal);
   }
   return [];
 }
@@ -216,6 +251,18 @@ export function fetchQuestionBankTopicMasterSafe(signal?: AbortSignal) {
 export function fetchQuestionBankTagMasterSafe(signal?: AbortSignal) {
   return toSafeResult(() =>
     withRetry(() => loadTagMaster(signal), { maxRetries: 1 })
+  );
+}
+
+export function fetchQuestionBankTopicMasterCatalogSafe(signal?: AbortSignal) {
+  return toSafeResult(() =>
+    withRetry(() => loadTopicMasterCatalog(signal), { maxRetries: 1 })
+  );
+}
+
+export function fetchQuestionBankTagMasterCatalogSafe(signal?: AbortSignal) {
+  return toSafeResult(() =>
+    withRetry(() => loadTagMasterCatalog(signal), { maxRetries: 1 })
   );
 }
 

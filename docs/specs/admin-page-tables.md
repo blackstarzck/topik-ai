@@ -531,3 +531,14 @@
 - Tree 각 계층의 마지막 `추가` 노드는 같은 깊이의 운영 값 추가 진입점으로 유지합니다.
 - `운영 값 수정` Modal 하단에는 `운영 값 삭제` 버튼을 두고, 클릭 시 기존 수정 Modal을 닫은 뒤 `ConfirmAction`을 열어 z-index 충돌 없이 삭제를 진행합니다.
 - 운영 값 삭제 결과는 `지금 운영 중인 값` 테이블, `설정 구조` Tree, 변경 이력, 감사 로그에 동시에 반영합니다.
+
+## 40) 시스템 > 메타데이터 관리 > TOPIK 쓰기 마스터 카탈로그 (P5-1, 읽기 전용)
+
+- 현재 상태: 구현됨 (`master-catalog-section.tsx` — 운영 설정 카탈로그 카드 아래 별도 `AdminListCard`)
+- 데이터 SoT: Supabase `topik_writing_topic_master` / `topik_writing_tag_master` **전수 조회**(비활성 포함, facade `fetchQuestionBankTopicMasterCatalogSafe` / `fetchQuestionBankTagMasterCatalogSafe`). 모크 그룹 store(편집 가능 인메모리)와 SoT가 다르므로 별도 섹션으로 분리하고 편집 액션을 제공하지 않습니다.
+- 탭 구성: `주제 마스터`(기본) / `태그 마스터`
+- 주제 마스터 컬럼: 정렬, 종합 주제(필터+정렬), 세부 내용, 상태(활성/비활성 필터), 출처, 메모
+- 태그 마스터 컬럼: 태그 코드, 태그명, 그룹(필터+정렬), 상태(활성/비활성 필터), 설명, 사용 규칙, 예시 문항, 최근 수정
+- 액션: 없음(조회 전용) — tag_master 활성/비활성 write는 P5-3 후속(전용 RPC 신설 필요), 추천키/반복방지키 JSONB는 문항 상세에서 조회(D-10 비범위)
+- 상태 UX: 탭별 독립 AsyncState(pending/success/empty/error + 다시 시도). legacy 롤백 모드는 마스터 테이블이 없어 empty 안내, 모크 모드는 모크 배너를 표시합니다.
+- 요약 문구: 탭마다 `총 N건 · 활성 M건` 집계를 표시합니다.
