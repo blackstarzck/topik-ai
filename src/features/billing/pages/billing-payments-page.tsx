@@ -3,10 +3,13 @@ import type { TableColumnsType } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
-import type { PaymentRow, PaymentStatus, RefundRow } from '../model/commerce-store';
-import { fetchPaymentsSafe, fetchRefundsSafe } from '../api/billing-service';
+import {
+  fetchPaymentsSafe,
+  fetchRefundsSafe,
+  getBillingUserNameSafe
+} from '../api/billing-service';
+import type { PaymentRow, PaymentStatus, RefundRow } from '../api/billing-service';
 import type { AsyncState } from '../../../shared/model/async-state';
-import { getMockUserById } from '../../users/api/mock-users';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
@@ -52,7 +55,7 @@ function formatCurrency(value: number): string {
 }
 
 function getPaymentUserName(record: Pick<PaymentRow, 'userId' | 'userNickname'>): string {
-  return getMockUserById(record.userId)?.realName ?? record.userNickname;
+  return getBillingUserNameSafe(record);
 }
 
 export default function BillingPaymentsPage(): JSX.Element {

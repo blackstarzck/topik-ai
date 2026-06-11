@@ -1,12 +1,10 @@
-import { Typography } from 'antd';
+import { Alert, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
-import { useCouponStore } from '../../commerce/model/coupon-store';
-import { getMockUserById } from '../../users/api/mock-users';
-import { usePermissionStore } from '../model/permission-store';
-import { useSystemMetadataStore } from '../model/system-metadata-store';
+import { fetchSystemAuditLogsSafe } from '../api/system-audit-logs-service';
+import type { SystemAuditLogRow as AuditLogRow } from '../model/system-log-types';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
@@ -25,22 +23,9 @@ import { useSearchBarDateDraft } from '../../../shared/ui/search-bar/use-search-
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
 import { createTextSorter } from '../../../shared/ui/table/table-column-utils';
-import {
-  formatUserDisplayName,
-  UserNavigationLink
-} from '../../../shared/ui/user/user-reference';
+import { UserNavigationLink } from '../../../shared/ui/user/user-reference';
 
 const { Paragraph, Text } = Typography;
-
-type AuditLogRow = {
-  logId: string;
-  targetType: string;
-  targetId: string;
-  action: string;
-  actor: string;
-  reason: string;
-  createdAt: string;
-};
 
 const detailLabelMap: Record<string, string> = {
   logId: '로그 ID',
@@ -51,90 +36,6 @@ const detailLabelMap: Record<string, string> = {
   reason: '사유/근거',
   createdAt: '시각'
 };
-
-const staticRows: AuditLogRow[] = [
-  {
-    logId: 'AL-10001',
-    targetType: 'Users',
-    targetId: 'U00001',
-    action: '회원 정지',
-    actor: 'admin_park',
-    reason: '정책 위반 반복',
-    createdAt: '2026-03-27 09:42:10'
-  },
-  {
-    logId: 'AL-10002',
-    targetType: 'Commerce',
-    targetId: 'RF-002',
-    action: '환불 승인',
-    actor: 'admin_kim',
-    reason: '서비스 미이행 확인',
-    createdAt: '2026-03-27 10:15:02'
-  },
-  {
-    logId: 'AL-10003',
-    targetType: 'Community',
-    targetId: 'POST-002',
-    action: '게시글 숨김',
-    actor: 'admin_lee',
-    reason: '정책 위반 콘텐츠',
-    createdAt: '2026-03-27 10:33:51'
-  },
-  {
-    logId: 'AL-10004',
-    targetType: 'Message',
-    targetId: 'MAIL-001',
-    action: '메일 발송',
-    actor: 'admin_han',
-    reason: '봄 시즌 뉴스레터 발송',
-    createdAt: '2026-03-27 17:15:00'
-  }
-];
-
-function getAuditActionLabel(action: string): string {
-  // 현행 액션 사전 (D-8 개정 — 인바운드 모델)
-  if (action === 'service_status_changed') {
-    return '노출 상태 변경';
-  }
-  if (action === 'tag_assigned') {
-    return '태그 부여';
-  }
-  if (action === 'tag_removed') {
-    return '태그 제거';
-  }
-  if (action === 'question_received') {
-    return '문항 수신';
-  }
-  if (action === 'tag_master_status_changed') {
-    return '태그 마스터 상태 변경';
-  }
-  // 폐기된 검수 액션 코드(2026-06-11 §0) — 기존 감사 행의 역사 렌더 전용.
-  if (action === 'review_memo_saved') {
-    return '검수 메모 저장(구)';
-  }
-  if (action === 'review_completed') {
-    return '검수 완료(구)';
-  }
-  if (action === 'review_on_hold') {
-    return '보류(구)';
-  }
-  if (action === 'review_revision_requested') {
-    return '수정 필요(구)';
-  }
-  if (action === 'review_status_changed') {
-    return '검수 상태 변경(구)';
-  }
-  if (action === 'operation_candidate_exposed') {
-    return '노출 후보';
-  }
-  if (action === 'operation_candidate_hidden') {
-    return '숨김 후보';
-  }
-  if (action === 'operation_excluded') {
-    return '운영 제외';
-  }
-  return action;
-}
 
 function getTargetRoute(targetType: string, targetId: string): string | null {
   if (targetType === 'Users') {
@@ -233,20 +134,15 @@ function getTargetRoute(targetType: string, targetId: string): string | null {
 }
 
 function getAuditTargetDisplay(record: AuditLogRow): string {
-  if (record.targetType !== 'Users') {
-    return record.targetId;
-  }
-
-  const userName = getMockUserById(record.targetId)?.realName;
-  return userName ? formatUserDisplayName(userName, record.targetId) : record.targetId;
+  return record.targetDisplayName ?? record.targetId;
 }
 
 export default function SystemAuditLogsPage(): JSX.Element {
+  const [rows, setRows] = useState<AuditLogRow[]>([]);
+  const [loadState, setLoadState] = useState<'pending' | 'success' | 'error'>('pending');
+  const [loadErrorMessage, setLoadErrorMessage] = useState('');
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedRow, setSelectedRow] = useState<AuditLogRow | null>(null);
-  const permissionAudits = usePermissionStore((state) => state.audits);
-  const couponAudits = useCouponStore((state) => state.audits);
-  const metadataAudits = useSystemMetadataStore((state) => state.audits);
   const targetTypeFilter = searchParams.get('targetType') ?? '';
   const targetIdFilter = searchParams.get('targetId') ?? '';
   const searchField = searchParams.get('searchField') ?? 'all';
@@ -261,54 +157,35 @@ export default function SystemAuditLogsPage(): JSX.Element {
     handleDetailOpenChange
   } = useSearchBarDateDraft(startDate, endDate);
 
-  const mergedRows = useMemo(() => {
-    const permissionRows: AuditLogRow[] = permissionAudits.map((audit) => ({
-      logId: audit.id,
-      targetType: audit.targetType,
-      targetId: audit.targetId,
-      action: audit.action,
-      actor: audit.changedBy,
-      reason: audit.reason,
-      createdAt: audit.createdAt
-    }));
+  useEffect(() => {
+    const controller = new AbortController();
 
-    const couponRows: AuditLogRow[] = couponAudits.map((audit) => ({
-      logId: audit.id,
-      targetType: audit.targetType,
-      targetId: audit.targetId,
-      action: audit.action,
-      actor: audit.changedBy,
-      reason: audit.reason,
-      createdAt: audit.createdAt
-    }));
+    setLoadState('pending');
+    setLoadErrorMessage('');
+    void fetchSystemAuditLogsSafe(controller.signal).then((result) => {
+      if (controller.signal.aborted) {
+        return;
+      }
 
-    const metadataRows: AuditLogRow[] = metadataAudits.map((audit) => ({
-      logId: audit.id,
-      targetType: audit.targetType,
-      targetId: audit.targetId,
-      action: audit.action,
-      actor: audit.changedBy,
-      reason: audit.reason,
-      createdAt: audit.createdAt
-    }));
+      if (result.ok) {
+        setRows(result.data);
+        setLoadState('success');
+        return;
+      }
 
-    const normalizedStaticRows = staticRows.map((row) => ({
-      ...row,
-      action: getAuditActionLabel(row.action)
-    }));
+      setLoadErrorMessage(result.error.message);
+      setLoadState('error');
+    });
 
-    return [
-      ...metadataRows,
-      ...couponRows,
-      ...permissionRows,
-      ...normalizedStaticRows
-    ].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
-  }, [couponAudits, metadataAudits, permissionAudits]);
+    return () => {
+      controller.abort();
+    };
+  }, []);
 
   const filteredRows = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
 
-    return mergedRows.filter((row) => {
+    return rows.filter((row) => {
       if (targetTypeFilter && row.targetType !== targetTypeFilter) {
         return false;
       }
@@ -330,7 +207,7 @@ export default function SystemAuditLogsPage(): JSX.Element {
         reason: row.reason
       });
     });
-  }, [endDate, keyword, mergedRows, searchField, startDate, targetIdFilter, targetTypeFilter]);
+  }, [endDate, keyword, rows, searchField, startDate, targetIdFilter, targetTypeFilter]);
 
   const commitParams = useCallback(
     (
@@ -422,9 +299,14 @@ export default function SystemAuditLogsPage(): JSX.Element {
           }
 
           if (record.targetType === 'Users') {
-            const userName = getMockUserById(value)?.realName;
-            if (userName) {
-              return <UserNavigationLink stopPropagation userId={value} userName={userName} />;
+            if (record.targetUserName) {
+              return (
+                <UserNavigationLink
+                  stopPropagation
+                  userId={value}
+                  userName={record.targetUserName}
+                />
+              );
             }
           }
 
@@ -519,12 +401,23 @@ export default function SystemAuditLogsPage(): JSX.Element {
           ) : null}
         </Paragraph>
 
+        {loadState === 'error' ? (
+          <Alert
+            type="error"
+            showIcon
+            style={{ marginBottom: 16 }}
+            message="\uAC10\uC0AC \uB85C\uADF8\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
+            description={loadErrorMessage}
+          />
+        ) : null}
         <AdminDataTable<AuditLogRow>
           rowKey="logId"
           pagination={false}
           scroll={{ x: 1300 }}
           columns={columns}
           dataSource={filteredRows}
+          loading={loadState === 'pending'}
+          locale={{ emptyText: loadState === 'error' ? loadErrorMessage : '\uC870\uD68C\uB41C \uAC10\uC0AC \uB85C\uADF8\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.' }}
           onRow={(record) => ({
             onClick: () => setSelectedRow(record),
             style: { cursor: 'pointer' }

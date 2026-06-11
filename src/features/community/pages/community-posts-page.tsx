@@ -14,8 +14,20 @@ import type { AlertProps, TableColumnsType } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
-import { getMockUserById } from '../../users/api/mock-users';
-import { usePermissionStore } from '../../system/model/permission-store';
+import {
+  addCommunityPostMemoSafe,
+  deleteCommunityPostSafe,
+  fetchCommunityModeratorOptionsSafe,
+  fetchCommunityPostsSafe,
+  hideCommunityPostSafe,
+  showCommunityPostSafe
+} from '../api/community-service';
+import type { CommunityModeratorOption } from '../api/community-service';
+import type {
+  CommunityAdminMemo as AdminMemo,
+  CommunityPolicyCode as PolicyCode,
+  CommunityPost
+} from '../model/types';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
 import {
@@ -59,16 +71,6 @@ import {
 
 const { Text } = Typography;
 
-type PostStatus = '게시' | '숨김';
-
-type PolicyCode =
-  | 'SPAM'
-  | 'ABUSE'
-  | 'AD'
-  | 'PRIVACY'
-  | 'DUPLICATE'
-  | 'OTHER';
-
 type MemoType =
   | 'SPAM'
   | '욕설/혐오'
@@ -77,35 +79,6 @@ type MemoType =
   | '개인정보 노출'
   | '중복 게시'
   | '기타';
-
-type AdminMemo = {
-  id: string;
-  title: string;
-  type: MemoType;
-  authorId: string;
-  authorName: string;
-  createdAt: string;
-  content: string;
-};
-
-type CommunityPost = {
-  id: string;
-  title: string;
-  content: string;
-  contentHtml: string;
-  authorName: string;
-  authorId: string;
-  board: string;
-  createdAt: string;
-  views: number;
-  comments: number;
-  reports: number;
-  status: PostStatus;
-  adminNotes: AdminMemo[];
-  lastModerationPolicyCode?: PolicyCode;
-  lastModerationReason?: string;
-  lastModeratedAt?: string;
-};
 
 type PostActionState =
   | { type: 'show'; post: CommunityPost }
@@ -178,162 +151,25 @@ const memoTypeLabelMap: Record<MemoType, string> = {
   기타: '기타'
 };
 
-const mockPostPreviewImage = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
-  '<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#F7F4EA"/><stop offset="100%" stop-color="#E0ECFF"/></linearGradient></defs><rect width="960" height="540" rx="36" fill="url(#g)"/><rect x="72" y="88" width="816" height="364" rx="28" fill="#FFFFFF" fill-opacity="0.86"/><text x="96" y="170" font-family="Arial, sans-serif" font-size="44" font-weight="700" fill="#1D3557">TOPIK 필기 노트 미리보기</text><text x="96" y="240" font-family="Arial, sans-serif" font-size="28" fill="#4A5568">문제 유형별 핵심 포인트와 직전 체크리스트가 정리된 이미지 예시입니다.</text><text x="96" y="320" font-family="Arial, sans-serif" font-size="24" fill="#64748B">관리자 원문 보기 모달에서 이미지와 서식을 그대로 렌더링할 수 있도록 데이터 URI로 구성했습니다.</text></svg>'
-)}`;
+function getMemoTypeLabel(type: string): string {
+  return memoTypeLabelMap[type as MemoType] ?? type;
+}
 
 function getLatestAdminMemo(post: CommunityPost): AdminMemo | null {
   return [...post.adminNotes].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] ?? null;
 }
 
-function getCommunityUserName(userId: string, fallbackName: string): string {
-  return getMockUserById(userId)?.realName ?? fallbackName;
-}
-
-function formatNow(): string {
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const dd = String(now.getDate()).padStart(2, '0');
-  const hh = String(now.getHours()).padStart(2, '0');
-  const mi = String(now.getMinutes()).padStart(2, '0');
-  const ss = String(now.getSeconds()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
-}
-
-const initialRows: CommunityPost[] = [
-  {
-    id: 'POST-001',
-    title: 'TOPIK 필기 노트 공유',
-    content:
-      'TOPIK 듣기와 읽기 대비용으로 정리한 필기 노트를 공유합니다.\n문제 유형별 포인트와 자주 틀리는 함정을 표로 정리했고, 시험 직전 체크할 항목도 같이 적어두었습니다.',
-    contentHtml: `
-      <p>TOPIK 듣기와 읽기 대비용으로 정리한 <strong>필기 노트</strong>를 공유합니다.</p>
-      <p>문제 유형별 포인트와 자주 틀리는 함정을 표로 정리했고, 시험 직전 체크할 항목도 같이 적어두었습니다.</p>
-      <figure style="margin: 16px 0;">
-        <img
-          src="${mockPostPreviewImage}"
-          alt="TOPIK 필기 노트 미리보기"
-          style="display:block;max-width:100%;border-radius:16px;border:1px solid #E5E7EB;"
-        />
-      </figure>
-      <ul>
-        <li><strong>듣기</strong>: 보기 선지 함정 패턴 정리</li>
-        <li><strong>읽기</strong>: 시간 배분 기준과 오답 포인트 메모</li>
-        <li><strong>쓰기</strong>: 자주 쓰는 연결 표현 정리</li>
-      </ul>
-    `,
-    authorName: getCommunityUserName('U00012', 'member_12'),
-    authorId: 'U00012',
-    board: '자유게시판',
-    createdAt: '2026-03-02',
-    views: 189,
-    comments: 16,
-    reports: 0,
-    status: '게시',
-    adminNotes: [
-      {
-        id: 'POST-001-MEMO-01',
-        title: '정상 게시글 1차 검토',
-        type: '기타',
-        authorId: 'admin_park',
-        authorName: '박수미',
-        createdAt: '2026-03-12 09:18:00',
-        content: '학습 후기 성격의 정상 게시글입니다. 신고 이력 없이 조회수만 높아 추적 대상에서는 제외합니다.'
-      }
-    ]
-  },
-  {
-    id: 'POST-002',
-    title: '운영 정책 문의',
-    content:
-      '신고 누적 시 제재 기준이 어떻게 적용되는지 문의드립니다.\n경고 누적 기준과 정지 처리 기준이 공지와 실제 운영에서 동일한지 확인하고 싶습니다.',
-    contentHtml: `
-      <p>신고 누적 시 제재 기준이 어떻게 적용되는지 문의드립니다.</p>
-      <p><strong>경고 누적 기준</strong>과 <strong>정지 처리 기준</strong>이 공지와 실제 운영에서 동일한지 확인하고 싶습니다.</p>
-      <blockquote style="margin: 16px 0; padding: 12px 16px; border-left: 4px solid #D1D5DB; background: #F8FAFC;">
-        신고 처리 과정에서 참고할 만한 공지 링크가 있으면 같이 안내 부탁드립니다.
-      </blockquote>
-    `,
-    authorName: getCommunityUserName('U00047', 'member_47'),
-    authorId: 'U00047',
-    board: '질문',
-    createdAt: '2026-03-01',
-    views: 54,
-    comments: 3,
-    reports: 3,
-    status: '게시',
-    adminNotes: [
-      {
-        id: 'POST-002-MEMO-01',
-        title: '댓글 분쟁성 확인 필요',
-        type: '욕설/혐오',
-        authorId: 'admin_kim',
-        authorName: '김혜영',
-        createdAt: '2026-03-13 14:06:00',
-        content: '신고 사유는 정책 문의 자체보다 댓글로 붙은 분쟁성 응답 때문입니다. 원문은 유지 가능성이 있어 댓글 흐름과 함께 확인이 필요합니다.'
-      },
-      {
-        id: 'POST-002-MEMO-02',
-        title: '작성자 재검토 인수인계',
-        type: '기타',
-        authorId: 'admin_park',
-        authorName: '박수미',
-        createdAt: '2026-03-14 10:22:00',
-        content: '작성자 이력 확인 시 동일 유형 신고가 추가로 1건 있습니다. 즉시 삭제보다는 숨김 후 재검토 쪽이 적절합니다.'
-      }
-    ]
-  },
-  {
-    id: 'POST-003',
-    title: '시험 후기 공유',
-    content:
-      '최근 TOPIK 시험 후기를 공유합니다.\n듣기 파트는 예상보다 빨랐고, 쓰기 파트는 시간 배분이 가장 중요했습니다.\n실수했던 포인트도 함께 남겨둡니다.',
-    contentHtml: `
-      <p>최근 TOPIK 시험 후기를 공유합니다.</p>
-      <p>듣기 파트는 예상보다 빨랐고, 쓰기 파트는 <strong>시간 배분</strong>이 가장 중요했습니다.</p>
-      <p>실수했던 포인트도 함께 남겨둡니다.</p>
-      <p><a href="https://example.com/community/post/POST-003" target="_blank" rel="noreferrer">관련 스터디 링크</a>를 함께 올렸습니다.</p>
-    `,
-    authorName: getCommunityUserName('U00019', 'member_19'),
-    authorId: 'U00019',
-    board: '후기',
-    createdAt: '2026-02-28',
-    views: 410,
-    comments: 22,
-    reports: 1,
-    status: '숨김',
-    adminNotes: [
-      {
-        id: 'POST-003-MEMO-01',
-        title: '외부 링크 포함 확인',
-        type: '광고/홍보',
-        authorId: 'admin_lee',
-        authorName: '이서준',
-        createdAt: '2026-03-10 16:35:00',
-        content: '후기 자체는 유익하지만 외부 오픈채팅 링크가 포함돼 있어 우선 숨김 처리했습니다. 링크 제거 후 재게시 가능 여부를 추후 확인합니다.'
-      }
-    ],
-    lastModerationPolicyCode: 'AD',
-    lastModerationReason: '외부 오픈채팅 유도 링크가 포함되어 임시 숨김 처리했습니다.',
-    lastModeratedAt: '2026-03-10 16:33:51'
-  }
-];
-
 export default function CommunityPostsPage(): JSX.Element {
-  const [rows, setRows] = useState<CommunityPost[]>(initialRows);
+  const [rows, setRows] = useState<CommunityPost[]>([]);
+  const [loadState, setLoadState] = useState<'pending' | 'success' | 'error'>('pending');
+  const [loadErrorMessage, setLoadErrorMessage] = useState('');
   const [actionState, setActionState] = useState<PostActionState>(null);
   const [memoModalOpen, setMemoModalOpen] = useState(false);
   const [selectedMemo, setSelectedMemo] = useState<AdminMemo | null>(null);
   const [previewPostId, setPreviewPostId] = useState<string>('');
   const [searchParams, setSearchParams] = useSearchParams();
   const [memoForm] = Form.useForm<{ title: string; type: MemoType; memo: string }>();
-  const currentAdminId = usePermissionStore((state) => state.currentAdminId);
-  const admins = usePermissionStore((state) => state.admins);
-  const currentAdmin = useMemo(
-    () => admins.find((admin) => admin.adminId === currentAdminId) ?? admins[0] ?? null,
-    [admins, currentAdminId]
-  );
+  const [currentAdmin, setCurrentAdmin] = useState<CommunityModeratorOption | null>(null);
   const searchField = searchParams.get('searchField') ?? 'all';
   const startDate = parseSearchDate(searchParams.get('startDate'));
   const endDate = parseSearchDate(searchParams.get('endDate'));
@@ -347,6 +183,47 @@ export default function CommunityPostsPage(): JSX.Element {
     handleDetailOpenChange
   } = useSearchBarDateDraft(startDate, endDate);
   const [notificationApi, notificationContextHolder] = notification.useNotification();
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    setLoadState('pending');
+    setLoadErrorMessage('');
+    void fetchCommunityPostsSafe(controller.signal).then((result) => {
+      if (controller.signal.aborted) {
+        return;
+      }
+
+      if (result.ok) {
+        setRows(result.data);
+        setLoadState('success');
+        return;
+      }
+
+      setLoadErrorMessage(result.error.message);
+      setLoadState('error');
+    });
+
+    return () => {
+      controller.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    void fetchCommunityModeratorOptionsSafe(controller.signal).then((result) => {
+      if (controller.signal.aborted || !result.ok) {
+        return;
+      }
+
+      setCurrentAdmin(result.data.currentAdmin);
+    });
+
+    return () => {
+      controller.abort();
+    };
+  }, []);
 
   const selectedPost = useMemo(
     () => rows.find((row) => row.id === selectedPostId) ?? null,
@@ -505,63 +382,29 @@ export default function CommunityPostsPage(): JSX.Element {
       }
 
       const policyCode = context?.policyCode as PolicyCode | undefined;
-      const moderatedAt = formatNow();
+      const result =
+        actionState.type === 'show'
+          ? await showCommunityPostSafe({
+              postId: actionState.post.id,
+              reason
+            })
+          : actionState.type === 'hide'
+            ? await hideCommunityPostSafe({
+                postId: actionState.post.id,
+                reason,
+                policyCode
+              })
+            : await deleteCommunityPostSafe(actionState.post.id);
 
-      if (actionState.type === 'show') {
-        setRows((prev) =>
-          prev.map((item) =>
-            item.id === actionState.post.id
-              ? {
-                  ...item,
-                  status: '게시',
-                  lastModerationPolicyCode: undefined,
-                  lastModerationReason: reason,
-                  lastModeratedAt: moderatedAt
-                }
-              : item
-          )
-        );
-        notificationApi.success({
-          message: '게시글 재게시 완료',
-          description: (
-            <Space direction="vertical">
-              <Text>대상 유형: {getTargetTypeLabel('Community')}</Text>
-              <Text>대상 ID: {actionState.post.id}</Text>
-              <Text>사유/근거: {reason}</Text>
-              <AuditLogLink targetType="Community" targetId={actionState.post.id} />
-            </Space>
-          )
+      if (!result.ok) {
+        notificationApi.error({
+          message: '\uCEE4\uBBA4\uB2C8\uD2F0 \uC870\uCE58 \uC2E4\uD328',
+          description: result.error.message
         });
-      } else if (actionState.type === 'hide') {
-        setRows((prev) =>
-          prev.map((item) =>
-            item.id === actionState.post.id
-              ? {
-                  ...item,
-                  status: '숨김',
-                  lastModerationPolicyCode: policyCode,
-                  lastModerationReason: reason,
-                  lastModeratedAt: moderatedAt
-                }
-              : item
-          )
-        );
-        notificationApi.success({
-          message: '게시글 숨김 완료',
-          description: (
-            <Space direction="vertical">
-              <Text>대상 유형: {getTargetTypeLabel('Community')}</Text>
-              <Text>대상 ID: {actionState.post.id}</Text>
-              <Text>
-                정책 코드:{' '}
-                {policyCode ? moderationPolicyCodeLabelMap[policyCode] : '-'}
-              </Text>
-              <Text>사유/근거: {reason}</Text>
-              <AuditLogLink targetType="Community" targetId={actionState.post.id} />
-            </Space>
-          )
-        });
-      } else {
+        return;
+      }
+
+      if (actionState.type === 'delete') {
         setRows((prev) => prev.filter((item) => item.id !== actionState.post.id));
         if (selectedPostId === actionState.post.id) {
           setMemoModalOpen(false);
@@ -570,17 +413,52 @@ export default function CommunityPostsPage(): JSX.Element {
         if (previewPostId === actionState.post.id) {
           setPreviewPostId('');
         }
+      } else {
+        setRows((prev) =>
+          prev.map((item) => (item.id === result.data.id ? result.data : item))
+        );
+      }
+
+      if (actionState.type === 'show') {
         notificationApi.success({
-          message: '게시글 삭제 완료',
+          message: '\uAC8C\uC2DC\uAE00 \uACF5\uAC1C \uC644\uB8CC',
           description: (
             <Space direction="vertical">
-              <Text>대상 유형: {getTargetTypeLabel('Community')}</Text>
-              <Text>대상 ID: {actionState.post.id}</Text>
+              <Text>\uB300\uC0C1 \uC720\uD615: {getTargetTypeLabel('Community')}</Text>
+              <Text>\uB300\uC0C1 ID: {actionState.post.id}</Text>
+              <Text>\uC0AC\uC720/\uADFC\uAC70: {reason}</Text>
+              <AuditLogLink targetType="Community" targetId={actionState.post.id} />
+            </Space>
+          )
+        });
+      } else if (actionState.type === 'hide') {
+        notificationApi.success({
+          message: '\uAC8C\uC2DC\uAE00 \uC228\uAE40 \uC644\uB8CC',
+          description: (
+            <Space direction="vertical">
+              <Text>\uB300\uC0C1 \uC720\uD615: {getTargetTypeLabel('Community')}</Text>
+              <Text>\uB300\uC0C1 ID: {actionState.post.id}</Text>
               <Text>
-                정책 코드:{' '}
+                \uC815\uCC45 \uCF54\uB4DC:{' '}
                 {policyCode ? moderationPolicyCodeLabelMap[policyCode] : '-'}
               </Text>
-              <Text>사유/근거: {reason}</Text>
+              <Text>\uC0AC\uC720/\uADFC\uAC70: {reason}</Text>
+              <AuditLogLink targetType="Community" targetId={actionState.post.id} />
+            </Space>
+          )
+        });
+      } else {
+        notificationApi.success({
+          message: '\uAC8C\uC2DC\uAE00 \uC0AD\uC81C \uC644\uB8CC',
+          description: (
+            <Space direction="vertical">
+              <Text>\uB300\uC0C1 \uC720\uD615: {getTargetTypeLabel('Community')}</Text>
+              <Text>\uB300\uC0C1 ID: {actionState.post.id}</Text>
+              <Text>
+                \uC815\uCC45 \uCF54\uB4DC:{' '}
+                {policyCode ? moderationPolicyCodeLabelMap[policyCode] : '-'}
+              </Text>
+              <Text>\uC0AC\uC720/\uADFC\uAC70: {reason}</Text>
               <AuditLogLink targetType="Community" targetId={actionState.post.id} />
             </Space>
           )
@@ -602,36 +480,38 @@ export default function CommunityPostsPage(): JSX.Element {
     const memoType = values.type;
     const memoContent = values.memo.trim();
     const authorId = currentAdmin?.adminId ?? 'system';
-    const authorName = currentAdmin?.name ?? '시스템';
-    const createdAt = formatNow();
-    const nextMemo: AdminMemo = {
-      id: `${selectedPost.id}-MEMO-${String(selectedPost.adminNotes.length + 1).padStart(2, '0')}`,
+    const authorName = currentAdmin?.name ?? '\uC2DC\uC2A4\uD15C';
+    const result = await addCommunityPostMemoSafe({
+      postId: selectedPost.id,
       title: memoTitle,
       type: memoType,
       authorId,
       authorName,
-      createdAt,
       content: memoContent
-    };
+    });
+
+    if (!result.ok) {
+      notificationApi.error({
+        message: '\uB0B4\uBD80 \uBA54\uBAA8 \uB4F1\uB85D \uC2E4\uD328',
+        description: result.error.message
+      });
+      return;
+    }
 
     setRows((prev) =>
-      prev.map((item) =>
-        item.id === selectedPost.id
-          ? { ...item, adminNotes: [nextMemo, ...item.adminNotes] }
-          : item
-      )
+      prev.map((item) => (item.id === result.data.id ? result.data : item))
     );
     setMemoModalOpen(false);
     notificationApi.success({
-      message: '내부 메모 등록 완료',
+      message: '\uB0B4\uBD80 \uBA54\uBAA8 \uB4F1\uB85D \uC644\uB8CC',
       description: (
         <Space direction="vertical">
-          <Text>대상 유형: {getTargetTypeLabel('Community')}</Text>
-          <Text>대상 ID: {selectedPost.id}</Text>
-          <Text>메모 작성자: {authorName}</Text>
-          <Text>메모 제목: {memoTitle}</Text>
-          <Text>메모 유형: {memoTypeLabelMap[memoType]}</Text>
-          <Text>메모 내용: {memoContent}</Text>
+          <Text>\uB300\uC0C1 \uC720\uD615: {getTargetTypeLabel('Community')}</Text>
+          <Text>\uB300\uC0C1 ID: {selectedPost.id}</Text>
+          <Text>\uBA54\uBAA8 \uC791\uC131\uC790: {authorName}</Text>
+          <Text>\uBA54\uBAA8 \uC81C\uBAA9: {memoTitle}</Text>
+          <Text>\uBA54\uBAA8 \uC720\uD615: {memoTypeLabelMap[memoType]}</Text>
+          <Text>\uBA54\uBAA8 \uB0B4\uC6A9: {memoContent}</Text>
           <AuditLogLink targetType="Community" targetId={selectedPost.id} />
         </Space>
       )
@@ -658,7 +538,7 @@ export default function CommunityPostsPage(): JSX.Element {
           dataIndex: 'type',
           width: 120,
           sorter: createTextSorter((record) => record.type),
-          render: (type: MemoType) => memoTypeLabelMap[type]
+          render: (type: string) => getMemoTypeLabel(type)
         },
         {
           title: '작성 관리자',
@@ -691,7 +571,7 @@ export default function CommunityPostsPage(): JSX.Element {
       {
         key: 'type',
         label: '유형',
-        children: memoTypeLabelMap[selectedMemo.type]
+        children: getMemoTypeLabel(selectedMemo.type)
       },
       {
         key: 'author',
@@ -1002,12 +882,23 @@ export default function CommunityPostsPage(): JSX.Element {
           </Link>
           에서 이어서 확인할 수 있습니다.
         </Text>
+        {loadState === 'error' ? (
+          <Alert
+            type="error"
+            showIcon
+            style={{ marginBottom: 16 }}
+            message="\uCEE4\uBBA4\uB2C8\uD2F0 \uAC8C\uC2DC\uAE00\uC744 \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
+            description={loadErrorMessage}
+          />
+        ) : null}
         <AdminDataTable<CommunityPost>
           rowKey="id"
           pagination={false}
           scroll={{ x: 1500 }}
           columns={columns}
           dataSource={visibleRows}
+          loading={loadState === 'pending'}
+          locale={{ emptyText: loadState === 'error' ? loadErrorMessage : '\uC870\uD68C\uB41C \uAC8C\uC2DC\uAE00\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.' }}
           onRow={(record) => ({
             onClick: () => handleOpenDetail(record.id),
             style: { cursor: 'pointer' }

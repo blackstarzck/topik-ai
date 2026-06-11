@@ -39,6 +39,11 @@ import {
   saveEventSafe,
   scheduleEventPublishSafe,
 } from "../api/events-service";
+import { fetchMessageOptionSourcesSafe } from "../../message/api/messages-service";
+import type {
+  MessageGroup,
+  MessageTemplate,
+} from "../../message/model/types";
 import {
   operationEventExposureChannelValues,
   operationEventIndexingPolicyValues,
@@ -65,7 +70,6 @@ import {
 import { markRequiredDescriptionItems } from "../../../shared/ui/descriptions/description-label";
 import { AdminListCard } from "../../../shared/ui/list-page-card/admin-list-card";
 import { PageTitle } from "../../../shared/ui/page-title/page-title";
-import { useMessageStore } from "../../message/model/message-store";
 
 const { Text } = Typography;
 
@@ -424,8 +428,8 @@ export default function OperationEventCreatePage(): JSX.Element {
   const [currentStep, setCurrentStep] = useState(0);
   const [reloadKey, setReloadKey] = useState(0);
   const [bannerFileList, setBannerFileList] = useState<UploadFile[]>([]);
-  const targetGroups = useMessageStore((state) => state.groups);
-  const messageTemplates = useMessageStore((state) => state.templates);
+  const [targetGroups, setTargetGroups] = useState<MessageGroup[]>([]);
+  const [messageTemplates, setMessageTemplates] = useState<MessageTemplate[]>([]);
   const selectedTargetGroupId = Form.useWatch("targetGroupId", form);
   const selectedRewardType = Form.useWatch("rewardType", form) ?? "없음";
   const selectedBannerImageUrl = Form.useWatch("bannerImageUrl", form);
@@ -529,6 +533,23 @@ export default function OperationEventCreatePage(): JSX.Element {
       controller.abort();
     };
   }, [eventId, isEdit, reloadKey]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    void fetchMessageOptionSourcesSafe(controller.signal).then((result) => {
+      if (controller.signal.aborted || !result.ok) {
+        return;
+      }
+
+      setTargetGroups(result.data.groups);
+      setMessageTemplates(result.data.templates);
+    });
+
+    return () => {
+      controller.abort();
+    };
+  }, []);
 
   useEffect(() => {
     const nextBannerImages = event?.bannerImages ?? [];

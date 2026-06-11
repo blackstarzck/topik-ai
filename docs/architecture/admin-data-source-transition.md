@@ -12,26 +12,28 @@
 
 - `Users` 계열은 `mock-*` 파일과 `fetch*Safe` service가 분리되어 있다.
 - `Users > 회원 목록/상세`은 v13 Supabase 연결 시 `get_admin_users` RPC를 1차 source로 사용하고, RPC가 `profiles.nickname`을 반환하지 않는 배포에서는 `profiles(id,nickname)` 보강 조회로 닉네임 컬럼을 병합한다. `display_name`은 회원명(`realName`) source이고 `nickname`은 닉네임 source이며, 둘 중 하나가 `NULL`이면 이메일/ID/local-part fallback을 만들지 않고 UI에서 `-`로 표시한다.
-- `Message` 계열은 service가 존재하지만 내부적으로 store와 다른 feature mock을 직접 참조한다.
+- `Community > 게시글 관리/신고 관리`는 `api/mock-community.ts`가 초기 seed/factory를 소유하고, `community-service.ts`가 목록 조회/게시·숨김·삭제/신고 처리 safe facade를 제공한다. 조치 후 live state는 `community-store.ts`에 남긴다.
+- `System > 시스템 로그`는 `api/mock-system-logs.ts`와 `system-logs-service.ts`가 목록 source를 소유한다.
+- `System > 감사 로그`는 `system-audit-logs-service.ts`가 static audit seed(`api/mock-system-audit-logs.ts`)와 permission/coupon/metadata store audit 병합 책임을 소유한다. 페이지는 merge 세부를 알지 않는다.
+- `Message` 계열은 `api/mock-messages.ts`가 `initialGroups/templates/histories` seed/factory를 소유하고, `messages-service.ts`가 실제 렌더 source와 저장/발송/토글/삭제/재시도 action facade를 제공한다. 발송/재시도/그룹 변경 live state는 `message-store.ts`에 남긴다.
 - `Message > 대상 그룹`은 세그먼트 옵션/기본값/Query Builder 필드 정의를 `src/features/message/model/message-group-segment-schema.ts`로 분리해 page-local 하드코딩을 줄였다.
-- `Operation > 공지사항`은 `notices-service.ts`를 통해 조회/상세/저장/게시 상태 변경/삭제를 감싸고, mock SoT는 `Zustand` store에 유지한다.
-- `Operation > FAQ`는 `faqs-service.ts`를 통해 FAQ 원문/대표 노출/지표 조회와 FAQ 저장/공개 상태 변경/삭제, 대표 노출 저장/삭제를 감싸고, mock SoT는 `operation-store.ts`와 `faq-schema.ts`에 유지한다.
-- `Operation > 정책 관리`는 `policies-service.ts`를 통해 목록/상세/저장/게시 상태 변경/히스토리 조회/히스토리 버전 게시/삭제를 감싸고, `policy-store.ts`에 법률/약관 문서와 운영 정책 레지스트리, `OperationPolicyHistoryEntry[]` mock SoT를 함께 유지한다. 정책 이력은 등록/수정/상태 변경/히스토리 버전 게시/삭제 5종 액션으로 기록하며, 각 이력 엔트리는 `snapshot: OperationPolicy`를 포함해 Drawer expandable row에서 해당 시점의 버전 스냅샷을 렌더한다. `OperationPolicy` 계약에는 `relatedAdminPages[]`, `relatedUserPages[]`, `sourceDocuments[]`가 함께 포함되며, `relatedUserPages[]`는 현재 운영상 추정 user surface를 기본값으로 채운다. 정책 등록 상세는 신규 등록, 현재 정책 내용 수정, 기존 정책 기준 새 버전 등록(`mode=version&sourcePolicyId`) 3개 editor mode를 사용한다. cross-page 정책 근거 매핑의 문서 SoT는 `docs/specs/admin-policy-source-map.md`에서 추적한다.
-- `Operation > 이벤트`는 `events-service.ts`를 통해 조회/상세/저장/게시 예약/즉시 게시/종료를 감싸고, `bodyHtml`을 포함한 이벤트 원본 콘텐츠의 mock SoT는 `operation-store.ts`의 `events` 컬렉션에 유지한다.
-- `Operation > 이벤트 등록 상세`는 현재 `MessageGroup`, `MessageTemplate`, 이벤트 보상 정책 schema를 참조하는 선택형 입력을 사용한다. 다만 message store/schema를 직접 읽는 mock 단계이므로, DB/API 단계에서는 이벤트 전용 service 응답 뒤로 숨기는 구조로 전환해야 한다.
-- `Commerce > 쿠폰 관리`는 `coupons-service.ts`를 통해 쿠폰/정기 쿠폰 템플릿의 조회/저장/발행 중지/재개/삭제를 감싸고, mock SoT는 `coupon-store.ts`, 정적 정책값은 `coupon-form-schema.ts`와 `coupon-template-form-schema.ts`에 유지한다.
+- `Operation > 공지사항/FAQ/이벤트`는 기존 service/store 구조를 유지하되, 초기 seed/factory를 `api/mock-operation.ts`로 분리했다. `operation-store.ts`는 조치 후 live state만 담당한다.
+- `Operation > 정책 관리`는 `policies-service.ts`를 통해 목록/상세/저장/게시 상태 변경/히스토리 조회/히스토리 버전 게시/삭제를 감싸고, 초기 정책/히스토리 seed는 `api/mock-operation-policies.ts`가 소유한다. 조치 후 정책 live state는 `policy-store.ts`에 남긴다. 정책 이력은 등록/수정/상태 변경/히스토리 버전 게시/삭제 5종 액션으로 기록하며, 각 이력 엔트리는 `snapshot: OperationPolicy`를 포함해 Drawer expandable row에서 해당 시점의 버전 스냅샷을 렌더한다. `OperationPolicy` 계약에는 `relatedAdminPages[]`, `relatedUserPages[]`, `sourceDocuments[]`가 함께 포함되며, `relatedUserPages[]`는 현재 운영상 추정 user surface를 기본값으로 채운다. 정책 등록 상세는 신규 등록, 현재 정책 내용 수정, 기존 정책 기준 새 버전 등록(`mode=version&sourcePolicyId`) 3개 editor mode를 사용한다. cross-page 정책 근거 매핑의 문서 SoT는 `docs/specs/admin-policy-source-map.md`에서 추적한다.
+- `Operation > 이벤트 등록 상세`는 Message store를 직접 읽지 않고 `messages-service.ts`의 option DTO(`fetchMessageOptionSourcesSafe`)를 통해 대상 그룹/메시지 템플릿 선택지를 받는다.
+- `Commerce > 쿠폰 관리`는 `coupons-service.ts`를 통해 쿠폰/정기 쿠폰 템플릿의 조회/저장/발행 중지/재개/삭제를 감싸고, 초기 seed/factory는 `api/mock-coupons.ts`가 소유한다. `coupon-store.ts`는 live state와 message option snapshot 기반 파생 표시만 담당한다.
+- `Commerce > 포인트 관리`는 `api/mock-points.ts`가 정책/원장/소멸 예정 seed/factory를 소유하고, `points-service.ts`가 조회/수동 조정/정책 저장/소멸 보류 facade를 제공한다.
+- `Billing > 결제 내역/환불 관리`는 실제 위치인 `src/features/billing`을 유지한다. 초기 결제/환불 seed는 `api/mock-billing.ts`, live state와 환불 승인/반려 write path는 `commerce-store.ts`, 페이지 facade는 `billing-service.ts`가 담당한다.
 - `Assessment > TOPIK 쓰기 문제 검수`(`/assessment/question-bank`)와 `Assessment > TOPIK 쓰기 문항 관리`(`/assessment/question-bank/manage`)는 `assessment-question-bank-service.ts`를 통해 Supabase `problems` 테이블의 목록/단건 조회와 `admin_update_problem` RPC 기반 검수 상태 변경만 감싼다. 두 형제 페이지는 동일한 `problems` 조회 결과를 공유 hook으로 공유한다. JSON fixture/store fallback은 사용하지 않으며, Supabase가 설정되지 않았거나 조회가 실패하면 화면의 error/retry 상태로 노출한다. 정적 정책값과 query metadata는 `assessment-question-bank-schema.ts`에 유지한다.
 
 ### 2.2 아직 페이지 내부에 남아 있는 패턴
 
-- `Community > 게시글 관리`, `Community > 신고 관리`
 - `Notification > 발송 이력`
 - `Users > 회원 상세` 탭 파생 데이터
 
 ### 2.3 store seed에 묶여 있는 패턴
 
-- `Commerce` 결제/환불/쿠폰 초기 데이터
-- `System` 관리자 권한/감사 로그 초기 데이터
+- `System > 관리자 계정/권한` 초기 데이터와 권한 변경 live state
+- `Dashboard`/`Analytics` 일부 요약 지표와 cross-feature store 참조
 
 ### 2.4 현재 문제
 
@@ -77,7 +79,8 @@ src/features/<feature>/
 
 ### 4.1 service 계층
 
-- page는 `fetch*Safe`, `get*ById`, `create*`, `update*`, `delete*` 같은 service 함수만 사용한다.
+- page는 `fetch*Safe`, `get*Safe`, `create*Safe`, `update*Safe`, `delete*Safe`, `toggle*Safe` 같은 service 함수만 사용한다.
+- 새 action facade는 조치 실패가 화면 전체 중단으로 번지지 않도록 `safe-request` 또는 동등한 `{ ok, data, error }` 반환 계약을 유지한다.
 - service는 mock이든 API든 동일한 반환 계약을 유지한다.
 - 네트워크형 화면은 `pending`, `success`, `empty`, `error`를 유지할 수 있도록 service 계층에서 `safe-request` 패턴을 우선 사용한다.
 
@@ -98,21 +101,25 @@ src/features/<feature>/
 
 ## 5. 모듈별 우선 정리 대상
 
-### 5.1 1순위
+### 5.1 2026-06-11 정리 완료 범위
 
-- `Community`: 게시글/신고의 page-local `initialRows`
+- `Community`: 게시글/신고 page-local seed 제거, `api/mock-community.ts` + service/store 경계 적용
+- `System`: 시스템 로그 seed/service 분리, 감사 로그 static/store audit 병합 책임 service 이동
+- `Message`: `api/mock-messages.ts` seed/factory 분리, page direct store action 제거, Message option DTO 제공
+- `Operation`: 공지/FAQ/이벤트/정책 seed를 `api/mock-operation*.ts`로 분리, 이벤트 등록의 Message store 직접 참조 제거
+- `Commerce`: 쿠폰/포인트 seed를 `api/mock-coupons.ts`, `api/mock-points.ts`로 분리하고 cross-feature mock/store 직접 참조 제거
+- `Billing`: `features/billing` 폴더명은 유지하고 결제/환불 seed를 `api/mock-billing.ts`로 분리
+
+### 5.2 잔여 1순위
+
 - `Notification`: 발송 이력 page-local `rows`
-
-### 5.2 2순위
-
 - `Users > 회원 상세`: 탭별 파생 더미 데이터를 service/helper로 이동
-- `System > 감사 로그`: static rows와 store audit merge 구조를 service 뒤로 숨김
+- `System > 관리자 계정/권한`: store seed와 권한 변경 정책을 service/API 후보로 분리
 
-### 5.3 3순위
+### 5.3 잔여 2순위
 
-- `Commerce`: store 내부 `initialPayments`, `initialRefunds`, `initialCoupons`, `initialSubscriptionTemplates` 분리
-- `System`: store 내부 `initialAdmins`, `initialAudits` 분리
-- `Message`: `mockUsers` 직접 참조를 도메인 helper 또는 service로 치환
+- `Dashboard`/`Analytics`: 요약 지표와 cross-feature store 참조의 source 경계 확정
+- `Content`: Placeholder 라우트별 IA/API 계약 확정
 
 ## 6. API/DB 전환 기준
 
@@ -170,6 +177,22 @@ src/features/<feature>/
 - feature 경계를 깨고 다른 feature dataset을 직접 가져오는 구조
 - 페이지 내부 `initialRows`를 유지한 채 service만 얇게 추가하는 구조
 - 목록은 service, 상세는 page-local 상수로 남기는 절충안
+
+## 9.1 2026-06-11 mock seed/source 정리 실행 기록
+
+- 정리 원칙: `api/mock-*`는 도메인 타입 기반 초기 seed/factory만 export한다. React, page, store import는 금지한다. 조치 후 바뀌는 상태는 기존처럼 feature store 또는 service live state에 둔다.
+- 적용 inventory: `Community`, `System`, `Message`, `Operation`, `Commerce`, `Billing`.
+- 페이지 경계: 이번 범위의 page는 mock 파일, store seed, 타 feature store/mock을 직접 import하지 않는다. 목록 조회, URL 필터 복원, 상세 열기, 조치 후 상태 반영, 감사 로그 링크는 service facade를 통해 확인한다.
+- System audit 예외: 감사 로그 화면은 여러 도메인 store audit을 보여줘야 하므로 `system-audit-logs-service.ts`가 static audit seed와 permission/coupon/metadata audit 병합을 담당한다. 이는 page direct merge가 아니라 system service 책임으로 본다.
+- Message/Operation/Commerce option 예외: 이벤트/쿠폰 등록 화면이 메시지 그룹·템플릿 선택지를 필요로 하므로 Message store 직접 참조 대신 `messages-service.ts`의 option DTO를 사용한다.
+- Billing 위치: 결제/환불은 `features/commerce`로 옮기지 않고 실제 구현 위치인 `features/billing`에서 같은 seed/service/store 원칙을 적용한다.
+- E2E 단위 게이트:
+  - `npx playwright test tests/e2e/community-source.spec.ts`
+  - `npx playwright test tests/e2e/system-logs.spec.ts tests/e2e/system-audit-logs.spec.ts`
+  - `npx playwright test tests/e2e/message-source.spec.ts`
+  - `npx playwright test tests/e2e/operation-notices.spec.ts tests/e2e/operation-faq.spec.ts tests/e2e/operation-events.spec.ts tests/e2e/operation-policies.spec.ts`
+  - `npx playwright test tests/e2e/commerce-coupons.spec.ts tests/e2e/commerce-coupons-action-column.spec.ts tests/e2e/commerce-points.spec.ts tests/e2e/commerce-billing-source.spec.ts`
+  - Playwright web server는 mock auth 진입을 보장하기 위해 `VITE_SUPABASE_DISABLED=true`로 실행한다.
 ## 10. 2026-03-27 메타데이터 관리 전환 메모
 
 - 대상 화면: `System > 메타데이터 관리`

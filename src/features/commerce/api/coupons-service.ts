@@ -11,9 +11,12 @@ import type {
 } from '../model/coupon-template-types';
 import {
   useCouponStore,
+  type CouponPlanTier,
   type CouponSavePayload,
   type CouponTemplateSavePayload
 } from '../model/coupon-store';
+
+export type { CouponPlanTier };
 
 type CouponActionPayload = {
   couponId: string;
@@ -284,6 +287,10 @@ async function loadCoupons(signal?: AbortSignal) {
   return useCouponStore.getState().coupons;
 }
 
+async function loadCouponPlanTier(): Promise<CouponPlanTier> {
+  return useCouponStore.getState().planTier;
+}
+
 async function loadCoupon(couponId: string, signal?: AbortSignal) {
   await sleep(220, signal);
   const coupon = useCouponStore.getState().coupons.find((item) => item.id === couponId);
@@ -535,6 +542,10 @@ export function fetchCouponsSafe(signal?: AbortSignal) {
   return toSafeResult(() => withRetry(() => loadCoupons(signal), { maxRetries: 1 }));
 }
 
+export function fetchCouponPlanTierSafe() {
+  return toSafeResult(() => loadCouponPlanTier());
+}
+
 export function fetchCouponSafe(couponId: string, signal?: AbortSignal) {
   return toSafeResult(() => withRetry(() => loadCoupon(couponId, signal), { maxRetries: 1 }));
 }
@@ -598,7 +609,6 @@ export function deleteCouponTemplateSafe(
 ) {
   return toSafeResult(() => removeCouponTemplate(payload, signal));
 }
-
 
 
 

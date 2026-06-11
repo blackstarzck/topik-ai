@@ -17,8 +17,13 @@ import type { Dayjs } from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
-import { fetchChannelSnapshotSafe } from '../api/messages-service';
-import { useMessageStore } from '../model/message-store';
+import {
+  deleteMessageTemplateSafe,
+  fetchChannelSnapshotSafe,
+  saveMessageTemplateSafe,
+  sendMessageTemplateSafe,
+  toggleMessageTemplateSafe
+} from '../api/messages-service';
 import type {
   MessageChannel,
   MessageGroup,
@@ -124,17 +129,8 @@ export function MessageChannelPage({
     handleDetailOpenChange
   } = useSearchBarDateDraft(startDate, endDate);
 
-  const templates = useMessageStore((state) =>
-    state.templates.filter((template) => template.channel === channel)
-  );
-  const groups = useMessageStore((state) =>
-    state.groups.filter((group) => group.channels.includes(channel))
-  );
-  const saveTemplate = useMessageStore((state) => state.saveTemplate);
-  const toggleTemplate = useMessageStore((state) => state.toggleTemplate);
-  const deleteTemplate = useMessageStore((state) => state.deleteTemplate);
-  const sendTemplate = useMessageStore((state) => state.sendTemplate);
-
+  const [templates, setTemplates] = useState<MessageTemplate[]>([]);
+  const [groups, setGroups] = useState<MessageGroup[]>([]);
   const [loadState, setLoadState] = useState<AsyncState<null>>({
     status: 'pending',
     data: null,
@@ -169,6 +165,8 @@ export function MessageChannelPage({
       }
 
       if (result.ok) {
+        setTemplates(result.data.templates);
+        setGroups(result.data.groups);
         setLoadState({
           status: result.data.templates.length === 0 ? 'empty' : 'success',
           data: null,
@@ -358,19 +356,35 @@ export function MessageChannelPage({
     }
 
     const values = (await templateForm.validateFields()) as TemplateMetaFormValues;
-    const saved =
+    const result =
       editorState.kind === 'create'
-        ? saveTemplate({
-          channel,
-          mode: activeMode,
-          ...values,
-          bodyHtml: '',
-          bodyJson: createEmptyMessageBodyJson()
-        })
-        : saveTemplate({
-          ...editorState.template,
-          ...values
-        });
+        ? await saveMessageTemplateSafe({
+            channel,
+            mode: activeMode,
+            ...values,
+            bodyHtml: '',
+            bodyJson: createEmptyMessageBodyJson()
+          })
+        : await saveMessageTemplateSafe({
+            ...editorState.template,
+            ...values
+          });
+
+    if (!result.ok) {
+      notificationApi.error({
+        message: `${meta.title} 템플릿 저장 실패`,
+        description: result.error.message
+      });
+      return;
+    }
+
+    const saved = result.data;
+    setTemplates((prev) => {
+      const exists = prev.some((template) => template.id === saved.id);
+      return exists
+        ? prev.map((template) => (template.id === saved.id ? saved : template))
+        : [saved, ...prev];
+    });
 
     notificationApi.success({
       message:
@@ -406,7 +420,6 @@ export function MessageChannelPage({
     editorState,
     meta.title,
     notificationApi,
-    saveTemplate,
     templateForm
   ]);
 
@@ -417,18 +430,29 @@ export function MessageChannelPage({
       }
 
       if (dangerState.type === 'delete') {
-        const removed = deleteTemplate(dangerState.template.id);
-        if (!removed) {
+        const result = await deleteMessageTemplateSafe(dangerState.template.id);
+
+        if (!result.ok || !result.data) {
+          if (!result.ok) {
+            notificationApi.error({
+              message: meta.title + ' \uD15C\uD50C\uB9BF \uC0AD\uC81C \uC2E4\uD328',
+              description: result.error.message
+            });
+          }
           return;
         }
 
+        const removed = result.data;
+        setTemplates((prev) =>
+          prev.filter((template) => template.id !== removed.id)
+        );
         notificationApi.success({
-          message: `${meta.title} 템플릿 삭제 완료`,
+          message: meta.title + ' \uD15C\uD50C\uB9BF \uC0AD\uC81C \uC644\uB8CC',
           description: (
             <Space direction="vertical">
-              <Text>대상 유형: {getTargetTypeLabel('Message')}</Text>
-              <Text>대상 ID: {removed.id}</Text>
-              <Text>사유/근거: {reason}</Text>
+              <Text>\uB300\uC0C1 \uC720\uD615: {getTargetTypeLabel('Message')}</Text>
+              <Text>\uB300\uC0C1 ID: {removed.id}</Text>
+              <Text>\uC0AC\uC720/\uADFC\uAC70: {reason}</Text>
               <AuditLogLink targetType="Message" targetId={removed.id} />
             </Space>
           )
@@ -436,21 +460,32 @@ export function MessageChannelPage({
       }
 
       if (dangerState.type === 'toggle') {
-        const updated = toggleTemplate({
+        const result = await toggleMessageTemplateSafe({
           templateId: dangerState.template.id,
           nextStatus: dangerState.nextStatus
         });
-        if (!updated) {
+
+        if (!result.ok || !result.data) {
+          if (!result.ok) {
+            notificationApi.error({
+              message: meta.title + ' \uD15C\uD50C\uB9BF \uC0C1\uD0DC \uBCC0\uACBD \uC2E4\uD328',
+              description: result.error.message
+            });
+          }
           return;
         }
 
+        const updated = result.data;
+        setTemplates((prev) =>
+          prev.map((template) => (template.id === updated.id ? updated : template))
+        );
         notificationApi.success({
-          message: `${meta.title} 자동 발송 ${updated.status === '활성' ? '활성화' : '비활성화'} 완료`,
+          message: meta.title + ' \uD15C\uD50C\uB9BF \uC0C1\uD0DC \uBCC0\uACBD \uC644\uB8CC',
           description: (
             <Space direction="vertical">
-              <Text>대상 유형: {getTargetTypeLabel('Message')}</Text>
-              <Text>대상 ID: {updated.id}</Text>
-              <Text>사유/근거: {reason}</Text>
+              <Text>\uB300\uC0C1 \uC720\uD615: {getTargetTypeLabel('Message')}</Text>
+              <Text>\uB300\uC0C1 ID: {updated.id}</Text>
+              <Text>\uC0AC\uC720/\uADFC\uAC70: {reason}</Text>
               <AuditLogLink targetType="Message" targetId={updated.id} />
             </Space>
           )
@@ -459,7 +494,7 @@ export function MessageChannelPage({
 
       setDangerState(null);
     },
-    [dangerState, deleteTemplate, meta.title, notificationApi, toggleTemplate]
+    [dangerState, meta.title, notificationApi]
   );
 
   const openTestSendModal = useCallback(
@@ -526,7 +561,7 @@ export function MessageChannelPage({
     }
 
     const values = await liveSendForm.validateFields();
-    const result = sendTemplate({
+    const result = await sendMessageTemplateSafe({
       templateId: liveTemplate.id,
       channel,
       groupIds: values.targetGroupIds,
@@ -538,7 +573,13 @@ export function MessageChannelPage({
           : undefined
     });
 
-    if (!result) {
+    if (!result.ok || !result.data) {
+      if (!result.ok) {
+        notificationApi.error({
+          message: `${meta.title} 발송 실패`,
+          description: result.error.message
+        });
+      }
       return;
     }
 
@@ -550,14 +591,15 @@ export function MessageChannelPage({
       description: (
         <Space direction="vertical">
           <Text>대상 유형: {getTargetTypeLabel('Message')}</Text>
-          <Text>대상 ID: {result.id}</Text>
+          <Text>대상 ID: {result.data.id}</Text>
           <Text>사유/근거: {values.reason}</Text>
-          <AuditLogLink targetType="Message" targetId={result.id} />
+          <AuditLogLink targetType="Message" targetId={result.data.id} />
         </Space>
       )
     });
     setLiveTemplate(null);
-  }, [channel, liveSendForm, liveTemplate, meta.title, notificationApi, sendTemplate]);
+    setReloadKey((prev) => prev + 1);
+  }, [channel, liveSendForm, liveTemplate, meta.title, notificationApi]);
 
   const buildActionItems = useCallback(
     (template: MessageTemplate) => {

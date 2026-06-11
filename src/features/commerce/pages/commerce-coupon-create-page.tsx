@@ -22,6 +22,11 @@ import {
 import dayjs, { type Dayjs } from "dayjs";
 
 import { fetchCouponSafe, saveCouponSafe } from "../api/coupons-service";
+import { fetchMessageOptionSourcesSafe } from "../../message/api/messages-service";
+import type {
+  MessageGroup,
+  MessageTemplate,
+} from "../../message/model/types";
 import {
   createCouponDraftDefaults,
   getCouponAutoIssueTriggerOptions,
@@ -46,7 +51,6 @@ import {
 import { markRequiredDescriptionItems } from "../../../shared/ui/descriptions/description-label";
 import { AdminListCard } from "../../../shared/ui/list-page-card/admin-list-card";
 import { PageTitle } from "../../../shared/ui/page-title/page-title";
-import { useMessageStore } from "../../message/model/message-store";
 
 const { Text } = Typography;
 
@@ -419,8 +423,8 @@ export default function CommerceCouponCreatePage(): JSX.Element {
   const { couponId } = useParams<{ couponId?: string }>();
   const [searchParams] = useSearchParams();
   const [form] = Form.useForm<CouponFormValues>();
-  const groups = useMessageStore((state) => state.groups);
-  const templates = useMessageStore((state) => state.templates);
+  const [groups, setGroups] = useState<MessageGroup[]>([]);
+  const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const couponKind = parseCouponKind(searchParams.get("type"));
   const isEdit = Boolean(couponId);
   const [reloadKey, setReloadKey] = useState(0);
@@ -548,6 +552,21 @@ export default function CommerceCouponCreatePage(): JSX.Element {
 
     return [{ label: "사용 기한 설정", value: "fixedDate" }];
   }, [activeCouponKind]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    void fetchMessageOptionSourcesSafe(controller.signal).then((result) => {
+      if (controller.signal.aborted || !result.ok) {
+        return;
+      }
+
+      setGroups(result.data.groups);
+      setTemplates(result.data.templates);
+    });
+
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     if (!isEdit || !couponId) {

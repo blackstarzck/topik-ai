@@ -11,7 +11,7 @@ export default defineConfig({
     headless: true
   },
   webServer: {
-    command: 'npm run dev -- --host 127.0.0.1 --port 4177',
+    command: 'set VITE_SUPABASE_DISABLED=true&& npm run dev -- --host 127.0.0.1 --port 4177',
     url: 'http://127.0.0.1:4177',
     reuseExistingServer: true,
     timeout: 120_000

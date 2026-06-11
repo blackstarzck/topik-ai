@@ -1,5 +1,5 @@
 import { supabaseClient } from '../../../shared/api/supabase-client';
-import type { PaymentRow, PaymentStatus, RefundRow } from '../model/commerce-store';
+import type { PaymentRow, PaymentStatus, RefundRow } from '../model/types';
 
 /**
  * Phase D (payments) — READ-ONLY inventory from v13 billing tables.

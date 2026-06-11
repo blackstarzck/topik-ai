@@ -32,6 +32,7 @@ import {
   deleteCouponSafe,
   duplicateCouponSafe,
   deleteCouponTemplateSafe,
+  fetchCouponPlanTierSafe,
   fetchCouponsSafe,
   fetchCouponTemplatesSafe,
   pauseCouponSafe,
@@ -39,6 +40,7 @@ import {
   resumeCouponSafe,
   resumeCouponTemplateSafe,
 } from "../api/coupons-service";
+import type { CouponPlanTier } from "../api/coupons-service";
 import { couponKindCardItems } from "../model/coupon-form-schema";
 import type { CommerceCouponSubscriptionTemplate } from "../model/coupon-template-types";
 import {
@@ -64,7 +66,6 @@ import {
   getCouponLinkageSummary,
   getCouponValiditySummary,
 } from "../model/coupon-types";
-import { useCouponStore } from "../model/coupon-store";
 import type { AsyncState } from "../../../shared/model/async-state";
 import { AuditLogLink } from "../../../shared/ui/audit-log-link/audit-log-link";
 import { ConfirmAction } from "../../../shared/ui/confirm-action/confirm-action";
@@ -417,7 +418,7 @@ export default function CommerceCouponsPage(): JSX.Element {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const planTier = useCouponStore((state) => state.planTier);
+  const [planTier, setPlanTier] = useState<CouponPlanTier>("pro");
   const mainView = parseMainView(searchParams.get("view"));
   const statusTab = parseStatusTab(searchParams.get("statusTab"));
   const templateStatusTab = parseTemplateStatusTab(
@@ -455,6 +456,20 @@ export default function CommerceCouponsPage(): JSX.Element {
   const [notificationApi, notificationContextHolder] =
     notification.useNotification();
   const handledSavedStateRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    void fetchCouponPlanTierSafe().then((result) => {
+      if (mounted && result.ok) {
+        setPlanTier(result.data);
+      }
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const listSearch = useMemo(() => {
     const nextSearchParams = new URLSearchParams(searchParams);

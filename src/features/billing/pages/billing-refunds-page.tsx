@@ -9,12 +9,15 @@ import type { TableColumnsType } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
-import { useCommerceStore } from '../model/commerce-store';
-import type { RefundRow, RefundStatus } from '../model/commerce-store';
-import { fetchRefundsSafe } from '../api/billing-service';
+import {
+  approveBillingRefundSafe,
+  fetchRefundsSafe,
+  getBillingUserNameSafe,
+  rejectBillingRefundSafe
+} from '../api/billing-service';
+import type { RefundRow, RefundStatus } from '../api/billing-service';
 import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
 import type { AsyncState } from '../../../shared/model/async-state';
-import { getMockUserById } from '../../users/api/mock-users';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
@@ -70,12 +73,10 @@ function formatCurrency(value: number): string {
 }
 
 function getRefundUserName(record: Pick<RefundRow, 'userId' | 'userNickname'>): string {
-  return getMockUserById(record.userId)?.realName ?? record.userNickname;
+  return getBillingUserNameSafe(record);
 }
 
 export default function BillingRefundsPage(): JSX.Element {
-  const approveRefund = useCommerceStore((state) => state.approveRefund);
-  const rejectRefund = useCommerceStore((state) => state.rejectRefund);
   const [refundsState, setRefundsState] = useState<AsyncState<RefundRow[]>>({
     status: 'pending',
     data: [],
@@ -225,20 +226,24 @@ export default function BillingRefundsPage(): JSX.Element {
         return;
       }
 
-      const action =
+      const result =
         pendingAction.type === 'approve'
-          ? approveRefund({
+          ? await approveBillingRefundSafe({
               refundId: pendingAction.refund.id,
               changedBy: 'admin_park',
               reason
             })
-          : rejectRefund({
+          : await rejectBillingRefundSafe({
               refundId: pendingAction.refund.id,
               changedBy: 'admin_park',
               reason
             });
 
-      if (!action) {
+      if (!result.ok) {
+        notification.error({
+          message: '환불 처리 실패',
+          description: result.error.message
+        });
         return;
       }
 
@@ -261,7 +266,7 @@ export default function BillingRefundsPage(): JSX.Element {
       setReloadKey((key) => key + 1);
       setPendingAction(null);
     },
-    [approveRefund, pendingAction, rejectRefund]
+    [pendingAction]
   );
 
   const columns = useMemo<TableColumnsType<RefundRow>>(

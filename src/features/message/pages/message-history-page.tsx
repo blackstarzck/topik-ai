@@ -18,8 +18,10 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
-import { fetchHistoriesSafe } from '../api/messages-service';
-import { useMessageStore } from '../model/message-store';
+import {
+  fetchHistoriesSafe,
+  retryMessageHistorySafe
+} from '../api/messages-service';
 import type {
   MessageChannel,
   MessageHistory,
@@ -129,9 +131,7 @@ export default function MessageHistoryPage(): JSX.Element {
     handleDetailOpenChange
   } = useSearchBarDateDraft(startDate, endDate);
 
-  const histories = useMessageStore((state) => state.histories);
-  const retryHistory = useMessageStore((state) => state.retryHistory);
-
+  const [histories, setHistories] = useState<MessageHistory[]>([]);
   const [loadState, setLoadState] = useState<AsyncState<null>>({
     status: 'pending',
     data: null,
@@ -161,6 +161,7 @@ export default function MessageHistoryPage(): JSX.Element {
       }
 
       if (result.ok) {
+        setHistories(result.data);
         setLoadState({
           status: result.data.length === 0 ? 'empty' : 'success',
           data: null,
@@ -370,31 +371,41 @@ export default function MessageHistoryPage(): JSX.Element {
   );
 
   const handleDangerConfirm = useCallback(
-    (reason: string) => {
+    async (reason: string) => {
       if (!dangerState) {
         return;
       }
 
-      const result = retryHistory(dangerState.history.id, 'admin_current');
-      if (!result) {
+      const result = await retryMessageHistorySafe(
+        dangerState.history.id,
+        'admin_current'
+      );
+      if (!result.ok || !result.data) {
+        if (!result.ok) {
+          notificationApi.error({
+            message: '\uC7AC\uC2DC\uB3C4 \uBC1C\uC1A1 \uC2E4\uD328',
+            description: result.error.message
+          });
+        }
         return;
       }
 
       notificationApi.success({
-        message: '재시도 발송 등록 완료',
+        message: '\uC7AC\uC2DC\uB3C4 \uBC1C\uC1A1 \uB4F1\uB85D \uC644\uB8CC',
         description: (
           <Space direction="vertical">
-            <Text>대상 유형: {getTargetTypeLabel('Message')}</Text>
-            <Text>대상 ID: {result.id}</Text>
-            <Text>사유/근거: {reason}</Text>
-            <AuditLogLink targetType="Message" targetId={result.id} />
+            <Text>\uB300\uC0C1 \uC720\uD615: {getTargetTypeLabel('Message')}</Text>
+            <Text>\uB300\uC0C1 ID: {result.data.id}</Text>
+            <Text>\uC0AC\uC720/\uADFC\uAC70: {reason}</Text>
+            <AuditLogLink targetType="Message" targetId={result.data.id} />
           </Space>
         )
       });
       setDangerState(null);
       setDetailRow(null);
+      setReloadKey((prev) => prev + 1);
     },
-    [dangerState, notificationApi, retryHistory]
+    [dangerState, notificationApi]
   );
 
   const handleExportCsv = useCallback(() => {

@@ -1,5 +1,5 @@
 import { Alert, Button, Form, Space } from 'antd';
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   useLocation,
   useNavigate,
@@ -7,8 +7,11 @@ import {
   useSearchParams
 } from 'react-router-dom';
 
-import { useMessageStore } from '../model/message-store';
-import type { MessageChannel } from '../model/types';
+import {
+  getMessageTemplateSafe,
+  saveMessageTemplateSafe
+} from '../api/messages-service';
+import type { MessageChannel, MessageTemplate } from '../model/types';
 import {
   MessageHtmlEditor,
   createMessageBodyJson,
@@ -32,12 +35,9 @@ export default function MessageTemplateCreatePage({
   const { templateId } = useParams<{ templateId?: string }>();
   const [searchParams] = useSearchParams();
   const fallbackMode = parseMessageTemplateMode(searchParams.get('tab'));
-  const template = useMessageStore((state) =>
-    state.templates.find(
-      (item) => item.channel === channel && item.id === templateId
-    )
-  );
-  const saveTemplate = useMessageStore((state) => state.saveTemplate);
+  const [template, setTemplate] = useState<MessageTemplate | null>(null);
+  const [isLoadingTemplate, setIsLoadingTemplate] = useState(Boolean(templateId));
+  const [loadErrorMessage, setLoadErrorMessage] = useState('');
   const [contentForm] = Form.useForm<TemplateContentFormValues>();
   const activeMode = template?.mode ?? fallbackMode;
 
@@ -52,6 +52,40 @@ export default function MessageTemplateCreatePage({
     const search = nextSearchParams.toString();
     return search ? `?${search}` : '';
   }, [activeMode, location.search]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    if (!templateId) {
+      setTemplate(null);
+      setIsLoadingTemplate(false);
+      return () => {
+        mounted = false;
+      };
+    }
+
+    setIsLoadingTemplate(true);
+    setLoadErrorMessage('');
+    void getMessageTemplateSafe(templateId).then((result) => {
+      if (!mounted) {
+        return;
+      }
+
+      if (result.ok && result.data?.channel === channel) {
+        setTemplate(result.data);
+        setIsLoadingTemplate(false);
+        return;
+      }
+
+      setTemplate(null);
+      setLoadErrorMessage(result.ok ? '' : result.error.message);
+      setIsLoadingTemplate(false);
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, [channel, templateId]);
 
   useEffect(() => {
     contentForm.setFieldsValue({
@@ -69,32 +103,37 @@ export default function MessageTemplateCreatePage({
     }
 
     const values = (await contentForm.validateFields()) as TemplateContentFormValues;
-    const saved = saveTemplate({
+    const result = await saveMessageTemplateSafe({
       ...template,
       ...values,
       bodyJson: createMessageBodyJson(values.bodyHtml)
     });
 
+    if (!result.ok) {
+      setLoadErrorMessage(result.error.message);
+      return;
+    }
+
     navigate(`${listPath}${listSearch}`, {
       replace: true,
       state: {
         messageTemplateContentSaved: {
-          templateId: saved.id,
-          mode: saved.mode
+          templateId: result.data.id,
+          mode: result.data.mode
         }
       }
     });
-  }, [contentForm, listPath, listSearch, navigate, saveTemplate, template]);
+  }, [contentForm, listPath, listSearch, navigate, template]);
 
   return (
     <div className="message-template-detail-page">
       <PageTitle title={`${meta.title} 등록 상세`} />
-      {!template ? (
+      {!isLoadingTemplate && !template ? (
         <Alert
           type="error"
           showIcon
           message="등록 상세 대상을 찾을 수 없습니다."
-          description="목록으로 돌아가 템플릿을 다시 선택하세요."
+          description={loadErrorMessage || '???? ?? ??? ???.'}
           action={
             <Button type="primary" size="small" onClick={handleBackToList}>
               목록으로

@@ -1,5 +1,24 @@
 import { expect, test } from '@playwright/test';
 
+import {
+  expectAuditHref,
+  expectQueryParam,
+  expectRowVisible
+} from './source-flow-helpers';
+
+test('commerce coupons restore selected seed detail and expose audit target link', async ({
+  page
+}) => {
+  await page.goto('/commerce/coupons?selected=CPN-0002&keyword=CPN-0002');
+
+  await expectQueryParam(page, 'selected', 'CPN-0002');
+  await expectRowVisible(page, 'CPN-0002');
+  const drawer = page.locator('.ant-drawer-content-wrapper:visible').last();
+  await expect(drawer).toBeVisible();
+  await expect(drawer).toContainText('CPN-0002');
+  await expectAuditHref(drawer, 'CommerceCoupon', 'CPN-0002');
+});
+
 test('정기 쿠폰 템플릿 생성이 동작하고 쿠폰 노출 설정은 노출되지 않는다', async ({ page }) => {
   await page.goto('/commerce/coupons');
 

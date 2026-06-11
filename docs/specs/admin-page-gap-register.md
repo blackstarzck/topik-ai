@@ -154,19 +154,20 @@
 
 - 대상 파일: `src/features/community/pages/community-posts-page.tsx`
 - 현 상태
-  - `initialRows`를 페이지 내부에서 관리한다.
+  - 초기 게시글 seed/factory는 `src/features/community/api/mock-community.ts`, 조회/게시/숨김/삭제 facade는 `community-service.ts`, 조치 후 live state는 `community-store.ts`가 담당한다.
+  - 페이지는 mock 파일이나 store seed를 직접 import하지 않는다.
 - 미확정/누락/오구현
-  - 게시글 숨김/노출 정책의 사유 코드와 사후 검증 경로가 없다.
+  - 게시글 숨김/노출 정책의 사유 코드와 백엔드 감사 payload 계약이 확정되지 않았다.
   - 신고, 작성자 제재, 콘텐츠 노출 제한의 연계 정책이 분리되지 않았다.
 - 분류
   - `미확정`: 게시글 조치 정책
-  - `누락`: 감사 로그/연계 검증 규칙
+  - `누락`: 신고/작성자 제재 연계 검증 규칙
 
 #### 4.3.2 신고 관리
 
 - 대상 파일: `src/features/community/pages/community-reports-page.tsx`
 - 현 상태
-  - `initialRows` 기반 정적 데이터
+  - 초기 신고 seed/factory는 `src/features/community/api/mock-community.ts`, 조회/처리 facade는 `community-service.ts`, 조치 후 live state는 `community-store.ts`가 담당한다.
   - 상세 진입이 `TableRowDetailModal`이다.
 - 미확정/누락/오구현
   - 신고 단위 상세 패턴이 전역 `DetailDrawer` 기반 흐름과 다르다.
@@ -186,19 +187,20 @@
   - `src/features/message/pages/message-push-page.tsx`
 - 현 상태
   - 조회는 `fetchChannelSnapshotSafe`
-  - 저장/발송/토글/삭제는 `useMessageStore()`에 반영
+  - 저장/발송/토글/삭제/재시도는 `messages-service.ts` safe facade를 거쳐 `message-store.ts` live state에 반영
+  - 초기 그룹/템플릿/이력 seed/factory는 `src/features/message/api/mock-messages.ts`가 담당
 - 미확정/누락/오구현
-  - 템플릿 원문, 자동 발송 규칙, 발송 이력의 책임 경계가 조회 API와 조치 store로 분리되어 있다.
+  - 템플릿 원문, 자동 발송 규칙, 발송 이력의 실제 API/DB 책임 경계가 아직 확정되지 않았다.
   - 발송 채널별 정책 차이(예: 실패 재시도, 예약 가능 범위, 수신 거부 반영)가 코드에 명시되지 않았다.
 - 분류
-  - `오구현`: read/write SoT 분리
+  - `미확정`: 실제 API/DB read/write 계약
   - `미확정`: 채널별 운영 정책
 
 #### 4.4.2 발송 대상 그룹
 
 - 대상 파일: `src/features/message/pages/message-groups-page.tsx`
 - 현 상태
-  - 현재 화면은 존재하지만 세그먼트 정의와 실제 사용자 데이터 연결은 mock 스키마 수준이다.
+  - 현재 화면은 존재하고 저장/대상 수 미리보기/재계산/삭제는 `messages-service.ts` facade를 사용하지만, 세그먼트 정의와 실제 사용자 데이터 연결은 mock 스키마 수준이다.
 - 미확정/누락/오구현
   - 세그먼트 조건이 실데이터 필드와 1:1로 대응되는지 미확정
   - 그룹 저장 후 실제 발송/미리보기/대상 수 추정 계약이 없다.
@@ -210,7 +212,8 @@
 
 - 대상 파일: `src/features/message/pages/message-history-page.tsx`
 - 현 상태
-  - 이력 재시도 actor가 하드코딩되어 있다.
+  - 발송 이력 seed/factory는 `api/mock-messages.ts`, 재시도 action은 `messages-service.ts` facade를 사용한다.
+  - 이력 재시도 actor는 아직 mock 관리자 값이다.
 - 미확정/누락/오구현
   - 실패 건 재시도 범위, 재시도 정책, 중복 발송 방지 기준이 불명확하다.
   - 이력 상세에서 원본 템플릿/대상 그룹/실패 사유의 역추적 경로가 충분히 고정되지 않았다.
@@ -236,7 +239,7 @@
 
 - 대상 파일: `src/features/operation/pages/operation-notices-page.tsx`
 - 현 상태
-  - 비교적 관리자 패턴이 잘 갖춰져 있으나 여전히 mock/store 경계다.
+  - 비교적 관리자 패턴이 잘 갖춰져 있고, 초기 seed/factory는 `src/features/operation/api/mock-operation.ts`, 조치 후 live state는 `operation-store.ts`, 조회/조치 facade는 `notices-service.ts`가 담당한다.
 - 미확정/누락/오구현
   - 공지의 게시 범위, 상단 고정, 노출 surface(B2C 앱/웹/센터)별 정책 세분화가 충분히 고정되지 않았다.
   - 에디터 콘텐츠 sanitize/preview 정책이 문서까지 완전히 닫히지 않았다.
@@ -248,6 +251,7 @@
 - 대상 파일: `src/features/operation/pages/operation-faq-page.tsx`
 - 현 상태
   - 원문/노출/지표 3탭 구조가 존재한다.
+  - 초기 FAQ/큐레이션/지표 seed/factory는 `src/features/operation/api/mock-operation.ts`, 조치 후 live state는 `operation-store.ts`, 조회/조치 facade는 `faqs-service.ts`가 담당한다.
 - 미확정/누락/오구현
   - 지표 탭 데이터가 실제 FAQ 노출 결과를 반영하는지, 단순 mock snapshot인지 불명확하다.
   - 대표 FAQ 5개 큐레이션 정책의 노출 우선순위/중복 허용/시간 조건이 아직 고정되지 않았다.
@@ -264,8 +268,10 @@
 - 현 상태
   - 목록/상세/등록 상세는 존재한다.
   - 최근 배너 업로드/참조형 입력까지 mock 기준으로 정리되었다.
+  - 초기 이벤트 seed/factory는 `src/features/operation/api/mock-operation.ts`, 조치 후 live state는 `operation-store.ts`, 조회/조치 facade는 `events-service.ts`가 담당한다.
+  - 이벤트 등록 상세의 메시지 그룹/템플릿 선택지는 Message store 직접 참조가 아니라 `messages-service.ts` option DTO를 통해 받는다.
 - 미확정/누락/오구현
-  - `rewardPolicyId`, 메시지 템플릿, 대상 그룹 참조는 입력 UI만 있고 실제 관리 주체 페이지/계약이 연결되지 않았다.
+  - `rewardPolicyId`, 메시지 템플릿, 대상 그룹 참조는 입력 UI와 service DTO는 있으나 실제 API/DB 참조 계약이 연결되지 않았다.
   - 참여 현황, 리워드 지급, 발송 템플릿의 후속 운영 플로우가 아직 닫히지 않았다.
   - 배너 파일 업로드가 저장소/서버 업로드 없이 화면 state에만 존재한다.
 - 분류
@@ -282,6 +288,7 @@
 - 현 상태
   - 목록/상세 Drawer/본문 미리보기/등록 상세/TinyMCE 본문 작성까지 구현되었다.
   - 법률 문서뿐 아니라 커뮤니티 게시글 제재, 추천인 보상, 포인트/쿠폰/이벤트/FAQ/챗봇/메시지/권한 변경 정책까지 `운영 영역`, `정책 추적 상태`, `연관 관리자 화면`, `추적 근거 문서` 기준으로 같은 카탈로그에서 추적한다.
+  - 초기 정책/히스토리 seed/factory는 `src/features/operation/api/mock-operation-policies.ts`, 조치 후 live state는 `policy-store.ts`, 조회/조치 facade는 `policies-service.ts`가 담당한다.
   - `docs/specs/admin-policy-source-map.md`를 기준으로 코드/문서 근거를 정책 관리 seed/UI와 함께 유지한다.
 - 미확정/누락/오구현
   - 정책 버전별 diff 검수, 재동의 대상 추적, 문서 승인 체계는 아직 구현되지 않았다.
@@ -309,7 +316,8 @@
   - `src/features/billing/pages/billing-payments-page.tsx`
   - `src/features/billing/model/commerce-store.ts`
 - 현 상태
-  - 페이지는 zustand mock store를 직접 읽는다.
+  - 초기 결제 seed/factory는 `src/features/billing/api/mock-billing.ts`, 조회 facade는 `billing-service.ts`, 조치 후 live state는 `commerce-store.ts`가 담당한다.
+  - 페이지는 zustand mock store를 직접 읽지 않는다.
 - 미확정/누락/오구현
   - 외부 PG 응답, 내부 주문, 사용자 결제 화면 중 어떤 것이 SoT인지 확정되지 않았다.
   - `pending / empty / error` 상태가 없다.
@@ -323,7 +331,8 @@
   - `src/features/billing/pages/billing-refunds-page.tsx`
   - `src/features/billing/model/commerce-store.ts`
 - 현 상태
-  - 환불 조치자 `admin_park`가 하드코딩되어 있다.
+  - 초기 환불 seed/factory는 `src/features/billing/api/mock-billing.ts`, 환불 승인/반려 facade는 `billing-service.ts`, 조치 후 live state는 `commerce-store.ts`가 담당한다.
+  - 환불 조치자 `admin_park`는 아직 mock 관리자 값이다.
 - 미확정/누락/오구현
   - 부분 환불, 중복 환불 방지, PG 환불 결과 동기화 정책이 없다.
   - 환불 사유와 승인 근거가 code table인지 자유 입력인지 고정되지 않았다.
@@ -347,14 +356,16 @@
 - 미확정/누락/오구현
   - 쿠폰
     - 실제 API/DB/CRM 연동 없이 local store와 mock service 기준으로 동작한다.
+    - 초기 쿠폰/정기 쿠폰 템플릿 seed/factory는 `src/features/commerce/api/mock-coupons.ts`, 조치 후 live state는 `coupon-store.ts`, 조회/조치 facade는 `coupons-service.ts`가 담당한다.
     - Free/Pro 플랜 제한, 메시지 템플릿 검수 상태, 회원 그룹/회원 검색, 쿠폰 사용 내역은 실데이터 연동이 아닌 mock 규칙에 머물러 있다.
     - `정기 쿠폰 템플릿`의 저장/수정/발행 중지/재개/삭제는 구현되었지만, 참조 데이터(`쇼핑 등급`, `카테고리`, `상품`)는 아직 mock code table candidate 기준이다.
     - 아임웹 기준의 `적용 제외 상품`, 알림 preview, 시간 단위 제어는 실엔티티 검색/선택 UI, 메시지 템플릿 실연동, API 계약이 확정되지 않아 mock 단계 구현에 머물러 있다.
   - 포인트
-    - 포인트 적립 원천 분류(`추천`, `미션`, `이벤트`, `결제`, `환불`, `관리자`, `시스템`)와 원장 단위 SoT가 코드상 확정되지 않았다.
+    - 초기 정책/원장/소멸 예정 seed/factory는 `src/features/commerce/api/mock-points.ts`, 조회/수동 조정/정책 저장/소멸 보류 facade는 `points-service.ts`가 담당한다.
+    - 포인트 적립 원천 분류(`추천`, `미션`, `이벤트`, `결제`, `환불`, `관리자`, `시스템`)와 실제 원장 단위 SoT는 API/DB 계약상 확정되지 않았다.
     - 차감/회수 우선순위, 음수 잔액 허용 여부, 수동 조정 승인 체계가 미확정이다.
     - 소멸 예정/보류/복구 정책과 사전 안내 연결 규칙이 미확정이다.
-    - 현재 구현은 local mock snapshot과 page-local query store 기준이라 실제 사용자 포인트 잔액, 주문/환불 원장, 메시지 발송 이력과 아직 연결되지 않았다.
+    - 현재 구현은 feature mock seed/service와 URL query store 기준이라 실제 사용자 포인트 잔액, 주문/환불 원장, 메시지 발송 이력과 아직 연결되지 않았다.
     - `정책 등록/수정`은 현재 Modal 기반인데, 공통 UX 문서상 작성/편집 맥락이 강한 화면은 전용 편집 페이지 또는 별도 편집 영역을 우선한다. 포인트 정책 편집도 메타데이터 중심 전용 화면으로 승격할지 후속 결정이 필요하다.
   - 스토어
     - 스토어 상품/재고/노출 정책이 코드상 전혀 고정되지 않았다.
@@ -452,19 +463,21 @@
 
 - 대상 파일: `src/features/system/pages/system-audit-logs-page.tsx`
 - 현 상태
-  - 일부는 `permissionAudits`에서, 일부는 `staticRows`에서 조합한다.
+  - `system-audit-logs-service.ts`가 static audit seed(`api/mock-system-audit-logs.ts`)와 permission/coupon/metadata store audit 병합을 담당한다.
+  - 페이지는 static rows와 store audit merge 세부를 직접 소유하지 않는다.
 - 미확정/누락/오구현
-  - 도메인별 감사 로그가 단일 SoT가 아니라 페이지 내부 정적 행과 섞여 있다.
+  - 도메인별 감사 로그가 실제 API/DB 단일 SoT로 통합되지는 않았다.
   - `Target Type`이 범용적이며, 상세 링크 매핑도 일부 엔티티만 처리한다.
 - 분류
-  - `오구현`: 감사 로그 SoT 혼합
+  - `미확정`: 감사 로그 API/DB 통합 SoT
   - `미확정`: 엔티티별 링크 매핑
 
 #### 4.10.3 시스템 로그
 
 - 대상 파일: `src/features/system/pages/system-logs-page.tsx`
 - 현 상태
-  - 정적 rows 배열 기반
+  - 초기 시스템 로그 seed/factory는 `src/features/system/api/mock-system-logs.ts`, 조회 facade는 `system-logs-service.ts`가 담당한다.
+  - 페이지는 정적 rows 배열을 직접 소유하지 않는다.
 - 미확정/누락/오구현
   - 기술 로그의 소스, 보존 기간, 검색/다운로드 정책, 개인정보 포함 여부 마스킹 규칙이 없다.
 - 분류
@@ -495,7 +508,7 @@
 
 1. 인코딩 깨짐과 전역 한글 라벨 복구
 2. 감사 로그 Target Type 표준화와 hardcoded actor 제거
-3. Dashboard / Users / Community / Message / Commerce / Analytics / System의 page-local 또는 mock-only 조치 SoT 정리
+3. Dashboard / Users / Analytics / Notification / System 권한의 page-local 또는 mock-only 조치 SoT 정리
 4. Placeholder 라우트별 IA, 데이터 계약, 감사 로그 계약 초안 확정
 5. Playwright 기반 핵심 e2e 시나리오 구축
 
@@ -510,6 +523,7 @@
 
 ## 7. 최근 해소 이력
 
+- 2026-06-11 | 관리자 준비중 페이지 mock seed/source 경계 정리 | `Community`, `System`, `Message`, `Operation`, `Commerce`, `Billing`의 page-local seed/store seed 직접 참조를 `src/features/**/api/mock-*` seed/factory와 service safe facade로 분리했습니다. 조치 후 live state는 기존 feature store/service에 남기고, 잔여 갭은 실제 API/DB 계약, 권한/actor 정책, `Notification`/`Users 상세`/`Dashboard`/`Analytics` source 정리로 재분류했습니다.
 - 2026-06-09 | `Assessment > TOPIK 쓰기 문제은행` 검수/관리 단일 페이지 `tab` 토글 분리 | `src/features/assessment/pages/assessment-question-review-page.tsx`, `src/features/assessment/pages/assessment-question-manage-page.tsx`, `src/features/assessment/api/assessment-question-bank-service.ts`, `src/features/assessment/api/supabase-assessment-question-bank-service.ts`, `src/app/router/app-router.tsx`, `docs/specs/page-ia/assessment-question-bank-page-ia.md`, `docs/specs/page-ia/assessment-question-manage-page-ia.md`를 기준으로 `tab` 쿼리로 `검수 큐`/`문항 관리`를 토글하던 단일 페이지를 `Assessment > TOPIK 쓰기 문제 검수`(`/assessment/question-bank`)와 `Assessment > TOPIK 쓰기 문항 관리`(`/assessment/question-bank/manage`) 두 형제 라우트로 분리했습니다. `tab` 쿼리를 제거하고 각 라우트가 자체 URL 상태(공통 `questionNo`/`domain`/`questionType`/`difficulty`/`keyword`, 검수 전용 `reviewStatus`, 관리 전용 `operationStatus`)를 복원하게 정리했고, 두 페이지는 동일한 Supabase `problems`(question_no 51-54) 조회 결과를 공유 hook으로 함께 씁니다. 다만 문항 관리 운영 상태 조치는 v13 `lifecycle_status` 미적용으로 비활성(스캐폴딩) 상태로 신규 갭에 남겼습니다.
 - 2026-03-27 | `System > 메타데이터 관리` 관리 위치 계층 UX 보강 | `src/features/system/pages/system-metadata-page.tsx`, `src/features/system/model/system-metadata-store.ts`, `docs/specs/page-ia/system-metadata-page-ia.md`, `docs/specs/admin-page-tables.md`를 기준으로 목록의 `관리 위치`를 `route > 세부 위치` 형태로 읽히게 바꾸고, 상세 Drawer에는 Breadcrumb 기반 위치 카드와 `설정 그룹 -> 관리 위치 -> 운영 값 -> 사용자 영향` Tree를 추가했습니다. 메타데이터가 계층형 구조를 가진다는 점을 비개발자 운영자도 한눈에 이해할 수 있도록 위치 정보와 구조 정보를 같은 화면에서 검수하게 정리했습니다.
 - 2026-03-27 | `System > 메타데이터 관리` 목록 압축과 Tree 기반 운영 값 관리 보강 | `src/features/system/pages/system-metadata-page.tsx`, `src/features/system/model/system-metadata-store.ts`, `tests/e2e/system-metadata.spec.ts`, `docs/specs/page-ia/system-metadata-page-ia.md`, `docs/specs/admin-page-tables.md`를 기준으로 목록 행에서 그룹 ID/설명/관리 방식/총 개수 같은 보조 텍스트를 제거하고, 상세 Drawer `설정 구조`를 `설정 그룹 -> 운영 값 -> 추가` Tree로 단순화했습니다. 운영 값은 Tree와 테이블에서 모두 드래그 정렬할 수 있게 바꾸고, 순서 변경은 `item_reordered` 이력과 감사 로그로 추적하도록 정리했습니다.

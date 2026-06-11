@@ -1,0 +1,153 @@
+import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
+import { formatUserDisplayName } from '../../../shared/ui/user/user-reference';
+import { useCouponStore } from '../../commerce/model/coupon-store';
+import { getMockUserById } from '../../users/api/mock-users';
+import { usePermissionStore } from '../model/permission-store';
+import { useSystemMetadataStore } from '../model/system-metadata-store';
+import type { SystemAuditLogRow } from '../model/system-log-types';
+import { createMockSystemAuditLogs } from './mock-system-audit-logs';
+
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException('Request aborted', 'AbortError'));
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      cleanup();
+      resolve();
+    }, ms);
+
+    const onAbort = (): void => {
+      cleanup();
+      reject(new DOMException('Request aborted', 'AbortError'));
+    };
+
+    const cleanup = (): void => {
+      window.clearTimeout(timer);
+      signal?.removeEventListener('abort', onAbort);
+    };
+
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+function getAuditActionLabel(action: string): string {
+  if (action === 'service_status_changed') {
+    return '노출 상태 변경';
+  }
+  if (action === 'tag_assigned') {
+    return '태그 부여';
+  }
+  if (action === 'tag_removed') {
+    return '태그 제거';
+  }
+  if (action === 'question_received') {
+    return '문항 수신';
+  }
+  if (action === 'tag_master_status_changed') {
+    return '태그 마스터 상태 변경';
+  }
+  if (action === 'review_memo_saved') {
+    return '검수 메모 저장';
+  }
+  if (action === 'review_completed') {
+    return '검수 완료';
+  }
+  if (action === 'review_on_hold') {
+    return '검수 보류';
+  }
+  if (action === 'review_revision_requested') {
+    return '수정 요청';
+  }
+  if (action === 'review_status_changed') {
+    return '검수 상태 변경';
+  }
+  if (action === 'operation_candidate_exposed') {
+    return '노출 후보';
+  }
+  if (action === 'operation_candidate_hidden') {
+    return '숨김 후보';
+  }
+  if (action === 'operation_excluded') {
+    return '운영 제외';
+  }
+  return action;
+}
+
+function decorateAuditLog(row: SystemAuditLogRow): SystemAuditLogRow {
+  if (row.targetType !== 'Users') {
+    return {
+      ...row,
+      action: getAuditActionLabel(row.action)
+    };
+  }
+
+  const userName = getMockUserById(row.targetId)?.realName;
+  return {
+    ...row,
+    action: getAuditActionLabel(row.action),
+    targetUserName: userName,
+    targetDisplayName: userName
+      ? formatUserDisplayName(userName, row.targetId)
+      : row.targetId
+  };
+}
+
+async function loadSystemAuditLogs(
+  signal?: AbortSignal
+): Promise<SystemAuditLogRow[]> {
+  await sleep(180, signal);
+
+  const permissionRows: SystemAuditLogRow[] = usePermissionStore
+    .getState()
+    .audits.map((audit) => ({
+      logId: audit.id,
+      targetType: audit.targetType,
+      targetId: audit.targetId,
+      action: audit.action,
+      actor: audit.changedBy,
+      reason: audit.reason,
+      createdAt: audit.createdAt
+    }));
+
+  const couponRows: SystemAuditLogRow[] = useCouponStore
+    .getState()
+    .audits.map((audit) => ({
+      logId: audit.id,
+      targetType: audit.targetType,
+      targetId: audit.targetId,
+      action: audit.action,
+      actor: audit.changedBy,
+      reason: audit.reason,
+      createdAt: audit.createdAt
+    }));
+
+  const metadataRows: SystemAuditLogRow[] = useSystemMetadataStore
+    .getState()
+    .audits.map((audit) => ({
+      logId: audit.id,
+      targetType: audit.targetType,
+      targetId: audit.targetId,
+      action: audit.action,
+      actor: audit.changedBy,
+      reason: audit.reason,
+      createdAt: audit.createdAt
+    }));
+
+  return [
+    ...metadataRows,
+    ...couponRows,
+    ...permissionRows,
+    ...createMockSystemAuditLogs()
+  ]
+    .map(decorateAuditLog)
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+}
+
+export function fetchSystemAuditLogsSafe(signal?: AbortSignal) {
+  return toSafeResult(() =>
+    withRetry(() => loadSystemAuditLogs(signal), { maxRetries: 1 })
+  );
+}

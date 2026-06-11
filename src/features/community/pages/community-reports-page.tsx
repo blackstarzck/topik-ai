@@ -1,13 +1,18 @@
 import {
+  Alert,
   Space,
   Typography,
   notification
 } from 'antd';
 import type { TableColumnsType } from 'antd';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
-import { getMockUserById } from '../../users/api/mock-users';
+import {
+  fetchCommunityReportsSafe,
+  resolveCommunityReportSafe
+} from '../api/community-service';
+import type { CommunityReport } from '../model/types';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
@@ -41,64 +46,12 @@ import {
 
 const { Text } = Typography;
 
-type ProcessStatus = '처리 대기' | '처리 완료';
-
-type ReportRow = {
-  id: string;
-  targetPostId: string;
-  targetUserId: string;
-  targetUserName: string;
-  reporterId: string;
-  reporterName: string;
-  reason: string;
-  createdAt: string;
-  processStatus: ProcessStatus;
-};
+type ReportRow = CommunityReport;
 
 type ReportActionState =
   | { type: 'hide-post'; row: ReportRow }
   | { type: 'suspend-user'; row: ReportRow }
   | null;
-
-function getResolvedUserName(userId: string, fallbackName?: string): string {
-  return getMockUserById(userId)?.realName ?? fallbackName ?? userId;
-}
-
-const initialRows: ReportRow[] = [
-  {
-    id: 'RP-001',
-    targetPostId: 'POST-002',
-    targetUserId: 'U00047',
-    targetUserName: getResolvedUserName('U00047'),
-    reporterId: 'U00012',
-    reporterName: getResolvedUserName('U00012'),
-    reason: '욕설 포함',
-    createdAt: '2026-03-03 14:12',
-    processStatus: '처리 대기'
-  },
-  {
-    id: 'RP-002',
-    targetPostId: 'POST-010',
-    targetUserId: 'U00019',
-    targetUserName: getResolvedUserName('U00019'),
-    reporterId: 'U00031',
-    reporterName: getResolvedUserName('U00031'),
-    reason: '광고성 게시물',
-    createdAt: '2026-03-04 09:31',
-    processStatus: '처리 대기'
-  },
-  {
-    id: 'RP-003',
-    targetPostId: 'POST-003',
-    targetUserId: 'U00077',
-    targetUserName: getResolvedUserName('U00077'),
-    reporterId: 'U00001',
-    reporterName: getResolvedUserName('U00001'),
-    reason: '스팸',
-    createdAt: '2026-03-04 10:05',
-    processStatus: '처리 완료'
-  }
-];
 
 const reportProcessStatusFilterValues = ['처리 대기', '처리 완료'] as const;
 
@@ -113,7 +66,9 @@ const detailLabelMap: Record<string, string> = {
 };
 
 export default function CommunityReportsPage(): JSX.Element {
-  const [rows, setRows] = useState<ReportRow[]>(initialRows);
+  const [rows, setRows] = useState<ReportRow[]>([]);
+  const [loadState, setLoadState] = useState<'pending' | 'success' | 'error'>('pending');
+  const [loadErrorMessage, setLoadErrorMessage] = useState('');
   const [actionState, setActionState] = useState<ReportActionState>(null);
   const [selectedRow, setSelectedRow] = useState<ReportRow | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -129,6 +84,31 @@ export default function CommunityReportsPage(): JSX.Element {
     handleDetailOpenChange
   } = useSearchBarDateDraft(startDate, endDate);
   const [notificationApi, notificationContextHolder] = notification.useNotification();
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    setLoadState('pending');
+    setLoadErrorMessage('');
+    void fetchCommunityReportsSafe(controller.signal).then((result) => {
+      if (controller.signal.aborted) {
+        return;
+      }
+
+      if (result.ok) {
+        setRows(result.data);
+        setLoadState('success');
+        return;
+      }
+
+      setLoadErrorMessage(result.error.message);
+      setLoadState('error');
+    });
+
+    return () => {
+      controller.abort();
+    };
+  }, []);
 
   const commitParams = useCallback(
     (
@@ -210,10 +190,18 @@ export default function CommunityReportsPage(): JSX.Element {
         return;
       }
 
+      const result = await resolveCommunityReportSafe(actionState.row.id);
+
+      if (!result.ok) {
+        notificationApi.error({
+          message: '\uC2E0\uACE0 \uCC98\uB9AC \uC2E4\uD328',
+          description: result.error.message
+        });
+        return;
+      }
+
       setRows((prev) =>
-        prev.map((item) =>
-          item.id === actionState.row.id ? { ...item, processStatus: '처리 완료' } : item
-        )
+        prev.map((item) => (item.id === result.data.id ? result.data : item))
       );
 
       if (actionState.type === 'hide-post') {
@@ -319,7 +307,7 @@ export default function CommunityReportsPage(): JSX.Element {
           (record) => record.processStatus
         ),
         sorter: createTextSorter((record) => record.processStatus),
-        render: (status: ProcessStatus) => <StatusBadge status={status} />
+        render: (status: string) => <StatusBadge status={status} />
       },
       {
         title: '액션',
@@ -432,12 +420,23 @@ export default function CommunityReportsPage(): JSX.Element {
           </Link>
           에서 함께 확인할 수 있습니다.
         </Text>
+        {loadState === 'error' ? (
+          <Alert
+            type="error"
+            showIcon
+            style={{ marginBottom: 16 }}
+            message="\uCEE4\uBBA4\uB2C8\uD2F0 \uC2E0\uACE0\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
+            description={loadErrorMessage}
+          />
+        ) : null}
         <AdminDataTable<ReportRow>
           rowKey="id"
           pagination={false}
           scroll={{ x: 1400 }}
           columns={columns}
           dataSource={visibleRows}
+          loading={loadState === 'pending'}
+          locale={{ emptyText: loadState === 'error' ? loadErrorMessage : '\uC870\uD68C\uB41C \uC2E0\uACE0\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.' }}
           onRow={(record) => ({
             onClick: () => setSelectedRow(record),
             style: { cursor: 'pointer' }

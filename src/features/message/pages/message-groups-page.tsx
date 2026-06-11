@@ -26,8 +26,13 @@ import type { Dayjs } from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
-import { fetchGroupsSafe } from '../api/messages-service';
-import { useMessageStore } from '../model/message-store';
+import {
+  deleteMessageGroupSafe,
+  fetchGroupsSafe,
+  previewMessageGroupCountSafe,
+  recalculateMessageGroupSafe,
+  saveMessageGroupSafe
+} from '../api/messages-service';
 import {
   DEFAULT_MESSAGE_GROUP_BUILDER_MODE,
   DEFAULT_MESSAGE_GROUP_CHANNELS,
@@ -947,12 +952,7 @@ export default function MessageGroupsPage(): JSX.Element {
     handleDetailOpenChange
   } = useSearchBarDateDraft(startDate, endDate);
 
-  const groups = useMessageStore((state) => state.groups);
-  const previewGroupCount = useMessageStore((state) => state.previewGroupCount);
-  const saveGroup = useMessageStore((state) => state.saveGroup);
-  const recalculateGroup = useMessageStore((state) => state.recalculateGroup);
-  const deleteGroup = useMessageStore((state) => state.deleteGroup);
-
+  const [groups, setGroups] = useState<MessageGroup[]>([]);
   const [loadState, setLoadState] = useState<AsyncState<null>>({
     status: 'pending',
     data: null,
@@ -1032,6 +1032,7 @@ export default function MessageGroupsPage(): JSX.Element {
       }
 
       if (result.ok) {
+        setGroups(result.data);
         setLastSuccessfulGroups(result.data);
         setLoadState({
           status: result.data.length === 0 ? 'empty' : 'success',
@@ -1238,15 +1239,25 @@ export default function MessageGroupsPage(): JSX.Element {
       }
     }
 
-    const count = previewGroupCount(buildPayload(values, editorState, queryBuilderConfig));
-    setPreviewCount(count);
+    const result = await previewMessageGroupCountSafe(
+      buildPayload(values, editorState, queryBuilderConfig)
+    );
+
+    if (!result.ok) {
+      notificationApi.error({
+        message: '대상 수 미리보기 실패',
+        description: result.error.message
+      });
+      return;
+    }
+
+    setPreviewCount(result.data);
   }, [
     builderMode,
     definitionType,
     editorState,
     form,
     notificationApi,
-    previewGroupCount,
     queryBuilderConfig
   ]);
 
@@ -1263,7 +1274,25 @@ export default function MessageGroupsPage(): JSX.Element {
     }
 
     const values = await form.validateFields();
-    const saved = saveGroup(buildPayload(values, editorState, queryBuilderConfig));
+    const result = await saveMessageGroupSafe(
+      buildPayload(values, editorState, queryBuilderConfig)
+    );
+
+    if (!result.ok) {
+      notificationApi.error({
+        message: '대상 그룹 저장 실패',
+        description: result.error.message
+      });
+      return;
+    }
+
+    const saved = result.data;
+    setGroups((prev) => {
+      const exists = prev.some((group) => group.id === saved.id);
+      return exists
+        ? prev.map((group) => (group.id === saved.id ? saved : group))
+        : [saved, ...prev];
+    });
 
     notificationApi.success({
       message: `대상 그룹 ${editorState?.type === 'edit' ? '수정' : '생성'} 완료`,
@@ -1284,8 +1313,7 @@ export default function MessageGroupsPage(): JSX.Element {
     editorState,
     form,
     notificationApi,
-    queryBuilderConfig,
-    saveGroup
+    queryBuilderConfig
   ]);
 
   const handleRecalculate = useCallback(
@@ -1297,12 +1325,21 @@ export default function MessageGroupsPage(): JSX.Element {
       setRecalculatingGroupId(group.id);
 
       try {
-        await new Promise((resolve) => window.setTimeout(resolve, 420));
-        const refreshed = recalculateGroup(group.id);
-        if (!refreshed) {
+        const result = await recalculateMessageGroupSafe(group.id);
+        if (!result.ok || !result.data) {
+          if (!result.ok) {
+            notificationApi.error({
+              message: '대상 그룹 재계산 실패',
+              description: result.error.message
+            });
+          }
           return;
         }
 
+        const refreshed = result.data;
+        setGroups((prev) =>
+          prev.map((item) => (item.id === refreshed.id ? refreshed : item))
+        );
         setEditorState((current) =>
           current?.type === 'edit' && current.group.id === refreshed.id
             ? { type: 'edit', group: refreshed }
@@ -1326,10 +1363,10 @@ export default function MessageGroupsPage(): JSX.Element {
           )
         });
       } finally {
-        setRecalculatingGroupId(null);
+      setRecalculatingGroupId(null);
       }
     },
-    [editorState, notificationApi, recalculateGroup, recalculatingGroupId]
+    [editorState, notificationApi, recalculatingGroupId]
   );
 
   const handleDeleteGroup = useCallback(
@@ -1338,11 +1375,19 @@ export default function MessageGroupsPage(): JSX.Element {
         return;
       }
 
-      const deleted = deleteGroup(deleteTarget.id);
-      if (!deleted) {
+      const result = await deleteMessageGroupSafe(deleteTarget.id);
+      if (!result.ok || !result.data) {
+        if (!result.ok) {
+          notificationApi.error({
+            message: '대상 그룹 삭제 실패',
+            description: result.error.message
+          });
+        }
         return;
       }
 
+      const deleted = result.data;
+      setGroups((prev) => prev.filter((group) => group.id !== deleted.id));
       notificationApi.success({
         message: '대상 그룹 삭제 완료',
         description: (
@@ -1356,7 +1401,7 @@ export default function MessageGroupsPage(): JSX.Element {
       });
       setDeleteTarget(null);
     },
-    [deleteGroup, deleteTarget, notificationApi]
+    [deleteTarget, notificationApi]
   );
 
   const columns = useMemo<TableColumnsType<MessageGroup>>(

@@ -1,5 +1,25 @@
 import { expect, test } from 'playwright/test';
 
+import {
+  expectAuditHref,
+  expectQueryParam,
+  expectRowVisible
+} from './source-flow-helpers';
+
+test('points page restores selected policy seed detail and exposes audit target link', async ({
+  page
+}) => {
+  await page.goto('/commerce/points?tab=policy&selected=POL-1001');
+
+  await expectQueryParam(page, 'tab', 'policy');
+  await expectQueryParam(page, 'selected', 'POL-1001');
+  await expectRowVisible(page, 'POL-1001');
+  const drawer = page.locator('.ant-drawer-content-wrapper:visible').last();
+  await expect(drawer).toBeVisible();
+  await expect(drawer).toContainText('POL-1001');
+  await expectAuditHref(drawer, 'CommercePointPolicy', 'POL-1001');
+});
+
 test('포인트 관리 페이지에 진입하고 주요 탭을 전환할 수 있다', async ({ page }) => {
   await page.goto('/commerce/points');
 

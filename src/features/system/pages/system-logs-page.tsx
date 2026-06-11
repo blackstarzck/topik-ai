@@ -1,8 +1,10 @@
-import { Typography } from 'antd';
+import { Alert, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
+import { fetchSystemLogsSafe } from '../api/system-logs-service';
+import type { SystemLogLevel as LogLevel, SystemLogRow } from '../model/system-log-types';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
@@ -24,47 +26,6 @@ import { createTextSorter } from '../../../shared/ui/table/table-column-utils';
 import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
 
 const { Paragraph, Text } = Typography;
-
-type LogLevel = 'INFO' | 'WARN' | 'ERROR';
-
-type SystemLogRow = {
-  id: string;
-  level: LogLevel;
-  component: string;
-  message: string;
-  createdAt: string;
-};
-
-const rows: SystemLogRow[] = [
-  {
-    id: 'SYS-001',
-    level: 'INFO',
-    component: 'notification-worker',
-    message: 'dispatch batch completed',
-    createdAt: '2026-03-11 09:11:42'
-  },
-  {
-    id: 'SYS-002',
-    level: 'WARN',
-    component: 'billing-sync',
-    message: 'payment webhook delayed',
-    createdAt: '2026-03-11 09:47:03'
-  },
-  {
-    id: 'SYS-003',
-    level: 'ERROR',
-    component: 'community-service',
-    message: 'report queue retry limit reached',
-    createdAt: '2026-03-11 10:02:19'
-  },
-  {
-    id: 'SYS-004',
-    level: 'ERROR',
-    component: 'admin-auth',
-    message: 'temporary token validation failed',
-    createdAt: '2026-03-11 10:38:11'
-  }
-];
 
 const detailLabelMap: Record<string, string> = {
   id: '로그 ID',
@@ -91,6 +52,9 @@ function getComponentRoute(component: string): string | null {
 }
 
 export default function SystemLogsPage(): JSX.Element {
+  const [rows, setRows] = useState<SystemLogRow[]>([]);
+  const [loadState, setLoadState] = useState<'pending' | 'success' | 'error'>('pending');
+  const [loadErrorMessage, setLoadErrorMessage] = useState('');
   const [searchParams, setSearchParams] = useSearchParams();
   const searchField = searchParams.get('searchField') ?? 'all';
   const startDate = parseSearchDate(searchParams.get('startDate'));
@@ -104,6 +68,31 @@ export default function SystemLogsPage(): JSX.Element {
     handleDetailOpenChange
   } = useSearchBarDateDraft(startDate, endDate);
   const [selectedRow, setSelectedRow] = useState<SystemLogRow | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    setLoadState('pending');
+    setLoadErrorMessage('');
+    void fetchSystemLogsSafe(controller.signal).then((result) => {
+      if (controller.signal.aborted) {
+        return;
+      }
+
+      if (result.ok) {
+        setRows(result.data);
+        setLoadState('success');
+        return;
+      }
+
+      setLoadErrorMessage(result.error.message);
+      setLoadState('error');
+    });
+
+    return () => {
+      controller.abort();
+    };
+  }, []);
 
   const filteredRows = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
@@ -122,7 +111,7 @@ export default function SystemLogsPage(): JSX.Element {
         message: row.message
       });
     });
-  }, [endDate, keyword, searchField, startDate]);
+  }, [endDate, keyword, rows, searchField, startDate]);
 
   const commitParams = useCallback(
     (
@@ -284,11 +273,22 @@ export default function SystemLogsPage(): JSX.Element {
           와 함께 보면 원인 추적이 빠릅니다.
         </Paragraph>
 
+        {loadState === 'error' ? (
+          <Alert
+            type="error"
+            showIcon
+            style={{ marginBottom: 16 }}
+            message="\uC2DC\uC2A4\uD15C \uB85C\uADF8\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
+            description={loadErrorMessage}
+          />
+        ) : null}
         <AdminDataTable<SystemLogRow>
           rowKey="id"
           pagination={false}
           columns={columns}
           dataSource={filteredRows}
+          loading={loadState === 'pending'}
+          locale={{ emptyText: loadState === 'error' ? loadErrorMessage : '\uC870\uD68C\uB41C \uC2DC\uC2A4\uD15C \uB85C\uADF8\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.' }}
           onRow={(record) => ({
             onClick: () => setSelectedRow(record),
             style: { cursor: 'pointer' }
