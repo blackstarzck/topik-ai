@@ -42,3 +42,16 @@
 - QA §2 시드 계정 7종 생성·설정 시드 완료(optin/optout/vn(Ho_Chi_Minh)/dst(America/New_York 02:30 — DST 엣지)/partial(feedback_ready만)/fresh(설정 row 없음)). admin 승격은 보호 트리거 때문에 Management API `session_replication_role=replica` 경로 사용(스크립트에 절차 주석).
 - 스모크 잔여 행 정리 완료(dispatches/attempts/user_notifications 0). 시드 계정·설정은 P1 재사용 위해 유지.
 - **P0 종료.** 구현 결정 기록: P1 dispatcher는 Edge Function 대신 **DB 내 SQL 함수(`private.dispatch_notifications`) + pg_cron**으로 구현 — 이 환경에 CLI/함수 배포 인프라가 없고, 계약 §7 "슬롯 판정 시각 출처 = DB now() 단일 기준"에 더 정합. 계약·시맨틱스(dispatch/attempt/dedupe/class 정책)는 동일.
+
+## WP1-1·WP1-2 발송 파이프라인 + cron — PASS / **게이트 V-1 PASS** (2026-06-12)
+
+- 구현: v13 `20260612180000_notification_dispatcher.sql` — `private.dispatch_scheduled_notifications`(슬롯형: 사용자 timezone 보정 + 당일 catch-up + attempt 일일 dedupe로 1회 상한)·`dispatch_admin_notifications`(running/예약 도래 집행, test=본인 우회, group=정적 명단 P1 범위)·`dispatch_notification_event`(이벤트 dedupe)·`dispatch_notifications`(메인 tick). `20260612180100_register_notification_cron.sql` — pg_cron `*/10 * * * *`(기존 cleanup 패턴). admin-0005: attempts.template_key 비정규화(X-09 패널이 dispatches 조인 없이 owner-select 단독 표시 — RLS 경계 때문).
+- 사전 실측: `postgres` role bypassrls=true (SECURITY DEFINER 함수가 FORCE RLS 테이블에 기록 가능).
+- **V-1 검증 결과** (시드 계정 7종, 2026-06-12 18:17~18:21 KST):
+  - ① 수동 invoke → dispatch 1건(schedule) + attempts 5건 + user_notifications 3건. **sent=3**(optin Seoul/vn HCMC/dst NY — 각자 현지 시각 보정), **opted_out=2**(optout 전 유형 off·partial study_reminder off), fresh(설정 row 없음)는 후보 제외(N-SCH-12)
+  - ② 재실행 → `no_candidates`(attempt 일일 dedupe) + 같은 tick 재실행 → `tick_already_claimed`(dispatch dedupe — N-SCH-02·03 이중 방어 실증)
+  - ③ timezone 차등(N-SCH-04): vn reminder 17:00 설정 시 HCMC 16:1x → `no_candidates`(미도래 미발송), 09:00 복원 후 발송. weekly_summary는 금요일 → `no_candidates`(일요일 슬롯만 — O-5)
+  - ④ **실제 pg_cron 자동 발화 실증**: 09:20:00 UTC job 'succeeded'(cron.job_run_details) → vn 수신함 2건째 자동 생성 — 수동 invoke 없이 production 경로 동작
+  - ⑤ 이벤트형(N-TRG): feedback_ready — optin·partial(`sent`), optout(`opted_out` 집계), **같은 event_id 재호출 `deduped`**(N-TRG-03). payload link_url override 경로 포함
+  - ⑥ 렌더링: `{{display_name}}` 결측 → '학습자' fallback(인앱 변수 fallback — N-ADM-03 계열), html 태그 제거
+  - 실패 주입(④의 failed 기록)은 in_app에 실패 경로가 없어 P3 email에서 검증 예정으로 기록.
