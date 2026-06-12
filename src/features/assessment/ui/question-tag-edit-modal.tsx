@@ -1,3 +1,4 @@
+import { DeleteOutlined, ReloadOutlined, RightOutlined } from '@ant-design/icons';
 import {
   Alert,
   Button,
@@ -70,6 +71,7 @@ export function QuestionTagEditModal({
   onMutated
 }: QuestionTagEditModalProps): JSX.Element {
   const [selectedTagCodes, setSelectedTagCodes] = useState<string[]>([]);
+  const [selectedTagGroup, setSelectedTagGroup] = useState<string | null>(null);
   const [assignMemo, setAssignMemo] = useState('');
   const [assigning, setAssigning] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -111,6 +113,14 @@ export function QuestionTagEditModal({
     [masterByCode, selectedTagCodes]
   );
 
+  const activeTagGroup = useMemo(
+    () =>
+      tagGroups.find((item) => item.group === selectedTagGroup) ??
+      tagGroups[0] ??
+      null,
+    [selectedTagGroup, tagGroups]
+  );
+
   const repeatAvoidActiveCount = useMemo(
     () =>
       activeTags.filter(
@@ -121,6 +131,7 @@ export function QuestionTagEditModal({
 
   const resetAssignForm = (): void => {
     setSelectedTagCodes([]);
+    setSelectedTagGroup(null);
     setAssignMemo('');
     setErrorMessage(null);
   };
@@ -187,6 +198,128 @@ export function QuestionTagEditModal({
     onMutated('tag_removed', label);
   };
 
+  const handleTagCheckedChange = (tagCode: string, checked: boolean): void => {
+    setSelectedTagCodes((current) => {
+      if (checked) {
+        return current.includes(tagCode) ? current : [...current, tagCode];
+      }
+      return current.filter((code) => code !== tagCode);
+    });
+  };
+
+  const handleRemoveSelectedTag = (tagCode: string): void => {
+    setSelectedTagCodes((current) => current.filter((code) => code !== tagCode));
+  };
+
+  const tagPickerPanel =
+    tagGroups.length === 0 ? (
+      <Empty
+        image={Empty.PRESENTED_IMAGE_SIMPLE}
+        description="부여할 수 있는 태그가 없습니다."
+      />
+    ) : (
+      <div className="question-tag-edit-modal__tag-picker-panel">
+        <div className="question-tag-edit-modal__tag-picker-header">
+          <Text strong>부여할 태그</Text>
+          <Text type="secondary">선택 {selectedTagCodes.length}개</Text>
+        </div>
+
+        <div className="question-tag-edit-modal__tag-picker-grid">
+          <div
+            className="question-tag-edit-modal__group-list"
+            aria-label="태그 그룹"
+          >
+            {tagGroups.map(({ group, rows }) => {
+              const checkedCount = selectedTagCodes.filter(
+                (tagCode) => masterByCode[tagCode]?.tagGroup === group
+              ).length;
+              const isActiveGroup = activeTagGroup?.group === group;
+
+              return (
+                <button
+                  key={group}
+                  type="button"
+                  className={
+                    isActiveGroup
+                      ? 'question-tag-edit-modal__group-button question-tag-edit-modal__group-button--active'
+                      : 'question-tag-edit-modal__group-button'
+                  }
+                  onClick={() => setSelectedTagGroup(group)}
+                >
+                  <span>{group}</span>
+                  <span className="question-tag-edit-modal__group-meta">
+                    {checkedCount > 0 ? `${checkedCount}/${rows.length}` : rows.length}
+                    <RightOutlined aria-hidden />
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="question-tag-edit-modal__tag-list">
+            <Text strong>{activeTagGroup?.group}</Text>
+            <div className="question-tag-edit-modal__checkbox-grid">
+              {(activeTagGroup?.rows ?? []).map((row) => (
+                <Checkbox
+                  key={row.tagCode}
+                  checked={selectedTagCodes.includes(row.tagCode)}
+                  disabled={activeTagCodes.has(row.tagCode)}
+                  onChange={(event) =>
+                    handleTagCheckedChange(row.tagCode, event.target.checked)
+                  }
+                >
+                  <Space direction="vertical" size={0}>
+                    <Text>{row.tagNameKo}</Text>
+                    <Text type="secondary">{row.tagCode}</Text>
+                  </Space>
+                </Checkbox>
+              ))}
+            </div>
+
+            {activeTagGroup?.rows.length ? (
+              <Space direction="vertical" size={4}>
+                {activeTagGroup.rows.map((row) => (
+                  <Text key={row.tagCode} type="secondary">
+                    {row.tagNameKo}: {row.description}
+                    {row.usageRule ? ` / ${row.usageRule}` : ''}
+                  </Text>
+                ))}
+              </Space>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="question-tag-edit-modal__selected-bar">
+          <div className="question-tag-edit-modal__selected-tags">
+            {selectedMasters.length > 0 ? (
+              selectedMasters.map((row) => (
+                <Tag
+                  key={row.tagCode}
+                  closable
+                  onClose={(event) => {
+                    event.preventDefault();
+                    handleRemoveSelectedTag(row.tagCode);
+                  }}
+                >
+                  {row.tagNameKo}
+                </Tag>
+              ))
+            ) : (
+              <Text type="secondary">선택된 태그가 없습니다.</Text>
+            )}
+          </div>
+          <Button
+            size="small"
+            icon={<ReloadOutlined />}
+            disabled={selectedTagCodes.length === 0}
+            onClick={() => setSelectedTagCodes([])}
+          >
+            초기화
+          </Button>
+        </div>
+      </div>
+    );
+
   const descriptionItems = useMemo<DescriptionsProps['items']>(
     () => [
       {
@@ -223,6 +356,7 @@ export function QuestionTagEditModal({
                     <Button
                       size="small"
                       danger
+                      icon={<DeleteOutlined />}
                       aria-label={`태그 제거: ${label}`}
                       onClick={() => setRemoveTarget(tag)}
                     >
@@ -231,68 +365,6 @@ export function QuestionTagEditModal({
                   </Space>
                 );
               })}
-            </Space>
-          )
-      },
-      {
-        key: 'assignTags',
-        label: '부여할 태그',
-        children:
-          tagGroups.length === 0 ? (
-            <Empty
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description="부여할 수 있는 태그가 없습니다."
-            />
-          ) : (
-            <Space
-              direction="vertical"
-              size={10}
-              className="question-tag-edit-modal__tag-picker"
-            >
-              <Checkbox.Group
-                value={selectedTagCodes}
-                onChange={(checkedValues) =>
-                  setSelectedTagCodes(checkedValues.map((value) => String(value)))
-                }
-              >
-                <Space
-                  direction="vertical"
-                  size={12}
-                  className="question-tag-edit-modal__tag-groups"
-                >
-                  {tagGroups.map(({ group, rows }) => (
-                    <div key={group} className="question-tag-edit-modal__tag-group">
-                      <Text strong>{group}</Text>
-                      <div className="question-tag-edit-modal__checkbox-grid">
-                        {rows.map((row) => (
-                          <Checkbox
-                            key={row.tagCode}
-                            value={row.tagCode}
-                            disabled={activeTagCodes.has(row.tagCode)}
-                          >
-                            {row.tagNameKo}{' '}
-                            <Text type="secondary">({row.tagCode})</Text>
-                          </Checkbox>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </Space>
-              </Checkbox.Group>
-              {selectedMasters.length > 0 ? (
-                <Space direction="vertical" size={4}>
-                  {selectedMasters.map((row) => (
-                    <Text key={row.tagCode} type="secondary">
-                      {row.tagNameKo}: {row.description}
-                      {row.usageRule ? ` / ${row.usageRule}` : ''}
-                    </Text>
-                  ))}
-                </Space>
-              ) : (
-                <Text type="secondary">
-                  부여할 태그를 선택해 주세요. 이미 활성인 태그는 선택할 수 없습니다.
-                </Text>
-              )}
             </Space>
           )
       },
@@ -311,14 +383,10 @@ export function QuestionTagEditModal({
       }
     ],
     [
-      activeTagCodes,
       activeTags,
       assignMemo,
       masterByCode,
-      questionId,
-      selectedMasters,
-      selectedTagCodes,
-      tagGroups
+      questionId
     ]
   );
 
@@ -330,7 +398,7 @@ export function QuestionTagEditModal({
         footer={null}
         onCancel={handleClose}
         destroyOnHidden
-        width={760}
+        width={860}
       >
         <Space direction="vertical" size={16} className="question-tag-edit-modal__body">
           {errorMessage ? (
@@ -357,10 +425,13 @@ export function QuestionTagEditModal({
             column={1}
             className="question-tag-edit-modal__descriptions"
             items={descriptionItems}
-            requiredKeys={['assignTags', 'assignMemo']}
+            requiredKeys={['assignMemo']}
           />
 
+          {tagPickerPanel}
+
           <div className="question-tag-edit-modal__actions">
+            <Button onClick={handleClose}>취소</Button>
             <Button
               type="primary"
               loading={assigning}

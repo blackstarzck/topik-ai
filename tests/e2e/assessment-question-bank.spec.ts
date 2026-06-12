@@ -156,13 +156,20 @@ test('태그 부여/제거는 사유 필수로 동작하고 POL-018 ② 가드�
   await expect(
     tagModal.locator('.question-tag-edit-modal__descriptions .ant-descriptions-view')
   ).toBeVisible();
+  await expect(tagModal.locator('.question-tag-edit-modal__tag-picker-panel')).toBeVisible();
   await expect(tagModal.getByText('부여할 태그', { exact: true })).toBeVisible();
   await expect(tagModal.getByText('활성 태그가 없습니다.')).toBeVisible();
 
   // 부여: 태그 + 사유 입력 전까지 비활성.
   const assignButton = tagModal.getByRole('button', { name: '태그 부여' });
   await expect(assignButton).toBeDisabled();
+  await tagModal.getByRole('button', { name: /운영주의/ }).click();
+  await expect(tagModal.getByText('선택 0개')).toBeVisible();
   await tagModal.getByRole('checkbox', { name: /표현 주의/ }).check();
+  await expect(tagModal.getByText('선택 1개')).toBeVisible();
+  await expect(
+    tagModal.locator('.question-tag-edit-modal__selected-tags').getByText('표현 주의')
+  ).toBeVisible();
   await expect(assignButton).toBeDisabled();
   await tagModal
     .getByPlaceholder(/태그 부여 사유를 입력해 주세요/)
@@ -171,7 +178,7 @@ test('태그 부여/제거는 사유 필수로 동작하고 POL-018 ② 가드�
 
   await expect(page.getByText("'표현 주의' 태그를 부여했습니다.")).toBeVisible();
   await expect(tagModal.getByText('활성 태그가 없습니다.')).toHaveCount(0);
-  await tagModal.getByRole('button', { name: 'Close' }).click();
+  await tagModal.getByRole('button', { name: '취소' }).click();
 
   // 행 태그 수 반영.
   await expect(targetRow.getByText('1개')).toBeVisible();
