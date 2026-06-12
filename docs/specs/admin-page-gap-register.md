@@ -221,17 +221,13 @@
   - `미확정`: 재시도 정책
   - `오구현`: actor 하드코딩
 
-#### 4.4.4 Notification 레거시 페이지
+#### 4.4.4 Notification 레거시 페이지 — **해소 (2026-06-12, 알림 기능 WP2-4)**
 
-- 대상 파일
-  - `src/features/notification/pages/notification-send-page.tsx`
-  - `src/features/notification/pages/notification-history-page.tsx`
-- 현 상태
-  - 라우트는 redirect만 사용하고 실페이지는 레거시로 남아 있다.
-- 미확정/누락/오구현
-  - 제거 대상인지, 내부 호환용 보존 대상인지 명확하지 않다.
+- 조치
+  - 고아 파일 2개(`notification-send-page.tsx`, `notification-history-page.tsx`) 제거 — import 참조 0건 확인 후 삭제. 알림 운영 기능은 Message 모듈(`/messages/*`, `/messages/in-app` 신설)로 통합 완료.
+  - `/notification/send`·`/notification/history` redirect는 **한 릴리즈 유지 후 제거**(O-10 결정 — 내부 admin이므로 IA 일관성 우선). 제거 예정: 다음 릴리즈. route registry E2E가 redirect 동작을 커버한다.
 - 분류
-  - `미확정`: 레거시 정리 정책
+  - `해소`: 레거시 정리 완료 (redirect 제거만 후속 1건)
 
 ### 4.5 Operation
 
