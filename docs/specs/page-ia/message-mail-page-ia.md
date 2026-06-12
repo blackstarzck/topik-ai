@@ -164,3 +164,11 @@
 
 - 템플릿 승인과 발송 승인 권한 분리 여부 미정
 
+## 15. 2026-06-12 알림 기능 supabase 연동
+
+- 데이터 소스 분기: `VITE_MESSAGE_SOURCE`로 `mock`↔`supabase`를 전환합니다(`src/features/message/api/message-data-source.ts`). Supabase 구성 시 기본 `supabase`이며, `mock` 강제 시 기존 시드 동작(회귀 e2e 경로)을 유지합니다.
+- supabase 모드 write는 admin RPC 단일 경로입니다: 템플릿 저장/상태 변경/삭제(`admin_save_notification_template`/`admin_set_notification_template_status`/`admin_delete_notification_template`) + 발송 실행(`admin_send_notification`). 모든 쓰기는 **사유 필수**이며 감사 로그는 `Target Type=Notification`, `Target ID={row uuid}`로 남습니다(액션 사전: `docs/specs/admin-action-log.md`).
+- supabase 전용 폼 필드: `template_key`(필수), 분류 `class`(transactional·operational·learning·marketing 4종 — 필수), `mandatory`(marketing은 저장 차단, ON 시 수신 선호 우회·감사 기록 고지 확인 모달), `category`, `link_url`(인앱 클릭 이동 경로), 사유 입력. 테이블은 `notification_templates`(channel='email'), 계약 SoT는 `notification-contract.md`(docs/specs).
+- 발송(나에게 보내기/즉시/예약)은 `admin_send_notification`이 `notification_dispatches` 실행 행을 생성하고 파이프라인이 집행합니다. email 전달 transport는 Phase 3(준비 중)이며, 현재 실제 전달은 in_app 채널이 담당합니다.
+- 채널 매핑: `/messages/mail`=email, `/messages/push`=push(준비 중 — 발송 비활성), `/messages/in-app`=in_app(신규 — `docs/specs/page-ia/message-inapp-page-ia.md`). 스키마 소유권은 `docs/architecture/shared-supabase-schema-ownership.md`를 따릅니다.
+

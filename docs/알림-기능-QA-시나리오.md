@@ -6,7 +6,7 @@
 | 상태 | 초안 — 알림 기능 구현 완료(실행계획안 Phase 4) 시점에 실행 |
 | 기준 계획 | [`docs/알림-기능-개발-실행계획안.md`](./알림-기능-개발-실행계획안.md) |
 | 화면 기준 | v13 `docs/Wireframe/31-X-09-notification-settings/`, `04-B-01-home-dashboard/` description.md |
-| 실행 방법론 | v13 `docs/qa/qa-execution-plan.md` rev6 규칙 준수 (브라우저 직접 조작 + 자동 테스트 + 증거 기록) |
+| 실행 방법론 | `v13/docs/qa/qa-execution-plan.md`(v13 저장소) rev6 규칙 준수 (브라우저 직접 조작 + 자동 테스트 + 증거 기록) |
 | 증적 위치 | `logs/notification-feature-evidence.md` + 스크린샷 (`docs/qa/reports/` 패턴) |
 
 ---

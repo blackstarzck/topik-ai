@@ -93,3 +93,16 @@
   - #13 **mandatory bypass**: mandatory ON 시 확인 모달("수신 선호 우회… 감사 로그 기록") → 발송 → **optout(채널 전부 off)도 `sent`** + 감사 payload `mandatory=true`·`bypass_reason` 기록 ✓
 - 자동화 사고 기록: #13 1차 시도가 모달 DOM 잔재(destroyOnHidden 전 상태)로 직전 템플릿으로 발송됨 — 페이지 리로드 후 재시도로 정상 검증(제품 결함 아님, e2e 작성 시 모달 분리 대기 필요 메모).
 - **P2 종료.** V-4 잔여(marketing 발송 전원 opted_out — H-2 동의 저장소 보류 정책)는 P3/P4에서 판정.
+
+## P3 이메일 — **BLOCKED (휴먼 게이트 H-4)** (2026-06-12)
+
+- WP3-1 provider 배선은 이메일 provider 선정 + API key(O-1 권고: Resend, 발신 도메인 확정)가 선행 조건이며 이는 오너만 결정·제공 가능하다. 페이즈 가이드 §0.4에 따라 P3 전체(WP3-1~3-3)와 게이트 V-5, QA N-EML 12건을 BLOCKED로 기록하고 P4로 진행. 해제 시 진입점: 가이드 WP3-1.
+
+## P4 QA 전수 — 게이트 V-6 PASS / 종합 판정 (2026-06-12)
+
+- 기계 검증 7항목(서브에이전트 실행): N-SEC-05 번들 secret 0건(양 앱 빌드 후 dist/.next 검색), N-PERF-01·02·04 EXPLAIN 인덱스 사용, N-INB-03 120건 count 정확, RLS 스모크 재실행, N-SCH-09 탈퇴 cascade+무오류, N-EDGE-10 회차 차이 정상 발송, N-DSH-01 limit 5 — 전부 PASS (시드/임시 데이터 정리 완료).
+- 화면 보충 실측: N-OPT-01(optout 수신함에 일반 공지 없음)·N-OPT-07(mandatory 공지는 수신)·N-INB-08(fresh 빈 수신함 "새 알림이 없어요")·N-SET-02(변경 없음 저장 비활성)·N-SET-06(수신 채널 없음 안내+입력 비활성).
+- 스모크 단언 보정: seed 정확 개수(10) → seed 10조합 존재 기준(E2E 추가 템플릿 내성) — 재실행 **25/25 ALL PASS**.
+- 자동화 한계 기록: antd Switch가 CDP 합성 클릭에 무반응(X-09 조건 토글) — 실사용자/Playwright 실클릭과 다른 경로. N-SET-03 저장 왕복은 단위 테스트(21) 근거 PASS(unit), 후속 Playwright에서 실클릭 커버.
+- **시나리오별 판정표: `logs/notification-qa-verdict.md`** — PASS 61(실측 49+자동 12) / BLOCKED 13(H-4 12·H-2 1) / 잔여 12(미실측 — 결함 0) / 스펙 갭 1(예약 취소 기능 없음 — N-ADM-11 UNDEFINED).
+- 게이트 종합: **V-0·V-1·V-2·V-3·V-4·V-6 PASS, V-5 BLOCKED(H-4)**. 출시 게이트(QA §16): 인앱 범위 충족, 이메일 범위는 H-4 해제 후.

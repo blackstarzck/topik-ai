@@ -197,7 +197,16 @@ const TABLES = ['notification_templates', 'notification_groups', 'notification_d
 {
   const { client: adminClient } = await signIn(ACCOUNTS.admin);
   const { data: tpls, error } = await adminClient.from('notification_templates').select('id, template_key, channel, status');
-  step('admin templates select (seed 10)', error == null && (tpls ?? []).length === 10, error ? error.message : `rows=${(tpls ?? []).length}`);
+  // seed 10조합 존재 기준 (E2E 등 추가 템플릿이 있어도 통과 — 정확 개수 단언은 stale 사고 이력)
+  const SEED_COMBOS = [
+    'study_reminder:in_app', 'study_reminder:email', 'weekly_summary:in_app', 'weekly_summary:email',
+    'feedback_ready:in_app', 'feedback_ready:email', 'exam_schedule:in_app', 'notice:in_app',
+    'event:in_app', 'marketing:email',
+  ];
+  const combos = new Set((tpls ?? []).map((t) => `${t.template_key}:${t.channel}`));
+  const missing = SEED_COMBOS.filter((c) => !combos.has(c));
+  step('admin templates select (seed 10 combos present)', error == null && missing.length === 0,
+    error ? error.message : (missing.length ? `missing=${missing.join(',')}` : `rows=${(tpls ?? []).length}`));
 
   // RPC층 marketing+mandatory 거부
   const rpcM = await adminClient.rpc('admin_save_notification_template', {

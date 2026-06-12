@@ -143,3 +143,12 @@
 - 수신자 링크는 `Users > 회원 상세`로 이동하는 단일 동선을 사용합니다.
 - 수신자 검색은 사용자 이름과 ID를 함께 기준으로 유지합니다.
 
+## 16. 2026-06-12 알림 기능 supabase 연동
+
+- 데이터 소스 분기: `VITE_MESSAGE_SOURCE`로 `mock`↔`supabase`를 전환합니다(`src/features/message/api/message-data-source.ts`). mock 모드는 기존 채널 탭(메일/푸시) 이력 화면을 유지합니다.
+- supabase 모드는 발송 이력을 **dispatch/attempt 2계층으로 재구성**합니다(`notification-contract.md`(docs/specs) §4·§5):
+  - 목록 = `notification_dispatches`(발송 실행 ledger — 실행 시각, template_key, 채널, 대상 유형 group/test, 상태 draft/scheduled/running/completed/partial_failed/failed/canceled, 실행자, 사유).
+  - 행 클릭 상세 Drawer = 기본 정보 + `notification_delivery_attempts` 집계(`sent`/`failed`/`skipped`/`opted_out`/`pending`/`deduped` 6종) + 수신자별 상태 표. opt-out 제외자도 미기록이 아니라 `skipped`/`opted_out`으로 집계되어 제외 사유가 보입니다.
+- 발송 실행 생성은 `admin_send_notification` RPC(사유 필수)가 담당하고 감사 액션 `notification_dispatch_created`(`Target Type=Notification`, `Target ID={dispatch uuid}`)가 남습니다(액션 사전: `docs/specs/admin-action-log.md`).
+- `notification_delivery_attempts`는 v13 X-09 발송 이력 패널도 owner-select로 읽는 **공유 객체**입니다 — 소유권/RLS 계약은 `docs/architecture/shared-supabase-schema-ownership.md`.
+

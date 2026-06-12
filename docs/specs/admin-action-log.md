@@ -18,6 +18,7 @@
 - 이벤트 저장/게시 예약/즉시 게시/종료
 - 운영 정책 저장/게시/숨김(법률 문서 + 운영 정책 레지스트리 포함)
 - 메시지 발송 설정 변경/발송 실행
+- 알림(Notification) 템플릿 등록/수정/상태 변경/삭제, 대상 그룹 등록/수정/삭제, 발송 실행 생성
 - 커머스 환불/정책 변경
 - 포인트 정책 저장/활성화/중지
 - 포인트 수동 적립/차감/회수
@@ -68,6 +69,11 @@
   - 액션 = `tag_master_status_changed`(라벨 "태그 마스터 상태 변경"). 원본 화면 역추적 경로 = `/system/metadata`(마스터 카탈로그 섹션 태그 탭).
   - write 계약: `/system/metadata` 마스터 카탈로그의 활성/비활성 토글 단일 — RPC `admin_update_tag_master_status`(마이그레이션 0014, SECURITY DEFINER) 경유. 가드 = **platform_admin**(문항 RPC의 content_admin과 분리 — 마스터 사전 변경은 전 문항 부여 옵션에 영향) + 사유 필수(RPC 단 강제) + 미존재·무변경 토글 거부. diff는 `{is_active:{from,to}}`, payload는 `{note, active_assignment_count}`(토글 시점 활성 부여 수 — 부여 이력은 유지) 형식입니다. 성공 피드백은 대상 식별 정보 + `감사 로그 확인` 링크(`/system/audit-logs?targetType=AssessmentTagMaster&targetId={tagCode}`)를 노출합니다.
   - 주제 마스터와 마스터 값 편집(이름·설명 등)은 여전히 조회 전용이라 감사 액션이 없습니다.
+- 알림(Notification) 조치 로그(2026-06-12 supabase 연동 — WP2)는 `Target Type = Notification`, `Target ID = {row uuid}`(템플릿/그룹/발송 실행 행의 uuid)를 사용합니다.
+  - 액션 사전: 템플릿 = `notification_template_created`(템플릿 등록)/`notification_template_updated`(템플릿 수정)/`notification_template_status_changed`(상태 변경 — diff `{status:{from,to}}`)/`notification_template_deleted`(템플릿 삭제), 그룹 = `notification_group_created`/`notification_group_updated`/`notification_group_deleted`, 발송 = `notification_dispatch_created`(발송 실행 생성 — 즉시/예약/나에게 보내기).
+  - 기록 주체: admin RPC 6종 단일 write 경로(`admin_save_notification_template`/`admin_set_notification_template_status`/`admin_delete_notification_template`/`admin_save_notification_group`/`admin_delete_notification_group`/`admin_send_notification` — SECURITY DEFINER + `private.is_admin` 가드 + **사유 RPC 단 필수**). 화면 직접 테이블 쓰기는 없습니다(RLS 쓰기 정책 0).
+  - payload 계약: 공통 `reason`. 템플릿 저장은 `template_key`/`channel`/`class`/`mandatory`, 삭제는 `template_key`, 그룹은 `name`을 포함합니다. `notification_dispatch_created`는 `reason`, `template_key`, `channel`, `class`, `mandatory`, `target_type`(group/test), `target_group_ids`, `scheduled_at`을 포함하고 **mandatory 템플릿이면 `bypass_reason`**(수신 선호 우회 근거)이 함께 남습니다 — `docs/specs/notification-contract.md` §2 class 정책.
+  - 역추적 딥링크: `/system/audit-logs?targetType=Notification&targetId={id}`. 원본 화면은 채널별 `/messages/mail`·`/messages/push`·`/messages/in-app`(템플릿), `/messages/groups`(그룹), `/messages/history`(발송 실행)입니다.
 - 메타데이터 그룹/항목 조치 로그는 `Target Type = SystemMetadataGroup`, `Target ID = groupId`를 사용합니다.
 - 메타데이터 항목 조치도 현재는 그룹 단위 추적을 우선 적용하며, 시스템 감사 로그에서 `/system/metadata?selected={groupId}` 기준으로 원본 화면을 역추적할 수 있어야 합니다.
 - 메타데이터의 `운영 값 순서 변경(item_reordered)`도 같은 계약을 사용하며, 드래그 정렬 직후 감사 로그에서 해당 그룹 단위 이력을 확인할 수 있어야 합니다.

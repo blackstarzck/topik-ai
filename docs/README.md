@@ -12,6 +12,9 @@
 - `메타데이터-태그-스키마-전환-실행계획안.md` — 전환 실행 계획안(2026-06-11 인바운드 개정): P0~P6 단계 — P3=읽기 컷오버+검수 표면·컬럼 제거, P4=관리 포인트(태그·노출) 개방, P6=외부 공급 API 수신 연동 — 와 검증 게이트(§12.3 PASS 채점)
 - `v13-admin-상호보완-분석-보고서.html` — v13 ↔ admin 상호보완·커버리지 분석 보고서
 - `metadata-tag-schema-transition-handoff.md` — 전환 작업 인수인계 문서(인바운드 전환 직후 상태·재정의 P3 절차·주의사항)
+- `알림-기능-개발-실행계획안.md` — 알림(Notification) 기능 개발 실행계획안 rev3(채널 4종·class 정책·발송 이력 3계층·검증 게이트 V-0~V-6)
+- `알림-기능-구현-페이즈-가이드.md` — 알림 기능 에이전트 실행용 작업 패키지 분해(WP0-1~WP4-3, 휴먼 결정 게이트 H-1~H-5)
+- `알림-기능-QA-시나리오.md` — 알림 기능 게이트별 상세 QA 시나리오(약 80건, 빈발 버그 매핑)
 
 ### `docs/requests` (외부 발신 요청·발주 문서)
 - `upstream-writing-endpoints-request-2026-06-10.md` — TOPIK 쓰기 문항 공급(인바운드) API 계약 요청서(D-11 재정의 — 2026-06-11 재작성, 구 push 업로드 요청 폐기)
@@ -45,6 +48,7 @@
 - `dashboard-page-sync.md`
 - `message-groups-page-sync.md`
 - `message-history-page-sync.md`
+- `message-inapp-page-sync.md`
 - `message-mail-page-sync.md`
 - `message-push-page-sync.md`
 - `operation-chatbot-page-sync.md`
@@ -74,6 +78,7 @@
 ### `docs/architecture`
 - `admin-overview.md`
 - `admin-data-source-transition.md`
+- `shared-supabase-schema-ownership.md` — 공유 Supabase 스키마 소유권 매트릭스(객체별 owner/writer/reader/RLS/migration home — 2026-06-12 알림 기능 WP0-1)
 - `metadata-tag-schema-transition-decision-record.md` — 메타데이터·태그 스키마 전환 결정 기록(**§0 = 2026-06-11 인바운드 모델 전환 확정** + D-1~D-13 처분 + v13 경계 합의)
 - `d3-classification-ownership-decision-brief.md` — [폐기] D-3 분류 작성 주체 결정 브리프(인바운드 전환으로 목적 소멸 — 역사 보존)
 
@@ -112,6 +117,7 @@
 - `page-ia/dashboard-page-ia.md`
 - `page-ia/message-groups-page-ia.md`
 - `page-ia/message-history-page-ia.md`
+- `page-ia/message-inapp-page-ia.md`
 - `page-ia/message-mail-page-ia.md`
 - `page-ia/message-push-page-ia.md`
 - `page-ia/operation-chatbot-page-ia.md`

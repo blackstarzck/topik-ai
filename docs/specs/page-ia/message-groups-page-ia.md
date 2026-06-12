@@ -145,3 +145,10 @@
 
 - 실제 백엔드 세그먼트 DSL/SQL 계약이 확정되면 현재 프론트엔드의 query builder 구조(`queryBuilderConfig`)와 저장 포맷(`queryBuilderText`)을 서버 스키마 기준으로 다시 정렬해야 합니다.
 
+## 15. 2026-06-12 알림 기능 supabase 연동
+
+- 데이터 소스 분기: `VITE_MESSAGE_SOURCE`로 `mock`↔`supabase`를 전환합니다(`src/features/message/api/message-data-source.ts`). mock 모드는 기존 시드 동작을 유지합니다.
+- supabase 모드 그룹 저장소는 `notification_groups`이며, write는 admin RPC 단일 경로(`admin_save_notification_group`/`admin_delete_notification_group`)입니다. 모든 쓰기는 **사유 필수**, 감사 로그는 `Target Type=Notification`, `Target ID={group uuid}`로 기록되고 `/system/audit-logs?targetType=Notification&targetId={groupId}`로 역추적합니다(액션 사전: `docs/specs/admin-action-log.md`).
+- 그룹은 발송 실행(`admin_send_notification` — group dispatch는 그룹 1개 이상 필수)의 대상 산정 입력입니다. 파이프라인 집행 시 opt-out 제외자는 `skipped`/`opted_out`으로 집계됩니다(계약: `notification-contract.md`(docs/specs) §2).
+- 스키마 소유권(topik-ai 소유)·RLS 기준은 `docs/architecture/shared-supabase-schema-ownership.md`를 따릅니다.
+

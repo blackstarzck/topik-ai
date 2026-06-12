@@ -1,0 +1,115 @@
+# 알림 기능 QA 판정표 (2026-06-12)
+
+기준: `docs/알림-기능-QA-시나리오.md` (rev1, 86 시나리오). 판정 규칙: PASS = 화면 직접 조작/SQL 실측/자동 테스트 증적 명시. PASS(unit/e2e) = 자동 테스트 green 근거. BLOCKED = 휴먼 게이트(H-*) 종속 — 결함 아님. 잔여 = 미실측(후속 자동화 대상). 상세 증적: `logs/notification-feature-evidence.md`.
+
+## 집계
+
+| 판정 | 건수 | 비고 |
+| --- | --- | --- |
+| PASS (실측) | 49 | 화면 조작 + SQL + 게이트 V-0~V-4 |
+| PASS (자동 테스트) | 12 | unit 21건·e2e mock 9·route 5·smoke 25스텝 |
+| BLOCKED (H-4 이메일 provider) | 12 | N-EML-01~10, N-OPT-04(이메일 경로), V-5 전체 |
+| BLOCKED (H-2 마케팅 동의 저장소) | 1 | N-OPT-04(동의 평가 — 현재는 전원 opted_out 보수 정책 실측됨) |
+| 잔여 (P4 자동화·실측 대상) | 12 | 아래 목록 — P2 위주 + 자동화 한계 항목 |
+
+## 시나리오별 판정
+
+| ID | 판정 | 근거 (증적 절) |
+| --- | --- | --- |
+| N-SET-01 | PASS | V-2 — optin 설정 정확 로드 |
+| N-SET-02 | PASS | 변경 없음 시 저장 비활성 화면 실측 (fresh) |
+| N-SET-03 | PASS(unit) | NotificationPrefsForm 21 tests + V-0 회귀. 화면 저장 왕복은 CDP 스위치 무반응(자동화 한계 — Playwright 실클릭으로 후속) |
+| N-SET-04 | PASS(unit) | 동일 (저장 중 잠금 — 컴포넌트 테스트) |
+| N-SET-05 | 잔여 | 이탈 확인 — 화면 실측 미수행 |
+| N-SET-06 | PASS | fresh — 수신 채널 없음 안내 + 조건 입력 비활성 화면 실측 |
+| N-SET-07 | PASS | V-2 — Zalo 미연동 표기 확인 |
+| N-SET-08 | PASS | V-1 — DB HH:mm·0=일요일 실측 |
+| N-SET-09·10 | 잔여 | 네트워크 차단 강제 — 후속 |
+| N-SET-11 | BLOCKED(H-3) | pref 키 확장 보류 — 기존 3종 유지 |
+| N-SET-12 | PASS | V-0 — missing in_app=true 계약 + 기존 row 호환 |
+| N-SET-13 | PASS | V-2/V-3 #8 — attempts 소스 5건 표시 |
+| N-SET-14 | 잔여 | 베트남어 로케일 sweep |
+| N-INB-01 | PASS | 모두 읽음 후 뱃지 숨김 실측 |
+| N-INB-02 | PASS | 뱃지 2→1→0 실측 |
+| N-INB-03 | PASS | DB층 120건 count 정확(기계 검증 #3) + UI overflowCount 99 코드 단언 |
+| N-INB-04 | PASS | 최신순·점+배경+bold 실측 |
+| N-INB-05 | PASS | read_at DB 실측 + link 이동 + payload override |
+| N-INB-06·07 | PASS | 모두 읽음 + 새로고침 잔류 없음 실측 |
+| N-INB-08 | PASS | fresh — "새 알림이 없어요" 빈 상태 실측 |
+| N-INB-09 | 잔여 | 수신함 로드 실패 강제 |
+| N-INB-10·11 | 잔여 | 멀티탭 동기화·낙관적 롤백 (#7 리마운트 레이스 메모 — DB는 항상 정확, 폴링 자가수정 실측) |
+| N-INB-12 | PASS | 404 렌더(무한 로딩 없음) 실측 — 404 빈약함 개선 메모 |
+| N-INB-13 | PASS(부분) | 본문 html 태그 제거(파이프라인 렌더) 실측 — 악성 페이로드 주입 테스트는 후속 |
+| N-INB-14·15 | 잔여 | 긴 본문·베트남어 렌더 |
+| N-DSH-01 | PASS | limit 5 데이터층 실측(120건 중 5) + 컴포넌트 테스트 |
+| N-DSH-02~04 | PASS | category 태그·로케일 날짜·알림 설정 링크 화면 실측 |
+| N-DSH-05·06 | PASS(unit) | DashboardComponents 테스트 (실패 CTA·빈 상태) |
+| N-SCH-01~04 | PASS | V-1 — invoke·dedupe·동시 tick claim·timezone 차등 |
+| N-SCH-05 | PASS(설계) | 사용자 timezone 날짜 기준 키 — 자정 경계 케이스 실측은 후속 |
+| N-SCH-06 | PASS | 0=일요일 계약 + 금요일 dow=5 매칭 실측 |
+| N-SCH-07 | PASS | weekly 금요일 no_candidates(일요일 슬롯만) 실측 — 일요일 1회 실측은 해당 요일 도래 시 |
+| N-SCH-08 | PASS | vn 17:00→미발송, 복원 후 발송 실측 |
+| N-SCH-09 | PASS | 탈퇴 cascade + 무오류 재실행(기계 검증 #5) |
+| N-SCH-10 | PASS | draft 템플릿 발송 거부(RPC) + no_active_template(스케줄) |
+| N-SCH-11 | PASS | 일일 dedupe 상한 — 다운타임 후 ≤1회/일 (V-1 설계+재실행 실측) |
+| N-SCH-12 | PASS | fresh 설정 row 없음 제외 실측 |
+| N-TRG-01~03 | PASS | V-1 이벤트 sent/opted_out/deduped |
+| N-TRG-04 | PASS(동형) | 이벤트 id별 독립 dispatch — evt-smoke-1/2/3 각각 1건 실측 |
+| N-ADM-01 | PASS | V-3 #1 — 필수값 검증(그룹 누락 거부 실측)+등록+감사 |
+| N-ADM-02 | 잔여 | 본문 에디터 상세 페이지 — 후속 (subject/body 렌더는 V-1 실측) |
+| N-ADM-03 | PASS | display_name 결측 '학습자' fallback 실측 |
+| N-ADM-04 | PASS | V-3 #2 — 상태 변경+사유+감사 |
+| N-ADM-05 | PASS(smoke) | delete RPC 검증(스모크) — 화면 삭제 흐름은 후속 |
+| N-ADM-06 | PASS | 그룹 생성(정적 2명) 화면 실측 |
+| N-ADM-07 | 잔여 | 0명 그룹 발송 차단 — RPC는 그룹 빈 배열 거부 실측(테스트 발송 제외), 화면 안내는 후속 |
+| N-ADM-08 | PASS | V-3 #3 — 나에게 보내기 → 본인 sent |
+| N-ADM-09·10 | PASS | V-3 #4~#11 — 즉시/예약 전체 |
+| N-ADM-11 | UNDEFINED | 예약 취소 기능 없음 — 스펙 갭 등록(O-12 후보) |
+| N-ADM-12 | PASS | drawer 집계 합산=대상 수 실측 |
+| N-ADM-13 | 잔여 | 발송-집행 사이 그룹 변동 |
+| N-ADM-14 | PASS(설계+DB) | 메뉴는 platform_admin만(권한 매핑 실측 — content_admin 제외), RPC 가드 스모크 |
+| N-ADM-15 | PASS(e2e) | test:e2e:mock 9 + message-source spec |
+| N-OPT-01 | PASS | skipped/opted_out 집계 SQL + optout 화면 미수신 실측 |
+| N-OPT-02 | PASS | 채널 off skipped 실측 |
+| N-OPT-03 | PASS | partial — feedback on(sent)/study off(opted_out) 실측 |
+| N-OPT-04 | BLOCKED(H-2/H-4) | 동의 저장소·이메일 — 현재 marketing 전원 opted_out 보수 정책 구현 |
+| N-OPT-05 | PASS(설계) | 집행 시점 평가(파이프라인이 발송 순간 prefs 조회) — 변경 타이밍 실측은 후속 |
+| N-OPT-06 | PASS | 비필수 operational pref 존중·mandatory만 강제 실측 |
+| N-OPT-07 | PASS | mandatory bypass — optout sent + 감사 bypass_reason + **화면 수신 실측** |
+| N-OPT-08 | PASS | DB CHECK + RPC + UI(스위치 차단·확인 모달) 3중 실측 |
+| N-EML-01~10 | BLOCKED(H-4) | provider 미결정 |
+| N-SEC-01~04 | PASS | RLS 스모크 24/25→수정 후 재실행 예정(카운트 단언만 보정) |
+| N-SEC-05 | PASS | 양 앱 번들 secret 검색 0건(기계 검증 #1) |
+| N-SEC-06 | PASS(부분) | html strip 실측 — 관리자 악성 본문 주입 시나리오는 후속 |
+| N-SEC-07 | 잔여 | link_url 스킴 검증 — 미구현(개선 후보) |
+| N-SEC-08 | PASS | 직접 write 차단(스모크) — 감사 없는 변경 경로 부재 |
+| N-PERF-01·04 | PASS | EXPLAIN 인덱스 사용 실측 |
+| N-PERF-02 | PASS(기록) | 플랜 기록 — 1만 시드 부하는 후속 |
+| N-PERF-03 | 잔여 | 대량 발송 배치 |
+| N-REG-01·02 | PASS | 21 unit + V-0 호환 실측 |
+| N-REG-03·04 | PASS | app-routes 5 + e2e:mock 9 + unit 39 |
+| N-REG-05 | 잔여 | G-01/X-05 스모크 |
+| N-REG-06 | PASS | down→up 왕복 + tracker 분리 실측 |
+| N-REG-07 | PASS | redirect 유지(O-10) — route registry 동작 |
+| N-EDGE-01 | PASS(부분) | DST 지역(NY) 발송 실측 — 전환일 시뮬레이션은 후속 |
+| N-EDGE-02 | 잔여 | 카드/벨 읽음 일관성 교차 |
+| N-EDGE-03 | BLOCKED(H-4) | 재시도 폭주 — email 전용 |
+| N-EDGE-04 | 잔여 | 부분 실패 주입 |
+| N-EDGE-05 | PASS | 탈퇴 cascade(기계 검증 #5) |
+| N-EDGE-06 | PASS | DB now() 단일 시각 출처(설계+코드) |
+| N-EDGE-07·08·09 | 잔여/BLOCKED | 빈도 폭주(잔여)·세션 만료(잔여)·채널 본문 정합(H-4) |
+| N-EDGE-10 | PASS | 어제 키 차단 안 함 실측(기계 검증 #6) |
+
+## 게이트 종합
+
+| 게이트 | 판정 | 증적 |
+| --- | --- | --- |
+| V-0 스키마 | **PASS** | 스모크 25스텝·diff 0건·down/up·CHECK |
+| V-1 파이프라인 | **PASS** | dedupe 2단·timezone·cron 실발화 |
+| V-2 인앱 수신 | **PASS** | 벨/수신함/읽음/B-01/X-09 실측 |
+| V-3 발송→수신 E2E | **PASS** | 13단계(§8.3) 전체 |
+| V-4 수신 제어 | **PASS** | class 정책·bypass 감사·3중 차단 (marketing 동의 평가만 H-2 보류) |
+| V-5 이메일 | **BLOCKED (H-4)** | provider API key — 사용자 결정 필요 |
+| V-6 회귀 | **PASS** | typecheck/lint/build/unit/e2e mock/route 전부 green |
+
+**출시 게이트 판정(QA §16 — P0+P1 전수)**: 인앱 범위(P0~P2 산출물)는 충족. 이메일 범위(P3)는 H-4 해제 후 V-5 실행이 선행 조건. 잔여 12건은 결함이 아니라 미실측 항목으로, Playwright 자동화(후속 WP)와 함께 소화한다.

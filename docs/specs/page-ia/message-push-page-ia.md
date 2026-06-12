@@ -164,3 +164,10 @@
 
 - 예약 발송 시간대와 과발송 제한 정책 미정
 
+## 15. 2026-06-12 알림 기능 supabase 연동
+
+- 데이터 소스 분기: `VITE_MESSAGE_SOURCE`로 `mock`↔`supabase`를 전환합니다(`src/features/message/api/message-data-source.ts`). mock 모드는 기존 시드 동작을 유지합니다.
+- **push 채널은 "준비 중"**: provider 미연동으로 supabase 모드에서는 발송 액션(나에게 보내기/즉시 실행/발송 실행/예약 발송)이 비활성화되고 "푸시 발송 준비 중" 안내를 노출합니다. `push`를 `in_app`으로 재해석하지 않으며(계약 `notification-contract.md`(docs/specs) §1), 인앱 채널은 신규 `/messages/in-app`(`docs/specs/page-ia/message-inapp-page-ia.md`)이 담당합니다.
+- 템플릿 CRUD는 supabase 모드에서도 가능하며 admin RPC 단일 경로(`admin_save_notification_template`/`admin_set_notification_template_status`/`admin_delete_notification_template`)를 사용합니다. 모든 쓰기는 **사유 필수**, 감사 로그는 `Target Type=Notification`, `Target ID={row uuid}`(액션 사전: `docs/specs/admin-action-log.md`).
+- supabase 전용 폼 필드: `template_key`(필수), 분류 `class`(4종 — 필수), `mandatory`(marketing 저장 차단 + 확인 모달), `category`, `link_url`, 사유 입력. 테이블은 `notification_templates`(channel='push').
+
