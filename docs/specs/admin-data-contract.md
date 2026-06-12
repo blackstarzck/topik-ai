@@ -427,3 +427,12 @@
 - 감사: 수신·적재 시 `question_received` 액션 기록(공급 연동 시 확정 — §12.3).
 - 추진 경로: 공급 계약(엔드포인트/페이로드/인증/델타 규칙)은 D-11 재작성 요청 문서("문항 공급(인바운드) API 계약 요청")로 추진한다.
 - 인터림: 공급 개시 전까지 P2 백필 466행이 초기 코퍼스다(전 행 `service_status='internal_test'`).
+
+## 13. 알림(Notification) 데이터 계약 (2026-06-12 신설)
+
+> 단일 SoT: **`docs/specs/notification-contract.md`** — 채널 4종(`in_app`/`email`/`push`/`zalo`), class 4종(`transactional`/`operational`/`learning`/`marketing` + mandatory 규칙), template_key 7종, dispatch/attempt status enum, dedupe_key 2단 형식. 본 절은 색인이다.
+
+- 엔티티/테이블 (소유: 이 repo, tracker `admin_schema_migrations`, 디렉터리 `supabase/migrations-admin/`): `notification_templates`, `notification_groups`, `notification_dispatches`, `notification_delivery_attempts`. RPC: `admin_send_notification`.
+- v13 소유 연관 객체: `user_notifications`(인앱 수신함), `profiles.notification_prefs`, `notification_settings`. `notification_log`는 deprecated(발송 이력 SoT 아님 — O-9). 공유 객체(attempts의 v13 read 등)는 `docs/architecture/shared-supabase-schema-ownership.md`를 따른다.
+- 발송 이력은 dispatch(발송 실행)–attempt(수신자×채널) 2계층이 SoT다. opt-out 제외는 `skipped`/`opted_out`으로 집계한다(미기록 금지).
+- 기존 message 기능(`mail`/`push` 채널 UI)은 channel 계약상 `email`/`push`로 매핑하며, `push`를 `in_app`으로 재해석하지 않는다(인앱은 별도 1급 채널).

@@ -83,6 +83,7 @@
 ### `docs/specs`
 - `topik-ai-service-api-reference.md`
 - `admin-data-contract.md`
+- `notification-contract.md` — 알림 채널/class/template_key/status/dedupe 단일 계약 (2026-06-12)
 - `admin-page-gap-register.md`
 - `admin-page-ia-change-log.md`
 - `admin-page-tables.md`
