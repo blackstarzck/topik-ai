@@ -116,6 +116,12 @@ const menuConfig: MenuNode[] = [
         permissionKeys: ['message.push.manage']
       },
       {
+        key: '/messages/in-app',
+        label: adminMenuLabels.messagesInApp,
+        to: '/messages/in-app?tab=auto',
+        permissionKeys: ['message.inapp.manage']
+      },
+      {
         key: '/messages/groups',
         label: adminMenuLabels.messagesGroups,
         to: '/messages/groups',
@@ -395,6 +401,9 @@ function resolveSelectedKey(pathname: string): string {
   }
   if (pathname.startsWith('/messages/push')) {
     return '/messages/push';
+  }
+  if (pathname.startsWith('/messages/in-app')) {
+    return '/messages/in-app';
   }
   if (pathname.startsWith('/messages/groups')) {
     return '/messages/groups';

@@ -17,6 +17,7 @@ import type { Dayjs } from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
+import { messageDataSource } from '../api/message-data-source';
 import {
   deleteMessageTemplateSafe,
   fetchChannelSnapshotSafe,
@@ -113,6 +114,9 @@ export function MessageChannelPage({
   channel
 }: MessageChannelPageProps): JSX.Element {
   const meta = useMemo(() => getMessageChannelMeta(channel), [channel]);
+  const isSupabaseSource = messageDataSource === 'supabase';
+  // 푸시 provider 미연동(contract §1) — supabase 모드에서 발송 액션만 봉인.
+  const isSendBlocked = isSupabaseSource && channel === 'push';
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -315,11 +319,11 @@ export function MessageChannelPage({
       nextSearchParams.set('tab', template.mode);
 
       navigate({
-        pathname: `/messages/${channel}/create/${template.id}`,
+        pathname: `${meta.basePath}/create/${template.id}`,
         search: `?${nextSearchParams.toString()}`
       });
     },
-    [channel, navigate, searchParams]
+    [meta.basePath, navigate, searchParams]
   );
 
   const openEditModal = useCallback(
@@ -331,11 +335,20 @@ export function MessageChannelPage({
         subject: template.subject,
         targetGroupIds: template.targetGroupIds,
         status: template.status,
-        triggerLabel: template.triggerLabel
+        triggerLabel: template.triggerLabel,
+        ...(isSupabaseSource
+          ? {
+              templateKey: template.templateKey,
+              templateClass: template.templateClass,
+              mandatory: template.mandatory ?? false,
+              linkUrl: template.linkUrl ?? '',
+              reason: ''
+            }
+          : {})
       });
       setEditorState({ kind: 'edit', template });
     },
-    [templateForm]
+    [isSupabaseSource, templateForm]
   );
   const openPreviewModal = useCallback((template: MessageTemplate) => {
     setPreviewTemplate(template);
@@ -430,7 +443,7 @@ export function MessageChannelPage({
       }
 
       if (dangerState.type === 'delete') {
-        const result = await deleteMessageTemplateSafe(dangerState.template.id);
+        const result = await deleteMessageTemplateSafe(dangerState.template.id, reason);
 
         if (!result.ok || !result.data) {
           if (!result.ok) {
@@ -462,7 +475,8 @@ export function MessageChannelPage({
       if (dangerState.type === 'toggle') {
         const result = await toggleMessageTemplateSafe({
           templateId: dangerState.template.id,
-          nextStatus: dangerState.nextStatus
+          nextStatus: dangerState.nextStatus,
+          reason
         });
 
         if (!result.ok || !result.data) {
@@ -527,6 +541,44 @@ export function MessageChannelPage({
 
     const values = await testForm.validateFields();
 
+    if (isSupabaseSource) {
+      // admin_send_notification p_target_type='test' — 그룹 없이 본인 대상 실행 생성.
+      const result = await sendMessageTemplateSafe({
+        templateId: testTemplate.id,
+        channel,
+        groupIds: [],
+        actor: 'admin_current',
+        actionType: '즉시 발송',
+        reason: values.reason,
+        targetType: 'test'
+      });
+
+      if (!result.ok || !result.data) {
+        if (!result.ok) {
+          notificationApi.error({
+            message: `${meta.title} 나에게 보내기 실패`,
+            description: result.error.message
+          });
+        }
+        return;
+      }
+
+      notificationApi.success({
+        message: `${meta.title} 나에게 보내기 실행 생성 완료`,
+        description: (
+          <Space direction="vertical">
+            <Text>대상 유형: {getTargetTypeLabel('Message')}</Text>
+            <Text>대상 ID: {result.data.id}</Text>
+            <Text>사유/근거: {values.reason}</Text>
+            <Text>전달은 발송 파이프라인이 처리합니다. 발송 이력에서 상태를 확인하세요.</Text>
+            <AuditLogLink targetType="Message" targetId={result.data.id} />
+          </Space>
+        )
+      });
+      setTestTemplate(null);
+      return;
+    }
+
     notificationApi.success({
       message: `${meta.title} 나에게 보내기 완료`,
       description: (
@@ -540,7 +592,7 @@ export function MessageChannelPage({
       )
     });
     setTestTemplate(null);
-  }, [meta.title, notificationApi, testForm, testTemplate]);
+  }, [channel, isSupabaseSource, meta.title, notificationApi, testForm, testTemplate]);
 
   const openLiveSendModal = useCallback(
     (template: MessageTemplate) => {
@@ -570,7 +622,9 @@ export function MessageChannelPage({
       scheduledAt:
         values.actionType === '예약 발송'
           ? values.scheduledAt?.format(DATE_TIME_FORMAT)
-          : undefined
+          : undefined,
+      reason: values.reason,
+      targetType: 'group'
     });
 
     if (!result.ok || !result.data) {
@@ -612,6 +666,7 @@ export function MessageChannelPage({
         {
           key: `test-${template.id}`,
           label: '나에게 보내기',
+          disabled: isSendBlocked,
           onClick: () => openTestSendModal(template)
         }
       ];
@@ -622,6 +677,7 @@ export function MessageChannelPage({
           {
             key: `send-${template.id}`,
             label: '즉시 실행',
+            disabled: isSendBlocked,
             onClick: () => openLiveSendModal(template)
           },
           {
@@ -638,6 +694,7 @@ export function MessageChannelPage({
         {
           key: `send-${template.id}`,
           label: '즉시/예약 발송',
+          disabled: isSendBlocked,
           onClick: () => openLiveSendModal(template)
         },
         {
@@ -648,7 +705,7 @@ export function MessageChannelPage({
         }
       ];
     },
-    [activeMode, openEditModal, openLiveSendModal, openTestSendModal]
+    [activeMode, isSendBlocked, openEditModal, openLiveSendModal, openTestSendModal]
   );
 
   const columns = useMemo<TableColumnsType<MessageTemplate>>(
@@ -813,6 +870,16 @@ export function MessageChannelPage({
     <div>
       {notificationContextHolder}
       <PageTitle title={meta.title} />
+
+      {isSendBlocked ? (
+        <Alert
+          type="warning"
+          showIcon
+          style={{ marginBottom: 12 }}
+          message="푸시 발송 준비 중"
+          description="푸시 provider 미연동으로 발송 실행과 나에게 보내기가 비활성화되어 있습니다. 템플릿 등록/수정/삭제는 가능합니다."
+        />
+      ) : null}
 
       {loadState.status === 'error' ? (
         <Alert

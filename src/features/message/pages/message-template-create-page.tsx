@@ -1,4 +1,4 @@
-import { Alert, Button, Form, Space } from 'antd';
+import { Alert, Button, Form, Input, Space } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   useLocation,
@@ -7,6 +7,7 @@ import {
   useSearchParams
 } from 'react-router-dom';
 
+import { messageDataSource } from '../api/message-data-source';
 import {
   getMessageTemplateSafe,
   saveMessageTemplateSafe
@@ -38,10 +39,11 @@ export default function MessageTemplateCreatePage({
   const [template, setTemplate] = useState<MessageTemplate | null>(null);
   const [isLoadingTemplate, setIsLoadingTemplate] = useState(Boolean(templateId));
   const [loadErrorMessage, setLoadErrorMessage] = useState('');
-  const [contentForm] = Form.useForm<TemplateContentFormValues>();
+  const [contentForm] = Form.useForm<TemplateContentFormValues & { reason?: string }>();
   const activeMode = template?.mode ?? fallbackMode;
+  const isSupabaseSource = messageDataSource === 'supabase';
 
-  const listPath = channel === 'mail' ? '/messages/mail' : '/messages/push';
+  const listPath = meta.basePath;
   const listSearch = useMemo(() => {
     const nextSearchParams = new URLSearchParams(location.search);
 
@@ -102,7 +104,9 @@ export default function MessageTemplateCreatePage({
       return;
     }
 
-    const values = (await contentForm.validateFields()) as TemplateContentFormValues;
+    const values = (await contentForm.validateFields()) as TemplateContentFormValues & {
+      reason?: string;
+    };
     const result = await saveMessageTemplateSafe({
       ...template,
       ...values,
@@ -163,6 +167,15 @@ export default function MessageTemplateCreatePage({
       >
           {template ? (
             <Form form={contentForm} className="message-template-content-form">
+              {isSupabaseSource ? (
+                <Form.Item
+                  label="사유/근거"
+                  name="reason"
+                  rules={[{ required: true, message: '본문 저장 사유를 입력하세요.' }]}
+                >
+                  <Input.TextArea rows={2} placeholder="예: 공지 본문 문구 갱신" />
+                </Form.Item>
+              ) : null}
               <Form.Item
                 name="bodyHtml"
                 rules={[{ required: true, message: '본문을 입력하세요.' }]}

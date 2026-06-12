@@ -114,6 +114,13 @@ export const permissionCatalog: PermissionDefinition[] = [
     risk: 'medium'
   },
   {
+    key: 'message.inapp.manage',
+    name: '인앱 알림 관리',
+    module: '메시지',
+    scopeDescription: '인앱 알림 템플릿이나 자동 발송을 관리합니다.',
+    risk: 'medium'
+  },
+  {
     key: 'message.groups.manage',
     name: '대상 그룹 관리',
     module: '메시지',
@@ -327,6 +334,7 @@ export const roleCatalog: RoleDefinition[] = [
       'community.reports.resolve',
       'message.mail.manage',
       'message.push.manage',
+      'message.inapp.manage',
       'message.groups.manage',
       'message.history.read',
       'operation.notices.manage',

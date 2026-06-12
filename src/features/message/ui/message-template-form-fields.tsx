@@ -1,12 +1,15 @@
-import { Descriptions, Form, Input, Select } from 'antd';
+import { Descriptions, Form, Input, Modal, Select, Switch, Typography } from 'antd';
 import type { DescriptionsProps } from 'antd';
+import { useEffect } from 'react';
 import type { Editor as TinyMceEditor } from 'tinymce';
 
+import { messageDataSource } from '../api/message-data-source';
 import type {
   MessageChannel,
   MessageGroup,
   MessageTemplateMode,
-  MessageTemplateStatus
+  MessageTemplateStatus,
+  NotificationTemplateClass
 } from '../model/types';
 import {
   DEFAULT_TINYMCE_PLUGINS,
@@ -24,6 +27,12 @@ export type TemplateFormValues = {
   triggerLabel?: string;
   bodyHtml: string;
   bodyJson: string;
+  // notification-contract.md 계약 필드 — supabase 모드 폼에서만 노출.
+  templateKey?: string;
+  templateClass?: NotificationTemplateClass;
+  mandatory?: boolean;
+  linkUrl?: string;
+  reason?: string;
 };
 
 export type TemplateMetaFormValues = Omit<TemplateFormValues, 'bodyHtml' | 'bodyJson'>;
@@ -32,11 +41,32 @@ export type TemplateContentFormValues = Pick<TemplateFormValues, 'bodyHtml'>;
 
 type MessageChannelMeta = {
   title: string;
+  basePath: string;
   subjectLabel: string;
   recipientLabel: string;
   recipientPlaceholder: string;
   categories: string[];
 };
+
+// notification_templates.category CHECK — supabase 모드 공통 카테고리.
+export const notificationCategoryOptions = [
+  { label: '학습(study)', value: 'study' },
+  { label: '시험 일정(exam_schedule)', value: 'exam_schedule' },
+  { label: '공지(notice)', value: 'notice' },
+  { label: '이벤트(event)', value: 'event' },
+  { label: '마케팅(marketing)', value: 'marketing' }
+] as const;
+
+// notification-contract.md §2 — class 4종.
+export const notificationClassOptions: Array<{
+  label: string;
+  value: NotificationTemplateClass;
+}> = [
+  { label: '필수(transactional)', value: 'transactional' },
+  { label: '운영(operational)', value: 'operational' },
+  { label: '학습(learning)', value: 'learning' },
+  { label: '마케팅(marketing)', value: 'marketing' }
+];
 
 type MessageTemplateFormFieldsProps = {
   channel: MessageChannel;
@@ -138,6 +168,7 @@ export function getMessageChannelMeta(channel: MessageChannel): MessageChannelMe
   if (channel === 'mail') {
     return {
       title: '메일',
+      basePath: '/messages/mail',
       subjectLabel: '메일 제목',
       recipientLabel: '테스트 이메일',
       recipientPlaceholder: 'admin@example.com',
@@ -145,8 +176,20 @@ export function getMessageChannelMeta(channel: MessageChannel): MessageChannelMe
     };
   }
 
+  if (channel === 'in_app') {
+    return {
+      title: '인앱 알림',
+      basePath: '/messages/in-app',
+      subjectLabel: '알림 제목',
+      recipientLabel: '수신 사용자 ID',
+      recipientPlaceholder: 'user-uuid-0000',
+      categories: ['운영', '결제', '커뮤니티', '마케팅']
+    };
+  }
+
   return {
     title: '푸시',
+    basePath: '/messages/push',
     subjectLabel: '푸시 제목',
     recipientLabel: '테스트 디바이스 토큰',
     recipientPlaceholder: 'device-token-demo-001',
@@ -159,7 +202,7 @@ export function createTemplateMetaDefaults(
   mode: MessageTemplateMode,
   groups: MessageGroup[]
 ): TemplateMetaFormValues {
-  return {
+  const baseDefaults: TemplateMetaFormValues = {
     category: getMessageChannelMeta(channel).categories[0],
     name: '',
     summary: '',
@@ -167,6 +210,20 @@ export function createTemplateMetaDefaults(
     targetGroupIds: groups.slice(0, 1).map((group) => group.id),
     status: mode === 'auto' ? '활성' : '초안',
     triggerLabel: mode === 'auto' ? '이벤트 발생 직후' : undefined
+  };
+
+  if (messageDataSource !== 'supabase') {
+    return baseDefaults;
+  }
+
+  return {
+    ...baseDefaults,
+    category: notificationCategoryOptions[0].value,
+    templateKey: '',
+    templateClass: 'operational',
+    mandatory: false,
+    linkUrl: '',
+    reason: ''
   };
 }
 
@@ -216,6 +273,42 @@ export function createMessageBodyJson(bodyHtml: string): string {
   );
 }
 
+type MandatoryToggleProps = {
+  value?: boolean;
+  onChange?: (next: boolean) => void;
+  disabled?: boolean;
+};
+
+// mandatory ON = 수신 선호(pref) 우회 발송 — 확인 단계 + 감사 기록 고지(contract §2).
+function MandatoryToggle({ value, onChange, disabled }: MandatoryToggleProps): JSX.Element {
+  const handleChange = (next: boolean): void => {
+    if (!next) {
+      onChange?.(false);
+      return;
+    }
+
+    Modal.confirm({
+      title: '강제 발송(mandatory) 설정',
+      content:
+        '수신 선호(알림 설정) 우회가 발생합니다. 우회 발송 사유는 감사 로그에 기록됩니다. 계속하시겠습니까?',
+      okText: '설정',
+      cancelText: '취소',
+      onOk: () => onChange?.(true)
+    });
+  };
+
+  return (
+    <div>
+      <Switch checked={Boolean(value)} disabled={disabled} onChange={handleChange} />
+      {disabled ? (
+        <Typography.Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
+          마케팅(marketing) 분류는 강제 발송을 설정할 수 없습니다.
+        </Typography.Text>
+      ) : null}
+    </div>
+  );
+}
+
 export function MessageTemplateFormFields({
   channel,
   mode,
@@ -227,9 +320,71 @@ export function MessageTemplateFormFields({
 }: MessageTemplateFormFieldsProps): JSX.Element {
   const meta = getMessageChannelMeta(channel);
   const isDescriptions = variant === 'descriptions';
+  const isSupabaseSource = messageDataSource === 'supabase';
+  const form = Form.useFormInstance();
+  const watchedTemplateClass = Form.useWatch<NotificationTemplateClass | undefined>(
+    'templateClass',
+    form
+  );
+  const isMarketingClass = watchedTemplateClass === 'marketing';
+
+  // marketing 전환 시 mandatory 강제 해제 — DB CHECK(marketing+mandatory 차단) 선반영.
+  useEffect(() => {
+    if (isSupabaseSource && isMarketingClass && form?.getFieldValue('mandatory')) {
+      form.setFieldValue('mandatory', false);
+    }
+  }, [form, isMarketingClass, isSupabaseSource]);
 
   if (isDescriptions) {
     const descriptionItems: DescriptionsProps['items'] = [
+      ...(isSupabaseSource
+        ? ([
+            {
+              key: 'templateKey',
+              label: '템플릿 키',
+              children: (
+                <Form.Item
+                  name="templateKey"
+                  style={{ marginBottom: 0 }}
+                  rules={[{ required: true, message: '템플릿 키를 입력하세요.' }]}
+                >
+                  <Input placeholder="예: notice, exam_schedule" />
+                </Form.Item>
+              )
+            },
+            {
+              key: 'templateClass',
+              label: '분류(class)',
+              children: (
+                <Form.Item
+                  name="templateClass"
+                  style={{ marginBottom: 0 }}
+                  rules={[{ required: true, message: '분류를 선택하세요.' }]}
+                >
+                  <Select options={notificationClassOptions} />
+                </Form.Item>
+              )
+            },
+            {
+              key: 'mandatory',
+              label: '강제 발송',
+              children: (
+                <Form.Item name="mandatory" style={{ marginBottom: 0 }} valuePropName="value">
+                  <MandatoryToggle disabled={isMarketingClass} />
+                </Form.Item>
+              )
+            },
+            {
+              key: 'linkUrl',
+              label: '이동 경로',
+              children: (
+                <Form.Item name="linkUrl" style={{ marginBottom: 0 }}>
+                  <Input placeholder="예: /dashboard (인앱 알림 클릭 이동 경로)" />
+                </Form.Item>
+              )
+            }
+          ] satisfies DescriptionsProps['items'])
+        : []),
       {
         key: 'category',
         label: '카테고리',
@@ -240,10 +395,14 @@ export function MessageTemplateFormFields({
             rules={[{ required: true, message: '카테고리를 선택하세요.' }]}
           >
             <Select
-              options={meta.categories.map((category) => ({
-                label: category,
-                value: category
-              }))}
+              options={
+                isSupabaseSource
+                  ? [...notificationCategoryOptions]
+                  : meta.categories.map((category) => ({
+                      label: category,
+                      value: category
+                    }))
+              }
             />
           </Form.Item>
         )
@@ -382,6 +541,24 @@ export function MessageTemplateFormFields({
       });
     }
 
+    if (isSupabaseSource) {
+      // 모든 템플릿 쓰기 RPC는 p_reason 필수 — 저장 모달에 사유를 함께 받는다.
+      descriptionItems.push({
+        key: 'reason',
+        label: '사유/근거',
+        span: 2,
+        children: (
+          <Form.Item
+            name="reason"
+            style={{ marginBottom: 0 }}
+            rules={[{ required: true, message: '저장 사유를 입력하세요.' }]}
+          >
+            <Input.TextArea rows={3} placeholder="예: 신규 공지 템플릿 등록" />
+          </Form.Item>
+        )
+      });
+    }
+
     return (
       <Descriptions
         bordered
@@ -396,7 +573,8 @@ export function MessageTemplateFormFields({
           'targetGroupIds',
           ...(mode === 'auto' ? ['triggerLabel'] : []),
           ...(showBodyHtml ? ['bodyHtml'] : []),
-          ...(showBodyHtml && showJsonBody ? ['bodyJson'] : [])
+          ...(showBodyHtml && showJsonBody ? ['bodyJson'] : []),
+          ...(isSupabaseSource ? ['templateKey', 'templateClass', 'reason'] : [])
         ])}
         className="message-template-form-descriptions"
       />

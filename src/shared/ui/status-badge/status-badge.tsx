@@ -22,6 +22,7 @@ const colorMap: Record<string, string> = {
   '대기': 'gold',
   '예정': 'gold',
   '진행 중': 'blue',
+  '실행 중': 'blue',
   '종료': 'default',
   '공개': 'green',
   '비공개': 'default',

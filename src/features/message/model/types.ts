@@ -1,6 +1,13 @@
-export type MessageChannel = 'mail' | 'push';
+export type MessageChannel = 'mail' | 'push' | 'in_app';
 
 export type MessageTemplateMode = 'auto' | 'manual';
+
+// notification-contract.md §2 — supabase 모드 전용 템플릿 분류.
+export type NotificationTemplateClass =
+  | 'transactional'
+  | 'operational'
+  | 'learning'
+  | 'marketing';
 
 export type MessageTemplateStatus = '활성' | '비활성' | '초안';
 
@@ -85,6 +92,11 @@ export type MessageTemplate = {
   lastSentAt?: string;
   updatedAt: string;
   updatedBy: string;
+  // notification-contract.md 계약 필드 — supabase 모드에서만 노출/저장된다.
+  templateKey?: string;
+  templateClass?: NotificationTemplateClass;
+  mandatory?: boolean;
+  linkUrl?: string;
 };
 
 export type MessageGroup = {

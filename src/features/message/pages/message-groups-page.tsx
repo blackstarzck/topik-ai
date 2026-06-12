@@ -26,6 +26,7 @@ import type { Dayjs } from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
+import { messageDataSource } from '../api/message-data-source';
 import {
   deleteMessageGroupSafe,
   fetchGroupsSafe,
@@ -135,6 +136,8 @@ type GroupFormValues = {
   activityStates: MessageGroupActivityState[];
   staticMembersText: string;
   queryBuilderText: string;
+  // supabase 모드 전용 — RPC p_reason(사유) 필수.
+  reason?: string;
 };
 
 type GroupSavePayload = {
@@ -149,7 +152,10 @@ type GroupSavePayload = {
   filters: MessageGroup['filters'];
   queryBuilderText?: string;
   queryBuilderConfig?: MessageGroupQueryGroup;
+  reason?: string;
 };
+
+const isSupabaseSource = messageDataSource === 'supabase';
 
 const messageGroupDefinitionTypeFilterValues = messageGroupDefinitionTypeOptions.map(
   (option) => option.value
@@ -858,7 +864,8 @@ function buildDefaultFormValues(): GroupFormValues {
     subscriptionStates: defaultFilters.subscriptionStates,
     activityStates: defaultFilters.activityStates,
     staticMembersText: '',
-    queryBuilderText: ''
+    queryBuilderText: '',
+    reason: ''
   };
 }
 
@@ -881,7 +888,8 @@ function toFormValues(group: MessageGroup): GroupFormValues {
     subscriptionStates: group.filters.subscriptionStates,
     activityStates: group.filters.activityStates,
     staticMembersText: group.staticMembers.join('\n'),
-    queryBuilderText: group.queryBuilderText ?? ''
+    queryBuilderText: group.queryBuilderText ?? '',
+    reason: ''
   };
 }
 
@@ -932,7 +940,8 @@ function buildPayload(
         : simpleFilters,
     queryBuilderText:
       resolvedQueryBuilderConfig ? buildSqlPreview(resolvedQueryBuilderConfig) : undefined,
-    queryBuilderConfig: resolvedQueryBuilderConfig
+    queryBuilderConfig: resolvedQueryBuilderConfig,
+    reason: values.reason
   };
 }
 
@@ -1251,6 +1260,14 @@ export default function MessageGroupsPage(): JSX.Element {
       return;
     }
 
+    if (result.data === null) {
+      // supabase 모드 조건 기반 그룹 — 인원 산정 파이프라인 미연동(P2).
+      notificationApi.info({
+        message: '조건 기반 그룹 인원 미리보기 미지원 (P2)',
+        description: '정적 그룹은 명단 수가 즉시 계산됩니다. 조건 기반 그룹 인원 산정은 발송 파이프라인 연동 후 제공됩니다.'
+      });
+    }
+
     setPreviewCount(result.data);
   }, [
     builderMode,
@@ -1375,7 +1392,7 @@ export default function MessageGroupsPage(): JSX.Element {
         return;
       }
 
-      const result = await deleteMessageGroupSafe(deleteTarget.id);
+      const result = await deleteMessageGroupSafe(deleteTarget.id, reason);
       if (!result.ok || !result.data) {
         if (!result.ok) {
           notificationApi.error({
@@ -1944,6 +1961,21 @@ export default function MessageGroupsPage(): JSX.Element {
                 )}
               </>
             )}
+
+            {isSupabaseSource ? (
+              <div className="message-groups-editor-row">
+                <div className="message-groups-editor-label">사유/근거</div>
+                <div className="message-groups-editor-content">
+                  <Form.Item
+                    name="reason"
+                    rules={[{ required: true, message: '저장 사유를 입력하세요.' }]}
+                    style={{ marginBottom: 0 }}
+                  >
+                    <Input.TextArea rows={3} placeholder="예: 공지 발송 대상 그룹 신설" />
+                  </Form.Item>
+                </div>
+              </div>
+            ) : null}
           </div>
         </Form>
 

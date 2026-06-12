@@ -4,11 +4,11 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const ROUTER_PATH = path.join(ROOT_DIR, 'src', 'app', 'router', 'app-router.tsx');
+const ROUTES_PATH = path.join(ROOT_DIR, 'src', 'app', 'router', 'routes.ts');
 const PAGE_IA_DIR = path.join(ROOT_DIR, 'docs', 'specs', 'page-ia');
 
-const ROUTE_ENTRY_PATTERN = /<Route\s+path="([^"]+)"[\s\S]*?element=\{([\s\S]*?)\}\s*\/>/g;
-const EXCLUDED_ROUTES = new Set(['/', '*']);
+const ROUTE_ENTRY_PATTERN =
+  /\{\s*kind:\s*'(?<kind>page|placeholder|redirect)',\s*path:\s*'(?<routePath>[^']+)'/g;
 const DISALLOWED_SECOND_SEGMENTS = new Set([
   'api',
   'architecture',
@@ -50,19 +50,19 @@ function toPosix(value) {
 }
 
 async function main() {
-  const routerSource = await fs.readFile(ROUTER_PATH, 'utf8');
+  const routesSource = await fs.readFile(ROUTES_PATH, 'utf8');
   const canonicalRoutes = new Set();
   const redirectRoutes = new Set();
 
-  for (const match of routerSource.matchAll(ROUTE_ENTRY_PATTERN)) {
-    const routePath = match[1];
-    const routeElement = match[2];
+  for (const match of routesSource.matchAll(ROUTE_ENTRY_PATTERN)) {
+    const routePath = match.groups?.routePath;
+    const routeKind = match.groups?.kind;
 
-    if (EXCLUDED_ROUTES.has(routePath)) {
+    if (!routePath || !routeKind) {
       continue;
     }
 
-    if (routeElement.includes('<Navigate')) {
+    if (routeKind === 'redirect') {
       redirectRoutes.add(routePath);
       continue;
     }

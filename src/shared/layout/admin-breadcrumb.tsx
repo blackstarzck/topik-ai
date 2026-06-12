@@ -110,6 +110,28 @@ export function buildAdminBreadcrumbItems(
     ];
   }
 
+  if (pathname.startsWith('/messages/in-app/create')) {
+    const tab = new URLSearchParams(search).get('tab');
+    return [
+      breadcrumbLinkItem(adminMenuLabels.messages, '/messages/in-app?tab=auto'),
+      breadcrumbLinkItem(
+        adminMenuLabels.messagesInApp,
+        `/messages/in-app${search || '?tab=auto'}`
+      ),
+      breadcrumbTextItem(tab === 'manual' ? '수동 발송' : '자동 발송'),
+      breadcrumbTextItem('등록 상세')
+    ];
+  }
+
+  if (pathname.startsWith('/messages/in-app')) {
+    const tab = new URLSearchParams(search).get('tab');
+    return [
+      breadcrumbLinkItem(adminMenuLabels.messages, '/messages/in-app?tab=auto'),
+      breadcrumbTextItem(adminMenuLabels.messagesInApp),
+      breadcrumbTextItem(tab === 'manual' ? '수동 발송' : '자동 발송')
+    ];
+  }
+
   if (pathname.startsWith('/messages/groups')) {
     return [
       breadcrumbLinkItem(adminMenuLabels.messages, '/messages/mail?tab=auto'),

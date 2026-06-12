@@ -1,4 +1,20 @@
 import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
+import { messageDataSource } from './message-data-source';
+import {
+  deleteNotificationGroup,
+  deleteNotificationTemplate,
+  loadNotificationChannelSnapshot,
+  loadNotificationDispatchAttempts,
+  loadNotificationDispatches,
+  loadNotificationGroup,
+  loadNotificationGroups,
+  loadNotificationTemplate,
+  previewNotificationGroupCount,
+  saveNotificationGroup,
+  saveNotificationTemplate,
+  sendNotification,
+  setNotificationTemplateStatus
+} from './notification-supabase-adapter';
 import { useMessageStore } from '../model/message-store';
 import type {
   ChannelSnapshot,
@@ -25,11 +41,14 @@ export type SaveMessageTemplatePayload = Omit<
   'id' | 'updatedAt' | 'updatedBy' | 'lastSentAt'
 > & {
   id?: string;
+  // supabase 모드 전용 — RPC p_reason(사유) 필수.
+  reason?: string;
 };
 
 export type ToggleMessageTemplatePayload = {
   templateId: string;
   nextStatus: Extract<MessageTemplateStatus, '활성' | '비활성'>;
+  reason?: string;
 };
 
 export type SendMessageTemplatePayload = {
@@ -39,6 +58,9 @@ export type SendMessageTemplatePayload = {
   actor: string;
   actionType: MessageSendActionType;
   scheduledAt?: string;
+  reason?: string;
+  // supabase 모드 전용 — '나에게 보내기'는 'test' (admin_send_notification 계약).
+  targetType?: 'group' | 'test';
 };
 
 export type SaveMessageGroupPayload = {
@@ -53,7 +75,10 @@ export type SaveMessageGroupPayload = {
   filters: MessageGroupFilters;
   queryBuilderText?: string;
   queryBuilderConfig?: MessageGroupQueryGroup;
+  reason?: string;
 };
+
+const isSupabaseSource = messageDataSource === 'supabase';
 
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -85,6 +110,10 @@ async function loadChannelSnapshot(
   channel: MessageChannel,
   signal?: AbortSignal
 ): Promise<ChannelSnapshot> {
+  if (isSupabaseSource) {
+    return loadNotificationChannelSnapshot(channel, signal);
+  }
+
   await sleep(240, signal);
   const state = useMessageStore.getState();
   return {
@@ -94,6 +123,10 @@ async function loadChannelSnapshot(
 }
 
 async function loadGroups(signal?: AbortSignal): Promise<MessageGroup[]> {
+  if (isSupabaseSource) {
+    return loadNotificationGroups(signal);
+  }
+
   await sleep(220, signal);
   return useMessageStore.getState().groups;
 }
@@ -122,6 +155,10 @@ export function getMessageOptionSnapshot(): MessageOptionSources {
 }
 
 async function loadTemplate(templateId: string): Promise<MessageTemplate | null> {
+  if (isSupabaseSource) {
+    return loadNotificationTemplate(templateId);
+  }
+
   await sleep(120);
   return (
     useMessageStore
@@ -134,6 +171,10 @@ async function saveTemplate(
   payload: SaveMessageTemplatePayload,
   signal?: AbortSignal
 ): Promise<MessageTemplate> {
+  if (isSupabaseSource) {
+    return saveNotificationTemplate(payload);
+  }
+
   await sleep(180, signal);
   return useMessageStore.getState().saveTemplate(payload);
 }
@@ -142,14 +183,23 @@ async function toggleTemplate(
   payload: ToggleMessageTemplatePayload,
   signal?: AbortSignal
 ): Promise<MessageTemplate | null> {
+  if (isSupabaseSource) {
+    return setNotificationTemplateStatus(payload);
+  }
+
   await sleep(160, signal);
   return useMessageStore.getState().toggleTemplate(payload);
 }
 
 async function deleteTemplate(
   templateId: string,
+  reason?: string,
   signal?: AbortSignal
 ): Promise<MessageTemplate | null> {
+  if (isSupabaseSource) {
+    return deleteNotificationTemplate(templateId, reason);
+  }
+
   await sleep(160, signal);
   return useMessageStore.getState().deleteTemplate(templateId);
 }
@@ -157,7 +207,11 @@ async function deleteTemplate(
 async function sendTemplate(
   payload: SendMessageTemplatePayload,
   signal?: AbortSignal
-): Promise<MessageHistory | null> {
+): Promise<{ id: string } | null> {
+  if (isSupabaseSource) {
+    return sendNotification(payload);
+  }
+
   await sleep(200, signal);
   return useMessageStore.getState().sendTemplate(payload);
 }
@@ -166,6 +220,10 @@ async function saveGroup(
   payload: SaveMessageGroupPayload,
   signal?: AbortSignal
 ): Promise<MessageGroup> {
+  if (isSupabaseSource) {
+    return saveNotificationGroup(payload);
+  }
+
   await sleep(180, signal);
   return useMessageStore.getState().saveGroup(payload);
 }
@@ -173,7 +231,11 @@ async function saveGroup(
 async function previewGroupCount(
   payload: SaveMessageGroupPayload,
   signal?: AbortSignal
-): Promise<number> {
+): Promise<number | null> {
+  if (isSupabaseSource) {
+    return previewNotificationGroupCount(payload);
+  }
+
   await sleep(120, signal);
   return useMessageStore.getState().previewGroupCount(payload);
 }
@@ -182,14 +244,24 @@ async function recalculateGroup(
   groupId: string,
   signal?: AbortSignal
 ): Promise<MessageGroup | null> {
+  if (isSupabaseSource) {
+    // 산정 파이프라인 미연동(P2) — 쓰기 없이 최신 행만 다시 읽는다.
+    return loadNotificationGroup(groupId);
+  }
+
   await sleep(160, signal);
   return useMessageStore.getState().recalculateGroup(groupId);
 }
 
 async function deleteGroup(
   groupId: string,
+  reason?: string,
   signal?: AbortSignal
 ): Promise<MessageGroup | null> {
+  if (isSupabaseSource) {
+    return deleteNotificationGroup(groupId, reason);
+  }
+
   await sleep(160, signal);
   return useMessageStore.getState().deleteGroup(groupId);
 }
@@ -199,6 +271,10 @@ async function retryHistory(
   actor: string,
   signal?: AbortSignal
 ): Promise<MessageHistory | null> {
+  if (isSupabaseSource) {
+    throw new Error('supabase 모드에서 재시도는 발송 파이프라인이 담당합니다.');
+  }
+
   await sleep(180, signal);
   return useMessageStore.getState().retryHistory(historyId, actor);
 }
@@ -246,9 +322,10 @@ export function toggleMessageTemplateSafe(
 
 export function deleteMessageTemplateSafe(
   templateId: string,
+  reason?: string,
   signal?: AbortSignal
 ) {
-  return toSafeResult(() => deleteTemplate(templateId, signal));
+  return toSafeResult(() => deleteTemplate(templateId, reason, signal));
 }
 
 export function sendMessageTemplateSafe(
@@ -279,8 +356,12 @@ export function recalculateMessageGroupSafe(
   return toSafeResult(() => recalculateGroup(groupId, signal));
 }
 
-export function deleteMessageGroupSafe(groupId: string, signal?: AbortSignal) {
-  return toSafeResult(() => deleteGroup(groupId, signal));
+export function deleteMessageGroupSafe(
+  groupId: string,
+  reason?: string,
+  signal?: AbortSignal
+) {
+  return toSafeResult(() => deleteGroup(groupId, reason, signal));
 }
 
 export function retryMessageHistorySafe(
@@ -289,4 +370,25 @@ export function retryMessageHistorySafe(
   signal?: AbortSignal
 ) {
   return toSafeResult(() => retryHistory(historyId, actor, signal));
+}
+
+// ---------------------------------------------------------------------------
+// 발송 이력 (supabase 모드 전용 — notification_dispatches / delivery_attempts)
+// ---------------------------------------------------------------------------
+
+export function fetchNotificationDispatchesSafe(signal?: AbortSignal) {
+  return toSafeResult(() =>
+    withRetry(() => loadNotificationDispatches(signal), { maxRetries: 1 })
+  );
+}
+
+export function fetchNotificationDispatchAttemptsSafe(
+  dispatchId: string,
+  signal?: AbortSignal
+) {
+  return toSafeResult(() =>
+    withRetry(() => loadNotificationDispatchAttempts(dispatchId, signal), {
+      maxRetries: 1
+    })
+  );
 }

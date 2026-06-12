@@ -12,6 +12,7 @@ export const adminMenuLabels = {
   messages: '메시지',
   messagesMail: '메일',
   messagesPush: '푸시',
+  messagesInApp: '인앱 알림 관리',
   messagesGroups: '대상 그룹',
   messagesHistory: '발송 이력',
   operation: '운영',
