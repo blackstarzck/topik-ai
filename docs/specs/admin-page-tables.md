@@ -343,7 +343,7 @@
 - 컬럼: 문항 번호, 문항 ID, 주제(종합/세부), 유형/난이도, 노출 상태, 태그(활성 태그 수 + `태그 편집` 버튼), 운영 조치, 최근 수정 (구 `검수 상태`·`사용 현황` 컬럼은 재정의 P3에서 제거 완료)
   - `노출 상태` 셀: `service_status` 표시로 전환 완료(재정의 P3). legacy 롤백 소스 행은 물리 컬럼이 없어 `미지정` sentinel로 표시한다.
   - `운영 조치` 컬럼: `노출 가능`, `노출 제외`, `내부 테스트` 버튼 — P4 개방으로 활성(현재 노출 상태와 같은 전환 버튼만 disabled). 확인+사유(필수) -> RPC -> 감사 로그 흐름(`ConfirmAction` + `AuditLogLink`). `available` 전환 모달은 POL-018 ②(운영주의 태그 활성 경고)·③(반복방지 활성 과다 시 `excluded` 권고)을 표시한다. '운영 제외'는 `service_status='excluded'` + 운영주의 태그 값 '운영 제외'로 구분한다(D-6).
-  - `태그 편집` 모달: `Descriptions` 기반 입력 테이블로 대상/활성 태그/부여 사유를 정리하고, tag_master 활성 사전 기반 부여 후보는 별도 2열 선택 패널(좌측 그룹 목록, 우측 체크박스 목록, 하단 선택 chip/초기화)로 제공한다. 활성 태그 목록(부여 memo 표시)+제거(ConfirmAction, 사유 필수), 이미 활성인 태그 비활성, 사유 memo 필수, 선택 그룹 태그 usage_rule 안내를 유지한다. '서비스_노출상태' 그룹은 facade 필터+RPC 가드로 차단(D-6).
+  - `태그 편집` 모달: tag_master 활성 사전 기반 부여 후보는 2열 선택 패널(좌측 그룹 목록, 우측 체크박스 목록, 하단 선택 chip/초기화)로 제공한다. `Descriptions` 입력 테이블은 밀도 문제로 이 모달에서 예외 제거하고, 대상 식별자는 모달 subtitle의 `questionId`로 축소하며, 활성 태그 목록(부여 memo 표시)+제거(ConfirmAction, 사유 필수)는 compact 섹션으로, 사유 memo 필수 textarea는 패널 아래에 둔다. 이미 활성인 태그 비활성, 선택 그룹 태그 usage_rule 안내를 유지한다. '서비스_노출상태' 그룹은 facade 필터+RPC 가드로 차단(D-6).
 - 행 클릭: 별도 동작 없음
 - write 경로: 신규 RPC 단일 경로 — `admin_update_topik_question`(service_status)/`admin_assign_question_tag`/`admin_remove_question_tag`. 직접 테이블 write는 RLS 전면 차단(쓰기 정책 0건 — P4-4 네거티브 검증). 구 "준비 중" 안내 Alert는 P4 개방으로 제거됨.
 - 주요 액션: `노출 가능`, `노출 제외`, `내부 테스트`(감사 `service_status_changed`), `태그 부여`(`tag_assigned`), `태그 제거`(`tag_removed`) — 전부 사유 필수 + `AssessmentQuestion + questionId` 감사 기록

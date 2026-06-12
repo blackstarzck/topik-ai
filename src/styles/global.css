@@ -1333,19 +1333,19 @@ body {
   margin-bottom: 0;
 }
 
-.question-tag-edit-modal__descriptions .ant-descriptions-item-content {
-  width: 100%;
-}
-
-.question-tag-edit-modal__descriptions .ant-descriptions-item-label {
-  width: 96px;
-  min-width: 96px;
-  white-space: nowrap;
-}
-
 .question-tag-edit-modal__body,
 .question-tag-edit-modal__active-tags {
   width: 100%;
+}
+
+.question-tag-edit-modal__title {
+  display: grid;
+  gap: 2px;
+}
+
+.question-tag-edit-modal__title .ant-typography {
+  font-size: 12px;
+  font-weight: 400;
 }
 
 .question-tag-edit-modal__tag-picker-panel {
@@ -1440,6 +1440,45 @@ body {
   flex: 1;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.question-tag-edit-modal__active-tag-panel,
+.question-tag-edit-modal__memo-field {
+  display: grid;
+  gap: 8px;
+}
+
+.question-tag-edit-modal__section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.question-tag-edit-modal__active-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.question-tag-edit-modal__active-tag-item {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 8px;
+}
+
+.question-tag-edit-modal__active-tag-item .ant-typography {
+  min-width: 0;
+}
+
+.question-tag-edit-modal__field-label {
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.question-tag-edit-modal__field-label span {
+  color: #ff4d4f;
 }
 
 .question-tag-edit-modal__actions {

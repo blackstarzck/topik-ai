@@ -10,7 +10,6 @@ import {
   Tag,
   Typography
 } from 'antd';
-import type { DescriptionsProps } from 'antd';
 import { useMemo, useState } from 'react';
 
 import {
@@ -25,9 +24,7 @@ import type {
   TopikWritingQuestionTagRow,
   TopikWritingTagMasterRow
 } from '../model/assessment-question-bank-types';
-import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
-import { AdminFormDescriptions } from '../../../shared/ui/descriptions/admin-form-descriptions';
 
 const { Text } = Typography;
 
@@ -320,81 +317,52 @@ export function QuestionTagEditModal({
       </div>
     );
 
-  const descriptionItems = useMemo<DescriptionsProps['items']>(
-    () => [
-      {
-        key: 'target',
-        label: '대상',
-        children: (
-          <Space direction="vertical" size={2}>
-            <Text>대상 유형: {getTargetTypeLabel('AssessmentQuestion')}</Text>
-            <Text type="secondary">대상 ID: {questionId}</Text>
-          </Space>
-        )
-      },
-      {
-        key: 'activeTags',
-        label: '활성 태그',
-        children:
-          activeTags.length === 0 ? (
-            <Empty
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description="활성 태그가 없습니다."
-            />
-          ) : (
-            <Space
-              direction="vertical"
-              size={8}
-              className="question-tag-edit-modal__active-tags"
-            >
-              {activeTags.map((tag) => {
-                const label = masterByCode[tag.tagCode]?.tagNameKo ?? tag.tagCode;
-                return (
-                  <Space key={tag.tagAssignmentId} size={8} wrap>
-                    <Tag>{label}</Tag>
-                    <Text type="secondary">{tag.memo || '-'}</Text>
-                    <Button
-                      size="small"
-                      danger
-                      icon={<DeleteOutlined />}
-                      aria-label={`태그 제거: ${label}`}
-                      onClick={() => setRemoveTarget(tag)}
-                    >
-                      제거
-                    </Button>
-                  </Space>
-                );
-              })}
-            </Space>
-          )
-      },
-      {
-        key: 'assignMemo',
-        label: '부여 사유',
-        children: (
-          <Input.TextArea
-            rows={3}
-            value={assignMemo}
-            placeholder="태그 부여 사유를 입력해 주세요. (필수 - question_tags.memo로 기록)"
-            aria-label="태그 부여 사유"
-            onChange={(event) => setAssignMemo(event.target.value)}
-          />
-        )
-      }
-    ],
-    [
-      activeTags,
-      assignMemo,
-      masterByCode,
-      questionId
-    ]
+  const activeTagPanel = (
+    <div className="question-tag-edit-modal__active-tag-panel">
+      <div className="question-tag-edit-modal__section-header">
+        <Text strong>현재 활성 태그</Text>
+        <Text type="secondary">{activeTags.length > 0 ? `${activeTags.length}개` : '없음'}</Text>
+      </div>
+      {activeTags.length === 0 ? (
+        <Text type="secondary">현재 활성 태그 없음</Text>
+      ) : (
+        <div className="question-tag-edit-modal__active-tags">
+          {activeTags.map((tag) => {
+            const label = masterByCode[tag.tagCode]?.tagNameKo ?? tag.tagCode;
+            return (
+              <div
+                key={tag.tagAssignmentId}
+                className="question-tag-edit-modal__active-tag-item"
+              >
+                <Tag>{label}</Tag>
+                <Text type="secondary">{tag.memo || '-'}</Text>
+                <Button
+                  size="small"
+                  danger
+                  icon={<DeleteOutlined />}
+                  aria-label={`태그 제거: ${label}`}
+                  onClick={() => setRemoveTarget(tag)}
+                >
+                  제거
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 
   return (
     <>
       <Modal
         open={open}
-        title="태그 편집"
+        title={
+          <div className="question-tag-edit-modal__title">
+            <span>태그 편집</span>
+            <Text type="secondary">대상 ID: {questionId}</Text>
+          </div>
+        }
         footer={null}
         onCancel={handleClose}
         destroyOnHidden
@@ -419,16 +387,26 @@ export function QuestionTagEditModal({
             />
           ) : null}
 
-          <AdminFormDescriptions
-            bordered
-            size="small"
-            column={1}
-            className="question-tag-edit-modal__descriptions"
-            items={descriptionItems}
-            requiredKeys={['assignMemo']}
-          />
-
           {tagPickerPanel}
+
+          {activeTagPanel}
+
+          <div className="question-tag-edit-modal__memo-field">
+            <label
+              className="question-tag-edit-modal__field-label"
+              htmlFor="question-tag-assign-memo"
+            >
+              부여 사유 <span aria-hidden="true">*</span>
+            </label>
+            <Input.TextArea
+              id="question-tag-assign-memo"
+              rows={3}
+              value={assignMemo}
+              placeholder="태그 부여 사유를 입력해 주세요. (필수 - question_tags.memo로 기록)"
+              aria-label="태그 부여 사유"
+              onChange={(event) => setAssignMemo(event.target.value)}
+            />
+          </div>
 
           <div className="question-tag-edit-modal__actions">
             <Button onClick={handleClose}>취소</Button>
