@@ -55,3 +55,17 @@
   - ⑤ 이벤트형(N-TRG): feedback_ready — optin·partial(`sent`), optout(`opted_out` 집계), **같은 event_id 재호출 `deduped`**(N-TRG-03). payload link_url override 경로 포함
   - ⑥ 렌더링: `{{display_name}}` 결측 → '학습자' fallback(인앱 변수 fallback — N-ADM-03 계열), html 태그 제거
   - 실패 주입(④의 failed 기록)은 in_app에 실패 경로가 없어 P3 email에서 검증 예정으로 기록.
+
+## WP1-3·WP1-4 인앱 알림센터 + B-01 카드 + X-09 소스 교체 — PASS / **게이트 V-2 PASS** (2026-06-12)
+
+- 구현(서브에이전트, 검증은 본 세션): `src/components/notifications/notifications-data.ts`(count/list/markRead/markAllRead/fetchDeliveryHistory), `NotificationBell.tsx`(뱃지 99+ 상한·60s 폴링·Popover 수신함·낙관적 읽음+롤백·모두 읽음·빈/오류 상태), WorkspaceShell·layout에 userId 배선(데스크톱=우상단 고정 벨, 모바일=상단바 — SidebarNav 이중 렌더로 인한 폴링 중복 회피 결정), `DashboardAlertsCard` 확장(B-01 №4 — 최신 5건 cap·category 태그·로케일 날짜·클릭=읽음+이동·실패 시 재시도+설정 CTA), X-09 이력 패널 `fetchDeliveryHistory`(attempts) 교체 + status 6종 라벨, i18n ko/en/vi, 테스트 갱신. 정적 검증: typecheck 0·lint 0·전체 suite 633 PASS.
+- **V-2 실구동 검증** (dev 서버 포트 55334, ntf-user-optin 로그인 — 화면 직접 조작):
+  - 뱃지 카운트 2 정확(study 1+feedback 1), 온보딩/대시보드/설정 전 페이지 노출 (N-INB-02)
+  - 수신함: 최신순, 미읽음 = 점+배경+bold(색상 외 보조 단서), 상대 시각 표시 (N-INB-04)
+  - 항목 클릭 → DB `read_at` 기록 실측 + **이벤트 payload link_url override(`/library/item-1`)로 이동** + 뱃지 2→1 (N-INB-05)
+  - 모두 읽음 → 뱃지 숨김(0 미표시 — N-INB-01·06), **새로고침 후 잔류 없음**(stuck badge — N-INB-07)
+  - 깨진 딥링크 → 404 페이지 렌더(무한 로딩·빈 화면 없음 — N-INB-12 통과, 404 페이지가 빈약한 점은 QA 메모)
+  - B-01 알림 카드: category 태그(학습)+제목+로케일 날짜+알림 설정 링크 (N-DSH-01~04)
+  - X-09: 시드 설정 정확 로드(N-SET-01), 발송 이력 = attempts 소스(feedback_ready·study_reminder, 발송 완료/in_app/시각 — N-SET-13)
+  - 콘솔 오류: antd List deprecation 경고만(기존 패턴 — 결함 아님, 메모)
+- **P1 종료** — "알림이 실제로 도착·확인되는" 수직 슬라이스 완성. 잔여 세부 시나리오(99+ 상한, 멀티탭 동기화, 빈/오류 상태 전수)는 P4 QA 전수 실행에서 판정.
