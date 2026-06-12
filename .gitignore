@@ -12,3 +12,4 @@ pnpm-debug.log*
 # Local env (real Supabase keys go here — never committed)
 .env.local
 .env.*.local
+.omx-*.json

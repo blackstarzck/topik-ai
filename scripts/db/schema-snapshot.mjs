@@ -36,7 +36,14 @@ const ADMIN_OBJECTS = [
   'notification_delivery_attempts',
   'admin_schema_migrations',
 ];
-const ADMIN_FUNCTIONS = ['admin_send_notification'];
+const ADMIN_FUNCTIONS = [
+  'admin_send_notification',
+  'admin_save_notification_template',
+  'admin_set_notification_template_status',
+  'admin_delete_notification_template',
+  'admin_save_notification_group',
+  'admin_delete_notification_group',
+];
 
 function isOwn(name) {
   return name.startsWith(OWN_PREFIX) || OWN_FUNCTIONS.includes(name);

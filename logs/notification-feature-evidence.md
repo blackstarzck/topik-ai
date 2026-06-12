@@ -19,3 +19,12 @@
 
 - 구현: `scripts/db/migrate-core.mjs`(공용 모듈, tracker/디렉터리 파라미터화) + `scripts/db/admin-migrate.mjs`(tracker `admin_schema_migrations`, 디렉터리 `supabase/migrations-admin/`) + `migrate.mjs` 얇은 래퍼로 리팩토링 + `package.json`에 `db:admin:migrate`/`db:admin:migrate:status` 추가 + `schema-snapshot.mjs`에 `--exclude-admin`(정확한 이름 매칭 — 'notification_' prefix 매칭은 v13 소유 notification_settings/log를 가리므로 금지) 추가.
 - 검증: `node scripts/db/admin-migrate.mjs --status` → 빈 pending 정상 출력 + DB에 `admin_schema_migrations` tracker 생성(RLS enabled). 회귀: `node scripts/db/migrate.mjs --status` → 기존 14건 전부 [applied] 동일 출력.
+
+## WP0-4 v13 스키마 (user_notifications + 키 계약) — PASS (2026-06-12)
+
+- migration: v13 `supabase/migrations/20260612160000_user_notifications.sql` (멱등 — if not exists/drop policy if exists 패턴, 기존 20260602120200 스타일 준수). `delivery_attempt_id`는 soft 참조(FK 없음 — cross-namespace 결합 금지).
+- 적용: v13 database-schema.md §5가 규정한 표준 절차(Management API + `supabase_migrations.schema_migrations` 백필 + `notify pgrst, 'reload schema'`) 준수. 선행 미적용분 `20260610104017_seed_initial_legal_documents.sql`(멱등 seed)도 순서 유지를 위해 함께 적용·백필 — tracker out-of-order 방지.
+- 검증: ① 정책 2건 생성 확인(owner_select/owner_update) ② column grant — authenticated UPDATE는 `read_at` 단일 컬럼만 (information_schema.column_privileges 실측) ③ **down→up 왕복**: drop table → 파일 재적용 → 정책 2건 복원 확인 ④ `pnpm typecheck` EXIT=0 ⑤ 관련 단위 테스트 `NotificationPrefsForm.test.tsx`+`mutations.test.ts` 21/21 PASS.
+- 코드 계약: `learning-settings-data.ts` — `NotificationChannels`에 `in_app` 추가, defaults `{in_app:true,email:false,zalo:false}`, coerce에서 missing `in_app`=true. `NotificationPrefsForm.tsx` settingsEqual에 in_app 비교 추가. UI 토글 노출은 WP1-3 범위.
+- 문서: v13 INDEX.md #39 행, database-schema.md §1.13(인앱 수신함 블록 + notification_log deprecated 표기)·§5·§7, X-09 screen-data-summary 검수 항목(channels 허용 key) 확정 처리.
+- 보류(휴먼 게이트): H-2 마케팅 동의 저장소(O-7) — 미결정으로 migration 미작성. H-3 pref key 확장(O-8) — 기존 3종 유지.
