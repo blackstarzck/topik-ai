@@ -153,13 +153,16 @@ test('태그 부여/제거는 사유 필수로 동작하고 POL-018 ② 가드�
 
   const tagModal = page.locator('.ant-modal-content').filter({ hasText: '태그 편집' });
   await expect(tagModal).toBeVisible();
+  await expect(
+    tagModal.locator('.question-tag-edit-modal__descriptions .ant-descriptions-view')
+  ).toBeVisible();
+  await expect(tagModal.getByText('부여할 태그', { exact: true })).toBeVisible();
   await expect(tagModal.getByText('활성 태그가 없습니다.')).toBeVisible();
 
   // 부여: 태그 + 사유 입력 전까지 비활성.
   const assignButton = tagModal.getByRole('button', { name: '태그 부여' });
   await expect(assignButton).toBeDisabled();
-  await tagModal.locator('.ant-select').click();
-  await page.locator('.ant-select-dropdown').getByText('표현 주의 (ops_expression_caution)').click();
+  await tagModal.getByRole('checkbox', { name: /표현 주의/ }).check();
   await expect(assignButton).toBeDisabled();
   await tagModal
     .getByPlaceholder(/태그 부여 사유를 입력해 주세요/)

@@ -1333,6 +1333,37 @@ body {
   margin-bottom: 0;
 }
 
+.question-tag-edit-modal__descriptions .ant-descriptions-item-content {
+  width: 100%;
+}
+
+.question-tag-edit-modal__body,
+.question-tag-edit-modal__active-tags,
+.question-tag-edit-modal__tag-picker,
+.question-tag-edit-modal__tag-groups {
+  width: 100%;
+}
+
+.question-tag-edit-modal__tag-group {
+  display: grid;
+  gap: 8px;
+}
+
+.question-tag-edit-modal__checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 8px 12px;
+}
+
+.question-tag-edit-modal__checkbox-grid .ant-checkbox-wrapper {
+  margin-inline-start: 0;
+}
+
+.question-tag-edit-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .admin-description-label {
   display: inline-flex;
   align-items: center;

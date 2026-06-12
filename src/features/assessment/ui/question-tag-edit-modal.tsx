@@ -1,4 +1,15 @@
-import { Alert, Button, Empty, Input, Modal, Select, Space, Tag, Typography } from 'antd';
+import {
+  Alert,
+  Button,
+  Checkbox,
+  Empty,
+  Input,
+  Modal,
+  Space,
+  Tag,
+  Typography
+} from 'antd';
+import type { DescriptionsProps } from 'antd';
 import { useMemo, useState } from 'react';
 
 import {
@@ -15,6 +26,7 @@ import type {
 } from '../model/assessment-question-bank-types';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
+import { AdminFormDescriptions } from '../../../shared/ui/descriptions/admin-form-descriptions';
 
 const { Text } = Typography;
 
@@ -36,6 +48,19 @@ type QuestionTagEditModalProps = {
   onMutated: (action: 'tag_assigned' | 'tag_removed', tagLabel: string) => void;
 };
 
+type TagMasterGroup = {
+  group: string;
+  rows: TopikWritingTagMasterRow[];
+};
+
+function formatAssignedTagLabel(labels: string[]): string {
+  if (labels.length <= 1) {
+    return labels[0] ?? '';
+  }
+
+  return `${labels[0]} 외 ${labels.length - 1}개`;
+}
+
 export function QuestionTagEditModal({
   open,
   questionId,
@@ -44,7 +69,7 @@ export function QuestionTagEditModal({
   onClose,
   onMutated
 }: QuestionTagEditModalProps): JSX.Element {
-  const [selectedTagCode, setSelectedTagCode] = useState<string | null>(null);
+  const [selectedTagCodes, setSelectedTagCodes] = useState<string[]>([]);
   const [assignMemo, setAssignMemo] = useState('');
   const [assigning, setAssigning] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -68,27 +93,23 @@ export function QuestionTagEditModal({
     [activeTags]
   );
 
-  const selectOptions = useMemo(() => {
-    const byGroup = new Map<string, { label: string; value: string }[]>();
+  const tagGroups = useMemo<TagMasterGroup[]>(() => {
+    const byGroup = new Map<string, TopikWritingTagMasterRow[]>();
     tagMasterRows.forEach((row) => {
-      const options = byGroup.get(row.tagGroup) ?? [];
-      options.push({
-        label: `${row.tagNameKo} (${row.tagCode})`,
-        value: row.tagCode
-      });
-      byGroup.set(row.tagGroup, options);
+      const rows = byGroup.get(row.tagGroup) ?? [];
+      rows.push(row);
+      byGroup.set(row.tagGroup, rows);
     });
-    return [...byGroup.entries()].map(([group, options]) => ({
-      label: group,
-      title: group,
-      options: options.map((option) => ({
-        ...option,
-        disabled: activeTagCodes.has(option.value)
-      }))
-    }));
-  }, [activeTagCodes, tagMasterRows]);
+    return [...byGroup.entries()].map(([group, rows]) => ({ group, rows }));
+  }, [tagMasterRows]);
 
-  const selectedMaster = selectedTagCode ? masterByCode[selectedTagCode] : null;
+  const selectedMasters = useMemo(
+    () =>
+      selectedTagCodes
+        .map((tagCode) => masterByCode[tagCode])
+        .filter((row): row is TopikWritingTagMasterRow => Boolean(row)),
+    [masterByCode, selectedTagCodes]
+  );
 
   const repeatAvoidActiveCount = useMemo(
     () =>
@@ -99,7 +120,7 @@ export function QuestionTagEditModal({
   );
 
   const resetAssignForm = (): void => {
-    setSelectedTagCode(null);
+    setSelectedTagCodes([]);
     setAssignMemo('');
     setErrorMessage(null);
   };
@@ -111,27 +132,37 @@ export function QuestionTagEditModal({
   };
 
   const handleAssign = async (): Promise<void> => {
-    if (!selectedTagCode) {
+    if (selectedTagCodes.length === 0 || assignMemo.trim().length === 0) {
       return;
     }
 
     setAssigning(true);
     setErrorMessage(null);
-    const result = await assignQuestionTagSafe({
-      questionId,
-      tagCode: selectedTagCode,
-      memo: assignMemo.trim()
-    });
-    setAssigning(false);
+    const memo = assignMemo.trim();
+    const assignedLabels: string[] = [];
 
-    if (!result.ok) {
-      setErrorMessage(result.error.message);
-      return;
+    for (const tagCode of selectedTagCodes) {
+      const result = await assignQuestionTagSafe({
+        questionId,
+        tagCode,
+        memo
+      });
+
+      if (!result.ok) {
+        setAssigning(false);
+        if (assignedLabels.length > 0) {
+          onMutated('tag_assigned', formatAssignedTagLabel(assignedLabels));
+        }
+        setErrorMessage(result.error.message);
+        return;
+      }
+
+      assignedLabels.push(getTagLabel(tagCode));
     }
 
-    const label = getTagLabel(selectedTagCode);
+    setAssigning(false);
     resetAssignForm();
-    onMutated('tag_assigned', label);
+    onMutated('tag_assigned', formatAssignedTagLabel(assignedLabels));
   };
 
   const handleConfirmRemove = async (reason: string): Promise<void> => {
@@ -156,6 +187,141 @@ export function QuestionTagEditModal({
     onMutated('tag_removed', label);
   };
 
+  const descriptionItems = useMemo<DescriptionsProps['items']>(
+    () => [
+      {
+        key: 'target',
+        label: '대상',
+        children: (
+          <Space direction="vertical" size={2}>
+            <Text>대상 유형: {getTargetTypeLabel('AssessmentQuestion')}</Text>
+            <Text type="secondary">대상 ID: {questionId}</Text>
+          </Space>
+        )
+      },
+      {
+        key: 'activeTags',
+        label: '활성 태그',
+        children:
+          activeTags.length === 0 ? (
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description="활성 태그가 없습니다."
+            />
+          ) : (
+            <Space
+              direction="vertical"
+              size={8}
+              className="question-tag-edit-modal__active-tags"
+            >
+              {activeTags.map((tag) => {
+                const label = masterByCode[tag.tagCode]?.tagNameKo ?? tag.tagCode;
+                return (
+                  <Space key={tag.tagAssignmentId} size={8} wrap>
+                    <Tag>{label}</Tag>
+                    <Text type="secondary">{tag.memo || '-'}</Text>
+                    <Button
+                      size="small"
+                      danger
+                      aria-label={`태그 제거: ${label}`}
+                      onClick={() => setRemoveTarget(tag)}
+                    >
+                      제거
+                    </Button>
+                  </Space>
+                );
+              })}
+            </Space>
+          )
+      },
+      {
+        key: 'assignTags',
+        label: '부여할 태그',
+        children:
+          tagGroups.length === 0 ? (
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description="부여할 수 있는 태그가 없습니다."
+            />
+          ) : (
+            <Space
+              direction="vertical"
+              size={10}
+              className="question-tag-edit-modal__tag-picker"
+            >
+              <Checkbox.Group
+                value={selectedTagCodes}
+                onChange={(checkedValues) =>
+                  setSelectedTagCodes(checkedValues.map((value) => String(value)))
+                }
+              >
+                <Space
+                  direction="vertical"
+                  size={12}
+                  className="question-tag-edit-modal__tag-groups"
+                >
+                  {tagGroups.map(({ group, rows }) => (
+                    <div key={group} className="question-tag-edit-modal__tag-group">
+                      <Text strong>{group}</Text>
+                      <div className="question-tag-edit-modal__checkbox-grid">
+                        {rows.map((row) => (
+                          <Checkbox
+                            key={row.tagCode}
+                            value={row.tagCode}
+                            disabled={activeTagCodes.has(row.tagCode)}
+                          >
+                            {row.tagNameKo}{' '}
+                            <Text type="secondary">({row.tagCode})</Text>
+                          </Checkbox>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </Space>
+              </Checkbox.Group>
+              {selectedMasters.length > 0 ? (
+                <Space direction="vertical" size={4}>
+                  {selectedMasters.map((row) => (
+                    <Text key={row.tagCode} type="secondary">
+                      {row.tagNameKo}: {row.description}
+                      {row.usageRule ? ` / ${row.usageRule}` : ''}
+                    </Text>
+                  ))}
+                </Space>
+              ) : (
+                <Text type="secondary">
+                  부여할 태그를 선택해 주세요. 이미 활성인 태그는 선택할 수 없습니다.
+                </Text>
+              )}
+            </Space>
+          )
+      },
+      {
+        key: 'assignMemo',
+        label: '부여 사유',
+        children: (
+          <Input.TextArea
+            rows={3}
+            value={assignMemo}
+            placeholder="태그 부여 사유를 입력해 주세요. (필수 - question_tags.memo로 기록)"
+            aria-label="태그 부여 사유"
+            onChange={(event) => setAssignMemo(event.target.value)}
+          />
+        )
+      }
+    ],
+    [
+      activeTagCodes,
+      activeTags,
+      assignMemo,
+      masterByCode,
+      questionId,
+      selectedMasters,
+      selectedTagCodes,
+      tagGroups
+    ]
+  );
+
   return (
     <>
       <Modal
@@ -164,12 +330,9 @@ export function QuestionTagEditModal({
         footer={null}
         onCancel={handleClose}
         destroyOnHidden
+        width={760}
       >
-        <Space direction="vertical" size={16} style={{ width: '100%' }}>
-          <Text type="secondary">
-            대상 유형: {getTargetTypeLabel('AssessmentQuestion')} / 대상 ID: {questionId}
-          </Text>
-
+        <Space direction="vertical" size={16} className="question-tag-edit-modal__body">
           {errorMessage ? (
             <Alert
               type="error"
@@ -188,73 +351,24 @@ export function QuestionTagEditModal({
             />
           ) : null}
 
-          <div>
-            <Text strong>활성 태그</Text>
-            <div style={{ marginTop: 8 }}>
-              {activeTags.length === 0 ? (
-                <Empty
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description="활성 태그가 없습니다."
-                />
-              ) : (
-                <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                  {activeTags.map((tag) => {
-                    const label = getTagLabel(tag.tagCode);
-                    return (
-                      <Space key={tag.tagAssignmentId} size={8} wrap>
-                        <Tag>{label}</Tag>
-                        <Text type="secondary">{tag.memo || '-'}</Text>
-                        <Button
-                          size="small"
-                          danger
-                          aria-label={`태그 제거: ${label}`}
-                          onClick={() => setRemoveTarget(tag)}
-                        >
-                          제거
-                        </Button>
-                      </Space>
-                    );
-                  })}
-                </Space>
-              )}
-            </div>
-          </div>
+          <AdminFormDescriptions
+            bordered
+            size="small"
+            column={1}
+            className="question-tag-edit-modal__descriptions"
+            items={descriptionItems}
+            requiredKeys={['assignTags', 'assignMemo']}
+          />
 
-          <div>
-            <Text strong>태그 부여</Text>
-            <Space direction="vertical" size={8} style={{ width: '100%', marginTop: 8 }}>
-              <Select
-                style={{ width: '100%' }}
-                value={selectedTagCode ?? undefined}
-                options={selectOptions}
-                placeholder="부여할 태그를 선택해 주세요."
-                aria-label="부여할 태그"
-                showSearch
-                optionFilterProp="label"
-                onChange={(value) => setSelectedTagCode(value)}
-              />
-              {selectedMaster ? (
-                <Text type="secondary">
-                  {selectedMaster.description}
-                  {selectedMaster.usageRule ? ` — ${selectedMaster.usageRule}` : ''}
-                </Text>
-              ) : null}
-              <Input.TextArea
-                rows={3}
-                value={assignMemo}
-                placeholder="태그 부여 사유를 입력해 주세요. (필수 — question_tags.memo로 기록)"
-                aria-label="태그 부여 사유"
-                onChange={(event) => setAssignMemo(event.target.value)}
-              />
-              <Button
-                type="primary"
-                loading={assigning}
-                disabled={!selectedTagCode || assignMemo.trim().length === 0}
-                onClick={() => void handleAssign()}
-              >
-                태그 부여
-              </Button>
-            </Space>
+          <div className="question-tag-edit-modal__actions">
+            <Button
+              type="primary"
+              loading={assigning}
+              disabled={selectedTagCodes.length === 0 || assignMemo.trim().length === 0}
+              onClick={() => void handleAssign()}
+            >
+              태그 부여
+            </Button>
           </div>
         </Space>
       </Modal>
