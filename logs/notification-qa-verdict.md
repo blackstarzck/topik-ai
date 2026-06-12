@@ -2,16 +2,29 @@
 
 기준: `docs/알림-기능-QA-시나리오.md` (rev1, 86 시나리오). 판정 규칙: PASS = 화면 직접 조작/SQL 실측/자동 테스트 증적 명시. PASS(unit/e2e) = 자동 테스트 green 근거. BLOCKED = 휴먼 게이트(H-*) 종속 — 결함 아님. 잔여 = 미실측(후속 자동화 대상). 상세 증적: `logs/notification-feature-evidence.md`.
 
-## 집계 (2026-06-12 2차 라운드 반영 — §추가 검증 라운드)
+## 집계 (2026-06-12 3차 라운드 최종 — §추가 검증 라운드, §3차 라운드)
 
 | 판정 | 건수 | 비고 |
 | --- | --- | --- |
-| PASS (실측) | 58 | 화면 조작 + SQL + 게이트 V-0~V-4 + 2차 라운드 12건 |
+| PASS (실측) | 63 | 화면 조작 + SQL + 게이트 V-0~V-4 + 2·3차 라운드 |
 | PASS (자동 테스트) | 12 | unit 21건·e2e mock 9·route 5·smoke 25스텝 |
 | BLOCKED (H-4 이메일 provider) | 13 | N-EML-01~10, N-OPT-04(이메일 경로), N-EDGE-03·04(실패 주입 — in_app 무실패 경로) |
 | BLOCKED (H-2 마케팅 동의 저장소) | 1 | N-OPT-04(동의 평가 — 현재는 전원 opted_out 보수 정책 실측됨) |
-| 잔여 (자동화·부하 환경 필요) | 7 | N-SET-05·09·10·14, N-INB-09·10/11, N-PERF-03 — 전부 P1·P2, **결함 0** |
+| BLOCKED (부하 환경) | 1 | N-PERF-03 — 공유 dev DB에 1만 auth 사용자 시드는 부적합(오염·rate limit). 부하 전용 환경 필요 |
+| 잔여 (Playwright route-abort 전용) | 4 | N-SET-09·10, N-INB-09·11 — supabase-js가 fetch를 생성 시점에 캡처해 페이지 내 주입 불가. **결함 0** |
 | 스펙 갭 (UNDEFINED → gap register) | 2 | N-ADM-11(예약 취소 없음), N-ADM-07(0명 그룹 사전 안내 없음) |
+
+## 3차 라운드 (2026-06-12 — 신규 컨텍스트 실측 + 결함 1건 수정)
+
+| ID | 전환 | 증거 |
+| --- | --- | --- |
+| N-SET-03 | PASS(unit)→**PASS(실측)** | 요일 태그로 dirty → 저장 활성 → "알림 설정이 저장되었습니다." → 저장 후 재비활성 → 원상 복원 저장 |
+| N-SET-05 | **PASS** | dirty 상태에서 `beforeunload` dispatch → **preventDefault 동작 실측**(이탈 가드) |
+| N-SET-14 | **PASS** | `ui_locale='vi'` 전환 → X-09 전면 베트남어 렌더("Mở thông báo"/"Lưu"/"Cài đặt"/토글 라벨) → ko 복원 |
+| N-INB-10 | **PASS** | 다른 클라이언트(service role)에서 읽음 처리 → **53초 내**(60s 폴링) 뱃지 4→3 자동 동기화 — 영구 불일치 없음 |
+| — | **결함 발견·수정** | `NotificationBell` `relativeTime(date)`에 `now` 미공급 → IntlError ENVIRONMENT_FALLBACK이 렌더마다 발생(콘솔 280+건). `useNow({updateInterval:60s})` 공급으로 수정, typecheck·unit·화면 재검증(에러 0, "19분 전" 정상) |
+| — | 환경성 기록 | X-09 스켈레톤 hang 1회 관찰 — fetch는 전부 200(네트워크 실측), 새 브라우저 컨텍스트에서 재현 불가 → 잦은 쿠키 와이프로 인한 auth 컨텍스트 오염(테스트 환경성). 제품 결함 아님 |
+| N-SET-09·10, N-INB-09·11 | 잔여 확정 | 페이지 내 `window.fetch` 주입이 supabase-js의 생성 시점 fetch 캡처로 무효 — **Playwright route abort로만 강제 가능**(후속 자동화 1순위) |
 
 ## 시나리오별 판정
 
