@@ -69,3 +69,27 @@
   - X-09: 시드 설정 정확 로드(N-SET-01), 발송 이력 = attempts 소스(feedback_ready·study_reminder, 발송 완료/in_app/시각 — N-SET-13)
   - 콘솔 오류: antd List deprecation 경고만(기존 패턴 — 결함 아님, 메모)
 - **P1 종료** — "알림이 실제로 도착·확인되는" 수직 슬라이스 완성. 잔여 세부 시나리오(99+ 상한, 멀티탭 동기화, 빈/오류 상태 전수)는 P4 QA 전수 실행에서 판정.
+
+## WP2-1~2-4 관리자 연동 + legacy 정리 — PASS (2026-06-12)
+
+- 구현(서브에이전트 + 본 세션 검증): `message-data-source.ts`(`VITE_MESSAGE_SOURCE` mock↔supabase, 미설정 시 mock 폴백), `notification-supabase-adapter.ts`(ASCII↔한글 enum 매핑 + RPC 6종 호출 + dispatch/attempt 읽기), 템플릿 폼 supabase 전용 필드(template_key·class 필수·mandatory Switch — marketing 비활성+확인 모달·category·link_url·사유), 발송 이력 = dispatch 목록 + 상세 drawer(집계+수신자별), `/messages/in-app` 라우트·메뉴·권한(`message.inapp.manage`), `/messages/push` 준비 중 발송 비활성. 정적 검증: typecheck·lint 0, unit 39, e2e:mock 9, app-routes 5 전부 PASS. **발견·수정**: ① worktree base가 route registry 리팩토링(fa6c845, 미머지) 이전 — 해당 파일들을 가져와 커밋(머지 시 동일 내용 충돌 무해) ② 배포 RPC가 link_url 미반영 — admin-0006으로 수정. legacy `src/features/notification/**` 고아 2파일 제거 + gap §4.4.4 해소(redirect는 한 릴리즈 유지 — O-10) + 빌드 PASS.
+
+## WP2-5 교차 E2E (§8.3 13단계) — **게이트 V-3·V-4 PASS** (2026-06-12)
+
+- 환경: topik-ai(5173, supabase 모드, ntf-admin=platform_admin 로그인)와 v13(56790, ntf-user-optin 로그인)을 동시 구동 — 발송은 관리자 화면, 수신은 사용자 화면에서 직접 확인.
+- 단계별 결과 (행위자·확인 위치는 QA 문서 §8.3 표 기준):
+  - #1 템플릿 등록(UI — class=operational·category=notice·그룹 지정·사유) → RPC 성공 + 감사 알림(AuditLogLink) ✓
+  - #2 활성화(수정 모달 status 활성, 사유) → 감사 기록 ✓ ※ 본문 에디터 상세(N-ADM-02)는 P4 판정
+  - #3 나에게 보내기 → test dispatch → 파이프라인 집행 → admin 본인 attempt `sent` ✓
+  - #4 그룹 즉시 발송(사유) → dispatch 생성 + 감사 ✓
+  - #5 파이프라인: recipient 2 — **optin `sent` / optout(채널 off) `skipped` 집계** ✓
+  - #6 optin v13 로그인 → 벨 뱃지 1 + 수신함 최상단 "[검증] 관리자 발송 공지입니다" ✓
+  - #7 클릭 → DB `read_at` 실측 + link_url 이동 ✓ (클릭 직후 뱃지 잔상 1건 — 리마운트 레이스, 리로드/폴링으로 자가 수정·DB 정확 — P4 개선 메모)
+  - #8 X-09 이력 패널에 e2e_notice attempt 표시 ✓ (패널 상단 "발송 연동 준비 중" 문구 stale — WP3-3 교체 예정 메모)
+  - #9 optout 제외 — `skipped` 집계 실측 ✓ (화면 0건 확인은 P4)
+  - #10 발송 이력: dispatch 목록(시각·키·채널·유형·상태·대상·실행자·사유) + drawer 집계 성공1+건너뜀1=대상2 + 수신자별 상태 ✓
+  - #11 예약 발송(2분 후): 도래 전 invoke → `scheduled` 유지(미집행), 도래 후 → `completed` + optin `sent` ✓
+  - #12 중복 차단: V-1의 tick claim·attempt dedupe + unique(dispatch,user,channel) 실증 인용 ✓
+  - #13 **mandatory bypass**: mandatory ON 시 확인 모달("수신 선호 우회… 감사 로그 기록") → 발송 → **optout(채널 전부 off)도 `sent`** + 감사 payload `mandatory=true`·`bypass_reason` 기록 ✓
+- 자동화 사고 기록: #13 1차 시도가 모달 DOM 잔재(destroyOnHidden 전 상태)로 직전 템플릿으로 발송됨 — 페이지 리로드 후 재시도로 정상 검증(제품 결함 아님, e2e 작성 시 모달 분리 대기 필요 메모).
+- **P2 종료.** V-4 잔여(marketing 발송 전원 opted_out — H-2 동의 저장소 보류 정책)는 P3/P4에서 판정.
