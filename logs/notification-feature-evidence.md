@@ -28,3 +28,17 @@
 - 코드 계약: `learning-settings-data.ts` — `NotificationChannels`에 `in_app` 추가, defaults `{in_app:true,email:false,zalo:false}`, coerce에서 missing `in_app`=true. `NotificationPrefsForm.tsx` settingsEqual에 in_app 비교 추가. UI 토글 노출은 WP1-3 범위.
 - 문서: v13 INDEX.md #39 행, database-schema.md §1.13(인앱 수신함 블록 + notification_log deprecated 표기)·§5·§7, X-09 screen-data-summary 검수 항목(channels 허용 key) 확정 처리.
 - 보류(휴먼 게이트): H-2 마케팅 동의 저장소(O-7) — 미결정으로 migration 미작성. H-3 pref key 확장(O-8) — 기존 3종 유지.
+
+## WP0-5 admin 스키마 + RPC + seed — PASS / **게이트 V-0 PASS** (2026-06-12)
+
+- migration 4건 (`supabase/migrations-admin/`, tracker `admin_schema_migrations`): admin-0001 테이블 4종(templates — unique(template_key,channel)·class/mandatory/marketing 차단 CHECK, groups, dispatches — dedupe_key unique, delivery_attempts — unique(dispatch_id,user_id,channel)+dedupe unique-when-present+user FK cascade) + RLS(admin select, attempts는 owner-or-admin select, 쓰기 정책 0 — RPC 단일 경로), admin-0002 RPC 6종(save/status/delete template, save/delete group, send — `private.is_admin` 가드+사유 필수+`admin_audit_logs` 기록, mandatory면 bypass_reason), admin-0003 seed 10행(7 key × 채널 변형 — in_app=active 6, email=draft, marketing=draft), admin-0004 link_url(+v13 실라우트 시드: /dashboard·/growth·/library).
+- 계약 보정: 템플릿 unique는 (template_key, channel) — 채널별 본문 변형. DB status는 ASCII(active/inactive/draft) ↔ UI 한글 매핑.
+- **V-0 게이트 결과**:
+  - ① Management API 적용 + `admin_schema_migrations` version 4건 기록 ✓ (`db:admin:migrate`)
+  - ② down→up 왕복 ✓ — 3건 역순 롤백(잔여 객체 0) → 재적용(seed 10·active 6 복원)
+  - ③ snapshot diff — `--exclude-own --exclude-admin` **0건** (v13·topik_writing 기존 객체 무변경 증명). 신규는 알림 객체만(74 added: 테이블4·인덱스·정책4·RPC6 등). `schema-snapshot.mjs`에 ADMIN_OBJECTS/ADMIN_FUNCTIONS 정확명 매칭 추가
+  - ④ RLS smoke **25/25 ALL PASS** (`scripts/db/notification-rls-smoke.mjs` → `.omx-v0-rls-smoke.json`): anon 5객체 차단 / user는 admin 3객체 차단·attempts와 user_notifications 본인 행만·insert와 title update 차단·**read_at 단일 컬럼 update만 허용**·타인 행 0건·RPC forbidden / admin은 seed 10행 조회·draft 발송 거부·dispatch 생성·감사 역추적 1행
+  - ⑤ marketing+mandatory 차단 — DB CHECK(23514 위반 확인) + RPC층("marketing templates cannot be mandatory") 이중 ✓ (UI층은 WP2-2)
+- QA §2 시드 계정 7종 생성·설정 시드 완료(optin/optout/vn(Ho_Chi_Minh)/dst(America/New_York 02:30 — DST 엣지)/partial(feedback_ready만)/fresh(설정 row 없음)). admin 승격은 보호 트리거 때문에 Management API `session_replication_role=replica` 경로 사용(스크립트에 절차 주석).
+- 스모크 잔여 행 정리 완료(dispatches/attempts/user_notifications 0). 시드 계정·설정은 P1 재사용 위해 유지.
+- **P0 종료.** 구현 결정 기록: P1 dispatcher는 Edge Function 대신 **DB 내 SQL 함수(`private.dispatch_notifications`) + pg_cron**으로 구현 — 이 환경에 CLI/함수 배포 인프라가 없고, 계약 §7 "슬롯 판정 시각 출처 = DB now() 단일 기준"에 더 정합. 계약·시맨틱스(dispatch/attempt/dedupe/class 정책)는 동일.

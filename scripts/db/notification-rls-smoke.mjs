@@ -81,10 +81,16 @@ for (const [key, email] of Object.entries(ACCOUNTS)) {
 }
 step('seed accounts ensured (7)', Object.values(ids).every(Boolean), ids);
 
-// admin 승격 (service role은 protect 트리거 admin 우회 정책 대상)
+// admin 역할 확인 (승격은 protect 트리거 때문에 Management API 경로로 선행:
+//   node scripts/db/run-sql.mjs --sql "set local session_replication_role = replica;
+//     update public.profiles set app_role='platform_admin' where id='<admin id>'")
 {
-  const { error } = await service.from('profiles').update({ app_role: 'platform_admin' }).eq('id', ids.admin);
-  step('admin account promoted to platform_admin', !error, error?.message);
+  const { data, error } = await service.from('profiles').select('app_role').eq('id', ids.admin).single();
+  const ok = !error && data?.app_role === 'platform_admin';
+  step('admin account has platform_admin role', ok, error?.message ?? data?.app_role);
+  if (!ok) {
+    console.error(`promote first: node scripts/db/run-sql.mjs --sql "set local session_replication_role = replica; update public.profiles set app_role='platform_admin' where id='${ids.admin}'"`);
+  }
 }
 
 // prefs/settings 시드 (QA §2 매트릭스)
