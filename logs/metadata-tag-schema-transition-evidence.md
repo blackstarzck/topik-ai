@@ -328,14 +328,14 @@ select count(*), count(*) filter (where tag_group='서비스_노출상태') from
 ### P4 실행 (코드 — 실행계획안 §8)
 
 - **노출 write 개방(P4-1)**: facade `SERVICE_STATUS_WRITE_ENABLED` 게이트 + manage 페이지 `OPERATION_WRITE_ENABLED` 플래그·"준비 중" 경고 Alert 제거. 조치 3종(노출 가능/노출 제외/내부 테스트) 활성 — 현재 상태와 같은 전환 버튼만 비활성(무의미 전환 차단). 경로: `updateAssessmentQuestionServiceStatusSafe` → `setTopikWritingServiceStatus` → RPC `admin_update_topik_question`(사유 `__note`→`payload.note`). facade에서 사유 공백 거부.
-- **태그 부여/제거(P4-2)**: facade 함수 신설 `assignQuestionTagSafe`/`removeQuestionTagSafe`(+`fetchQuestionBankTagMasterSafe` 태그 사전 로더 — '서비스_노출상태' 그룹 필터) → 어댑터 `assignTopikWritingQuestionTag`/`removeTopikWritingQuestionTag` → RPC `admin_assign_question_tag`/`admin_remove_question_tag`. UI = `question-tag-edit-modal.tsx` 신설(manage 행별 `태그 편집` 버튼): 활성 태그 목록+memo 표시, 제거 ConfirmAction(사유 필수), 사전 기반 부여(그룹 옵션·검색·이미 활성 비활성화·usage_rule 안내, 태그+사유 입력 전 비활성). 사유 memo 필수(`question_tags.memo`+`payload.tag_memo`). mock 경로(인메모리 태그 store) 동반.
+- **태그 부여/제거(P4-2)**: facade 함수 신설 `assignQuestionTagSafe`/`removeQuestionTagSafe`(+`fetchQuestionBankTagMasterSafe` 태그 사전 로더 — '서비스_노출상태' 그룹 필터) → 어댑터 `assignTopikWritingQuestionTag`/`removeTopikWritingQuestionTag` → RPC `admin_assign_question_tag`/`admin_remove_question_tag`. UI = `question-tag-edit-modal.tsx` 신설(manage 행별 `태그 편집` 버튼): 활성 태그 목록, 제거, 사전 기반 부여(그룹 옵션·검색·이미 활성 비활성화·usage_rule 안내). mock 경로(인메모리 태그 store) 동반. 당시 별도 입력 검증은 2026-06-12 후속 변경으로 폐기했다.
 - **POL-018 화면 가드**: ② `available` 전환 모달이 대상 문항의 운영주의 그룹 활성 태그를 검사해 태그명 명시 경고 표시(사유는 전 조치 필수). ③ 반복방지 그룹 활성 태그 임계(`REPEAT_AVOID_EXCESS_THRESHOLD=2`) 이상 시 전환 모달·태그 편집 모달에 `excluded` 권고 표시.
 - **감사 표면(P4-5)**: 액션 라벨 4종(`service_status_changed`/`tag_assigned`/`tag_removed`/`question_received`) 확인 + **딥링크 버그 수정** — `system-audit-logs-page.tsx`의 AssessmentQuestion Target 링크가 제거된 구 라우트(`/assessment/question-bank/review/{id}`)를 가리키던 것을 P3 개명 라우트(`/assessment/question-bank/{id}`)로 교정. 상세 페이지 "(P4 개방 예정)" 안내 문구 정리.
 
 ### RT-4 관리 쓰기 왕복 (P4-3 — §12.0, 실DB)
 
 - 수행: dev 서버(4179) + D-12 시드 admin 화면 로그인, 대상 `topik-writing-51-0002`(인터림 코퍼스 1행 — 사전 상태 internal_test·활성 태그 0건 확인 후 진행, 종료 시 원복). 도구 `.omx/evidence/rt4-write-roundtrip.mjs`, 리포트 `rt4-write-roundtrip-report.json`.
-- **12단계 ALL PASS**: ① 화면 노출 제외 전환(사유 필수 모달) → DB 직조회 `excluded` ② 화면 재조회 반영(행 태그 '노출 제외') ③ 화면 태그 부여(`ops_expression_caution` 표현 주의 + memo) → DB `question_tags` 활성 행+memo 일치 ④ POL-018 ② 가드 문구 실데이터 표시 확인(노출 가능 모달 — 취소) ⑤ 화면 태그 제거(ConfirmAction 사유) → DB `is_active=false`+`removed_at`+제거 memo(이력 보존) ⑥ 내부 테스트 원복 → DB `internal_test` ⑦ **감사 4행 역추적(DB 단)**: 액션 순서 `service_status_changed`→`tag_assigned`→`tag_removed`→`service_status_changed`, diff(`{service_status:{from,to}}`/`{tag:{from,to}}`)·payload(`note`/`tag_memo`)·actor(`admin_user_id`)·`target_table='AssessmentQuestion'` 전부 계약 일치 ⑧ 감사 딥링크(`/system/audit-logs?targetType=AssessmentQuestion&targetId=…`) 진입 확인.
+- **12단계 ALL PASS(당시 P4 계약 기준)**: ① 화면 노출 제외 전환(사유 필수 모달) → DB 직조회 `excluded` ② 화면 재조회 반영(행 태그 '노출 제외') ③ 화면 태그 부여(`ops_expression_caution` 표현 주의) → DB `question_tags` 활성 행 확인 ④ POL-018 ② 가드 문구 실데이터 표시 확인(노출 가능 모달 — 취소) ⑤ 화면 태그 제거 → DB `is_active=false`+`removed_at` 이력 보존 확인 ⑥ 내부 테스트 원복 → DB `internal_test` ⑦ **감사 4행 역추적(DB 단)**: 액션 순서 `service_status_changed`→`tag_assigned`→`tag_removed`→`service_status_changed`, diff(`{service_status:{from,to}}`/`{tag:{from,to}}`)·actor(`admin_user_id`)·`target_table='AssessmentQuestion'` 전부 계약 일치 ⑧ 감사 딥링크(`/system/audit-logs?targetType=AssessmentQuestion&targetId=…`) 진입 확인. 2026-06-12 후속 변경 이후 별도 payload 검증은 현행 계약에서 제외.
 - **정직 표기**: 감사 로그 **화면**은 모크 store SoT(기지 갭 gap-register §4.10.2 — 감사 SoT 혼합)라 실 `admin_audit_logs` 행이 화면 목록에 표시되지 않는다. P4 계약(라벨 맵·딥링크·문서)은 충족하며, 실 감사 행 역추적 증적은 DB 단 대사(⑦)로 남겼다. 화면 실데이터 연동은 후속 범위(action-log 문서에 주의 병기).
 - 데이터 불변 조건 갱신: 인터림 466행 전 행 `internal_test` 유지(원복 확인). `question_tags`는 **활성 0행 + 이력 1행**(RT-4 제거 이력 — 이력 보존 설계상 정상), 감사 로그에 RT-4 4행 잔존(append-only 설계상 정상).
 
@@ -358,11 +358,11 @@ select count(*), count(*) filter (where tag_group='서비스_노출상태') from
 | # | 항목 | 판정 | 증적 |
 | :-- | :---- | :--: | :---- |
 | P4-1 | `service_status` write 개방 + `OPERATION_WRITE_ENABLED` 게이트 제거 | PASS | 코드 diff `6846309`(facade `SERVICE_STATUS_WRITE_ENABLED`·manage `OPERATION_WRITE_ENABLED`·"준비 중" Alert 제거) + 동작 확인(RT-4 ①·②: 화면 전환 → DB `excluded` → 화면 재반영, e2e 노출 전환 왕복) |
-| P4-2 | 태그 부여/제거 UI+RPC(노출상태 그룹 차단 가드 포함) | PASS | `question-tag-edit-modal.tsx` + facade/어댑터 결선(코드 diff `6846309`), 동작 확인(RT-4 ③·⑤: 부여 memo 일치·제거 이력 보존), 가드 테스트(RLS 네거티브: 노출상태 그룹 부여 거부 + facade 옵션 필터·RPC 가드 이중 차단, 사유 공백 거부) |
+| P4-2 | 태그 부여/제거 UI+RPC(노출상태 그룹 차단 가드 포함) | PASS | `question-tag-edit-modal.tsx` + facade/어댑터 결선(코드 diff `6846309`), 동작 확인(RT-4 ③·⑤: 부여/제거 이력 보존), 가드 테스트(RLS 네거티브: 노출상태 그룹 부여 거부 + facade 옵션 필터·RPC 가드 이중 차단). 2026-06-12 후속 변경으로 별도 입력·payload 검증은 폐기 |
 | P4-3 | **RT-4 관리 쓰기 왕복(태그·service_status)** | PASS | 본 로그 RT-4 절 — 12단계 ALL PASS(화면 write → DB 직조회 → 화면 재반영 → 감사 4행 역추적(DB 단, 액션 순서·diff·payload·actor 계약 일치) + 딥링크 진입), internal_test 1행 수행 후 원복. 리포트 `.omx/evidence/rt4-write-roundtrip-report.json`. 정직 표기: 감사 **화면**의 실 행 표시는 기지 갭 §4.10.2(모크 store SoT — 후속 범위) |
 | P4-4 | RLS 직접 write 차단 재확인 | PASS | 본 로그 RLS 네거티브 절 — 18단계 ALL PASS(anon/비admin/admin × UPDATE/INSERT/DELETE 차단 + RPC unauthenticated/forbidden 거부 + 값 불변 재확인). 리포트 `.omx/evidence/rt4-rls-negative-report.json` |
 | P4-5 | 감사 표면 갱신(액션 라벨·딥링크) + action-log 문서 계약 | PASS | 라벨 4종 확인 + AssessmentQuestion 딥링크 구 `/review/` 경로 버그 수정(코드 diff `6846309`) + action-log P4 write 계약 추가(문서 diff `6846309`) |
-| P4-6 | write e2e 통과 | PASS | `test:e2e:mock` 7/7(write 시나리오 3종 — 사유 필수·재조회 반영·POL-018 ② 가드 어서션) + 실DB 화면 경로는 RT-4 브라우저 프로브로 보강 |
+| P4-6 | write e2e 통과 | PASS | `test:e2e:mock` 7/7(write 시나리오 3종 — 노출 상태 사유 필수·재조회 반영·POL-018 ② 가드 어서션) + 실DB 화면 경로는 RT-4 브라우저 프로브로 보강 |
 | P4-7 | 노출 제외 기준 운영 가이드 반영(D-6 후속) | PASS(권장) | `tag_master.usage_rule`에 기준 ②③ 기록(P1 시드)·태그 편집 모달이 선택 태그의 usage_rule 안내 표시·POL-018 정책 행 코드 반영 승격·관리 IA §7.4 가이드 병기 |
 
 - 종합 판정: **PASS** (필수 P4-1~P4-6 전부 PASS + 권장 P4-7 PASS). **P5(마스터 관리·신규 surface) 착수 가능.**

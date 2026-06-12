@@ -23,7 +23,7 @@
         ▼
 [ADMIN 수신·적재] → Supabase topik_writing_51/52/53/54_questions + question_source_map
         ▼
-[ADMIN 관리 포인트] ① 태그(schema-rule §2: tag_master 사전 기반 question_tags 부여/제거 + 메모)
+[ADMIN 관리 포인트] ① 태그(schema-rule §2: tag_master 사전 기반 question_tags 부여/제거)
                     ② 노출 통제: service_status 컬럼(D-6 유지 — available/excluded/internal_test, 기본 internal_test)
         ▼
 [v13 사용자 기능] read-only 소비
@@ -32,8 +32,8 @@
 ### 0.2 확정 사항
 
 1. **문제 발원 = 외부(공급) API.** 문제 본문·정답·메타데이터(주제/난이도/유형/번호별 세부 메타 — schema-rule §4·§7)는 외부 측에서 **완성 상태로** 공급된다. admin은 문제를 저작·생성·분류·검수하지 않는다. 외부 API는 **미개발 상태**이며 공급 계약은 요청 문서(D-11 재정의)로 추진한다.
-2. **admin 역할 = 수신·적재 + 관리 포인트 + 노출 통제.** 관리 포인트는 schema-rule §2의 **태그**(추천목적/반복방지/학습흐름/운영주의/대표문제/추천사용 + 태그 메모)다. 노출 통제는 `service_status` 전용 컬럼으로 유지한다(D-6 — 태그와 별개 물리 컬럼, '서비스_노출상태' 태그 그룹 시드 제외 불변).
-3. **검수 개념 전면 삭제.** `review_status`·`review_workflow_status`(편차 E1 — 철회)·`review_passed`·`validation_result` 컬럼과 검수 화면·검수 쓰기·검수 감사 액션·검수 메모 개념을 admin 표면·스키마·계약·정책에서 제거한다(컬럼 물리 제거는 재정의된 P3 마이그레이션). 문제 품질·상태 표현은 태그(관리 포인트)로만 한다. `auto_checks_passed`는 수신·적재 자동 정합 검사 표식으로 존치하고, `content_team_memo`는 수신 메타데이터로 존치(admin 쓰기 없음 — 태그 사유는 `question_tags.memo`).
+2. **admin 역할 = 수신·적재 + 관리 포인트 + 노출 통제.** 관리 포인트는 schema-rule §2의 **태그**(추천목적/반복방지/학습흐름/운영주의/대표문제/추천사용)다. 노출 통제는 `service_status` 전용 컬럼으로 유지한다(D-6 — 태그와 별개 물리 컬럼, '서비스_노출상태' 태그 그룹 시드 제외 불변).
+3. **검수 개념 전면 삭제.** `review_status`·`review_workflow_status`(편차 E1 — 철회)·`review_passed`·`validation_result` 컬럼과 검수 화면·검수 쓰기·검수 감사 액션·검수 메모 개념을 admin 표면·스키마·계약·정책에서 제거한다(컬럼 물리 제거는 재정의된 P3 마이그레이션). 문제 품질·상태 표현은 태그(관리 포인트)로만 한다. `auto_checks_passed`는 수신·적재 자동 정합 검사 표식으로 존치하고, `content_team_memo`는 수신 메타데이터로 존치한다(admin 쓰기 없음).
 4. **인터림(외부 API 미개발 동안).** P2 백필 466행은 **초기 코퍼스**(유효 저장 데이터)로 유지한다. 신규 공급은 API 개발 완료 후 수신 경로로만 받는다. `problems`는 v13 사용자 기능이 읽는 동안 보존한다(§2.3 동결 방침 유지 — 단 "검수 SoT" 위상은 소멸, 레거시 원천으로만 의미).
 5. **소멸하는 트랙.** 콘텐츠팀 발주서·P2-5 샘플 승인 게이트·D-3 분류 소유권 트랙(2026-06-11 오전 옵션 3 판정 포함)은 본 전환으로 **목적 자체가 소멸**해 폐기한다(메타데이터가 외부에서 완성 상태로 공급되므로 admin 경유 분류·승인 절차가 존재하지 않음). 상류 push(업로드/배포) 트랙(구 P6·`question_published`)도 폐기한다.
 
@@ -61,7 +61,7 @@
 | D-4 | question_id 채번 | **확정 — 권장안 그대로**. `topik-writing-{item_number}-{4자리 연번}`. idempotency는 `question_source_map` 선조회로 보장: `legacy_problem_id` 기존 매핑이 있으면 그 `question_id` 재사용, 미매핑분만 결정적 정렬(`ORDER BY created_at, id`)로 신규 연번 할당. upsert도 source_map 매핑 기준 |
 | D-5 | answer_key 역분해 | **확정 — 권장안 그대로**. 원본 JSONB(`answer_key`) 공통 컬럼 보존 + `blank_*` 정규화 병행. §7.2 필수 컬럼 역분해 실패 문항은 적재 보류(테이블 미적재, source_map·검증 리포트 추적) 후 재입력 시 적재. 실측 보강: v13 `problems.materials.blanks`에 빈칸별 role/function/answer_type/canonical_answer/accepted_answers/accepted_synonyms가 이미 정규화 보존돼 있어(51번 90/90행) 역분해 실패 위험은 당초 추정보다 낮다 |
 | D-6 | service_status 정합 + 노출 제외 기준 | **확정·유지(2026-06-11 §0에서 검수 결합 기준 ①만 삭제) — `service_status` 컬럼이 유일한 물리 노출 상태(기본값 `internal_test`)**. 값: `available`=노출 가능 / `excluded`=노출 제외 / `internal_test`=내부 테스트. v0.8 §2.2의 '서비스_노출상태' 태그 그룹은 시드에서 제외하고 태그 RPC에서 부여 차단(이중 기록 방지). '운영 제외'는 `excluded` + 운영주의 태그 값 '운영 제외'로 구분. **노출 제외 기준(2026-06-11 개정)**: ① ~~검수 미완료 `available` 전환 불가~~(검수 개념 삭제로 철회) ② 운영주의 태그(`표현 주의`/`난이도 애매` 등) 활성 문항의 `available` 전환은 사유 필수 ③ 반복 노출 회피 대상(반복방지 태그 활성 과다)은 `excluded` 권고 — 각 기준을 `tag_master.usage_rule`과 POL-018에 기록. `operationStatus` 4값 union은 재정의 P3에서 제거 |
-| D-7 | 메모 영구화 | **[철회 — 2026-06-11 §0]** 검수 메모 개념 삭제로 폐기. `content_team_memo` 컬럼은 **수신 메타데이터**로 존치(admin 쓰기 없음). 운영 메모는 태그 부여/제거 사유 `question_tags.memo`로만 기록 |
+| D-7 | 메모 영구화 | **[철회 — 2026-06-11 §0, 2026-06-12 보강]** 검수 메모 개념 삭제로 폐기. `content_team_memo` 컬럼은 **수신 메타데이터**로 존치(admin 쓰기 없음). 태그 부여/제거의 별도 운영 메모 필드는 두지 않고, 태그 이력(`question_tags`)과 감사 액션(`tag_assigned`/`tag_removed`)으로 추적 |
 | D-8 | 쓰기 감사 계약 | **확정·재정의(2026-06-11 §0)**. 신규 RPC 전부 `admin_audit_logs`(실측 스키마: `admin_user_id`/`action`/`target_table`/`target_id`/`diff`/`payload`)에 actor=`auth.uid()` + 컬럼 diff(`{col:{from,to}}`) 기록. `target_table`='`AssessmentQuestion`', `target_id`=신규 `question_id`. **액션 코드(개정)**: 운영=`service_status_changed`·`tag_assigned`·`tag_removed`(유지), 수신=`question_received`(외부 API 수신·적재 — 공급 연동 시 추가). ~~검수 4종(`review_completed`/`review_on_hold`/`review_revision_requested`/`review_memo_saved`)~~·~~배포 `question_published`~~는 검수 삭제·push 폐기로 철회. 주의(실측): 구 `admin_update_problem` 등 v13 RPC는 2026-06-09 admin island 제거로 라이브 DB에서 이미 삭제됨 |
 | D-9 | 52/53/54 데이터 | **확정 — 이행 완료(역사 기록)**: `problems` 51~54 전수 470행(approved 222 + pending 248) 실재 확인 후 전수 백필 확정, P2에서 466행 적재 + 4행 보류 완료. **[2026-06-11 §0 보강]** 백필 산출물 466행은 **인터림 초기 코퍼스**로 유지(신규 공급은 외부 API 가동 후 수신 경로). 백필 시 이관된 검수 상태 값은 검수 개념 삭제(D-2 철회)에 따라 재정의 P3 컬럼 제거 마이그레이션에서 함께 정리된다 |
 | D-10 | admin 범위 | **확정·재정의(2026-06-11 §0)**. admin 범위 = **수신·적재(외부 API → Supabase) + 문항 조회 + 관리 포인트(태그 부여/제거) + 노출 통제(`service_status`) + 마스터 조회**. 메타데이터 입력/저작 UI 비범위 원칙 유지(메타데이터는 외부 공급). ~~검수~~는 범위에서 제거(§0-3) |

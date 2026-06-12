@@ -1,15 +1,14 @@
+import { DeleteOutlined, ReloadOutlined, RightOutlined } from '@ant-design/icons';
 import {
   Alert,
   Button,
   Checkbox,
   Empty,
-  Input,
   Modal,
   Space,
   Tag,
   Typography
 } from 'antd';
-import type { DescriptionsProps } from 'antd';
 import { useMemo, useState } from 'react';
 
 import {
@@ -24,17 +23,13 @@ import type {
   TopikWritingQuestionTagRow,
   TopikWritingTagMasterRow
 } from '../model/assessment-question-bank-types';
-import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
-import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
-import { AdminFormDescriptions } from '../../../shared/ui/descriptions/admin-form-descriptions';
 
 const { Text } = Typography;
 
 /**
  * P4 관리 포인트 — 태그 부여/제거 편집기 (실행계획안 §8, 결정 기록 D-6/D-8).
- * 부여·제거 모두 사유 입력이 필수다(question_tags.memo — 운영 메모의 유일한
- * 기록처). 부여 옵션은 tag_master 활성 사전이며 '서비스_노출상태' 그룹은
- * facade·RPC 양쪽에서 차단된다. 모든 write는 RPC 경유로 admin_audit_logs에
+ * 부여 옵션은 tag_master 활성 사전이며 '서비스_노출상태' 그룹은 facade·RPC
+ * 양쪽에서 차단된다. 모든 write는 RPC 경유로 admin_audit_logs에
  * tag_assigned/tag_removed가 남는다 — 성공 알림(감사 링크 포함)은 부모가 띄운다.
  */
 
@@ -70,8 +65,9 @@ export function QuestionTagEditModal({
   onMutated
 }: QuestionTagEditModalProps): JSX.Element {
   const [selectedTagCodes, setSelectedTagCodes] = useState<string[]>([]);
-  const [assignMemo, setAssignMemo] = useState('');
+  const [selectedTagGroup, setSelectedTagGroup] = useState<string | null>(null);
   const [assigning, setAssigning] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [removeTarget, setRemoveTarget] = useState<TopikWritingQuestionTagRow | null>(
     null
@@ -111,6 +107,14 @@ export function QuestionTagEditModal({
     [masterByCode, selectedTagCodes]
   );
 
+  const activeTagGroup = useMemo(
+    () =>
+      tagGroups.find((item) => item.group === selectedTagGroup) ??
+      tagGroups[0] ??
+      null,
+    [selectedTagGroup, tagGroups]
+  );
+
   const repeatAvoidActiveCount = useMemo(
     () =>
       activeTags.filter(
@@ -121,7 +125,7 @@ export function QuestionTagEditModal({
 
   const resetAssignForm = (): void => {
     setSelectedTagCodes([]);
-    setAssignMemo('');
+    setSelectedTagGroup(null);
     setErrorMessage(null);
   };
 
@@ -132,20 +136,18 @@ export function QuestionTagEditModal({
   };
 
   const handleAssign = async (): Promise<void> => {
-    if (selectedTagCodes.length === 0 || assignMemo.trim().length === 0) {
+    if (selectedTagCodes.length === 0) {
       return;
     }
 
     setAssigning(true);
     setErrorMessage(null);
-    const memo = assignMemo.trim();
     const assignedLabels: string[] = [];
 
     for (const tagCode of selectedTagCodes) {
       const result = await assignQuestionTagSafe({
         questionId,
-        tagCode,
-        memo
+        tagCode
       });
 
       if (!result.ok) {
@@ -165,172 +167,201 @@ export function QuestionTagEditModal({
     onMutated('tag_assigned', formatAssignedTagLabel(assignedLabels));
   };
 
-  const handleConfirmRemove = async (reason: string): Promise<void> => {
+  const handleRemove = async (): Promise<void> => {
     if (!removeTarget) {
       return;
     }
 
+    setRemoving(true);
     const result = await removeQuestionTagSafe({
-      tagAssignmentId: removeTarget.tagAssignmentId,
-      memo: reason
+      tagAssignmentId: removeTarget.tagAssignmentId
     });
 
     if (!result.ok) {
+      setRemoving(false);
       setRemoveTarget(null);
       setErrorMessage(result.error.message);
       return;
     }
 
     const label = getTagLabel(removeTarget.tagCode);
+    setRemoving(false);
     setRemoveTarget(null);
     setErrorMessage(null);
     onMutated('tag_removed', label);
   };
 
-  const descriptionItems = useMemo<DescriptionsProps['items']>(
-    () => [
-      {
-        key: 'target',
-        label: '대상',
-        children: (
-          <Space direction="vertical" size={2}>
-            <Text>대상 유형: {getTargetTypeLabel('AssessmentQuestion')}</Text>
-            <Text type="secondary">대상 ID: {questionId}</Text>
-          </Space>
-        )
-      },
-      {
-        key: 'activeTags',
-        label: '활성 태그',
-        children:
-          activeTags.length === 0 ? (
-            <Empty
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description="활성 태그가 없습니다."
-            />
-          ) : (
-            <Space
-              direction="vertical"
-              size={8}
-              className="question-tag-edit-modal__active-tags"
-            >
-              {activeTags.map((tag) => {
-                const label = masterByCode[tag.tagCode]?.tagNameKo ?? tag.tagCode;
-                return (
-                  <Space key={tag.tagAssignmentId} size={8} wrap>
-                    <Tag>{label}</Tag>
-                    <Text type="secondary">{tag.memo || '-'}</Text>
-                    <Button
-                      size="small"
-                      danger
-                      aria-label={`태그 제거: ${label}`}
-                      onClick={() => setRemoveTarget(tag)}
-                    >
-                      제거
-                    </Button>
-                  </Space>
-                );
-              })}
-            </Space>
-          )
-      },
-      {
-        key: 'assignTags',
-        label: '부여할 태그',
-        children:
-          tagGroups.length === 0 ? (
-            <Empty
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description="부여할 수 있는 태그가 없습니다."
-            />
-          ) : (
-            <Space
-              direction="vertical"
-              size={10}
-              className="question-tag-edit-modal__tag-picker"
-            >
-              <Checkbox.Group
-                value={selectedTagCodes}
-                onChange={(checkedValues) =>
-                  setSelectedTagCodes(checkedValues.map((value) => String(value)))
-                }
-              >
-                <Space
-                  direction="vertical"
-                  size={12}
-                  className="question-tag-edit-modal__tag-groups"
-                >
-                  {tagGroups.map(({ group, rows }) => (
-                    <div key={group} className="question-tag-edit-modal__tag-group">
-                      <Text strong>{group}</Text>
-                      <div className="question-tag-edit-modal__checkbox-grid">
-                        {rows.map((row) => (
-                          <Checkbox
-                            key={row.tagCode}
-                            value={row.tagCode}
-                            disabled={activeTagCodes.has(row.tagCode)}
-                          >
-                            {row.tagNameKo}{' '}
-                            <Text type="secondary">({row.tagCode})</Text>
-                          </Checkbox>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </Space>
-              </Checkbox.Group>
-              {selectedMasters.length > 0 ? (
-                <Space direction="vertical" size={4}>
-                  {selectedMasters.map((row) => (
-                    <Text key={row.tagCode} type="secondary">
-                      {row.tagNameKo}: {row.description}
-                      {row.usageRule ? ` / ${row.usageRule}` : ''}
-                    </Text>
-                  ))}
-                </Space>
-              ) : (
-                <Text type="secondary">
-                  부여할 태그를 선택해 주세요. 이미 활성인 태그는 선택할 수 없습니다.
-                </Text>
-              )}
-            </Space>
-          )
-      },
-      {
-        key: 'assignMemo',
-        label: '부여 사유',
-        children: (
-          <Input.TextArea
-            rows={3}
-            value={assignMemo}
-            placeholder="태그 부여 사유를 입력해 주세요. (필수 - question_tags.memo로 기록)"
-            aria-label="태그 부여 사유"
-            onChange={(event) => setAssignMemo(event.target.value)}
-          />
-        )
+  const handleTagCheckedChange = (tagCode: string, checked: boolean): void => {
+    setSelectedTagCodes((current) => {
+      if (checked) {
+        return current.includes(tagCode) ? current : [...current, tagCode];
       }
-    ],
-    [
-      activeTagCodes,
-      activeTags,
-      assignMemo,
-      masterByCode,
-      questionId,
-      selectedMasters,
-      selectedTagCodes,
-      tagGroups
-    ]
+      return current.filter((code) => code !== tagCode);
+    });
+  };
+
+  const handleRemoveSelectedTag = (tagCode: string): void => {
+    setSelectedTagCodes((current) => current.filter((code) => code !== tagCode));
+  };
+
+  const tagPickerPanel =
+    tagGroups.length === 0 ? (
+      <Empty
+        image={Empty.PRESENTED_IMAGE_SIMPLE}
+        description="부여할 수 있는 태그가 없습니다."
+      />
+    ) : (
+      <div className="question-tag-edit-modal__tag-picker-panel">
+        <div className="question-tag-edit-modal__tag-picker-header">
+          <Text strong>부여할 태그</Text>
+          <Text type="secondary">선택 {selectedTagCodes.length}개</Text>
+        </div>
+
+        <div className="question-tag-edit-modal__tag-picker-grid">
+          <div
+            className="question-tag-edit-modal__group-list"
+            aria-label="태그 그룹"
+          >
+            {tagGroups.map(({ group, rows }) => {
+              const checkedCount = selectedTagCodes.filter(
+                (tagCode) => masterByCode[tagCode]?.tagGroup === group
+              ).length;
+              const isActiveGroup = activeTagGroup?.group === group;
+
+              return (
+                <button
+                  key={group}
+                  type="button"
+                  className={
+                    isActiveGroup
+                      ? 'question-tag-edit-modal__group-button question-tag-edit-modal__group-button--active'
+                      : 'question-tag-edit-modal__group-button'
+                  }
+                  onClick={() => setSelectedTagGroup(group)}
+                >
+                  <span>{group}</span>
+                  <span className="question-tag-edit-modal__group-meta">
+                    {checkedCount > 0 ? `${checkedCount}/${rows.length}` : rows.length}
+                    <RightOutlined aria-hidden />
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="question-tag-edit-modal__tag-list">
+            <Text strong>{activeTagGroup?.group}</Text>
+            <div className="question-tag-edit-modal__checkbox-grid">
+              {(activeTagGroup?.rows ?? []).map((row) => (
+                <Checkbox
+                  key={row.tagCode}
+                  checked={selectedTagCodes.includes(row.tagCode)}
+                  disabled={activeTagCodes.has(row.tagCode)}
+                  onChange={(event) =>
+                    handleTagCheckedChange(row.tagCode, event.target.checked)
+                  }
+                >
+                  <Space direction="vertical" size={0}>
+                    <Text>{row.tagNameKo}</Text>
+                    <Text type="secondary">{row.tagCode}</Text>
+                  </Space>
+                </Checkbox>
+              ))}
+            </div>
+
+            {activeTagGroup?.rows.length ? (
+              <Space direction="vertical" size={4}>
+                {activeTagGroup.rows.map((row) => (
+                  <Text key={row.tagCode} type="secondary">
+                    {row.tagNameKo}: {row.description}
+                    {row.usageRule ? ` / ${row.usageRule}` : ''}
+                  </Text>
+                ))}
+              </Space>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="question-tag-edit-modal__selected-bar">
+          <div className="question-tag-edit-modal__selected-tags">
+            {selectedMasters.length > 0 ? (
+              selectedMasters.map((row) => (
+                <Tag
+                  key={row.tagCode}
+                  closable
+                  onClose={(event) => {
+                    event.preventDefault();
+                    handleRemoveSelectedTag(row.tagCode);
+                  }}
+                >
+                  {row.tagNameKo}
+                </Tag>
+              ))
+            ) : (
+              <Text type="secondary">선택된 태그가 없습니다.</Text>
+            )}
+          </div>
+          <Button
+            size="small"
+            icon={<ReloadOutlined />}
+            disabled={selectedTagCodes.length === 0}
+            onClick={() => setSelectedTagCodes([])}
+          >
+            초기화
+          </Button>
+        </div>
+      </div>
+    );
+
+  const activeTagPanel = (
+    <div className="question-tag-edit-modal__active-tag-panel">
+      <div className="question-tag-edit-modal__section-header">
+        <Text strong>현재 활성 태그</Text>
+        <Text type="secondary">{activeTags.length > 0 ? `${activeTags.length}개` : '없음'}</Text>
+      </div>
+      {activeTags.length === 0 ? (
+        <Text type="secondary">현재 활성 태그 없음</Text>
+      ) : (
+        <div className="question-tag-edit-modal__active-tags">
+          {activeTags.map((tag) => {
+            const label = masterByCode[tag.tagCode]?.tagNameKo ?? tag.tagCode;
+            return (
+              <div
+                key={tag.tagAssignmentId}
+                className="question-tag-edit-modal__active-tag-item"
+              >
+                <Tag>{label}</Tag>
+                <Button
+                  size="small"
+                  danger
+                  icon={<DeleteOutlined />}
+                  aria-label={`태그 제거: ${label}`}
+                  onClick={() => setRemoveTarget(tag)}
+                >
+                  제거
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 
   return (
     <>
       <Modal
         open={open}
-        title="태그 편집"
+        title={
+          <div className="question-tag-edit-modal__title">
+            <span>태그 편집</span>
+            <Text type="secondary">대상 ID: {questionId}</Text>
+          </div>
+        }
         footer={null}
         onCancel={handleClose}
         destroyOnHidden
-        width={760}
+        width={860}
       >
         <Space direction="vertical" size={16} className="question-tag-edit-modal__body">
           {errorMessage ? (
@@ -351,20 +382,16 @@ export function QuestionTagEditModal({
             />
           ) : null}
 
-          <AdminFormDescriptions
-            bordered
-            size="small"
-            column={1}
-            className="question-tag-edit-modal__descriptions"
-            items={descriptionItems}
-            requiredKeys={['assignTags', 'assignMemo']}
-          />
+          {tagPickerPanel}
+
+          {activeTagPanel}
 
           <div className="question-tag-edit-modal__actions">
+            <Button onClick={handleClose}>취소</Button>
             <Button
               type="primary"
               loading={assigning}
-              disabled={selectedTagCodes.length === 0 || assignMemo.trim().length === 0}
+              disabled={selectedTagCodes.length === 0}
               onClick={() => void handleAssign()}
             >
               태그 부여
@@ -374,17 +401,24 @@ export function QuestionTagEditModal({
       </Modal>
 
       {removeTarget ? (
-        <ConfirmAction
+        <Modal
           open
           title="태그 제거"
-          description={`'${getTagLabel(removeTarget.tagCode)}' 태그를 제거합니다. 제거 이력은 보존되며(is_active=false), 제거 사유와 감사 로그(tag_removed)가 남습니다.`}
-          targetType="AssessmentQuestion"
-          targetId={questionId}
-          confirmText="태그 제거"
-          reasonPlaceholder="태그 제거 사유를 입력해 주세요."
           onCancel={() => setRemoveTarget(null)}
-          onConfirm={handleConfirmRemove}
-        />
+          onOk={() => void handleRemove()}
+          okText="태그 제거"
+          cancelText="취소"
+          okButtonProps={{ danger: true, loading: removing }}
+          destroyOnHidden
+        >
+          <Alert
+            type="warning"
+            showIcon
+            message="태그 제거 확인"
+            description={`'${getTagLabel(removeTarget.tagCode)}' 태그를 제거합니다. 제거 이력은 보존되며(is_active=false), 감사 로그(tag_removed)가 남습니다.`}
+          />
+          <Text type="secondary">대상 ID: {questionId}</Text>
+        </Modal>
       ) : null}
     </>
   );

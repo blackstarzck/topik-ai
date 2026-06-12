@@ -16,8 +16,7 @@ create table if not exists public.topik_writing_question_tags (
   is_active         boolean not null default true,
   assigned_by       text,
   assigned_at       timestamptz not null default now(),
-  removed_at        timestamptz,
-  memo              text
+  removed_at        timestamptz
 );
 
 -- 같은 문항에 같은 태그를 중복 활성 부여하는 것을 차단 (이력 행은 is_active=false로 보존)

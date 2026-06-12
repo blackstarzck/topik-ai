@@ -163,7 +163,6 @@ export type TopikWritingQuestionTagRow = {
   tagCode: string;
   tagValue: string | null;
   assignedAt: string;
-  memo: string;
 };
 
 /**

@@ -120,7 +120,7 @@ comment on function public.admin_update_topik_question(text, smallint, jsonb) is
   'content_admin 전용. topik_writing_5x_questions 가변 컬럼(검수 2축/service_status/메모) patch + admin_audit_logs diff 기록. 예약 키 __note는 payload.review_note로 저장(D-7).';
 
 -- ---------------------------------------------------------------------
--- 2. admin_assign_question_tag(question_id, item_number, tag_code, tag_value, memo)
+-- 2. admin_assign_question_tag(question_id, item_number, tag_code, tag_value)
 --    가드: 태그 사전 존재+활성, '서비스_노출상태' 그룹 부여 차단(D-6),
 --          (question_id, item_number) 합성 참조 실재 검증, 중복 활성 부여 차단.
 -- ---------------------------------------------------------------------
@@ -128,8 +128,7 @@ create or replace function public.admin_assign_question_tag(
   p_question_id text,
   p_item_number smallint,
   p_tag_code    text,
-  p_tag_value   text default null,
-  p_memo        text default null
+  p_tag_value   text default null
 )
 returns bigint
 language plpgsql
@@ -167,8 +166,8 @@ begin
 
   begin
     insert into public.topik_writing_question_tags
-      (question_id, item_number, tag_code, tag_value, assigned_by, memo)
-    values (p_question_id, p_item_number, p_tag_code, p_tag_value, v_assigned_by, p_memo)
+      (question_id, item_number, tag_code, tag_value, assigned_by)
+    values (p_question_id, p_item_number, p_tag_code, p_tag_value, v_assigned_by)
     returning tag_assignment_id into v_assignment_id;
   exception when unique_violation then
     raise exception 'tag already active on this question: %', p_tag_code;
@@ -179,24 +178,23 @@ begin
     caller_id, 'tag_assigned', 'AssessmentQuestion', p_question_id,
     jsonb_build_object('tag', jsonb_build_object('from', null, 'to', p_tag_code),
                        'tag_value', jsonb_build_object('from', null, 'to', p_tag_value)),
-    case when nullif(p_memo, '') is not null then jsonb_build_object('tag_memo', p_memo) else '{}'::jsonb end
+    '{}'::jsonb
   );
 
   return v_assignment_id;
 end;
 $$;
-revoke all on function public.admin_assign_question_tag(text, smallint, text, text, text) from public;
-grant execute on function public.admin_assign_question_tag(text, smallint, text, text, text) to authenticated;
-comment on function public.admin_assign_question_tag(text, smallint, text, text, text) is
+revoke all on function public.admin_assign_question_tag(text, smallint, text, text) from public;
+grant execute on function public.admin_assign_question_tag(text, smallint, text, text) to authenticated;
+comment on function public.admin_assign_question_tag(text, smallint, text, text) is
   'content_admin 전용. 문항 태그 부여(이력 보존형). 서비스_노출상태 그룹 차단(D-6), 합성 참조 검증, admin_audit_logs 기록(tag_assigned).';
 
 -- ---------------------------------------------------------------------
--- 3. admin_remove_question_tag(tag_assignment_id, memo)
+-- 3. admin_remove_question_tag(tag_assignment_id)
 --    is_active=false + removed_at 갱신 방식(이력 보존), 감사 기록 동반.
 -- ---------------------------------------------------------------------
 create or replace function public.admin_remove_question_tag(
-  p_tag_assignment_id bigint,
-  p_memo              text default null
+  p_tag_assignment_id bigint
 )
 returns void
 language plpgsql
@@ -219,19 +217,18 @@ begin
 
   update public.topik_writing_question_tags
      set is_active = false,
-         removed_at = now(),
-         memo = case when nullif(p_memo, '') is not null then p_memo else memo end
+         removed_at = now()
    where tag_assignment_id = p_tag_assignment_id;
 
   insert into public.admin_audit_logs (admin_user_id, action, target_table, target_id, diff, payload)
   values (
     caller_id, 'tag_removed', 'AssessmentQuestion', v_row.question_id,
     jsonb_build_object('tag', jsonb_build_object('from', v_row.tag_code, 'to', null)),
-    case when nullif(p_memo, '') is not null then jsonb_build_object('tag_memo', p_memo) else '{}'::jsonb end
+    '{}'::jsonb
   );
 end;
 $$;
-revoke all on function public.admin_remove_question_tag(bigint, text) from public;
-grant execute on function public.admin_remove_question_tag(bigint, text) to authenticated;
-comment on function public.admin_remove_question_tag(bigint, text) is
+revoke all on function public.admin_remove_question_tag(bigint) from public;
+grant execute on function public.admin_remove_question_tag(bigint) to authenticated;
+comment on function public.admin_remove_question_tag(bigint) is
   'content_admin 전용. 문항 태그 제거 — is_active=false+removed_at(이력 보존), admin_audit_logs 기록(tag_removed).';

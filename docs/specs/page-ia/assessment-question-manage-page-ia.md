@@ -3,8 +3,8 @@
 ## 1. 문서 목적
 
 - `Assessment > TOPIK 쓰기 문항 관리`의 목록 운영 구조를 하나의 SoT로 고정한다.
-- 2026-06-11 인바운드 모델 전환(`docs/architecture/metadata-tag-schema-transition-decision-record.md` §0)에 따라 이 페이지는 **admin의 핵심 관리 surface**다: 외부(공급) API가 완성 상태로 공급해 적재된 문항에 대해 admin이 가진 두 가지 통제 수단 — ① **관리 포인트 = 태그**(`tag_master` 사전 기반 `question_tags` 부여/제거 + 사유 memo) ② **노출 통제 = `service_status`**(D-6: `available`/`excluded`/`internal_test`, 기본 `internal_test`) — 를 실행하는 화면이다.
-- 운영 기본 흐름은 `검색 -> 비교 -> 관리 조치(태그/노출) -> 감사 로그 확인`이다. 조치 write는 **P4 관리 포인트 개방(2026-06-11)으로 활성화됐다** — 노출 상태 전환 + 태그 부여/제거(태그 편집 모달), 전 조치 사유 필수·RPC 단일 경로.
+- 2026-06-11 인바운드 모델 전환(`docs/architecture/metadata-tag-schema-transition-decision-record.md` §0)에 따라 이 페이지는 **admin의 핵심 관리 surface**다: 외부(공급) API가 완성 상태로 공급해 적재된 문항에 대해 admin이 가진 두 가지 통제 수단 — ① **관리 포인트 = 태그**(`tag_master` 사전 기반 `question_tags` 부여/제거) ② **노출 통제 = `service_status`**(D-6: `available`/`excluded`/`internal_test`, 기본 `internal_test`) — 를 실행하는 화면이다.
+- 운영 기본 흐름은 `검색 -> 비교 -> 관리 조치(태그/노출) -> 감사 로그 확인`이다. 조치 write는 **P4 관리 포인트 개방(2026-06-11)으로 활성화됐다** — 노출 상태 전환 + 태그 부여/제거(태그 편집 모달), RPC 단일 경로. 노출 상태 전환은 사유 필수, 태그 부여/제거는 별도 사유 입력 없이 이력과 감사 로그로 추적한다.
 - 문항·메타데이터 열람은 문항 목록 페이지 `/assessment/question-bank`(조회 전용) 소관이며, 검수 개념(검수 큐/검수 메모/검수 상태 변경)은 2026-06-11 §0으로 admin 전체에서 삭제됐다.
 - `51~54번` 문제 유형 차이를 반영하면서도 검색 파라미터, 감사 로그 역추적, URL 복원 계약을 문항 목록 페이지와 일관되게 유지한다.
 
@@ -26,7 +26,7 @@
 ### 목표
 
 - 수신·적재된 TOPIK 쓰기 `51~54번` 문항을 문제 번호 단위로 운영 관점에서 비교하고, admin의 관리 포인트를 실행한다.
-- **태그 부여/제거(관리 포인트)**: `docs/metadata-tag-schema-rule.md` §2의 `tag_master` 사전(추천목적/반복방지/학습흐름/운영주의/대표문제/추천사용)을 기반으로 `question_tags`를 부여/제거하고 사유를 memo로 남긴다. 문항 품질·상태 표현은 태그로만 한다. (P4 개방 완료 — 행별 `태그 편집` 모달: 활성 태그 목록+제거, 사전 기반 부여, 사유 memo 필수)
+- **태그 부여/제거(관리 포인트)**: `docs/metadata-tag-schema-rule.md` §2의 `tag_master` 사전(추천목적/반복방지/학습흐름/운영주의/대표문제/추천사용)을 기반으로 `question_tags`를 부여/제거한다. 문항 품질·상태 표현은 태그로만 한다. (P4 개방 완료, 2026-06-12 memo 제거 — 행별 `태그 편집` 모달: 활성 태그 목록+제거, 사전 기반 체크박스 부여)
 - **노출 통제(`service_status`)**: 사용자에게 보여지는 부분의 통제 책임을 이 페이지가 가진다. `available`(노출 가능)/`excluded`(노출 제외)/`internal_test`(내부 테스트, 기본값) 전환으로 v13 read-only 소비의 노출 여부를 결정한다.
 - 노출 상태별 건수와 태그 부여 현황을 한 화면에서 비교한다.
 - 관리 조치는 `AssessmentQuestion + questionId` 감사 로그 계약(`service_status_changed`/`tag_assigned`/`tag_removed` — D-8 개정)으로 추적한다.
@@ -46,7 +46,7 @@
 - 시나리오 2: 운영자가 문제 번호(`51`, `52`, `53`, `54`) 다중 선택과 SearchBar 상세 검색(주제 종합/세부 · 유형 · 난이도)으로 비교 대상을 좁힌다.
 - 시나리오 3: 운영자가 목록 테이블에서 `노출 상태`와 `태그`(활성 태그 수)를 나란히 비교해 조치 대상을 식별한다.
 - 시나리오 4: 운영자가 운영 조치(`노출 가능`/`노출 제외`/`내부 테스트`)를 실행하면 확인+사유(필수) 모달을 거쳐 RPC(`admin_update_topik_question`)로 반영되고 `AssessmentQuestion + questionId` 감사 로그(`service_status_changed`)가 남는다. 현재 노출 상태와 같은 전환 버튼은 비활성이다. `available` 전환 시 운영주의 태그 활성 문항이면 모달에 POL-018 ② 경고가, 반복방지 태그 활성 과다면 ③ `excluded` 권고가 표시된다.
-- 시나리오 5: 운영자가 행별 `태그 편집` 모달에서 `Descriptions` 기반으로 대상/활성 태그/부여 후보/부여 사유를 확인하고, `tag_master` 사전의 그룹별 체크박스에서 태그를 골라 사유 memo(필수)와 함께 부여하거나, 활성 태그를 사유 입력(ConfirmAction)과 함께 제거한다(`tag_assigned`/`tag_removed` 감사 기록).
+- 시나리오 5: 운영자가 행별 `태그 편집` 모달의 2열 태그 선택 패널에서 `tag_master` 그룹을 고른 뒤 체크박스로 태그를 선택해 부여하거나, compact 활성 태그 섹션에서 기존 태그를 단순 확인 후 제거한다(`tag_assigned`/`tag_removed` 감사 기록).
 - 시나리오 6: 조치 후 운영자는 성공 피드백에 포함된 `감사 로그 확인` 링크로 이동해 동일 문항의 운영 이력을 검증한다.
 
 ## 5. 화면 구조
@@ -120,16 +120,16 @@
 | 노출 가능 전환 | `service_status_changed` | `AssessmentQuestion + questionId` | 확인 + 사유 필수 | 대상 식별 정보와 감사 로그 링크 노출 | `/system/audit-logs?targetType=AssessmentQuestion&targetId={questionId}` |
 | 노출 제외 전환 | `service_status_changed` | `AssessmentQuestion + questionId` | 확인 + 사유 필수 | 대상 식별 정보와 감사 로그 링크 노출 | 동일 |
 | 내부 테스트 전환 | `service_status_changed` | `AssessmentQuestion + questionId` | 확인 + 사유 필수 | 대상 식별 정보와 감사 로그 링크 노출 | 동일 |
-| 태그 부여 | `tag_assigned` | `AssessmentQuestion + questionId` | 사유 memo 필수(`question_tags.memo`) — 태그 편집 모달, 사전 미선택/사유 공백 시 비활성 | 대상 식별 정보와 감사 로그 링크 노출 | 동일 |
-| 태그 제거 | `tag_removed` | `AssessmentQuestion + questionId` | 확인(ConfirmAction) + 사유 memo 필수 — 이력 보존형(`is_active=false`+`removed_at`) | 대상 식별 정보와 감사 로그 링크 노출 | 동일 |
+| 태그 부여 | `tag_assigned` | `AssessmentQuestion + questionId` | 태그 편집 모달, 사전 미선택 시 비활성 | 대상 식별 정보와 감사 로그 링크 노출 | 동일 |
+| 태그 제거 | `tag_removed` | `AssessmentQuestion + questionId` | 단순 확인 모달 — 이력 보존형(`is_active=false`+`removed_at`) | 대상 식별 정보와 감사 로그 링크 노출 | 동일 |
 
 > 검수 감사 액션 4종과 배포 `question_published`는 2026-06-11 §0(D-8 개정)으로 폐기됐다. 수신 감사 액션 `question_received`는 외부 공급 API 연동 시 추가한다(`docs/specs/admin-action-log.md`).
 
 ### 7.3 조치 활성 규칙 (P4 관리 포인트 개방 — 2026-06-11)
 
 - 조치 버튼(노출 가능/노출 제외/내부 테스트)은 활성이다 — `OPERATION_WRITE_ENABLED`/`SERVICE_STATUS_WRITE_ENABLED` 게이트와 "준비 중" 경고 Alert는 P4에서 제거됐다. 현재 노출 상태와 같은 전환 버튼만 비활성(무의미 전환 차단)이다.
-- 모든 write는 RPC 단일 경로다: 노출 상태 = `admin_update_topik_question`(화이트리스트 `service_status` 단일, `__note` → `payload.note`), 태그 = `admin_assign_question_tag`/`admin_remove_question_tag`(사유 → `question_tags.memo` + `payload.tag_memo`). 직접 테이블 write는 RLS로 전면 차단된다(P4-4 네거티브 검증).
-- 태그 편집 모달: `Descriptions` 기반 입력 테이블로 대상, 활성 태그 목록(+부여 사유 memo 표시)과 제거 버튼, `tag_master` 활성 사전 기반 부여 폼을 배치한다. 부여 후보는 그룹별 체크박스로 선택하며 이미 활성인 태그는 비활성 처리하고, 선택 태그의 description/usage_rule 안내를 표시한다. 부여는 태그+사유 입력 전까지 비활성, 제거는 ConfirmAction(사유 필수)을 거친다. '서비스_노출상태' 그룹은 facade 옵션 필터 + RPC 가드로 이중 차단된다(D-6).
+- 모든 write는 RPC 단일 경로다: 노출 상태 = `admin_update_topik_question`(화이트리스트 `service_status` 단일, `__note` → `payload.note`), 태그 = `admin_assign_question_tag`/`admin_remove_question_tag`(별도 메모 인자 없음). 직접 테이블 write는 RLS로 전면 차단된다(P4-4 네거티브 검증).
+- 태그 편집 모달: tag_master 활성 사전 기반 부여 후보를 2열 선택 패널(좌측 `tagGroup` 목록, 우측 해당 그룹의 체크박스 목록, 하단 선택 chip/초기화 영역)로 제공한다. `Descriptions` 기반 입력 테이블은 이 모달에서 예외로 제거한다. 대상 식별자는 모달 subtitle의 `questionId`로 축소하고, 활성 태그 목록과 제거 버튼은 compact 섹션으로 배치한다. 이미 활성인 태그는 비활성 처리하고, 우측 패널에는 해당 그룹 태그의 description/usage_rule 안내를 표시한다. 부여는 태그 선택 전까지 비활성, 제거는 단순 확인 모달을 거친다. '서비스_노출상태' 그룹은 facade 옵션 필터 + RPC 가드로 이중 차단된다(D-6).
 - **POL-018 화면 가드**: ② `available` 전환 확인 모달에서 대상 문항의 운영주의 그룹 활성 태그를 검사해 태그명을 명시한 경고를 표시한다(사유는 항상 필수). ③ 반복방지 그룹 활성 태그가 임계(2개) 이상이면 `available` 전환 모달과 태그 편집 모달에 `excluded` 권고를 표시한다.
 - legacy 롤백 소스에서는 조치가 동작하지 않는다(facade가 명시 오류 — 구 스키마에 물리 노출 상태·태그 없음). mock 소스는 인메모리 왕복으로만 동작한다(감사 미기록, D-12).
 
