@@ -3,7 +3,7 @@
 이 폴더는 관리자 페이지별 목적, 가능한 작업, 관리 데이터베이스(CRUD) 후보, 연관 관리자/사용자 페이지를 사용자 화면 개발과 동기화하기 위해 정리한 문서를 모읍니다.
 
 - 템플릿: `docs/templates/admin-page-sync-template.md`
-- 기준 라우트: `src/app/router/app-router.tsx`
+- 기준 라우트: `src/app/router/routes.ts` (`app-router.tsx`는 shell composition)
 - 페이지 IA: `docs/specs/page-ia/*.md`
 - 데이터 계약: `docs/specs/admin-data-contract.md`
 - B2C 노출 맵: `docs/specs/admin-data-usage-map.md`

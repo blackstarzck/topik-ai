@@ -27,7 +27,7 @@
 
 ### 3.2 Placeholder 라우트 다수 잔존
 
-- `src/app/router/app-router.tsx`
+- `src/app/router/routes.ts`
 - 아래 라우트는 아직 `AdminPlaceholderPage`에 머물러 있어 운영/기능/정책 계약이 코드에 고정되지 않았다.
 - `Operation > 챗봇 설정`
 - `Commerce > 이커머스 관리`
@@ -44,7 +44,7 @@
 
 ### 3.3 모듈 명칭과 실제 구현 축 불일치
 
-- `src/app/router/app-router.tsx`
+- `src/app/router/routes.ts`
 - `src/features/notification/**`
 - `src/features/message/**`
 - `src/features/billing/**`
@@ -300,7 +300,7 @@
 
 #### 4.5.5 챗봇
 
-- 대상 파일: `src/app/router/app-router.tsx`
+- 대상 파일: `src/app/router/routes.ts`
 - 현 상태
   - Placeholder만 존재
 - 미확정/누락/오구현
@@ -343,7 +343,7 @@
 #### 4.6.3 쿠폰/포인트/스토어
 
 - 대상 파일
-  - `src/app/router/app-router.tsx`
+  - `src/app/router/routes.ts`
   - `src/features/commerce/pages/commerce-coupons-page.tsx`
   - `src/features/commerce/pages/commerce-coupon-create-page.tsx`
   - `src/features/commerce/pages/commerce-coupon-template-create-page.tsx`
@@ -376,7 +376,7 @@
 
 ### 4.7 Assessment
 
-- 대상 파일: `src/features/assessment/pages/assessment-question-bank-page.tsx`, `src/features/assessment/pages/assessment-question-detail-page.tsx`(구 `assessment-question-review-page.tsx` — 재정의 P3 개명), `src/features/assessment/pages/assessment-question-manage-page.tsx`, `src/features/assessment/api/assessment-question-bank-service.ts`, `src/features/assessment/api/topik-writing-question-bank-service.ts`, `src/features/assessment/api/supabase-assessment-question-bank-service.ts`(legacy 롤백 어댑터), `src/app/router/app-router.tsx`
+- 대상 파일: `src/features/assessment/pages/assessment-question-bank-page.tsx`, `src/features/assessment/pages/assessment-question-detail-page.tsx`(구 `assessment-question-review-page.tsx` — 재정의 P3 개명), `src/features/assessment/pages/assessment-question-manage-page.tsx`, `src/features/assessment/api/assessment-question-bank-service.ts`, `src/features/assessment/api/topik-writing-question-bank-service.ts`, `src/features/assessment/api/supabase-assessment-question-bank-service.ts`(legacy 롤백 어댑터), `src/app/router/routes.ts`
 - 현 상태
   - `TOPIK 쓰기 문제은행` 단일 페이지(`tab` 쿼리 토글)는 두 형제 라우트로 분리되었다. `Assessment > TOPIK 쓰기 문제 검수`(`/assessment/question-bank`)와 `Assessment > TOPIK 쓰기 문항 관리`(`/assessment/question-bank/manage`)가 동일한 Supabase `problems`(question_no 51-54) 조회 결과를 공유 hook으로 함께 쓰며, JSON fixture/store fallback은 제거되었다.
   - 검수 페이지는 `reviewStatus 요약 카드+필터 -> 목록 -> 2depth 검수 페이지(/assessment/question-bank/review/:questionId)`와 `검수 메모 입력 -> 검수 완료 / 수정 필요 / 보류` 흐름을 유지한다. `tab` 쿼리는 제거되고 각 라우트가 자체 URL 상태(공통 `questionNo`/`domain`/`questionType`/`difficulty`/`keyword`, 검수 전용 `reviewStatus`, 관리 전용 `operationStatus`)를 복원한다. ※ 2026-06-11 인바운드 전환에 따라 이 검수 표면은 재정의 P3 코드 컷오버(`202f905`)에서 제거 완료됐으며, 현 단락은 역사 기록이다.
@@ -420,7 +420,7 @@
 
 ### 4.8 Content
 
-- 대상 파일: `src/app/router/app-router.tsx`
+- 대상 파일: `src/app/router/routes.ts`
 - 현 상태
   - 라이브러리, 배지, 어휘, 소나기 어휘, 객관식 어휘, 미션 모두 Placeholder
 - 미확정/누락/오구현

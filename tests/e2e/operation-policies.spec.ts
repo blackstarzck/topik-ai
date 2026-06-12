@@ -2,6 +2,10 @@ import { expect, test, type Page } from 'playwright/test';
 
 import { confirmVisibleReasonModal } from './harness/admin-flow-helpers';
 
+test.afterEach(async ({ context }) => {
+  await context.close();
+});
+
 const policyType = '이용약관';
 
 async function fillPolicyForm(
