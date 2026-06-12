@@ -307,6 +307,10 @@ src/features/<feature>/
   - 신규 오브젝트는 현행 v13 Supabase 프로젝트 `fglggyfvzjdsbyckinqa`(talkpik-dev)에 생성하고, 마이그레이션 자산(`supabase/migrations`)은 이 repo(topik-ai)가 소유·관리한다(시나리오 B의 공유 호스트 변형).
   - 경계 근거: v13 오너 결정(2026-06-09, v13 repo `supabase/migrations/20260609130000_remove_v13_admin_island.sql`) — "문제 데이터의 작성·노출 통제는 admin(topik-ai)이 담당, v13은 read-only". 공유 자산(`admin_audit_logs`, `private.is_*_admin` 헬퍼, `profiles.app_role`)은 재사용하고, 기존 v13 테이블 DDL 변경은 0건 원칙(P1 무변경 diff 게이트로 증명).
   - v13 측 스테이징/브랜치 DB 없음(실측 — Management API branches 0건). additive 마이그레이션 + down 스크립트 + 적용 직후 무변경 diff + RT-1 파일럿 적재 왕복으로 검증을 대체한다.
+- 스키마 소유권 일반화 (2026-06-12, 알림 기능 개발 WP0-1)
+  - 종전 "topik-ai는 `topik_writing_*`만 소유" 한정을 **도메인 기준 소유권 모델**로 일반화했다. SoT: `docs/architecture/shared-supabase-schema-ownership.md` (owner/writer/reader/RLS/migration home 매트릭스).
+  - admin 운영 네임스페이스(알림: `notification_templates`/`notification_groups`/`notification_dispatches`/`notification_delivery_attempts` + admin RPC)는 topik-ai가 소유하며, 적용 이력은 `topik_writing_schema_migrations`와 분리된 **`admin_schema_migrations`** tracker(`npm run db:admin:migrate`)로 추적한다. migration 파일은 `supabase/migrations-admin/`에 둔다.
+  - 기존 v13 테이블 DDL 변경 0건 원칙과 무변경 diff 게이트는 알림 네임스페이스에도 동일하게 적용한다.
 - 마이그레이션 적용 절차 (P1 확정·적용 완료 2026-06-10)
   - 마이그레이션 작성 → 오너 승인(v13 오너=admin 오너 동일인, 단일 승인) → 프로덕션 적용 → §5.4 게이트(8오브젝트 스모크 + RLS 역할 매트릭스 + 뷰 anon 차단 네거티브 테스트 + 기존 테이블 무변경 diff + RT-1).
   - 적용 수단: 이 머신에 supabase CLI 인증/DB 패스워드가 없어 CLI `db push` 대신 **Supabase Management API**(`/v1/projects/{ref}/database/query`)를 표준 적용 경로로 사용한다. 도구: `npm run db:migrate`(`scripts/db/migrate.mjs`, 적용 이력은 자체 네임스페이스 추적 테이블 `topik_writing_schema_migrations`에 기록), `npm run db:migrate:status`, 롤백 `node scripts/db/migrate.mjs --down <파일명>`(`supabase/migrations/down/` 스크립트).
