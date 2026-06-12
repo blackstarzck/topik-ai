@@ -26,9 +26,24 @@ async function runSql(sql) {
 
 const OWN_PREFIX = 'topik_writing_';
 const OWN_FUNCTIONS = ['admin_update_topik_question', 'admin_assign_question_tag', 'admin_remove_question_tag'];
+// admin 운영(알림) 네임스페이스 — 정확한 이름 매칭만 사용한다. 'notification_' prefix
+// 매칭은 v13 소유 notification_settings/notification_log까지 가려 무변경 게이트를
+// 무력화하므로 금지.
+const ADMIN_OBJECTS = [
+  'notification_templates',
+  'notification_groups',
+  'notification_dispatches',
+  'notification_delivery_attempts',
+  'admin_schema_migrations',
+];
+const ADMIN_FUNCTIONS = ['admin_send_notification'];
 
 function isOwn(name) {
   return name.startsWith(OWN_PREFIX) || OWN_FUNCTIONS.includes(name);
+}
+
+function isAdminOwn(name) {
+  return ADMIN_OBJECTS.includes(name) || ADMIN_FUNCTIONS.includes(name);
 }
 
 async function snapshot() {
@@ -62,20 +77,21 @@ function key(entry, fields) {
   return fields.map((f) => entry[f]).join('|');
 }
 
-function diffSection(before, after, fields, ownField, excludeOwn) {
+function diffSection(before, after, fields, ownField, excludeOwn, excludeAdmin) {
   const fmt = (e) => JSON.stringify(e);
   const beforeMap = new Map(before.map((e) => [key(e, fields), fmt(e)]));
   const afterMap = new Map(after.map((e) => [key(e, fields), fmt(e)]));
+  const excluded = (name) => (excludeOwn && isOwn(name)) || (excludeAdmin && isAdminOwn(name));
   const changes = [];
   for (const [k, v] of afterMap) {
     const ownName = k.split('|')[ownField];
-    if (excludeOwn && isOwn(ownName)) continue;
+    if (excluded(ownName)) continue;
     if (!beforeMap.has(k)) changes.push({ type: 'added', entry: v });
     else if (beforeMap.get(k) !== v) changes.push({ type: 'changed', before: beforeMap.get(k), after: v });
   }
   for (const [k, v] of beforeMap) {
     const ownName = k.split('|')[ownField];
-    if (excludeOwn && isOwn(ownName)) continue;
+    if (excluded(ownName)) continue;
     if (!afterMap.has(k)) changes.push({ type: 'removed', entry: v });
   }
   return changes;
@@ -87,15 +103,17 @@ if (args[0] === '--diff') {
   const before = JSON.parse(readFileSync(args[1], 'utf8'));
   const after = JSON.parse(readFileSync(args[2], 'utf8'));
   const excludeOwn = args.includes('--exclude-own');
+  const excludeAdmin = args.includes('--exclude-admin');
   const result = {
-    columns: diffSection(before.columns, after.columns, ['table_name', 'column_name'], 0, excludeOwn),
-    functions: diffSection(before.functions, after.functions, ['schema', 'name', 'args'], 1, excludeOwn),
-    policies: diffSection(before.policies, after.policies, ['schemaname', 'tablename', 'policyname'], 1, excludeOwn),
-    views: diffSection(before.views, after.views, ['table_name'], 0, excludeOwn),
+    columns: diffSection(before.columns, after.columns, ['table_name', 'column_name'], 0, excludeOwn, excludeAdmin),
+    functions: diffSection(before.functions, after.functions, ['schema', 'name', 'args'], 1, excludeOwn, excludeAdmin),
+    policies: diffSection(before.policies, after.policies, ['schemaname', 'tablename', 'policyname'], 1, excludeOwn, excludeAdmin),
+    views: diffSection(before.views, after.views, ['table_name'], 0, excludeOwn, excludeAdmin),
   };
   const total = Object.values(result).reduce((n, c) => n + c.length, 0);
   console.log(JSON.stringify(result, null, 2));
-  console.log(`total differences${excludeOwn ? ' (excluding topik_writing_* namespace)' : ''}: ${total}`);
+  const excluded = [excludeOwn ? 'topik_writing_*' : null, excludeAdmin ? 'admin/notification namespace' : null].filter(Boolean).join(' + ');
+  console.log(`total differences${excluded ? ` (excluding ${excluded})` : ''}: ${total}`);
   process.exit(total === 0 ? 0 : 1);
 }
 

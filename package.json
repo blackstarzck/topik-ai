@@ -12,6 +12,8 @@
     "harness:full": "npm run harness:check && npm run build && npm run harness:e2e:smoke",
     "db:migrate": "node ./scripts/db/migrate.mjs",
     "db:migrate:status": "node ./scripts/db/migrate.mjs --status",
+    "db:admin:migrate": "node ./scripts/db/admin-migrate.mjs",
+    "db:admin:migrate:status": "node ./scripts/db/admin-migrate.mjs --status",
     "db:snapshot": "node ./scripts/db/schema-snapshot.mjs",
     "db:sql": "node ./scripts/db/run-sql.mjs",
     "lint": "set ESLINT_USE_FLAT_CONFIG=false&& eslint \"src/**/*.{ts,tsx}\"",

@@ -14,3 +14,8 @@
   4. `docs/architecture/admin-data-source-transition.md` D-1 절에 "스키마 소유권 일반화 (2026-06-12)" 항목 추가.
 - 사전 확인: Management API 접근 정상(토큰 `.env.local`), 공유 프로젝트 확인 — `fglggyfvzjdsbyckinqa`에 v13 테이블(`notification_settings`, `notification_log`)과 topik-ai tracker(`topik_writing_schema_migrations`) 공존 (information_schema 조회, 2026-06-12).
 - 작업 공간: topik-ai `C:\Users\admin\Desktop\workspace\topik-ai-notif`(worktree, feat/notifications), v13 `C:\Users\admin\Desktop\workspace\v13-notif`(worktree, feat/notifications ← origin/main d25275f). 양 원본 작업 트리(타 작업 진행 중)는 건드리지 않음.
+
+## WP0-2 admin migration 체계 분리 — PASS (2026-06-12)
+
+- 구현: `scripts/db/migrate-core.mjs`(공용 모듈, tracker/디렉터리 파라미터화) + `scripts/db/admin-migrate.mjs`(tracker `admin_schema_migrations`, 디렉터리 `supabase/migrations-admin/`) + `migrate.mjs` 얇은 래퍼로 리팩토링 + `package.json`에 `db:admin:migrate`/`db:admin:migrate:status` 추가 + `schema-snapshot.mjs`에 `--exclude-admin`(정확한 이름 매칭 — 'notification_' prefix 매칭은 v13 소유 notification_settings/log를 가리므로 금지) 추가.
+- 검증: `node scripts/db/admin-migrate.mjs --status` → 빈 pending 정상 출력 + DB에 `admin_schema_migrations` tracker 생성(RLS enabled). 회귀: `node scripts/db/migrate.mjs --status` → 기존 14건 전부 [applied] 동일 출력.
