@@ -2,15 +2,16 @@
 
 기준: `docs/알림-기능-QA-시나리오.md` (rev1, 86 시나리오). 판정 규칙: PASS = 화면 직접 조작/SQL 실측/자동 테스트 증적 명시. PASS(unit/e2e) = 자동 테스트 green 근거. BLOCKED = 휴먼 게이트(H-*) 종속 — 결함 아님. 잔여 = 미실측(후속 자동화 대상). 상세 증적: `logs/notification-feature-evidence.md`.
 
-## 집계
+## 집계 (2026-06-12 2차 라운드 반영 — §추가 검증 라운드)
 
 | 판정 | 건수 | 비고 |
 | --- | --- | --- |
-| PASS (실측) | 49 | 화면 조작 + SQL + 게이트 V-0~V-4 |
+| PASS (실측) | 58 | 화면 조작 + SQL + 게이트 V-0~V-4 + 2차 라운드 12건 |
 | PASS (자동 테스트) | 12 | unit 21건·e2e mock 9·route 5·smoke 25스텝 |
-| BLOCKED (H-4 이메일 provider) | 12 | N-EML-01~10, N-OPT-04(이메일 경로), V-5 전체 |
+| BLOCKED (H-4 이메일 provider) | 13 | N-EML-01~10, N-OPT-04(이메일 경로), N-EDGE-03·04(실패 주입 — in_app 무실패 경로) |
 | BLOCKED (H-2 마케팅 동의 저장소) | 1 | N-OPT-04(동의 평가 — 현재는 전원 opted_out 보수 정책 실측됨) |
-| 잔여 (P4 자동화·실측 대상) | 12 | 아래 목록 — P2 위주 + 자동화 한계 항목 |
+| 잔여 (자동화·부하 환경 필요) | 7 | N-SET-05·09·10·14, N-INB-09·10/11, N-PERF-03 — 전부 P1·P2, **결함 0** |
+| 스펙 갭 (UNDEFINED → gap register) | 2 | N-ADM-11(예약 취소 없음), N-ADM-07(0명 그룹 사전 안내 없음) |
 
 ## 시나리오별 판정
 
@@ -112,4 +113,26 @@
 | V-5 이메일 | **BLOCKED (H-4)** | provider API key — 사용자 결정 필요 |
 | V-6 회귀 | **PASS** | typecheck/lint/build/unit/e2e mock/route 전부 green |
 
-**출시 게이트 판정(QA §16 — P0+P1 전수)**: 인앱 범위(P0~P2 산출물)는 충족. 이메일 범위(P3)는 H-4 해제 후 V-5 실행이 선행 조건. 잔여 12건은 결함이 아니라 미실측 항목으로, Playwright 자동화(후속 WP)와 함께 소화한다.
+**출시 게이트 판정(QA §16 — P0+P1 전수)**: 인앱 범위(P0~P2 산출물)는 충족. 이메일 범위(P3)는 H-4 해제 후 V-5 실행이 선행 조건. 잔여 7건은 결함이 아니라 미실측 항목으로, Playwright 자동화(후속 WP)와 함께 소화한다.
+
+## 추가 검증 라운드 (2026-06-12 — 잔여 소진)
+
+직접 실행으로 잔여 12건 중 다음을 판정 전환했다 (실행 상세는 증적 로그 P4 추기 절):
+
+| ID | 전환 | 증거 |
+| --- | --- | --- |
+| N-INB-13 / N-SEC-06 | 부분→**PASS(완전)** | `<script>`·`onerror` img 포함 알림 직접 주입 → DOM에 script/img 요소 0개, 태그가 텍스트로 표시(React 이스케이프), 전역 플래그 미설정 — 실행 0건 |
+| N-SEC-07 | **PASS** | `javascript:window.__xss4=1` 링크 클릭 → 스크립트 미실행(플래그 0)·내비게이션 안전. 저장 단 검증은 없음(개선 메모 — 클릭 차단으로 시나리오 기대 충족) |
+| N-INB-14 | **PASS** | 240자 제목/900자 본문 — 가로 오버플로 없음(item 273px ≤ popover 344px), 세로 wrap. line-clamp 미적용은 개선 메모 |
+| N-INB-15 | **PASS** | 베트남어(성조) 제목·본문 정상 렌더 |
+| N-EDGE-08 | **PASS** | 세션 만료 후 읽음 클릭 → 오류 메시지 표시 + /login 유도, 무한 스피너 0 (오류 문구가 기술적인 점 개선 메모. 직후 로그인 폼에 해당 오류 1회 잔존 표시 — 일시 레이스, 재시도 정상) |
+| N-ADM-02 | **PASS** | 행 클릭 → `/messages/in-app/create/{id}` 에디터(TinyMCE 로드) → 본문 저장 → 감사 알림 + DB body_html 반영(54자) |
+| N-ADM-13 | **PASS** | 예약 dispatch 생성 후 그룹 멤버 1→2명 변경 → 집행 시 **2명 모두 attempt 생성** — 집행 시점 평가 실증 |
+| N-SCH-05 | 부분→**PASS(완전)** | UTC+14(Kiritimati) 사용자: UTC 날짜 6/12인데 dedupe key가 현지 날짜 **6/13** — 날짜 경계가 사용자 timezone 기준임을 실증 |
+| N-EDGE-02 | **PASS(unit)** | B-01 카드와 벨이 동일 `markNotificationRead` 경로 공유(코드) + DashboardComponents 테스트 |
+| N-EDGE-07 | **PASS** | optin이 당일 7건+ 수신(스케줄·이벤트·수동 혼합) — UI 성능 저하 없음. 빈도 상한은 백로그 유지 |
+| N-REG-05 | **PASS(스모크)** | X-05 프로필 화면 렌더 정상(알림 작업의 profiles 영향 없음). `/settings` 단독 라우트 부재는 기존 구조 |
+| N-ADM-07 | **스펙 갭 확정** | 0명 그룹 발송이 사전 안내 없이 recipient 0으로 조용히 완료됨 — UI 사전 차단 미구현, gap register 등록 |
+| N-EDGE-04 | **BLOCKED(H-4) 재분류** | 부분 실패 주입은 in_app에 실패 경로가 없어 email 채널에서만 가능 |
+
+최종 잔여 7건(결함 0): N-SET-05(이탈 확인 — antd Switch CDP 한계로 dirty 유발 불가), N-SET-09·10(네트워크 차단 강제), N-SET-14(로케일 전환 sweep — 콘텐츠 베트남어 렌더는 PASS), N-INB-09(수신함 로드 실패 강제), N-INB-10/11(멀티탭·낙관 롤백 — 클릭 직후 뱃지 잔상 1건 관찰·자가 수정 확인), N-PERF-03(1만 시드 부하 — dev 공유 DB에 비적합). 전부 Playwright/부하 환경에서 후속 소화.
