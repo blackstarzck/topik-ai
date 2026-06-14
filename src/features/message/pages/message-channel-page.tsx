@@ -613,6 +613,21 @@ export function MessageChannelPage({
     }
 
     const values = await liveSendForm.validateFields();
+
+    // 0명 그룹만 선택하면 빈 발송이 '완료 0건'으로 조용히 성공한다(QA N-ADM-07).
+    // 나에게 보내기(test)는 본인 대상이라 예외 — 여기서는 group 발송만 차단한다.
+    const selectedMemberTotal = groups
+      .filter((group) => values.targetGroupIds.includes(group.id))
+      .reduce((total, group) => total + group.memberCount, 0);
+    if (selectedMemberTotal <= 0) {
+      notificationApi.warning({
+        message: `${meta.title} 발송 대상 없음`,
+        description:
+          '선택한 그룹에 수신 대상이 없습니다. 대상이 있는 그룹을 선택하세요.'
+      });
+      return;
+    }
+
     const result = await sendMessageTemplateSafe({
       templateId: liveTemplate.id,
       channel,
@@ -653,7 +668,7 @@ export function MessageChannelPage({
     });
     setLiveTemplate(null);
     setReloadKey((prev) => prev + 1);
-  }, [channel, liveSendForm, liveTemplate, meta.title, notificationApi]);
+  }, [channel, groups, liveSendForm, liveTemplate, meta.title, notificationApi]);
 
   const buildActionItems = useCallback(
     (template: MessageTemplate) => {

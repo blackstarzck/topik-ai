@@ -107,6 +107,14 @@
 - **시나리오별 판정표: `logs/notification-qa-verdict.md`** — PASS 61(실측 49+자동 12) / BLOCKED 13(H-4 12·H-2 1) / 잔여 12(미실측 — 결함 0) / 스펙 갭 1(예약 취소 기능 없음 — N-ADM-11 UNDEFINED).
 - 게이트 종합: **V-0·V-1·V-2·V-3·V-4·V-6 PASS, V-5 BLOCKED(H-4)**. 출시 게이트(QA §16): 인앱 범위 충족, 이메일 범위는 H-4 해제 후.
 
+## 잔여 소진 라운드 (2026-06-12 — route-abort 4건 + N-ADM-07) — PASS
+
+- **N-ADM-07 빈 그룹 발송 가드 구현·실측 PASS**: `message-channel-page.tsx` `handleLiveSend`에 선택 그룹 memberCount 합산 가드 추가 — 합이 0이면 "선택한 그룹에 수신 대상이 없습니다" 경고 + 발송 차단(나에게 보내기는 예외). mock/supabase 공용. 정적: typecheck·lint·unit 39·e2e:mock 9 green. **실측**: admin(supabase) 화면에서 0명 정적 그룹 생성→해당 그룹만 선택→발송 실행 → 경고 표시·모달 유지·**dispatch 0건 생성 확인(SQL)**. 검증 그룹 정리 완료. 스펙 갭 1건(N-ADM-07) 해소.
+- **route-abort 4건 Playwright 실측 PASS** (v13 `tests/e2e/notification-error-states.spec.ts`, `page.route()`로 REST 차단/500 주입 — supabase-js의 생성시점 fetch 캡처 우회): N-SET-09(설정 로드 실패→오류 Alert+화면 비잠금), N-SET-10(저장 실패→message.error+토글값 보존+버튼 재시도 가능), N-INB-09(수신함 로드 실패→오류+다시 시도 회복), N-INB-11(읽음 실패→낙관 롤백+뱃지 1 유지+리로드 후 미읽음 — 불일치 잔존 0). **제품 결함 0** — 4/4 통과(테스트 하니스 조정만). pnpm typecheck 0.
+- **부수 결함 발견·수정**(3차 라운드 기록과 별개): 없음(이번 라운드는 에러 UI가 모두 정상). 단, agent가 기존 `notification-failure-states.spec.ts`의 stale 셀렉터("재시도" → 실제 "다시 시도")를 발견 — 신규 spec은 정확 텍스트 사용.
+- 환경 메모: admin UI 반복 로그인으로 auth rate-limit + 테스트 계정 처닝(ntf-admin 삭제·optin id 변경 — agent seed 재생성 영향) 발생. service role로 admin 재생성·승격 후 단일 세션 검증. 제품 결함 아님(테스트 환경 데이터 churn).
+- **최종 게이트: V-0~V-4·V-6 PASS, V-5만 BLOCKED(H-4 이메일 provider key — 외부 결정).** 자력 소진 가능 항목 전부 PASS 전환 완료.
+
 ## P4 추기 — 잔여 소진 2차 라운드 (2026-06-12)
 
 - 추가 실측 12건 전환(판정표 §추가 검증 라운드 상세): XSS 주입 4종(스크립트/onerror/태그 제목/`javascript:` 링크 — 실행 0건·이스케이프 실측), 긴 제목·베트남어 렌더, 세션 만료 읽음 처리(오류+로그인 유도), 본문 에디터 저장(TinyMCE→RPC→감사), **집행 시점 그룹 평가**(예약 후 멤버 변경분 포함 발송), **날짜 경계**(UTC+14 — dedupe key가 사용자 현지 날짜), 카드/벨 읽음 일관성(공유 경로+unit), 다발 수신 UI 정상, X-05 회귀 스모크.

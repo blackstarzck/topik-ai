@@ -2,17 +2,18 @@
 
 기준: `docs/알림-기능-QA-시나리오.md` (rev1, 86 시나리오). 판정 규칙: PASS = 화면 직접 조작/SQL 실측/자동 테스트 증적 명시. PASS(unit/e2e) = 자동 테스트 green 근거. BLOCKED = 휴먼 게이트(H-*) 종속 — 결함 아님. 잔여 = 미실측(후속 자동화 대상). 상세 증적: `logs/notification-feature-evidence.md`.
 
-## 집계 (2026-06-12 3차 라운드 최종 — §추가 검증 라운드, §3차 라운드)
+## 집계 (2026-06-12 4차 라운드 최종 — 잔여 소진)
 
 | 판정 | 건수 | 비고 |
 | --- | --- | --- |
-| PASS (실측) | 63 | 화면 조작 + SQL + 게이트 V-0~V-4 + 2·3차 라운드 |
+| PASS (실측) | 68 | 화면 조작 + SQL + 게이트 V-0~V-4 + 2·3·4차 라운드 (route-abort 4·N-ADM-07·N-INB-10 포함) |
 | PASS (자동 테스트) | 12 | unit 21건·e2e mock 9·route 5·smoke 25스텝 |
 | BLOCKED (H-4 이메일 provider) | 13 | N-EML-01~10, N-OPT-04(이메일 경로), N-EDGE-03·04(실패 주입 — in_app 무실패 경로) |
 | BLOCKED (H-2 마케팅 동의 저장소) | 1 | N-OPT-04(동의 평가 — 현재는 전원 opted_out 보수 정책 실측됨) |
 | BLOCKED (부하 환경) | 1 | N-PERF-03 — 공유 dev DB에 1만 auth 사용자 시드는 부적합(오염·rate limit). 부하 전용 환경 필요 |
-| 잔여 (Playwright route-abort 전용) | 4 | N-SET-09·10, N-INB-09·11 — supabase-js가 fetch를 생성 시점에 캡처해 페이지 내 주입 불가. **결함 0** |
-| 스펙 갭 (UNDEFINED → gap register) | 2 | N-ADM-11(예약 취소 없음), N-ADM-07(0명 그룹 사전 안내 없음) |
+| 스펙 갭 (수용됨 — QA 시나리오가 명시 허용) | 1 | N-ADM-11(예약 취소 기능 없음 — 시나리오 [STD]가 "기능 없으면 UNDEFINED→갭 등록" 명시. gap register 기재) |
+
+**자력 소진 가능한 잔여 = 0건.** 남은 15건은 전부 외부 종속(H-4 이메일 13·H-2 동의 1·부하 환경 1) 또는 수용된 스펙 갭 1건. 결함 0.
 
 ## 3차 라운드 (2026-06-12 — 신규 컨텍스트 실측 + 결함 1건 수정)
 
@@ -38,7 +39,7 @@
 | N-SET-06 | PASS | fresh — 수신 채널 없음 안내 + 조건 입력 비활성 화면 실측 |
 | N-SET-07 | PASS | V-2 — Zalo 미연동 표기 확인 |
 | N-SET-08 | PASS | V-1 — DB HH:mm·0=일요일 실측 |
-| N-SET-09·10 | 잔여 | 네트워크 차단 강제 — 후속 |
+| N-SET-09·10 | **PASS** | route-abort spec — 로드 실패 오류 Alert·화면 비잠금 / 저장 실패 토스트+입력 보존+재시도 |
 | N-SET-11 | BLOCKED(H-3) | pref 키 확장 보류 — 기존 3종 유지 |
 | N-SET-12 | PASS | V-0 — missing in_app=true 계약 + 기존 row 호환 |
 | N-SET-13 | PASS | V-2/V-3 #8 — attempts 소스 5건 표시 |
@@ -50,8 +51,9 @@
 | N-INB-05 | PASS | read_at DB 실측 + link 이동 + payload override |
 | N-INB-06·07 | PASS | 모두 읽음 + 새로고침 잔류 없음 실측 |
 | N-INB-08 | PASS | fresh — "새 알림이 없어요" 빈 상태 실측 |
-| N-INB-09 | 잔여 | 수신함 로드 실패 강제 |
-| N-INB-10·11 | 잔여 | 멀티탭 동기화·낙관적 롤백 (#7 리마운트 레이스 메모 — DB는 항상 정확, 폴링 자가수정 실측) |
+| N-INB-09 | **PASS** | route-abort spec — 수신함 로드 실패 오류+다시 시도 회복 |
+| N-INB-10 | **PASS** | 3차 라운드 — service role 읽음 처리 후 53초 내 폴링 동기화 |
+| N-INB-11 | **PASS** | route-abort spec — 읽음 실패 낙관 롤백+뱃지 유지+리로드 후 미읽음 (불일치 0) |
 | N-INB-12 | PASS | 404 렌더(무한 로딩 없음) 실측 — 404 빈약함 개선 메모 |
 | N-INB-13 | PASS(부분) | 본문 html 태그 제거(파이프라인 렌더) 실측 — 악성 페이로드 주입 테스트는 후속 |
 | N-INB-14·15 | 잔여 | 긴 본문·베트남어 렌더 |
@@ -75,7 +77,7 @@
 | N-ADM-04 | PASS | V-3 #2 — 상태 변경+사유+감사 |
 | N-ADM-05 | PASS(smoke) | delete RPC 검증(스모크) — 화면 삭제 흐름은 후속 |
 | N-ADM-06 | PASS | 그룹 생성(정적 2명) 화면 실측 |
-| N-ADM-07 | 잔여 | 0명 그룹 발송 차단 — RPC는 그룹 빈 배열 거부 실측(테스트 발송 제외), 화면 안내는 후속 |
+| N-ADM-07 | **PASS** | 빈 그룹 가드 구현·실측 — 0명 그룹만 선택 시 "수신 대상이 없습니다" 경고+발송 차단, dispatch 0건(SQL) |
 | N-ADM-08 | PASS | V-3 #3 — 나에게 보내기 → 본인 sent |
 | N-ADM-09·10 | PASS | V-3 #4~#11 — 즉시/예약 전체 |
 | N-ADM-11 | UNDEFINED | 예약 취소 기능 없음 — 스펙 갭 등록(O-12 후보) |
