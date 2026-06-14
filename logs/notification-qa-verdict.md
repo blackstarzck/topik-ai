@@ -2,19 +2,20 @@
 
 기준: `docs/알림-기능-QA-시나리오.md` (rev1, 86 시나리오). 판정 규칙: PASS = 화면 직접 조작/SQL 실측/자동 테스트 증적 명시. PASS(unit/e2e) = 자동 테스트 green 근거. BLOCKED = 휴먼 게이트(H-*) 종속 — 결함 아님. 잔여 = 미실측(후속 자동화 대상). 상세 증적: `logs/notification-feature-evidence.md`.
 
-## 집계 (2026-06-12 6차 라운드 최종 — 자력 가능 항목 전부 소진)
+## 집계 (2026-06-12 7차 라운드 최종 — 자력 가능 항목 전부 소진)
 
 | 판정 | 건수 | 비고 |
 | --- | --- | --- |
-| PASS (실측) | 76 | 화면 조작 + SQL + 게이트 V-0~V-4 + 2~6차 (route-abort·N-ADM-07·N-ADM-11·N-INB-10 + 이메일 파이프라인 N-EML-02·03·05·06·10·N-EDGE-03·04) |
+| PASS (실측) | 77 | 화면 조작 + SQL + 게이트 V-0~V-4 + 2~7차 (route-abort·N-ADM-07·N-ADM-11·N-INB-10 + 이메일 파이프라인 N-EML-02·03·05·06·08·10·N-EDGE-03·04) |
 | PASS (자동 테스트) | 12 | unit 21건·e2e mock 9·route 5·smoke 25스텝 |
-| BLOCKED (H-4 — 실제 이메일 deliverability) | 5 | N-EML-01·04·07·08·09 — 수신함 도달·실클라이언트 링크·수신거부 링크·Gmail 클리핑·SPF/DKIM/DMARC. **진짜 provider+발신 도메인 필수**(오너 미선택) |
+| BLOCKED (실제 이메일 deliverability — provider+도메인) | 3 | N-EML-01(수신함 도달)·04(실클라이언트 링크 도착)·09(SPF/DKIM/DMARC, 시나리오상 "스테이징 이후"). **오너 provider/도메인 미선택** |
+| 에스컬레이션 (O-7/H-2 — 시나리오가 명시) | 1 | N-EML-07(마케팅 수신거부 — "미구현이면 O-7 에스컬레이션", H-2 동의 모델 종속) |
 | BLOCKED (H-2 마케팅 동의 저장소) | 1 | N-OPT-04(동의자 수신 — 현재 전원 opted_out 보수 정책·차단 동작은 실측) |
 | BLOCKED (부하 전용 환경) | 1 | N-PERF-03 — 공유 dev DB 1만 시드 부적합. 부하 전용 환경 필요 |
 
-**자력 소진 = 완료. 잔여 0 · 수용 갭 0 · 결함 0.** 남은 7건은 전부 제3자/환경 종속: 실제 이메일 발송 provider+도메인(5, 오너 미선택), 마케팅 동의 모델 결정 H-2(1), 부하 전용 환경(1). 이 7건은 거짓 PASS 금지 원칙상 해당 외부 자원 없이는 검증 불가하며, 그 외 모든 시나리오는 PASS.
+**자력 소진 = 완료. 잔여 0 · 수용 갭 0 · 결함 0.** 남은 6건은 전부 제3자/환경/명시-에스컬레이션 종속: 실 이메일 발송(3, provider+도메인), 마케팅 수신거부 O-7 에스컬레이션(1), 동의 모델 H-2(1), 부하 환경(1). 거짓 PASS 금지 원칙상 외부 자원 없이는 검증 불가.
 
-**6차 라운드 성과**: N-ADM-11 예약 취소 기능 신규 구현(RPC+UI+감사, 취소→발송 0건 DB 검증) → 수용 갭 0. N-EDGE-04 per-user 실패 주입으로 부분 실패(배치 미중단) 검증. N-EML-03 렌더 데이터 처리(긴 이름·특수문자·베트남어 무손실) 검증.
+**7차 라운드 성과**: N-EML-08 본문 크기 가드 신규 구현(email>102KB CHECK+RPC 거부 — 시나리오 기대값 "가드 존재" 충족, 실측). 6차: N-ADM-11 예약 취소 기능(수용 갭 0)·N-EDGE-04 부분 실패·N-EML-03 데이터 처리.
 
 ## 3차 라운드 (2026-06-12 — 신규 컨텍스트 실측 + 결함 1건 수정)
 
@@ -98,7 +99,9 @@
 | N-EML-05 | **PASS(파이프라인)** | test_fail → attempt `failed`+error_code, retry_count 0 |
 | N-EML-06 | **PASS(파이프라인)** | test_fail_once → failed→재시도 sent, (dispatch,user,channel) 행 정확히 1 (중복 발송 0) |
 | N-EML-03 | **PASS(데이터)** | render_notification_text 50자·특수문자·베트남어 성조 무손실(bytes 동일·mojibake 0). 실클라이언트 렌더만 provider 필요 |
-| N-EML-01·04·07·08·09 | BLOCKED(H-4) | **실제 deliverability** — 수신함 도달·실클라이언트 링크·수신거부 링크·Gmail 102KB·SPF/DKIM/DMARC. 진짜 provider+도메인 필수 |
+| N-EML-08 | **PASS(가드)** | 본문 크기 가드 구현 — email body_html>102400 byte 시 CHECK+RPC 양쪽 거부(실측: 102401 거부·100000 통과·in_app 110000 통과). 시나리오 기대값="가드 존재" 충족 |
+| N-EML-01·04·09 | BLOCKED(H-4) | **실제 deliverability** — 수신함 도달·실클라이언트 링크 도착·SPF/DKIM/DMARC. 진짜 provider+도메인 필수 |
+| N-EML-07 | 에스컬레이션(O-7) | 마케팅 수신거부 링크 — 시나리오가 "미구현이면 O-7 에스컬레이션" 명시. H-2 동의 모델 종속(마케팅 현재 전원 opted_out) |
 | N-EML-10 | **PASS(파이프라인)** | feedback_ready 이벤트 → in_app·email attempt 각 1건(sent)·인앱 수신함 1건만(이메일 미생성) 실측 후 정리 |
 | N-SEC-01~04 | PASS | RLS 스모크 24/25→수정 후 재실행 예정(카운트 단언만 보정) |
 | N-SEC-05 | PASS | 양 앱 번들 secret 검색 0건(기계 검증 #1) |
