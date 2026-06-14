@@ -6,12 +6,12 @@
 
 | 판정 | 건수 | 비고 |
 | --- | --- | --- |
-| PASS (실측) | 72 | 화면 조작 + SQL + 게이트 V-0~V-4 + 2~5차 라운드 (route-abort·N-ADM-07·N-INB-10 + 이메일 파이프라인 N-EML-02·05·06·N-EDGE-03) |
+| PASS (실측) | 73 | 화면 조작 + SQL + 게이트 V-0~V-4 + 2~5차 라운드 (route-abort·N-ADM-07·N-INB-10 + 이메일 파이프라인 N-EML-02·05·06·10·N-EDGE-03) |
 | PASS (자동 테스트) | 12 | unit 21건·e2e mock 9·route 5·smoke 25스텝 |
 | BLOCKED (H-4 — 실제 이메일 deliverability) | 6 | N-EML-01·03·04·07·08·09 — 수신함 도달·실클라이언트·수신거부·Gmail 클리핑·SPF/DKIM/DMARC. **진짜 provider+발신 도메인 필수**(오너 미선택) |
 | BLOCKED (H-2 마케팅 동의 저장소) | 1 | N-OPT-04(동의자 수신 — 현재 전원 opted_out 보수 정책·차단 동작은 실측) |
 | BLOCKED (부하 환경) | 1 | N-PERF-03 — 공유 dev DB 1만 시드 부적합. 부하 전용 환경 필요 |
-| 잔여 (파이프라인 가능·명시 실행 후속) | 2 | N-EML-10(채널별 1건씩), N-EDGE-04(부분 실패) — 구조 구현됨, test transport로 검증 가능 |
+| 잔여 (test transport 한계 — 균일 실패만) | 1 | N-EDGE-04(부분 실패) — 스텁이 전 수신자 균일 결과라 per-user 실패 주입 불가. 실 provider 또는 per-user 스텁 확장 필요 |
 | 스펙 갭 (수용됨 — QA 시나리오가 명시 허용) | 1 | N-ADM-11(예약 취소 기능 없음 — 시나리오 [STD]가 "기능 없으면 갭 등록" 명시) |
 
 **5차 라운드 성과**: 이메일 파이프라인을 provider-무관하게 구현 — 채널 라우팅(email≠in_app 수신함 미생성)·선호/동의 평가·변수 fallback·실패→재시도(≤3 캡)·중복 방지·**정직한 기본값(transport 'disabled' → skipped, 거짓 sent 0)**. H-4 BLOCKED가 13→6으로 축소. 남은 6건은 실제 발송 provider 없이는 물리적으로 검증 불가(거짓 PASS 금지 원칙).
@@ -98,7 +98,7 @@
 | N-EML-05 | **PASS(파이프라인)** | test_fail → attempt `failed`+error_code, retry_count 0 |
 | N-EML-06 | **PASS(파이프라인)** | test_fail_once → failed→재시도 sent, (dispatch,user,channel) 행 정확히 1 (중복 발송 0) |
 | N-EML-01·03·04·07·08·09 | BLOCKED(H-4) | **실제 deliverability** — 수신함 도달·실클라이언트 렌더·수신거부 링크·Gmail 102KB·SPF/DKIM/DMARC. 진짜 provider 필요 |
-| N-EML-10 | 잔여(파이프라인-가능) | in_app+email 동시 1건씩 — 이벤트 디스패처가 채널별 attempt 생성하도록 구현됨, 명시 실행은 후속 |
+| N-EML-10 | **PASS(파이프라인)** | feedback_ready 이벤트 → in_app·email attempt 각 1건(sent)·인앱 수신함 1건만(이메일 미생성) 실측 후 정리 |
 | N-SEC-01~04 | PASS | RLS 스모크 24/25→수정 후 재실행 예정(카운트 단언만 보정) |
 | N-SEC-05 | PASS | 양 앱 번들 secret 검색 0건(기계 검증 #1) |
 | N-SEC-06 | PASS(부분) | html strip 실측 — 관리자 악성 본문 주입 시나리오는 후속 |
