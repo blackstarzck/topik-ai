@@ -2,18 +2,19 @@
 
 기준: `docs/알림-기능-QA-시나리오.md` (rev1, 86 시나리오). 판정 규칙: PASS = 화면 직접 조작/SQL 실측/자동 테스트 증적 명시. PASS(unit/e2e) = 자동 테스트 green 근거. BLOCKED = 휴먼 게이트(H-*) 종속 — 결함 아님. 잔여 = 미실측(후속 자동화 대상). 상세 증적: `logs/notification-feature-evidence.md`.
 
-## 집계 (2026-06-12 4차 라운드 최종 — 잔여 소진)
+## 집계 (2026-06-12 5차 라운드 최종 — 이메일 파이프라인 추가)
 
 | 판정 | 건수 | 비고 |
 | --- | --- | --- |
-| PASS (실측) | 68 | 화면 조작 + SQL + 게이트 V-0~V-4 + 2·3·4차 라운드 (route-abort 4·N-ADM-07·N-INB-10 포함) |
+| PASS (실측) | 72 | 화면 조작 + SQL + 게이트 V-0~V-4 + 2~5차 라운드 (route-abort·N-ADM-07·N-INB-10 + 이메일 파이프라인 N-EML-02·05·06·N-EDGE-03) |
 | PASS (자동 테스트) | 12 | unit 21건·e2e mock 9·route 5·smoke 25스텝 |
-| BLOCKED (H-4 이메일 provider) | 13 | N-EML-01~10, N-OPT-04(이메일 경로), N-EDGE-03·04(실패 주입 — in_app 무실패 경로) |
-| BLOCKED (H-2 마케팅 동의 저장소) | 1 | N-OPT-04(동의 평가 — 현재는 전원 opted_out 보수 정책 실측됨) |
-| BLOCKED (부하 환경) | 1 | N-PERF-03 — 공유 dev DB에 1만 auth 사용자 시드는 부적합(오염·rate limit). 부하 전용 환경 필요 |
-| 스펙 갭 (수용됨 — QA 시나리오가 명시 허용) | 1 | N-ADM-11(예약 취소 기능 없음 — 시나리오 [STD]가 "기능 없으면 UNDEFINED→갭 등록" 명시. gap register 기재) |
+| BLOCKED (H-4 — 실제 이메일 deliverability) | 6 | N-EML-01·03·04·07·08·09 — 수신함 도달·실클라이언트·수신거부·Gmail 클리핑·SPF/DKIM/DMARC. **진짜 provider+발신 도메인 필수**(오너 미선택) |
+| BLOCKED (H-2 마케팅 동의 저장소) | 1 | N-OPT-04(동의자 수신 — 현재 전원 opted_out 보수 정책·차단 동작은 실측) |
+| BLOCKED (부하 환경) | 1 | N-PERF-03 — 공유 dev DB 1만 시드 부적합. 부하 전용 환경 필요 |
+| 잔여 (파이프라인 가능·명시 실행 후속) | 2 | N-EML-10(채널별 1건씩), N-EDGE-04(부분 실패) — 구조 구현됨, test transport로 검증 가능 |
+| 스펙 갭 (수용됨 — QA 시나리오가 명시 허용) | 1 | N-ADM-11(예약 취소 기능 없음 — 시나리오 [STD]가 "기능 없으면 갭 등록" 명시) |
 
-**자력 소진 가능한 잔여 = 0건.** 남은 15건은 전부 외부 종속(H-4 이메일 13·H-2 동의 1·부하 환경 1) 또는 수용된 스펙 갭 1건. 결함 0.
+**5차 라운드 성과**: 이메일 파이프라인을 provider-무관하게 구현 — 채널 라우팅(email≠in_app 수신함 미생성)·선호/동의 평가·변수 fallback·실패→재시도(≤3 캡)·중복 방지·**정직한 기본값(transport 'disabled' → skipped, 거짓 sent 0)**. H-4 BLOCKED가 13→6으로 축소. 남은 6건은 실제 발송 provider 없이는 물리적으로 검증 불가(거짓 PASS 금지 원칙).
 
 ## 3차 라운드 (2026-06-12 — 신규 컨텍스트 실측 + 결함 1건 수정)
 
@@ -93,7 +94,11 @@
 | N-OPT-06 | PASS | 비필수 operational pref 존중·mandatory만 강제 실측 |
 | N-OPT-07 | PASS | mandatory bypass — optout sent + 감사 bypass_reason + **화면 수신 실측** |
 | N-OPT-08 | PASS | DB CHECK + RPC + UI(스위치 차단·확인 모달) 3중 실측 |
-| N-EML-01~10 | BLOCKED(H-4) | provider 미결정 |
+| N-EML-02 | **PASS(파이프라인)** | display_name 결측 → '학습자' fallback 렌더 실측 (test transport) |
+| N-EML-05 | **PASS(파이프라인)** | test_fail → attempt `failed`+error_code, retry_count 0 |
+| N-EML-06 | **PASS(파이프라인)** | test_fail_once → failed→재시도 sent, (dispatch,user,channel) 행 정확히 1 (중복 발송 0) |
+| N-EML-01·03·04·07·08·09 | BLOCKED(H-4) | **실제 deliverability** — 수신함 도달·실클라이언트 렌더·수신거부 링크·Gmail 102KB·SPF/DKIM/DMARC. 진짜 provider 필요 |
+| N-EML-10 | 잔여(파이프라인-가능) | in_app+email 동시 1건씩 — 이벤트 디스패처가 채널별 attempt 생성하도록 구현됨, 명시 실행은 후속 |
 | N-SEC-01~04 | PASS | RLS 스모크 24/25→수정 후 재실행 예정(카운트 단언만 보정) |
 | N-SEC-05 | PASS | 양 앱 번들 secret 검색 0건(기계 검증 #1) |
 | N-SEC-06 | PASS(부분) | html strip 실측 — 관리자 악성 본문 주입 시나리오는 후속 |
@@ -109,8 +114,8 @@
 | N-REG-07 | PASS | redirect 유지(O-10) — route registry 동작 |
 | N-EDGE-01 | PASS(부분) | DST 지역(NY) 발송 실측 — 전환일 시뮬레이션은 후속 |
 | N-EDGE-02 | 잔여 | 카드/벨 읽음 일관성 교차 |
-| N-EDGE-03 | BLOCKED(H-4) | 재시도 폭주 — email 전용 |
-| N-EDGE-04 | 잔여 | 부분 실패 주입 |
+| N-EDGE-03 | **PASS(파이프라인)** | test_fail로 retry 4회 → retry_count 0→1→2→3 캡, 4번째 no-op, 무한 증가 없음 |
+| N-EDGE-04 | 잔여(파이프라인-가능) | 부분 실패 — test transport로 일부 user 실패 주입 가능, 명시 실행은 후속 |
 | N-EDGE-05 | PASS | 탈퇴 cascade(기계 검증 #5) |
 | N-EDGE-06 | PASS | DB now() 단일 시각 출처(설계+코드) |
 | N-EDGE-07·08·09 | 잔여/BLOCKED | 빈도 폭주(잔여)·세션 만료(잔여)·채널 본문 정합(H-4) |

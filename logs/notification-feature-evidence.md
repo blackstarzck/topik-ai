@@ -100,6 +100,15 @@
 - **해제 절차**: 오너가 provider(권고 Resend)+API key+발신 도메인 확정 → 페이즈 가이드 WP3-1부터 재개. 키는 Edge Function 환경변수에만(클라이언트 노출 금지). 재개 시 검증: N-EML-01~10 + V-5.
 - 인앱 범위는 이미 출시 가능 상태(V-0~V-4·V-6 PASS). 이메일은 백로그로 분리.
 
+## P3 이메일 파이프라인 (provider-무관) — 부분 PASS (2026-06-12, 5차 라운드)
+
+- 오너가 provider를 못 정한 상태에서도 **provider와 무관한 파이프라인 의미론**은 정직하게 검증 가능하다는 판단으로 WP3-2의 provider-독립 부분을 구현. v13 `20260612190000_notification_email_pipeline.sql`:
+  - `notification_email_config`(mode: disabled/test_success/test_fail/test_fail_once/live, **기본 disabled**) + `private.notification_email_transport`(스텁 — 'live'는 미구현 placeholder, 실 HTTP 호출 없음) + `finalize_email_attempt` 헬퍼 + 채널 인지 디스패처(email은 user_notifications 미생성) + `retry_failed_email_attempts`(≤3 캡) + tick 통합.
+- **정직성 경계 준수**: 스텁의 'sent'는 "트랜스포트가 성공 반환"만 의미하며 "실제 메일 도달"이 아님. 기본 모드 disabled → email attempt는 `skipped`(reason no_transport), 거짓 sent 0건.
+- **파이프라인 검증 PASS** (test transport, 검증 후 throwaway user·config·템플릿 전부 원복): 채널 라우팅(email attempt·user_notifications 0)·N-EML-02 fallback·N-EML-05 실패 기록·N-EDGE-03 재시도 캡(0→1→2→3, 4번째 no-op)·N-EML-06 재시도 후 sent+중복 0·marketing opted_out·channel-off skip·기본 disabled skip.
+- **여전히 BLOCKED (실제 provider 필수, 거짓 PASS 금지)**: N-EML-01(수신함 도달)·03(실클라이언트 렌더)·04(실클라이언트 링크)·07(수신거부 링크)·08(Gmail 102KB)·09(SPF/DKIM/DMARC). H-4 BLOCKED 13→6 축소.
+- DB 클린 확인(throwaway 0행, config disabled, 템플릿 draft 원복). pg_net 부재(스텁은 순수 SQL이라 무관).
+
 ## P4 QA 전수 — 게이트 V-6 PASS / 종합 판정 (2026-06-12)
 
 - 기계 검증 7항목(서브에이전트 실행): N-SEC-05 번들 secret 0건(양 앱 빌드 후 dist/.next 검색), N-PERF-01·02·04 EXPLAIN 인덱스 사용, N-INB-03 120건 count 정확, RLS 스모크 재실행, N-SCH-09 탈퇴 cascade+무오류, N-EDGE-10 회차 차이 정상 발송, N-DSH-01 limit 5 — 전부 PASS (시드/임시 데이터 정리 완료).
