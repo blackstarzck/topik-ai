@@ -1,6 +1,7 @@
 import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
 import { messageDataSource } from './message-data-source';
 import {
+  cancelNotificationDispatch,
   deleteNotificationGroup,
   deleteNotificationTemplate,
   loadNotificationChannelSnapshot,
@@ -391,4 +392,22 @@ export function fetchNotificationDispatchAttemptsSafe(
       maxRetries: 1
     })
   );
+}
+
+// 예약 발송 취소 (supabase 모드 전용 — admin RPC, scheduled 상태만). 취소는
+// 멱등성이 없는 단발 액션이라 재시도하지 않는다 (중복 호출 시 서버가 거부).
+async function cancelDispatch(
+  dispatchId: string,
+  reason: string
+): Promise<{ id: string } | null> {
+  if (isSupabaseSource) {
+    return cancelNotificationDispatch(dispatchId, reason);
+  }
+
+  // mock 모드는 예약 발송 lifecycle이 없어 취소 액션이 노출되지 않는다.
+  throw new Error('mock 모드에서는 예약 발송 취소를 지원하지 않습니다.');
+}
+
+export function cancelNotificationDispatchSafe(dispatchId: string, reason: string) {
+  return toSafeResult(() => cancelDispatch(dispatchId, reason));
 }

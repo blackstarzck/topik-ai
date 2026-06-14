@@ -731,6 +731,24 @@ export async function sendNotification(
   return { id: String(data) };
 }
 
+// 예약(scheduled) 발송 실행 취소 — QA N-ADM-11. scheduled 상태만 허용(서버 가드).
+// 취소 후 파이프라인이 집행하지 않으므로 발송 0건.
+export async function cancelNotificationDispatch(
+  dispatchId: string,
+  reason?: string
+): Promise<{ id: string }> {
+  const client = requireClient();
+  const confirmedReason = requireReason(reason);
+  const { error } = await client.rpc('admin_cancel_notification_dispatch', {
+    p_dispatch_id: dispatchId,
+    p_reason: confirmedReason
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+  return { id: dispatchId };
+}
+
 // 정적 그룹은 명단 길이, 조건 기반은 산정 파이프라인 미연동(P2) — null 반환.
 export function previewNotificationGroupCount(
   payload: SaveMessageGroupPayload

@@ -2,19 +2,19 @@
 
 기준: `docs/알림-기능-QA-시나리오.md` (rev1, 86 시나리오). 판정 규칙: PASS = 화면 직접 조작/SQL 실측/자동 테스트 증적 명시. PASS(unit/e2e) = 자동 테스트 green 근거. BLOCKED = 휴먼 게이트(H-*) 종속 — 결함 아님. 잔여 = 미실측(후속 자동화 대상). 상세 증적: `logs/notification-feature-evidence.md`.
 
-## 집계 (2026-06-12 5차 라운드 최종 — 이메일 파이프라인 추가)
+## 집계 (2026-06-12 6차 라운드 최종 — 자력 가능 항목 전부 소진)
 
 | 판정 | 건수 | 비고 |
 | --- | --- | --- |
-| PASS (실측) | 73 | 화면 조작 + SQL + 게이트 V-0~V-4 + 2~5차 라운드 (route-abort·N-ADM-07·N-INB-10 + 이메일 파이프라인 N-EML-02·05·06·10·N-EDGE-03) |
+| PASS (실측) | 76 | 화면 조작 + SQL + 게이트 V-0~V-4 + 2~6차 (route-abort·N-ADM-07·N-ADM-11·N-INB-10 + 이메일 파이프라인 N-EML-02·03·05·06·10·N-EDGE-03·04) |
 | PASS (자동 테스트) | 12 | unit 21건·e2e mock 9·route 5·smoke 25스텝 |
-| BLOCKED (H-4 — 실제 이메일 deliverability) | 6 | N-EML-01·03·04·07·08·09 — 수신함 도달·실클라이언트·수신거부·Gmail 클리핑·SPF/DKIM/DMARC. **진짜 provider+발신 도메인 필수**(오너 미선택) |
+| BLOCKED (H-4 — 실제 이메일 deliverability) | 5 | N-EML-01·04·07·08·09 — 수신함 도달·실클라이언트 링크·수신거부 링크·Gmail 클리핑·SPF/DKIM/DMARC. **진짜 provider+발신 도메인 필수**(오너 미선택) |
 | BLOCKED (H-2 마케팅 동의 저장소) | 1 | N-OPT-04(동의자 수신 — 현재 전원 opted_out 보수 정책·차단 동작은 실측) |
-| BLOCKED (부하 환경) | 1 | N-PERF-03 — 공유 dev DB 1만 시드 부적합. 부하 전용 환경 필요 |
-| 잔여 (test transport 한계 — 균일 실패만) | 1 | N-EDGE-04(부분 실패) — 스텁이 전 수신자 균일 결과라 per-user 실패 주입 불가. 실 provider 또는 per-user 스텁 확장 필요 |
-| 스펙 갭 (수용됨 — QA 시나리오가 명시 허용) | 1 | N-ADM-11(예약 취소 기능 없음 — 시나리오 [STD]가 "기능 없으면 갭 등록" 명시) |
+| BLOCKED (부하 전용 환경) | 1 | N-PERF-03 — 공유 dev DB 1만 시드 부적합. 부하 전용 환경 필요 |
 
-**5차 라운드 성과**: 이메일 파이프라인을 provider-무관하게 구현 — 채널 라우팅(email≠in_app 수신함 미생성)·선호/동의 평가·변수 fallback·실패→재시도(≤3 캡)·중복 방지·**정직한 기본값(transport 'disabled' → skipped, 거짓 sent 0)**. H-4 BLOCKED가 13→6으로 축소. 남은 6건은 실제 발송 provider 없이는 물리적으로 검증 불가(거짓 PASS 금지 원칙).
+**자력 소진 = 완료. 잔여 0 · 수용 갭 0 · 결함 0.** 남은 7건은 전부 제3자/환경 종속: 실제 이메일 발송 provider+도메인(5, 오너 미선택), 마케팅 동의 모델 결정 H-2(1), 부하 전용 환경(1). 이 7건은 거짓 PASS 금지 원칙상 해당 외부 자원 없이는 검증 불가하며, 그 외 모든 시나리오는 PASS.
+
+**6차 라운드 성과**: N-ADM-11 예약 취소 기능 신규 구현(RPC+UI+감사, 취소→발송 0건 DB 검증) → 수용 갭 0. N-EDGE-04 per-user 실패 주입으로 부분 실패(배치 미중단) 검증. N-EML-03 렌더 데이터 처리(긴 이름·특수문자·베트남어 무손실) 검증.
 
 ## 3차 라운드 (2026-06-12 — 신규 컨텍스트 실측 + 결함 1건 수정)
 
@@ -81,7 +81,7 @@
 | N-ADM-07 | **PASS** | 빈 그룹 가드 구현·실측 — 0명 그룹만 선택 시 "수신 대상이 없습니다" 경고+발송 차단, dispatch 0건(SQL) |
 | N-ADM-08 | PASS | V-3 #3 — 나에게 보내기 → 본인 sent |
 | N-ADM-09·10 | PASS | V-3 #4~#11 — 즉시/예약 전체 |
-| N-ADM-11 | UNDEFINED | 예약 취소 기능 없음 — 스펙 갭 등록(O-12 후보) |
+| N-ADM-11 | **PASS** | 예약 취소 기능 구현 — `admin_cancel_notification_dispatch` RPC(scheduled만 취소·사유·감사) + 이력 화면 취소 액션. DB 검증: 취소된 dispatch는 파이프라인 미집행·발송 0건 |
 | N-ADM-12 | PASS | drawer 집계 합산=대상 수 실측 |
 | N-ADM-13 | 잔여 | 발송-집행 사이 그룹 변동 |
 | N-ADM-14 | PASS(설계+DB) | 메뉴는 platform_admin만(권한 매핑 실측 — content_admin 제외), RPC 가드 스모크 |
@@ -97,7 +97,8 @@
 | N-EML-02 | **PASS(파이프라인)** | display_name 결측 → '학습자' fallback 렌더 실측 (test transport) |
 | N-EML-05 | **PASS(파이프라인)** | test_fail → attempt `failed`+error_code, retry_count 0 |
 | N-EML-06 | **PASS(파이프라인)** | test_fail_once → failed→재시도 sent, (dispatch,user,channel) 행 정확히 1 (중복 발송 0) |
-| N-EML-01·03·04·07·08·09 | BLOCKED(H-4) | **실제 deliverability** — 수신함 도달·실클라이언트 렌더·수신거부 링크·Gmail 102KB·SPF/DKIM/DMARC. 진짜 provider 필요 |
+| N-EML-03 | **PASS(데이터)** | render_notification_text 50자·특수문자·베트남어 성조 무손실(bytes 동일·mojibake 0). 실클라이언트 렌더만 provider 필요 |
+| N-EML-01·04·07·08·09 | BLOCKED(H-4) | **실제 deliverability** — 수신함 도달·실클라이언트 링크·수신거부 링크·Gmail 102KB·SPF/DKIM/DMARC. 진짜 provider+도메인 필수 |
 | N-EML-10 | **PASS(파이프라인)** | feedback_ready 이벤트 → in_app·email attempt 각 1건(sent)·인앱 수신함 1건만(이메일 미생성) 실측 후 정리 |
 | N-SEC-01~04 | PASS | RLS 스모크 24/25→수정 후 재실행 예정(카운트 단언만 보정) |
 | N-SEC-05 | PASS | 양 앱 번들 secret 검색 0건(기계 검증 #1) |
@@ -115,7 +116,7 @@
 | N-EDGE-01 | PASS(부분) | DST 지역(NY) 발송 실측 — 전환일 시뮬레이션은 후속 |
 | N-EDGE-02 | 잔여 | 카드/벨 읽음 일관성 교차 |
 | N-EDGE-03 | **PASS(파이프라인)** | test_fail로 retry 4회 → retry_count 0→1→2→3 캡, 4번째 no-op, 무한 증가 없음 |
-| N-EDGE-04 | 잔여(파이프라인-가능) | 부분 실패 — test transport로 일부 user 실패 주입 가능, 명시 실행은 후속 |
+| N-EDGE-04 | **PASS(파이프라인)** | per-user 실패 주입(fail_user_id) → user1 sent·user2 failed·dispatch partial_failed·배치 미중단(2 attempt 유지), 재시도 후 user2 sent |
 | N-EDGE-05 | PASS | 탈퇴 cascade(기계 검증 #5) |
 | N-EDGE-06 | PASS | DB now() 단일 시각 출처(설계+코드) |
 | N-EDGE-07·08·09 | 잔여/BLOCKED | 빈도 폭주(잔여)·세션 만료(잔여)·채널 본문 정합(H-4) |

@@ -20,6 +20,7 @@ import { useSearchParams } from 'react-router-dom';
 
 import { messageDataSource } from '../api/message-data-source';
 import {
+  cancelNotificationDispatchSafe,
   fetchHistoriesSafe,
   fetchNotificationDispatchAttemptsSafe,
   fetchNotificationDispatchesSafe,
@@ -806,6 +807,9 @@ function NotificationDispatchHistoryPage(): JSX.Element {
   const [reloadKey, setReloadKey] = useState(0);
   const [detailDispatch, setDetailDispatch] =
     useState<NotificationDispatchListItem | null>(null);
+  const [cancelTarget, setCancelTarget] =
+    useState<NotificationDispatchListItem | null>(null);
+  const [notificationApi, notificationContextHolder] = notification.useNotification();
   const [attempts, setAttempts] = useState<NotificationDeliveryAttemptItem[]>([]);
   const [attemptsState, setAttemptsState] = useState<AsyncState<null>>({
     status: 'empty',
@@ -918,6 +922,39 @@ function NotificationDispatchHistoryPage(): JSX.Element {
     setReloadKey((prev) => prev + 1);
   }, []);
 
+  const handleCancelConfirm = useCallback(
+    async (reason: string) => {
+      if (!cancelTarget) {
+        return;
+      }
+
+      const result = await cancelNotificationDispatchSafe(cancelTarget.id, reason);
+      if (!result.ok) {
+        notificationApi.error({
+          message: '예약 발송 취소 실패',
+          description: result.error.message
+        });
+        return;
+      }
+
+      notificationApi.success({
+        message: '예약 발송 취소 완료',
+        description: (
+          <Space direction="vertical">
+            <Text>대상 유형: {getTargetTypeLabel('Notification')}</Text>
+            <Text>대상 ID: {cancelTarget.id}</Text>
+            <Text>사유/근거: {reason}</Text>
+            <AuditLogLink targetType="Notification" targetId={cancelTarget.id} />
+          </Space>
+        )
+      });
+      setCancelTarget(null);
+      setDetailDispatch(null);
+      setReloadKey((prev) => prev + 1);
+    },
+    [cancelTarget, notificationApi]
+  );
+
   const columns = useMemo<TableColumnsType<NotificationDispatchListItem>>(
     () => [
       {
@@ -987,6 +1024,27 @@ function NotificationDispatchHistoryPage(): JSX.Element {
         dataIndex: 'reason',
         ellipsis: true,
         render: (value: string) => value || '-'
+      },
+      {
+        title: '관리',
+        key: 'actions',
+        width: 110,
+        fixed: 'right',
+        render: (_: unknown, record: NotificationDispatchListItem) =>
+          record.status === 'scheduled' ? (
+            <Button
+              size="small"
+              danger
+              onClick={(event) => {
+                event.stopPropagation();
+                setCancelTarget(record);
+              }}
+            >
+              예약 취소
+            </Button>
+          ) : (
+            <Text type="secondary">-</Text>
+          )
       }
     ],
     []
@@ -1040,6 +1098,7 @@ function NotificationDispatchHistoryPage(): JSX.Element {
 
   return (
     <div>
+      {notificationContextHolder}
       <PageTitle title="발송 이력" />
 
       {loadState.status === 'error' ? (
@@ -1094,7 +1153,7 @@ function NotificationDispatchHistoryPage(): JSX.Element {
             pageSize: 10,
             showSizeChanger: false
           }}
-          scroll={{ x: 1200 }}
+          scroll={{ x: 1310 }}
         />
       </AdminListCard>
 
@@ -1114,6 +1173,13 @@ function NotificationDispatchHistoryPage(): JSX.Element {
         footerStart={
           detailDispatch ? (
             <AuditLogLink targetType="Notification" targetId={detailDispatch.id} />
+          ) : null
+        }
+        footerEnd={
+          detailDispatch && detailDispatch.status === 'scheduled' ? (
+            <Button danger onClick={() => setCancelTarget(detailDispatch)}>
+              예약 취소
+            </Button>
           ) : null
         }
       >
@@ -1236,6 +1302,19 @@ function NotificationDispatchHistoryPage(): JSX.Element {
           </DetailDrawerBody>
         ) : null}
       </DetailDrawer>
+
+      {cancelTarget ? (
+        <ConfirmAction
+          open
+          title="예약 발송 취소"
+          description="예약된 발송 실행을 취소합니다. 취소 후에는 발송 파이프라인이 이 예약을 집행하지 않습니다(발송 0건). 되돌릴 수 없으니 사유를 남기세요."
+          targetType="Notification"
+          targetId={cancelTarget.id}
+          confirmText="예약 취소 실행"
+          onCancel={() => setCancelTarget(null)}
+          onConfirm={handleCancelConfirm}
+        />
+      ) : null}
     </div>
   );
 }
