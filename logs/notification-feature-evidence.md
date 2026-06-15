@@ -100,6 +100,15 @@
 - **해제 절차**: 오너가 provider(권고 Resend)+API key+발신 도메인 확정 → 페이즈 가이드 WP3-1부터 재개. 키는 Edge Function 환경변수에만(클라이언트 노출 금지). 재개 시 검증: N-EML-01~10 + V-5.
 - 인앱 범위는 이미 출시 가능 상태(V-0~V-4·V-6 PASS). 이메일은 백로그로 분리.
 
+## 프로젝트 완료 — 인앱 범위 (오너 수용, 2026-06-12)
+
+- **오너 결정(2026-06-12)**: "인앱 범위로 완료 수용". 알림 기능을 인앱 범위로 마감한다. 자력 가능 QA 전부 PASS(89), 결함 0, 게이트 V-0~V-4·V-6 PASS. V-5 이메일은 파이프라인 PASS + 실 deliverability만 외부 종속.
+- **백로그(외부 자원/결정 확보 시 재개 — 가이드 WP3-1 진입점)**:
+  1. 이메일 실 deliverability 3건(N-EML-01·04·09) — provider(권고 Resend) + 발신 도메인 → `notification_email_config` 'live' placeholder에 HTTP 호출 채움.
+  2. N-EML-07 마케팅 수신거부 + N-OPT-04 동의자 수신 — H-2 마케팅 동의 모델(O-7) 결정 후 구현.
+  3. N-PERF-03 1만 부하 — 부하 전용 환경(공유 dev DB 부적합).
+- 인앱 알림은 출시 가능. 이메일은 트랜스포트 교체만 남은 ready 상태.
+
 ## P3 이메일 파이프라인 (provider-무관) — 부분 PASS (2026-06-12, 5차 라운드)
 
 - 오너가 provider를 못 정한 상태에서도 **provider와 무관한 파이프라인 의미론**은 정직하게 검증 가능하다는 판단으로 WP3-2의 provider-독립 부분을 구현. v13 `20260612190000_notification_email_pipeline.sql`:
