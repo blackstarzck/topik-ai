@@ -1,0 +1,71 @@
+{
+  "question_id": "topik-writing-52-0001",
+  "item_number": 52,
+  "schema_version": "1.0",
+  "created_at": "2026-04-23T14:35:58+09:00",
+  "updated_at": "2026-06-11T10:00:00+09:00",
+  "common": {
+    "source_exam_reference": "complete_paragraph_generation_2026-04-23",
+    "source_reference": "sample-52.json",
+    "exam_name": "TOPIK",
+    "section": "쓰기",
+    "question_type_code": "topik52_complete_paragraph_source",
+    "question_type_name": "문장·문단 완성형",
+    "target_level": "TOPIK 4급",
+    "difficulty_level": 4,
+    "topic_main": "건강",
+    "topic_detail": "위생",
+    "secondary_topic_main": null,
+    "secondary_topic_detail": null,
+    "topic_source": "국제 통용 한국어 표준 교육과정 적용 연구 참고",
+    "text_type": "설명문/단락 완성",
+    "speech_act": "설명",
+    "relation": "출제자 → 수험자",
+    "scenario_type": "수면의 질 설명",
+    "situation_summary": "수면 시간이 아니라 깊게 쉬는 상태가 중요하다는 내용을 설명하는 단락이다.",
+    "learning_goal_summary": "원인 설명과 해결 조건을 문맥에 맞게 완성한다.",
+    "prompt_text": "사람들은 보통 피곤할 때 잠을 오래 자면 피로가 풀릴 것이라고 생각한다. 그러나 수면 시간이 아무리 길어도 자는 동안 자주 깨면 피로가 완전히 풀리지 않는다. 왜냐하면 몸을 회복하는 데에는 수면 시간보다 수면의 질이 더 ( ㄱ ). 따라서 ( ㄴ ) 잠들기 전에 스마트폰 사용을 줄이고 매일 비슷한 시간에 잠자리에 드는 것이 좋다.",
+    "resolved_text": "사람들은 보통 피곤할 때 잠을 오래 자면 피로가 풀릴 것이라고 생각한다. 그러나 수면 시간이 아무리 길어도 자는 동안 자주 깨면 피로가 완전히 풀리지 않는다. 왜냐하면 몸을 회복하는 데에는 수면 시간보다 수면의 질이 더 중요하기 때문이다. 따라서 수면의 질을 높이려면 잠들기 전에 스마트폰 사용을 줄이고 매일 비슷한 시간에 잠자리에 드는 것이 좋다.",
+    "model_answer": "ㄱ: 중요하기 때문이다\nㄴ: 수면의 질을 높이려면",
+    "answer_key": {
+      "ㄱ": ["중요하기 때문이다"],
+      "ㄴ": ["수면의 질을 높이려면"]
+    },
+    "service_status": "internal_test",
+    "auto_checks_passed": true,
+    "recommendation_keys": ["topic:건강", "connection:원인 설명", "cohesion:접속 표현"],
+    "avoid_repeat_keys": ["scenario:수면의 질", "answer:중요하기 때문이다"],
+    "content_team_memo": null
+  },
+  "detail": {
+    "kind": 52,
+    "completion_unit": "구",
+    "required_sentence_count": 1,
+    "blank_count": 2,
+    "connection_function": "이유 설명",
+    "clue_before_text": "수면 시간이 길어도 자주 깨면 피로가 풀리지 않는다.",
+    "clue_after_text": "잠들기 전에 스마트폰 사용을 줄이는 것이 좋다.",
+    "required_expression_function": "원인 설명",
+    "sentence_complexity": "복합 문장",
+    "answer_scope_type": "유사표현 허용형",
+    "grammar_patterns": ["-기 때문이다", "-려면"],
+    "paragraph_role": "이유",
+    "cohesion_focus": "접속 표현",
+    "blank_1_canonical_answer": "중요하기 때문이다",
+    "blank_1_accepted_answers": ["중요하기 때문이다"],
+    "blank_2_canonical_answer": "수면의 질을 높이려면",
+    "blank_2_accepted_answers": ["수면의 질을 높이려면"],
+    "scoring_notes": "원인 설명과 해결 조건이 앞뒤 문맥에 자연스럽게 이어져야 한다."
+  },
+  "tags": [
+    {
+      "tag_assignment_id": 10002,
+      "tag_code": "connection_expression_retry",
+      "tag_name_ko": "연결표현복습",
+      "tag_group": "학습흐름",
+      "tag_value": null,
+      "is_active": true,
+      "assigned_at": "2026-06-11T10:00:00+09:00"
+    }
+  ]
+}

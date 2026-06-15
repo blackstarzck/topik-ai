@@ -1,0 +1,19 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "topik-ai",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "C:/Users/admin/Desktop/workspace/topik-ai", "run", "dev"],
+      "port": 5173,
+      "autoPort": true
+    },
+    {
+      "name": "v13",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--dir", "C:/Users/admin/Desktop/workspace/topik-project/v13", "dev"],
+      "port": 3000,
+      "autoPort": true
+    }
+  ]
+}

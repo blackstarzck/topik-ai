@@ -1,0 +1,109 @@
+{
+  "question_id": "topik-writing-53-0001",
+  "item_number": 53,
+  "schema_version": "1.0",
+  "created_at": "2026-03-19T15:29:01+09:00",
+  "updated_at": "2026-06-11T10:00:00+09:00",
+  "common": {
+    "source_exam_reference": "long_form_writing_53_generation_2026-03-19",
+    "source_reference": "sample-53.json",
+    "exam_name": "TOPIK",
+    "section": "쓰기",
+    "question_type_code": "type1_dual_cause",
+    "question_type_name": "자료 설명형",
+    "target_level": "TOPIK 4급",
+    "difficulty_level": 4,
+    "topic_main": "일과 직업",
+    "topic_detail": "취업",
+    "secondary_topic_main": "사회",
+    "secondary_topic_detail": "경제",
+    "topic_source": "국제 통용 한국어 표준 교육과정 적용 연구 참고",
+    "text_type": "설명문/그래프 설명문",
+    "speech_act": "설명",
+    "relation": "출제자 → 수험자",
+    "scenario_type": "청년 창업 비율 설명",
+    "situation_summary": "청년 창업 비율의 증가와 업종별 비율 차이를 자료 기반으로 설명하는 문제이다.",
+    "learning_goal_summary": "자료의 수치 변화와 항목 간 차이를 객관적으로 설명한다.",
+    "prompt_text": "다음을 참고하여 200~300자로 글을 쓰시오. 단, 글의 제목은 쓰지 마시오. (30점)\n1) '청년 창업 비율(전체)'의 전체적인 경향을 쓰시오.\n2) '업종별 비율'의 항목 간 차이를 쓰시오.\n3) 위의 내용을 정리하여 마무리하시오.",
+    "resolved_text": null,
+    "model_answer": "중소벤처기업부 조사에 따르면 청년 창업 비율은 2024년 28%에서 2025년 36%, 2026년 45%로 꾸준히 상승하였다. 2026년 업종별 비율은 콘텐츠 39%, IT 30%, 외식 19%, 기타 12%로 나타났다. 이처럼 콘텐츠와 IT 업종의 비중이 높게 나타난 것은 정부의 창업 지원 정책 확대에 따른 것으로 볼 수 있다.",
+    "answer_key": null,
+    "service_status": "internal_test",
+    "auto_checks_passed": true,
+    "recommendation_keys": ["topic:일과 직업", "data_type:복합 자료", "comparison:항목 비교"],
+    "avoid_repeat_keys": ["data_topic:청년 창업 비율", "chart:업종별 비율"],
+    "content_team_memo": "모범답안에는 자료에 없는 개인 의견을 넣지 않는다."
+  },
+  "detail": {
+    "kind": 53,
+    "data_type": "복합 자료",
+    "data_topic": "청년 창업 비율",
+    "chart_title": "청년 창업 비율과 업종별 비율",
+    "chart_unit": "%",
+    "comparison_target_count": 4,
+    "data_series_count": 2,
+    "number_expression_required": true,
+    "comparison_type": "항목 비교",
+    "change_type": "증가",
+    "key_findings": ["청년 창업 비율 상승", "콘텐츠와 IT 업종 비중 높음"],
+    "required_structure": ["자료 소개", "주요 수치", "비교", "정리"],
+    "expression_set": ["증가하다", "비중이 높다", "나타나다"],
+    "word_count_min": 200,
+    "word_count_max": 300,
+    "interpretation_difficulty": "복수 비교",
+    "prohibited_elements": ["개인 의견", "자료에 없는 추론"],
+    "source_data": {
+      "chart_a": {
+        "chart_type": "bar",
+        "title": "청년 창업 비율(전체)",
+        "unit": "%",
+        "survey_org": "중소벤처기업부",
+        "year_range": [2024, 2025, 2026],
+        "series": [
+          {
+            "label": "비율",
+            "values": [28, 36, 45]
+          }
+        ]
+      },
+      "chart_b": {
+        "chart_type": "donut",
+        "title": "업종별 비율",
+        "unit": "%",
+        "survey_org": "중소벤처기업부",
+        "year_range": [2026],
+        "series": [
+          {
+            "label": "콘텐츠",
+            "values": [39]
+          },
+          {
+            "label": "IT",
+            "values": [30]
+          },
+          {
+            "label": "외식",
+            "values": [19]
+          },
+          {
+            "label": "기타",
+            "values": [12]
+          }
+        ]
+      }
+    },
+    "data_asset_url": null,
+    "scoring_focus": ["자료 이해", "수치 표현", "문장 구성"]
+  },
+  "tags": [
+    {
+      "tag_assignment_id": 10003,
+      "tag_code": "data_interpretation_practice",
+      "tag_name_ko": "자료해석연습",
+      "tag_group": "학습흐름",
+      "tag_value": null,
+      "is_active": true,
+      "assigned_at": "2026-06-11T10:00:00+09:00"
+    }
+  ]
+}

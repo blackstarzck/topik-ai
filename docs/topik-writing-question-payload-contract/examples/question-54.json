@@ -1,0 +1,79 @@
+{
+  "question_id": "topik-writing-54-0001",
+  "item_number": 54,
+  "schema_version": "1.0",
+  "created_at": "2026-05-04T10:00:00+09:00",
+  "updated_at": "2026-06-11T10:00:00+09:00",
+  "common": {
+    "source_exam_reference": "essay_writing_54_generation_2026-05-04",
+    "source_reference": "sample-54.json",
+    "exam_name": "TOPIK",
+    "section": "쓰기",
+    "question_type_code": "role_conflict_standard",
+    "question_type_name": "논술형",
+    "target_level": "TOPIK 5급",
+    "difficulty_level": 5,
+    "topic_main": "사회",
+    "topic_detail": "여론",
+    "secondary_topic_main": "전문 분야",
+    "secondary_topic_detail": "과학",
+    "topic_source": "국제 통용 한국어 표준 교육과정 적용 연구 참고",
+    "text_type": "논술문/의견 제시",
+    "speech_act": "주장",
+    "relation": "출제자 → 수험자",
+    "scenario_type": "디지털 시민성의 필요성과 실천",
+    "situation_summary": "온라인 공간에서 책임 있는 참여와 갈등 예방 기준을 논하는 문제이다.",
+    "learning_goal_summary": "주장과 근거를 연결해 600~700자 논술문을 구성한다.",
+    "prompt_text": "다음을 주제로 하여 자신의 생각을 600~700자로 쓰시오. 단, 문제를 그대로 옮겨 쓰지 마시오. (50점)\n\n최근 일상생활에서 인터넷과 소셜 미디어의 사용이 보편화되면서 '디지털 시민성'의 중요성이 대두되고 있다. 디지털 시민성이란 온라인 공간에서 타인의 권리를 존중하고 책임감 있게 참여하는 태도를 의미한다. 아래의 내용을 중심으로 '디지털 시민성의 필요성과 실천 방안'에 대한 자신의 생각을 쓰라.\n1) 디지털 시민성이 현대 사회에서 중요한 이유는 무엇인가?\n2) 온라인 공간에서 책임감이 결여되었을 때 어떠한 문제가 발생할 수 있는가?\n3) 올바른 디지털 시민성을 함양하고 실천하기 위해 어떠한 노력을 해야 하는가?",
+    "resolved_text": null,
+    "model_answer": "디지털 시민성은 온라인 공간에서 다른 사람과 함께 살아가기 위한 기본 태도이다. 인터넷에서는 누구나 쉽게 의견을 올리고 정보를 나눌 수 있지만, 그만큼 말과 행동의 영향도 빠르게 커진다. 따라서 디지털 시민성이 높으면 서로 다른 생각을 가진 사람도 규칙 안에서 토론할 수 있고, 거짓 정보나 무례한 표현이 퍼지는 속도도 줄일 수 있다. 반대로 익명성에 기대어 책임 없는 말을 하거나 출처를 확인하지 않은 내용을 반복하면 갈등이 커지고 공동체의 신뢰가 약해진다. 이런 문제를 줄이려면 개인은 사실 확인, 표현의 예절, 개인정보 보호 같은 기본 원칙을 익혀야 한다. 결국 디지털 시민성은 단순한 예절이 아니라 안전하고 건강한 온라인 공동체를 유지하는 사회적 기준이다.",
+    "answer_key": null,
+    "service_status": "internal_test",
+    "auto_checks_passed": true,
+    "recommendation_keys": ["topic:사회", "essay_type:주장형", "reasoning:주장→근거"],
+    "avoid_repeat_keys": ["issue:디지털 시민성", "essay_type:주장형"],
+    "content_team_memo": null
+  },
+  "detail": {
+    "kind": 54,
+    "essay_type": "주장형",
+    "issue_topic": "디지털 시민성",
+    "prompt_questions": [
+      "디지털 시민성이 현대 사회에서 중요한 이유는 무엇인가?",
+      "온라인 공간에서 책임감이 결여되었을 때 어떠한 문제가 발생할 수 있는가?",
+      "올바른 디지털 시민성을 함양하고 실천하기 위해 어떠한 노력을 해야 하는가?"
+    ],
+    "stance_requirement": "자신의 생각 제시",
+    "required_structure": ["서론", "본론1", "본론2", "결론"],
+    "required_reason_count": 2,
+    "example_requirement": "사회적 예시",
+    "word_count_min": 600,
+    "word_count_max": 700,
+    "reasoning_pattern": "주장→근거",
+    "argument_keywords": ["온라인 공동체", "책임", "익명성"],
+    "vocabulary_level": "고급",
+    "scoring_focus": ["내용", "구조", "표현", "문법"],
+    "prohibited_elements": ["주제 이탈", "단순 나열"],
+    "model_outline": {
+      "intro": "디지털 시민성의 의미와 필요성 제시",
+      "body": ["온라인 공동체의 신뢰 유지", "익명성 환경의 문제와 예방"],
+      "conclusion": "책임 있는 참여 기준 정리"
+    },
+    "rubric": {
+      "content": "주어진 세 가지 과제를 모두 수행하고 주제와 직접 관련된 내용을 구체적으로 전개했는가.",
+      "structure": "도입-전개-마무리의 흐름이 분명한가.",
+      "language": "격식체를 유지하면서 문법과 어휘를 정확하게 사용했는가."
+    }
+  },
+  "tags": [
+    {
+      "tag_assignment_id": 10004,
+      "tag_code": "logic_structure_practice",
+      "tag_name_ko": "논리구조연습",
+      "tag_group": "학습흐름",
+      "tag_value": null,
+      "is_active": true,
+      "assigned_at": "2026-06-11T10:00:00+09:00"
+    }
+  ]
+}
