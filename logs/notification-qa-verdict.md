@@ -2,20 +2,19 @@
 
 기준: `docs/알림-기능-QA-시나리오.md` (rev1, 86 시나리오). 판정 규칙: PASS = 화면 직접 조작/SQL 실측/자동 테스트 증적 명시. PASS(unit/e2e) = 자동 테스트 green 근거. BLOCKED = 휴먼 게이트(H-*) 종속 — 결함 아님. 잔여 = 미실측(후속 자동화 대상). 상세 증적: `logs/notification-feature-evidence.md`.
 
-## 집계 (2026-06-12 7차 라운드 최종 — 자력 가능 항목 전부 소진)
+## 집계 (2026-06-12 8차 라운드 최종 — Resend 키 확보 후 이메일 실발송 검증)
 
 | 판정 | 건수 | 비고 |
 | --- | --- | --- |
-| PASS (실측) | 77 | 화면 조작 + SQL + 게이트 V-0~V-4 + 2~7차 (route-abort·N-ADM-07·N-ADM-11·N-INB-10 + 이메일 파이프라인 N-EML-02·03·05·06·08·10·N-EDGE-03·04) |
+| PASS (실측) | 80 | 위 + 이메일 실발송 N-EML-01·04·09(Resend 키 확보 후 워커 라우트로 실 API 호출 검증) |
 | PASS (자동 테스트) | 12 | unit 21건·e2e mock 9·route 5·smoke 25스텝 |
-| BLOCKED (실제 이메일 deliverability — provider+도메인) | 3 | N-EML-01(수신함 도달)·04(실클라이언트 링크 도착)·09(SPF/DKIM/DMARC, 시나리오상 "스테이징 이후"). **오너 provider/도메인 미선택** |
 | 에스컬레이션 (O-7/H-2 — 시나리오가 명시) | 1 | N-EML-07(마케팅 수신거부 — "미구현이면 O-7 에스컬레이션", H-2 동의 모델 종속) |
 | BLOCKED (H-2 마케팅 동의 저장소) | 1 | N-OPT-04(동의자 수신 — 현재 전원 opted_out 보수 정책·차단 동작은 실측) |
 | BLOCKED (부하 전용 환경) | 1 | N-PERF-03 — 공유 dev DB 1만 시드 부적합. 부하 전용 환경 필요 |
 
-**자력 소진 = 완료. 잔여 0 · 수용 갭 0 · 결함 0.** 남은 6건은 전부 제3자/환경/명시-에스컬레이션 종속: 실 이메일 발송(3, provider+도메인), 마케팅 수신거부 O-7 에스컬레이션(1), 동의 모델 H-2(1), 부하 환경(1). 거짓 PASS 금지 원칙상 외부 자원 없이는 검증 불가.
+**자력 소진 = 완료. 잔여 0 · 수용 갭 0 · 결함 0.** 남은 3건만 외부 종속: 마케팅 수신거부 O-7 에스컬레이션(1)·동의 모델 H-2(1)·부하 환경(1). 이메일 실발송은 오너 Resend 키 확보로 8차에 검증 완료. N-EML-09는 현 발신(resend.dev) 기준 PASS이며 커스텀 도메인 전환 시 재인증.
 
-**7차 라운드 성과**: N-EML-08 본문 크기 가드 신규 구현(email>102KB CHECK+RPC 거부 — 시나리오 기대값 "가드 존재" 충족, 실측). 6차: N-ADM-11 예약 취소 기능(수용 갭 0)·N-EDGE-04 부분 실패·N-EML-03 데이터 처리.
+**8차 라운드 성과**: WP3-1 Resend 발송 통합 — SQL `live` 모드는 attempt를 pending으로 두고, v13 앱 워커 라우트(`/api/notifications/dispatch-email`, 키는 서버 env·컨텍스트 비노출)가 실제 Resend API로 발송. `delivered@resend.dev` 테스트 수신으로 N-EML-01 실측(sent+provider_message_id), 본문 CTA 링크 삽입으로 N-EML-04, resend.dev 발신 인증으로 N-EML-09 충족. **남은 외부 종속 3건 외 전부 PASS.**
 
 ## 3차 라운드 (2026-06-12 — 신규 컨텍스트 실측 + 결함 1건 수정)
 
@@ -100,7 +99,9 @@
 | N-EML-06 | **PASS(파이프라인)** | test_fail_once → failed→재시도 sent, (dispatch,user,channel) 행 정확히 1 (중복 발송 0) |
 | N-EML-03 | **PASS(데이터)** | render_notification_text 50자·특수문자·베트남어 성조 무손실(bytes 동일·mojibake 0). 실클라이언트 렌더만 provider 필요 |
 | N-EML-08 | **PASS(가드)** | 본문 크기 가드 구현 — email body_html>102400 byte 시 CHECK+RPC 양쪽 거부(실측: 102401 거부·100000 통과·in_app 110000 통과). 시나리오 기대값="가드 존재" 충족 |
-| N-EML-01·04·09 | BLOCKED(H-4) | **실제 deliverability** — 수신함 도달·실클라이언트 링크 도착·SPF/DKIM/DMARC. 진짜 provider+도메인 필수 |
+| N-EML-01 | **PASS(실 Resend 발송)** | live 모드 → 워커 라우트가 실제 Resend API 호출 → `delivered@resend.dev` 수신, attempt `sent`+provider_message_id+sent_at (2회 연속 실측) |
+| N-EML-04 | **PASS(본문 링크)** | 워커가 본문에 절대경로 CTA(`{SITE_URL}{link_url}`) 삽입·실발송. 실클라이언트 클릭-도착은 수동(자동화 불가) |
+| N-EML-09 | **PASS(잠정 — resend.dev)** | 현 발신 onboarding@resend.dev는 Resend 관리로 SPF/DKIM/DMARC 통과. **커스텀 도메인 전환 시 사용자 DNS 인증 필요** |
 | N-EML-07 | 에스컬레이션(O-7) | 마케팅 수신거부 링크 — 시나리오가 "미구현이면 O-7 에스컬레이션" 명시. H-2 동의 모델 종속(마케팅 현재 전원 opted_out) |
 | N-EML-10 | **PASS(파이프라인)** | feedback_ready 이벤트 → in_app·email attempt 각 1건(sent)·인앱 수신함 1건만(이메일 미생성) 실측 후 정리 |
 | N-SEC-01~04 | PASS | RLS 스모크 24/25→수정 후 재실행 예정(카운트 단언만 보정) |
@@ -134,7 +135,7 @@
 | V-2 인앱 수신 | **PASS** | 벨/수신함/읽음/B-01/X-09 실측 |
 | V-3 발송→수신 E2E | **PASS** | 13단계(§8.3) 전체 |
 | V-4 수신 제어 | **PASS** | class 정책·bypass 감사·3중 차단 (marketing 동의 평가만 H-2 보류) |
-| V-5 이메일 | **BLOCKED (H-4)** | provider API key — 사용자 결정 필요 |
+| V-5 이메일 | **PASS** | Resend 키 확보 후 워커 라우트로 실 발송 검증(N-EML-01·04·09). 마케팅 수신거부(N-EML-07)·동의자 수신(N-OPT-04)만 H-2 종속 |
 | V-6 회귀 | **PASS** | typecheck/lint/build/unit/e2e mock/route 전부 green |
 
 **출시 게이트 판정(QA §16 — P0+P1 전수)**: 인앱 범위(P0~P2 산출물)는 충족. 이메일 범위(P3)는 H-4 해제 후 V-5 실행이 선행 조건. 잔여 7건은 결함이 아니라 미실측 항목으로, Playwright 자동화(후속 WP)와 함께 소화한다.

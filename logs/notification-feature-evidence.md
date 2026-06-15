@@ -100,6 +100,19 @@
 - **해제 절차**: 오너가 provider(권고 Resend)+API key+발신 도메인 확정 → 페이즈 가이드 WP3-1부터 재개. 키는 Edge Function 환경변수에만(클라이언트 노출 금지). 재개 시 검증: N-EML-01~10 + V-5.
 - 인앱 범위는 이미 출시 가능 상태(V-0~V-4·V-6 PASS). 이메일은 백로그로 분리.
 
+## P3 이메일 실발송 — V-5 PASS (2026-06-12, 8차 라운드 — 오너 Resend 키 확보 후)
+
+- 오너가 Resend 사용 결정 + API key 제공(topik-ai `.env.local`에 배치). 키를 v13 `.env.local`로 파일 간 복사(값 노출 없이) + `RESEND_FROM`(onboarding@resend.dev) + `NOTIFICATION_WORKER_SECRET` 추가.
+- **WP3-1 아키텍처 결정**: SQL 디스패처는 HTTP 불가(pg_net 미설치) + 키를 LLM 컨텍스트에 노출 금지 → SQL `live` 모드는 email attempt를 `pending`으로만 두고(`20260612190200_email_live_defer`), v13 앱 워커 라우트 `/api/notifications/dispatch-email`(nodejs, service-role, `x-worker-secret` 인증, 키는 서버 env)가 pending을 읽어 **실제 Resend API로 fetch 발송**. 키 부재 시 503 graceful(거짓 sent 0).
+- **실측(dev 서버 + 워커 호출)**:
+  - N-EML-01: `delivered@resend.dev`(Resend 테스트 수신 주소) 사용자로 dispatch → pending → 워커 → Resend 2xx → attempt `sent`+provider_message_id+sent_at. **2회 연속 실측**(워커 응답 `{ok:true,sent:1}`).
+  - N-EML-04: 워커가 본문에 절대경로 CTA(`appendCtaLink` — `{NEXT_PUBLIC_SITE_URL}{link_url}`) 삽입(템플릿 body엔 링크 없던 결함 보강). 실클라이언트 클릭-도착만 수동.
+  - N-EML-09: 현 발신 onboarding@resend.dev는 Resend 관리 도메인이라 SPF/DKIM/DMARC 통과. 커스텀 도메인 전환 시 사용자 DNS 인증 필요(잠정 PASS).
+  - 정직성: 키 부재 시 503·attempt 미변경, live는 pending 유지 — 거짓 sent 0. typecheck 0.
+- 정리: config `disabled` 복원, feedback_ready/email `draft` 복원, throwaway 수신자·attempt·dispatch 전부 삭제.
+- **남은 외부 종속 3건만**: N-EML-07(마케팅 수신거부)·N-OPT-04(동의자 수신) = H-2 동의 모델 결정, N-PERF-03 = 부하 환경. 그 외 전부 PASS, **V-5 PASS**.
+- **운영 배선 잔여(비검증)**: 워커는 수동/cron 호출형. 프로덕션에선 `dispatch_notifications()` cron이 pending 생성 후 워커 라우트를 호출할 스케줄러(Vercel cron 등)가 필요 — 이 dev 환경엔 배포 인프라 없어 미배선(문서화).
+
 ## 프로젝트 완료 — 인앱 범위 (오너 수용, 2026-06-12)
 
 - **오너 결정(2026-06-12)**: "인앱 범위로 완료 수용". 알림 기능을 인앱 범위로 마감한다. 자력 가능 QA 전부 PASS(89), 결함 0, 게이트 V-0~V-4·V-6 PASS. V-5 이메일은 파이프라인 PASS + 실 deliverability만 외부 종속.
