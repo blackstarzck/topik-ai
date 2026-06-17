@@ -5,6 +5,8 @@ export type SystemLogRow = {
   level: SystemLogLevel;
   component: string;
   message: string;
+  traceId?: string;
+  context?: unknown;
   createdAt: string;
 };
 

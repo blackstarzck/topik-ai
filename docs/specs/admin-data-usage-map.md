@@ -123,3 +123,11 @@
 - B2C 영향 상태는 `운영상 추정`으로 유지한다. 예상 surface는 마이페이지 결제 내역의 환불 상태/요청 처리 안내이며, 사용자 화면 저장소와 v13 결제 환불 집행이 아직 확정 연결되지 않았다.
 - `commerce_refunds.status`는 DB ASCII `pending`/`approved`/`rejected`, UI 라벨 `처리 대기`/`승인`/`거절`이다. B2C 노출 문구는 관리자 `review_reason`이나 내부 `reason`을 그대로 재사용하지 않고 사용자용 문구 계약을 별도 확정해야 한다.
 - `payment_id`와 `user_id`는 v13 느슨참조(FK 없음)다. 실제 결제 환불 집행과 v13 `payment_history.status` 갱신은 미연동이며, 현재 승인 RPC는 intent-only payload(`intent_only_v13_payment_history_pending=true`)만 기록한다.
+
+## 2026-06-17 System 시스템 로그 Supabase 전환
+
+- `System > 시스템 로그` source는 `system_logs`로 확정됐다(조회 전용). 마이그레이션은 `supabase/migrations-admin/20260617213000_system_logs.sql`(+ down)이며 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
+- 주요 필드: `id`, `level`(`INFO`/`WARN`/`ERROR`), `message`, `component`, `trace_id`, `context`(jsonb), `created_at`.
+- B2C 영향 상태는 `내부 전용`이다. 사용자 화면에 의도적으로 노출하지 않는 기술 로그다.
+- 조회 전용 — admin write·감사 액션 없음(RLS admin select 정책만, write RPC 없음). 적재는 백엔드/인프라 service-role 몫이며 적재 소스는 미정이다. `감사 로그`(`admin_audit_logs`)·v13 `notification_log`와는 별개다.
+- 미확정: 로그 적재 소스/주체, 보존기간·파티셔닝, `trace_id` 의미, `level` 코드값 표준.

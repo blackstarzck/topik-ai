@@ -18,6 +18,7 @@
 | 주요 권한 | system.logs.read |
 | 주요 role | SUPER_ADMIN, OPS_ADMIN, READ_ONLY |
 | 연관 문서 | docs/architecture/admin-overview.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
+| 데이터 source | `system_logs` Supabase read-only table + mock fallback (`VITE_SYSTEM_LOGS_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`) |
 
 ## 3. 페이지 목표와 비목표
 
@@ -65,6 +66,8 @@
 - 컴포넌트
 - 메시지
 - 발생 시각
+- 추적 ID
+- 컨텍스트 JSON
 
 ### 상세 데이터
 - 별도 상세 패널 없이 원본 화면 이동으로 처리합니다.
@@ -82,6 +85,7 @@
 | 항목 | 현재 상태 | 관리자 페이지 영향 | 사용자 화면 영향 | 추후 결정 필요 내용 |
 | --- | --- | --- | --- | --- |
 | 상태값/운영 규칙 | 확정 | 시스템 로그는 감사 로그와 분리된 기술 로그로 관리합니다. | 사용자 화면 문구와 상태 기준의 운영 원천이 됩니다. | 상태 세트 변경 시 연관 문서와 화면을 함께 갱신해야 합니다. |
+| 데이터 source | 확정 | `system_logs`를 `created_at desc`로 읽는 조회 전용 Supabase source입니다. `INFO`/`WARN`/`ERROR` 대문자 level 값을 사용합니다. | 내부 전용이며 B2C 직접 노출은 없습니다. | 로그 적재 소스/주체, 보존기간·파티셔닝, `trace_id` 의미는 후속 결정이 필요합니다. |
 | URL/상태 복원 | 확정 | 목록/탭/버전/선택 상태를 새로고침과 뒤로가기에서도 가능한 한 재현해야 합니다. | 운영자는 같은 검색/상세 맥락으로 복귀할 수 있습니다. | 필수 쿼리 파라미터를 변경하면 연관 화면도 함께 검토해야 합니다. |
 | 감사 추적 | 조회 중심 | 조치가 있으면 Target Type, Target ID, 사유, 수행자 기준으로 감사 로그 확인 경로를 제공합니다. | 직접 B2C 노출이 없어도 운영 증적 확보가 필요합니다. | 조치성 액션과 조회성 액션의 로깅 범위를 분리 관리합니다. |
 
@@ -120,9 +124,10 @@
 - 현재 코드베이스에서 재사용할 컴포넌트: PageTitle, SearchBar, AdminDataTable, ConfirmAction, AuditLogLink
 - 본문 레이아웃 메모: 요약 카드 아래 목록 본문은 `AdminListCard(toolbar=SearchBar, body=안내 문구 -> Table)` 구조를 사용합니다.
 - 예상 feature 파일: src/features/system/pages/*
-- 권한/로그 처리 메모: 조회 중심 화면이라도 관련 원본 화면의 감사 로그로 역추적할 수 있어야 합니다.
+- 권한/로그 처리 메모: `system_logs`는 조회 전용 기술 로그이므로 admin write·감사 액션이 없습니다. `admin_audit_logs` 감사 로그 및 v13 `notification_log`와 구분합니다.
 
 ## 14. 오픈 이슈
 
 - 민감 로그 마스킹과 외부 모니터링 연계 범위 미정
+- 로그 적재 소스/주체, 보존기간·파티셔닝, `trace_id` 의미, level 코드값 장기 표준화 여부 미정
 

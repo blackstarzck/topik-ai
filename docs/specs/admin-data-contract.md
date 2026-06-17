@@ -785,3 +785,16 @@
 - DB audit action strings: `metadata_group_saved`, `metadata_item_saved`, `metadata_group_status_changed`, `metadata_item_status_changed`, `metadata_item_deleted`, `metadata_items_reordered`. 모든 write RPC는 `reason` 필수다.
 - 미확정: `META-GRP-NNN`/`META-ITEM-NNN` next-id max+1 동시성, `is_default` 단일성 정책의 최종 업무 규칙, `admin_locations`/history 정규화 여부.
 - 비범위: `/system/metadata`에 임베드된 AssessmentMasterCatalog(`topik_writing_*`)는 이번 SystemMetadataGroup 전환과 무관하며 기존 Supabase 계약을 유지한다.
+
+## 11.8 2026-06-17 System 시스템 로그 Supabase 계약
+
+- 엔티티/테이블: `SystemLog` / `public.system_logs`.
+- 전환 상태: mock-only 후보에서 Supabase read-only table 계약으로 전환 완료. 마이그레이션은 `supabase/migrations-admin/20260617213000_system_logs.sql`(+ down)이며 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
+- 소유권: topik-ai, migration home `supabase/migrations-admin`. `system_logs`는 기술 로그이며 `admin_audit_logs` 감사 로그와 별개다. v13 `notification_log`와도 무관하다.
+- `system_logs` 7컬럼: `id`, `level`, `message`, `component`, `trace_id`, `context`, `created_at`.
+- 제약/enum: `id` text PK, `level in ('INFO','WARN','ERROR')`, `trace_id` text null, `context` jsonb null, `created_at` timestamptz. `level`은 현재 대문자 저장 코드값을 유지한다.
+- 인덱스: `created_at desc`, `level` 부분 인덱스(`WARN`,`ERROR`), `component`.
+- RLS: enable+force, admin select policy(`private.is_admin`)만 허용한다. admin write policy/RPC는 없다.
+- 데이터소스: `system-logs-data-source.ts`가 `VITE_SYSTEM_LOGS_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`이면 mock fallback을 사용한다. Supabase 모드는 `system_logs`를 `created_at desc`로 읽고, `system-logs-service.ts`의 `fetchSystemLogsSafe` 계약은 유지한다.
+- seed: INFO/WARN/ERROR 분포의 4건.
+- 비범위/미확정: 로그 적재 소스/주체, 보존기간·파티셔닝, `trace_id` 의미, `level` 코드값 장기 표준화 여부.

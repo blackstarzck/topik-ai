@@ -38,6 +38,7 @@
 | `operation_events` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | admin RPC | admin | admin select only(`private.is_admin`). INSERT/UPDATE/DELETE 정책 없음, 쓰기는 SECURITY DEFINER RPC 경유 |
 | `operation_policies` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | admin RPC | admin | admin select only(`private.is_admin`). RLS enable+force, 쓰기는 SECURITY DEFINER RPC 경유 |
 | `operation_policy_histories` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | admin RPC | admin | admin select only(`private.is_admin`). RLS enable+force, 정책 버전/이력 snapshot은 정책 RPC에서 append |
+| `system_logs` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | backend/infra service-role ingest(TBD), admin write none | admin | RLS enable+force, admin select only(`private.is_admin`). Read-only technical logs; no admin write policy/RPC |
 | `admin_audit_logs` | v13 (2026-06-09 기존 결정) | admin RPC | admin | 기존 결정 유지 |
 | `topik_writing_*` | topik-ai (`topik_writing_schema_migrations`) | 기존 결정(D-1) | 기존 결정 | `metadata-tag-schema-transition-decision-record.md` §2 |
 
@@ -137,3 +138,14 @@
 - 적용: `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
 - 쓰기 경계: SECURITY DEFINER admin RPC 6종(`admin_save_metadata_group`, `admin_save_metadata_item`, `admin_toggle_metadata_group_status`, `admin_toggle_metadata_item_status`, `admin_delete_metadata_item`, `admin_reorder_metadata_items`)만 사용한다. 모든 RPC는 `reason` 필수다.
 - 감사 경계: 모든 그룹/항목 조치는 `admin_audit_logs.target_table='SystemMetadataGroup'`, `target_id=groupId`로 기록한다. 항목 조치도 item-level Target Type을 만들지 않고 그룹 단위로 추적한다.
+
+## 2026-06-17 System system_logs Supabase ownership update
+
+| Object | Owner | Write path | Read path | Boundary |
+| --- | --- | --- | --- | --- |
+| `system_logs` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | backend/infra service-role ingest(TBD), admin write none | admin | RLS enable+force, admin select only(`private.is_admin`). No admin write policy/RPC |
+
+- Migration: `supabase/migrations-admin/20260617213000_system_logs.sql` + `supabase/migrations-admin/down/20260617213000_system_logs.sql`.
+- Applied: `admin_schema_migrations` tracker, 2026-06-17 dev DB applied.
+- Boundary: `system_logs` is a read-only technical log table for the admin System logs page. It is distinct from `admin_audit_logs` and unrelated to v13 `notification_log`.
+- Open items: ingest source/actor, retention/partitioning, `trace_id` semantics, and whether level codes remain uppercase `INFO`/`WARN`/`ERROR`.

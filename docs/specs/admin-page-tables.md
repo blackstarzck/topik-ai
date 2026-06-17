@@ -466,11 +466,12 @@
 
 ## 32) 시스템 > 시스템 로그
 
+- source: `system_logs` Supabase-backed read-only table. `VITE_SYSTEM_LOGS_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`이면 mock fallback
 - 테이블 컬럼: 로그 ID, 레벨, 컴포넌트, 메시지, 발생 시각
 - 요약 카드: 오류 로그 수, 경고 로그 수, 영향 컴포넌트 수
 - 필터: 검색어, 발생 시각
 - 정렬: 발생 시각, 레벨
-- 액션: 상세 보기, 컴포넌트 기준 관련 운영 화면 이동, 감사 로그 이동
+- 액션: 상세 보기, 컴포넌트 기준 관련 운영 화면 이동. 조회 전용 기술 로그이므로 admin write·감사 액션은 없음
 - 레이아웃 메모: 요약 카드 아래 목록 본문은 `AdminListCard(toolbar=SearchBar, body=안내 문구 -> Table)` 순서를 사용합니다.
 
 ## 33) 알림 > 알림 발송

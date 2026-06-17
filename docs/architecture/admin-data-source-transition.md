@@ -16,7 +16,7 @@
 - `Users > 회원 목록` write source는 `admin_set_user_status` 단일 경로다. 신규 테이블은 없고 v13 `profiles` DDL은 변경하지 않으며, `profiles.status`만 `active`/`blocked`로 토글하고 `deleted`는 차단한다. 감사 로그는 `User + userId`, action `user_status_changed`로 남긴다.
 - `Users > 회원 상세`은 별도 탭 파생 데이터 source 정리가 아직 남아 있다.
 - `Community > 게시글 관리/신고 관리`는 `api/mock-community.ts`가 초기 seed/factory를 소유하고, `community-service.ts`가 목록 조회/게시·숨김·삭제/신고 처리 safe facade를 제공한다. 조치 후 live state는 `community-store.ts`에 남긴다.
-- `System > 시스템 로그`는 `api/mock-system-logs.ts`와 `system-logs-service.ts`가 목록 source를 소유한다.
+- `System > 시스템 로그`는 2026-06-17 mock-only에서 Supabase read-only source로 전환 완료했다. `system-logs-data-source.ts`가 `VITE_SYSTEM_LOGS_SOURCE=mock`, `VITE_SUPABASE_DISABLED`, Supabase 설정 여부를 판별하고, `system-logs-service.ts`의 `fetchSystemLogsSafe` 계약은 유지한다. Supabase 모드는 `system_logs`를 `created_at desc`로 읽는다. 로그 적재는 backend/infra service-role 경로로 남아 있으며 소스/주체는 미정이다.
 - `System > 감사 로그`는 `system-audit-logs-service.ts`가 static audit seed(`api/mock-system-audit-logs.ts`)와 permission/coupon/metadata store audit 병합 책임을 소유한다. 페이지는 merge 세부를 알지 않는다.
 - `Message` 계열은 `api/mock-messages.ts`가 `initialGroups/templates/histories` seed/factory를 소유하고, `messages-service.ts`가 실제 렌더 source와 저장/발송/토글/삭제/재시도 action facade를 제공한다. 발송/재시도/그룹 변경 live state는 `message-store.ts`에 남긴다.
 - `Message > 대상 그룹`은 세그먼트 옵션/기본값/Query Builder 필드 정의를 `src/features/message/model/message-group-segment-schema.ts`로 분리해 page-local 하드코딩을 줄였다.
@@ -426,3 +426,12 @@ src/features/<feature>/
 - audit actions: `metadata_group_saved`, `metadata_item_saved`, `metadata_group_status_changed`, `metadata_item_status_changed`, `metadata_item_deleted`, `metadata_items_reordered`. 모든 감사 target은 `SystemMetadataGroup + groupId`다.
 - 비범위: `/system/metadata`에 임베드된 AssessmentMasterCatalog(`topik_writing_*`)는 이미 Supabase-backed이며 이번 System metadata groups/items 전환과 무관하다.
 - 남은 미확정: PK next-id max+1 동시성, `is_default` 단일성 정책, `admin_locations`/이력 정규화.
+
+## 10.13 2026-06-17 System 시스템 로그 Supabase 전환 메모
+
+- 대상 화면: `System > 시스템 로그`(`/system/logs`).
+- 전환 상태: mock-only에서 Supabase-backed read-only source 구조로 전환 완료. `system_logs` 테이블은 `supabase/migrations-admin/20260617213000_system_logs.sql`에 작성했고, 대응 down 스크립트는 `supabase/migrations-admin/down/`에 둔다. 적용 이력은 `admin_schema_migrations`가 담당하며, 2026-06-17 dev DB 적용 완료했다.
+- 데이터소스 경계: `system-logs-service.ts`의 `fetchSystemLogsSafe` 계약은 유지하고, `system-logs-data-source.ts`가 `VITE_SYSTEM_LOGS_SOURCE=mock`, `VITE_SUPABASE_DISABLED`, Supabase 설정 여부를 판별한다. Supabase 미구성, `VITE_SUPABASE_DISABLED=true`, `VITE_SYSTEM_LOGS_SOURCE=mock`은 기존 mock source로 회귀한다.
+- Supabase read 경로: `system_logs`를 `created_at desc`로 조회한다. 컬럼은 `id`, `level`, `message`, `component`, `trace_id`, `context`, `created_at`이며 level은 현재 `INFO`/`WARN`/`ERROR` 대문자 값을 저장한다.
+- write/감사 경계: admin write policy/RPC는 없다. 로그 적재는 backend/infra service-role 경로로 남아 있으며 소스/주체는 미정이다. 조회 전용 기술 로그라서 admin 감사 액션은 생성하지 않으며, `admin_audit_logs`와 구분한다.
+- 잔여 정책: 로그 적재 소스/주체, 보존기간·파티셔닝, `trace_id` 의미, level 코드값 장기 표준화 여부는 page-sync와 gap register에서 계속 추적한다.
