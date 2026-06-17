@@ -715,3 +715,16 @@
 - 감사 계약: 게시글 RPC는 `target_table='CommunityPost'`, action `post_hidden`/`post_shown`/`post_deleted`/`post_memo_added`; 신고 RPC는 `target_table='CommunityReport'`, action `report_resolved`를 기록한다.
 - 신고 의미 정합화: `hide_post`는 같은 트랜잭션에서 대상 게시글을 `status='hidden'`으로 실제 변경한다. `suspend_user`는 payload `user_suspend_integration=intent_only_v13_admin_set_user_status_pending`으로 의도만 남기며 실제 정지는 미연동이다. `dismiss`는 신고만 종결한다. 모든 경우 `process_status='resolved'`, `resolution_action`, `resolved_by`, `resolved_at`을 기록한다.
 - 미확정: `POST-NNN`/`RP-NNN` 및 memo helper max+1 동시성, `board`/`last_moderation_policy_code`/memo `type` code table화, `suspend_user`와 v13 `admin_set_user_status` 실제 연동.
+
+## 13.5 Commerce 포인트 데이터 계약 (2026-06-17 확정)
+
+- 엔티티/테이블: `CommercePointPolicy` / `commerce_point_policies`, `CommercePointLedger` / `commerce_point_ledgers`, `CommercePointExpiration` / `commerce_point_expirations`.
+- 전환 상태: mock-only 후보에서 Supabase 테이블 계약으로 승격 완료. 마이그레이션은 `supabase/migrations-admin/20260617190000_commerce_points.sql`(+ down)이며 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
+- 소유권: topik-ai, migration home `supabase/migrations-admin`. v13 `profiles`는 `user_id` text 느슨참조이며 FK 없음.
+- `commerce_point_policies` 19컬럼: `id`, `name`, `policy_type`, `category`, `amount`, `points`, `status`, `description`, `condition_summary`, `earn_debit_rule`, `expiration_rule`, `target_condition`, `trigger_source`, `duplication_rule`, `manual_adjustment_rule`, `note`, `created_at`, `updated_at`, `updated_by`. `id`는 `POL-NNNN`, `policy_type/category`는 `earn`/`debit`/`expire`, `status`는 `draft`/`active`/`inactive`.
+- `commerce_point_ledgers` 20컬럼: `id`, `user_id`, `user_name`, `entry_type`, `source_type`, `amount`, `balance_after`, `available_balance_after`, `status`, `expiration_at`, `source`, `source_id`, `source_label`, `policy_id`, `policy_name`, `reason`, `approval_memo`, `occurred_at`, `created_at`, `created_by`. `id`는 `PL-NNNN`, `entry_type`은 `earn`/`debit`/`revoke`/`restore`/`expire`, `source_type`은 `referral`/`mission`/`event`/`payment`/`refund`/`admin`/`system`, `status`는 `completed`/`held`/`cancelled`. `balance_after`와 `available_balance_after`는 CHECK `>= 0`.
+- `commerce_point_expirations` 17컬럼: `id`, `user_id`, `user_name`, `source_type`, `scheduled_amount`, `available_amount`, `expire_at`, `status`, `hold_reason`, `held_by`, `held_at`, `processed_at`, `related_ledger_id`, `policy_id`, `policy_name`, `calculation_memo`, `created_at`. `id`는 `EXP-NNNN`, `status`는 `scheduled`/`held`/`completed`/`cancelled`, `scheduled_amount`와 `available_amount`는 CHECK `>= 0`.
+- UI 라벨: DB enum-like 값은 ASCII 저장을 유지하고, 한글 라벨은 `point-types`/`point-schema` 기준으로 매핑한다.
+- RPC/잔액 계약: 직접 table write 없이 SECURITY DEFINER admin RPC 5종만 사용한다. `admin_create_manual_point_adjustment(p_user_id,p_amount,p_reason)`는 사용자별 `pg_advisory_xact_lock`과 최신 ledger `for update`를 사용해 최신 `available_balance_after + p_amount`를 `balance_after`/`available_balance_after`로 서버에서 계산한다. 음수 잔액은 RPC 가드와 CHECK 제약으로 차단하며, Supabase 경로에서 클라이언트 잔액 계산은 하지 않는다.
+- helper: `next_commerce_point_policy_id()`, `next_commerce_point_ledger_id()`는 public execute를 revoke한다. 현재 `POL-NNNN`/`PL-NNNN` max+1 채번은 장기 동시성 정책 미확정이다.
+- 미확정: 음수 잔액 허용/차감 우선순위/환불 복구 정책, 정책 저장 사유 UI 필드 부재(note -> reason 전달, 빈 값 RPC 오류), `EXP-NNNN` 생성 helper/자동 소멸 cron, `user_id` FK 없는 느슨참조 표시명 정합.

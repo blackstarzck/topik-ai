@@ -95,3 +95,10 @@
 - `Community > 신고 관리` source는 `community_reports`다. 신고 큐 자체는 내부 운영 데이터지만, `admin_resolve_community_report(..., 'hide_post', ...)` 결과는 대상 게시글을 실제 `hidden` 처리하므로 B2C 게시글 비노출에 영향을 주는 것으로 `운영상 추정`한다.
 - `admin_resolve_community_report(..., 'suspend_user', ...)`는 현재 사용자 정지 의도만 감사 payload에 기록하며, 실제 B2C 접근 차단은 v13 `admin_set_user_status` 연동 전까지 미반영이다.
 - `community_post_admin_notes`는 운영 내부 메모로 `내부 전용`이다.
+
+## 2026-06-17 Commerce 포인트 Supabase 데이터 사용 보강
+
+- `Commerce > 포인트 관리` source는 `commerce_point_policies`, `commerce_point_ledgers`, `commerce_point_expirations`로 확정됐다. 마이그레이션 `supabase/migrations-admin/20260617190000_commerce_points.sql`은 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
+- B2C 노출 상태는 `노출 예정`으로 유지한다. 포인트 지갑/리워드 내역/결제 포인트 사용/소멸 예정 안내가 예상 surface이며, 현재 문서 기준으로 확정 구현 surface는 아니다.
+- `commerce_point_ledgers.balance_after`/`available_balance_after`는 서버 RPC 계산값이므로 B2C 포인트 지갑의 잔액 후보 SoT로 취급한다. 수동 조정 사유와 승인 메모는 운영 내부용으로 분리하고 사용자 노출 문구로 직접 사용하지 않는다.
+- 테이블별 B2C 관계: `commerce_point_policies`는 리워드/차감/소멸 규칙 후보, `commerce_point_ledgers`는 포인트 지갑 및 리워드 내역 후보, `commerce_point_expirations`는 소멸 예정 안내 후보로 추적한다.

@@ -630,3 +630,28 @@
 - 분류
   - `해소`: mock-only source 경계, 게시글/신고 감사 Target Type 세분화, 신고 `hide_post` 실제 게시글 숨김 처리
   - `미확정`: 사용자 정지 연동, 채번 동시성, 코드 테이블화
+
+### 4.6.3 Commerce 포인트 Supabase 전환 해소 기록 (2026-06-17)
+
+- 대상 파일
+  - `src/features/commerce/api/commerce-points-data-source.ts`
+  - `src/features/commerce/api/points-service.ts`
+  - `supabase/migrations-admin/20260617190000_commerce_points.sql`
+- 현 상태
+  - 2026-06-17 기준 `Commerce > 포인트 관리`는 mock-only에서 Supabase-backed hybrid switch로 전환 완료했다.
+  - Supabase 모드는 `commerce_point_policies`, `commerce_point_ledgers`, `commerce_point_expirations`와 admin RPC 5종(`admin_save_commerce_point_policy`, `admin_update_commerce_point_policy_status`, `admin_create_manual_point_adjustment`, `admin_hold_commerce_point_expiration`, `admin_release_commerce_point_expiration`)을 사용한다.
+  - Supabase 미구성, `VITE_SUPABASE_DISABLED=true`, `VITE_COMMERCE_POINTS_SOURCE=mock`은 기존 mock source로 회귀한다.
+  - 마이그레이션 `supabase/migrations-admin/20260617190000_commerce_points.sql`(+ down)은 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했다.
+- 해소된 항목
+  - `Resolved`(2026-06-17): Commerce 포인트 mock-only SoT. 정책/원장/소멸 예정 조회와 주요 조치가 Supabase-backed 경로를 가지며 mock은 fallback으로 축소됐다.
+  - `Resolved`(2026-06-17): Commerce 포인트 조치 감사 로그 미적재/범용 Target Type. 정책은 `CommercePointPolicy` action `point_policy_saved`/`point_policy_status_changed`, 수동 조정은 `CommercePointLedger` action `point_manual_adjusted`, 소멸은 `CommercePointExpiration` action `point_expiration_held`/`point_expiration_released`로 `admin_audit_logs`에 기록한다.
+  - `Resolved`(2026-06-17): 클라이언트 잔액 계산. Supabase 경로의 수동 조정은 서버 RPC가 사용자별 advisory lock + 최신 ledger `for update`로 최신 `available_balance_after + p_amount`를 계산하며, `balance_after`/`available_balance_after` CHECK와 RPC 가드로 음수 잔액을 차단한다.
+- 미확정/누락/오구현
+  - 음수 잔액 허용 여부와 차감 우선순위/환불 복구 정책은 미확정이다. 현재 DB/RPC는 음수 잔액을 차단한다.
+  - 정책 저장 사유 입력 필드는 별도 UI로 고정되지 않았고, 서비스가 `note`를 `reason`으로 전달한다. 빈 값이면 RPC가 오류를 반환한다.
+  - `POL-NNNN`/`PL-NNNN` max+1 채번은 동시성 리스크가 남아 있다.
+  - 소멸 자동 처리 cron은 미구현/미확정이다.
+  - `user_id`는 v13 `profiles` 느슨참조이며 FK가 없어 표시명/삭제/탈퇴 정합 정책이 필요하다.
+- 분류
+  - `해소`: mock-only source 경계, 감사 Target Type 세분화, 클라이언트 잔액 계산 제거
+  - `미확정`: 음수 잔액 정책, reason UI, 채번 동시성, 소멸 cron, v13 profiles 느슨참조 정합

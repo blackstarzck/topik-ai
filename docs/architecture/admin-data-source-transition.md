@@ -374,3 +374,13 @@ src/features/<feature>/
 - 감사/사유 경계: 게시글 숨김/게시/삭제/메모는 `CommunityPost` Target Type과 action `post_hidden`/`post_shown`/`post_deleted`/`post_memo_added`를 사용한다. 신고 종결은 `CommunityReport` Target Type과 action `report_resolved`를 사용한다. 게시글 딥링크는 `/community/posts`, 신고 딥링크는 `/community/reports`다.
 - 신고 조치 의미 정합화: 이전 mock은 신고만 종결하고 게시글/사용자 조치를 하지 않았으나, Supabase RPC는 `hide_post`일 때 같은 트랜잭션에서 대상 게시글을 실제 `hidden` 처리한다. `suspend_user`는 payload `user_suspend_integration=intent_only_v13_admin_set_user_status_pending` 의도만 기록하고 실제 정지는 v13 `admin_set_user_status` 연동 후 확정한다. `dismiss`는 종결만 수행한다.
 - 잔여 정책: `POST-NNN`/`RP-NNN` max+1 채번 동시성, board/policy_code/memo type code table화, 사용자 정지 v13 연동은 page-sync와 gap register에서 계속 추적한다.
+
+## 10.10 2026-06-17 Commerce 포인트 Supabase 전환 메모
+
+- 대상 화면: `Commerce > 포인트 관리`(`/commerce/points`).
+- 전환 상태: mock-only에서 Supabase-backed hybrid switch 구조로 전환 완료. `commerce_point_policies`, `commerce_point_ledgers`, `commerce_point_expirations` 테이블과 admin RPC 5종은 `supabase/migrations-admin/20260617190000_commerce_points.sql`에 작성했고, 대응 down 스크립트는 `supabase/migrations-admin/down/`에 둔다. 적용 이력은 `admin_schema_migrations`가 담당하며, 2026-06-17 dev DB 적용 완료했다.
+- 데이터소스 경계: `points-service.ts`의 safe facade 7종 계약은 유지하고, `commerce-points-data-source.ts`가 `VITE_COMMERCE_POINTS_SOURCE=mock` 및 `VITE_SUPABASE_DISABLED`를 판별한다. Supabase 미구성, `VITE_SUPABASE_DISABLED=true`, `VITE_COMMERCE_POINTS_SOURCE=mock`은 기존 mock source(`mock-points.ts` + point store 경로)로 회귀한다.
+- Supabase 경로: DB enum-like 값은 ASCII(`draft`/`active`/`inactive`, `earn`/`debit`/`scheduled` 등)를 저장하고 UI 한글 라벨은 `point-types`/`point-schema`에서 매핑한다. RLS는 3테이블 모두 enable+force 및 admin select only다.
+- 서버측 잔액 계산: 수동 포인트 조정은 `admin_create_manual_point_adjustment(p_user_id,p_amount,p_reason)`만 사용한다. RPC가 사용자별 advisory lock과 최신 ledger `for update`를 통해 최신 `available_balance_after`를 읽고 `balance_after`/`available_balance_after`를 계산한다. 음수 잔액은 RPC 가드와 CHECK 제약으로 차단하며, Supabase 경로에서 클라이언트 잔액 계산은 제거된 계약이다.
+- 감사/사유 경계: 정책 저장/상태 변경, 수동 조정, 소멸 보류/해제는 각각 `CommercePointPolicy`/`CommercePointLedger`/`CommercePointExpiration` Target Type과 action `point_policy_saved`/`point_policy_status_changed`/`point_manual_adjusted`/`point_expiration_held`/`point_expiration_released`를 사용한다. 5개 RPC 모두 reason 필수다.
+- 잔여 정책: 음수 잔액 허용 여부와 차감 우선순위/환불 복구 정책, 정책 저장 사유 UI 필드 부재(note -> reason 전달), `POL-NNNN`/`PL-NNNN` max+1 채번 동시성, 소멸 자동 처리 cron, `user_id`의 v13 profiles 느슨참조(FK 없음)는 page-sync와 gap register에서 계속 추적한다.

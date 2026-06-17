@@ -82,3 +82,16 @@
 - 적용: `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
 - 쓰기 경계: SECURITY DEFINER admin RPC 5종(`admin_hide_community_post`, `admin_show_community_post`, `admin_delete_community_post`, `admin_add_community_post_memo`, `admin_resolve_community_report`)만 사용한다. 모든 조치 RPC는 admin 권한을 검사하고 운영 사유를 요구하며 `admin_audit_logs`에 기록한다.
 - v13 경계: v13 소유 테이블 DDL은 변경하지 않는다. 신고 조치 `suspend_user`는 payload `user_suspend_integration=intent_only_v13_admin_set_user_status_pending`으로 의도만 기록하며 실제 사용자 정지는 v13 `admin_set_user_status` 연동 전까지 미연동 상태다.
+
+## 2026-06-17 Commerce 포인트 Supabase 소유권 보강
+
+| 객체 | owner (migration home) | writer | reader | RLS 요약 |
+| --- | --- | --- | --- | --- |
+| `commerce_point_policies` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | admin RPC | admin | RLS enable+force, admin select only(`private.is_admin`). 직접 table write 경로 없음 |
+| `commerce_point_ledgers` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | admin RPC | admin | RLS enable+force, admin select only(`private.is_admin`). `user_id`는 v13 `profiles.id` 느슨참조이며 FK 없음 |
+| `commerce_point_expirations` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | admin RPC | admin | RLS enable+force, admin select only(`private.is_admin`). `user_id`는 v13 `profiles.id` 느슨참조이며 FK 없음 |
+
+- 근거: `supabase/migrations-admin/20260617190000_commerce_points.sql` + `supabase/migrations-admin/down/20260617190000_commerce_points.sql`.
+- 적용: `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
+- 경계: `commerce_point_policies`, `commerce_point_ledgers`, `commerce_point_expirations`는 topik-ai 소유 admin 운영 객체이며, v13 소유 테이블 DDL은 변경하지 않는다. 회원 연결은 `user_id` text snapshot/느슨참조로 유지하고 FK를 두지 않는다.
+- 쓰기 경로: SECURITY DEFINER admin RPC 5종(`admin_save_commerce_point_policy`, `admin_update_commerce_point_policy_status`, `admin_create_manual_point_adjustment`, `admin_hold_commerce_point_expiration`, `admin_release_commerce_point_expiration`)만 사용하며 모두 reason 필수와 `admin_audit_logs` 기록을 강제한다.

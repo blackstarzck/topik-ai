@@ -140,3 +140,34 @@
   - `suspend_user`: 신고를 `resolved`로 종결하고, payload `user_suspend_integration=intent_only_v13_admin_set_user_status_pending`으로 사용자 정지 의도만 기록한다. 실제 사용자 정지는 v13 `admin_set_user_status` 연동 전까지 수행하지 않는다.
   - `dismiss`: 신고를 `resolved`로 종결하되 게시글/사용자 조치는 하지 않는다.
 - 감사 diff/payload: diff는 `process_status.from/to`를 기록하고, payload는 `action`, `reason`, `affected_post_id`, `affected_user_id`, `user_suspend_integration`을 포함한다.
+
+## 2026-06-17 CommercePointPolicy/CommercePointLedger/CommercePointExpiration 감사 로그 계약
+
+### CommercePointPolicy
+
+- Target Type: `CommercePointPolicy` (`admin_audit_logs.target_table='CommercePointPolicy'`).
+- Target ID: `pointPolicyId` (`POL-NNNN`).
+- 원본 화면 딥링크: `/commerce/points`, 감사 확인 경로 `/system/audit-logs?targetType=CommercePointPolicy&targetId={pointPolicyId}`.
+- RPC/action 사전:
+  - `admin_save_commerce_point_policy(p_id,p_policy,p_reason)` -> action `point_policy_saved`, payload `reason`, `name`, `policy_type`.
+  - `admin_update_commerce_point_policy_status(p_policy_id,p_next_status,p_reason)` -> action `point_policy_status_changed`, diff `status.from/to`, payload `reason`, `name`.
+- 모든 정책 write RPC는 reason 필수다. DB status는 ASCII `draft`/`active`/`inactive`이며 UI 한글 라벨은 `point-types`/`point-schema`에서 매핑한다.
+
+### CommercePointLedger
+
+- Target Type: `CommercePointLedger` (`admin_audit_logs.target_table='CommercePointLedger'`).
+- Target ID: `pointLedgerId` (`PL-NNNN`).
+- 원본 화면 딥링크: `/commerce/points`, 감사 확인 경로 `/system/audit-logs?targetType=CommercePointLedger&targetId={pointLedgerId}`.
+- RPC/action 사전:
+  - `admin_create_manual_point_adjustment(p_user_id,p_amount,p_reason)` -> action `point_manual_adjusted`, diff `available_balance_after.from/to`, payload `reason`, `user_id`, `amount`.
+- 서버측 잔액 계약: RPC가 사용자별 advisory lock + 최신 ledger `for update`로 최신 `available_balance_after`를 읽고 `balance_after = available_balance_after = latestAvailable + p_amount`를 계산한다. 음수 잔액은 RPC 가드와 `commerce_point_ledgers_nonnegative_balance_check`로 차단한다. Supabase 경로에서 클라이언트 잔액 계산은 제거된 계약으로 본다.
+
+### CommercePointExpiration
+
+- Target Type: `CommercePointExpiration` (`admin_audit_logs.target_table='CommercePointExpiration'`).
+- Target ID: `expirationId` (`EXP-NNNN`).
+- 원본 화면 딥링크: `/commerce/points`, 감사 확인 경로 `/system/audit-logs?targetType=CommercePointExpiration&targetId={expirationId}`.
+- RPC/action 사전:
+  - `admin_hold_commerce_point_expiration(p_expiration_id,p_reason)` -> action `point_expiration_held`, diff `status.from/to`, payload `reason`, `user_id`.
+  - `admin_release_commerce_point_expiration(p_expiration_id,p_reason)` -> action `point_expiration_released`, diff `status.from/to`, payload `reason`, `user_id`.
+- 모든 소멸 보류/해제 RPC는 reason 필수다. DB status는 ASCII `scheduled`/`held`/`completed`/`cancelled`이며 UI 한글 라벨은 `point-types`/`point-schema`에서 매핑한다.

@@ -559,3 +559,11 @@
 - `Community > 게시글 관리`: source는 `community_posts`/`community_post_admin_notes` Supabase-backed hybrid다. 테이블 컬럼은 게시글 ID, 제목, 작성자, 게시판, 작성일, 신고 수, 상태를 유지하고 DB status `published`/`hidden`을 UI `게시`/`숨김`으로 매핑한다. 조치 action은 `post_hidden`/`post_shown`/`post_deleted`/`post_memo_added`, Target Type은 `CommunityPost`다.
 - `Community > 신고 관리`: source는 `community_reports` Supabase-backed hybrid다. 테이블 컬럼은 신고 ID, 대상 게시글, 대상 사용자, 신고자, 신고 사유, 신고일, 처리 상태를 유지하고 DB `process_status` `pending`/`resolved`를 UI `처리 대기`/`처리 완료`로 매핑한다. 신고 종결 action은 `report_resolved`, Target Type은 `CommunityReport`다.
 - `resolveCommunityReportSafe`는 `reportId + action + reason` 계약이며 action 값은 `hide_post`/`suspend_user`/`dismiss`다. `hide_post`는 대상 게시글을 실제 숨김 처리하고, `suspend_user`는 v13 사용자 정지 연동 전 intent-only payload만 남긴다.
+
+## 42) 2026-06-17 Commerce > 포인트 관리 Supabase source 갱신
+
+- `Commerce > 포인트 관리`는 `commerce_point_policies`/`commerce_point_ledgers`/`commerce_point_expirations` Supabase-backed hybrid source로 갱신됐다. mock fallback 조건은 `VITE_COMMERCE_POINTS_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`다.
+- 정책 탭 source: `commerce_point_policies` 19컬럼. 주요 컬럼은 `id`, `name`, `policy_type`, `category`, `amount`, `points`, `status`, `condition_summary`, `earn_debit_rule`, `expiration_rule`, `target_condition`, `trigger_source`, `duplication_rule`, `manual_adjustment_rule`, `note`, `updated_at`, `updated_by`다. DB status는 `draft`/`active`/`inactive`.
+- 원장 탭 source: `commerce_point_ledgers` 20컬럼. 주요 컬럼은 `id`, `user_id`, `user_name`, `entry_type`, `source_type`, `amount`, `balance_after`, `available_balance_after`, `status`, `expiration_at`, `source_id`, `policy_id`, `reason`, `approval_memo`, `occurred_at`, `created_by`다. `balance_after`/`available_balance_after`는 nonnegative CHECK를 가진다.
+- 소멸 예정 탭 source: `commerce_point_expirations` 17컬럼. 주요 컬럼은 `id`, `user_id`, `user_name`, `source_type`, `scheduled_amount`, `available_amount`, `expire_at`, `status`, `hold_reason`, `held_by`, `held_at`, `processed_at`, `related_ledger_id`, `policy_id`, `calculation_memo`다. `scheduled_amount`/`available_amount`는 nonnegative CHECK를 가진다.
+- Action contract: 정책 저장/상태 변경, 수동 조정, 소멸 보류/해제는 RPC 5종을 통해 수행하고, Target Type은 각각 `CommercePointPolicy`, `CommercePointLedger`, `CommercePointExpiration`이다.

@@ -4,6 +4,16 @@ import {
   createInitialPointLedgers,
   createInitialPointPolicies
 } from './mock-points';
+import { commercePointsDataSource } from './commerce-points-data-source';
+import {
+  createManualPointAdjustmentViaRpc,
+  exportPointExpirationsFromSupabase,
+  loadPointsSnapshotFromSupabase,
+  releasePointExpirationHoldViaRpc,
+  savePointExpirationHoldViaRpc,
+  savePointPolicyViaRpc,
+  updatePointPolicyStatusViaRpc
+} from './supabase-commerce-points-service';
 import type {
   CommercePointsSnapshot,
   PointExpiration,
@@ -15,7 +25,7 @@ import type {
   PointPolicyType
 } from '../model/point-types';
 
-type SavePointPolicyPayload = {
+export type SavePointPolicyPayload = {
   policyId?: string;
   name: string;
   policyType: PointPolicyType;
@@ -30,14 +40,14 @@ type SavePointPolicyPayload = {
   actedBy?: string;
 };
 
-type UpdatePointPolicyStatusPayload = {
+export type UpdatePointPolicyStatusPayload = {
   policyId: string;
   nextStatus: Exclude<PointPolicyStatus, '초안'>;
   reason: string;
   actedBy?: string;
 };
 
-type CreateManualPointAdjustmentPayload = {
+export type CreateManualPointAdjustmentPayload = {
   userId: string;
   userName: string;
   ledgerType: Extract<PointLedgerType, '적립' | '차감' | '회수' | '복구'>;
@@ -47,19 +57,19 @@ type CreateManualPointAdjustmentPayload = {
   actedBy?: string;
 };
 
-type SavePointExpirationHoldPayload = {
+export type SavePointExpirationHoldPayload = {
   expirationId: string;
   holdReason: string;
   actedBy?: string;
 };
 
-type ReleasePointExpirationHoldPayload = {
+export type ReleasePointExpirationHoldPayload = {
   expirationId: string;
   reason: string;
   actedBy?: string;
 };
 
-type ExportPointExpirationsPayload = {
+export type ExportPointExpirationsPayload = {
   itemCount: number;
 };
 
@@ -104,6 +114,7 @@ function cloneExpirations(items: PointExpiration[]): PointExpiration[] {
 let pointPolicies = createInitialPointPolicies();
 let pointLedgers = createInitialPointLedgers();
 let pointExpirations = createInitialPointExpirations();
+const isSupabaseSource = commercePointsDataSource === 'supabase';
 
 function cloneSnapshot(): CommercePointsSnapshot {
   return {
@@ -386,42 +397,68 @@ async function exportPointExpirations(
 
 export function fetchPointsSnapshotSafe(signal?: AbortSignal) {
   return toSafeResult(() =>
-    withRetry(() => loadPointsSnapshot(signal), {
-      maxRetries: 1
-    })
+    withRetry(
+      () =>
+        isSupabaseSource
+          ? loadPointsSnapshotFromSupabase(signal)
+          : loadPointsSnapshot(signal),
+      { maxRetries: 1 }
+    )
   );
 }
 
 export function savePointPolicySafe(payload: SavePointPolicyPayload) {
-  return toSafeResult(() => savePointPolicy(payload));
+  return toSafeResult(() =>
+    isSupabaseSource ? savePointPolicyViaRpc(payload) : savePointPolicy(payload)
+  );
 }
 
 export function updatePointPolicyStatusSafe(
   payload: UpdatePointPolicyStatusPayload
 ) {
-  return toSafeResult(() => updatePointPolicyStatus(payload));
+  return toSafeResult(() =>
+    isSupabaseSource
+      ? updatePointPolicyStatusViaRpc(payload)
+      : updatePointPolicyStatus(payload)
+  );
 }
 
 export function createManualPointAdjustmentSafe(
   payload: CreateManualPointAdjustmentPayload
 ) {
-  return toSafeResult(() => createManualPointAdjustment(payload));
+  return toSafeResult(() =>
+    isSupabaseSource
+      ? createManualPointAdjustmentViaRpc(payload)
+      : createManualPointAdjustment(payload)
+  );
 }
 
 export function savePointExpirationHoldSafe(
   payload: SavePointExpirationHoldPayload
 ) {
-  return toSafeResult(() => savePointExpirationHold(payload));
+  return toSafeResult(() =>
+    isSupabaseSource
+      ? savePointExpirationHoldViaRpc(payload)
+      : savePointExpirationHold(payload)
+  );
 }
 
 export function releasePointExpirationHoldSafe(
   payload: ReleasePointExpirationHoldPayload
 ) {
-  return toSafeResult(() => releasePointExpirationHold(payload));
+  return toSafeResult(() =>
+    isSupabaseSource
+      ? releasePointExpirationHoldViaRpc(payload)
+      : releasePointExpirationHold(payload)
+  );
 }
 
 export function exportPointExpirationsSafe(
   payload: ExportPointExpirationsPayload
 ) {
-  return toSafeResult(() => exportPointExpirations(payload));
+  return toSafeResult(() =>
+    isSupabaseSource
+      ? exportPointExpirationsFromSupabase(payload)
+      : exportPointExpirations(payload)
+  );
 }

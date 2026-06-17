@@ -68,6 +68,15 @@ function getTargetRoute(targetType: string, targetId: string): string | null {
   if (targetType === 'CommerceCouponTemplate') {
     return `/commerce/coupons?view=subscriptionTemplate&selected=${targetId}`;
   }
+  if (targetType === 'CommercePointPolicy') {
+    return `/commerce/points?tab=policy&selected=${targetId}`;
+  }
+  if (targetType === 'CommercePointLedger') {
+    return `/commerce/points?tab=ledger&selected=${targetId}`;
+  }
+  if (targetType === 'CommercePointExpiration') {
+    return `/commerce/points?tab=expiration&selected=${targetId}`;
+  }
   if (targetType === 'Notification' || targetType === 'Message') {
     if (targetId.startsWith('MAIL-')) {
       return '/messages/mail?tab=auto';

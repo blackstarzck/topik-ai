@@ -147,3 +147,12 @@ last_reviewed_at: "2026-06-01"
 | 항목 | 미확정 내용 | 필요한 결정 주체 | 관리자 페이지 영향 | 사용자 화면 영향 | 추적 문서 |
 | --- | --- | --- | --- | --- | --- |
 | 포인트 관리 최종 계약 | 수동 조정 승인 체계와 소멸 보류 정책은 추가 확정이 필요합니다. | 기획/백엔드/프론트 | 필터/액션/감사 로그 계약 변동 가능 | 포인트 지갑, 결제 포인트 사용, 추천/미션/이벤트 리워드 내역에 노출 예정으로 연결됩니다. | docs/specs/page-ia/commerce-points-page-ia.md |
+
+## 14. 2026-06-17 Supabase DB 전환 보강
+
+- 데이터소스: `commerce-points-data-source.ts`가 `VITE_COMMERCE_POINTS_SOURCE=mock` 및 `VITE_SUPABASE_DISABLED`를 판별한다. Supabase 경로는 `commerce_point_policies`, `commerce_point_ledgers`, `commerce_point_expirations`를 조회하고, mock 지정/비활성 시 기존 mock 경로로 회귀한다.
+- CRUD/write: 정책 저장/상태 변경, 수동 포인트 조정, 소멸 보류/해제는 admin RPC 5종(`admin_save_commerce_point_policy`, `admin_update_commerce_point_policy_status`, `admin_create_manual_point_adjustment`, `admin_hold_commerce_point_expiration`, `admin_release_commerce_point_expiration`)만 사용한다. 직접 table write 경로는 없다.
+- 감사: `CommercePointPolicy` action `point_policy_saved`/`point_policy_status_changed`, `CommercePointLedger` action `point_manual_adjusted`, `CommercePointExpiration` action `point_expiration_held`/`point_expiration_released`를 `admin_audit_logs`에 기록한다. 감사 딥링크는 `/system/audit-logs?targetType={TargetType}&targetId={id}`이고 원본 화면은 `/commerce/points`다.
+- 서버측 잔액: 수동 조정 RPC가 사용자별 advisory lock + 최신 ledger `for update`로 최신 `available_balance_after`를 읽어 `balance_after`와 `available_balance_after`를 계산한다. 음수 잔액은 RPC 가드와 CHECK 제약으로 차단한다. Supabase 경로에서 클라이언트 잔액 계산은 제거된 계약이다.
+- B2C: 포인트 지갑/리워드 내역/결제 포인트 사용/소멸 예정 안내는 `노출 예정`으로 유지한다. 운영 사유/승인 메모는 내부용으로 분리한다.
+- 미확정: 음수 잔액 허용·차감 우선순위·환불 복구 정책, 정책 저장 사유 UI 필드 부재(note -> reason 전달, 빈 값 RPC 오류), `POL-NNNN`/`PL-NNNN` max+1 동시성, 소멸 자동 처리 cron, `user_id` v13 profiles 느슨참조(FK 없음).
