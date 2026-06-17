@@ -574,3 +574,11 @@
 - 쿠폰 본체 source: `commerce_coupons` 53컬럼. 주요 목록/상세 필드는 `id`, `coupon_name`, `coupon_kind`, `coupon_status`, `issue_state`, `issue_target_type`, `benefit_type`, `benefit_value`, `min_order_amount`, `max_discount_amount`, `applicable_scope`, `validity_mode`, `valid_from`, `valid_until`, `issue_count`, `download_count`, `use_count`, `admin_memo`, `updated_at`, `updated_by`이며 적용 범위/대상/제외/알림은 JSONB를 매핑한다.
 - 정기 템플릿 source: `commerce_coupon_subscription_templates` 30컬럼. 주요 목록/상세 필드는 `id`, `template_name`, `issue_target_type`, `target_grade_ids`, `benefit_type`, `benefit_value`, `applicable_scope`, `excluded_product_mode`, `issue_schedule`, `usage_end_schedule`, `status`, `issued_coupon_count`, `last_issued_at`, `next_issued_at`, `admin_memo`, `updated_at`, `updated_by`다.
 - Action contract: 쿠폰 저장/복제/발행 일시중지/재개/삭제는 `CommerceCoupon` Target Type과 action `coupon_saved`/`coupon_duplicated`/`coupon_paused`/`coupon_resumed`/`coupon_deleted`를 사용한다. 템플릿 저장/상태 일시중지/재개/삭제는 `CommerceCouponTemplate` Target Type과 action `coupon_template_saved`/`coupon_template_paused`/`coupon_template_resumed`/`coupon_template_deleted`를 사용한다. 모든 write RPC는 reason 필수다.
+## 44) 2026-06-17 Commerce > 환불 관리 Supabase source 갱신
+
+- `Commerce > 환불 관리`는 `commerce_refunds` Supabase-backed workflow source로 갱신됐다. mock fallback 조건은 `VITE_COMMERCE_REFUNDS_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`다.
+- 기존 Supabase 모드에서 `payment_history(status='refunded')`를 합성해 환불 목록으로 쓰던 방식은 중단한다. 환불 처리 대기/승인/거절 워크플로 SoT는 `commerce_refunds`이며, `Commerce > 결제 내역`의 payments read source는 v13 `payment_history` 그대로 유지한다.
+- source 컬럼: `commerce_refunds` 12컬럼. `id`, `payment_id`, `user_id`, `user_nickname`, `requested_amount`, `reason`, `status`, `requested_at`, `processed_by`, `processed_at`, `review_reason`, `created_at`.
+- 상태값: DB ASCII `pending`/`approved`/`rejected`, UI 라벨 `처리 대기`/`승인`/`거절`.
+- 액션 계약: 환불 승인/거절은 `admin_approve_billing_refund(p_refund_id,p_reason)`, `admin_reject_billing_refund(p_refund_id,p_reason)` RPC를 사용한다. Target Type은 `CommerceRefund`, action은 `refund_approved`/`refund_rejected`, reason은 필수이며 `pending` 상태만 처리한다.
+- v13 경계: `payment_id`/`user_id`는 v13 느슨참조이며 FK가 없다. 실제 결제 환불 집행과 v13 `payment_history.status` 갱신은 미연동이고, 승인 payload는 `intent_only_v13_payment_history_pending=true`를 기록한다.

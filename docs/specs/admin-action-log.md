@@ -188,3 +188,13 @@
 
 - 쿠폰 발행 상태 pause/resume은 `coupon_kind='autoIssue'`에만 허용된다.
 - Supabase 경로에서는 기존 store `CouponAuditEvent(AL-CPN-)` 기반 감사가 `admin_audit_logs`로 대체된다. mock fallback 경로의 store 감사는 개발용 보존으로만 본다.
+## 2026-06-17 CommerceRefund 감사 로그 계약
+
+- 환불 조치 로그는 범용 `Commerce`가 아니라 `Target Type = CommerceRefund`, `Target ID = refundId`를 사용합니다.
+- 원본 화면 딥링크: `/commerce/refunds`, 감사 확인 경로 `/system/audit-logs?targetType=CommerceRefund&targetId={refundId}`.
+- RPC/action 사전:
+  - `admin_approve_billing_refund(p_refund_id,p_reason)` -> action `refund_approved`, `admin_audit_logs.target_table='CommerceRefund'`, `target_id=p_refund_id`.
+  - `admin_reject_billing_refund(p_refund_id,p_reason)` -> action `refund_rejected`, `admin_audit_logs.target_table='CommerceRefund'`, `target_id=p_refund_id`.
+- 두 RPC 모두 admin 권한과 reason 필수 조건을 검증하고, `commerce_refunds.status='pending'`인 건만 처리합니다.
+- `refund_approved` payload에는 `reason`, `payment_id`, `requested_amount`, `intent_only_v13_payment_history_pending=true`를 기록합니다. 실제 v13 `payment_history.status` 환불 갱신은 v13 소유라 아직 수행하지 않습니다.
+- `refund_rejected` payload에는 `reason`, `payment_id`, `requested_amount`를 기록합니다.

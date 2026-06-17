@@ -110,3 +110,9 @@
 - 정기 쿠폰 발급 템플릿은 `commerce_coupon_subscription_templates`의 대상 등급, 혜택, 적용/제외 상품, `issue_schedule`, `usage_end_schedule`을 기준으로 발급 예약의 운영 원천으로 추적한다.
 - `admin_memo`, `updated_by`, 내부 `policy_notes`, admin 사유 payload는 내부 운영 전용으로 보고 사용자 노출 문구에 직접 사용하지 않는다.
 - 후속 추적: 발급/사용 원장(`commerce_coupon_issues`, `commerce_coupon_redemptions`)이 생기면 B2C 쿠폰함의 보유/사용/만료 상태 SoT를 이 map에 별도 테이블로 분리해야 한다.
+## 2026-06-17 Commerce 환불 Supabase 데이터 사용 보강
+
+- `Commerce > 환불 관리` source는 `commerce_refunds`로 확정됐다. 마이그레이션은 `supabase/migrations-admin/20260617203000_commerce_refunds.sql`(+ down)이며 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
+- B2C 영향 상태는 `운영상 추정`으로 유지한다. 예상 surface는 마이페이지 결제 내역의 환불 상태/요청 처리 안내이며, 사용자 화면 저장소와 v13 결제 환불 집행이 아직 확정 연결되지 않았다.
+- `commerce_refunds.status`는 DB ASCII `pending`/`approved`/`rejected`, UI 라벨 `처리 대기`/`승인`/`거절`이다. B2C 노출 문구는 관리자 `review_reason`이나 내부 `reason`을 그대로 재사용하지 않고 사용자용 문구 계약을 별도 확정해야 한다.
+- `payment_id`와 `user_id`는 v13 느슨참조(FK 없음)다. 실제 결제 환불 집행과 v13 `payment_history.status` 갱신은 미연동이며, 현재 승인 RPC는 intent-only payload(`intent_only_v13_payment_history_pending=true`)만 기록한다.

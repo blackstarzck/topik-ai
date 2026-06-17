@@ -107,3 +107,13 @@
 - 적용: `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
 - 연결 경로: SECURITY DEFINER admin RPC 7종(`admin_save_commerce_coupon`, `admin_duplicate_commerce_coupon`, `admin_set_commerce_coupon_issue_state`, `admin_delete_commerce_coupon`, `admin_save_commerce_coupon_template`, `admin_set_commerce_coupon_template_status`, `admin_delete_commerce_coupon_template`)만 사용하며 모두 reason 필수와 `admin_audit_logs` 기록을 강제한다.
 - Target Type은 쿠폰 본체 `CommerceCoupon`, 정기 템플릿 `CommerceCouponTemplate`로 분리한다. 기존 v13 소유 테이블 DDL은 변경하지 않으며, 발급/사용 원장과 scope-ref/대상 그룹/알림 정규화는 후속 소유권 결정 대상으로 남긴다.
+## 2026-06-17 Commerce 환불 Supabase 소유권 보강
+
+| Object | Owner | Write path | Read path | Boundary |
+| --- | --- | --- | --- | --- |
+| `commerce_refunds` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | admin RPC | admin | RLS enable+force, admin select only(`private.is_admin`). 직접 table write 경로 없음. `payment_id`/`user_id`는 v13 `payment_history`/사용자 식별자 느슨참조이며 FK 없음 |
+
+- 마이그레이션: `supabase/migrations-admin/20260617203000_commerce_refunds.sql` 및 down migration.
+- 적용: `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
+- 연결 경계: `commerce_refunds`는 환불 처리 대기/승인/거절 워크플로 SoT만 소유한다. 실제 결제 환불 집행과 v13 `payment_history.status` 갱신은 v13 소유라 미연동이며, 승인 RPC payload에 `intent_only_v13_payment_history_pending=true`를 기록한다.
+- 쓰기 경로: SECURITY DEFINER admin RPC 2종 `admin_approve_billing_refund`, `admin_reject_billing_refund`만 사용한다. 두 RPC 모두 reason 필수, `pending` 상태만 처리, 감사 Target Type `CommerceRefund`를 기록한다.

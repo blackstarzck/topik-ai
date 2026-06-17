@@ -394,3 +394,12 @@ src/features/<feature>/
 - 감사/사유 경계: Supabase 경로의 쿠폰/템플릿 저장·복제·일시중지·재개·삭제는 `CommerceCoupon`/`CommerceCouponTemplate` Target Type과 action `coupon_saved`/`coupon_duplicated`/`coupon_paused`/`coupon_resumed`/`coupon_deleted`/`coupon_template_saved`/`coupon_template_paused`/`coupon_template_resumed`/`coupon_template_deleted`를 사용한다. 7개 write RPC 모두 reason 필수이며 store `CouponAuditEvent(AL-CPN-)` 감사는 mock fallback 경로로 축소된다.
 - 유지 계약: `planTier` free-limit와 `validate*` 계열 검증은 현재 클라이언트/config 기준으로 유지한다.
 - 잔여 정책: 발급/사용 원장(`commerce_coupon_issues`, `commerce_coupon_redemptions`), scope-ref/대상 그룹/알림 정규화, `planTier` 영속화, `target_user_ids` v13 profiles 느슨참조 정합은 후속 전환 대상으로 추적한다.
+## 10.12 2026-06-17 Commerce 환불 Supabase 전환 메모
+
+- 대상 화면: `Commerce > 환불 관리`(`/commerce/refunds`).
+- 전환 상태: mock/Supabase 합성 조회에서 Supabase-backed workflow table 구조로 전환 완료. `commerce_refunds` 테이블과 admin RPC 2종, helper `next_commerce_refund_id()`는 `supabase/migrations-admin/20260617203000_commerce_refunds.sql`에 작성했고, 대응 down 스크립트를 둔다. 적용 이력은 `admin_schema_migrations`가 담당하며, 2026-06-17 dev DB 적용 완료했다.
+- 데이터소스 경계: `billing-service.ts`의 `fetchRefunds/approve/reject*Safe` 계약은 유지하고, `commerce-refunds-data-source.ts`가 `VITE_COMMERCE_REFUNDS_SOURCE=mock` 및 `VITE_SUPABASE_DISABLED`를 판별한다. Supabase 미구성, `VITE_SUPABASE_DISABLED=true`, `VITE_COMMERCE_REFUNDS_SOURCE=mock`은 기존 mock source/store 경로로 회귀한다.
+- Supabase read 경로: 환불 목록은 더 이상 v13 `payment_history(status='refunded')` 합성 결과가 아니라 `commerce_refunds`를 읽는다. 처리 대기/승인/거절 워크플로 SoT는 `commerce_refunds`이고, 결제 내역 payments read는 v13 `payment_history` 그대로 유지한다.
+- Supabase write 경로: 기존 Supabase 모드 승인/거절 write 차단(`assertMockRefundActionAllowed`)은 해제되고, 승인/거절은 `admin_approve_billing_refund(p_refund_id,p_reason)`, `admin_reject_billing_refund(p_refund_id,p_reason)` RPC를 사용한다. 두 RPC 모두 reason 필수이며 `pending` 상태만 처리한다.
+- 감사/사유 경계: 감사 로그는 `CommerceRefund` Target Type과 action `refund_approved`/`refund_rejected`를 사용한다. 승인 payload에는 `intent_only_v13_payment_history_pending=true`를 남겨 실제 v13 `payment_history.status` 환불 집행이 아직 미연동임을 표시한다.
+- 잔여 정책: 실제 결제 환불 집행 v13 연동, `payment_id`/`user_id` FK 없는 느슨참조 정합, `RF-NNNN` max+1 채번 동시성, payments `method` 컬럼 reconcile은 후속 과제로 추적한다.

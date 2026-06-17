@@ -664,3 +664,26 @@
 - `미확정`: scope-ref, 대상 그룹, 알림 설정은 JSONB/문자열 snapshot 중심이며 정규화 후속 결정이 필요하다.
 - `미확정`: `planTier` free-limit는 현재 클라이언트/config 검증으로 유지되며 영속 정책은 후속이다.
 - `미확정`: `target_user_ids`는 v13 `profiles` 느슨참조이며 FK가 없어 표시명/삭제/탈퇴 정합 정책이 필요하다.
+### 4.6.5 Commerce 환불 Supabase 전환 해소 기록 (2026-06-17)
+
+- 대상 파일
+  - `src/features/billing/api/commerce-refunds-data-source.ts`
+  - `src/features/billing/api/billing-service.ts`
+  - `supabase/migrations-admin/20260617203000_commerce_refunds.sql`
+- 현 상태
+  - 2026-06-17 기준 `Commerce > 환불 관리`는 mock/Supabase 합성 조회에서 Supabase-backed workflow table로 전환 완료했다.
+  - Supabase 모드는 `commerce_refunds`와 admin RPC 2종(`admin_approve_billing_refund`, `admin_reject_billing_refund`)을 사용한다.
+  - Supabase 미구성, `VITE_SUPABASE_DISABLED=true`, `VITE_COMMERCE_REFUNDS_SOURCE=mock`은 기존 mock source로 회귀한다.
+  - 마이그레이션 `supabase/migrations-admin/20260617203000_commerce_refunds.sql`(+ down)은 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했다.
+- 해소된 항목
+  - `Resolved`(2026-06-17): Supabase 모드 환불 read가 v13 `payment_history(status='refunded')` 합성 결과에 의존하던 항목. 환불 처리 대기/승인/거절 워크플로 SoT는 `commerce_refunds`로 고정됐다.
+  - `Resolved`(2026-06-17): Supabase 모드 환불 승인/거절 write 차단. `assertMockRefundActionAllowed` 경계가 RPC 경로로 전환되어 승인/거절 조치를 수행한다.
+  - `Resolved`(2026-06-17): 환불 조치 감사 로그 Target Type `Commerce` 범용화. Supabase 경로는 `CommerceRefund` Target Type과 action `refund_approved`/`refund_rejected`로 `admin_audit_logs`에 기록한다.
+- 미확정/누락/오구현
+  - 실제 결제 환불 집행 및 v13 `payment_history.status` 갱신은 미연동이다. 현재 승인 RPC는 payload `intent_only_v13_payment_history_pending=true`로 의도만 기록한다.
+  - `payment_id`와 `user_id`는 v13 느슨참조이며 FK가 없어 삭제/탈퇴/결제 원본 정합 정책이 필요하다.
+  - `RF-NNNN` max+1 채번은 동시성 리스크가 남아 있다.
+  - payments `method` 컬럼 reconcile은 별도 과제로 남아 있다.
+- 분류
+  - `해소`: 환불 Supabase read SoT, Supabase write 차단, 환불 감사 Target Type 세분화
+  - `미확정`: 실제 결제 환불 집행 v13 연동, 느슨참조 정합, 채번 동시성, payments method reconcile

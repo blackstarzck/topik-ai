@@ -62,6 +62,9 @@ function getTargetRoute(targetType: string, targetId: string): string | null {
     }
     return `/commerce/payments?keyword=${targetId}`;
   }
+  if (targetType === 'CommerceRefund') {
+    return `/commerce/refunds?keyword=${targetId}`;
+  }
   if (targetType === 'CommerceCoupon') {
     return `/commerce/coupons?selected=${targetId}`;
   }

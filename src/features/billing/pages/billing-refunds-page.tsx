@@ -16,7 +16,6 @@ import {
   rejectBillingRefundSafe
 } from '../api/billing-service';
 import type { RefundRow, RefundStatus } from '../api/billing-service';
-import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
 import type { AsyncState } from '../../../shared/model/async-state';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
@@ -258,7 +257,7 @@ export default function BillingRefundsPage(): JSX.Element {
               결제 ID {pendingAction.refund.paymentId}와 연결된 환불 상태가
               업데이트되었습니다.
             </span>
-            <AuditLogLink targetType="Commerce" targetId={pendingAction.refund.id} />
+            <AuditLogLink targetType="CommerceRefund" targetId={pendingAction.refund.id} />
           </Space>
         )
       });
@@ -338,7 +337,7 @@ export default function BillingRefundsPage(): JSX.Element {
         key: 'actions',
         width: 180,
         render: (_, record) =>
-          record.status === '처리 대기' && !isSupabaseConfigured ? (
+          record.status === '처리 대기' ? (
             <Space onClick={(event) => event.stopPropagation()}>
               <Button type="link" onClick={() => setPendingAction({ type: 'approve', refund: record })}>
                 승인
@@ -350,7 +349,7 @@ export default function BillingRefundsPage(): JSX.Element {
           ) : (
             <Link
               className="table-navigation-link"
-              to={`/system/audit-logs?targetType=Commerce&targetId=${record.id}`}
+              to={`/system/audit-logs?targetType=CommerceRefund&targetId=${record.id}`}
               onClick={(event) => event.stopPropagation()}
             >
               감사 로그
@@ -371,14 +370,6 @@ export default function BillingRefundsPage(): JSX.Element {
           style={{ marginBottom: 16 }}
           message="환불 내역을 불러오지 못했습니다."
           description={refundsState.errorMessage ?? ''}
-        />
-      ) : null}
-      {isSupabaseConfigured ? (
-        <Alert
-          type="info"
-          showIcon
-          style={{ marginBottom: 16 }}
-          message="읽기 전용: 연동된 결제 환불 내역입니다. 승인/거절 처리는 비활성화되어 있습니다."
         />
       ) : null}
       <ListSummaryCards items={refundSummaryCards} />
@@ -421,8 +412,8 @@ export default function BillingRefundsPage(): JSX.Element {
       >
 
         <Paragraph type="secondary" style={{ marginBottom: 16 }}>
-          환불 승인/거절은 결제 내역과 동일한 원본을 갱신합니다. 승인 시 결제 상태는 즉시
-          `환불`로 동기화됩니다.
+          환불 승인/거절은 admin 환불 워크플로 상태를 갱신합니다. 실제 결제 환불 집행과
+          v13 결제 상태 반영은 후속 연동 대상입니다.
         </Paragraph>
 
         <AdminDataTable<RefundRow>
@@ -453,10 +444,10 @@ export default function BillingRefundsPage(): JSX.Element {
         }
         description={
           pendingAction?.type === 'approve'
-            ? '승인 후 결제 상태가 환불로 변경되고, 회원 결제 이력과 연결된 상태도 함께 갱신됩니다.'
+            ? '승인 후 admin 환불 워크플로에 intent가 기록됩니다. 실제 결제 환불 집행은 후속 연동 대상입니다.'
             : '거절 사유는 운영 이력으로 남으며, 결제 상태는 유지됩니다.'
         }
-        targetType="Commerce"
+        targetType="CommerceRefund"
         targetId={pendingAction?.refund.id ?? ''}
         confirmText={pendingAction?.type === 'approve' ? '승인' : '거절'}
         onCancel={() => setPendingAction(null)}

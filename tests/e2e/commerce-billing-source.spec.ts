@@ -31,6 +31,6 @@ test('commerce billing pages read billing mock seed through service and keep ref
   await refundRow.locator('button').first().click();
   await confirmVisibleAction(page, 'e2e billing refund source transition');
   await expect(
-    refundRow.locator('a[href*="/system/audit-logs"][href*="targetType=Commerce"][href*="targetId=RF-001"]')
+    refundRow.locator('a[href*="/system/audit-logs"][href*="targetType=CommerceRefund"][href*="targetId=RF-001"]')
   ).toBeVisible();
 });

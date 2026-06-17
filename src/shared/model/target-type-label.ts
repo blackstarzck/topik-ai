@@ -19,6 +19,7 @@
   CommercePointExpiration: "포인트 소멸",
   CommerceCoupon: "쿠폰",
   CommerceCouponTemplate: "정기 쿠폰 템플릿",
+  CommerceRefund: "환불",
   Notification: "메시지",
   Message: "메시지",
   Assessment: "평가",

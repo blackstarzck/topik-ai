@@ -748,3 +748,16 @@
 - 쿠폰 본체 Target Type은 `CommerceCoupon`: `admin_save_commerce_coupon` -> `coupon_saved`, `admin_duplicate_commerce_coupon` -> `coupon_duplicated`, `admin_set_commerce_coupon_issue_state` -> `coupon_paused`/`coupon_resumed`, `admin_delete_commerce_coupon` -> `coupon_deleted`.
 - 정기 템플릿 Target Type은 `CommerceCouponTemplate`: `admin_save_commerce_coupon_template` -> `coupon_template_saved`, `admin_set_commerce_coupon_template_status` -> `coupon_template_paused`/`coupon_template_resumed`, `admin_delete_commerce_coupon_template` -> `coupon_template_deleted`.
 - 모든 write RPC는 reason 필수이며 `admin_audit_logs`에 기록한다. 후속 미확정은 발급/사용 원장(`commerce_coupon_issues`, `commerce_coupon_redemptions`), scope-ref/대상 그룹/알림 정규화, `planTier` 영속화, v13 `target_user_ids` 정합 정책이다.
+## 2026-06-17 Commerce 환불 데이터 계약
+
+- 엔티티/테이블: `CommerceRefund` / `commerce_refunds`.
+- 전환 상태: mock/Supabase 합성 조회에서 Supabase workflow table 계약으로 전환 완료. 마이그레이션은 `supabase/migrations-admin/20260617203000_commerce_refunds.sql`(+ down)이며 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
+- 소유권: topik-ai, migration home `supabase/migrations-admin`. `payment_id`와 `user_id`는 v13 `payment_history`/사용자 식별자 느슨참조이며 FK가 없다.
+- `commerce_refunds` 12컬럼: `id`, `payment_id`, `user_id`, `user_nickname`, `requested_amount`, `reason`, `status`, `requested_at`, `processed_by`, `processed_at`, `review_reason`, `created_at`.
+- 제약/enum: `id`는 `RF-NNNN` 형식(`^RF-[0-9]+$`), `requested_amount >= 0`, `status in ('pending','approved','rejected')`. UI 라벨은 `pending=처리 대기`, `approved=승인`, `rejected=거절`.
+- RLS: enable+force, admin select policy만 허용한다. 직접 table write 경로는 만들지 않는다.
+- helper: `next_commerce_refund_id()`는 `RF-NNNN` max+1 채번이며 public execute를 revoke한다.
+- seed: `pending`/`approved`/`rejected` 각 1건, 총 3건.
+- Admin RPC / 감사 계약: `admin_approve_billing_refund(p_refund_id,p_reason)` -> `refund_approved`, `admin_reject_billing_refund(p_refund_id,p_reason)` -> `refund_rejected`. Target Type은 `CommerceRefund`, Target ID는 `refundId`, reason은 필수이고 `pending` 상태만 처리한다.
+- v13 경계: 실제 결제 환불 집행과 v13 `payment_history.status` 갱신은 미연동이다. 승인 payload는 `intent_only_v13_payment_history_pending=true`를 기록한다.
+- 미확정: 실제 결제 환불 집행 v13 연동, `payment_id` 느슨참조 정합, `RF-NNNN` max+1 동시성, payments `method` 컬럼 reconcile.

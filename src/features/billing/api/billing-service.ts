@@ -8,7 +8,13 @@ import type {
   RefundRow,
   RefundStatus
 } from '../model/types';
-import { loadPaymentsFromSupabase, loadRefundsFromSupabase } from './supabase-billing-service';
+import { commerceRefundsDataSource } from './commerce-refunds-data-source';
+import {
+  approveBillingRefundViaRpc,
+  loadPaymentsFromSupabase,
+  loadRefundsFromSupabase,
+  rejectBillingRefundViaRpc
+} from './supabase-billing-service';
 
 export type { PaymentRow, PaymentStatus, RefundRow, RefundStatus };
 
@@ -18,10 +24,6 @@ type UpdateBillingRefundPayload = {
   reason: string;
 };
 
-/**
- * Phase D (read-first): real v13 billing inventory when connected; the existing
- * in-memory mock store otherwise (unchanged). READ-ONLY — no write path here.
- */
 async function loadPayments(signal?: AbortSignal): Promise<PaymentRow[]> {
   if (isSupabaseConfigured) {
     return loadPaymentsFromSupabase(signal);
@@ -30,22 +32,19 @@ async function loadPayments(signal?: AbortSignal): Promise<PaymentRow[]> {
 }
 
 async function loadRefunds(signal?: AbortSignal): Promise<RefundRow[]> {
-  if (isSupabaseConfigured) {
+  if (commerceRefundsDataSource === 'supabase') {
     return loadRefundsFromSupabase(signal);
   }
   return useCommerceStore.getState().refunds;
 }
 
-function assertMockRefundActionAllowed(): void {
-  if (isSupabaseConfigured) {
-    throw new Error('Supabase 연결 상태에서는 mock 환불 조치를 실행할 수 없습니다.');
-  }
-}
-
 async function approveBillingRefund(
   payload: UpdateBillingRefundPayload
 ): Promise<RefundRow> {
-  assertMockRefundActionAllowed();
+  if (commerceRefundsDataSource === 'supabase') {
+    return approveBillingRefundViaRpc(payload);
+  }
+
   const updatedRefund = useCommerceStore.getState().approveRefund(payload);
 
   if (!updatedRefund) {
@@ -58,7 +57,10 @@ async function approveBillingRefund(
 async function rejectBillingRefund(
   payload: UpdateBillingRefundPayload
 ): Promise<RefundRow> {
-  assertMockRefundActionAllowed();
+  if (commerceRefundsDataSource === 'supabase') {
+    return rejectBillingRefundViaRpc(payload);
+  }
+
   const updatedRefund = useCommerceStore.getState().rejectRefund(payload);
 
   if (!updatedRefund) {

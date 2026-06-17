@@ -12,7 +12,7 @@ const systemAuditLogs: SystemAuditLogRow[] = [
   },
   {
     logId: 'AL-10002',
-    targetType: 'Commerce',
+    targetType: 'CommerceRefund',
     targetId: 'RF-002',
     action: '환불 승인',
     actor: 'admin_kim',
