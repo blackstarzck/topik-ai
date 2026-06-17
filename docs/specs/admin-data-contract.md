@@ -177,6 +177,24 @@
   - URL: `tab`
   - 하위 컬렉션 후보: `activities`, `payments`, `communityPosts`, `accessLogs`, `adminMemos`
 
+### 9.1.1 System 관리자/권한 RBAC SoT 결정 (2026-06-17)
+
+- 결정: (A) `profiles.app_role`을 관리자 인가의 유일 SoT로 확정한다. `src/features/auth/model/session-types.ts`는 v13 `profiles.app_role` 4값(`learner`, `content_admin`, `org_admin`, `platform_admin`)을 SoT로 선언하고, `src/features/auth/model/auth-store.ts`는 로그인 세션에서 `profiles.app_role`을 읽어 `RoleKey`/permission bundle을 파생한다.
+- 코드 근거: `src/features/auth/model/app-role-mapping.ts`는 v13 4값을 TOPIK AI Admin 5개 `RoleKey`로 매핑하며, 주석으로 "Real authorization is enforced by v13 RLS/RPC, not by this client-side bundle"이라고 경계를 고정한다. `src/features/system/model/permission-store.ts`의 권한 부여/수정/회수는 Zustand 메모리와 mock audit만 갱신하고 DB/RPC 권한 SoT를 쓰지 않는다.
+- RLS/RPC 근거: admin 마이그레이션과 topik writing 마이그레이션은 `private.is_admin`, `private.is_content_admin`, `private.is_platform_admin` 가드로 `profiles.app_role` 기반 인가를 수행한다. `get_admin_users`/`admin_set_user_status`도 `private.is_platform_admin` 전용이며 `profiles.app_role`을 반환/감사 payload에 기록한다.
+- 기각안: (B) 신규 `system_roles`/`system_permissions`/`role_permissions`/`admin_permissions` RBAC 레이어는 채택하지 않는다. 이유는 현재 라이브 인가가 v13 `profiles.app_role` + RLS/RPC 헬퍼에 고정되어 있고, admin은 v13 테이블 DDL 변경 금지 경계를 가진 상태에서 별도 권한 테이블을 SoT로 만들면 동기화/이중인가/회귀 리스크가 커지기 때문이다.
+- 화면 카탈로그 계약: `permissionCatalog` 37개 permission key와 `roleCatalog` 5개 `RoleKey`는 DB 인가 SoT가 아니라 관리자 메뉴/표시 게이팅 및 운영자 이해를 위한 client bundle이다. 화면의 권한 부여/수정/회수 UI는 실제 인가 반영 조치로 표기하지 않고, `app_role` 매핑 변경 또는 조회/시뮬레이션 전용으로 재정의해야 한다.
+
+| v13 `profiles.app_role` | TOPIK AI Admin `RoleKey` | 화면 권한 bundle | 실인가 의미 | 비고 |
+| --- | --- | --- | --- | --- |
+| `platform_admin` | `SUPER_ADMIN` | `roleCatalog.SUPER_ADMIN.defaultPermissions` | platform 관리자 RPC/RLS 허용 | 관리자/회원/시스템 고위험 조치의 주된 실인가 역할 |
+| `content_admin` | `CONTENT_MANAGER` | `roleCatalog.CONTENT_MANAGER.defaultPermissions` | content/admin 헬퍼 허용 범위 | 평가/콘텐츠/일부 admin read/write 가드에 사용 |
+| `org_admin` | `READ_ONLY` | `roleCatalog.READ_ONLY.defaultPermissions` | 별도 admin write 권한으로 확인되지 않음 | 보수적 화면 매핑. 실제 운영 허용 범위는 오너 확인 필요 |
+| `learner` | `null` | 없음 | 관리자 접근 불가 | `auth-store`가 unauthorized 처리 |
+
+- 구현 함의: `/system/permissions`에서 개별 permission 부여/회수는 DB 권한 변경으로 간주하지 않는다. 실권한 변경이 필요하면 v13 소유 `profiles.app_role` 변경 경로 또는 별도 오너 승인된 RPC가 필요하며, admin repo에서 v13 `profiles` DDL을 변경하지 않는다.
+- 미확정/오너 확인 필요: `org_admin`을 장기적으로 관리자 콘솔 조회 전용으로 유지할지, 관리자 `app_role` 변경을 누가/어떤 RPC로 수행할지, 권한 변경 화면을 조회/시뮬레이션으로 축소할지 `app_role` 매핑 조치 화면으로 바꿀지, 세션 중 `app_role` 변경 시 재인증/토큰 갱신 정책은 후속 결정이 필요하다.
+
 ### 9.2 Community
 
 - `Community > 게시글 관리`

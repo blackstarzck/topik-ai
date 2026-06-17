@@ -39,7 +39,7 @@
 | `operation_policies` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | admin RPC | admin | admin select only(`private.is_admin`). RLS enable+force, 쓰기는 SECURITY DEFINER RPC 경유 |
 | `operation_policy_histories` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | admin RPC | admin | admin select only(`private.is_admin`). RLS enable+force, 정책 버전/이력 snapshot은 정책 RPC에서 append |
 | `system_logs` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | backend/infra service-role ingest(TBD), admin write none | admin | RLS enable+force, admin select only(`private.is_admin`). Read-only technical logs; no admin write policy/RPC |
-| `admin_audit_logs` | v13 (2026-06-09 기존 결정) | admin RPC | admin | 기존 결정 유지 |
+| `admin_audit_logs` | **topik-ai** (admin 운영 감사 도메인) | admin RPC | admin | admin select. **소유권 정정(2026-06-17): v13 소유 아님 — admin 운영 감사 sink는 도메인 기준 topik-ai 소유. admin이 조회 인덱스·읽기 RPC 추가 가능(Phase 0 감사 화면 실연동 unblock)** |
 | `topik_writing_*` | topik-ai (`topik_writing_schema_migrations`) | 기존 결정(D-1) | 기존 결정 | `metadata-tag-schema-transition-decision-record.md` §2 |
 
 ## 3. 변경 절차
@@ -47,6 +47,11 @@
 1. 새 객체 추가: owner repo의 migration home에 migration+down 작성 → 본 문서 §2에 행 추가 → 적용.
 2. 공유 객체 reader/writer 변경: 양 repo 문서에 반영하고 본 문서의 decision record 칸에 일자·근거 기록.
 3. v13 소유 테이블 DDL 변경: v13 오너 승인 + decision record 없이는 금지.
+
+2026-06-17 `admin_audit_logs` 소유권 정정:
+- 종전 §2 행은 `admin_audit_logs`를 v13 소유(2026-06-09 결정)로 기재했으나, 오너 결정(2026-06-17)으로 **도메인 기준 topik-ai(admin 운영) 소유**로 정정한다. admin 운영 조치의 감사 sink이므로 admin 도메인 자산이다.
+- 영향: admin은 `admin_audit_logs`에 조회 인덱스(예: `(target_table, target_id)`, `created_at desc`)와 읽기 경로(admin select 정책 또는 `admin_list_audit_logs` 읽기 RPC)를 추가할 수 있다. 이는 **Phase 0 — `/system/audit-logs` 화면의 라이브 감사 로그 실연동**을 막던 v13 소유권 제약을 해소한다.
+- 무변경 유지: 쓰기는 기존대로 admin RPC INSERT 단일 경로(diff/payload 기록). 기존 컬럼 계약(`admin_user_id, action, target_table, target_id, diff, payload, created_at`)은 그대로 둔다.
 
 2026-06-17 Users 회원 목록 P0 결손 RPC 핫픽스 기록:
 - 근거: `supabase/migrations-admin/20260617210000_admin_users_directory.sql` + `supabase/migrations-admin/down/20260617210000_admin_users_directory.sql`.

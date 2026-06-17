@@ -505,13 +505,17 @@
   - `src/features/system/pages/system-permissions-page.tsx`
   - `src/features/system/model/permission-store.ts`
 - 현 상태
-  - 전부 local zustand store 기반
-  - 권한 변경 actor 하드코딩
+  - `Resolved/Decision-recorded`(2026-06-17): RBAC SoT는 v13 `profiles.app_role`로 확정했다. `src/features/auth/model/auth-store.ts`가 세션의 `profiles.app_role`을 읽고, `src/features/auth/model/app-role-mapping.ts`가 4값 app_role을 5개 RoleKey/permission bundle로 파생한다.
+  - `permission-store.ts`의 권한 부여/수정/회수는 local Zustand store와 mock audit만 갱신하며, 실제 RLS/RPC 인가에는 반영되지 않는다.
+  - 권한 변경 actor 하드코딩은 잔존한다.
 - 미확정/누락/오구현
-  - 실제 RBAC 모델과 화면 권한 매트릭스가 문서/코드에 완전히 고정되지 않았다.
+  - `Resolved/Decision-recorded`(2026-06-17): 실제 RBAC 모델은 `profiles.app_role` + v13 RLS/RPC 헬퍼(`private.is_admin`/`is_content_admin`/`is_platform_admin`)로 고정한다. 화면 permission catalog 37개는 메뉴/표시 게이팅 전용이며 DB 인가 SoT가 아니다.
+  - 신규 RBAC 테이블(`system_roles`, `system_permissions`, `role_permissions`, `admin_permissions`)은 기각한다. admin repo의 v13 테이블 DDL 변경 금지 경계와 이중 인가/동기화 회귀 리스크 때문이다.
   - 권한 변경 승인 절차, 2인 승인 여부, 즉시 반영/세션 재검증 정책이 없다.
+  - 관리자 `app_role` 변경 주체/RPC/감사 payload 계약은 후속 오너 확인이 필요하다.
 - 분류
-  - `미확정`: 권한 정책
+  - `Resolved/Decision-recorded`: RBAC SoT 모순
+  - `미확정`: 권한 변경 승인/세션 재검증/app_role 변경 운영 정책
   - `오구현`: actor 하드코딩, mock-only SoT
 
 #### 4.10.2 감사 로그
