@@ -154,3 +154,13 @@
 - Applied: `admin_schema_migrations` tracker, 2026-06-17 dev DB applied.
 - Boundary: `system_logs` is a read-only technical log table for the admin System logs page. It is distinct from `admin_audit_logs` and unrelated to v13 `notification_log`.
 - Open items: ingest source/actor, retention/partitioning, `trace_id` semantics, and whether level codes remain uppercase `INFO`/`WARN`/`ERROR`.
+
+## 2026-06-18 System admin_audit_logs read path update
+
+- Migration: `supabase/migrations-admin/20260618001000_admin_audit_logs_read.sql` + `supabase/migrations-admin/down/20260618001000_admin_audit_logs_read.sql`.
+- Applied: `admin_schema_migrations` tracker, 2026-06-18 dev DB applied.
+- Ownership/boundary: `admin_audit_logs` remains topik-ai owned admin audit sink. No new table, no column change, no RLS change, and no write-path change.
+- Read indexes added: `admin_audit_logs_target_lookup_idx` on `(target_table, target_id)` and `admin_audit_logs_created_at_desc_idx` on `(created_at desc)`.
+- Read path: `/system/audit-logs` reads through `admin_list_audit_logs(p_target_type, p_target_id, p_keyword, p_start, p_end, p_limit=100, p_offset=0)`, a read-only `SECURITY DEFINER` RPC guarded by `private.is_admin`.
+- Actor resolution: the read RPC left joins `profiles` by `admin_user_id` and exposes `profiles.display_name` as `actor`, with uuid/system fallback.
+- Write path remains existing admin RPC INSERTs from notices, FAQ, events, policies, community, commerce, users, and metadata domains.

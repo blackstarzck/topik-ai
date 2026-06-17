@@ -6,6 +6,8 @@ import { usePermissionStore } from '../model/permission-store';
 import { useSystemMetadataStore } from '../model/system-metadata-store';
 import type { SystemAuditLogRow } from '../model/system-log-types';
 import { createMockSystemAuditLogs } from './mock-system-audit-logs';
+import { loadSystemAuditLogsFromSupabase } from './supabase-system-audit-logs-service';
+import { systemAuditLogsDataSource } from './system-audit-logs-data-source';
 
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -76,18 +78,21 @@ function getAuditActionLabel(action: string): string {
   return action;
 }
 
-function decorateAuditLog(row: SystemAuditLogRow): SystemAuditLogRow {
+export function decorateAuditLogAction(row: SystemAuditLogRow): SystemAuditLogRow {
+  return {
+    ...row,
+    action: getAuditActionLabel(row.action)
+  };
+}
+
+function decorateMockAuditLog(row: SystemAuditLogRow): SystemAuditLogRow {
   if (row.targetType !== 'Users') {
-    return {
-      ...row,
-      action: getAuditActionLabel(row.action)
-    };
+    return decorateAuditLogAction(row);
   }
 
   const userName = getMockUserById(row.targetId)?.realName;
   return {
-    ...row,
-    action: getAuditActionLabel(row.action),
+    ...decorateAuditLogAction(row),
     targetUserName: userName,
     targetDisplayName: userName
       ? formatUserDisplayName(userName, row.targetId)
@@ -98,6 +103,10 @@ function decorateAuditLog(row: SystemAuditLogRow): SystemAuditLogRow {
 async function loadSystemAuditLogs(
   signal?: AbortSignal
 ): Promise<SystemAuditLogRow[]> {
+  if (systemAuditLogsDataSource === 'supabase') {
+    return loadSystemAuditLogsFromSupabase(signal);
+  }
+
   await sleep(180, signal);
 
   const permissionRows: SystemAuditLogRow[] = usePermissionStore
@@ -142,7 +151,7 @@ async function loadSystemAuditLogs(
     ...permissionRows,
     ...createMockSystemAuditLogs()
   ]
-    .map(decorateAuditLog)
+    .map(decorateMockAuditLog)
     .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
 }
 

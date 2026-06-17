@@ -457,6 +457,9 @@
 
 ## 31) 시스템 > 감사 로그
 
+- source: `admin_list_audit_logs(p_target_type, p_target_id, p_keyword, p_start, p_end, p_limit=100, p_offset=0)` Supabase read RPC를 통해 live `admin_audit_logs`를 단일 source로 사용합니다. `VITE_SYSTEM_AUDIT_LOGS_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`이면 기존 mock/store audit 병합 fallback을 사용합니다.
+- source 필드: `log_id`, `target_type`, `target_id`, `action`, `actor`, `reason`, `diff`, `payload`, `created_at`, `total_count`. `diff`/`payload`는 민감정보 노출 범위 미확정으로 화면 미노출 보류입니다.
+- source 동작: actor는 `profiles(admin_user_id -> id)` 조인으로 `display_name`을 해석하고, 필터는 Target Type/ID, keyword `ILIKE`, created_at 범위, 정렬은 `created_at desc`, 페이지네이션은 `limit/offset`입니다.
 - 테이블 컬럼: 로그 ID, 대상 유형, 대상 ID, 조치, 수행자, 사유, 시각
 - 요약 카드: 현재 결과 수, 권한 변경 로그 수, 오늘 생성 로그 수
 - 필터: 검색어, 시각

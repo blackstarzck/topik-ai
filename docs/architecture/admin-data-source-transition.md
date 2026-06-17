@@ -435,3 +435,13 @@ src/features/<feature>/
 - Supabase read 경로: `system_logs`를 `created_at desc`로 조회한다. 컬럼은 `id`, `level`, `message`, `component`, `trace_id`, `context`, `created_at`이며 level은 현재 `INFO`/`WARN`/`ERROR` 대문자 값을 저장한다.
 - write/감사 경계: admin write policy/RPC는 없다. 로그 적재는 backend/infra service-role 경로로 남아 있으며 소스/주체는 미정이다. 조회 전용 기술 로그라서 admin 감사 액션은 생성하지 않으며, `admin_audit_logs`와 구분한다.
 - 잔여 정책: 로그 적재 소스/주체, 보존기간·파티셔닝, `trace_id` 의미, level 코드값 장기 표준화 여부는 page-sync와 gap register에서 계속 추적한다.
+
+## 10.14 2026-06-18 System 감사 로그 Supabase 전환 메모
+
+- 대상 화면: `System > 감사 로그`(`/system/audit-logs`).
+- 전환 상태: mock/store audit 병합 source에서 Supabase-backed live read source 구조로 전환 완료. 읽기 RPC와 조회 인덱스는 `supabase/migrations-admin/20260618001000_admin_audit_logs_read.sql`에 작성했고, 대응 down 스크립트는 `supabase/migrations-admin/down/`에 둔다. 적용 이력은 `admin_schema_migrations`가 담당하며, 2026-06-18 dev DB 적용 완료했다.
+- 데이터소스 경계: `system-audit-logs-data-source.ts`가 `VITE_SYSTEM_AUDIT_LOGS_SOURCE=mock`, `VITE_SUPABASE_DISABLED`, Supabase 설정 여부를 판별한다. Supabase 미구성, `VITE_SUPABASE_DISABLED=true`, `VITE_SYSTEM_AUDIT_LOGS_SOURCE=mock`은 기존 mock source와 store audit 병합 경로로 회귀한다.
+- Supabase read 경로: `supabase-system-audit-logs-service.ts`가 `admin_list_audit_logs(p_target_type, p_target_id, p_keyword, p_start, p_end, p_limit, p_offset)`를 호출한다. Supabase 모드의 `fetchSystemAuditLogsSafe`는 `admin_audit_logs`를 단일 source로 사용하고, 모든 admin RPC가 적재한 감사 로그를 화면에서 실조회한다.
+- RPC 계약: `SECURITY DEFINER` + `private.is_admin` 가드, `profiles(admin_user_id -> id)` 조인으로 `display_name` actor 해석, 필터는 target type/id, keyword `ILIKE`, created_at 범위, 정렬은 `created_at desc`, 페이지네이션은 `limit/offset`이다.
+- DB 경계: 신규 테이블은 없고 `admin_audit_logs` 컬럼/RLS/쓰기 경로는 변경하지 않는다. 조회 인덱스만 `admin_audit_logs_target_lookup_idx`(`target_table`, `target_id`)와 `admin_audit_logs_created_at_desc_idx`(`created_at desc`) 2개를 추가했다.
+- 잔여 정책: `diff`/`payload` 민감정보 노출 범위는 미확정이므로 화면 노출은 보류한다.

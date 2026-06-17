@@ -816,3 +816,14 @@
 - 데이터소스: `system-logs-data-source.ts`가 `VITE_SYSTEM_LOGS_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`이면 mock fallback을 사용한다. Supabase 모드는 `system_logs`를 `created_at desc`로 읽고, `system-logs-service.ts`의 `fetchSystemLogsSafe` 계약은 유지한다.
 - seed: INFO/WARN/ERROR 분포의 4건.
 - 비범위/미확정: 로그 적재 소스/주체, 보존기간·파티셔닝, `trace_id` 의미, `level` 코드값 장기 표준화 여부.
+
+## 11.9 2026-06-18 System 감사 로그 읽기 RPC 계약
+
+- 엔티티/테이블: `AuditLog` / `public.admin_audit_logs`.
+- 전환 상태: `/system/audit-logs`는 mock/store 병합 후보에서 Supabase live read 계약으로 승격 완료했다. 마이그레이션은 `supabase/migrations-admin/20260618001000_admin_audit_logs_read.sql`(+ `supabase/migrations-admin/down/20260618001000_admin_audit_logs_read.sql`)이며 `admin_schema_migrations` tracker 기준 2026-06-18 dev DB 적용 완료했다.
+- DB 경계: 신규 테이블은 없고 `admin_audit_logs` 컬럼, RLS, write path는 변경하지 않는다. 추가 인덱스는 `admin_audit_logs_target_lookup_idx`(`target_table`, `target_id`)와 `admin_audit_logs_created_at_desc_idx`(`created_at desc`)다.
+- 읽기 RPC: `admin_list_audit_logs(p_target_type text default null, p_target_id text default null, p_keyword text default null, p_start timestamptz default null, p_end timestamptz default null, p_limit int default 100, p_offset int default 0)`.
+- 보안/동작: `SECURITY DEFINER`, `private.is_admin(auth.uid())` 가드, read-only. `profiles(admin_user_id -> id)` 조인으로 `profiles.display_name`을 `actor`로 반환한다.
+- 필터/정렬: `target_table`, `target_id`, keyword `ILIKE`(`action`, `target_id`, `payload::text`), `created_at` 범위 필터를 지원하고 `created_at desc`로 정렬한다. `p_limit`은 1~500으로 보정하며 `p_offset`은 0 이상이다.
+- 반환 컬럼: `log_id`, `target_type`, `target_id`, `action`, `actor`, `reason`, `diff`, `payload`, `created_at`, `total_count`.
+- 화면 표시 경계: `reason`은 `payload->>'reason'`에서 파생한다. `diff`/`payload`는 반환 계약에는 포함되지만 민감정보 노출 범위가 미확정이므로 화면 미노출 보류 상태다.

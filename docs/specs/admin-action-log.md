@@ -218,3 +218,12 @@
 | `admin_toggle_metadata_item_status` | `metadata_item_status_changed` | `SystemMetadataGroup` | `groupId` | 항목 활성/비활성 |
 | `admin_delete_metadata_item` | `metadata_item_deleted` | `SystemMetadataGroup` | `groupId` | 항목 삭제, 정렬 재정규화 |
 | `admin_reorder_metadata_items` | `metadata_items_reordered` | `SystemMetadataGroup` | `groupId` | 전체 항목 ID 일치 검증 후 정렬 |
+
+## 2026-06-18 감사 로그 조회(reader) 계약
+
+- `/system/audit-logs`의 live source는 읽기 전용 RPC `admin_list_audit_logs(p_target_type, p_target_id, p_keyword, p_start, p_end, p_limit=100, p_offset=0)`입니다.
+- 이 RPC는 새 write action이 아니며, 기존 admin RPC들이 `admin_audit_logs`에 적재한 감사 로그를 조회하기 위한 reader 계약입니다.
+- Supabase 모드에서는 `admin_audit_logs`가 단일 source이고, 모든 도메인 Target Type(`User`, `OperationNotice`, `OperationFaq`, `OperationEvent`, `OperationPolicy`, `CommunityPost`, `CommunityReport`, `CommercePointPolicy`, `CommercePointLedger`, `CommercePointExpiration`, `CommerceCoupon`, `CommerceCouponTemplate`, `CommerceRefund`, `SystemMetadataGroup` 등)을 같은 화면에서 표시합니다.
+- RPC는 `SECURITY DEFINER` + `private.is_admin` 가드로 동작하고, `profiles(admin_user_id -> id)` 조인을 통해 `profiles.display_name`을 `actor`로 해석합니다.
+- 필터는 `target_table`, `target_id`, keyword `ILIKE`, `created_at` 범위이며, 정렬은 `created_at desc`, 페이지네이션은 `p_limit`/`p_offset`입니다.
+- 반환 컬럼은 `log_id`, `target_type`, `target_id`, `action`, `actor`, `reason`, `diff`, `payload`, `created_at`, `total_count`입니다. 단, `diff`/`payload` 민감정보 노출 범위는 미확정이므로 화면 노출은 보류합니다.

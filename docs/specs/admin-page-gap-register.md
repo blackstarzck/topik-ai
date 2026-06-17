@@ -522,13 +522,16 @@
 
 - 대상 파일: `src/features/system/pages/system-audit-logs-page.tsx`
 - 현 상태
-  - `system-audit-logs-service.ts`가 static audit seed(`api/mock-system-audit-logs.ts`)와 permission/coupon/metadata store audit 병합을 담당한다.
-  - 페이지는 static rows와 store audit merge 세부를 직접 소유하지 않는다.
+  - Resolved(2026-06-18): Supabase 모드는 `admin_list_audit_logs(p_target_type, p_target_id, p_keyword, p_start, p_end, p_limit=100, p_offset=0)` 읽기 RPC로 live `admin_audit_logs`를 단일 source로 조회한다.
+  - `system-audit-logs-data-source.ts`가 `VITE_SYSTEM_AUDIT_LOGS_SOURCE=mock`, `VITE_SUPABASE_DISABLED`, Supabase 설정 여부를 판별한다. mock 모드는 static audit seed(`api/mock-system-audit-logs.ts`)와 store audit 병합 fallback으로만 유지한다.
+  - 페이지는 Supabase RPC 또는 mock/store merge 세부를 직접 소유하지 않는다.
 - 미확정/누락/오구현
-  - 도메인별 감사 로그가 실제 API/DB 단일 SoT로 통합되지는 않았다.
-  - `Target Type`이 범용적이며, 상세 링크 매핑도 일부 엔티티만 처리한다.
+  - Resolved(2026-06-18): 감사 로그 화면 mock SoT·실 `admin_audit_logs` 미읽음 항목은 `20260618001000_admin_audit_logs_read.sql` dev DB 적용으로 해소됨. 모든 admin RPC가 적재한 감사 로그를 화면에서 실조회한다.
+  - `diff`/`payload` 민감정보 노출 범위는 아직 미확정이며 화면 미노출 보류 상태다.
+  - 상세 링크 매핑은 일부 엔티티만 처리한다.
 - 분류
-  - `미확정`: 감사 로그 API/DB 통합 SoT
+  - `Resolved`: 감사 로그 화면 mock SoT·실 `admin_audit_logs` 미읽음
+  - `미확정`: diff/payload 노출 범위
   - `미확정`: 엔티티별 링크 매핑
 
 #### 4.10.3 시스템 로그
@@ -585,6 +588,7 @@
 
 ## 7. 최근 해소 이력
 
+- 2026-06-18 | `System > 감사 로그` mock SoT·실 `admin_audit_logs` 미읽음 해소 | `admin_list_audit_logs(p_target_type, p_target_id, p_keyword, p_start, p_end, p_limit=100, p_offset=0)` 읽기 RPC와 조회 인덱스 2개(`admin_audit_logs_target_lookup_idx`, `admin_audit_logs_created_at_desc_idx`)를 `supabase/migrations-admin/20260618001000_admin_audit_logs_read.sql`(+ down)로 작성했고 `admin_schema_migrations` tracker 기준 2026-06-18 dev DB 적용 완료했다. 화면 service는 `system-audit-logs-data-source.ts`와 `supabase-system-audit-logs-service.ts`를 통해 Supabase 모드에서 live `admin_audit_logs` 단일 source를 읽고, `VITE_SYSTEM_AUDIT_LOGS_SOURCE=mock`이면 기존 mock/store audit 병합 fallback을 사용한다. 잔여 갭은 `diff`/`payload` 민감정보 노출 범위와 일부 엔티티 상세 링크 매핑이다.
 - 2026-06-17 | `System > 시스템 로그` mock-only source 테이블화 해소 | `system_logs` Supabase read-only table을 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했고, 화면 service는 `system-logs-data-source.ts`를 통한 Supabase-backed source와 mock fallback을 가진다. `system_logs`는 7컬럼(`id`, `level`, `message`, `component`, `trace_id`, `context`, `created_at`)이며 `level`은 `INFO`/`WARN`/`ERROR` 대문자 값을 사용한다. 조회 전용 기술 로그라 admin write·감사 액션은 없고, `admin_audit_logs` 및 v13 `notification_log`와 구분한다. 잔여 갭은 로그 적재 소스/주체, 보존기간·파티셔닝, `trace_id` 의미, level 코드값 장기 표준화다.
 - 2026-06-17 | `Users > 회원 목록` P0 결손 RPC 라이브 부재 해소 | `get_admin_users`/`admin_set_user_status` RPC 2종을 `supabase/migrations-admin/20260617210000_admin_users_directory.sql`(+ down)로 작성했고 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했다. 회원 목록은 Supabase 모드에서 v13 `profiles`/`auth.users` 조인과 `writing_submissions` 집계로 실데이터를 읽고, 정지/해제는 `profiles.status`를 `active`/`blocked`로 토글하며 `Target Type=User`, action `user_status_changed` 감사 로그를 남긴다. 신규 테이블은 없고 v13 `profiles` DDL은 변경하지 않는다. 잔여 갭은 관리자 메모 저장 주체, 사유 code/free-text 정책, 상태/기간/searchField 서버 필터 확장이다.
 - 2026-06-17 | `Operation > 공지사항` mock-only·감사 미적재·reason 미전달 해소 | `operation_notices` Supabase 테이블과 admin RPC 3종을 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했고, 화면 service는 Supabase-backed hybrid switch와 mock fallback을 가진다. 공지 조치는 `Target Type=OperationNotice`, `target_id=noticeId`, action `notice_saved`/`notice_status_changed`/`notice_deleted`, reason 필수 계약으로 감사 로그를 남긴다. 잔여 갭은 B2C 실제 surface, 상단 고정/예약 게시, HTML sanitize/preview, `NOTICE-NNN` 동시성, `updated_by` 표시명 정합이다.
