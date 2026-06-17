@@ -66,7 +66,7 @@ last_reviewed_at: "2026-06-01"
 | CRUD | 지원 여부 | 화면 동작 | 저장/서비스 후보 | 성공 후 동기화 대상 | 실패 시 fail-safe |
 | --- | --- | --- | --- | --- | --- |
 | Create | `미확정` | 배지 등록/생성 후보 | service/store/API 후보 | 목록, 상세, 사용자 화면 후보 | error 표시, 재시도, 마지막 성공 상태 fallback |
-| Read | `지원` | 배지 조회 | service/store/API 후보 | URL/필터/탭 복원 | empty/error 처리 |
+| Read | `미확정` | 배지 조회 | service/store/API 후보 | URL/필터/탭 복원 | empty/error 처리 |
 | Update | `미확정` | 배지 수정/상태 변경 후보 | service/store/API 후보 | 목록, 상세, 감사 로그 | 실패 시 재조회 또는 rollback |
 | Delete | `미확정` | 배지 삭제/숨김/중지 후보 | service/store/API 후보 | 목록, 상세, 감사 로그, 사용자 노출 | 확인 모달, 사유 필수, 실패 안내 |
 

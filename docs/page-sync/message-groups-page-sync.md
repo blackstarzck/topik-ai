@@ -50,8 +50,8 @@ last_reviewed_at: "2026-06-01"
 
 | 기능/작업 | 설명 | 작업 성격 | 대상 데이터 | 결과 | 감사 로그 필요 여부 |
 | --- | --- | --- | --- | --- | --- |
-| 대상 그룹 조회 | 대상 그룹의 목록/상세 또는 예정 데이터 블록을 확인합니다. | 조회 | MessageGroup | 현재 상태 확인 | 불필요 |
-| 대상 그룹 관리 | 그룹명, 설명, 정의 방식, 조건 요약, 예상 대상 수, 상태에 대한 등록/수정/상태 변경 또는 예정 계약을 관리합니다. | 수정 | MessageGroup + groupId | 데이터 반영 또는 후속 검증 | 필요 |
+| 대상 그룹 조회 | 대상 그룹의 목록/상세 또는 예정 데이터 블록을 확인합니다. | 조회 | Notification | 현재 상태 확인 | 불필요 |
+| 대상 그룹 관리 | 그룹명, 설명, 정의 방식, 조건 요약, 예상 대상 수, 상태에 대한 등록/수정/상태 변경 또는 예정 계약을 관리합니다. | 수정 | Notification + groupId | 데이터 반영 또는 후속 검증 | 필요 |
 
 ## 5. 관리 데이터베이스(CRUD)
 
@@ -59,7 +59,7 @@ last_reviewed_at: "2026-06-01"
 
 | 엔티티 후보 | 테이블 후보 | CRUD | 관리자 UI 진입점 | 주요 필드 후보 | 감사 로그 Target | 사용자 화면 영향 | 미확정/차이 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| MessageGroup | message_groups, message_group_rules | Create, Read, Update, Delete 후보 | 대상 그룹 본문/상세/Modal | 그룹명, 설명, 정의 방식, 조건 요약, 예상 대상 수, 상태, id, status, created_at, updated_at | MessageGroup + groupId | 운영상 추정 | 현재 프론트엔드/문서 기준 후보 |
+| MessageGroup | message_groups, message_group_rules | Create, Read, Update, Delete 후보 | 대상 그룹 본문/상세/Modal | 그룹명, 설명, 정의 방식, 조건 요약, 예상 대상 수, 상태, id, status, created_at, updated_at | Notification + groupId | 내부 전용 | 현재 프론트엔드/문서 기준 후보 |
 
 ### CRUD 상세
 
@@ -74,13 +74,13 @@ last_reviewed_at: "2026-06-01"
 
 | 조치 | 파괴적 여부 | 확인 단계 | 사유/근거 입력 | Target Type | Target ID | 감사 로그 확인 경로 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 대상 그룹 주요 조치 | 예 | 필수 | 필수 | MessageGroup | 대상 ID | /system/audit-logs?targetType=MessageGroup&targetId={targetId} |
+| 대상 그룹 주요 조치 | 예 | 필수 | 필수 | Notification | 대상 ID | /system/audit-logs?targetType=Notification&targetId={targetId} |
 
 ## 7. 사용자 화면 동기화 포인트
 
 | 사용자 화면 후보 | 영향 상태 | 관리자 데이터 | 사용자 화면에 반영되는 방식 | 동기화 필요 시점 | 비고 |
 | --- | --- | --- | --- | --- | --- |
-| 메일/푸시 수신 대상 | 운영상 추정 | 그룹명, 설명, 정의 방식, 조건 요약, 예상 대상 수, 상태 | 직접 노출은 없지만 발송/혜택 타게팅에 내부 전용으로 사용됩니다. | 관리자 변경 후 또는 원본 데이터 갱신 후 | 실제 사용자 화면 저장소 확인 전까지 추정은 추정으로 유지 |
+| 메일/푸시 수신 대상 | 내부 전용 | 그룹명, 설명, 정의 방식, 조건 요약, 예상 대상 수, 상태 | 직접 노출은 없지만 발송/혜택 타게팅에 내부 전용으로 사용됩니다. | 관리자 변경 후 또는 원본 데이터 갱신 후 | 실제 사용자 화면 저장소 확인 전까지 추정은 추정으로 유지 |
 
 ## 8. 이 페이지와 연관있는 페이지(예상)
 

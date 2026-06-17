@@ -51,7 +51,7 @@ last_reviewed_at: "2026-06-01"
 | 기능/작업 | 설명 | 작업 성격 | 대상 데이터 | 결과 | 감사 로그 필요 여부 |
 | --- | --- | --- | --- | --- | --- |
 | 포인트 관리 조회 | 포인트 관리의 목록/상세 또는 예정 데이터 블록을 확인합니다. | 조회 | CommercePointPolicy | 현재 상태 확인 | 불필요 |
-| 포인트 관리 관리 | 포인트 정책, 원장, 소멸 예정일, 수동 조정 사유에 대한 등록/수정/상태 변경 또는 예정 계약을 관리합니다. | 수정 | CommercePointPolicy 또는 CommercePointLedger + id | 데이터 반영 또는 후속 검증 | 필요 |
+| 포인트 관리 관리 | 포인트 정책, 원장, 소멸 예정일, 수동 조정 사유에 대한 등록/수정/상태 변경 또는 예정 계약을 관리합니다. | 수정 | CommercePointPolicy(정책) / CommercePointLedger(원장) / CommercePointExpiration(소멸) + id | 데이터 반영 또는 후속 검증 | 필요 |
 
 ## 5. 관리 데이터베이스(CRUD)
 
@@ -59,22 +59,24 @@ last_reviewed_at: "2026-06-01"
 
 | 엔티티 후보 | 테이블 후보 | CRUD | 관리자 UI 진입점 | 주요 필드 후보 | 감사 로그 Target | 사용자 화면 영향 | 미확정/차이 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| CommercePointPolicy | commerce_point_policies, commerce_point_ledgers, commerce_point_expirations | Create, Read, Update, Delete 후보 | 포인트 관리 본문/상세/Modal | 포인트 정책, 원장, 소멸 예정일, 수동 조정 사유, id, status, created_at, updated_at | CommercePointPolicy 또는 CommercePointLedger + id | 노출 예정 | 현재 프론트엔드/문서 기준 후보 |
+| CommercePointPolicy | commerce_point_policies, commerce_point_ledgers, commerce_point_expirations | Create, Read, Update, Delete 후보 | 포인트 관리 본문/상세/Modal | 포인트 정책, 원장, 소멸 예정일, 수동 조정 사유, id, status, created_at, updated_at | CommercePointPolicy(정책) / CommercePointLedger(원장) / CommercePointExpiration(소멸) + id | 노출 예정 | 현재 프론트엔드/문서 기준 후보 |
 
 ### CRUD 상세
 
 | CRUD | 지원 여부 | 화면 동작 | 저장/서비스 후보 | 성공 후 동기화 대상 | 실패 시 fail-safe |
 | --- | --- | --- | --- | --- | --- |
-| Create | `지원 또는 후보` | 포인트 관리 등록/생성 후보 | service/store/API 후보 | 목록, 상세, 사용자 화면 후보 | error 표시, 재시도, 마지막 성공 상태 fallback |
+| Create | `지원` | 포인트 관리 등록/생성 후보 | service/store/API 후보 | 목록, 상세, 사용자 화면 후보 | error 표시, 재시도, 마지막 성공 상태 fallback |
 | Read | `지원` | 포인트 관리 조회 | service/store/API 후보 | URL/필터/탭 복원 | empty/error 처리 |
-| Update | `지원 또는 후보` | 포인트 관리 수정/상태 변경 후보 | service/store/API 후보 | 목록, 상세, 감사 로그 | 실패 시 재조회 또는 rollback |
-| Delete | `지원 또는 후보` | 포인트 관리 삭제/숨김/중지 후보 | service/store/API 후보 | 목록, 상세, 감사 로그, 사용자 노출 | 확인 모달, 사유 필수, 실패 안내 |
+| Update | `지원` | 포인트 관리 수정/상태 변경 후보 | service/store/API 후보 | 목록, 상세, 감사 로그 | 실패 시 재조회 또는 rollback |
+| Delete | `미지원` | 포인트 관리 삭제/숨김/중지 후보 | service/store/API 후보 | 목록, 상세, 감사 로그, 사용자 노출 | 확인 모달, 사유 필수, 실패 안내 |
 
 ## 6. 관리자 조치와 감사 로그 계약
 
 | 조치 | 파괴적 여부 | 확인 단계 | 사유/근거 입력 | Target Type | Target ID | 감사 로그 확인 경로 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 포인트 관리 주요 조치 | 예 | 필수 | 필수 | CommercePointPolicy | 대상 ID | /system/audit-logs?targetType=CommercePointPolicy&targetId={targetId} |
+| 포인트 정책 주요 조치 | 예 | 필수 | 필수 | CommercePointPolicy | pointPolicyId | /system/audit-logs?targetType=CommercePointPolicy&targetId={pointPolicyId} |
+| 포인트 원장 주요 조치 | 예 | 필수 | 필수 | CommercePointLedger | pointLedgerId | /system/audit-logs?targetType=CommercePointLedger&targetId={pointLedgerId} |
+| 포인트 소멸 주요 조치 | 예 | 필수 | 필수 | CommercePointExpiration | expirationId | /system/audit-logs?targetType=CommercePointExpiration&targetId={expirationId} |
 
 ## 7. 사용자 화면 동기화 포인트
 

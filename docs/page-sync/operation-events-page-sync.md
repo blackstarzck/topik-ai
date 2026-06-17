@@ -50,8 +50,8 @@ last_reviewed_at: "2026-06-01"
 
 | 기능/작업 | 설명 | 작업 성격 | 대상 데이터 | 결과 | 감사 로그 필요 여부 |
 | --- | --- | --- | --- | --- | --- |
-| 이벤트 조회 | 이벤트의 목록/상세 또는 예정 데이터 블록을 확인합니다. | 조회 | OperationEvent | 현재 상태 확인 | 불필요 |
-| 이벤트 관리 | 이벤트명, 요약, HTML 본문, 기간, 노출 상태, 배너, 공유/SEO 메타에 대한 등록/수정/상태 변경 또는 예정 계약을 관리합니다. | 수정 | OperationEvent + eventId | 데이터 반영 또는 후속 검증 | 필요 |
+| 이벤트 조회 | 이벤트의 목록/상세 또는 예정 데이터 블록을 확인합니다. | 조회 | Operation | 현재 상태 확인 | 불필요 |
+| 이벤트 관리 | 이벤트명, 요약, HTML 본문, 기간, 노출 상태, 배너, 공유/SEO 메타에 대한 등록/수정/상태 변경 또는 예정 계약을 관리합니다. | 수정 | Operation + eventId | 데이터 반영 또는 후속 검증 | 필요 |
 
 ## 5. 관리 데이터베이스(CRUD)
 
@@ -59,7 +59,7 @@ last_reviewed_at: "2026-06-01"
 
 | 엔티티 후보 | 테이블 후보 | CRUD | 관리자 UI 진입점 | 주요 필드 후보 | 감사 로그 Target | 사용자 화면 영향 | 미확정/차이 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| OperationEvent | operation_events | Create, Read, Update, Delete 후보 | 이벤트 본문/상세/Modal | 이벤트명, 요약, HTML 본문, 기간, 노출 상태, 배너, 공유/SEO 메타, id, status, created_at, updated_at | OperationEvent + eventId | 노출 예정 | 현재 프론트엔드/문서 기준 후보 |
+| OperationEvent | operation_events | Create, Read, Update, Delete 후보 | 이벤트 본문/상세/Modal | 이벤트명, 요약, HTML 본문, 기간, 노출 상태, 배너, 공유/SEO 메타, id, status, created_at, updated_at | Operation + eventId | 노출 예정 | 현재 프론트엔드/문서 기준 후보 |
 
 ### CRUD 상세
 
@@ -74,7 +74,7 @@ last_reviewed_at: "2026-06-01"
 
 | 조치 | 파괴적 여부 | 확인 단계 | 사유/근거 입력 | Target Type | Target ID | 감사 로그 확인 경로 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 이벤트 주요 조치 | 예 | 필수 | 필수 | OperationEvent | 대상 ID | /system/audit-logs?targetType=OperationEvent&targetId={targetId} |
+| 이벤트 주요 조치 | 예 | 필수 | 필수 | Operation | 대상 ID | /system/audit-logs?targetType=Operation&targetId={targetId} |
 
 ## 7. 사용자 화면 동기화 포인트
 

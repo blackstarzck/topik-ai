@@ -27,7 +27,7 @@
 - `admin-page-sync-template.md`
 
 ### `docs/page-sync`
-- `README.md`
+- `README.md` — 폴더 목적·13개 섹션 구조·DB=후보 계약/SoT 관계·상태 표기 규칙·모듈별 문서 목록(구현됨27/placeholder10) 인덱스
 - `analytics-overview-page-sync.md`
 - `assessment-level-tests-page-sync.md`
 - `assessment-question-bank-eps-topik-page-sync.md`
@@ -142,6 +142,7 @@
 ## 운영 문서
 - 실행 지침: `AGENTS.md`
 - 문서 변경 로그: `logs/admin-doc-update-log.md`
+- Supabase 마이그레이션 디렉터리/네임스페이스 안내(`docs/` 밖, 외부 참조): `supabase/README.md`
 
 ## 관리 규칙
 - 상위 개요, 메뉴 구조, 라우팅, 역할, 페이지 상태는 `docs/architecture/admin-overview.md`를 우선 확인한다.

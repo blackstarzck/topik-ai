@@ -50,8 +50,8 @@ last_reviewed_at: "2026-06-01"
 
 | 기능/작업 | 설명 | 작업 성격 | 대상 데이터 | 결과 | 감사 로그 필요 여부 |
 | --- | --- | --- | --- | --- | --- |
-| 메일 조회 | 메일의 목록/상세 또는 예정 데이터 블록을 확인합니다. | 조회 | MessageTemplate | 현재 상태 확인 | 불필요 |
-| 메일 관리 | 메일 템플릿, 제목, HTML 본문, JSON 본문, 발송 그룹, 자동 조건에 대한 등록/수정/상태 변경 또는 예정 계약을 관리합니다. | 수정 | MessageTemplate + templateId | 데이터 반영 또는 후속 검증 | 필요 |
+| 메일 조회 | 메일의 목록/상세 또는 예정 데이터 블록을 확인합니다. | 조회 | Notification | 현재 상태 확인 | 불필요 |
+| 메일 관리 | 메일 템플릿, 제목, HTML 본문, JSON 본문, 발송 그룹, 자동 조건에 대한 등록/수정/상태 변경 또는 예정 계약을 관리합니다. | 수정 | Notification + templateId | 데이터 반영 또는 후속 검증 | 필요 |
 
 ## 5. 관리 데이터베이스(CRUD)
 
@@ -59,7 +59,7 @@ last_reviewed_at: "2026-06-01"
 
 | 엔티티 후보 | 테이블 후보 | CRUD | 관리자 UI 진입점 | 주요 필드 후보 | 감사 로그 Target | 사용자 화면 영향 | 미확정/차이 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| MessageTemplate | message_templates | Create, Read, Update, Delete 후보 | 메일 본문/상세/Modal | 메일 템플릿, 제목, HTML 본문, JSON 본문, 발송 그룹, 자동 조건, id, status, created_at, updated_at | MessageTemplate + templateId | 운영상 추정 | 현재 프론트엔드/문서 기준 후보 |
+| MessageTemplate | message_templates | Create, Read, Update, Delete 후보 | 메일 본문/상세/Modal | 메일 템플릿, 제목, HTML 본문, JSON 본문, 발송 그룹, 자동 조건, id, status, created_at, updated_at | Notification + templateId | 운영상 추정 | 현재 프론트엔드/문서 기준 후보. 감사 Target Type은 SoT 계약상 Notification으로 통일(엔티티 모델 정합은 별도) |
 
 ### CRUD 상세
 
@@ -74,7 +74,7 @@ last_reviewed_at: "2026-06-01"
 
 | 조치 | 파괴적 여부 | 확인 단계 | 사유/근거 입력 | Target Type | Target ID | 감사 로그 확인 경로 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 메일 주요 조치 | 예 | 필수 | 필수 | MessageTemplate | 대상 ID | /system/audit-logs?targetType=MessageTemplate&targetId={targetId} |
+| 메일 주요 조치 | 예 | 필수 | 필수 | Notification | 대상 ID | /system/audit-logs?targetType=Notification&targetId={targetId} |
 
 ## 7. 사용자 화면 동기화 포인트
 

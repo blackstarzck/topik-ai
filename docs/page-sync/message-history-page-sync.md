@@ -59,7 +59,7 @@ last_reviewed_at: "2026-06-01"
 
 | 엔티티 후보 | 테이블 후보 | CRUD | 관리자 UI 진입점 | 주요 필드 후보 | 감사 로그 Target | 사용자 화면 영향 | 미확정/차이 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| MessageHistory | message_histories, message_history_recipients | Create, Read, Update, Delete 후보 | 발송 이력 본문/상세/Modal | 템플릿명, 발송 그룹, 수신자 수, 성공/실패 수, 수신자별 상태, id, status, created_at, updated_at | MessageHistory + historyId | 운영상 추정 | 현재 프론트엔드/문서 기준 후보 |
+| MessageHistory | message_histories, message_history_recipients | Create, Read, Update, Delete 후보 | 발송 이력 본문/상세/Modal | 템플릿명, 발송 그룹, 수신자 수, 성공/실패 수, 수신자별 상태, id, status, created_at, updated_at | Notification + historyId | 운영상 추정 | 현재 프론트엔드/문서 기준 후보 |
 
 ### CRUD 상세
 
@@ -74,7 +74,7 @@ last_reviewed_at: "2026-06-01"
 
 | 조치 | 파괴적 여부 | 확인 단계 | 사유/근거 입력 | Target Type | Target ID | 감사 로그 확인 경로 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 발송 이력 주요 조치 | 예 | 필수 | 필수 | MessageHistory | 대상 ID | /system/audit-logs?targetType=MessageHistory&targetId={targetId} |
+| 발송 이력 주요 조치 | 예 | 필수 | 필수 | Notification | 대상 ID | /system/audit-logs?targetType=Notification&targetId={targetId} |
 
 ## 7. 사용자 화면 동기화 포인트
 
@@ -144,3 +144,4 @@ last_reviewed_at: "2026-06-01"
 | 항목 | 미확정 내용 | 필요한 결정 주체 | 관리자 페이지 영향 | 사용자 화면 영향 | 추적 문서 |
 | --- | --- | --- | --- | --- | --- |
 | 발송 이력 최종 계약 | 재시도 대상 선정과 발송 실패 원인 code table은 추가 확정이 필요합니다. | 기획/백엔드/프론트 | 필터/액션/감사 로그 계약 변동 가능 | 사용자 알림/메일 수신 결과에 운영상 추정으로 연결됩니다. | docs/specs/page-ia/message-history-page-ia.md |
+| 엔티티/테이블 정합화 | 엔티티/테이블을 알림 발송 모델(notification_dispatches/notification_delivery_attempts)과 정합화 필요 — 별도 작업 | 기획/백엔드/프론트 | 필터/액션/감사 로그 계약 변동 가능 | 사용자 알림/메일 수신 결과에 운영상 추정으로 연결됩니다. | docs/specs/admin-data-contract.md |

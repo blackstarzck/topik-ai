@@ -7,7 +7,7 @@ page_name: "메타데이터 관리"
 route: "/system/metadata"
 status: "구현됨"
 primary_entity: "SystemMetadataGroup"
-primary_table_candidate: "system_metadata_groups, system_metadata_items"
+primary_table_candidate: "system_metadata_groups, system_metadata_group_items"
 owner_agent_scope: "shared"
 last_reviewed_at: "2026-06-01"
 ---
@@ -51,7 +51,7 @@ last_reviewed_at: "2026-06-01"
 | 기능/작업 | 설명 | 작업 성격 | 대상 데이터 | 결과 | 감사 로그 필요 여부 |
 | --- | --- | --- | --- | --- | --- |
 | 메타데이터 관리 조회 | 메타데이터 관리의 목록/상세 또는 예정 데이터 블록을 확인합니다. | 조회 | SystemMetadataGroup | 현재 상태 확인 | 불필요 |
-| 메타데이터 관리 관리 | 메타데이터 그룹, 항목 코드/라벨, 정렬, 기본값, B2C 노출 상태, 연관 사용자 화면에 대한 등록/수정/상태 변경 또는 예정 계약을 관리합니다. | 수정 | SystemMetadata + groupId 또는 itemId | 데이터 반영 또는 후속 검증 | 필요 |
+| 메타데이터 관리 관리 | 메타데이터 그룹, 항목 코드/라벨, 정렬, 기본값, B2C 노출 상태, 연관 사용자 화면에 대한 등록/수정/상태 변경 또는 예정 계약을 관리합니다. | 수정 | SystemMetadataGroup | 데이터 반영 또는 후속 검증 | 필요 |
 
 ## 5. 관리 데이터베이스(CRUD)
 
@@ -59,7 +59,7 @@ last_reviewed_at: "2026-06-01"
 
 | 엔티티 후보 | 테이블 후보 | CRUD | 관리자 UI 진입점 | 주요 필드 후보 | 감사 로그 Target | 사용자 화면 영향 | 미확정/차이 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| SystemMetadataGroup | system_metadata_groups, system_metadata_items | Create, Read, Update, Delete 후보 | 메타데이터 관리 본문/상세/Modal | 메타데이터 그룹, 항목 코드/라벨, 정렬, 기본값, B2C 노출 상태, 연관 사용자 화면, id, status, created_at, updated_at | SystemMetadata + groupId 또는 itemId | 운영상 추정 | 현재 프론트엔드/문서 기준 후보 |
+| SystemMetadataGroup | system_metadata_groups, system_metadata_group_items | Create, Read, Update, Delete 후보 | 메타데이터 관리 본문/상세/Modal | 메타데이터 그룹, 항목 코드/라벨, 정렬, 기본값, B2C 노출 상태, 연관 사용자 화면, id, status, created_at, updated_at | SystemMetadataGroup | 내부 전용 | 현재 프론트엔드/문서 기준 후보 |
 
 ### CRUD 상세
 
@@ -80,7 +80,7 @@ last_reviewed_at: "2026-06-01"
 
 | 사용자 화면 후보 | 영향 상태 | 관리자 데이터 | 사용자 화면에 반영되는 방식 | 동기화 필요 시점 | 비고 |
 | --- | --- | --- | --- | --- | --- |
-| 각 메타데이터 그룹의 연관 사용자 화면 | 운영상 추정 | 메타데이터 그룹, 항목 코드/라벨, 정렬, 기본값, B2C 노출 상태, 연관 사용자 화면 | 직접 노출은 없지만 각 그룹이 참조하는 사용자 surface를 내부 추적합니다. | 관리자 변경 후 또는 원본 데이터 갱신 후 | 실제 사용자 화면 저장소 확인 전까지 추정은 추정으로 유지 |
+| 각 메타데이터 그룹의 연관 사용자 화면 | 내부 전용 | 메타데이터 그룹, 항목 코드/라벨, 정렬, 기본값, B2C 노출 상태, 연관 사용자 화면 | 직접 노출은 없지만 각 그룹이 참조하는 사용자 surface를 내부 추적합니다. | 관리자 변경 후 또는 원본 데이터 갱신 후 | 실제 사용자 화면 저장소 확인 전까지 추정은 추정으로 유지 |
 
 ## 8. 이 페이지와 연관있는 페이지(예상)
 
@@ -113,7 +113,7 @@ last_reviewed_at: "2026-06-01"
 - 선택 쿼리 파라미터: page, pageSize, keyword, status, tab, selected 등 페이지별 후보
 - 목록 복원 기준: 목록/필터/정렬/탭/상세 대상 복원
 - 상세 Drawer/Modal/하위 라우트 복원 여부: 행 클릭 Drawer/Modal 후보
-- 사용자 화면 동기화에 필요한 식별자: SystemMetadata + groupId 또는 itemId
+- 사용자 화면 동기화에 필요한 식별자: SystemMetadataGroup
 
 ## 11. 네트워크 상태와 fail-safe
 

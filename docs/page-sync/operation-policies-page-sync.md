@@ -59,16 +59,17 @@ last_reviewed_at: "2026-06-01"
 
 | 엔티티 후보 | 테이블 후보 | CRUD | 관리자 UI 진입점 | 주요 필드 후보 | 감사 로그 Target | 사용자 화면 영향 | 미확정/차이 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| OperationPolicy | operation_policies, operation_policy_histories | Create, Read, Update, Delete 후보 | 정책 관리 본문/상세/Modal | 정책 문서, 운영 정책 레지스트리, 히스토리 snapshot, 추적 근거, id, status, created_at, updated_at | OperationPolicy + policyId | 운영상 추정 | 현재 프론트엔드/문서 기준 후보 |
+| OperationPolicy (사용자 고지 정책 문서) | operation_policies, operation_policy_histories | Create, Read, Update, Delete 후보 | 정책 관리 본문/상세/Modal | 정책 문서, 히스토리 snapshot, 추적 근거, id, status, created_at, updated_at | OperationPolicy + policyId | 운영상 추정 | 현재 프론트엔드/문서 기준 후보 |
+| OperationPolicy (운영 정책 레지스트리) | operation_policies, operation_policy_histories | Create, Read, Update, Delete 후보 | 정책 관리 본문/상세/Modal | 운영 정책 레지스트리, 히스토리 snapshot, 추적 근거, id, status, created_at, updated_at | OperationPolicy + policyId | 내부 전용 | 현재 프론트엔드/문서 기준 후보 |
 
 ### CRUD 상세
 
 | CRUD | 지원 여부 | 화면 동작 | 저장/서비스 후보 | 성공 후 동기화 대상 | 실패 시 fail-safe |
 | --- | --- | --- | --- | --- | --- |
-| Create | `지원 또는 후보` | 정책 관리 등록/생성 후보 | service/store/API 후보 | 목록, 상세, 사용자 화면 후보 | error 표시, 재시도, 마지막 성공 상태 fallback |
+| Create | `지원` | 정책 관리 등록/생성 후보 | service/store/API 후보 | 목록, 상세, 사용자 화면 후보 | error 표시, 재시도, 마지막 성공 상태 fallback |
 | Read | `지원` | 정책 관리 조회 | service/store/API 후보 | URL/필터/탭 복원 | empty/error 처리 |
-| Update | `지원 또는 후보` | 정책 관리 수정/상태 변경 후보 | service/store/API 후보 | 목록, 상세, 감사 로그 | 실패 시 재조회 또는 rollback |
-| Delete | `지원 또는 후보` | 정책 관리 삭제/숨김/중지 후보 | service/store/API 후보 | 목록, 상세, 감사 로그, 사용자 노출 | 확인 모달, 사유 필수, 실패 안내 |
+| Update | `지원` | 정책 관리 수정/상태 변경 후보 | service/store/API 후보 | 목록, 상세, 감사 로그 | 실패 시 재조회 또는 rollback |
+| Delete | `지원` | 정책 관리 삭제/숨김/중지 후보 | service/store/API 후보 | 목록, 상세, 감사 로그, 사용자 노출 | 확인 모달, 사유 필수, 실패 안내 |
 
 ## 6. 관리자 조치와 감사 로그 계약
 
@@ -80,7 +81,8 @@ last_reviewed_at: "2026-06-01"
 
 | 사용자 화면 후보 | 영향 상태 | 관리자 데이터 | 사용자 화면에 반영되는 방식 | 동기화 필요 시점 | 비고 |
 | --- | --- | --- | --- | --- | --- |
-| 회원가입 약관 동의, 결제/환불 정책, 마이페이지 정책 링크, 고객센터 정책 문서 | 운영상 추정 | 정책 문서, 운영 정책 레지스트리, 히스토리 snapshot, 추적 근거 | 회원가입 약관, 결제/환불 정책, 마이페이지 정책 링크, 고객센터 정책 문서에 운영상 추정으로 연결됩니다. | 관리자 변경 후 또는 원본 데이터 갱신 후 | 실제 사용자 화면 저장소 확인 전까지 추정은 추정으로 유지 |
+| 회원가입 약관 동의, 결제/환불 정책, 마이페이지 정책 링크, 고객센터 정책 문서 | 운영상 추정 | 사용자 고지 정책 문서, 히스토리 snapshot, 추적 근거 | 회원가입 약관, 결제/환불 정책, 마이페이지 정책 링크, 고객센터 정책 문서에 운영상 추정으로 연결됩니다. | 관리자 변경 후 또는 원본 데이터 갱신 후 | 실제 사용자 화면 저장소 확인 전까지 추정은 추정으로 유지 |
+| 없음(관리자 콘솔에서만 참조) | 내부 전용 | 운영 정책 레지스트리, 히스토리 snapshot, 추적 근거 | 사용자 화면에 직접 노출되지 않고 관리자 콘솔에서만 참조됩니다. | 해당 없음 | 운영용 정책 SoT로 내부 전용 유지 |
 
 ## 8. 이 페이지와 연관있는 페이지(예상)
 

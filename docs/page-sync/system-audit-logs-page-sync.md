@@ -7,7 +7,7 @@ page_name: "감사 로그"
 route: "/system/audit-logs"
 status: "구현됨"
 primary_entity: "AuditLog"
-primary_table_candidate: "audit_logs"
+primary_table_candidate: "admin_audit_logs"
 owner_agent_scope: "shared"
 last_reviewed_at: "2026-06-01"
 ---
@@ -59,7 +59,7 @@ last_reviewed_at: "2026-06-01"
 
 | 엔티티 후보 | 테이블 후보 | CRUD | 관리자 UI 진입점 | 주요 필드 후보 | 감사 로그 Target | 사용자 화면 영향 | 미확정/차이 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| AuditLog | audit_logs | Read | 감사 로그 본문/상세/Modal | Target Type, Target ID, Action, Reason, 관리자, 발생 시각, id, status, created_at, updated_at | AuditLog + auditLogId | 내부 전용 | 현재 프론트엔드/문서 기준 후보 |
+| AuditLog | admin_audit_logs | Read | 감사 로그 본문/상세/Modal | Target Type, Target ID, Action, Reason, 관리자, 발생 시각, id, status, created_at, updated_at | AuditLog + auditLogId | 내부 전용 | 현재 프론트엔드/문서 기준 후보 |
 
 ### CRUD 상세
 

@@ -50,8 +50,8 @@ last_reviewed_at: "2026-06-01"
 
 | 기능/작업 | 설명 | 작업 성격 | 대상 데이터 | 결과 | 감사 로그 필요 여부 |
 | --- | --- | --- | --- | --- | --- |
-| 푸시 조회 | 푸시의 목록/상세 또는 예정 데이터 블록을 확인합니다. | 조회 | MessageTemplate | 현재 상태 확인 | 불필요 |
-| 푸시 관리 | 푸시 템플릿, 제목, HTML 본문, JSON 본문, 발송 그룹, 자동 조건에 대한 등록/수정/상태 변경 또는 예정 계약을 관리합니다. | 수정 | MessageTemplate + templateId | 데이터 반영 또는 후속 검증 | 필요 |
+| 푸시 조회 | 푸시의 목록/상세 또는 예정 데이터 블록을 확인합니다. | 조회 | Notification | 현재 상태 확인 | 불필요 |
+| 푸시 관리 | 푸시 템플릿, 제목, HTML 본문, JSON 본문, 발송 그룹, 자동 조건에 대한 등록/수정/상태 변경 또는 예정 계약을 관리합니다. | 수정 | Notification + 행 uuid | 데이터 반영 또는 후속 검증 | 필요 |
 
 ## 5. 관리 데이터베이스(CRUD)
 
@@ -59,7 +59,7 @@ last_reviewed_at: "2026-06-01"
 
 | 엔티티 후보 | 테이블 후보 | CRUD | 관리자 UI 진입점 | 주요 필드 후보 | 감사 로그 Target | 사용자 화면 영향 | 미확정/차이 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| MessageTemplate | message_templates | Create, Read, Update, Delete 후보 | 푸시 본문/상세/Modal | 푸시 템플릿, 제목, HTML 본문, JSON 본문, 발송 그룹, 자동 조건, id, status, created_at, updated_at | MessageTemplate + templateId | 운영상 추정 | 현재 프론트엔드/문서 기준 후보 |
+| MessageTemplate | message_templates | Create, Read, Update, Delete 후보 | 푸시 본문/상세/Modal | 푸시 템플릿, 제목, HTML 본문, JSON 본문, 발송 그룹, 자동 조건, id, status, created_at, updated_at | Notification + 행 uuid | 운영상 추정 | 현재 프론트엔드/문서 기준 후보 |
 
 ### CRUD 상세
 
@@ -74,7 +74,7 @@ last_reviewed_at: "2026-06-01"
 
 | 조치 | 파괴적 여부 | 확인 단계 | 사유/근거 입력 | Target Type | Target ID | 감사 로그 확인 경로 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 푸시 주요 조치 | 예 | 필수 | 필수 | MessageTemplate | 대상 ID | /system/audit-logs?targetType=MessageTemplate&targetId={targetId} |
+| 푸시 주요 조치 | 예 | 필수 | 필수 | Notification | 행 uuid | /system/audit-logs?targetType=Notification&targetId={targetId} |
 
 ## 7. 사용자 화면 동기화 포인트
 
@@ -142,4 +142,4 @@ last_reviewed_at: "2026-06-01"
 
 | 항목 | 미확정 내용 | 필요한 결정 주체 | 관리자 페이지 영향 | 사용자 화면 영향 | 추적 문서 |
 | --- | --- | --- | --- | --- | --- |
-| 푸시 최종 계약 | 푸시 클라이언트 렌더링 정책과 JSON 본문 치환 규칙은 사용자 화면 개발과 맞춰야 합니다. | 기획/백엔드/프론트 | 필터/액션/감사 로그 계약 변동 가능 | 앱/웹 푸시 알림에 운영상 추정으로 연결됩니다. | docs/specs/page-ia/message-push-page-ia.md |
+| 푸시 최종 계약 | 푸시 클라이언트 렌더링 정책과 JSON 본문 치환 규칙은 사용자 화면 개발과 맞춰야 합니다. 감사 Target Type=Notification 통일(엔티티 모델 정합 별도). | 기획/백엔드/프론트 | 필터/액션/감사 로그 계약 변동 가능 | 앱/웹 푸시 알림에 운영상 추정으로 연결됩니다. | docs/specs/page-ia/message-push-page-ia.md |

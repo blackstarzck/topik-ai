@@ -48,13 +48,21 @@
 - TypeScript 구현 표준 원문: `docs/guidelines/typescript-essential-checklist.md`
 - 코드 주석 정책 원문: `docs/guidelines/comments-rule.md`
 - React 최적화 원문: `docs/guidelines/react-optimization-rule.md`
+- UX/UI 디자인 일관성 원문: `docs/guidelines/admin-ux-ui-design.md`
 - 행 클릭 상세 Drawer 레이아웃 원문: `docs/guidelines/admin-detail-drawer-guidelines.md`
 - 상태/아키텍처 원문: `docs/architecture/admin-overview.md`
 - 데이터 소스 전환 원문: `docs/architecture/admin-data-source-transition.md`
+- Supabase 마이그레이션 디렉터리/네임스페이스 안내: `supabase/README.md` (`migrations` vs `migrations-admin`, tracker 분리·러너·롤백·경계 규칙)
+- 공유 Supabase 스키마 소유권 원문: `docs/architecture/shared-supabase-schema-ownership.md`
 - 데이터 계약/명명 기준 원문: `docs/specs/admin-data-contract.md`
+- 페이지 테이블/필드 계약 원문: `docs/specs/admin-page-tables.md`
+- 조치 감사 로그 계약 원문: `docs/specs/admin-action-log.md`
 - 페이지별 미확정/누락/오구현 레지스트리: `docs/specs/admin-page-gap-register.md`
+- 페이지별 상세 IA 원문: `docs/specs/page-ia/*.md`
 - 페이지별 상세 IA 템플릿 원문: `docs/templates/admin-page-ia-template.md`
 - 페이지별 상세 IA 변경 로그: `docs/specs/admin-page-ia-change-log.md`
+- 페이지별 관리자↔사용자(B2C) 화면 동기화 문서: `docs/page-sync/*.md` (폴더 목적·구조·문서 목록 인덱스: `docs/page-sync/README.md`)
+- 페이지별 동기화 문서 작성 틀: `docs/templates/admin-page-sync-template.md`
 - 관리 데이터/B2C 노출 추적 원문: `docs/specs/admin-data-usage-map.md`
 - 운영 점검 요약 허브: `docs/checklists/admin-essential-checklist.md`
 - 검증 하네스 문서: `docs/harness/index.md`
@@ -106,6 +114,7 @@
 - 행 클릭 상세 Drawer의 헤더/푸터/본문 슬롯 위치, 감사 로그 링크 위치, 섹션 배치, 공용 `DetailDrawer` 사용 규칙이 바뀌면 `docs/guidelines/admin-detail-drawer-guidelines.md`와 관련 공통/페이지 IA 문서를 같은 작업에서 반드시 갱신한다.
 - 관리자 테이블/폼/정적 데이터/정책 데이터가 변경되거나, 해당 데이터의 B2C 노출 위치/사용 맥락이 바뀌면 `docs/specs/admin-data-usage-map.md`를 같은 작업에서 반드시 평가하고 반영한다.
 - `docs/specs/admin-data-usage-map.md`에는 B2C 노출 위치를 `확인됨/운영상 추정/내부 전용/노출 예정` 중 하나로 명시해 추정과 확정을 혼합하지 않는다.
+- 페이지의 목적, 가능한 작업, 관리 데이터(CRUD) 후보, 감사 로그 계약, 사용자(B2C) 화면 동기화 포인트가 바뀌면 해당 페이지의 `docs/page-sync/*.md`(인덱스 `docs/page-sync/README.md`)를 같은 작업에서 반드시 평가하고 반영한다. page-sync 문서는 확정 스키마가 아니라 후보 계약이므로, 전역 기준은 `admin-data-contract.md`/`admin-data-usage-map.md`/`admin-action-log.md`를 우선하고 차이는 5번 섹션 `미확정/차이`에 남긴다.
 - API, mock, 데이터베이스, 응답 스키마, repository/service 경계, 더미데이터 SoT 구조가 바뀌면 `docs/architecture/admin-data-source-transition.md`를 같은 작업에서 반드시 평가하고 반영한다.
 - 엔티티명, 테이블명 후보, 컬럼/필드명, 변수명, enum/code table 후보, 하드코딩된 schema candidate 분류가 바뀌면 `docs/specs/admin-data-contract.md`를 같은 작업에서 반드시 평가하고 반영한다.
 - API 혹은 데이터베이스와 연관된 작업에서 목록/상세 필드, 검색 조건, 테이블 source가 바뀌면 `docs/specs/admin-page-tables.md`와 관련 `docs/specs/page-ia/*.md`를 같은 작업에서 반드시 평가하고 반영한다.
