@@ -219,7 +219,8 @@
 
 ## 11) 운영 > 이벤트
 
-- 현재 상태: 구현됨 (mock service/store 기반)
+- 현재 상태: 구현됨 (Supabase `operation_events` + mock fallback data-source switch 기반)
+- 데이터소스: `events-service.ts` safe facade는 `operation-events-data-source.ts`에서 `VITE_SUPABASE_DISABLED`, Supabase 설정 여부, `VITE_OPERATION_EVENTS_SOURCE`를 판별해 mock과 Supabase를 분기합니다. Supabase 모드는 `supabase-operation-events-service.ts`가 DB row와 화면 모델을 매핑합니다.
 - 목표 화면 구조: `상단 요약 카드 3개(노출/예약/숨김)` + `AdminListCard(toolbar=SearchBar + 총 건수 + 이벤트 등록 버튼, body=안내 문구 -> Table)` + 행 클릭 `DetailDrawer` + 등록/수정 상세 페이지
 - 요약 카드: 노출 이벤트 수, 예약 이벤트 수, 숨김 이벤트 수
 - 테이블 컬럼: 이벤트 ID, 이벤트명, 유형, 진행 기간, 노출 상태, 참여자 수, 보상 정책 요약, 최근 수정일, 최근 수정자, 액션
@@ -230,6 +231,8 @@
 - 행 클릭: `이벤트 상세 Drawer`를 열고, 푸터에서 `수정`, `게시 예약`, `종료`, `감사 로그 확인` 동선을 제공합니다.
 - 상세 Drawer: `기본 정보`, `이벤트 요약`, `이벤트 본문`, `노출 설정`, `참여 조건`, `보상 정책`, `메시지/쿠폰 연동`, `운영 메모/최근 변경 이력` 섹션으로 구성합니다.
 - 등록 상세 페이지: `기본 정보`, `이벤트 본문`, `노출 설정`, `참여 조건`, `보상 설정`, `배너/랜딩`, `노출/SEO 설정`, `관리자 메모` 섹션을 사용합니다. 카드 본문 좌측에는 `Steps(progressDot, vertical)`로 같은 순서의 섹션 내비게이션을 두고, 우측 본문에는 현재 선택된 step의 입력 패널만 노출합니다. `Steps` 클릭 시 해당 step으로 즉시 전환되며, 저장 시 다른 step의 검증 오류가 나면 첫 오류가 있는 step으로 자동 이동합니다. `이벤트 본문`은 TinyMCE 기반 HTML 편집기로 관리합니다. 공개 이벤트는 `slug`, `공유 제목`, `공유 설명`, `공유 이미지`, `canonical URL`, `index/noindex`를 선택적으로 override 할 수 있고, 기본값은 이벤트 메타에서 자동 생성합니다.
+- 상태/enum 메모: DB 저장 코드는 `visibility_status` `exposed`/`hidden`/`scheduled`, `progress_status` `ongoing`/`upcoming`/`ended`, `indexing_policy` `index`/`noindex`입니다. 화면 라벨은 `노출`/`숨김`/`예약`, `진행중`/`예정`/`종료`를 유지하고, `progress_status`는 읽기 시 기간 기준으로 파생합니다.
+- 감사 메모: 저장/게시 예약/즉시 게시/종료는 `OperationEvent + eventId` Target Type/ID를 사용하고, 감사 로그 링크는 `/system/audit-logs?targetType=OperationEvent&targetId={eventId}`입니다. admin RPC 4종(`admin_save_operation_event`, `admin_schedule_operation_event`, `admin_publish_operation_event`, `admin_end_operation_event`)은 모두 사유를 필수로 받습니다.
 - 파괴적 액션 메모: `종료`는 확인 모달과 사유 입력을 필수로 두고, 성공 피드백에 `Target Type`, `Target ID`, 감사 로그 링크를 함께 노출합니다.
 - 네트워크 상태: 목록과 등록 상세는 `pending/success/empty/error`를 구분하고, 오류 시 `다시 시도`와 마지막 성공 상태 fallback을 제공합니다.
 

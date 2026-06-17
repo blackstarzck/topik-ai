@@ -46,7 +46,10 @@
 - 감사 로그는 `Target Type`, `Target ID` 기준으로 원본 화면을 역추적할 수 있어야 합니다.
 - 성공 피드백(notification)은 감사 로그와 동일한 식별 값을 사용해야 합니다.
 - 강사 조치 로그는 `Target Type = Instructor`, `Target ID = instructorId`를 사용합니다.
-- 이벤트 조치 로그는 현재 `Target Type = Operation`, `Target ID = eventId`를 사용하고, `EVT-` 접두의 대상 ID는 `/operation/events` 원본 화면으로 역추적할 수 있어야 합니다.
+- 이벤트 조치 로그는 `Target Type = OperationEvent`(`admin_audit_logs.target_table='OperationEvent'`), `Target ID = eventId`를 사용하며, `EVT-` 접두의 대상 ID는 `/operation/events?selected={eventId}` 원본 화면으로 역추적할 수 있어야 합니다.
+  - 액션 사전: `event_saved`(등록/수정), `event_scheduled`(게시 예약), `event_published`(즉시 게시), `event_ended`(종료).
+  - 기록 주체: admin RPC 4종 단일 write 경로(`admin_save_operation_event(p_id,p_event,p_reason)`/`admin_schedule_operation_event(p_event_id,p_reason)`/`admin_publish_operation_event(p_event_id,p_reason)`/`admin_end_operation_event(p_event_id,p_reason)`). 네 RPC 모두 사유(`p_reason`)가 필수입니다.
+  - payload/diff 계약: `payload.reason`을 공통으로 포함하고, 저장/예약/게시/종료는 변경 컬럼별 `{from,to}` diff를 기록합니다. `admin_schedule_operation_event`는 `visibility_status='scheduled'`, `admin_publish_operation_event`는 `visibility_status='exposed'`, `admin_end_operation_event`는 `progress_status='ended'` 및 `visibility_status='hidden'` 전환을 기록합니다. 성공 피드백은 `감사 로그 확인` 링크(`/system/audit-logs?targetType=OperationEvent&targetId={eventId}`)를 노출합니다.
 - 공지사항 조치 로그는 `Target Type = OperationNotice`(`admin_audit_logs.target_table='OperationNotice'`), `Target ID = noticeId`를 사용하며, `/operation/notices?preview={noticeId}` 또는 `/operation/notices` 기준으로 원본 화면을 역추적할 수 있어야 합니다.
   - 액션 사전: `notice_saved`(등록/수정), `notice_status_changed`(게시/숨김 전환), `notice_deleted`(삭제).
   - 기록 주체: admin RPC 3종 단일 write 경로(`admin_save_operation_notice(p_id,p_notice,p_reason)`/`admin_toggle_operation_notice_status(p_notice_id,p_next_status,p_reason)`/`admin_delete_operation_notice(p_notice_id,p_reason)`). 세 RPC 모두 사유(`p_reason`)가 필수이며, 상태 변경과 삭제는 화면 확인 단계의 사유를 RPC에 전달하고 저장은 현재 등록 상세 UX에 별도 사유 입력이 없으므로 서비스 경계에서 저장 사유를 보강합니다.

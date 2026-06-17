@@ -5,6 +5,7 @@
   Referral: "추천인",
   Community: "커뮤니티",
   Operation: "운영",
+  OperationEvent: "이벤트",
   OperationNotice: "공지",
   OperationPolicy: "정책",
   OperationFaq: "FAQ",

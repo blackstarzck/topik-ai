@@ -121,8 +121,8 @@
 | `Operation > FAQ`                | `OperationFaq` + `OperationFaqCuration` + `OperationFaqMetric`          | `operation_faqs`, `operation_faq_curations`, `operation_faq_metrics`                                        | `faqs-service.ts` + `operation-faqs-data-source.ts` + `supabase-operation-faqs-service.ts` + `operation-store.ts`(mock fallback) | schema candidate에서 실 테이블 계약으로 승격 완료. status 저장 enum은 DB ASCII `published`/`hidden`, UI 라벨은 `공개`/`비공개`로 서비스 경계에서 매핑. surface/mode/exposure는 ASCII, category는 한글 코드 저장 | 행 클릭 `DetailDrawer`, FAQ 조치와 FAQ 노출 조치를 분리한 감사 로그 흐름 유지. Supabase 모드는 admin RPC 경유, metrics는 seed/read 전용 | `PASS` |
 | `Operation > 정책 관리`          | `OperationPolicy`, `OperationPolicyHistoryEntry`                        | `operation_policies`, `operation_policy_histories`                                                          | `policies-service.ts` + `policy-store.ts`                                                             | 운영 영역/정책 유형/노출 위치/추적 상태/상태/히스토리 조치 코드와 연관 관리자/사용자 화면 옵션값은 `code table candidate`, 문서명/버전/시행일/연관 관리자 화면 선택값/연관 사용자 화면 선택값/추적 근거 문서/요약/법령/본문 HTML/관리자 메모/히스토리 사유/히스토리 snapshot은 `schema candidate` | 목록 검색/상세 Drawer/히스토리 expandable row/히스토리 `본문 보기`/히스토리 `이 버전 게시`/본문 미리보기/게시-숨김/삭제/감사 로그 흐름 유지 | `PASS` |
 | `Operation > 정책 등록 상세`     | `OperationPolicy`                                                       | `operation_policies`                                                                                        | `fetchPolicySafe` + `savePolicySafe`                                                                  | TinyMCE 본문, 법령/근거, 동의 필요 여부, 연관 관리자/사용자 화면 선택값, 추적 근거 문서는 `schema candidate`                                                                                                                                  | 단계형 등록 상세 페이지 패턴과 목록 복귀 URL 복원 기준, `정책 등록`/`내용 수정`/`새 버전 등록` 3개 editor mode가 구현과 정렬됨              | `PASS` |
-| `Operation > 이벤트`             | `OperationEvent`                                                        | `operation_events`                                                                                          | `events-service.ts` + `operation-store.ts`                                                            | 유형/진행 상태/노출 상태/indexingPolicy는 `code table candidate`, 본문 HTML/보상/배너/랜딩/SEO 메타는 `schema candidate`                                                                                                          | 목록 검수 + 상세 Drawer + 감사 로그 흐름 구현 기준이 코드와 문서에 정렬됨                                                                   | `PASS` |
-| `Operation > 이벤트 등록 상세`   | `OperationEvent`                                                        | `operation_events`                                                                                          | `fetchEventSafe` + `saveEventSafe` + `scheduleEventPublishSafe`                                       | 본문 HTML/참여 조건/보상 정책/SEO override 필드는 `schema candidate`                                                                                                                                                              | 등록 상세 페이지 패턴과 저장/게시 예약 경계가 구현 기준으로 정렬됨                                                                          | `PASS` |
+| `Operation > 이벤트`             | `OperationEvent`                                                        | `operation_events`                                                                                          | `events-service.ts` + `operation-events-data-source.ts` + `supabase-operation-events-service.ts` + `operation-store.ts`(mock fallback) | schema candidate에서 실 테이블 계약으로 승격 완료. `visibility_status`/`progress_status`/`indexing_policy`는 DB ASCII, `event_type`/`reward_type`은 한글 코드, `exposure_channels`/`banner_images`는 jsonb 배열로 저장 | 목록 검수 + 상세 Drawer + `OperationEvent` 감사 로그 흐름 유지. Supabase 모드는 admin RPC 경유, mock은 fallback으로 축소됨 | `PASS` |
+| `Operation > 이벤트 등록 상세`   | `OperationEvent`                                                        | `operation_events`                                                                                          | `fetchEventSafe` + `saveEventSafe` + `scheduleEventPublishSafe` + `publishEventSafe` + `endEventSafe` + data-source switch | 본문 HTML/참여 조건/보상 정책/SEO override 필드는 `operation_events` 실 컬럼 계약으로 승격 완료. 보상 정책/메시지 템플릿은 FK 없이 denormalized snapshot으로 저장 | 등록 상세 페이지 패턴과 저장/게시 예약/즉시 게시/종료 경계가 admin RPC 기준으로 정렬됨 | `PASS` |
 | `Commerce > 쿠폰 관리`           | `CommerceCoupon`, `CommerceCouponSubscriptionTemplate`                  | `commerce_coupons`, `commerce_coupon_subscription_templates`                                                | `coupons-service.ts` + `coupon-store.ts` + `coupon-form-schema.ts` + `coupon-template-form-schema.ts` | 상태/혜택/적용 범위/알림 채널/쇼핑 등급/카테고리/상품 참조는 `code table candidate`, 쿠폰/템플릿 메타와 관리자 메모는 `schema candidate`                                                                                          | 목록/템플릿 탭/상세 Drawer/감사 로그 흐름 구현 기준이 정렬됨                                                                                | `PASS` |
 | `Commerce > 포인트 관리`         | `CommercePointPolicy`, `CommercePointLedger`, `CommercePointExpiration` | `commerce_point_policies`, `commerce_point_ledgers`, `commerce_point_expirations`                           | placeholder, 문서 기준 `points-service.ts` + `point-store.ts` + `point-schema.ts` 후보                | 정책 상태/정책 유형/원장 유형/발생 원천/소멸 상태는 `code table candidate`, 적립/차감 수량, 잔액, 소멸 예정일, 사유는 `schema candidate`                                                                                          | `탭 -> 목록 -> 상세 Drawer/Modal -> 조치 -> 감사 로그 확인` 초안 확정                                                                       | `WARN` |
 
@@ -146,8 +146,8 @@
   - 목록의 조치 메뉴와 별도의 `TableRowDetailModal`이 분리되어 있어 표준 관리자 흐름보다 약하다.
   - 향후에는 행 클릭 `DetailDrawer` 안에서 신고 정보, 게시글 링크, 사용자 링크, 처리/감사 로그 확인을 한 흐름으로 묶는 편이 적절하다.
 - `Message`, `Operation`
-  - 감사 로그 `Target Type`이 각각 `Message`, `Operation` 단일 값으로 묶여 있다.
-- 현재 ID prefix로는 구분 가능하지만, 장기적으로는 `MessageTemplate`, `MessageGroup`, `MessageHistory`, `OperationNotice`, `OperationFaq`, `OperationPolicy`처럼 엔티티 단위 식별이 더 안정적이다.
+  - 감사 로그 `Target Type`이 일부 화면에서 `Message`, `Operation` 단일 값으로 묶여 있다.
+- 현재 ID prefix로는 구분 가능하지만, 장기적으로는 `MessageTemplate`, `MessageGroup`, `MessageHistory`, `OperationNotice`, `OperationFaq`, `OperationEvent`, `OperationPolicy`처럼 엔티티 단위 식별이 더 안정적이다.
 
 ### 8.3 P3
 
@@ -232,9 +232,22 @@
 - `Operation > 이벤트`
   - query: `searchField`, `keyword`, `startDate`, `endDate`, `status`, `eventType`, `sortField`, `sortOrder`, `selected`
   - 핵심 필드: `id`, `title`, `summary`, `bodyHtml`, `eventType`, `progressStatus`, `visibilityStatus`, `startAt`, `endAt`, `exposureChannels`, `targetGroupId`, `targetGroupName`, `participantCount`, `participantLimit`, `rewardType`, `rewardPolicyId`, `rewardPolicyName`, `rewardPolicySummary`, `bannerImageUrl`, `landingUrl`, `messageTemplateName`, `slug`, `metaTitle`, `metaDescription`, `ogImageUrl`, `canonicalUrl`, `indexingPolicy`, `adminMemo`, `updatedAt`, `updatedBy`
+  - Supabase source: `operation_events`(소유 topik-ai, tracker `admin_schema_migrations`, migration home `supabase/migrations-admin`)
+  - enum 저장 코드:
+    - event type: `프로모션` / `출석` / `챌린지` / `리워드`
+    - visibility status: `exposed`(`노출`) / `hidden`(`숨김`) / `scheduled`(`예약`)
+    - progress status: `ongoing`(`진행중`) / `upcoming`(`예정`) / `ended`(`종료`) — 읽기 시 기간 기준 파생
+    - exposure channels: `앱홈` / `웹홈` / `이벤트탭` jsonb 배열
+    - reward type: `없음` / `쿠폰` / `포인트` / `배지`
+    - banner image source type: `file` / `url`
+    - indexing policy: `index` / `noindex`
+  - write RPC: `admin_save_operation_event`, `admin_schedule_operation_event`, `admin_publish_operation_event`, `admin_end_operation_event`
+  - 감사 로그: `target_table='OperationEvent'`, `target_id=eventId`, action `event_saved`/`event_scheduled`/`event_published`/`event_ended`
+  - 비정규화 결정: `reward_policy_id`/`reward_policy_name`, `message_template_id`/`message_template_name`은 외부 도메인 FK 없이 denormalized 문자열 snapshot으로 저장한다. 배너 이미지는 `banner_images` jsonb 배열과 대표 배너 파생 필드를 함께 사용하며, 정규화/asset FK 전환은 후속이다.
 - `Operation > 이벤트 등록 상세`
   - query: 목록 복귀용 `searchField`, `keyword`, `startDate`, `endDate`, `status`, `eventType`, `sortField`, `sortOrder`
   - 핵심 필드: `id`, `slug`, `title`, `summary`, `bodyHtml`, `eventType`, `progressStatus`, `visibilityStatus`, `startAt`, `endAt`, `exposureChannels`, `targetGroupId`, `targetGroupName`, `participantLimit`, `rewardType`, `rewardPolicyId`, `rewardPolicyName`, `bannerImageUrl`, `landingUrl`, `messageTemplateName`, `metaTitle`, `metaDescription`, `ogImageUrl`, `canonicalUrl`, `indexingPolicy`, `adminMemo`, `updatedAt`, `updatedBy`
+  - 데이터소스 전환: `operation-events-data-source.ts`가 Supabase 설정과 `VITE_OPERATION_EVENTS_SOURCE`에 따라 mock/Supabase를 분기한다. `VITE_SUPABASE_DISABLED=true` 또는 `VITE_OPERATION_EVENTS_SOURCE=mock`은 기존 mock 경로로 회귀한다.
 
 ### 9.5 Commerce
 
@@ -521,6 +534,58 @@
 - 감사 계약: RPC는 `admin_audit_logs`에 FAQ 원문 `target_table='OperationFaq'`, `target_id=faqId`, action `faq_saved`/`faq_status_changed`/`faq_deleted`; 큐레이션 `target_table='OperationFaqCuration'`, `target_id=curationId`, action `faq_curation_saved`/`faq_curation_deleted`, `diff`, `payload.reason`을 기록합니다. hidden 전환으로 강등된 큐레이션은 `payload.paused_curation_ids`에 남깁니다.
 - 데이터소스 전환: `faqs-service.ts`의 safe 반환 계약은 유지하고, `operation-faqs-data-source.ts`가 Supabase 설정과 `VITE_OPERATION_FAQS_SOURCE`에 따라 mock/Supabase를 분기합니다. `VITE_SUPABASE_DISABLED=true`는 기존 mock 경로로 회귀합니다. `supabase-operation-faqs-service.ts`가 status ASCII와 UI 라벨, DB row와 화면 모델 매핑을 담당합니다.
 - 미확정: 자연키 `FAQ-NNN`/`FAQCUR-NNN`의 max+1 채번 동시성 리스크(sequence/table 채번 전환 여부), `updated_by` uuid의 관리자 표시명 매핑, `operation_faq_metrics` 실집계 파이프라인(seed only)은 page-sync와 gap register에서 계속 추적합니다.
+
+## 13.2 Operation 이벤트 데이터 계약 (2026-06-17 신설)
+
+- 엔티티/테이블: `OperationEvent` / `operation_events`.
+- 승격 상태: 기존 `schema candidate`/mock-only 계약에서 Supabase 실 테이블 계약으로 승격 완료했습니다.
+- 소유권: topik-ai, migration home `supabase/migrations-admin`, tracker `admin_schema_migrations`. 마이그레이션은 `supabase/migrations-admin/20260617152000_operation_events.sql`(+ down)이며 2026-06-17 dev DB 적용 완료했습니다. v13 소유 테이블 DDL은 변경하지 않으며 `admin_audit_logs`에는 RPC가 INSERT만 수행합니다.
+- 테이블 제약/인덱스: `id text primary key`, 자연키 `EVT-NNN`(RPC max+1), `visibility_status in ('exposed','hidden','scheduled')`, `progress_status in ('ongoing','upcoming','ended')`, `event_type in ('프로모션','출석','챌린지','리워드')`, `reward_type in ('없음','쿠폰','포인트','배지')`, `banner_image_source_type in ('file','url')`, `indexing_policy in ('index','noindex')`, `exposure_channels`/`banner_images` jsonb array CHECK를 사용합니다. 인덱스는 `created_at desc`와 `visibility_status='exposed'` 부분 인덱스를 사용합니다.
+- 초기 seed: 3행(`EVT-001` exposed/ongoing, `EVT-002` scheduled/upcoming, `EVT-003` hidden/ended).
+- 컬럼 계약
+
+| DB 컬럼 | 화면/서비스 필드 | 분류 | 비고 |
+| --- | --- | --- | --- |
+| `id` | `id` | 확정 PK | 자연키 `EVT-NNN` 유지. 신규 RPC 채번은 현재 증분에서 max+1 방식입니다. |
+| `title` | `title` | 확정 컬럼 | `text not null`, 이벤트명 |
+| `summary` | `summary` | 확정 컬럼 | 이벤트 요약 |
+| `body_html` | `bodyHtml` | 확정 컬럼 | 이벤트 상세/랜딩 HTML 본문 |
+| `slug` | `slug` | 확정 컬럼 | 사용자 랜딩 URL 후보 식별자 |
+| `event_type` | `eventType` | 확정 enum | DB 저장 한글 코드 `프로모션`/`출석`/`챌린지`/`리워드` |
+| `visibility_status` | `visibilityStatus` | 확정 enum | DB ASCII `exposed`/`hidden`/`scheduled`, UI 라벨 `노출`/`숨김`/`예약` |
+| `progress_status` | `progressStatus` | 확정 enum | DB ASCII `ongoing`/`upcoming`/`ended`, UI 라벨 `진행중`/`예정`/`종료`. 읽기 시 기간 기준으로 파생합니다. |
+| `start_at` | `startAt` | 확정 컬럼 | 이벤트 시작일 |
+| `end_at` | `endAt` | 확정 컬럼 | 이벤트 종료일 |
+| `exposure_channels` | `exposureChannels` | 확정 jsonb array | 한글 채널 값 `앱홈`/`웹홈`/`이벤트탭` 배열 |
+| `target_group_id` | `targetGroupId` | denormalized 참조 | Message 그룹 외부 FK 없이 문자열 snapshot으로 저장 |
+| `target_group_name` | `targetGroupName` | denormalized 표시값 | Message 그룹명 snapshot |
+| `participant_count` | `participantCount` | 확정 컬럼 + 집계 후보 | 현재 표시용 수치. 실집계 source는 후속 확정 필요 |
+| `participant_limit` | `participantLimit` | 확정 컬럼 | 참여 제한 수. null이면 제한 없음 |
+| `reward_type` | `rewardType` | 확정 enum | DB 저장 한글 코드 `없음`/`쿠폰`/`포인트`/`배지` |
+| `reward_policy_id` | `rewardPolicyId` | denormalized 참조 | Commerce/Reward 외부 FK 없이 문자열 snapshot으로 저장 |
+| `reward_policy_name` | `rewardPolicyName` | denormalized 표시값 | 보상 정책명 snapshot |
+| `message_template_id` | `messageTemplateId` | denormalized 참조 | Message 템플릿 외부 FK 없이 문자열 snapshot으로 저장 |
+| `message_template_name` | `messageTemplateName` | denormalized 표시값 | 메시지 템플릿명 snapshot |
+| `banner_image_url` | `bannerImageUrl` | 확정 컬럼 | 대표 배너 URL 파생/저장값 |
+| `banner_image_source_type` | `bannerImageSourceType` | 확정 enum | ASCII `file`/`url` |
+| `banner_image_file_name` | `bannerImageFileName` | 확정 컬럼 | 대표 배너 파일명 또는 표시명 |
+| `banner_images` | `bannerImages` | 확정 jsonb array | 정렬 가능한 배너 이미지 배열. 정규 asset 테이블은 후속 |
+| `landing_url` | `landingUrl` | 확정 컬럼 | 프로모션 랜딩/상세 URL 후보 |
+| `meta_title` | `metaTitle` | 확정 컬럼 | 공유/SEO title override |
+| `meta_description` | `metaDescription` | 확정 컬럼 | 공유/SEO description override |
+| `og_image_url` | `ogImageUrl` | 확정 컬럼 | 공유 이미지 URL |
+| `canonical_url` | `canonicalUrl` | 확정 컬럼 | canonical URL override |
+| `indexing_policy` | `indexingPolicy` | 확정 enum | ASCII `index`/`noindex` |
+| `admin_memo` | `adminMemo` | 확정 컬럼 | 관리자 내부 메모 |
+| `created_at` | `createdAt` | 확정 컬럼 | `timestamptz`, 기본 `now()` |
+| `updated_at` | `updatedAt` | 확정 컬럼 | `timestamptz` |
+| `updated_by` | `updatedBy` | 확정 컬럼 | 마지막 수정자 uuid. 관리자 표시명 매핑은 후속 정합 필요 |
+
+- 읽기 계약: RLS enable+force. admin은 `private.is_admin` 기반 select 정책으로 조회합니다. anon/비admin은 조회할 수 없습니다.
+- 쓰기 계약: 화면 직접 테이블 write는 허용하지 않고, SECURITY DEFINER RPC 4종(`admin_save_operation_event`, `admin_schedule_operation_event`, `admin_publish_operation_event`, `admin_end_operation_event`)만 사용합니다. `p_reason`은 필수이며 INSERT/UPDATE/DELETE RLS 정책은 만들지 않습니다.
+- 감사 계약: RPC는 `admin_audit_logs`에 `target_table='OperationEvent'`, `target_id=eventId`, action `event_saved`/`event_scheduled`/`event_published`/`event_ended`, `diff`, `payload.reason`을 기록합니다. 예약은 `visibility_status='scheduled'`, 게시는 `visibility_status='exposed'`, 종료는 `progress_status='ended'` 및 `visibility_status='hidden'`을 기록합니다.
+- 데이터소스 전환: `events-service.ts`의 safe 반환 계약은 유지하고, `operation-events-data-source.ts`가 Supabase 설정과 `VITE_OPERATION_EVENTS_SOURCE`에 따라 mock/Supabase를 분기합니다. `VITE_SUPABASE_DISABLED=true`는 기존 mock 경로로 회귀합니다. `supabase-operation-events-service.ts`가 ASCII status와 UI 라벨, DB row와 화면 모델 매핑을 담당합니다.
+- 미확정: 자연키 `EVT-NNN`의 max+1 채번 동시성 리스크(sequence/table 채번 전환 여부), `updated_by` uuid의 관리자 표시명 매핑, 배너 이미지/보상 정책/메시지 템플릿 정규화, `participant_count` 집계 source는 page-sync와 gap register에서 계속 추적합니다.
 
 ## 14. 알림(Notification) 데이터 계약 (2026-06-12 신설)
 

@@ -97,7 +97,7 @@ export const operationEventExposureChannelValues = [
 export type OperationEventExposureChannel =
   (typeof operationEventExposureChannelValues)[number];
 
-export const operationEventBannerSourceTypeValues = ['file'] as const;
+export const operationEventBannerSourceTypeValues = ['file', 'url'] as const;
 
 export type OperationEventBannerSourceType =
   (typeof operationEventBannerSourceTypeValues)[number];

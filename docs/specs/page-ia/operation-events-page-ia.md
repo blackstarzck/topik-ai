@@ -3,7 +3,7 @@
 ## 1. 문서 목적
 
 - 이벤트 화면의 운영 목적, 데이터 블록, 조치 흐름을 같은 기준으로 정리합니다.
-- mock `service + Zustand store` 기반의 초기 구현 구조를 `목록 검수 + 등록/수정 상세 페이지` 혼합형으로 고정합니다.
+- Supabase-backed hybrid source + mock fallback 기반 구현 구조를 `목록 검수 + 등록/수정 상세 페이지` 혼합형으로 고정합니다.
 - 운영 기본 흐름 `검색 -> 상세 -> 조치 -> 감사 로그 확인`과 편집형 화면의 `작성/수정 -> 저장/예약 -> 감사 로그 확인`을 한 화면군 안에서 연결합니다.
 
 ## 2. 문서 메타
@@ -12,7 +12,7 @@
 | --- | --- |
 | 모듈 | Operation |
 | 페이지명 | 이벤트 |
-| 현재 상태 | 구현됨 (mock service/store 기반) |
+| 현재 상태 | 구현됨 (Supabase-backed hybrid + mock fallback) |
 | 페이지 유형 | 목록 운영형 + 등록 상세 페이지 |
 | 기본 라우트 | `/operation/events` |
 | 목표 상세 라우트 | `/operation/events/create`, `/operation/events/create/:eventId` |
@@ -149,12 +149,12 @@
 
 | 액션 | 성격 | 대상 식별 기준 | 확인/사유 필요 여부 | 성공 후 피드백 | 감사 로그 확인 경로 |
 | --- | --- | --- | --- | --- | --- |
-| 이벤트 등록 | 수정 | `Operation + eventId` | 사유 권장 | 임시 저장 완료 후 대상 식별 정보와 목록 복귀 또는 상세 유지 경로를 안내합니다. 신규 이벤트는 기본 `숨김` 상태로 보관됩니다. | `/system/audit-logs?targetType=Operation&targetId={eventId}` |
-| 이벤트 수정 | 수정 | `Operation + eventId` | 사유 권장 | 수정 완료 후 대상 식별 정보와 후속 확인 경로를 안내합니다. | `/system/audit-logs?targetType=Operation&targetId={eventId}` |
-| 게시 예약 | 수정 | `Operation + eventId` | 확인 권장 | 예약 시각과 대상 식별 정보를 함께 안내합니다. | `/system/audit-logs?targetType=Operation&targetId={eventId}` |
-| 즉시 게시 | 수정 | `Operation + eventId` | 확인 권장 | 즉시 게시 결과와 B2C 노출 영향 범위를 함께 안내합니다. | `/system/audit-logs?targetType=Operation&targetId={eventId}` |
-| 종료 | 파괴적 | `Operation + eventId` | 확인 + 사유 필수 | 종료 완료 후 대상 식별 정보와 후속 확인 경로를 안내합니다. | `/system/audit-logs?targetType=Operation&targetId={eventId}` |
-| 미리보기 | 조회 | `Operation + eventId` | 불필요 | 이벤트 상세/랜딩 미리보기 결과를 열어 검수합니다. | 조회 액션이므로 별도 감사 로그는 필수가 아닙니다. |
+| 이벤트 등록 | 수정 | `OperationEvent + eventId` | 사유 필수 | 저장 완료 후 대상 식별 정보와 목록 복귀 또는 상세 유지 경로를 안내합니다. 신규 이벤트는 기본 `숨김` 상태로 보관됩니다. | `/system/audit-logs?targetType=OperationEvent&targetId={eventId}` |
+| 이벤트 수정 | 수정 | `OperationEvent + eventId` | 사유 필수 | 수정 완료 후 대상 식별 정보와 후속 확인 경로를 안내합니다. | `/system/audit-logs?targetType=OperationEvent&targetId={eventId}` |
+| 게시 예약 | 수정 | `OperationEvent + eventId` | 확인 + 사유 필수 | 예약 시각과 대상 식별 정보를 함께 안내합니다. | `/system/audit-logs?targetType=OperationEvent&targetId={eventId}` |
+| 즉시 게시 | 수정 | `OperationEvent + eventId` | 확인 + 사유 필수 | 즉시 게시 결과와 B2C 노출 영향 범위를 함께 안내합니다. | `/system/audit-logs?targetType=OperationEvent&targetId={eventId}` |
+| 종료 | 파괴적 | `OperationEvent + eventId` | 확인 + 사유 필수 | 종료 완료 후 대상 식별 정보와 후속 확인 경로를 안내합니다. | `/system/audit-logs?targetType=OperationEvent&targetId={eventId}` |
+| 미리보기 | 조회 | `OperationEvent + eventId` | 불필요 | 이벤트 상세/랜딩 미리보기 결과를 열어 검수합니다. | 조회 액션이므로 별도 감사 로그는 필수가 아닙니다. |
 - 미리보기 Modal 푸터 액션: `본문 수정하기`, `닫기`
 
 ## 8. 상태값/정책/운영 규칙
@@ -162,10 +162,10 @@
 | 항목 | 현재 상태 | 관리자 페이지 영향 | 사용자 화면 영향 | 추후 결정 필요 내용 |
 | --- | --- | --- | --- | --- |
 | 페이지 유형 | 설계 확정 | 목록은 검수와 조치, 등록 상세는 작성과 저장을 담당합니다. | 운영자가 같은 화면군에서 검색과 편집을 분리해 처리할 수 있습니다. | 실제 구현 시 상세 라우트와 브레드크럼 기준을 고정해야 합니다. |
-| 상태값/운영 규칙 | 일부 미확정 | `진행 상태`, `노출 상태`, `예약 상태`, `종료 가능 조건`은 SoT 고정이 필요합니다. | 최종 상태 문구와 노출 정책이 함께 바뀔 수 있습니다. | 승인 체계, 종료 후 복구 가능 여부를 먼저 고정해야 합니다. |
+| 상태값/운영 규칙 | 일부 확정 | DB 저장 코드는 `visibility_status` ASCII `exposed`/`hidden`/`scheduled`, `progress_status` ASCII `ongoing`/`upcoming`/`ended`를 사용하고 UI 라벨은 `노출`/`숨김`/`예약`, `진행중`/`예정`/`종료`를 유지합니다. `progress_status`는 읽기 시 기간 기준으로 파생합니다. | 최종 상태 문구와 노출 정책이 함께 바뀔 수 있습니다. | 승인 체계, 종료 후 복구 가능 여부를 먼저 고정해야 합니다. |
 | SEO/공유 메타 | 설계 확정 | 공개 이벤트만 선택적으로 override 하고, 내부 전용 이벤트는 자동 생성값을 기본으로 둡니다. | 공유 미리보기와 검색 노출 문구가 달라질 수 있습니다. | 다국어 SEO와 구조화 데이터 지원 여부를 추후 결정해야 합니다. |
 | URL/상태 복원 | 확정 | 목록/정렬/선택된 Drawer 또는 등록 상세 진입 상태를 가능한 한 복원해야 합니다. | 운영자는 같은 검색/상세 맥락으로 복귀할 수 있습니다. | 필수 쿼리 파라미터를 변경하면 연관 화면도 함께 검토해야 합니다. |
-| 감사 추적 | 확정 | 조치가 있으면 `Target Type`, `Target ID`, 사유, 수행자 기준으로 감사 로그 확인 경로를 제공합니다. | 직접 B2C 노출이 없어도 운영 증적 확보가 필요합니다. | 장기적으로 `OperationEvent` 단위 타깃 타입 분리 여부를 검토해야 합니다. |
+| 감사 추적 | 확정 | 조치가 있으면 `OperationEvent + eventId`, 사유, 수행자 기준으로 감사 로그 확인 경로를 제공합니다. | 직접 B2C 노출이 없어도 운영 증적 확보가 필요합니다. | `event_saved`/`event_scheduled`/`event_published`/`event_ended` action 사전을 유지해야 합니다. |
 
 ## 9. 다른 관리자 페이지 영향
 
@@ -227,7 +227,13 @@
   - `src/features/operation/pages/operation-event-create-page.tsx`
 - 현재 데이터 소스 경계
   - `src/features/operation/api/events-service.ts`
+  - `src/features/operation/api/operation-events-data-source.ts`
+  - `src/features/operation/api/supabase-operation-events-service.ts`
   - `src/features/operation/model/operation-store.ts`
+- Supabase 첫 증분 자산: `supabase/migrations-admin/20260617152000_operation_events.sql` / `supabase/migrations-admin/down/20260617152000_operation_events.sql`
+- 데이터소스 전환: Supabase 설정이 없거나 `VITE_SUPABASE_DISABLED=true`이면 mock 경로를 유지하고, Supabase 설정 시 기본값은 `operation_events` + admin RPC 경로입니다. 강제 mock 회귀는 `VITE_OPERATION_EVENTS_SOURCE=mock`을 사용합니다.
+- Supabase 모드의 쓰기는 admin RPC 4종(`admin_save_operation_event`, `admin_schedule_operation_event`, `admin_publish_operation_event`, `admin_end_operation_event`) 경유이며 모두 사유가 필수입니다.
+- `operation_events`의 보상 정책/메시지 템플릿 값은 외부 FK 없이 denormalized 문자열 snapshot으로 저장합니다. 배너는 `banner_images` jsonb 배열과 대표 배너 파생 필드를 함께 사용합니다.
 - 권한/로그 처리 메모
   - 파괴적 액션에는 확인 단계와 사유 입력을 둡니다.
   - 성공 피드백에는 `Target Type`, `Target ID`, 감사 로그 확인 링크를 함께 노출합니다.
@@ -235,7 +241,11 @@
 
 ## 14. 오픈 이슈
 
+- `EVT-NNN` max+1 채번 동시성 리스크
+- `updated_by` uuid의 관리자 표시명 매핑 미정
+- 배너 이미지/보상 정책/메시지 템플릿 정규화 미정
+- `participant_count` 집계 source 미정
 - 보상 수단과 지급 승인 체계 미정
 - 종료 후 복구 가능 여부 미정
-- `Target Type = Operation` 유지 여부와 엔티티 단위 분리 시점 미정
+- B2C 이벤트 목록/상세/프로모션 랜딩 실제 저장소와 라우트 미정
 

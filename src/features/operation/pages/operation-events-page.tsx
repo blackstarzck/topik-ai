@@ -275,7 +275,7 @@ export default function OperationEventsPage(): JSX.Element {
             : '이벤트 수정 완료',
       description: (
         <Space direction="vertical">
-          <Text>대상 유형: {getTargetTypeLabel('Operation')}</Text>
+          <Text>대상 유형: {getTargetTypeLabel('OperationEvent')}</Text>
           <Text>대상 ID: {state.operationEventSaved.eventId}</Text>
           <Text>
             조치:{' '}
@@ -286,7 +286,7 @@ export default function OperationEventsPage(): JSX.Element {
                 : '이벤트 정보 수정'}
           </Text>
           <AuditLogLink
-            targetType="Operation"
+            targetType="OperationEvent"
             targetId={state.operationEventSaved.eventId}
           />
         </Space>
@@ -446,10 +446,19 @@ export default function OperationEventsPage(): JSX.Element {
 
       const result =
         actionState.type === 'schedule'
-          ? await scheduleEventPublishSafe({ eventId: actionState.event.id })
+          ? await scheduleEventPublishSafe({
+              eventId: actionState.event.id,
+              reason
+            })
           : actionState.type === 'publish'
-            ? await publishEventSafe({ eventId: actionState.event.id })
-            : await endEventSafe({ eventId: actionState.event.id });
+            ? await publishEventSafe({
+                eventId: actionState.event.id,
+                reason
+              })
+            : await endEventSafe({
+                eventId: actionState.event.id,
+                reason
+              });
 
       if (!result.ok) {
         notificationApi.error({
@@ -475,10 +484,10 @@ export default function OperationEventsPage(): JSX.Element {
         message: getActionCopy(actionState.type).successMessage,
         description: (
           <Space direction="vertical">
-            <Text>대상 유형: {getTargetTypeLabel('Operation')}</Text>
+            <Text>대상 유형: {getTargetTypeLabel('OperationEvent')}</Text>
             <Text>대상 ID: {result.data.id}</Text>
             <Text>사유/근거: {reason}</Text>
-            <AuditLogLink targetType="Operation" targetId={result.data.id} />
+            <AuditLogLink targetType="OperationEvent" targetId={result.data.id} />
           </Space>
         )
       });
@@ -745,7 +754,7 @@ export default function OperationEventsPage(): JSX.Element {
           open
           title={getActionCopy(actionState.type).title}
           description={getActionCopy(actionState.type).description}
-          targetType="Operation"
+          targetType="OperationEvent"
           targetId={actionState.event.id}
           confirmText={getActionCopy(actionState.type).confirmText}
           onCancel={() => setActionState(null)}
@@ -770,7 +779,7 @@ export default function OperationEventsPage(): JSX.Element {
         }
         footerStart={
           selectedEvent ? (
-            <AuditLogLink targetType="Operation" targetId={selectedEvent.id} />
+            <AuditLogLink targetType="OperationEvent" targetId={selectedEvent.id} />
           ) : null
         }
         footerEnd={
