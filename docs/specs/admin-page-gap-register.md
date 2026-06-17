@@ -553,11 +553,14 @@
   - 상세 Drawer `설정 구조`는 `설정 그룹 -> 운영 값 -> 추가` Tree와 드래그 정렬을 함께 지원함
   - `지금 운영 중인 값` 테이블도 행 드래그로 정렬 순서를 바꾸고, `item_reordered` 이력과 감사 로그를 남김
   - 운영 값 등록/수정 Modal은 현재 mock 데이터 기준으로 같은 설정 그룹 안의 코드/라벨 중복을 즉시 검사함
+  - 2026-06-17 기준 운영 설정 카탈로그 그룹/항목은 `system_metadata_groups` + `system_metadata_group_items` Supabase-backed source로 전환 완료. mock fallback은 `VITE_SYSTEM_METADATA_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`에 한정됨.
+  - 그룹/항목 조치 감사는 RPC action `metadata_group_saved`, `metadata_item_saved`, `metadata_group_status_changed`, `metadata_item_status_changed`, `metadata_item_deleted`, `metadata_items_reordered`로 `admin_audit_logs.target_table='SystemMetadataGroup'`, `target_id=groupId`에 적재됨.
 - 미확정/누락/오구현
-  - 실제 API/DB 테이블(`system_metadata_groups`, `system_metadata_group_items`, `system_metadata_group_histories`)과 승인 절차는 아직 문서 후보 단계다.
-  - 메타 항목 조치를 그룹 단위 `Target Type = SystemMetadataGroup`으로 묶을지, item-level Target Type을 분리할지는 미확정이다.
+  - Resolved(2026-06-17): 그룹/항목 mock-only source, DB 테이블 후보 상태, 감사 미적재/Target Type 미확정은 `20260617211000_system_metadata.sql` dev DB 적용으로 해소됨. 항목 조치도 그룹 단위 `Target Type = SystemMetadataGroup`으로 확정.
+  - 미확정: PK `META-GRP-NNN`/`META-ITEM-NNN` max+1 동시성, `is_default` 단일성 정책, `admin_locations`/이력 정규화.
 - 분류
-  - `미확정`: API/DB 계약, 승인 절차, item-level 감사 로그 세분화
+  - `Resolved`: mock-only source, 감사 미적재, item-level 감사 Target Type 미확정
+  - `미확정`: PK 동시성, 기본값 단일성 정책, 위치/이력 정규화
 
 ## 5. 우선 정리 권장 순서
 

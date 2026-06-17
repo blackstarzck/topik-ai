@@ -202,3 +202,19 @@
 - 두 RPC 모두 admin 권한과 reason 필수 조건을 검증하고, `commerce_refunds.status='pending'`인 건만 처리합니다.
 - `refund_approved` payload에는 `reason`, `payment_id`, `requested_amount`, `intent_only_v13_payment_history_pending=true`를 기록합니다. 실제 v13 `payment_history.status` 환불 갱신은 v13 소유라 아직 수행하지 않습니다.
 - `refund_rejected` payload에는 `reason`, `payment_id`, `requested_amount`를 기록합니다.
+## 2026-06-17 보강 메모 > System 메타데이터 그룹/항목 Supabase 감사 계약
+
+- Target Type: `SystemMetadataGroup`
+- Target ID: `groupId`
+- 원본 화면 딥링크: `/system/metadata?selected={groupId}`
+- 항목 조치도 그룹 단위로 추적한다. `system_metadata_group_items.item_id`는 payload/diff에 포함될 수 있지만 감사 target은 `SystemMetadataGroup + groupId`다.
+- 모든 write RPC는 `reason`을 필수로 요구한다.
+
+| RPC | action | target_table | target_id | 비고 |
+| --- | --- | --- | --- | --- |
+| `admin_save_metadata_group` | `metadata_group_saved` | `SystemMetadataGroup` | `groupId` | 그룹 등록/수정, 그룹명 중복 차단 |
+| `admin_save_metadata_item` | `metadata_item_saved` | `SystemMetadataGroup` | `groupId` | 항목 등록/수정, 그룹 내 code/label 중복 차단 |
+| `admin_toggle_metadata_group_status` | `metadata_group_status_changed` | `SystemMetadataGroup` | `groupId` | 그룹 활성/비활성 |
+| `admin_toggle_metadata_item_status` | `metadata_item_status_changed` | `SystemMetadataGroup` | `groupId` | 항목 활성/비활성 |
+| `admin_delete_metadata_item` | `metadata_item_deleted` | `SystemMetadataGroup` | `groupId` | 항목 삭제, 정렬 재정규화 |
+| `admin_reorder_metadata_items` | `metadata_items_reordered` | `SystemMetadataGroup` | `groupId` | 전체 항목 ID 일치 검증 후 정렬 |

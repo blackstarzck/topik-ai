@@ -126,3 +126,14 @@
 - 적용: `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
 - 연결 경계: `commerce_refunds`는 환불 처리 대기/승인/거절 워크플로 SoT만 소유한다. 실제 결제 환불 집행과 v13 `payment_history.status` 갱신은 v13 소유라 미연동이며, 승인 RPC payload에 `intent_only_v13_payment_history_pending=true`를 기록한다.
 - 쓰기 경로: SECURITY DEFINER admin RPC 2종 `admin_approve_billing_refund`, `admin_reject_billing_refund`만 사용한다. 두 RPC 모두 reason 필수, `pending` 상태만 처리, 감사 Target Type `CommerceRefund`를 기록한다.
+## 2026-06-17 System 메타데이터 그룹/항목 Supabase 소유권 보강
+
+| Object | Owner | Write path | Read path | Boundary |
+| --- | --- | --- | --- | --- |
+| `system_metadata_groups` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | admin RPC | admin | RLS enable+force, admin select only(`private.is_admin`). `group_id` = `META-GRP-NNN`, group metadata 16 columns + JSONB arrays. Direct table write path 없음 |
+| `system_metadata_group_items` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | admin RPC | admin | RLS enable+force, admin select only(`private.is_admin`). `group_id` FK -> `system_metadata_groups(group_id)` ON DELETE CASCADE, group-scoped code/label unique |
+
+- 마이그레이션: `supabase/migrations-admin/20260617211000_system_metadata.sql` + `supabase/migrations-admin/down/20260617211000_system_metadata.sql`.
+- 적용: `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
+- 쓰기 경계: SECURITY DEFINER admin RPC 6종(`admin_save_metadata_group`, `admin_save_metadata_item`, `admin_toggle_metadata_group_status`, `admin_toggle_metadata_item_status`, `admin_delete_metadata_item`, `admin_reorder_metadata_items`)만 사용한다. 모든 RPC는 `reason` 필수다.
+- 감사 경계: 모든 그룹/항목 조치는 `admin_audit_logs.target_table='SystemMetadataGroup'`, `target_id=groupId`로 기록한다. 항목 조치도 item-level Target Type을 만들지 않고 그룹 단위로 추적한다.

@@ -585,3 +585,11 @@
 - 상태값: DB ASCII `pending`/`approved`/`rejected`, UI 라벨 `처리 대기`/`승인`/`거절`.
 - 액션 계약: 환불 승인/거절은 `admin_approve_billing_refund(p_refund_id,p_reason)`, `admin_reject_billing_refund(p_refund_id,p_reason)` RPC를 사용한다. Target Type은 `CommerceRefund`, action은 `refund_approved`/`refund_rejected`, reason은 필수이며 `pending` 상태만 처리한다.
 - v13 경계: `payment_id`/`user_id`는 v13 느슨참조이며 FK가 없다. 실제 결제 환불 집행과 v13 `payment_history.status` 갱신은 미연동이고, 승인 payload는 `intent_only_v13_payment_history_pending=true`를 기록한다.
+## 45) 2026-06-17 시스템 > 메타데이터 관리 Supabase source 갱신
+
+- `System > 메타데이터 관리`의 운영 설정 카탈로그 그룹/항목 source는 `system_metadata_groups` + `system_metadata_group_items` Supabase 테이블로 전환 완료했다. mock fallback 조건은 `VITE_SYSTEM_METADATA_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`다.
+- 그룹 source: `system_metadata_groups` 16컬럼. 주요 목록/상세 필드는 `group_id`, `group_name`, `description`, `owner_role`, `item_code_prefix`, `manager_type`, `owner_module`, `status`, `sync_status`, `exposure_status`, `linked_admin_pages`, `linked_user_surfaces`, `schema_candidate_notes`, `updated_at`, `updated_by`.
+- 항목 source: `system_metadata_group_items` 12컬럼. 주요 상세/운영 값 필드는 `item_id`, `group_id`, `code`, `label`, `description`, `sort_order`, `status`, `exposure_status`, `is_default`, `updated_at`, `updated_by`.
+- 응답은 기존 화면 계약처럼 `SystemMetadataGroup.items[]` 중첩 구조로 매핑한다.
+- action/audit: `metadata_group_saved`, `metadata_item_saved`, `metadata_group_status_changed`, `metadata_item_status_changed`, `metadata_item_deleted`, `metadata_items_reordered`; Target Type은 `SystemMetadataGroup`, Target ID는 `groupId`.
+- AssessmentMasterCatalog(`topik_writing_*`)는 같은 화면의 별도 섹션이며 이 그룹/항목 source 갱신 범위가 아니다.

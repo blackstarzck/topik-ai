@@ -415,3 +415,14 @@ src/features/<feature>/
 - Supabase write 경로: 기존 Supabase 모드 승인/거절 write 차단(`assertMockRefundActionAllowed`)은 해제되고, 승인/거절은 `admin_approve_billing_refund(p_refund_id,p_reason)`, `admin_reject_billing_refund(p_refund_id,p_reason)` RPC를 사용한다. 두 RPC 모두 reason 필수이며 `pending` 상태만 처리한다.
 - 감사/사유 경계: 감사 로그는 `CommerceRefund` Target Type과 action `refund_approved`/`refund_rejected`를 사용한다. 승인 payload에는 `intent_only_v13_payment_history_pending=true`를 남겨 실제 v13 `payment_history.status` 환불 집행이 아직 미연동임을 표시한다.
 - 잔여 정책: 실제 결제 환불 집행 v13 연동, `payment_id`/`user_id` FK 없는 느슨참조 정합, `RF-NNNN` max+1 채번 동시성, payments `method` 컬럼 reconcile은 후속 과제로 추적한다.
+## 10.1.1 2026-06-17 System 메타데이터 그룹/항목 Supabase 전환
+
+- 전환 상태: `System > 메타데이터 관리`의 그룹/항목은 mock-only 단계에서 Supabase-backed hybrid source로 전환 완료.
+- 마이그레이션: `supabase/migrations-admin/20260617211000_system_metadata.sql` + down migration, `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
+- 테이블: `system_metadata_groups`(16컬럼, `group_id` PK `META-GRP-NNN`, JSONB `linked_admin_pages`/`linked_user_surfaces`/`schema_candidate_notes`) + `system_metadata_group_items`(12컬럼, `item_id` PK, `group_id` FK ON DELETE CASCADE, group-scoped code/label unique).
+- 데이터소스: `system-metadata-data-source.ts`는 `VITE_SYSTEM_METADATA_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`일 때 mock fallback을 사용한다.
+- 서비스 계약: `system-metadata-service.ts` Safe 7종 계약은 유지한다. Supabase 서비스가 groups + group_items를 조회해 기존 `SystemMetadataGroup.items[]` 중첩 반환 형태로 매핑한다.
+- write path: admin RPC 6종(`admin_save_metadata_group`, `admin_save_metadata_item`, `admin_toggle_metadata_group_status`, `admin_toggle_metadata_item_status`, `admin_delete_metadata_item`, `admin_reorder_metadata_items`)만 사용하며 모두 `reason` 필수다.
+- audit actions: `metadata_group_saved`, `metadata_item_saved`, `metadata_group_status_changed`, `metadata_item_status_changed`, `metadata_item_deleted`, `metadata_items_reordered`. 모든 감사 target은 `SystemMetadataGroup + groupId`다.
+- 비범위: `/system/metadata`에 임베드된 AssessmentMasterCatalog(`topik_writing_*`)는 이미 Supabase-backed이며 이번 System metadata groups/items 전환과 무관하다.
+- 남은 미확정: PK next-id max+1 동시성, `is_default` 단일성 정책, `admin_locations`/이력 정규화.

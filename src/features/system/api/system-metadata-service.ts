@@ -9,6 +9,18 @@ import {
   type ToggleMetadataGroupStatusPayload,
   type ToggleMetadataItemStatusPayload
 } from '../model/system-metadata-store';
+import { systemMetadataDataSource } from './system-metadata-data-source';
+import {
+  deleteMetadataItemViaRpc,
+  loadMetadataGroupsFromSupabase,
+  reorderMetadataItemsViaRpc,
+  saveMetadataGroupViaRpc,
+  saveMetadataItemViaRpc,
+  toggleMetadataGroupStatusViaRpc,
+  toggleMetadataItemStatusViaRpc
+} from './supabase-system-metadata-service';
+
+const isSupabaseSource = systemMetadataDataSource === 'supabase';
 
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -267,9 +279,15 @@ async function reorderMetadataItems(
 
 export function fetchMetadataGroupsSafe(signal?: AbortSignal) {
   return toSafeResult(() =>
-    withRetry(() => loadMetadataGroups(signal), {
-      maxRetries: 1
-    })
+    withRetry(
+      () =>
+        isSupabaseSource
+          ? loadMetadataGroupsFromSupabase(signal)
+          : loadMetadataGroups(signal),
+      {
+        maxRetries: 1
+      }
+    )
   );
 }
 
@@ -277,41 +295,98 @@ export function saveMetadataGroupSafe(
   payload: SaveMetadataGroupPayload,
   signal?: AbortSignal
 ) {
-  return toSafeResult(() => persistMetadataGroup(payload, signal));
+  return toSafeResult(() =>
+    isSupabaseSource
+      ? (async () => {
+          validateGroupPayload(payload);
+          return saveMetadataGroupViaRpc({
+            ...payload,
+            groupName: payload.groupName.trim(),
+            description: payload.description.trim(),
+            ownerRole: payload.ownerRole.trim(),
+            linkedAdminPages: normalizeLineItems(payload.linkedAdminPages),
+            linkedUserSurfaces: normalizeLineItems(payload.linkedUserSurfaces),
+            schemaCandidateNotes: normalizeLineItems(payload.schemaCandidateNotes),
+            itemCodePrefix: payload.itemCodePrefix.trim().toUpperCase(),
+            reason: payload.reason.trim()
+          });
+        })()
+      : persistMetadataGroup(payload, signal)
+  );
 }
 
 export function saveMetadataItemSafe(
   payload: SaveMetadataItemPayload,
   signal?: AbortSignal
 ) {
-  return toSafeResult(() => persistMetadataItem(payload, signal));
+  return toSafeResult(() =>
+    isSupabaseSource
+      ? (async () => {
+          validateItemPayload(payload);
+          return saveMetadataItemViaRpc({
+            ...payload,
+            code: payload.code.trim().toUpperCase(),
+            label: payload.label.trim(),
+            description: payload.description.trim(),
+            reason: payload.reason.trim()
+          });
+        })()
+      : persistMetadataItem(payload, signal)
+  );
 }
 
 export function toggleMetadataGroupStatusSafe(
   payload: ToggleMetadataGroupStatusPayload,
   signal?: AbortSignal
 ) {
-  return toSafeResult(() => changeGroupStatus(payload, signal));
+  return toSafeResult(() =>
+    isSupabaseSource
+      ? toggleMetadataGroupStatusViaRpc({
+          ...payload,
+          reason: payload.reason.trim()
+        })
+      : changeGroupStatus(payload, signal)
+  );
 }
 
 export function toggleMetadataItemStatusSafe(
   payload: ToggleMetadataItemStatusPayload,
   signal?: AbortSignal
 ) {
-  return toSafeResult(() => changeItemStatus(payload, signal));
+  return toSafeResult(() =>
+    isSupabaseSource
+      ? toggleMetadataItemStatusViaRpc({
+          ...payload,
+          reason: payload.reason.trim()
+        })
+      : changeItemStatus(payload, signal)
+  );
 }
 
 export function deleteMetadataItemSafe(
   payload: DeleteMetadataItemPayload,
   signal?: AbortSignal
 ) {
-  return toSafeResult(() => deleteMetadataItem(payload, signal));
+  return toSafeResult(() =>
+    isSupabaseSource
+      ? deleteMetadataItemViaRpc({
+          ...payload,
+          reason: payload.reason.trim()
+        })
+      : deleteMetadataItem(payload, signal)
+  );
 }
 
 export function reorderMetadataItemsSafe(
   payload: ReorderMetadataItemsPayload,
   signal?: AbortSignal
 ) {
-  return toSafeResult(() => reorderMetadataItems(payload, signal));
+  return toSafeResult(() =>
+    isSupabaseSource
+      ? reorderMetadataItemsViaRpc({
+          ...payload,
+          reason: payload.reason.trim()
+        })
+      : reorderMetadataItems(payload, signal)
+  );
 }
-

@@ -765,3 +765,23 @@
 - Admin RPC / 감사 계약: `admin_approve_billing_refund(p_refund_id,p_reason)` -> `refund_approved`, `admin_reject_billing_refund(p_refund_id,p_reason)` -> `refund_rejected`. Target Type은 `CommerceRefund`, Target ID는 `refundId`, reason은 필수이고 `pending` 상태만 처리한다.
 - v13 경계: 실제 결제 환불 집행과 v13 `payment_history.status` 갱신은 미연동이다. 승인 payload는 `intent_only_v13_payment_history_pending=true`를 기록한다.
 - 미확정: 실제 결제 환불 집행 v13 연동, `payment_id` 느슨참조 정합, `RF-NNNN` max+1 동시성, payments `method` 컬럼 reconcile.
+## 11.7 2026-06-17 System 메타데이터 그룹/항목 Supabase 계약
+
+- 전환 상태: `system_metadata_groups`/`system_metadata_group_items`는 더 이상 후보가 아니라 `admin_schema_migrations` tracker로 2026-06-17 dev DB 적용된 topik-ai 소유 admin 테이블이다.
+- 마이그레이션: `supabase/migrations-admin/20260617211000_system_metadata.sql` + down migration.
+- `SystemMetadataGroup` table: `public.system_metadata_groups`
+  - PK: `group_id` text, `META-GRP-NNN` 형식
+  - columns(16): `group_id`, `group_name`, `description`, `owner_role`, `item_code_prefix`, `manager_type`, `owner_module`, `status`, `sync_status`, `exposure_status`, `linked_admin_pages`, `linked_user_surfaces`, `schema_candidate_notes`, `created_at`, `updated_at`, `updated_by`
+  - JSONB arrays: `linked_admin_pages`, `linked_user_surfaces`, `schema_candidate_notes`
+  - unique: lower(`group_name`)
+- `SystemMetadataItem` table: `public.system_metadata_group_items`
+  - PK: `item_id` text, FK: `group_id` -> `system_metadata_groups(group_id)` ON DELETE CASCADE
+  - columns(12): `item_id`, `group_id`, `code`, `label`, `description`, `sort_order`, `status`, `exposure_status`, `is_default`, `created_at`, `updated_at`, `updated_by`
+  - unique: (`group_id`, upper(`code`)), (`group_id`, lower(`label`))
+- enum/check store 값: `manager_type` = `codeTable`/`selectOption`/`exposureRule`/`segmentField`; `owner_module` = `Users`/`Message`/`Operation`/`Commerce`/`Content`/`System`; `status` = `active`/`inactive`; `sync_status` = `live`/`review`/`draft`; `exposure_status` = `confirmed`/`inferred`/`internalOnly`/`planned`; `sort_order > 0`. DB store 값은 ASCII이고 UI는 한글 라벨로 매핑한다.
+- 데이터소스: `system-metadata-data-source.ts`는 `VITE_SYSTEM_METADATA_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`일 때 mock fallback을 사용한다. 그 외 Supabase 모드에서 `system-metadata-service.ts` Safe 7종 계약은 유지된다.
+- 응답 계약: 프론트는 기존처럼 `SystemMetadataGroup.items[]` 중첩 배열을 받는다. Supabase 서비스가 `system_metadata_groups` + `system_metadata_group_items`를 조회한 뒤 `group_id` 기준으로 중첩 매핑한다.
+- 감사 계약: `Target Type = SystemMetadataGroup`, `Target ID = groupId`, 딥링크 `/system/metadata?selected={groupId}`. 항목 조치도 그룹 단위 target을 사용한다.
+- DB audit action strings: `metadata_group_saved`, `metadata_item_saved`, `metadata_group_status_changed`, `metadata_item_status_changed`, `metadata_item_deleted`, `metadata_items_reordered`. 모든 write RPC는 `reason` 필수다.
+- 미확정: `META-GRP-NNN`/`META-ITEM-NNN` next-id max+1 동시성, `is_default` 단일성 정책의 최종 업무 규칙, `admin_locations`/history 정규화 여부.
+- 비범위: `/system/metadata`에 임베드된 AssessmentMasterCatalog(`topik_writing_*`)는 이번 SystemMetadataGroup 전환과 무관하며 기존 Supabase 계약을 유지한다.
