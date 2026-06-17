@@ -30,6 +30,9 @@
 | `notification_dispatches` | **topik-ai** | admin RPC, 발송 파이프라인(service role) | admin | admin 전용 |
 | `notification_delivery_attempts` | **topik-ai** | 발송 파이프라인(service role) | **admin + 본인(owner select — v13 X-09 발송 이력 패널이 읽음)** | service write / owner select / admin select — **공유 객체 decision record: 2026-06-12, 실행계획안 rev3 §5.2·O-9** |
 | `operation_notices` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | admin RPC | admin | admin select only(`operation_notices_admin_select`, `private.is_admin`). INSERT/UPDATE/DELETE 정책 없음, 쓰기는 SECURITY DEFINER RPC 경유 |
+| `operation_faqs` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | admin RPC | admin | admin select only(`private.is_admin`). INSERT/UPDATE/DELETE 정책 없음, 쓰기는 SECURITY DEFINER RPC 경유 |
+| `operation_faq_curations` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | admin RPC | admin | admin select only(`private.is_admin`). INSERT/UPDATE/DELETE 정책 없음, 쓰기는 SECURITY DEFINER RPC 경유 |
+| `operation_faq_metrics` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | seed/read | admin | admin select only(`private.is_admin`). admin write RPC 없음, seed/read 전용 |
 | `admin_audit_logs` | v13 (2026-06-09 기존 결정) | admin RPC | admin | 기존 결정 유지 |
 | `topik_writing_*` | topik-ai (`topik_writing_schema_migrations`) | 기존 결정(D-1) | 기존 결정 | `metadata-tag-schema-transition-decision-record.md` §2 |
 
@@ -43,6 +46,11 @@
 - 근거: `supabase/migrations-admin/20260617120000_operation_notices.sql` + `supabase/migrations-admin/down/20260617120000_operation_notices.sql`.
 - 적용: `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
 - 경계: `operation_notices`는 topik-ai 소유 admin 운영 객체이며, admin은 select만 RLS 정책으로 읽고 쓰기는 admin RPC 3종(`admin_save_operation_notice`, `admin_toggle_operation_notice_status`, `admin_delete_operation_notice`) 단일 경로로 수행한다.
+
+2026-06-17 Operation FAQ 전환 기록:
+- 근거: `supabase/migrations-admin/20260617123000_operation_faqs.sql` + `supabase/migrations-admin/down/20260617123000_operation_faqs.sql`.
+- 적용: `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
+- 경계: `operation_faqs`, `operation_faq_curations`, `operation_faq_metrics`는 topik-ai 소유 admin 운영 객체다. admin은 3테이블을 select만 RLS 정책으로 읽고, FAQ 원문/큐레이션 쓰기는 admin RPC 5종(`admin_save_operation_faq`, `admin_toggle_operation_faq_status`, `admin_delete_operation_faq`, `admin_save_operation_faq_curation`, `admin_delete_operation_faq_curation`) 단일 경로로 수행한다. `operation_faq_metrics`는 admin write RPC가 없는 seed/read 전용 지표 스냅샷이다.
 
 ## 4. 제정 근거
 

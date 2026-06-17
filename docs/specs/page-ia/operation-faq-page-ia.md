@@ -12,7 +12,7 @@
 | --- | --- |
 | 모듈 | Operation |
 | 페이지명 | FAQ |
-| 현재 상태 | 구현됨 |
+| 현재 상태 | 구현됨 (Supabase-backed hybrid + mock fallback) |
 | 페이지 유형 | 목록 운영형 |
 | 라우트 | /operation/faq |
 | 주요 권한 | operation.faq.manage |
@@ -26,6 +26,7 @@
 - FAQ 원문을 질문/답변/검색 키워드/카테고리/공개 상태 기준으로 관리합니다.
 - 홈 추천 FAQ, 고객센터 FAQ, 결제 도움말, 온보딩 FAQ 같은 대표 노출 큐레이션을 검수하고 승인합니다.
 - 조회수, 검색 유입, 도움됨/도움 안 됨 같은 지표를 바탕으로 어떤 FAQ를 대표 노출할지 판단합니다.
+- Supabase 모드에서는 `operation_faqs`, `operation_faq_curations`, `operation_faq_metrics`를 조회하고, 원문/큐레이션 쓰기는 admin RPC 단일 경로를 사용합니다.
 
 ### 비목표
 
@@ -93,11 +94,11 @@
 
 | 액션 | 성격 | 대상 식별 기준 | 확인/사유 필요 여부 | 성공 후 피드백 | 감사 로그 확인 경로 |
 | --- | --- | --- | --- | --- | --- |
-| FAQ 등록 | 수정 | OperationFaq + faqId | 사유 권장 | FAQ 등록 완료 후 `Target Type`, `Target ID`, 감사 로그 링크를 안내합니다. | /system/audit-logs?targetType=OperationFaq&targetId={faqId} |
-| FAQ 수정 | 수정 | OperationFaq + faqId | 사유 권장 | FAQ 수정 완료 후 대상 식별 정보와 감사 로그 링크를 안내합니다. | /system/audit-logs?targetType=OperationFaq&targetId={faqId} |
-| FAQ 공개/비공개 | 수정 | OperationFaq + faqId | 확인 + 사유 필수 | 공개/비공개 완료 후 대상 식별 정보와 감사 로그 링크를 안내합니다. 비공개 전환 시 연결된 노출 규칙은 자동으로 대기 상태가 됩니다. | /system/audit-logs?targetType=OperationFaq&targetId={faqId} |
+| FAQ 등록 | 수정 | OperationFaq + faqId | 사유 필수 | FAQ 등록 완료 후 `Target Type`, `Target ID`, 감사 로그 링크를 안내합니다. | /system/audit-logs?targetType=OperationFaq&targetId={faqId} |
+| FAQ 수정 | 수정 | OperationFaq + faqId | 사유 필수 | FAQ 수정 완료 후 대상 식별 정보와 감사 로그 링크를 안내합니다. | /system/audit-logs?targetType=OperationFaq&targetId={faqId} |
+| FAQ 공개/비공개 | 수정 | OperationFaq + faqId | 확인 + 사유 필수 | 공개/비공개 완료 후 대상 식별 정보와 감사 로그 링크를 안내합니다. 비공개 전환 시 연결된 active 노출 규칙은 `paused`로 강등되고 감사 payload에 `paused_curation_ids`를 남깁니다. | /system/audit-logs?targetType=OperationFaq&targetId={faqId} |
 | FAQ 삭제 | 파괴적 | OperationFaq + faqId | 확인 + 사유 필수 | 삭제 완료 후 대상 식별 정보와 감사 로그 링크를 안내합니다. 연결된 노출 규칙과 지표 연결도 함께 정리됩니다. | /system/audit-logs?targetType=OperationFaq&targetId={faqId} |
-| FAQ 노출 추가/수정 | 수정 | OperationFaqCuration + curationId | 사유 권장 | 노출 저장 완료 후 대상 식별 정보와 감사 로그 링크를 안내합니다. | /system/audit-logs?targetType=OperationFaqCuration&targetId={curationId} |
+| FAQ 노출 추가/수정 | 수정 | OperationFaqCuration + curationId | 사유 필수 | 노출 저장 완료 후 대상 식별 정보와 감사 로그 링크를 안내합니다. | /system/audit-logs?targetType=OperationFaqCuration&targetId={curationId} |
 | FAQ 노출 일시중지/재개 | 수정 | OperationFaqCuration + curationId | 확인 + 사유 필수 | 노출 상태 변경 후 대상 식별 정보와 감사 로그 링크를 안내합니다. | /system/audit-logs?targetType=OperationFaqCuration&targetId={curationId} |
 | FAQ 노출 삭제 | 파괴적 | OperationFaqCuration + curationId | 확인 + 사유 필수 | 노출 삭제 후 대상 식별 정보와 감사 로그 링크를 안내합니다. | /system/audit-logs?targetType=OperationFaqCuration&targetId={curationId} |
 
@@ -105,10 +106,11 @@
 
 | 항목 | 현재 상태 | 관리자 페이지 영향 | 사용자 화면 영향 | 추후 결정 필요 내용 |
 | --- | --- | --- | --- | --- |
-| FAQ 공개 상태 | 확정 | `공개/비공개`를 유지하고 변경 시 관련 노출 규칙 상태를 함께 검토합니다. | 고객센터 FAQ/도움말 원문 노출 여부에 직접 영향 | 향후 soft delete 정책과 공개 상태 관계 정의 |
-| FAQ 노출 상태 | 확정 | `active/paused` 내부 코드와 한글 라벨을 함께 유지합니다. | 대표 FAQ 노출 여부에 직접 영향 | 예약 노출 상태 추가 여부 |
-| 노출 위치 | 확정 | `help_center`, `home_top`, `payment_help`, `onboarding`를 코드 테이블 후보로 유지합니다. | 고객센터, 홈, 결제 도움말, 온보딩 영역에 직접 영향 | surface 추가 시 코드 테이블/API 확장 필요 |
-| 설정 방식 | 확정 | `manual`, `auto` 내부 코드와 한글 라벨을 함께 유지합니다. | 직접 노출 영향은 없고 운영 근거를 남깁니다. | auto 추천 원천 신호 정의 필요 |
+| FAQ 공개 상태 | 확정 | DB 저장 코드는 `published`/`hidden`, UI 라벨은 `공개`/`비공개`를 유지합니다. `hidden` 전환 시 관련 active 노출 규칙은 `paused`로 강등합니다. | 고객센터 FAQ/도움말 원문 노출 여부에 직접 영향 | 상태값 변경 시 DB CHECK와 UI 옵션 동시 확장 필요 |
+| FAQ 카테고리 | 확정 | DB 저장 한글 코드는 `계정`/`결제`/`커뮤니티`/`메시지`입니다. | 카테고리별 FAQ 탐색에 영향 | 카테고리 추가 시 DB CHECK와 UI 옵션 동시 확장 필요 |
+| FAQ 노출 상태 | 확정 | `active`/`paused` 내부 코드와 한글 라벨을 함께 유지합니다. hidden FAQ는 active 큐레이션으로 저장할 수 없습니다. | 대표 FAQ 노출 여부에 직접 영향 | 상태값 변경 시 DB CHECK와 UI 옵션 동시 확장 필요 |
+| 노출 위치 | 확정 | `help_center`, `home_top`, `payment_help`, `onboarding`을 DB CHECK 허용값으로 유지합니다. | 고객센터, 홈, 결제 도움말, 온보딩 영역에 직접 영향 | surface 추가 시 DB/API/UI 확장 필요 |
+| 설정 방식 | 확정 | `manual`, `auto` 내부 코드와 한글 라벨을 함께 유지합니다. | 직접 노출 영향은 없고 운영 근거를 남깁니다. | mode 추가 시 DB/API/UI 확장 필요 |
 | URL/상태 복원 | 확정 | 탭, 검색, 필터, 정렬, 선택된 FAQ/노출 Drawer 상태를 새로고침과 뒤로가기에서도 재현해야 합니다. | 운영자는 같은 검수 맥락으로 복귀할 수 있습니다. | 신규 필터 추가 시 쿼리 계약 동기화 필요 |
 
 ## 9. 다른 관리자 페이지 영향
@@ -123,9 +125,10 @@
 | 사용자 화면 후보 | 영향 상태 | 이 페이지 데이터가 반영되는 방식 | 비고 |
 | --- | --- | --- | --- |
 | 고객센터 FAQ, 도움말 | 운영상 추정 | `FAQ 마스터`의 질문/답변/카테고리/공개 상태를 원문 데이터로 사용 | FAQ 원문 SoT |
-| 홈 추천 FAQ | 노출 예정 | `노출 관리`의 `home_top` 규칙으로 대표 FAQ 5개 내외를 큐레이션 | 대표 노출 큐레이션 |
-| 결제 도움말 | 노출 예정 | `payment_help` 규칙으로 결제 관련 대표 FAQ를 별도 묶음으로 노출 | 결제 맥락별 FAQ |
-| 온보딩 FAQ | 노출 예정 | `onboarding` 규칙으로 신규 사용자 안내용 FAQ를 노출 | 초기 학습/가입 도움말 |
+| 홈 추천 FAQ | 운영상 추정 | `노출 관리`의 `home_top` 규칙으로 대표 FAQ를 큐레이션 | 대표 노출 큐레이션 |
+| 결제 도움말 | 운영상 추정 | `payment_help` 규칙으로 결제 관련 대표 FAQ를 별도 묶음으로 노출 | 결제 맥락별 FAQ |
+| 온보딩 FAQ | 운영상 추정 | `onboarding` 규칙으로 신규 사용자 안내용 FAQ를 노출 | 초기 학습/가입 도움말 |
+| FAQ 운영 지표 | 내부 전용 | `operation_faq_metrics`의 조회/검색/도움됨 지표는 관리자 판단 보조로만 사용 | seed/read 전용, 실집계 파이프라인 미확정 |
 
 ## 11. URL/상태 복원
 
@@ -149,11 +152,13 @@
 ## 13. 구현 메모
 
 - 현재 코드베이스에서 재사용할 컴포넌트: PageTitle, SearchBar, AdminDataTable, ConfirmAction, AuditLogLink, DetailDrawer
-- FAQ 원문/노출/지표의 mock SoT는 `operation-store.ts`, service 경계는 `faqs-service.ts`, 코드 테이블 후보는 `faq-schema.ts`에서 관리합니다.
+- FAQ 원문/노출/지표의 Supabase source는 `operation-faqs-data-source.ts`와 `supabase-operation-faqs-service.ts`가 담당하고, `faqs-service.ts` safe facade 계약은 유지합니다. Supabase 미구성, `VITE_SUPABASE_DISABLED=true`, `VITE_OPERATION_FAQS_SOURCE=mock`은 기존 `mock-operation.ts` + `operation-store.ts` fallback으로 회귀합니다.
 - FAQ 등록/수정 Modal은 질문, 카테고리, 검색 키워드, 답변, 공개 상태를 plain text 기반으로 편집합니다.
 - FAQ 노출 Modal은 연결 FAQ, 노출 위치, 노출 순서, 설정 방식, 노출 상태, 노출 기간을 관리합니다.
+- Supabase 모드의 저장/상태 변경/삭제는 admin RPC 5종(`admin_save_operation_faq`, `admin_toggle_operation_faq_status`, `admin_delete_operation_faq`, `admin_save_operation_faq_curation`, `admin_delete_operation_faq_curation`) 경유이며 모두 사유가 필수입니다.
 
 ## 14. 오픈 이슈
 
-- `auto` 추천 모드가 실제로 어떤 원천 지표(검색어, 문의, 챗봇 질문, 조회수)를 받아오는지는 아직 미정입니다.
-- 홈 추천 FAQ/온보딩 FAQ의 화면별 최대 노출 개수와 예약 노출 정책은 후속 정책 문서에서 확정이 필요합니다.
+- `FAQ-NNN`/`FAQCUR-NNN` max+1 채번의 동시성 보장 방식(sequence/table 등)은 미확정입니다.
+- `updated_by`는 현재 호출자 uuid 저장이며 관리자 표시명 매핑 정책이 미확정입니다.
+- `operation_faq_metrics`는 현재 seed/read 전용이며 조회/검색/도움됨 실집계 파이프라인이 미확정입니다.

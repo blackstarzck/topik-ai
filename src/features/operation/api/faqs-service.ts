@@ -7,17 +7,30 @@ import type {
   OperationFaqMetric,
   OperationFaqStatus
 } from '../model/types';
+import { operationFaqsDataSource } from './operation-faqs-data-source';
+import {
+  deleteOperationFaq,
+  deleteOperationFaqCuration,
+  loadOperationFaqCurations,
+  loadOperationFaqMetrics,
+  loadOperationFaqs,
+  saveOperationFaq,
+  saveOperationFaqCuration,
+  setOperationFaqStatus
+} from './supabase-operation-faqs-service';
 
 export type SaveFaqPayload = Pick<
   OperationFaq,
   'question' | 'answer' | 'searchKeywords' | 'category' | 'status'
 > & {
   id?: string;
+  reason?: string;
 };
 
 export type ToggleFaqStatusPayload = {
   faqId: string;
   nextStatus: OperationFaqStatus;
+  reason?: string;
 };
 
 export type SaveFaqCurationPayload = Pick<
@@ -31,7 +44,10 @@ export type SaveFaqCurationPayload = Pick<
   | 'pinnedEndAt'
 > & {
   id?: string;
+  reason?: string;
 };
+
+const isSupabaseSource = operationFaqsDataSource === 'supabase';
 
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -68,6 +84,10 @@ function createFaqNotFoundError(): AppApiError {
 }
 
 async function loadFaqs(signal?: AbortSignal): Promise<OperationFaq[]> {
+  if (isSupabaseSource) {
+    return loadOperationFaqs(signal);
+  }
+
   await sleep(220, signal);
   return useOperationStore.getState().faqs;
 }
@@ -75,11 +95,19 @@ async function loadFaqs(signal?: AbortSignal): Promise<OperationFaq[]> {
 async function loadFaqCurations(
   signal?: AbortSignal
 ): Promise<OperationFaqCuration[]> {
+  if (isSupabaseSource) {
+    return loadOperationFaqCurations(signal);
+  }
+
   await sleep(220, signal);
   return useOperationStore.getState().faqCurations;
 }
 
 async function loadFaqMetrics(signal?: AbortSignal): Promise<OperationFaqMetric[]> {
+  if (isSupabaseSource) {
+    return loadOperationFaqMetrics(signal);
+  }
+
   await sleep(220, signal);
   return useOperationStore.getState().faqMetrics;
 }
@@ -88,6 +116,10 @@ async function persistFaq(
   payload: SaveFaqPayload,
   signal?: AbortSignal
 ): Promise<OperationFaq> {
+  if (isSupabaseSource) {
+    return saveOperationFaq(payload, signal);
+  }
+
   await sleep(240, signal);
 
   if (payload.id) {
@@ -132,6 +164,10 @@ async function persistFaqCuration(
   payload: SaveFaqCurationPayload,
   signal?: AbortSignal
 ): Promise<OperationFaqCuration> {
+  if (isSupabaseSource) {
+    return saveOperationFaqCuration(payload, signal);
+  }
+
   await sleep(240, signal);
 
   const store = useOperationStore.getState();
@@ -162,6 +198,14 @@ async function persistFaqStatus(
   payload: ToggleFaqStatusPayload,
   signal?: AbortSignal
 ): Promise<OperationFaq> {
+  if (isSupabaseSource) {
+    const updated = await setOperationFaqStatus(payload, signal);
+    if (!updated) {
+      throw createFaqNotFoundError();
+    }
+    return updated;
+  }
+
   await sleep(220, signal);
   const updated = useOperationStore.getState().toggleFaqStatus(payload);
 
@@ -174,8 +218,17 @@ async function persistFaqStatus(
 
 async function removeFaqCuration(
   curationId: string,
+  reason?: string,
   signal?: AbortSignal
 ): Promise<OperationFaqCuration> {
+  if (isSupabaseSource) {
+    const removed = await deleteOperationFaqCuration(curationId, reason, signal);
+    if (!removed) {
+      throw createFaqCurationNotFoundError();
+    }
+    return removed;
+  }
+
   await sleep(220, signal);
   const removed = useOperationStore.getState().deleteFaqCuration(curationId);
 
@@ -186,7 +239,19 @@ async function removeFaqCuration(
   return removed;
 }
 
-async function removeFaq(faqId: string, signal?: AbortSignal): Promise<OperationFaq> {
+async function removeFaq(
+  faqId: string,
+  reason?: string,
+  signal?: AbortSignal
+): Promise<OperationFaq> {
+  if (isSupabaseSource) {
+    const removed = await deleteOperationFaq(faqId, reason, signal);
+    if (!removed) {
+      throw createFaqNotFoundError();
+    }
+    return removed;
+  }
+
   await sleep(220, signal);
   const removed = useOperationStore.getState().deleteFaq(faqId);
 
@@ -231,13 +296,26 @@ export function toggleFaqStatusSafe(
   return toSafeResult(() => persistFaqStatus(payload, signal));
 }
 
-export function deleteFaqSafe(faqId: string, signal?: AbortSignal) {
-  return toSafeResult(() => removeFaq(faqId, signal));
+export function deleteFaqSafe(
+  faqId: string,
+  reasonOrSignal?: string | AbortSignal,
+  signal?: AbortSignal
+) {
+  const reason = typeof reasonOrSignal === 'string' ? reasonOrSignal : undefined;
+  const resolvedSignal =
+    typeof reasonOrSignal === 'string' ? signal : reasonOrSignal ?? signal;
+  return toSafeResult(() => removeFaq(faqId, reason, resolvedSignal));
 }
 
 export function deleteFaqCurationSafe(
   curationId: string,
+  reasonOrSignal?: string | AbortSignal,
   signal?: AbortSignal
 ) {
-  return toSafeResult(() => removeFaqCuration(curationId, signal));
+  const reason = typeof reasonOrSignal === 'string' ? reasonOrSignal : undefined;
+  const resolvedSignal =
+    typeof reasonOrSignal === 'string' ? signal : reasonOrSignal ?? signal;
+  return toSafeResult(() =>
+    removeFaqCuration(curationId, reason, resolvedSignal)
+  );
 }

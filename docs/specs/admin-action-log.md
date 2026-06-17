@@ -56,8 +56,14 @@
 - 정책 관리의 `내용 수정`, `새 버전 등록`, `게시`, `숨김`, `삭제`, `이 버전 게시` 액션은 모두 `Target Type = OperationPolicy`, `Target ID = policyId` 계약을 유지합니다.
 - `게시`, `숨김`, `삭제`, `이 버전 게시`는 확인 + 사유 입력을 필수로 남깁니다.
 - `이 버전 게시`는 성공 피드백과 감사 로그에서 `fromVersionId/toVersionId` 또는 이에 준하는 게시 전환 근거를 함께 남길 수 있어야 합니다.
-- FAQ 원문 조치 로그는 `Target Type = OperationFaq`, `Target ID = faqId`를 사용합니다.
-- FAQ 대표 노출 조치 로그는 `Target Type = OperationFaqCuration`, `Target ID = curationId`를 사용합니다.
+- FAQ 원문 조치 로그는 `Target Type = OperationFaq`(`admin_audit_logs.target_table='OperationFaq'`), `Target ID = faqId`를 사용하며, `/operation/faq?selected={faqId}` 기준으로 원본 화면을 역추적할 수 있어야 합니다.
+  - 액션 사전: `faq_saved`(등록/수정), `faq_status_changed`(공개/비공개 전환), `faq_deleted`(삭제).
+  - 기록 주체: admin RPC 3종 단일 write 경로(`admin_save_operation_faq(p_id,p_faq,p_reason)`/`admin_toggle_operation_faq_status(p_faq_id,p_next_status,p_reason)`/`admin_delete_operation_faq(p_faq_id,p_reason)`). 세 RPC 모두 사유(`p_reason`)가 필수입니다.
+  - payload/diff 계약: `payload.reason`을 공통으로 포함하고, 상태를 `hidden`으로 전환하면 연결된 active 큐레이션을 `paused`로 강등하며 `payload.paused_curation_ids`에 강등된 큐레이션 ID를 기록합니다. 성공 피드백은 `감사 로그 확인` 링크(`/system/audit-logs?targetType=OperationFaq&targetId={faqId}`)를 노출합니다.
+- FAQ 대표 노출 조치 로그는 `Target Type = OperationFaqCuration`(`admin_audit_logs.target_table='OperationFaqCuration'`), `Target ID = curationId`를 사용하며, `/operation/faq?tab=curation&curationSelected={curationId}` 기준으로 원본 화면을 역추적할 수 있어야 합니다.
+  - 액션 사전: `faq_curation_saved`(추가/수정/일시중지/재개), `faq_curation_deleted`(삭제).
+  - 기록 주체: admin RPC 2종 단일 write 경로(`admin_save_operation_faq_curation(p_id,p_curation,p_reason)`/`admin_delete_operation_faq_curation(p_curation_id,p_reason)`). 두 RPC 모두 사유(`p_reason`)가 필수입니다.
+  - payload/diff 계약: `payload.reason`을 공통으로 포함합니다. DB는 `UNIQUE(surface, display_rank)`를 강제하고, `hidden` FAQ를 `active` 큐레이션으로 저장하는 것을 차단합니다. 성공 피드백은 `감사 로그 확인` 링크(`/system/audit-logs?targetType=OperationFaqCuration&targetId={curationId}`)를 노출합니다.
 - 포인트 정책 조치 로그는 `Target Type = CommercePointPolicy`, `Target ID = pointPolicyId`를 사용합니다.
 - 포인트 원장 조치 로그는 `Target Type = CommercePointLedger`, `Target ID = pointLedgerId`를 사용합니다.
 - 포인트 소멸 조치 로그는 `Target Type = CommercePointExpiration`, `Target ID = expirationId`를 사용합니다.

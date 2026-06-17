@@ -185,7 +185,8 @@
 
 ## 10) 운영 > FAQ
 
-- 현재 상태: 구현됨 (mock service/store/schema 기반)
+- 현재 상태: 구현됨 (Supabase `operation_faqs`/`operation_faq_curations`/`operation_faq_metrics` + mock fallback data-source switch 기반)
+- 데이터소스: `faqs-service.ts` safe facade는 `operation-faqs-data-source.ts`에서 `VITE_SUPABASE_DISABLED`, Supabase 설정 여부, `VITE_OPERATION_FAQS_SOURCE`를 판별해 mock과 Supabase를 분기합니다. Supabase 모드는 `supabase-operation-faqs-service.ts`가 DB row와 화면 모델을 매핑합니다.
 - 목표 화면 구조: `상단 요약 카드 4개(전체 FAQ/공개 FAQ/활성 노출/누적 조회수)` + `AdminListCard(toolbar=Tabs + SearchBar, body=탭별 Alert -> Table)` + 행 클릭 `FAQ 상세 Drawer` / `FAQ 노출 상세 Drawer`
 - 탭: `FAQ 마스터`, `노출 관리`, `지표 보기`
 - FAQ 마스터 컬럼: FAQ ID, 질문, 카테고리, 검색 키워드, 최종 수정일, 공개 상태, 액션
@@ -207,11 +208,14 @@
   - 지표 보기: `metricSearchField`, `metricKeyword`, `metricSortField`, `metricSortOrder`
 - FAQ 등록/수정 Modal: 질문, 카테고리, 검색 키워드, 답변, 공개 상태를 plain text 입력으로 편집합니다.
 - FAQ 노출 Modal: 연결 FAQ, 노출 위치, 노출 순서, 설정 방식, 노출 상태, 노출 기간을 편집합니다.
+- 상태/enum: FAQ 공개 상태 DB 저장 코드는 `published`/`hidden`이고 UI 라벨은 `공개`/`비공개`입니다. 카테고리는 DB 한글 코드 `계정`/`결제`/`커뮤니티`/`메시지`, 노출 위치/설정 방식/노출 상태는 ASCII `help_center`/`home_top`/`payment_help`/`onboarding`, `manual`/`auto`, `active`/`paused`를 사용합니다.
 - 상세 Drawer:
   - FAQ 상세 Drawer: `FAQ 정보`, `질문/답변`, `노출 관리 요약`, `지표 요약` 섹션과 `FAQ 수정`, `노출 추가`, `공개/비공개`, `FAQ 삭제`, `감사 로그 확인`
   - FAQ 노출 상세 Drawer: `노출 규칙`, `연결 FAQ`, `지표 참고` 섹션과 `노출 수정`, `노출 일시중지/재개`, `노출 삭제`, `감사 로그 확인`
-- 파괴적 액션 메모: FAQ 공개/비공개, FAQ 삭제, FAQ 노출 일시중지/재개, FAQ 노출 삭제는 모두 확인 모달과 사유 입력을 필수로 사용합니다.
+- 파괴적/조치 액션 메모: FAQ 원문 저장/상태 변경/삭제와 FAQ 노출 저장/삭제는 Supabase 모드에서 admin RPC 5종(`admin_save_operation_faq`, `admin_toggle_operation_faq_status`, `admin_delete_operation_faq`, `admin_save_operation_faq_curation`, `admin_delete_operation_faq_curation`)을 사용하며 모두 사유 입력이 필수입니다. `hidden` 전환 시 연결 active 노출은 `paused`로 강등됩니다.
 - 네트워크 상태: 세 탭 모두 `pending/success/empty/error`를 구분하고, 오류 시 `다시 시도`와 마지막 성공 상태 fallback을 제공합니다.
+- 지표 메모: `operation_faq_metrics`는 admin write RPC가 없는 seed/read 전용입니다. 실집계 파이프라인은 미확정입니다.
+- 감사 로그: FAQ 원문 저장/상태 변경/삭제는 `OperationFaq + faqId` 계약을 사용하고, 노출 저장/삭제는 `OperationFaqCuration + curationId` 계약을 사용합니다. 확인 경로는 각각 `/system/audit-logs?targetType=OperationFaq&targetId={faqId}`, `/system/audit-logs?targetType=OperationFaqCuration&targetId={curationId}`입니다.
 
 ## 11) 운영 > 이벤트
 

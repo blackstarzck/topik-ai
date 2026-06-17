@@ -275,13 +275,22 @@
 
 - 대상 파일: `src/features/operation/pages/operation-faq-page.tsx`
 - 현 상태
-  - 원문/노출/지표 3탭 구조가 존재한다.
-  - 초기 FAQ/큐레이션/지표 seed/factory는 `src/features/operation/api/mock-operation.ts`, 조치 후 live state는 `operation-store.ts`, 조회/조치 facade는 `faqs-service.ts`가 담당한다.
+  - 2026-06-17 기준 mock-only에서 Supabase-backed hybrid switch로 전환 완료했다.
+  - 원문/노출/지표 3탭 구조가 존재하며, Supabase 모드는 `operation_faqs`, `operation_faq_curations`, `operation_faq_metrics`를 조회한다.
+  - `operation-faqs-data-source.ts`가 Supabase 설정과 `VITE_OPERATION_FAQS_SOURCE`를 판별하고, Supabase 모드는 `operation_faqs`/`operation_faq_curations` + admin RPC 5종(`admin_save_operation_faq`, `admin_toggle_operation_faq_status`, `admin_delete_operation_faq`, `admin_save_operation_faq_curation`, `admin_delete_operation_faq_curation`)을 사용한다.
+  - Supabase 미구성, `VITE_SUPABASE_DISABLED=true`, `VITE_OPERATION_FAQS_SOURCE=mock`은 기존 mock source(`mock-operation.ts` + `operation-store.ts`)로 회귀한다.
+  - 마이그레이션 `supabase/migrations-admin/20260617123000_operation_faqs.sql`(+ down)은 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했다.
+- 해소된 항목
+  - `Resolved`(2026-06-17): FAQ mock-only SoT. FAQ 원문/노출/지표 조회와 원문/노출 조치가 Supabase-backed 경로를 가지며 mock은 fallback으로 축소됐다.
+  - `Resolved`(2026-06-17): FAQ 조치 감사 로그 미적재. admin RPC가 `admin_audit_logs`에 FAQ 원문 `target_table='OperationFaq'`, `target_id=faqId`, action `faq_saved`/`faq_status_changed`/`faq_deleted`; 큐레이션 `target_table='OperationFaqCuration'`, `target_id=curationId`, action `faq_curation_saved`/`faq_curation_deleted`를 기록한다.
+  - `Resolved`(2026-06-17): FAQ 원문/노출 reason 미전달. admin RPC 5종은 reason 필수이며 화면 확인 단계 또는 서비스 경계에서 사유를 전달한다.
 - 미확정/누락/오구현
-  - 지표 탭 데이터가 실제 FAQ 노출 결과를 반영하는지, 단순 mock snapshot인지 불명확하다.
-  - 대표 FAQ 5개 큐레이션 정책의 노출 우선순위/중복 허용/시간 조건이 아직 고정되지 않았다.
+  - 자연키 `FAQ-NNN`/`FAQCUR-NNN`은 기존 mock/seed와 호환되도록 유지했으나, 동시 생성 race를 막는 장기 채번 방식(sequence/table 등)은 별도 확정이 필요하다.
+  - `updated_by`는 호출자 uuid 저장이며 관리자 표시명 매핑 정책이 미확정이다.
+  - `operation_faq_metrics`는 현재 seed/read 전용이며 조회/검색/도움됨 실집계 파이프라인이 미확정이다.
 - 분류
-  - `미확정`: 큐레이션 정책, 지표 산식
+  - `해소`: mock-only source 경계, FAQ/FAQ Curation 감사 Target Type 세분화, reason 전달 경계
+  - `미확정`: 채번/수정자 표시 정합, metrics 실집계 파이프라인
 
 #### 4.5.3 이벤트
 
@@ -549,6 +558,7 @@
 ## 7. 최근 해소 이력
 
 - 2026-06-17 | `Operation > 공지사항` mock-only·감사 미적재·reason 미전달 해소 | `operation_notices` Supabase 테이블과 admin RPC 3종을 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했고, 화면 service는 Supabase-backed hybrid switch와 mock fallback을 가진다. 공지 조치는 `Target Type=OperationNotice`, `target_id=noticeId`, action `notice_saved`/`notice_status_changed`/`notice_deleted`, reason 필수 계약으로 감사 로그를 남긴다. 잔여 갭은 B2C 실제 surface, 상단 고정/예약 게시, HTML sanitize/preview, `NOTICE-NNN` 동시성, `updated_by` 표시명 정합이다.
+- 2026-06-17 | `Operation > FAQ` mock-only·감사 미적재·reason 미전달 해소 | `operation_faqs`/`operation_faq_curations`/`operation_faq_metrics` Supabase 테이블과 admin RPC 5종을 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했고, 화면 service는 Supabase-backed hybrid switch와 mock fallback을 가진다. FAQ 조치는 `Target Type=OperationFaq`/`OperationFaqCuration`, action `faq_saved`/`faq_status_changed`/`faq_deleted`/`faq_curation_saved`/`faq_curation_deleted`, reason 필수 계약으로 감사 로그를 남긴다. 잔여 갭은 `FAQ-NNN`/`FAQCUR-NNN` 동시성, `updated_by` 표시명 정합, metrics 실집계 파이프라인(seed only)이다.
 - 2026-06-11 | 관리자 준비중 페이지 mock seed/source 경계 정리 | `Community`, `System`, `Message`, `Operation`, `Commerce`, `Billing`의 page-local seed/store seed 직접 참조를 `src/features/**/api/mock-*` seed/factory와 service safe facade로 분리했습니다. 조치 후 live state는 기존 feature store/service에 남기고, 잔여 갭은 실제 API/DB 계약, 권한/actor 정책, `Notification`/`Users 상세`/`Dashboard`/`Analytics` source 정리로 재분류했습니다.
 - 2026-06-09 | `Assessment > TOPIK 쓰기 문제은행` 검수/관리 단일 페이지 `tab` 토글 분리 | `src/features/assessment/pages/assessment-question-review-page.tsx`, `src/features/assessment/pages/assessment-question-manage-page.tsx`, `src/features/assessment/api/assessment-question-bank-service.ts`, `src/features/assessment/api/supabase-assessment-question-bank-service.ts`, `src/app/router/app-router.tsx`, `docs/specs/page-ia/assessment-question-bank-page-ia.md`, `docs/specs/page-ia/assessment-question-manage-page-ia.md`를 기준으로 `tab` 쿼리로 `검수 큐`/`문항 관리`를 토글하던 단일 페이지를 `Assessment > TOPIK 쓰기 문제 검수`(`/assessment/question-bank`)와 `Assessment > TOPIK 쓰기 문항 관리`(`/assessment/question-bank/manage`) 두 형제 라우트로 분리했습니다. `tab` 쿼리를 제거하고 각 라우트가 자체 URL 상태(공통 `questionNo`/`domain`/`questionType`/`difficulty`/`keyword`, 검수 전용 `reviewStatus`, 관리 전용 `operationStatus`)를 복원하게 정리했고, 두 페이지는 동일한 Supabase `problems`(question_no 51-54) 조회 결과를 공유 hook으로 함께 씁니다. 다만 문항 관리 운영 상태 조치는 v13 `lifecycle_status` 미적용으로 비활성(스캐폴딩) 상태로 신규 갭에 남겼습니다.
 - 2026-03-27 | `System > 메타데이터 관리` 관리 위치 계층 UX 보강 | `src/features/system/pages/system-metadata-page.tsx`, `src/features/system/model/system-metadata-store.ts`, `docs/specs/page-ia/system-metadata-page-ia.md`, `docs/specs/admin-page-tables.md`를 기준으로 목록의 `관리 위치`를 `route > 세부 위치` 형태로 읽히게 바꾸고, 상세 Drawer에는 Breadcrumb 기반 위치 카드와 `설정 그룹 -> 관리 위치 -> 운영 값 -> 사용자 영향` Tree를 추가했습니다. 메타데이터가 계층형 구조를 가진다는 점을 비개발자 운영자도 한눈에 이해할 수 있도록 위치 정보와 구조 정보를 같은 화면에서 검수하게 정리했습니다.
