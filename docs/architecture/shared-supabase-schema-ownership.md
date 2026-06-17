@@ -21,6 +21,8 @@
 | 객체 | owner (migration home) | writer | reader | RLS 요약 |
 | --- | --- | --- | --- | --- |
 | `profiles` (notification_prefs 포함) | v13 | 본인(user), admin RPC | 본인, admin | self select/update, 보호 컬럼 트리거 |
+| `get_admin_users` RPC | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | 없음(read RPC) | platform_admin | v13 `profiles`/`auth.users` 조인 + `writing_submissions` 집계. 신규 테이블 0건, v13 DDL 변경 없음 |
+| `admin_set_user_status` RPC | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | platform_admin RPC | platform_admin | `profiles.status`만 `active`/`blocked`로 토글, `deleted` 차단. `protect_profile_columns` admin bypass 검증됨 |
 | `notification_settings` | v13 | 본인(user) | 본인 | owner all (`user_id = auth.uid()`) |
 | `notification_log` | v13 | (deprecated — 신규 쓰기 경로 없음) | 본인, platform_admin | owner select. **알림 기능 rev3부터 발송 이력 SoT 아님** (O-9) |
 | `user_notifications` | v13 | service role(파이프라인 insert), 본인(`read_at`만 update) | 본인 | owner select + read_at-only owner update |
@@ -44,6 +46,13 @@
 1. 새 객체 추가: owner repo의 migration home에 migration+down 작성 → 본 문서 §2에 행 추가 → 적용.
 2. 공유 객체 reader/writer 변경: 양 repo 문서에 반영하고 본 문서의 decision record 칸에 일자·근거 기록.
 3. v13 소유 테이블 DDL 변경: v13 오너 승인 + decision record 없이는 금지.
+
+2026-06-17 Users 회원 목록 P0 결손 RPC 핫픽스 기록:
+- 근거: `supabase/migrations-admin/20260617210000_admin_users_directory.sql` + `supabase/migrations-admin/down/20260617210000_admin_users_directory.sql`.
+- 적용: `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
+- 경계: 신규 테이블은 만들지 않는다. `profiles`, `auth.users`, `writing_submissions`는 v13 소유이며, `get_admin_users(search text, sort text, page integer, page_size integer)`가 platform_admin 전용 read RPC로 `profiles` + `auth.users` 조인과 `writing_submissions` 집계, `total_count` window를 제공한다.
+- 쓰기 경계: `admin_set_user_status(target_id uuid, new_status text)`는 platform_admin 전용 write RPC이며 `new_status`는 `active`/`blocked`만 허용하고 `deleted` 사용자는 차단한다. v13 `profiles` DDL은 변경하지 않고 `profiles.status` 컬럼만 토글한다.
+- 트리거/감사: `profiles.status` 토글은 `protect_profile_columns` 트리거의 admin `auth.uid()` bypass로 통과 검증됐다. 감사 로그는 `admin_audit_logs`에 `action='user_status_changed'`, `target_table='User'`, `target_id=userId`로 기록한다.
 
 2026-06-17 Operation 공지사항 전환 기록:
 - 근거: `supabase/migrations-admin/20260617120000_operation_notices.sql` + `supabase/migrations-admin/down/20260617120000_operation_notices.sql`.

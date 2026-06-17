@@ -45,6 +45,10 @@
 - Users, Instructor, Community, Message, Operation, Commerce, Assessment, Content 변경 액션은 감사 로그 대상입니다.
 - 감사 로그는 `Target Type`, `Target ID` 기준으로 원본 화면을 역추적할 수 있어야 합니다.
 - 성공 피드백(notification)은 감사 로그와 동일한 식별 값을 사용해야 합니다.
+- 회원 정지/해제 로그는 `Target Type = User`(`admin_audit_logs.target_table='User'`), `Target ID = userId`를 사용하며, `/users` 또는 `/users/{userId}` 기준 원본 화면과 `/system/audit-logs?targetType=User&targetId={userId}` 후속 검증 경로로 역추적할 수 있어야 합니다.
+  - 액션 사전: `user_status_changed`(정지/해제). `active`는 해제/정상, `blocked`는 정지이며, `deleted` 상태 사용자는 RPC에서 변경을 차단합니다.
+  - 기록 주체: `admin_set_user_status(target_id uuid, new_status text)` 단일 write 경로. platform_admin 전용이며 `profiles.status`만 토글하고 v13 `profiles` DDL은 변경하지 않습니다.
+  - payload/diff 계약: `diff.status.from/to`를 기록하고 `payload.app_role`을 포함합니다. 화면 확인 단계의 사유는 성공 피드백과 감사 로그 확인 경로에 같은 `User + userId` 식별자를 사용해야 하며, reason 입력 UX가 별도로 확장되면 같은 Target Type/ID에 맞춰 저장 계약을 갱신해야 합니다.
 - 강사 조치 로그는 `Target Type = Instructor`, `Target ID = instructorId`를 사용합니다.
 - 이벤트 조치 로그는 `Target Type = OperationEvent`(`admin_audit_logs.target_table='OperationEvent'`), `Target ID = eventId`를 사용하며, `EVT-` 접두의 대상 ID는 `/operation/events?selected={eventId}` 원본 화면으로 역추적할 수 있어야 합니다.
   - 액션 사전: `event_saved`(등록/수정), `event_scheduled`(게시 예약), `event_published`(즉시 게시), `event_ended`(종료).
@@ -137,7 +141,7 @@
 - RPC/action 사전: `admin_resolve_community_report(p_report_id,p_action,p_reason)` -> action `report_resolved`.
 - `p_action` 값과 의미:
   - `hide_post`: 신고를 `resolved`로 종결하고, 대상 게시글이 있으면 같은 트랜잭션에서 `community_posts.status='hidden'`, `last_moderation_policy_code=reason_code or 'OTHER'`로 실제 변경한다.
-  - `suspend_user`: 신고를 `resolved`로 종결하고, payload `user_suspend_integration=intent_only_v13_admin_set_user_status_pending`으로 사용자 정지 의도만 기록한다. 실제 사용자 정지는 v13 `admin_set_user_status` 연동 전까지 수행하지 않는다.
+  - `suspend_user`: 신고를 `resolved`로 종결하고, payload `user_suspend_integration=intent_only_v13_admin_set_user_status_pending`으로 사용자 정지 의도만 기록한다. Community 신고 조치와 Users `admin_set_user_status` 실제 호출 연결은 별도 후속 범위다.
   - `dismiss`: 신고를 `resolved`로 종결하되 게시글/사용자 조치는 하지 않는다.
 - 감사 diff/payload: diff는 `process_status.from/to`를 기록하고, payload는 `action`, `reason`, `affected_post_id`, `affected_user_id`, `user_suspend_integration`을 포함한다.
 

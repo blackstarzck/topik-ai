@@ -56,6 +56,9 @@
 - 필터: 검색어, 가입 기간
 - 정렬: 가입일, 최근 접속, 회원 상태
 - 액션: 회원 상세, 회원 정지/해제, 관리자 메모
+- source: Supabase 모드는 `get_admin_users(search, sort, page, page_size)` RPC를 사용합니다. source 테이블은 v13 `profiles`/`auth.users` 조인과 `writing_submissions` 집계이며 신규 admin 테이블은 없습니다.
+- source 필드: `user_id`, `email`, `display_name`, `nickname`, `app_role`, `plan_label`, `status`, `submission_count`, `last_activity`, `last_sign_in_at`, `created_at`, `total_count`.
+- 상태 조치: 정지/해제는 `admin_set_user_status(target_id, new_status)` RPC를 사용합니다. `new_status`는 `active`/`blocked`만 허용하고 `deleted`는 차단하며, 감사 Target Type은 `User`입니다.
 - 레이아웃 메모: 요약 없는 목록 운영형 기준으로 `Card 내부 SearchBar -> Table` 순서를 유지합니다.
 - 상태 표현 메모: `구독 상태` 컬럼은 외부 구독 원천 데이터를 보여주는 정보용 컬럼이므로 스위치 조치 없이 텍스트 상태로 표시합니다.
 

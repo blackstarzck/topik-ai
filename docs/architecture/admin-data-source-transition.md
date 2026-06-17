@@ -11,7 +11,10 @@
 ### 2.1 이미 분리된 패턴
 
 - `Users` 계열은 `mock-*` 파일과 `fetch*Safe` service가 분리되어 있다.
-- `Users > 회원 목록/상세`은 v13 Supabase 연결 시 `get_admin_users` RPC를 1차 source로 사용하고, RPC가 `profiles.nickname`을 반환하지 않는 배포에서는 `profiles(id,nickname)` 보강 조회로 닉네임 컬럼을 병합한다. `display_name`은 회원명(`realName`) source이고 `nickname`은 닉네임 source이며, 둘 중 하나가 `NULL`이면 이메일/ID/local-part fallback을 만들지 않고 UI에서 `-`로 표시한다.
+- `Users > 회원 목록`은 2026-06-17 P0 결손 RPC 핫픽스로 mock 후보에서 Supabase-backed source로 승격 완료했다. `supabase-users-service.ts`의 기존 호출 계약은 그대로 유지하고, Supabase 모드 read는 `get_admin_users(search, sort, page, page_size)`, 정지/해제 write는 `admin_set_user_status(target_id, new_status)`를 사용한다. 두 RPC는 `supabase/migrations-admin/20260617210000_admin_users_directory.sql`(+ down)에 작성됐고 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했다.
+- `Users > 회원 목록` read source는 v13 `profiles` + `auth.users` 조인과 `writing_submissions` 집계다. `display_name`은 회원명(`realName`) source이고 `nickname`은 닉네임 source이며, 둘 중 하나가 `NULL`이면 이메일/ID/local-part fallback을 만들지 않고 UI에서 `-`로 표시한다. `get_admin_users` 인자명은 PostgREST 매칭을 위해 프론트 JSON 키 `search`/`sort`/`page`/`page_size`와 정확히 일치해야 하며, 이 함수 부재가 기존 404 런타임 실패 원인이었다.
+- `Users > 회원 목록` write source는 `admin_set_user_status` 단일 경로다. 신규 테이블은 없고 v13 `profiles` DDL은 변경하지 않으며, `profiles.status`만 `active`/`blocked`로 토글하고 `deleted`는 차단한다. 감사 로그는 `User + userId`, action `user_status_changed`로 남긴다.
+- `Users > 회원 상세`은 별도 탭 파생 데이터 source 정리가 아직 남아 있다.
 - `Community > 게시글 관리/신고 관리`는 `api/mock-community.ts`가 초기 seed/factory를 소유하고, `community-service.ts`가 목록 조회/게시·숨김·삭제/신고 처리 safe facade를 제공한다. 조치 후 live state는 `community-store.ts`에 남긴다.
 - `System > 시스템 로그`는 `api/mock-system-logs.ts`와 `system-logs-service.ts`가 목록 source를 소유한다.
 - `System > 감사 로그`는 `system-audit-logs-service.ts`가 static audit seed(`api/mock-system-audit-logs.ts`)와 permission/coupon/metadata store audit 병합 책임을 소유한다. 페이지는 merge 세부를 알지 않는다.
@@ -328,6 +331,15 @@ src/features/<feature>/
   - `service_status`(`available`/`excluded`/`internal_test`)가 유일한 물리 노출 상태다(D-6 유지). '서비스_노출상태' 태그 그룹은 시드에서 제외하고 RPC에서 부여를 차단한다. `operationStatus` 4값 union은 재정의 P3에서 제거한다. v13 `lifecycle_status` 종속은 해소됐다(신규 스키마가 자체 노출 컬럼 보유).
   - ~~검수 상태 2축(D-2)~~ — **2026-06-11 §0으로 철회**(검수 개념 삭제, 편차 E1 철회). `review_status`/`review_workflow_status`/`review_passed`/`validation_result` 컬럼 물리 제거는 재정의 P3 마이그레이션.
   - 채택 계약·식별자 매핑·편차 목록(E2~E4 — E1 철회)은 `docs/specs/admin-data-contract.md` §12에서 추적한다.
+
+## 10.4.1 2026-06-17 Users 회원 목록 Supabase 전환 메모
+
+- 대상 화면: `Users > 회원 목록`(`/users`).
+- 전환 상태: P0 결손 RPC 핫픽스로 Supabase 모드 404 런타임 실패를 해소했다. `get_admin_users`/`admin_set_user_status` RPC 2종은 `supabase/migrations-admin/20260617210000_admin_users_directory.sql`에 작성했고, 대응 down 스크립트를 둔다. 적용 이력은 `admin_schema_migrations`가 담당하며, 2026-06-17 dev DB 적용 완료했다.
+- 데이터소스 경계: `supabase-users-service.ts`는 기존 코드 그대로 RPC 2종을 호출한다. read RPC 인자명은 `search`, `sort`, `page`, `page_size`로 프론트 JSON 키와 정확히 일치해야 PostgREST가 함수를 매칭한다.
+- Supabase read 경로: `get_admin_users(search text, sort text, page integer, page_size integer)`는 platform_admin 전용이며 `profiles` + `auth.users`를 조인하고 `writing_submissions` 제출 수/최근 제출 시각을 집계한다. 반환 컬럼은 `user_id`, `email`, `display_name`, `nickname`, `app_role`, `plan_label`, `status`, `submission_count`, `last_activity`, `last_sign_in_at`, `created_at`, `total_count`다.
+- Supabase write 경로: `admin_set_user_status(target_id uuid, new_status text)`는 platform_admin 전용이며 `new_status`는 `active`/`blocked`만 허용하고 `deleted` 사용자는 차단한다. 신규 테이블은 없고 v13 `profiles` DDL은 변경하지 않으며 `profiles.status`만 토글한다.
+- 감사/사유 경계: 감사 로그는 `target_table='User'`, `target_id=userId`, action `user_status_changed`, `diff.status.from/to`, `payload.app_role`을 사용한다. 화면 사유 입력/저장 계약을 확장할 경우에도 `User + userId` Target Type/ID는 유지한다.
 
 ## 10.5 2026-06-17 Operation 공지사항 Supabase 전환 메모
 
