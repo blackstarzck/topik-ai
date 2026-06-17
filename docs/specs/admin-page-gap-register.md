@@ -59,8 +59,9 @@
 - `docs/specs/admin-data-contract.md`
 - 현재 `Message`, `Operation`, `Commerce` 같은 범용 Target Type이 혼재한다.
 - 어떤 엔티티를 조치했는지 `Template`, `Group`, `Refund`, `Notice`, `Faq`, `Event` 단위까지 내려가지 않아 조치 추적성이 약하다.
+- 2026-06-17 갱신: `Operation > 공지사항`은 `OperationNotice + noticeId`로 세분화했고, 저장/상태 변경/삭제 RPC의 `target_table`도 `OperationNotice`로 고정했다.
 - 우선순위: `미확정 + 오구현`
-- 필요 조치: 엔티티별 Target Type 표준을 확정하고 감사 로그 목록과 각 페이지 조치 로그를 같은 기준으로 맞춰야 한다.
+- 필요 조치: 남은 엔티티별 Target Type 표준을 확정하고 감사 로그 목록과 각 페이지 조치 로그를 같은 기준으로 맞춰야 한다.
 
 ### 3.5 하드코딩된 관리자 Actor 사용
 
@@ -253,12 +254,22 @@
 
 - 대상 파일: `src/features/operation/pages/operation-notices-page.tsx`
 - 현 상태
-  - 비교적 관리자 패턴이 잘 갖춰져 있고, 초기 seed/factory는 `src/features/operation/api/mock-operation.ts`, 조치 후 live state는 `operation-store.ts`, 조회/조치 facade는 `notices-service.ts`가 담당한다.
+  - 2026-06-17 기준 mock-only에서 Supabase-backed hybrid switch로 전환 완료했다.
+  - `operation-notices-data-source.ts`가 Supabase 설정과 `VITE_OPERATION_NOTICES_SOURCE`를 판별하고, Supabase 모드는 `operation_notices` + admin RPC 3종(`admin_save_operation_notice`, `admin_toggle_operation_notice_status`, `admin_delete_operation_notice`)을 사용한다.
+  - Supabase 미구성, `VITE_SUPABASE_DISABLED=true`, `VITE_OPERATION_NOTICES_SOURCE=mock`은 기존 mock source(`mock-operation.ts` + `operation-store.ts`)로 회귀한다.
+  - 마이그레이션 `supabase/migrations-admin/20260617120000_operation_notices.sql`(+ down)은 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했다.
+- 해소된 항목
+  - `Resolved`(2026-06-17): 공지사항 mock-only SoT. 조회/저장/상태 변경/삭제가 Supabase-backed 경로를 가지며 mock은 fallback으로 축소됐다.
+  - `Resolved`(2026-06-17): 공지 조치 감사 로그 미적재. admin RPC가 `admin_audit_logs`에 `target_table='OperationNotice'`, `target_id=noticeId`, action `notice_saved`/`notice_status_changed`/`notice_deleted`를 기록한다.
+  - `Resolved`(2026-06-17): 게시/숨김·삭제 reason 미전달. admin RPC 3종은 reason 필수이며 화면 확인 단계 또는 서비스 경계에서 사유를 전달한다.
 - 미확정/누락/오구현
-  - 공지의 게시 범위, 상단 고정, 노출 surface(B2C 앱/웹/센터)별 정책 세분화가 충분히 고정되지 않았다.
+  - 공지의 게시 범위, 상단 고정, 예약 게시, 노출 surface(B2C 앱/웹/센터)별 정책 세분화가 충분히 고정되지 않았다.
   - 에디터 콘텐츠 sanitize/preview 정책이 문서까지 완전히 닫히지 않았다.
+  - 자연키 `NOTICE-NNN`은 첫 증분에서 기존 mock/seed와 호환되도록 유지했으나, 동시 생성 race를 막는 장기 채번 방식(sequence/table 등)은 별도 확정이 필요하다.
+  - `updated_by`는 호출자 uuid 저장이며 관리자 표시명 매핑 정책이 미확정이다.
 - 분류
-  - `미확정`: 게시 정책 세분화
+  - `해소`: mock-only source 경계, 공지 감사 Target Type 세분화, reason 전달 경계
+  - `미확정`: 게시 정책 세분화, B2C surface, 채번/수정자 표시 정합
 
 #### 4.5.2 FAQ
 
@@ -537,6 +548,7 @@
 
 ## 7. 최근 해소 이력
 
+- 2026-06-17 | `Operation > 공지사항` mock-only·감사 미적재·reason 미전달 해소 | `operation_notices` Supabase 테이블과 admin RPC 3종을 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했고, 화면 service는 Supabase-backed hybrid switch와 mock fallback을 가진다. 공지 조치는 `Target Type=OperationNotice`, `target_id=noticeId`, action `notice_saved`/`notice_status_changed`/`notice_deleted`, reason 필수 계약으로 감사 로그를 남긴다. 잔여 갭은 B2C 실제 surface, 상단 고정/예약 게시, HTML sanitize/preview, `NOTICE-NNN` 동시성, `updated_by` 표시명 정합이다.
 - 2026-06-11 | 관리자 준비중 페이지 mock seed/source 경계 정리 | `Community`, `System`, `Message`, `Operation`, `Commerce`, `Billing`의 page-local seed/store seed 직접 참조를 `src/features/**/api/mock-*` seed/factory와 service safe facade로 분리했습니다. 조치 후 live state는 기존 feature store/service에 남기고, 잔여 갭은 실제 API/DB 계약, 권한/actor 정책, `Notification`/`Users 상세`/`Dashboard`/`Analytics` source 정리로 재분류했습니다.
 - 2026-06-09 | `Assessment > TOPIK 쓰기 문제은행` 검수/관리 단일 페이지 `tab` 토글 분리 | `src/features/assessment/pages/assessment-question-review-page.tsx`, `src/features/assessment/pages/assessment-question-manage-page.tsx`, `src/features/assessment/api/assessment-question-bank-service.ts`, `src/features/assessment/api/supabase-assessment-question-bank-service.ts`, `src/app/router/app-router.tsx`, `docs/specs/page-ia/assessment-question-bank-page-ia.md`, `docs/specs/page-ia/assessment-question-manage-page-ia.md`를 기준으로 `tab` 쿼리로 `검수 큐`/`문항 관리`를 토글하던 단일 페이지를 `Assessment > TOPIK 쓰기 문제 검수`(`/assessment/question-bank`)와 `Assessment > TOPIK 쓰기 문항 관리`(`/assessment/question-bank/manage`) 두 형제 라우트로 분리했습니다. `tab` 쿼리를 제거하고 각 라우트가 자체 URL 상태(공통 `questionNo`/`domain`/`questionType`/`difficulty`/`keyword`, 검수 전용 `reviewStatus`, 관리 전용 `operationStatus`)를 복원하게 정리했고, 두 페이지는 동일한 Supabase `problems`(question_no 51-54) 조회 결과를 공유 hook으로 함께 씁니다. 다만 문항 관리 운영 상태 조치는 v13 `lifecycle_status` 미적용으로 비활성(스캐폴딩) 상태로 신규 갭에 남겼습니다.
 - 2026-03-27 | `System > 메타데이터 관리` 관리 위치 계층 UX 보강 | `src/features/system/pages/system-metadata-page.tsx`, `src/features/system/model/system-metadata-store.ts`, `docs/specs/page-ia/system-metadata-page-ia.md`, `docs/specs/admin-page-tables.md`를 기준으로 목록의 `관리 위치`를 `route > 세부 위치` 형태로 읽히게 바꾸고, 상세 Drawer에는 Breadcrumb 기반 위치 카드와 `설정 그룹 -> 관리 위치 -> 운영 값 -> 사용자 영향` Tree를 추가했습니다. 메타데이터가 계층형 구조를 가진다는 점을 비개발자 운영자도 한눈에 이해할 수 있도록 위치 정보와 구조 정보를 같은 화면에서 검수하게 정리했습니다.

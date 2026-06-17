@@ -168,6 +168,8 @@
 
 ## 9) 운영 > 공지사항
 
+- 현재 상태: 구현됨 (Supabase `operation_notices` + mock fallback data-source switch 기반)
+- 데이터소스: `notices-service.ts` safe facade는 `operation-notices-data-source.ts`에서 `VITE_SUPABASE_DISABLED`, Supabase 설정 여부, `VITE_OPERATION_NOTICES_SOURCE`를 판별해 mock과 Supabase를 분기합니다. Supabase 모드는 `supabase-operation-notices-service.ts`가 DB row와 화면 모델을 매핑합니다.
 - 테이블 컬럼: 공지 ID, 제목, 작성자, 작성일, 상태, 액션
 - 필터: `상태` 컬럼 필터(URL 동기화)
 - 정렬: 공지 ID, 제목, 작성자, 작성일, 상태(URL 동기화)
@@ -175,10 +177,11 @@
 - 레이아웃 메모: 별도 SearchBar 없이 `AdminListCard.toolbar` 오른쪽 정렬 툴바에 `총 공지 건수`와 `공지 등록` 버튼을 같은 줄로 두고, 건수는 버튼 왼쪽에 배치합니다. 목록은 `status`, `sortField`, `sortOrder`, `preview` 쿼리로 현재 검수 상태를 복원합니다.
 - 행 클릭: 저장된 공지 HTML 본문을 전용 미리보기 Modal에서 렌더링하고, `preview` 쿼리로 같은 대상을 다시 복원할 수 있습니다.
 - 미리보기 Modal: 푸터에 `공지 수정` 버튼과 `닫기` 버튼을 두고, `공지 수정`은 `/operation/notices/create/:noticeId` 등록 상세 페이지로 이동합니다.
-- 상태 컬럼: `Switch` 컴포넌트를 사용하며 on은 `게시`, off는 `숨김`입니다. 전환 시 확인 모달과 사유 입력을 거친 뒤 반영합니다.
+- 상태 컬럼: `Switch` 컴포넌트를 사용하며 on은 `게시`, off는 `숨김`입니다. DB 저장 코드는 `published`/`hidden`이고, 서비스 경계에서 한글 라벨로 매핑합니다. 전환 시 확인 모달과 사유 입력을 거친 뒤 admin RPC에 전달합니다.
 - 액션 컬럼: 더보기 드롭다운 없이 붉은색 쓰레기 아이콘 버튼만 두고, 클릭 시 삭제 확인 모달로 연결합니다.
 - 등록 상세 페이지: 상단 툴바의 `목록으로`, `저장` 버튼 아래에서 `공지 제목`을 `Descriptions` 기반 입력 테이블로 편집하고, 본문은 TinyMCE 에디터로 화면 높이를 채워 작성합니다. 신규 공지는 저장 시 `숨김` 상태로 보관되고, 목록에서 `게시` 조치를 해야 사용자 화면에 노출됩니다.
 - 네트워크 상태: 목록과 등록 상세는 `pending/success/empty/error`를 구분하고, 오류 시 `다시 시도`와 마지막 성공 상태 fallback을 제공합니다.
+- 감사 로그: 저장/수정/상태 변경/삭제는 `OperationNotice + noticeId` 계약을 사용하고, 확인 경로는 `/system/audit-logs?targetType=OperationNotice&targetId={noticeId}`입니다.
 
 ## 10) 운영 > FAQ
 

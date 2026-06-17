@@ -86,6 +86,9 @@ function getTargetRoute(targetType: string, targetId: string): string | null {
     }
     return '/operation/notices';
   }
+  if (targetType === 'OperationNotice') {
+    return `/operation/notices?preview=${targetId}`;
+  }
   if (targetType === 'OperationPolicy') {
     return `/operation/policies?selected=${targetId}`;
   }

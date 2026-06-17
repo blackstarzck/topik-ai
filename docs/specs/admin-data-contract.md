@@ -116,8 +116,8 @@
 | `Message > 대상 그룹`            | `MessageGroup`                                                          | `message_groups`, `message_group_rules`                                                                     | `messages-service.ts` + `message-store.ts` + `message-group-segment-schema.ts`                        | 세그먼트 필드/옵션은 `code table candidate`, 그룹 메타는 `schema candidate`                                                                                                                                                       | 생성/수정 Drawer와 재계산/삭제/감사 로그 흐름 일치                                                                                          | `PASS` |
 | `Message > 발송 이력`            | `MessageHistory`                                                        | `message_histories`, `message_history_recipients`                                                           | `messages-service.ts` + `message-store.ts`                                                            | 상태/액션 타입은 `code table candidate`                                                                                                                                                                                           | 행 클릭 `DetailDrawer`, 재시도, 감사 로그 흐름 일치                                                                                         | `PASS` |
 | `Message > 템플릿 등록 상세`     | `MessageTemplate`                                                       | `message_templates`                                                                                         | store 직접 조회 + 저장                                                                                | 본문/제목/타겟 그룹은 `schema candidate`                                                                                                                                                                                          | 편집형 상세 페이지 패턴으로 허용 가능                                                                                                       | `WARN` |
-| `Operation > 공지사항`           | `OperationNotice`                                                       | `operation_notices`                                                                                         | `notices-service.ts` + `operation-store.ts`                                                           | 상태값은 `code table candidate`, HTML 본문은 `schema candidate`                                                                                                                                                                   | 목록/미리보기/게시 조치/감사 로그 흐름 유지                                                                                                 | `PASS` |
-| `Operation > 공지사항 등록 상세` | `OperationNotice`                                                       | `operation_notices`                                                                                         | `fetchNoticeSafe` + `saveNoticeSafe`                                                                  | 제목/본문은 `schema candidate`                                                                                                                                                                                                    | 등록 상세 페이지 패턴으로 적절                                                                                                              | `PASS` |
+| `Operation > 공지사항`           | `OperationNotice`                                                       | `operation_notices`                                                                                         | `notices-service.ts` + `operation-notices-data-source.ts` + `supabase-operation-notices-service.ts` + `operation-store.ts`(mock fallback) | schema candidate에서 실 테이블 계약으로 승격 완료. 상태 저장 enum은 DB ASCII `published`/`hidden`, UI 라벨은 `게시`/`숨김`으로 서비스 경계에서 매핑                                                                               | 목록/미리보기/게시 조치/감사 로그 흐름 유지, Supabase 모드는 admin RPC 경유                                                                  | `PASS` |
+| `Operation > 공지사항 등록 상세` | `OperationNotice`                                                       | `operation_notices`                                                                                         | `fetchNoticeSafe` + `saveNoticeSafe` + data-source switch                                             | `title`/`body_html`은 `operation_notices` 필수 컬럼, 신규 저장 기본 상태는 DB `hidden`(`숨김`)                                                                                                                                      | 등록 상세 페이지 패턴으로 적절                                                                                                              | `PASS` |
 | `Operation > FAQ`                | `OperationFaq` + `OperationFaqCuration` + `OperationFaqMetric`          | `operation_faqs`, `operation_faq_curations`, `operation_faq_metrics`                                        | `faqs-service.ts` + `operation-store.ts` + `faq-schema.ts`                                            | 카테고리/공개상태/노출 위치/설정 방식/노출 상태는 `code table candidate`, 질문/답변/검색 키워드/노출 순서/지표는 `schema candidate`                                                                                               | 행 클릭 `DetailDrawer`, FAQ 조치와 FAQ 노출 조치를 분리한 감사 로그 흐름 유지                                                               | `PASS` |
 | `Operation > 정책 관리`          | `OperationPolicy`, `OperationPolicyHistoryEntry`                        | `operation_policies`, `operation_policy_histories`                                                          | `policies-service.ts` + `policy-store.ts`                                                             | 운영 영역/정책 유형/노출 위치/추적 상태/상태/히스토리 조치 코드와 연관 관리자/사용자 화면 옵션값은 `code table candidate`, 문서명/버전/시행일/연관 관리자 화면 선택값/연관 사용자 화면 선택값/추적 근거 문서/요약/법령/본문 HTML/관리자 메모/히스토리 사유/히스토리 snapshot은 `schema candidate` | 목록 검색/상세 Drawer/히스토리 expandable row/히스토리 `본문 보기`/히스토리 `이 버전 게시`/본문 미리보기/게시-숨김/삭제/감사 로그 흐름 유지 | `PASS` |
 | `Operation > 정책 등록 상세`     | `OperationPolicy`                                                       | `operation_policies`                                                                                        | `fetchPolicySafe` + `savePolicySafe`                                                                  | TinyMCE 본문, 법령/근거, 동의 필요 여부, 연관 관리자/사용자 화면 선택값, 추적 근거 문서는 `schema candidate`                                                                                                                                  | 단계형 등록 상세 페이지 패턴과 목록 복귀 URL 복원 기준, `정책 등록`/`내용 수정`/`새 버전 등록` 3개 editor mode가 구현과 정렬됨              | `PASS` |
@@ -199,6 +199,10 @@
 - `Operation > 공지사항`
   - query: `status`, `sortField`, `sortOrder`, `preview`
   - 핵심 필드: `id`, `title`, `author`, `createdAt`, `status`, `bodyHtml`, `updatedAt`, `updatedBy`
+  - Supabase source: `operation_notices`(소유 topik-ai, tracker `admin_schema_migrations`, migration home `supabase/migrations-admin`)
+  - status 저장 코드: `published`(`게시`) / `hidden`(`숨김`)
+  - write RPC: `admin_save_operation_notice`, `admin_toggle_operation_notice_status`, `admin_delete_operation_notice`
+  - 감사 로그: `target_table='OperationNotice'`, `target_id=noticeId`, action `notice_saved`/`notice_status_changed`/`notice_deleted`
 - `Operation > 정책 관리`
   - query: `status`, `category`, `policyType`, `trackingStatus`, `summaryFilter`, `sortField`, `sortOrder`, `searchField`, `keyword`, `startDate`, `endDate`, `selected`
 - 핵심 필드: `id`, `category`, `policyType`, `title`, `versionLabel`, `effectiveDate`, `exposureSurfaces`, `requiresConsent`, `trackingStatus`, `relatedAdminPages`, `relatedUserPages`, `sourceDocuments`, `summary`, `legalReferences`, `bodyHtml`, `adminMemo`, `status`, `createdAt`, `updatedAt`, `updatedBy`, `policyHistories[].id`, `policyHistories[].action`, `policyHistories[].versionLabel`, `policyHistories[].status`, `policyHistories[].trackingStatus`, `policyHistories[].changedAt`, `policyHistories[].changedBy`, `policyHistories[].note`, `policyHistories[].snapshot`
@@ -428,7 +432,32 @@
 - 추진 경로: 공급 계약(엔드포인트/페이로드/인증/델타 규칙)은 D-11 재작성 요청 문서("문항 공급(인바운드) API 계약 요청")로 추진한다.
 - 인터림: 공급 개시 전까지 P2 백필 466행이 초기 코퍼스다(전 행 `service_status='internal_test'`).
 
-## 13. 알림(Notification) 데이터 계약 (2026-06-12 신설)
+## 13. Operation 공지사항 데이터 계약 (2026-06-17 신설)
+
+- 엔티티/테이블: `OperationNotice` / `operation_notices`.
+- 승격 상태: 기존 `schema candidate`/mock-only 계약에서 Supabase 실 테이블 계약으로 승격 완료했습니다.
+- 소유권: topik-ai, migration home `supabase/migrations-admin`, tracker `admin_schema_migrations`. 마이그레이션은 `supabase/migrations-admin/20260617120000_operation_notices.sql`(+ down)이며 2026-06-17 dev DB 적용 완료했습니다. v13 소유 테이블 DDL은 변경하지 않으며 `admin_audit_logs`에는 RPC가 INSERT만 수행합니다.
+- 테이블 제약/인덱스: `id text primary key`, `status text not null check (status in ('published','hidden')) default 'hidden'`, `created_at desc` 인덱스와 `status='published'` 부분 인덱스를 사용합니다.
+- 컬럼 계약
+
+| DB 컬럼 | 화면/서비스 필드 | 분류 | 비고 |
+| --- | --- | --- | --- |
+| `id` | `id` | 확정 PK | 자연키 `NOTICE-NNN` 유지. 신규 RPC 채번은 현재 첫 증분에서 max+1 방식입니다. |
+| `title` | `title` | 확정 컬럼 | `text not null`, 공지 제목 |
+| `body_html` | `bodyHtml` | 확정 컬럼 | `text not null`, TinyMCE HTML 본문 |
+| `status` | `status` | 확정 enum | DB ASCII `published`/`hidden`, UI 라벨 `게시`/`숨김` |
+| `author` | `author` | 확정 컬럼 | `text not null`, 작성자 |
+| `created_at` | `createdAt` | 확정 컬럼 | `timestamptz`, 기본 `now()` |
+| `updated_at` | `updatedAt` | 확정 컬럼 | `timestamptz` |
+| `updated_by` | `updatedBy` | 확정 컬럼 | 마지막 수정자. 현재 호출자 uuid 저장이며 표시명 매핑은 후속 정합 필요 |
+
+- 읽기 계약: RLS enable+force. admin은 `operation_notices_admin_select` 정책(`private.is_admin`)으로 조회합니다. anon/비admin은 조회할 수 없습니다.
+- 쓰기 계약: 화면 직접 테이블 write는 허용하지 않고, SECURITY DEFINER RPC 3종(`admin_save_operation_notice(p_id,p_notice jsonb,p_reason)`, `admin_toggle_operation_notice_status(p_notice_id,p_next_status,p_reason)`, `admin_delete_operation_notice(p_notice_id,p_reason)`)만 사용합니다. `p_reason`은 필수이며 INSERT/UPDATE/DELETE RLS 정책은 만들지 않습니다.
+- 감사 계약: RPC는 `admin_audit_logs`에 `target_table='OperationNotice'`, `target_id=noticeId`, action `notice_saved`/`notice_status_changed`/`notice_deleted`, `diff`, `payload.reason`을 기록합니다.
+- 데이터소스 전환: `notices-service.ts`의 `fetchNoticesSafe`/`fetchNoticeSafe`/`saveNoticeSafe`/`toggleNoticeStatusSafe`/`deleteNoticeSafe` safe 반환 계약은 유지하고, `operation-notices-data-source.ts`가 Supabase 설정과 `VITE_OPERATION_NOTICES_SOURCE`에 따라 mock/Supabase를 분기합니다. `VITE_SUPABASE_DISABLED=true`는 기존 mock 경로로 회귀합니다.
+- 미확정: 자연키 `NOTICE-NNN`의 max+1 채번 동시성 리스크(sequence/table 채번 전환 여부), `updated_by` uuid의 관리자 표시명 매핑, B2C 실제 노출 surface, 상단 고정/예약 게시 정책, HTML sanitize/preview 서버 정책은 page-sync와 gap register에서 계속 추적합니다.
+
+## 14. 알림(Notification) 데이터 계약 (2026-06-12 신설)
 
 > 단일 SoT: **`docs/specs/notification-contract.md`** — 채널 4종(`in_app`/`email`/`push`/`zalo`), class 4종(`transactional`/`operational`/`learning`/`marketing` + mandatory 규칙), template_key 7종, dispatch/attempt status enum, dedupe_key 2단 형식. 본 절은 색인이다.
 

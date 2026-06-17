@@ -16,6 +16,7 @@
 - FAQ 공개/비공개/삭제
 - FAQ 대표 노출 추가/수정/일시중지/재개/삭제
 - 이벤트 저장/게시 예약/즉시 게시/종료
+- 공지사항 등록/수정/게시/숨김/삭제
 - 운영 정책 저장/게시/숨김(법률 문서 + 운영 정책 레지스트리 포함)
 - 메시지 발송 설정 변경/발송 실행
 - 알림(Notification) 템플릿 등록/수정/상태 변경/삭제, 대상 그룹 등록/수정/삭제, 발송 실행 생성
@@ -46,6 +47,10 @@
 - 성공 피드백(notification)은 감사 로그와 동일한 식별 값을 사용해야 합니다.
 - 강사 조치 로그는 `Target Type = Instructor`, `Target ID = instructorId`를 사용합니다.
 - 이벤트 조치 로그는 현재 `Target Type = Operation`, `Target ID = eventId`를 사용하고, `EVT-` 접두의 대상 ID는 `/operation/events` 원본 화면으로 역추적할 수 있어야 합니다.
+- 공지사항 조치 로그는 `Target Type = OperationNotice`(`admin_audit_logs.target_table='OperationNotice'`), `Target ID = noticeId`를 사용하며, `/operation/notices?preview={noticeId}` 또는 `/operation/notices` 기준으로 원본 화면을 역추적할 수 있어야 합니다.
+  - 액션 사전: `notice_saved`(등록/수정), `notice_status_changed`(게시/숨김 전환), `notice_deleted`(삭제).
+  - 기록 주체: admin RPC 3종 단일 write 경로(`admin_save_operation_notice(p_id,p_notice,p_reason)`/`admin_toggle_operation_notice_status(p_notice_id,p_next_status,p_reason)`/`admin_delete_operation_notice(p_notice_id,p_reason)`). 세 RPC 모두 사유(`p_reason`)가 필수이며, 상태 변경과 삭제는 화면 확인 단계의 사유를 RPC에 전달하고 저장은 현재 등록 상세 UX에 별도 사유 입력이 없으므로 서비스 경계에서 저장 사유를 보강합니다.
+  - payload/diff 계약: `payload.reason`을 공통으로 포함하고, 저장/상태 변경/삭제는 변경 컬럼별 `{from,to}` diff를 기록합니다. 성공 피드백은 `감사 로그 확인` 링크(`/system/audit-logs?targetType=OperationNotice&targetId={noticeId}`)를 노출합니다.
 - 운영 정책 조치 로그는 `Target Type = OperationPolicy`, `Target ID = policyId`를 사용하며, `/operation/policies?selected={policyId}` 기준으로 원본 화면을 역추적할 수 있어야 합니다.
 - `OperationPolicy`는 이용약관/개인정보 처리방침 같은 법률 문서와 커뮤니티 게시글 제재/추천인 보상/포인트/쿠폰/이벤트/FAQ/챗봇/메시지/권한 변경 정책 같은 운영 정책 레지스트리를 함께 포괄합니다.
 - 정책 관리의 `내용 수정`, `새 버전 등록`, `게시`, `숨김`, `삭제`, `이 버전 게시` 액션은 모두 `Target Type = OperationPolicy`, `Target ID = policyId` 계약을 유지합니다.
