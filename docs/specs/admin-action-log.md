@@ -171,3 +171,20 @@
   - `admin_hold_commerce_point_expiration(p_expiration_id,p_reason)` -> action `point_expiration_held`, diff `status.from/to`, payload `reason`, `user_id`.
   - `admin_release_commerce_point_expiration(p_expiration_id,p_reason)` -> action `point_expiration_released`, diff `status.from/to`, payload `reason`, `user_id`.
 - 모든 소멸 보류/해제 RPC는 reason 필수다. DB status는 ASCII `scheduled`/`held`/`completed`/`cancelled`이며 UI 한글 라벨은 `point-types`/`point-schema`에서 매핑한다.
+
+## 2026-06-17 Commerce 쿠폰 감사 로그 계약
+
+| Target Type | Target ID | Action | 발생 경로 | 필수 사유 | 확인 경로 |
+| --- | --- | --- | --- | --- | --- |
+| `CommerceCoupon` | `commerce_coupons.id` | `coupon_saved` | `admin_save_commerce_coupon` | 필수 | `/commerce/coupons` 및 `/system/audit-logs?targetType=CommerceCoupon&targetId={couponId}` |
+| `CommerceCoupon` | `commerce_coupons.id` | `coupon_duplicated` | `admin_duplicate_commerce_coupon` | 필수 | `/commerce/coupons` 및 `/system/audit-logs?targetType=CommerceCoupon&targetId={couponId}` |
+| `CommerceCoupon` | `commerce_coupons.id` | `coupon_paused` | `admin_set_commerce_coupon_issue_state(p_state='paused')` | 필수 | `/commerce/coupons` 및 `/system/audit-logs?targetType=CommerceCoupon&targetId={couponId}` |
+| `CommerceCoupon` | `commerce_coupons.id` | `coupon_resumed` | `admin_set_commerce_coupon_issue_state(p_state='normal')` | 필수 | `/commerce/coupons` 및 `/system/audit-logs?targetType=CommerceCoupon&targetId={couponId}` |
+| `CommerceCoupon` | `commerce_coupons.id` | `coupon_deleted` | `admin_delete_commerce_coupon` | 필수 | `/commerce/coupons` 및 `/system/audit-logs?targetType=CommerceCoupon&targetId={couponId}` |
+| `CommerceCouponTemplate` | `commerce_coupon_subscription_templates.id` | `coupon_template_saved` | `admin_save_commerce_coupon_template` | 필수 | `/commerce/coupons` 및 `/system/audit-logs?targetType=CommerceCouponTemplate&targetId={templateId}` |
+| `CommerceCouponTemplate` | `commerce_coupon_subscription_templates.id` | `coupon_template_paused` | `admin_set_commerce_coupon_template_status(p_status='paused')` | 필수 | `/commerce/coupons` 및 `/system/audit-logs?targetType=CommerceCouponTemplate&targetId={templateId}` |
+| `CommerceCouponTemplate` | `commerce_coupon_subscription_templates.id` | `coupon_template_resumed` | `admin_set_commerce_coupon_template_status(p_status='active')` | 필수 | `/commerce/coupons` 및 `/system/audit-logs?targetType=CommerceCouponTemplate&targetId={templateId}` |
+| `CommerceCouponTemplate` | `commerce_coupon_subscription_templates.id` | `coupon_template_deleted` | `admin_delete_commerce_coupon_template` | 필수 | `/commerce/coupons` 및 `/system/audit-logs?targetType=CommerceCouponTemplate&targetId={templateId}` |
+
+- 쿠폰 발행 상태 pause/resume은 `coupon_kind='autoIssue'`에만 허용된다.
+- Supabase 경로에서는 기존 store `CouponAuditEvent(AL-CPN-)` 기반 감사가 `admin_audit_logs`로 대체된다. mock fallback 경로의 store 감사는 개발용 보존으로만 본다.

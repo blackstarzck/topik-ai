@@ -655,3 +655,12 @@
 - 분류
   - `해소`: mock-only source 경계, 감사 Target Type 세분화, 클라이언트 잔액 계산 제거
   - `미확정`: 음수 잔액 정책, reason UI, 채번 동시성, 소멸 cron, v13 profiles 느슨참조 정합
+
+### 4.6.4 Commerce 쿠폰 Supabase 전환 해소 기록 (2026-06-17)
+
+- `Resolved`: Commerce 쿠폰 mock-only SoT. 쿠폰 본체와 정기 쿠폰 템플릿 조회/저장/복제/상태 변경/삭제가 `commerce_coupons`/`commerce_coupon_subscription_templates` Supabase-backed 경로를 가지며 mock은 fallback으로 축소됐다.
+- `Resolved`: `CouponAuditEvent(AL-CPN-)` store만 감사 SoT였던 항목. Supabase 경로는 `admin_audit_logs`에 Target Type `CommerceCoupon`/`CommerceCouponTemplate`과 action `coupon_saved`/`coupon_duplicated`/`coupon_paused`/`coupon_resumed`/`coupon_deleted`/`coupon_template_saved`/`coupon_template_paused`/`coupon_template_resumed`/`coupon_template_deleted`로 기록한다.
+- `미확정`: 발급/사용 원장(`commerce_coupon_issues`, `commerce_coupon_redemptions`)은 아직 별도 테이블 계약으로 확정되지 않았다.
+- `미확정`: scope-ref, 대상 그룹, 알림 설정은 JSONB/문자열 snapshot 중심이며 정규화 후속 결정이 필요하다.
+- `미확정`: `planTier` free-limit는 현재 클라이언트/config 검증으로 유지되며 영속 정책은 후속이다.
+- `미확정`: `target_user_ids`는 v13 `profiles` 느슨참조이며 FK가 없어 표시명/삭제/탈퇴 정합 정책이 필요하다.

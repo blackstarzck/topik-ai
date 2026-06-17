@@ -384,3 +384,13 @@ src/features/<feature>/
 - 서버측 잔액 계산: 수동 포인트 조정은 `admin_create_manual_point_adjustment(p_user_id,p_amount,p_reason)`만 사용한다. RPC가 사용자별 advisory lock과 최신 ledger `for update`를 통해 최신 `available_balance_after`를 읽고 `balance_after`/`available_balance_after`를 계산한다. 음수 잔액은 RPC 가드와 CHECK 제약으로 차단하며, Supabase 경로에서 클라이언트 잔액 계산은 제거된 계약이다.
 - 감사/사유 경계: 정책 저장/상태 변경, 수동 조정, 소멸 보류/해제는 각각 `CommercePointPolicy`/`CommercePointLedger`/`CommercePointExpiration` Target Type과 action `point_policy_saved`/`point_policy_status_changed`/`point_manual_adjusted`/`point_expiration_held`/`point_expiration_released`를 사용한다. 5개 RPC 모두 reason 필수다.
 - 잔여 정책: 음수 잔액 허용 여부와 차감 우선순위/환불 복구 정책, 정책 저장 사유 UI 필드 부재(note -> reason 전달), `POL-NNNN`/`PL-NNNN` max+1 채번 동시성, 소멸 자동 처리 cron, `user_id`의 v13 profiles 느슨참조(FK 없음)는 page-sync와 gap register에서 계속 추적한다.
+
+## 10.11 2026-06-17 Commerce 쿠폰 Supabase 전환 메모
+
+- 대상 화면: `Commerce > 쿠폰 관리`(`/commerce/coupons`).
+- 전환 상태: mock-only에서 Supabase-backed hybrid switch 구조로 전환 완료. `commerce_coupons`, `commerce_coupon_subscription_templates` 테이블과 admin RPC 7종은 `supabase/migrations-admin/20260617193000_commerce_coupons.sql`에 작성했고, 대응 down 스크립트를 둔다. 적용 이력은 `admin_schema_migrations`가 담당하며, 2026-06-17 dev DB 적용 완료했다.
+- 데이터소스 경계: `coupons-service.ts`의 `*Safe` 14종 계약은 유지하고, `commerce-coupons-data-source.ts`가 `VITE_COMMERCE_COUPONS_SOURCE=mock` 및 `VITE_SUPABASE_DISABLED`를 판별한다. Supabase 미구성, `VITE_SUPABASE_DISABLED=true`, `VITE_COMMERCE_COUPONS_SOURCE=mock`은 기존 mock source/store 경로로 회귀한다.
+- Supabase 경로: DB enum-like 값은 대부분 ASCII camelCase(`customerDownload`, `autoIssue`, `amountDiscount`, `allProducts` 등)를 저장하고 UI 한글 라벨은 coupon-types 계층에서 매핑한다. 배열과 scope-ref는 JSONB로 보관한다.
+- 감사/사유 경계: Supabase 경로의 쿠폰/템플릿 저장·복제·일시중지·재개·삭제는 `CommerceCoupon`/`CommerceCouponTemplate` Target Type과 action `coupon_saved`/`coupon_duplicated`/`coupon_paused`/`coupon_resumed`/`coupon_deleted`/`coupon_template_saved`/`coupon_template_paused`/`coupon_template_resumed`/`coupon_template_deleted`를 사용한다. 7개 write RPC 모두 reason 필수이며 store `CouponAuditEvent(AL-CPN-)` 감사는 mock fallback 경로로 축소된다.
+- 유지 계약: `planTier` free-limit와 `validate*` 계열 검증은 현재 클라이언트/config 기준으로 유지한다.
+- 잔여 정책: 발급/사용 원장(`commerce_coupon_issues`, `commerce_coupon_redemptions`), scope-ref/대상 그룹/알림 정규화, `planTier` 영속화, `target_user_ids` v13 profiles 느슨참조 정합은 후속 전환 대상으로 추적한다.

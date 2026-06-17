@@ -15,6 +15,20 @@ import {
   type CouponSavePayload,
   type CouponTemplateSavePayload
 } from '../model/coupon-store';
+import { commerceCouponsDataSource } from './commerce-coupons-data-source';
+import {
+  deleteCouponTemplateViaRpc,
+  deleteCouponViaRpc,
+  duplicateCouponViaRpc,
+  loadCouponFromSupabase,
+  loadCouponsFromSupabase,
+  loadCouponTemplateFromSupabase,
+  loadCouponTemplatesFromSupabase,
+  saveCouponTemplateViaRpc,
+  saveCouponViaRpc,
+  setCouponIssueStateViaRpc,
+  setCouponTemplateStatusViaRpc
+} from './supabase-commerce-coupons-service';
 
 export type { CouponPlanTier };
 
@@ -27,6 +41,44 @@ type CouponTemplateActionPayload = {
   templateId: string;
   reason?: string;
 };
+
+const isSupabaseSource = commerceCouponsDataSource === 'supabase';
+
+async function enforceCouponFreePlanLimit(isCreate: boolean): Promise<void> {
+  if (!isCreate) {
+    return;
+  }
+
+  const planTier = useCouponStore.getState().planTier;
+  if (planTier !== 'free') {
+    return;
+  }
+
+  const coupons = isSupabaseSource
+    ? await loadCouponsFromSupabase()
+    : useCouponStore.getState().coupons;
+  if (coupons.length >= 1) {
+    throw createFreePlanLimitError();
+  }
+}
+
+async function enforceTemplateFreePlanLimit(isCreate: boolean): Promise<void> {
+  if (!isCreate) {
+    return;
+  }
+
+  const planTier = useCouponStore.getState().planTier;
+  if (planTier !== 'free') {
+    return;
+  }
+
+  const templates = isSupabaseSource
+    ? await loadCouponTemplatesFromSupabase()
+    : useCouponStore.getState().subscriptionTemplates;
+  if (templates.length >= 1) {
+    throw createFreePlanLimitError();
+  }
+}
 
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -539,7 +591,15 @@ async function removeCouponTemplate(
 }
 
 export function fetchCouponsSafe(signal?: AbortSignal) {
-  return toSafeResult(() => withRetry(() => loadCoupons(signal), { maxRetries: 1 }));
+  return toSafeResult(() =>
+    withRetry(
+      () =>
+        isSupabaseSource
+          ? loadCouponsFromSupabase(signal)
+          : loadCoupons(signal),
+      { maxRetries: 1 }
+    )
+  );
 }
 
 export function fetchCouponPlanTierSafe() {
@@ -547,38 +607,83 @@ export function fetchCouponPlanTierSafe() {
 }
 
 export function fetchCouponSafe(couponId: string, signal?: AbortSignal) {
-  return toSafeResult(() => withRetry(() => loadCoupon(couponId, signal), { maxRetries: 1 }));
+  return toSafeResult(() =>
+    withRetry(
+      () =>
+        isSupabaseSource
+          ? loadCouponFromSupabase(couponId, signal)
+          : loadCoupon(couponId, signal),
+      { maxRetries: 1 }
+    )
+  );
 }
 
 export function saveCouponSafe(payload: CouponSavePayload, signal?: AbortSignal) {
-  return toSafeResult(() => persistCoupon(payload, signal));
+  return toSafeResult(() =>
+    isSupabaseSource
+      ? (async () => {
+          validateCouponPayload(payload);
+          await enforceCouponFreePlanLimit(!payload.id);
+          return saveCouponViaRpc(payload);
+        })()
+      : persistCoupon(payload, signal)
+  );
 }
 
 export function duplicateCouponSafe(payload: CouponActionPayload, signal?: AbortSignal) {
-  return toSafeResult(() => duplicateCoupon(payload, signal));
+  return toSafeResult(() =>
+    isSupabaseSource
+      ? (async () => {
+          await enforceCouponFreePlanLimit(true);
+          return duplicateCouponViaRpc(payload);
+        })()
+      : duplicateCoupon(payload, signal)
+  );
 }
 
 export function pauseCouponSafe(payload: CouponActionPayload, signal?: AbortSignal) {
-  return toSafeResult(() => pauseCoupon(payload, signal));
+  return toSafeResult(() =>
+    isSupabaseSource
+      ? setCouponIssueStateViaRpc(payload, 'paused')
+      : pauseCoupon(payload, signal)
+  );
 }
 
 export function resumeCouponSafe(payload: CouponActionPayload, signal?: AbortSignal) {
-  return toSafeResult(() => resumeCoupon(payload, signal));
+  return toSafeResult(() =>
+    isSupabaseSource
+      ? setCouponIssueStateViaRpc(payload, 'normal')
+      : resumeCoupon(payload, signal)
+  );
 }
 
 export function deleteCouponSafe(payload: CouponActionPayload, signal?: AbortSignal) {
-  return toSafeResult(() => removeCoupon(payload, signal));
+  return toSafeResult(() =>
+    isSupabaseSource ? deleteCouponViaRpc(payload) : removeCoupon(payload, signal)
+  );
 }
 
 export function fetchCouponTemplatesSafe(signal?: AbortSignal) {
   return toSafeResult(() =>
-    withRetry(() => loadCouponTemplates(signal), { maxRetries: 1 })
+    withRetry(
+      () =>
+        isSupabaseSource
+          ? loadCouponTemplatesFromSupabase(signal)
+          : loadCouponTemplates(signal),
+      { maxRetries: 1 }
+    )
   );
 }
 
 export function fetchCouponTemplateSafe(templateId: string, signal?: AbortSignal) {
   return toSafeResult(() =>
-    withRetry(() => loadCouponTemplate(templateId, signal), { maxRetries: 1 })
+    withRetry(
+      () =>
+        isSupabaseSource
+          ? loadCouponTemplateFromSupabase(templateId, signal)
+          : loadCouponTemplate(templateId, signal),
+      { maxRetries: 1 }
+    )
   );
 }
 
@@ -586,29 +691,47 @@ export function saveCouponTemplateSafe(
   payload: CouponTemplateSavePayload,
   signal?: AbortSignal
 ) {
-  return toSafeResult(() => persistCouponTemplate(payload, signal));
+  return toSafeResult(() =>
+    isSupabaseSource
+      ? (async () => {
+          validateCouponTemplatePayload(payload);
+          await enforceTemplateFreePlanLimit(!payload.id);
+          return saveCouponTemplateViaRpc(payload);
+        })()
+      : persistCouponTemplate(payload, signal)
+  );
 }
 
 export function pauseCouponTemplateSafe(
   payload: CouponTemplateActionPayload,
   signal?: AbortSignal
 ) {
-  return toSafeResult(() => pauseCouponTemplate(payload, signal));
+  return toSafeResult(() =>
+    isSupabaseSource
+      ? setCouponTemplateStatusViaRpc(payload, 'paused')
+      : pauseCouponTemplate(payload, signal)
+  );
 }
 
 export function resumeCouponTemplateSafe(
   payload: CouponTemplateActionPayload,
   signal?: AbortSignal
 ) {
-  return toSafeResult(() => resumeCouponTemplate(payload, signal));
+  return toSafeResult(() =>
+    isSupabaseSource
+      ? setCouponTemplateStatusViaRpc(payload, 'active')
+      : resumeCouponTemplate(payload, signal)
+  );
 }
 
 export function deleteCouponTemplateSafe(
   payload: CouponTemplateActionPayload,
   signal?: AbortSignal
 ) {
-  return toSafeResult(() => removeCouponTemplate(payload, signal));
+  return toSafeResult(() =>
+    isSupabaseSource
+      ? deleteCouponTemplateViaRpc(payload)
+      : removeCouponTemplate(payload, signal)
+  );
 }
-
-
 

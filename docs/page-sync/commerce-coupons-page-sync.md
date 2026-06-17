@@ -144,3 +144,11 @@ last_reviewed_at: "2026-06-01"
 | 항목 | 미확정 내용 | 필요한 결정 주체 | 관리자 페이지 영향 | 사용자 화면 영향 | 추적 문서 |
 | --- | --- | --- | --- | --- | --- |
 | 쿠폰 관리 최종 계약 | 쿠폰 발급 대상, 사용 조건 검증, 결제 적용 우선순위는 사용자 결제 화면과 맞춰야 합니다. | 기획/백엔드/프론트 | 필터/액션/감사 로그 계약 변동 가능 | 쿠폰함, 결제 할인 적용, 프로모션 배너에 운영상 추정으로 연결됩니다. | docs/specs/page-ia/commerce-coupons-page-ia.md |
+
+## 2026-06-17 Supabase 전환 동기화
+
+- 데이터소스: `Commerce > 쿠폰 관리`(`/commerce/coupons`)는 `commerce_coupons`와 `commerce_coupon_subscription_templates` Supabase-backed hybrid source로 전환됐다. `commerce-coupons-data-source.ts`는 `VITE_COMMERCE_COUPONS_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`일 때 mock으로 회귀한다.
+- CRUD/조치: 쿠폰 본체 저장/복제/발행 일시중지/재개/삭제는 `admin_save_commerce_coupon`, `admin_duplicate_commerce_coupon`, `admin_set_commerce_coupon_issue_state`, `admin_delete_commerce_coupon`을 사용한다. 정기 템플릿 저장/상태 변경/삭제는 `admin_save_commerce_coupon_template`, `admin_set_commerce_coupon_template_status`, `admin_delete_commerce_coupon_template`을 사용한다.
+- 감사: 쿠폰 본체 Target Type은 `CommerceCoupon`, 템플릿 Target Type은 `CommerceCouponTemplate`이다. action은 `coupon_saved`, `coupon_duplicated`, `coupon_paused`, `coupon_resumed`, `coupon_deleted`, `coupon_template_saved`, `coupon_template_paused`, `coupon_template_resumed`, `coupon_template_deleted`이며 모든 write RPC는 reason 필수다. Supabase 경로에서는 store `CouponAuditEvent(AL-CPN-)` 대신 `admin_audit_logs`를 감사 SoT로 사용한다.
+- B2C 동기화: 쿠폰함/결제 할인 적용 노출은 기존과 같이 운영상 추정 또는 노출 예정으로 둔다. 현 시점의 확정 admin SoT는 쿠폰 본체/정기 템플릿 테이블 2종이며, 사용자 앱의 실제 보유/사용 상태는 발급/사용 원장 확정 후 분리한다.
+- 미확정: 발급/사용 원장(`commerce_coupon_issues`, `commerce_coupon_redemptions`), scope-ref/대상 그룹/알림 정규화, `planTier` 영속화, `target_user_ids` v13 연동 정책.

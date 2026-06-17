@@ -728,3 +728,23 @@
 - RPC/잔액 계약: 직접 table write 없이 SECURITY DEFINER admin RPC 5종만 사용한다. `admin_create_manual_point_adjustment(p_user_id,p_amount,p_reason)`는 사용자별 `pg_advisory_xact_lock`과 최신 ledger `for update`를 사용해 최신 `available_balance_after + p_amount`를 `balance_after`/`available_balance_after`로 서버에서 계산한다. 음수 잔액은 RPC 가드와 CHECK 제약으로 차단하며, Supabase 경로에서 클라이언트 잔액 계산은 하지 않는다.
 - helper: `next_commerce_point_policy_id()`, `next_commerce_point_ledger_id()`는 public execute를 revoke한다. 현재 `POL-NNNN`/`PL-NNNN` max+1 채번은 장기 동시성 정책 미확정이다.
 - 미확정: 음수 잔액 허용/차감 우선순위/환불 복구 정책, 정책 저장 사유 UI 필드 부재(note -> reason 전달, 빈 값 RPC 오류), `EXP-NNNN` 생성 helper/자동 소멸 cron, `user_id` FK 없는 느슨참조 표시명 정합.
+
+## 2026-06-17 Commerce 쿠폰 데이터 계약
+
+### `commerce_coupons`
+
+- 전환 상태: mock-only 후보에서 Supabase 테이블 계약으로 승격 완료. 마이그레이션은 `supabase/migrations-admin/20260617193000_commerce_coupons.sql`(+ down)이며 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
+- 53컬럼: `id`, `coupon_name`, `coupon_kind`, `coupon_status`, `issue_state`, `issue_target_type`, `target_group_ids`, `target_group_names`, `target_user_ids`, `auto_issue_trigger_type`, `code_generation_mode`, `coupon_code`, `code_count`, `audience`, `benefit_type`, `benefit_value`, `min_order_amount`, `max_discount_amount`, `applicable_scope`, `applicable_scope_reference_ids`, `excluded_product_ids`, `is_stackable`, `is_secret_coupon`, `issue_limit_mode`, `issue_limit`, `download_limit_mode`, `download_limit`, `usage_limit_mode`, `usage_limit`, `validity_mode`, `valid_from`, `valid_until`, `expire_after_days`, `linked_message_template_id`, `linked_message_template_name`, `linked_crm_campaign_id`, `linked_crm_campaign_name`, `linked_event_id`, `linked_event_name`, `download_url`, `issue_count`, `download_count`, `use_count`, `last_issued_at`, `last_downloaded_at`, `last_used_at`, `policy_notes`, `admin_memo`, `issue_alert`, `expire_alert`, `created_at`, `updated_at`, `updated_by`.
+- enum/check: `coupon_kind`=`customerDownload`/`autoIssue`/`couponCode`/`manualIssue`, `coupon_status`=`waiting`/`active`/`ended`, `issue_state`=`normal`/`paused`, `issue_target_type`=`allMembers`/`specificGroup`/`specificMembers`, `auto_issue_trigger_type`=`firstSignup`/`firstOrderComplete`/`shoppingGradeChange`/`birthday`, `code_generation_mode`=`single`/`bulk`, `audience`=`memberOnly`/`memberAndGuest`, `benefit_type`=`amountDiscount`/`rateDiscount`/`freeShipping`/`fixedPrice`, `applicable_scope`=`allProducts`/`specificCategory`/`specificProduct`, limit mode=`unlimited`/`limited`, `validity_mode`=`fixedDate`/`afterIssued`/`unlimited`.
+- JSONB 배열: `target_group_ids`, `target_group_names`, `target_user_ids`, `applicable_scope_reference_ids`, `excluded_product_ids`, `policy_notes`. JSONB 객체: `issue_alert`, `expire_alert`. `target_user_ids`는 v13 `profiles` 느슨참조이며 FK 없음.
+
+### `commerce_coupon_subscription_templates`
+
+- 30컬럼: `id`, `template_name`, `issue_target_type`, `target_grade_ids`, `target_grade_names`, `benefit_type`, `benefit_value`, `min_order_amount`, `max_discount_amount`, `applicable_scope`, `applicable_scope_reference_ids`, `applicable_scope_reference_names`, `excluded_product_mode`, `excluded_product_ids`, `excluded_product_names`, `is_stackable`, `issue_schedule`, `usage_end_schedule`, `status`, `issued_coupon_count`, `last_issued_at`, `next_issued_at`, `issue_alert_enabled`, `expire_alert_enabled`, `alert_channel`, `admin_memo`, `policy_notes`, `created_at`, `updated_at`, `updated_by`.
+- enum/check: `issue_target_type='shoppingGrade'`, `excluded_product_mode`=`none`/`specific`, `status`=`active`/`paused`, `alert_channel='webAppPush'`. `issue_schedule`과 `usage_end_schedule`은 JSONB 객체이며 적용/제외 범위와 정책 메모는 JSONB 배열로 저장한다.
+
+### Admin RPC / 감사 계약
+
+- 쿠폰 본체 Target Type은 `CommerceCoupon`: `admin_save_commerce_coupon` -> `coupon_saved`, `admin_duplicate_commerce_coupon` -> `coupon_duplicated`, `admin_set_commerce_coupon_issue_state` -> `coupon_paused`/`coupon_resumed`, `admin_delete_commerce_coupon` -> `coupon_deleted`.
+- 정기 템플릿 Target Type은 `CommerceCouponTemplate`: `admin_save_commerce_coupon_template` -> `coupon_template_saved`, `admin_set_commerce_coupon_template_status` -> `coupon_template_paused`/`coupon_template_resumed`, `admin_delete_commerce_coupon_template` -> `coupon_template_deleted`.
+- 모든 write RPC는 reason 필수이며 `admin_audit_logs`에 기록한다. 후속 미확정은 발급/사용 원장(`commerce_coupon_issues`, `commerce_coupon_redemptions`), scope-ref/대상 그룹/알림 정규화, `planTier` 영속화, v13 `target_user_ids` 정합 정책이다.

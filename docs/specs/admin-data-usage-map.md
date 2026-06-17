@@ -102,3 +102,11 @@
 - B2C 노출 상태는 `노출 예정`으로 유지한다. 포인트 지갑/리워드 내역/결제 포인트 사용/소멸 예정 안내가 예상 surface이며, 현재 문서 기준으로 확정 구현 surface는 아니다.
 - `commerce_point_ledgers.balance_after`/`available_balance_after`는 서버 RPC 계산값이므로 B2C 포인트 지갑의 잔액 후보 SoT로 취급한다. 수동 조정 사유와 승인 메모는 운영 내부용으로 분리하고 사용자 노출 문구로 직접 사용하지 않는다.
 - 테이블별 B2C 관계: `commerce_point_policies`는 리워드/차감/소멸 규칙 후보, `commerce_point_ledgers`는 포인트 지갑 및 리워드 내역 후보, `commerce_point_expirations`는 소멸 예정 안내 후보로 추적한다.
+
+## 2026-06-17 Commerce 쿠폰 Supabase 데이터 사용 보강
+
+- `Commerce > 쿠폰 관리` source는 `commerce_coupons`와 `commerce_coupon_subscription_templates`로 확정됐다. 마이그레이션은 `supabase/migrations-admin/20260617193000_commerce_coupons.sql`(+ down)이며 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
+- B2C 노출 상태는 기존 쿠폰함/할인 적용 표기의 `운영상 추정` 또는 `노출 예정` 분류를 유지한다. 쿠폰함·결제 할인 적용 화면은 `commerce_coupons`의 혜택/조건/유효기간/발행·다운로드·사용 제한/적용 범위를 소비할 가능성이 높지만, 사용자 앱 확정 구현 surface는 이 문서에서 확정하지 않는다.
+- 정기 쿠폰 발급 템플릿은 `commerce_coupon_subscription_templates`의 대상 등급, 혜택, 적용/제외 상품, `issue_schedule`, `usage_end_schedule`을 기준으로 발급 예약의 운영 원천으로 추적한다.
+- `admin_memo`, `updated_by`, 내부 `policy_notes`, admin 사유 payload는 내부 운영 전용으로 보고 사용자 노출 문구에 직접 사용하지 않는다.
+- 후속 추적: 발급/사용 원장(`commerce_coupon_issues`, `commerce_coupon_redemptions`)이 생기면 B2C 쿠폰함의 보유/사용/만료 상태 SoT를 이 map에 별도 테이블로 분리해야 한다.

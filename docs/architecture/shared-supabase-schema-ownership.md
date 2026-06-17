@@ -95,3 +95,15 @@
 - 적용: `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
 - 경계: `commerce_point_policies`, `commerce_point_ledgers`, `commerce_point_expirations`는 topik-ai 소유 admin 운영 객체이며, v13 소유 테이블 DDL은 변경하지 않는다. 회원 연결은 `user_id` text snapshot/느슨참조로 유지하고 FK를 두지 않는다.
 - 쓰기 경로: SECURITY DEFINER admin RPC 5종(`admin_save_commerce_point_policy`, `admin_update_commerce_point_policy_status`, `admin_create_manual_point_adjustment`, `admin_hold_commerce_point_expiration`, `admin_release_commerce_point_expiration`)만 사용하며 모두 reason 필수와 `admin_audit_logs` 기록을 강제한다.
+
+## 2026-06-17 Commerce 쿠폰 Supabase 소유권 보강
+
+| Object | Owner | Write path | Read path | Boundary |
+| --- | --- | --- | --- | --- |
+| `commerce_coupons` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | admin RPC | admin | RLS enable+force, admin select only(`private.is_admin`). 직접 table write 경로 없음. `target_user_ids`는 v13 `profiles.id` 느슨참조이며 FK 없음 |
+| `commerce_coupon_subscription_templates` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | admin RPC | admin | RLS enable+force, admin select only(`private.is_admin`). 정기 발급 스케줄은 `issue_schedule`/`usage_end_schedule` JSONB로 보관 |
+
+- 마이그레이션: `supabase/migrations-admin/20260617193000_commerce_coupons.sql` 및 down migration.
+- 적용: `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
+- 연결 경로: SECURITY DEFINER admin RPC 7종(`admin_save_commerce_coupon`, `admin_duplicate_commerce_coupon`, `admin_set_commerce_coupon_issue_state`, `admin_delete_commerce_coupon`, `admin_save_commerce_coupon_template`, `admin_set_commerce_coupon_template_status`, `admin_delete_commerce_coupon_template`)만 사용하며 모두 reason 필수와 `admin_audit_logs` 기록을 강제한다.
+- Target Type은 쿠폰 본체 `CommerceCoupon`, 정기 템플릿 `CommerceCouponTemplate`로 분리한다. 기존 v13 소유 테이블 DDL은 변경하지 않으며, 발급/사용 원장과 scope-ref/대상 그룹/알림 정규화는 후속 소유권 결정 대상으로 남긴다.
