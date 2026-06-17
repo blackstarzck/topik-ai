@@ -32,6 +32,7 @@ import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-m
 
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
+import { formatNationality } from '../../../shared/model/country-name';
 
 const { Text } = Typography;
 
@@ -580,6 +581,11 @@ export default function UserDetailPage(): JSX.Element {
                   },
                   { key: 'email', label: '이메일', children: user.email },
               { key: 'nickname', label: '닉네임', children: renderProfileValue(user.nickname) },
+              {
+                key: 'nationality',
+                label: '국적',
+                children: renderProfileValue(formatNationality(user.nationalityCode))
+              },
               { key: 'joinedAt', label: '가입일', children: user.joinedAt },
               { key: 'lastLoginAt', label: '최근 로그인', children: user.lastLoginAt },
               {
@@ -592,6 +598,16 @@ export default function UserDetailPage(): JSX.Element {
                 key: 'subscriptionStatus',
                 label: '구독 상태',
                 children: user.subscriptionStatus
+              },
+              {
+                key: 'termsConsentStatus',
+                label: '약관 동의',
+                children: <StatusBadge status={user.termsConsentStatus} />
+              },
+              {
+                key: 'termsConsentAt',
+                label: '약관 동의일',
+                children: renderProfileValue(user.termsConsentAt)
               }
             ]}
           />

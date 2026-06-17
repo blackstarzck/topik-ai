@@ -1,6 +1,8 @@
 ﻿export type UserStatus = '정상' | '정지' | '탈퇴';
 export type UserTier = '일반' | '프리미엄';
 export type SubscriptionStatus = '구독' | '미구독';
+// 회원가입(일반·SNS) 필수 약관 동의 상태. 현재 필수 문서 = 이용약관(terms) + 개인정보처리방침(privacy).
+export type TermsConsentStatus = '동의 완료' | '일부 동의' | '미동의';
 
 export type UserSummary = {
   id: string;
@@ -12,6 +14,12 @@ export type UserSummary = {
   status: UserStatus;
   tier: UserTier;
   subscriptionStatus: SubscriptionStatus;
+  // v13 가입 시 수집되는 국적 ISO 3166-1 alpha-2 코드 원본(미입력 시 빈 문자열).
+  // 화면 표시(국가명 한글)는 shared/model/country-name 의 formatNationality 로 변환.
+  nationalityCode: string;
+  // 약관 동의(인증약관) 상태와 최종 동의일(YYYY-MM-DD, 미동의 시 빈 문자열).
+  termsConsentStatus: TermsConsentStatus;
+  termsConsentAt: string;
 };
 
 export type UsersSort = 'latest' | 'oldest';

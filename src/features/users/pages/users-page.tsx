@@ -19,6 +19,7 @@ import {
   useUsersQueryStore
 } from '../model/users-query-store';
 import type {
+  TermsConsentStatus,
   UserStatus,
   UserSummary,
   UsersQuery,
@@ -50,6 +51,7 @@ import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
 import { UserNavigationLink } from '../../../shared/ui/user/user-reference';
 import type { AsyncState } from '../../../shared/model/async-state';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
+import { formatNationality } from '../../../shared/model/country-name';
 
 const { Text } = Typography;
 
@@ -58,6 +60,7 @@ const emptyProfileValue = '-';
 const userTierFilterValues = ['일반', '프리미엄'] as const;
 const userSubscriptionStatusFilterValues = ['구독', '미구독'] as const;
 const userStatusFilterValues = ['정상', '정지', '탈퇴'] as const;
+const userConsentStatusFilterValues = ['동의 완료', '일부 동의', '미동의'] as const;
 
 const searchFieldOptions: { label: string; value: UsersSearchField }[] = [
   { label: '전체', value: 'all' },
@@ -374,6 +377,14 @@ export default function UsersPage(): JSX.Element {
         sorter: createTextSorter((record) => record.nickname)
       },
       {
+        title: '국적',
+        dataIndex: 'nationalityCode',
+        width: 150,
+        render: (_: string, record) =>
+          renderProfileValue(formatNationality(record.nationalityCode)),
+        sorter: createTextSorter((record) => formatNationality(record.nationalityCode))
+      },
+      {
         title: '가입일',
         dataIndex: 'joinedAt',
         width: 120,
@@ -409,6 +420,17 @@ export default function UsersPage(): JSX.Element {
         ...createDefinedColumnFilterProps(userStatusFilterValues, (record) => record.status),
         sorter: createTextSorter((record) => record.status),
         render: (status: UserStatus) => <StatusBadge status={status} />
+      },
+      {
+        title: createStatusColumnTitle('약관 동의', ['동의 완료', '일부 동의', '미동의']),
+        dataIndex: 'termsConsentStatus',
+        width: 130,
+        ...createDefinedColumnFilterProps(
+          userConsentStatusFilterValues,
+          (record) => record.termsConsentStatus
+        ),
+        sorter: createTextSorter((record) => record.termsConsentStatus),
+        render: (consentStatus: TermsConsentStatus) => <StatusBadge status={consentStatus} />
       },
       {
         title: '액션',
@@ -562,7 +584,7 @@ export default function UsersPage(): JSX.Element {
           dataSource={filteredUsers}
           onRow={handleRowClick}
           loading={usersState.status === 'pending'}
-          scroll={{ x: 1620, y: 560 }}
+          scroll={{ x: 1910, y: 560 }}
           pagination={{
             current: query.page,
             pageSize: query.pageSize,

@@ -1,5 +1,11 @@
 import { supabaseClient } from '../../../shared/api/supabase-client';
-import type { SubscriptionStatus, UserStatus, UserSummary, UserTier } from '../model/types';
+import type {
+  SubscriptionStatus,
+  TermsConsentStatus,
+  UserStatus,
+  UserSummary,
+  UserTier
+} from '../model/types';
 
 /**
  * Phase B (members) — read/write the v13 members directory via admin RPCs.
@@ -18,10 +24,14 @@ type AdminUserRow = {
   app_role: string;
   plan_label: string | null;
   status: string;
+  nationality_country_code: string | null;
   submission_count: number;
   last_activity: string | null;
   last_sign_in_at: string | null;
   created_at: string;
+  // 약관 동의(인증약관) 집계: legal_documents(requires_consent) ⋈ user_consents.
+  consent_status: string;
+  consent_accepted_at: string | null;
   total_count: number;
 };
 
@@ -39,6 +49,17 @@ const STATUS_MAP: Record<string, UserStatus> = {
 
 function mapStatus(v13Status: string): UserStatus {
   return STATUS_MAP[v13Status] ?? '정상';
+}
+
+// v13 consent_status (RPC: consented/partial/none) -> topik-ai TermsConsentStatus.
+const CONSENT_STATUS_MAP: Record<string, TermsConsentStatus> = {
+  consented: '동의 완료',
+  partial: '일부 동의',
+  none: '미동의'
+};
+
+function mapConsentStatus(consentStatus: string): TermsConsentStatus {
+  return CONSENT_STATUS_MAP[consentStatus] ?? '미동의';
 }
 
 // v13 plan_label (free text) -> topik-ai UserTier. PROPOSED (F5): free/basic -> 일반, else 프리미엄.
@@ -77,7 +98,12 @@ function mapRowToUserSummary(row: AdminUserRow): UserSummary {
     tier,
     // GAP: no subscription join in the RPC. PROPOSED heuristic from plan tier — NOT real
     // subscription state (would need a subscriptions join / additive RPC).
-    subscriptionStatus
+    subscriptionStatus,
+    // 국적 코드 원본 보존(NULL/빈 값은 빈 문자열). 국가명 변환은 UI 렌더 시 수행.
+    nationalityCode: nonEmpty(row.nationality_country_code) ?? '',
+    // 약관 동의(인증약관) 상태와 최종 동의일. 동의 기록이 없으면 날짜는 빈 문자열.
+    termsConsentStatus: mapConsentStatus(row.consent_status),
+    termsConsentAt: toDateString(row.consent_accepted_at)
   };
 }
 
