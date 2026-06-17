@@ -244,6 +244,7 @@
 - 테이블 컬럼: 정책 ID, 운영 영역, 정책 유형, 문서명, 추적 상태, 버전, 시행일, 상태, 최근 수정, 수정자
 - 액션: 새 정책 등록, 본문 미리보기, 내용 수정, 새 버전 등록, 게시/숨김, 정책 삭제, 감사 로그 확인
 - 상세 Drawer: 기본 정보, 정책 요약, 운영 범위 및 추적 근거, 법령 및 근거, 관리자 메모, 정책 히스토리
+- source: `operation_policies`/`operation_policy_histories` Supabase-backed. `VITE_OPERATION_POLICIES_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`이면 mock fallback
 - 히스토리 메모: 버전, 상태, 변경 유형, 변경 시각, 수정자, 액션 컬럼을 사용하고, 행 확장 영역은 단일 Descriptions로 정리합니다. 히스토리 행 액션은 본문 보기, 이 버전 게시만 분리합니다.
 - 등록 상세 메모: 연관 관리자 화면, 연관 사용자 화면, 추적 근거 문서를 분리해 관리하고, 본문 작성은 TinyMCE 기반 편집을 유지합니다.
 

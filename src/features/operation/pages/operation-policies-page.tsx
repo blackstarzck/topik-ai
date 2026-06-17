@@ -749,7 +749,8 @@ export default function OperationPoliciesPage(): JSX.Element {
 
       const result = await togglePolicyStatusSafe({
         policyId: actionState.policy.id,
-        nextStatus: actionState.nextStatus
+        nextStatus: actionState.nextStatus,
+        reason
       });
 
       if (!result.ok) {

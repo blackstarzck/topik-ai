@@ -56,9 +56,10 @@
   - payload/diff 계약: `payload.reason`을 공통으로 포함하고, 저장/상태 변경/삭제는 변경 컬럼별 `{from,to}` diff를 기록합니다. 성공 피드백은 `감사 로그 확인` 링크(`/system/audit-logs?targetType=OperationNotice&targetId={noticeId}`)를 노출합니다.
 - 운영 정책 조치 로그는 `Target Type = OperationPolicy`, `Target ID = policyId`를 사용하며, `/operation/policies?selected={policyId}` 기준으로 원본 화면을 역추적할 수 있어야 합니다.
 - `OperationPolicy`는 이용약관/개인정보 처리방침 같은 법률 문서와 커뮤니티 게시글 제재/추천인 보상/포인트/쿠폰/이벤트/FAQ/챗봇/메시지/권한 변경 정책 같은 운영 정책 레지스트리를 함께 포괄합니다.
-- 정책 관리의 `내용 수정`, `새 버전 등록`, `게시`, `숨김`, `삭제`, `이 버전 게시` 액션은 모두 `Target Type = OperationPolicy`, `Target ID = policyId` 계약을 유지합니다.
-- `게시`, `숨김`, `삭제`, `이 버전 게시`는 확인 + 사유 입력을 필수로 남깁니다.
-- `이 버전 게시`는 성공 피드백과 감사 로그에서 `fromVersionId/toVersionId` 또는 이에 준하는 게시 전환 근거를 함께 남길 수 있어야 합니다.
+- 액션 사전: `policy_saved`(등록/수정/새 버전 저장), `policy_status_changed`(게시/숨김 전환), `policy_deleted`(삭제), `policy_version_published`(히스토리 버전 게시).
+- 기록 주체: admin RPC 4종 단일 write 경로(`admin_save_operation_policy(p_id,p_policy,p_reason)`/`admin_toggle_operation_policy_status(p_policy_id,p_next_status,p_reason)`/`admin_delete_operation_policy(p_policy_id,p_reason)`/`admin_publish_operation_policy_version(p_policy_id,p_history_id,p_reason)`). 네 RPC 모두 사유(`p_reason`)가 필수입니다.
+- 이력 계약: 네 RPC 모두 `operation_policy_histories`에 시점 `OperationPolicy` snapshot을 append합니다. 삭제는 cascade 전에 삭제 대상 snapshot을 감사·이력화해야 합니다.
+- payload/diff 계약: `payload.reason`을 공통으로 포함하고, `policy_version_published`는 from/to version payload와 `current_version_id` 갱신 결과를 기록합니다. 성공 피드백은 `감사 로그 확인` 링크(`/system/audit-logs?targetType=OperationPolicy&targetId={policyId}`)를 노출합니다.
 - FAQ 원문 조치 로그는 `Target Type = OperationFaq`(`admin_audit_logs.target_table='OperationFaq'`), `Target ID = faqId`를 사용하며, `/operation/faq?selected={faqId}` 기준으로 원본 화면을 역추적할 수 있어야 합니다.
   - 액션 사전: `faq_saved`(등록/수정), `faq_status_changed`(공개/비공개 전환), `faq_deleted`(삭제).
   - 기록 주체: admin RPC 3종 단일 write 경로(`admin_save_operation_faq(p_id,p_faq,p_reason)`/`admin_toggle_operation_faq_status(p_faq_id,p_next_status,p_reason)`/`admin_delete_operation_faq(p_faq_id,p_reason)`). 세 RPC 모두 사유(`p_reason`)가 필수입니다.

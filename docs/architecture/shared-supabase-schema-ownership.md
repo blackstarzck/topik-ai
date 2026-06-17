@@ -34,6 +34,8 @@
 | `operation_faq_curations` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | admin RPC | admin | admin select only(`private.is_admin`). INSERT/UPDATE/DELETE 정책 없음, 쓰기는 SECURITY DEFINER RPC 경유 |
 | `operation_faq_metrics` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | seed/read | admin | admin select only(`private.is_admin`). admin write RPC 없음, seed/read 전용 |
 | `operation_events` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | admin RPC | admin | admin select only(`private.is_admin`). INSERT/UPDATE/DELETE 정책 없음, 쓰기는 SECURITY DEFINER RPC 경유 |
+| `operation_policies` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | admin RPC | admin | admin select only(`private.is_admin`). RLS enable+force, 쓰기는 SECURITY DEFINER RPC 경유 |
+| `operation_policy_histories` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | admin RPC | admin | admin select only(`private.is_admin`). RLS enable+force, 정책 버전/이력 snapshot은 정책 RPC에서 append |
 | `admin_audit_logs` | v13 (2026-06-09 기존 결정) | admin RPC | admin | 기존 결정 유지 |
 | `topik_writing_*` | topik-ai (`topik_writing_schema_migrations`) | 기존 결정(D-1) | 기존 결정 | `metadata-tag-schema-transition-decision-record.md` §2 |
 
@@ -57,6 +59,11 @@
 - 근거: `supabase/migrations-admin/20260617152000_operation_events.sql` + `supabase/migrations-admin/down/20260617152000_operation_events.sql`.
 - 적용: `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
 - 경계: `operation_events`는 topik-ai 소유 admin 운영 객체다. admin은 select만 RLS 정책으로 읽고, 이벤트 저장/예약/게시/종료 쓰기는 admin RPC 4종(`admin_save_operation_event`, `admin_schedule_operation_event`, `admin_publish_operation_event`, `admin_end_operation_event`) 단일 경로로 수행한다.
+
+2026-06-17 Operation 정책 관리 전환 기록:
+- 근거: `supabase/migrations-admin/20260617170000_operation_policies.sql` + `supabase/migrations-admin/down/20260617170000_operation_policies.sql`.
+- 적용: `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
+- 경계: `operation_policies`, `operation_policy_histories`는 topik-ai 소유 admin 운영 객체다. admin은 select만 RLS 정책으로 읽고, 정책 저장/상태 변경/삭제/히스토리 버전 게시는 admin RPC 4종(`admin_save_operation_policy`, `admin_toggle_operation_policy_status`, `admin_delete_operation_policy`, `admin_publish_operation_policy_version`) 단일 경로로 수행한다.
 
 ## 4. 제정 근거
 

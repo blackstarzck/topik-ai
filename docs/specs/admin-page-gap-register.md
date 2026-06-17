@@ -333,14 +333,23 @@
 - 현 상태
   - 목록/상세 Drawer/본문 미리보기/등록 상세/TinyMCE 본문 작성까지 구현되었다.
   - 법률 문서뿐 아니라 커뮤니티 게시글 제재, 추천인 보상, 포인트/쿠폰/이벤트/FAQ/챗봇/메시지/권한 변경 정책까지 `운영 영역`, `정책 추적 상태`, `연관 관리자 화면`, `추적 근거 문서` 기준으로 같은 카탈로그에서 추적한다.
-  - 초기 정책/히스토리 seed/factory는 `src/features/operation/api/mock-operation-policies.ts`, 조치 후 live state는 `policy-store.ts`, 조회/조치 facade는 `policies-service.ts`가 담당한다.
+  - 2026-06-17 기준 mock-only에서 Supabase-backed hybrid switch로 전환 완료했다.
+  - `operation_policies`/`operation_policy_histories`와 admin RPC 4종은 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했다.
+  - Supabase 미구성, `VITE_SUPABASE_DISABLED=true`, `VITE_OPERATION_POLICIES_SOURCE=mock`은 기존 mock source(`mock-operation-policies.ts` + `policy-store.ts`)로 회귀한다.
+  - `policies-service.ts` safe facade 7종은 유지하며, 저장/상태 변경/삭제/히스토리 버전 게시 RPC는 reason 필수로 `admin_audit_logs`와 `operation_policy_histories` snapshot을 함께 기록한다.
   - `docs/specs/admin-policy-source-map.md`를 기준으로 코드/문서 근거를 정책 관리 seed/UI와 함께 유지한다.
 - 미확정/누락/오구현
-  - 정책 버전별 diff 검수, 재동의 대상 추적, 문서 승인 체계는 아직 구현되지 않았다.
+  - `Resolved`(2026-06-17): 정책 관리 mock-only SoT. 조회/저장/상태 변경/삭제/히스토리 버전 게시가 Supabase-backed 경로를 가지며 mock은 fallback으로 축소됐다.
+  - `Resolved`(2026-06-17): 정책 조치 감사 로그 미적재. admin RPC가 `admin_audit_logs`에 `target_table='OperationPolicy'`, `target_id=policyId`, action `policy_saved`/`policy_status_changed`/`policy_deleted`/`policy_version_published`를 기록하고 histories snapshot을 append한다.
+  - `Resolved`(2026-06-17): actor 하드코딩. `CURRENT_ACTOR` 대신 RPC caller 기반 `changed_by`/`updated_by` 기록으로 정합했다.
+  - 버전 모델은 `current_version_id`를 도입했으나, 화면 모델의 장기 표현과 히스토리 헤드 정합은 계속 추적한다.
+  - `POL-NNN`/`PH-NNNN` max+1 채번 동시성, `changed_by`/`updated_by` uuid 표시명, `requires_consent` 기반 B2C 동의 재수집 트리거는 미확정이다.
+  - 정책 버전별 diff 검수, 재동의 대상 추적, 문서 승인 체계는 아직 완전히 닫히지 않았다.
   - TinyMCE 이미지/자산 업로드의 서버 영속 경로와 sanitize 정책이 아직 고정되지 않았다.
   - cross-page 정책 근거 매핑은 현재 문자열 배열과 MD SoT 조합으로 관리되며, 실데이터/API 단계에서 참조형 엔티티로 승격할지 여부는 아직 미확정이다.
 - 분류
-  - `미확정`: 버전/재동의/승인 정책, 근거 매핑의 엔티티화 범위
+  - `해소`: mock-only source 경계, 정책 감사 Target Type 세분화, actor 하드코딩
+  - `미확정`: 채번 동시성, uuid 표시명, current_version_id 장기 모델, 재동의/승인 정책, 근거 매핑의 엔티티화 범위
   - `누락`: 에디터 자산 영속 경로
 
 #### 4.5.5 챗봇
@@ -579,6 +588,7 @@
 - 2026-03-27 | `System > 메타데이터 관리` 첫 진입 운영자용 설명 레이어 보강 | `src/features/system/pages/system-metadata-page.tsx`, `docs/specs/page-ia/system-metadata-page-ia.md`, `docs/specs/admin-page-tables.md`를 기준으로 페이지 상단 3단계 사용 가이드, 섹션 caption, Tooltip 설명 아이콘, Modal 안내 Alert를 추가했습니다. 운영자가 이 페이지 목적과 사용 순서를 처음부터 이해하기 어렵던 문제를 설명 레이어로 보완했습니다.
 - 2026-03-27 | `System > 메타데이터 관리` 기능/사용처 중심 UX 재구성 | `src/features/system/pages/system-metadata-page.tsx`, `tests/e2e/system-metadata.spec.ts`, `docs/specs/page-ia/system-metadata-page-ia.md`, `docs/specs/admin-page-tables.md`를 기준으로 페이지 제목과 안내 문구를 `운영 설정 카탈로그` 관점으로 바꾸고, 목록 컬럼/상세 Drawer 섹션 순서를 `설정 -> 사용처 -> 운영 값 -> 영향 범위` 중심으로 재배치했습니다. 기존 메타데이터 레지스트리처럼 보이던 정보 구조를 운영자 업무 언어로 바꿔 비개발자도 페이지 역할을 바로 이해할 수 있게 정리했습니다.
 - 2026-03-27 | `System > 메타데이터 관리` 상세 Drawer/입력 Modal UI 일관성 복구 | `src/shared/ui/detail-drawer/detail-drawer.tsx`, `src/shared/ui/descriptions/admin-form-descriptions.tsx`, `src/features/system/pages/system-metadata-page.tsx`, `tests/e2e/system-metadata.spec.ts`를 기준으로 상세 Drawer 폭을 shared preset(기본 `760`)으로 되돌리고, Drawer 내부 테이블은 shared drawer table helper를 사용하도록 정리했습니다. 그룹/항목 Modal도 `Descriptions` 기반 shared 입력 wrapper로 치환해 page-local `Form.Item` 세로 나열 예외를 제거했고, e2e에는 Drawer 폭과 `Descriptions` 구조 검증을 추가했습니다.
+- 2026-06-17 | `Operation > 정책 관리` mock-only·감사 미적재·actor 하드코딩 해소 | `operation_policies`/`operation_policy_histories` Supabase 테이블과 admin RPC 4종을 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했고, 화면 service는 Supabase-backed hybrid switch와 mock fallback을 가진다. 정책 조치는 `Target Type=OperationPolicy`, `target_id=policyId`, action `policy_saved`/`policy_status_changed`/`policy_deleted`/`policy_version_published`, reason 필수 계약으로 감사 로그와 histories snapshot을 남긴다. 잔여 갭은 `POL-NNN`/`PH-NNNN` 동시성, uuid 표시명, `current_version_id` 장기 모델, `requires_consent` 동의 재수집 트리거다.
 - 2026-03-27 | `System > 메타데이터 관리` 신규 화면 추가 | `src/features/system/pages/system-metadata-page.tsx`, `src/features/system/api/system-metadata-service.ts`, `src/features/system/model/system-metadata-store.ts`, `src/features/system/pages/system-audit-logs-page.tsx`, `tests/e2e/system-metadata.spec.ts`를 기준으로 운영 메타데이터 그룹/항목을 self-service로 관리하는 시스템 페이지를 추가했습니다. `검색 -> 상세 -> 조치 -> 감사 로그 확인` 흐름과 URL 복원, ConfirmAction, 감사 로그 역추적을 모두 같은 계약으로 맞췄고, 남은 쟁점은 실제 API/DB 계약과 item-level Target Type 세분화입니다.
 - 2026-03-26 | `Commerce > 쿠폰 관리` 쿠폰 노출 설정 기능 제거 및 계약 정리 | `src/features/commerce/pages/commerce-coupons-page.tsx`, `src/features/commerce/pages/commerce-coupon-template-create-page.tsx`, `src/features/commerce/api/coupons-service.ts`, `src/features/commerce/model/coupon-store.ts`, `src/features/commerce/model/coupon-template-types.ts`, `src/features/commerce/model/coupon-template-form-schema.ts`, `src/features/system/pages/system-audit-logs-page.tsx`, `src/shared/model/target-type-label.ts`를 기준으로 `쿠폰 노출 설정` 버튼/모달/저장 로직/감사 로그 타깃 라벨/라우팅을 모두 제거했습니다. 이에 따라 쿠폰 관리의 현재 계약은 `쿠폰`과 `정기 쿠폰 템플릿` 2개 엔티티만 유지하며, 관련 문서도 같은 기준으로 동기화했습니다.
 - 2026-03-26 | `Operation > 정책 관리` 액션 역할 분리와 히스토리 버전 게시 정리 | `src/features/operation/pages/operation-policies-page.tsx`, `src/features/operation/pages/operation-policy-create-page.tsx`, `src/features/operation/api/policies-service.ts`, `src/features/operation/model/policy-store.ts`, `src/features/operation/model/policy-types.ts`, `tests/e2e/operation-policies.spec.ts`를 기준으로 Drawer 푸터 액션을 `내용 수정`/`새 버전 등록`/`게시-숨김`/`삭제`로 재정의하고, 히스토리 행 우측 액션에 `본문 보기`, `이 버전 게시`를 분리했습니다. `정책 수정`이 곧 새 버전 생성으로 오해되던 흐름을 해소하고, 히스토리 `변경 사유`와 게시 전환 조치가 감사 로그 계약과 함께 추적되도록 정리했습니다.

@@ -587,6 +587,63 @@
 - 데이터소스 전환: `events-service.ts`의 safe 반환 계약은 유지하고, `operation-events-data-source.ts`가 Supabase 설정과 `VITE_OPERATION_EVENTS_SOURCE`에 따라 mock/Supabase를 분기합니다. `VITE_SUPABASE_DISABLED=true`는 기존 mock 경로로 회귀합니다. `supabase-operation-events-service.ts`가 ASCII status와 UI 라벨, DB row와 화면 모델 매핑을 담당합니다.
 - 미확정: 자연키 `EVT-NNN`의 max+1 채번 동시성 리스크(sequence/table 채번 전환 여부), `updated_by` uuid의 관리자 표시명 매핑, 배너 이미지/보상 정책/메시지 템플릿 정규화, `participant_count` 집계 source는 page-sync와 gap register에서 계속 추적합니다.
 
+## 13.3 Operation 정책 관리 데이터 계약 (2026-06-17 신설)
+
+- 엔티티/테이블: `OperationPolicy` / `operation_policies`, `OperationPolicyHistory` / `operation_policy_histories`.
+- 전환 상태: 기존 `schema candidate`/mock-only 계약에서 Supabase 실 테이블 계약으로 승격 완료했다. 마이그레이션은 `supabase/migrations-admin/20260617170000_operation_policies.sql`(+ down)이며, `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했다.
+- 소유권: topik-ai, migration home `supabase/migrations-admin`. v13 소유 테이블 DDL은 변경하지 않는다.
+
+### 13.3.1 `operation_policies` 컬럼 계약
+
+| DB 컬럼 | 화면/서비스 필드 | 분류 | 비고 |
+| --- | --- | --- | --- |
+| `id` | `id` | 확정 PK | text PK, 자연키 `POL-NNN`. 신규 RPC 채번은 현재 max+1 방식 |
+| `category` | `category` | 확정 enum | `policy-types.ts` 한글 코드값 |
+| `policy_type` | `policyType` | 확정 enum | 16종 한글 코드값(`policy-types.ts`) |
+| `title` | `title` | 확정 컬럼 | 정책 문서명 |
+| `status` | `status` | 확정 enum | DB ASCII `published`/`hidden`, UI 라벨 `게시`/`숨김` |
+| `tracking_status` | `trackingStatus` | 확정 enum | `policy-types.ts` 한글 코드값 |
+| `exposure_surfaces` | `exposureSurfaces` | 확정 jsonb array | 노출 위치 배열 |
+| `related_admin_pages` | `relatedAdminPages` | 확정 jsonb array | 연관 관리자 화면 배열 |
+| `related_user_pages` | `relatedUserPages` | 확정 jsonb array | 연관 사용자 화면 배열 |
+| `source_documents` | `sourceDocuments` | 확정 jsonb array | 추적 근거 문서 배열 |
+| `legal_references` | `legalReferences` | 확정 jsonb array | 법령/근거 배열 |
+| `requires_consent` | `requiresConsent` | 확정 컬럼 | boolean, 사용자 동의 필요 여부 |
+| `effective_date` | `effectiveDate` | 확정 컬럼 | date, 시행일 |
+| `version_label` | `versionLabel` | 확정 컬럼 | 버전 표시값 |
+| `summary` | `summary` | 확정 컬럼 | 정책 요약 |
+| `body_html` | `bodyHtml` | 확정 컬럼 | TinyMCE HTML 본문 |
+| `admin_memo` | `adminMemo` | 확정 컬럼 | 관리자 메모 |
+| `current_version_id` | `currentVersionId` | 확정 컬럼 | 최신 히스토리 추적용 `operation_policy_histories.id` 후보 |
+| `created_at` | `createdAt` | 확정 컬럼 | timestamptz |
+| `updated_at` | `updatedAt` | 확정 컬럼 | timestamptz |
+| `updated_by` | `updatedBy` | 확정 컬럼 | RPC caller uuid 기록, 표시명 매핑은 미확정 |
+
+### 13.3.2 `operation_policy_histories` 컬럼 계약
+
+| DB 컬럼 | 화면/서비스 필드 | 분류 | 비고 |
+| --- | --- | --- | --- |
+| `id` | `id` | 확정 PK | text PK, 자연키 `PH-NNNN` |
+| `policy_id` | `policyId` | 확정 FK | `operation_policies(id)` ON DELETE CASCADE, `policy_id` 인덱스 |
+| `action` | `action` | 확정 enum | 저장/상태 변경/삭제/버전 게시 이력 action |
+| `version_label` | `versionLabel` | 확정 컬럼 | 시점 버전 표시값 |
+| `changed_at` | `changedAt` | 확정 컬럼 | 변경 시각 |
+| `changed_by` | `changedBy` | 확정 컬럼 | RPC caller uuid 기록, 표시명 매핑은 미확정 |
+| `snapshot` | `snapshot` | 확정 jsonb | 시점 `OperationPolicy` snapshot |
+
+### 13.3.3 RPC 계약
+
+- 읽기 계약: RLS enable+force. admin은 `private.is_admin` 기반 select 정책으로 `operation_policies`, `operation_policy_histories`를 조회한다.
+- 쓰기 계약: 직접 테이블 write를 만들지 않고 SECURITY DEFINER admin RPC만 사용한다. 4개 RPC 모두 reason 필수이며, 매 조치 시 `admin_audit_logs.target_table='OperationPolicy'`, `target_id=policyId`를 기록하고 `operation_policy_histories`에 snapshot을 append한다.
+- `admin_save_operation_policy(p_id, p_policy jsonb, p_reason)` → audit action `policy_saved`, 신규/수정 저장 후 현재 snapshot append.
+- `admin_toggle_operation_policy_status(p_policy_id, p_next_status, p_reason)` → audit action `policy_status_changed`, DB status ASCII `published`/`hidden` 전환 후 snapshot append.
+- `admin_delete_operation_policy(p_policy_id, p_reason)` → audit action `policy_deleted`, cascade 삭제 전 snapshot을 감사하고 histories append.
+- `admin_publish_operation_policy_version(p_policy_id, p_history_id, p_reason)` → audit action `policy_version_published`, 해당 history snapshot을 헤드로 게시하고 `current_version_id`를 갱신하며 payload에는 from/to version을 포함한다.
+- helper 3종: `operation_policy_snapshot`, `next_operation_policy_id`, `next_operation_policy_history_id`. public execute는 revoke한다.
+
+- 데이터소스 전환: `operation-policies-data-source.ts`가 `VITE_OPERATION_POLICIES_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`이면 mock으로 회귀한다. `policies-service.ts`의 safe facade 7종(`fetchPoliciesSafe`, `fetchPolicySafe`, `fetchPolicyHistorySafe`, `savePolicySafe`, `togglePolicyStatusSafe`, `deletePolicySafe`, `publishPolicyHistoryVersionSafe`) 계약은 유지한다. `savePolicySafe`/`togglePolicyStatusSafe`에는 reason이 추가됐고, `deletePolicySafe`/`publishPolicyHistoryVersionSafe`는 기존 reason 계약을 유지한다.
+- 미확정: `POL-NNN`/`PH-NNNN` max+1 동시성, `changed_by`/`updated_by` uuid 표시명, `current_version_id` 화면 모델 정합, `requires_consent` 기반 B2C 동의 재수집 트리거.
+
 ## 14. 알림(Notification) 데이터 계약 (2026-06-12 신설)
 
 > 단일 SoT: **`docs/specs/notification-contract.md`** — 채널 4종(`in_app`/`email`/`push`/`zalo`), class 4종(`transactional`/`operational`/`learning`/`marketing` + mandatory 규칙), template_key 7종, dispatch/attempt status enum, dedupe_key 2단 형식. 본 절은 색인이다.
