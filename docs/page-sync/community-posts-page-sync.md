@@ -144,3 +144,12 @@ last_reviewed_at: "2026-06-01"
 | 항목 | 미확정 내용 | 필요한 결정 주체 | 관리자 페이지 영향 | 사용자 화면 영향 | 추적 문서 |
 | --- | --- | --- | --- | --- | --- |
 | 게시글 관리 최종 계약 | 게시글 본문/메모의 service/store 원천 분리와 정책 코드 테이블 확정이 필요합니다. | 기획/백엔드/프론트 | 필터/액션/감사 로그 계약 변동 가능 | 커뮤니티 목록, 상세, 프로필 작성글에 운영상 추정으로 연결됩니다. | docs/specs/page-ia/community-posts-page-ia.md |
+
+## 14. 2026-06-17 Supabase 전환 반영
+
+- 데이터 source: `community-data-source.ts`가 Supabase 설정과 `VITE_COMMUNITY_SOURCE=mock`, `VITE_SUPABASE_DISABLED`를 판별한다. Supabase 모드는 `community_posts`/`community_post_admin_notes` 조회와 admin RPC 4종(`admin_hide_community_post`, `admin_show_community_post`, `admin_delete_community_post`, `admin_add_community_post_memo`)을 사용하고, mock 설정 또는 Supabase 비활성 시 기존 mock/store fallback으로 회귀한다.
+- 마이그레이션/적용: `supabase/migrations-admin/20260617173000_community.sql`(+ down)은 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
+- CRUD/조치: 게시글 상태는 DB ASCII `published`/`hidden`, UI 라벨 `게시`/`숨김`이다. 숨김/게시/삭제/메모 등록은 모두 운영 사유와 admin 권한 검사를 거쳐 RPC로 수행한다.
+- 감사 계약: Target Type은 기존 범용 `Community`가 아니라 `CommunityPost`로 표준화한다. action은 `post_hidden`/`post_shown`/`post_deleted`/`post_memo_added`, 감사 확인 경로는 `/system/audit-logs?targetType=CommunityPost&targetId={postId}`다. 원본 딥링크는 `/community/posts`다.
+- B2C 영향: 게시글 `hidden` 처리 또는 삭제는 커뮤니티 목록/상세/프로필 작성글 비노출을 제어하는 것으로 `운영상 추정`한다.
+- 미확정: `POST-NNN` 및 memo id max+1 동시성, `board`/`last_moderation_policy_code`/memo `type` code table화.

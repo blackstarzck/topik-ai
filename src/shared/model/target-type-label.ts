@@ -4,6 +4,8 @@
   Instructor: "강사",
   Referral: "추천인",
   Community: "커뮤니티",
+  CommunityPost: "커뮤니티 게시글",
+  CommunityReport: "커뮤니티 신고",
   Operation: "운영",
   OperationEvent: "이벤트",
   OperationNotice: "공지",

@@ -7,8 +7,19 @@ import type {
   CommunityAdminMemo,
   CommunityPolicyCode,
   CommunityPost,
-  CommunityReport
+  CommunityReport,
+  CommunityReportResolutionAction
 } from '../model/types';
+import { communityDataSource } from './community-data-source';
+import {
+  addCommunityPostMemo as addSupabaseCommunityPostMemo,
+  deleteCommunityPost as deleteSupabaseCommunityPost,
+  hideCommunityPost as hideSupabaseCommunityPost,
+  loadCommunityPosts as loadSupabaseCommunityPosts,
+  loadCommunityReports as loadSupabaseCommunityReports,
+  resolveCommunityReport as resolveSupabaseCommunityReport,
+  showCommunityPost as showSupabaseCommunityPost
+} from './supabase-community-service';
 
 export type ModerateCommunityPostPayload = {
   postId: string;
@@ -25,6 +36,12 @@ export type AddCommunityPostMemoPayload = {
   content: string;
 };
 
+export type ResolveCommunityReportPayload = {
+  reportId: string;
+  action: CommunityReportResolutionAction;
+  reason: string;
+};
+
 export type CommunityModeratorOption = Pick<
   AdminPermissionAssignment,
   'adminId' | 'name'
@@ -34,6 +51,8 @@ export type CommunityModeratorOptions = {
   admins: CommunityModeratorOption[];
   currentAdmin: CommunityModeratorOption | null;
 };
+
+const isSupabaseSource = communityDataSource === 'supabase';
 
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -92,6 +111,10 @@ function createNotFoundError(message: string): AppApiError {
 }
 
 async function loadCommunityPosts(signal?: AbortSignal): Promise<CommunityPost[]> {
+  if (isSupabaseSource) {
+    return loadSupabaseCommunityPosts(signal);
+  }
+
   await sleep(180, signal);
   return useCommunityStore.getState().posts.map(clonePost);
 }
@@ -99,6 +122,10 @@ async function loadCommunityPosts(signal?: AbortSignal): Promise<CommunityPost[]
 async function loadCommunityReports(
   signal?: AbortSignal
 ): Promise<CommunityReport[]> {
+  if (isSupabaseSource) {
+    return loadSupabaseCommunityReports(signal);
+  }
+
   await sleep(180, signal);
   return useCommunityStore.getState().reports.map(cloneReport);
 }
@@ -124,6 +151,14 @@ async function showCommunityPost(
   payload: ModerateCommunityPostPayload,
   signal?: AbortSignal
 ): Promise<CommunityPost> {
+  if (isSupabaseSource) {
+    const updatedPost = await showSupabaseCommunityPost(payload, signal);
+    if (!updatedPost) {
+      throw createNotFoundError('게시글을 찾을 수 없습니다.');
+    }
+    return updatedPost;
+  }
+
   await sleep(160, signal);
   const updatedPost = useCommunityStore.getState().showPost({
     ...payload,
@@ -141,6 +176,14 @@ async function hideCommunityPost(
   payload: ModerateCommunityPostPayload,
   signal?: AbortSignal
 ): Promise<CommunityPost> {
+  if (isSupabaseSource) {
+    const updatedPost = await hideSupabaseCommunityPost(payload, signal);
+    if (!updatedPost) {
+      throw createNotFoundError('게시글을 찾을 수 없습니다.');
+    }
+    return updatedPost;
+  }
+
   await sleep(160, signal);
   const updatedPost = useCommunityStore.getState().hidePost({
     ...payload,
@@ -156,8 +199,17 @@ async function hideCommunityPost(
 
 async function deleteCommunityPost(
   postId: string,
+  reason: string,
   signal?: AbortSignal
 ): Promise<CommunityPost> {
+  if (isSupabaseSource) {
+    const deletedPost = await deleteSupabaseCommunityPost(postId, reason, signal);
+    if (!deletedPost) {
+      throw createNotFoundError('게시글을 찾을 수 없습니다.');
+    }
+    return deletedPost;
+  }
+
   await sleep(160, signal);
   const deletedPost = useCommunityStore.getState().deletePost(postId);
 
@@ -172,6 +224,14 @@ async function addCommunityPostMemo(
   payload: AddCommunityPostMemoPayload,
   signal?: AbortSignal
 ): Promise<CommunityPost> {
+  if (isSupabaseSource) {
+    const updatedPost = await addSupabaseCommunityPostMemo(payload, signal);
+    if (!updatedPost) {
+      throw createNotFoundError('게시글을 찾을 수 없습니다.');
+    }
+    return updatedPost;
+  }
+
   await sleep(160, signal);
   const memo: Omit<CommunityAdminMemo, 'id' | 'createdAt'> = {
     title: payload.title,
@@ -194,11 +254,22 @@ async function addCommunityPostMemo(
 }
 
 async function resolveCommunityReport(
-  reportId: string,
+  payload: ResolveCommunityReportPayload,
   signal?: AbortSignal
 ): Promise<CommunityReport> {
+  if (isSupabaseSource) {
+    const updatedReport = await resolveSupabaseCommunityReport(payload, signal);
+    if (!updatedReport) {
+      throw createNotFoundError('신고 항목을 찾을 수 없습니다.');
+    }
+    return updatedReport;
+  }
+
   await sleep(160, signal);
-  const updatedReport = useCommunityStore.getState().resolveReport(reportId);
+  const updatedReport = useCommunityStore.getState().resolveReport({
+    ...payload,
+    resolvedAt: formatNow()
+  });
 
   if (!updatedReport) {
     throw createNotFoundError('신고 항목을 찾을 수 없습니다.');
@@ -239,8 +310,16 @@ export function hideCommunityPostSafe(
   return toSafeResult(() => hideCommunityPost(payload, signal));
 }
 
-export function deleteCommunityPostSafe(postId: string, signal?: AbortSignal) {
-  return toSafeResult(() => deleteCommunityPost(postId, signal));
+export function deleteCommunityPostSafe(
+  postId: string,
+  reasonOrSignal?: string | AbortSignal,
+  signal?: AbortSignal
+) {
+  const reason = typeof reasonOrSignal === 'string' ? reasonOrSignal : '';
+  const requestSignal =
+    typeof reasonOrSignal === 'string' ? signal : reasonOrSignal;
+
+  return toSafeResult(() => deleteCommunityPost(postId, reason, requestSignal));
 }
 
 export function addCommunityPostMemoSafe(
@@ -252,7 +331,25 @@ export function addCommunityPostMemoSafe(
 
 export function resolveCommunityReportSafe(
   reportId: string,
+  actionOrSignal?: CommunityReportResolutionAction | AbortSignal,
+  reason?: string,
   signal?: AbortSignal
 ) {
-  return toSafeResult(() => resolveCommunityReport(reportId, signal));
+  const action =
+    typeof actionOrSignal === 'string'
+      ? actionOrSignal
+      : ('hide_post' as CommunityReportResolutionAction);
+  const requestSignal =
+    typeof actionOrSignal === 'string' ? signal : actionOrSignal;
+
+  return toSafeResult(() =>
+    resolveCommunityReport(
+      {
+        reportId,
+        action,
+        reason: reason ?? '신고 처리'
+      },
+      requestSignal
+    )
+  );
 }

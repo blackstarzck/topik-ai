@@ -364,3 +364,13 @@ src/features/<feature>/
 - Supabase 경로: `operation_policies.status`는 DB ASCII `published`/`hidden`이고 UI 라벨은 `게시`/`숨김`이다. `exposure_surfaces`, `related_admin_pages`, `related_user_pages`, `source_documents`, `legal_references`는 jsonb 배열로 보관한다. `current_version_id`는 최신 히스토리 추적에 사용한다.
 - 감사/사유 경계: 정책 저장/상태 변경/삭제/히스토리 버전 게시는 `admin_save_operation_policy`, `admin_toggle_operation_policy_status`, `admin_delete_operation_policy`, `admin_publish_operation_policy_version` RPC를 사용한다. 4개 RPC 모두 reason 필수이며, 감사 로그는 `OperationPolicy` Target Type과 action `policy_saved`/`policy_status_changed`/`policy_deleted`/`policy_version_published`를 사용하고, 각 조치마다 `operation_policy_histories`에 snapshot을 append한다.
 - 잔여 정책: 자연키 `POL-NNN`/`PH-NNNN` max+1 채번 동시성, `changed_by`/`updated_by` uuid 표시명 정합, `current_version_id` 화면 모델, `requires_consent` 기반 B2C 동의 재수집 트리거는 `docs/page-sync/operation-policies-page-sync.md`와 `docs/specs/admin-page-gap-register.md`에서 계속 추적한다.
+
+## 10.9 2026-06-17 Community 게시글/신고 Supabase 전환 메모
+
+- 대상 화면: `Community > 게시글 관리`(`/community/posts`), `Community > 신고 관리`(`/community/reports`).
+- 전환 상태: mock-only에서 Supabase-backed hybrid switch 구조로 전환 완료. `community_posts`, `community_post_admin_notes`, `community_reports` 테이블과 admin RPC 5종은 `supabase/migrations-admin/20260617173000_community.sql`에 작성했고, 대응 down 스크립트는 `supabase/migrations-admin/down/`에 둔다. 적용 이력은 `admin_schema_migrations`가 담당하며, 2026-06-17 dev DB 적용 완료했다.
+- 데이터소스 경계: `community-service.ts`의 safe facade 7종 계약은 유지하고, `community-data-source.ts`가 `VITE_COMMUNITY_SOURCE=mock` 및 `VITE_SUPABASE_DISABLED`를 판별한다. Supabase 미구성, `VITE_SUPABASE_DISABLED=true`, `VITE_COMMUNITY_SOURCE=mock`은 기존 mock source(`mock-community.ts` + `community-store.ts`)로 회귀한다. `resolveCommunityReportSafe`는 `reportId + action + reason` 계약으로 확장됐다.
+- Supabase 경로: `community_posts.status`는 DB ASCII `published`/`hidden`이고 UI 라벨은 `게시`/`숨김`이다. `community_reports.process_status`는 DB ASCII `pending`/`resolved`, `resolution_action`은 `hide_post`/`suspend_user`/`dismiss`다.
+- 감사/사유 경계: 게시글 숨김/게시/삭제/메모는 `CommunityPost` Target Type과 action `post_hidden`/`post_shown`/`post_deleted`/`post_memo_added`를 사용한다. 신고 종결은 `CommunityReport` Target Type과 action `report_resolved`를 사용한다. 게시글 딥링크는 `/community/posts`, 신고 딥링크는 `/community/reports`다.
+- 신고 조치 의미 정합화: 이전 mock은 신고만 종결하고 게시글/사용자 조치를 하지 않았으나, Supabase RPC는 `hide_post`일 때 같은 트랜잭션에서 대상 게시글을 실제 `hidden` 처리한다. `suspend_user`는 payload `user_suspend_integration=intent_only_v13_admin_set_user_status_pending` 의도만 기록하고 실제 정지는 v13 `admin_set_user_status` 연동 후 확정한다. `dismiss`는 종결만 수행한다.
+- 잔여 정책: `POST-NNN`/`RP-NNN` max+1 채번 동시성, board/policy_code/memo type code table화, 사용자 정지 v13 연동은 page-sync와 gap register에서 계속 추적한다.

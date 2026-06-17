@@ -553,3 +553,9 @@
 - 액션: 태그 마스터 활성/비활성 토글 단일(P5-3) — `BinaryStatusSwitch` → `ConfirmAction`(사유 필수) → facade `updateTagMasterStatusSafe` → RPC `admin_update_tag_master_status`(platform_admin 가드 — 서버 강제) → notification(`감사 로그 확인` 링크, `AssessmentTagMaster + tagCode`) + 카탈로그 재조회. 마스터 값 편집·주제 마스터 조치는 없으며, 추천키/반복방지키 JSONB는 문항 상세에서 조회(D-10 비범위)
 - 상태 UX: 탭별 독립 AsyncState(pending/success/empty/error + 다시 시도). legacy 롤백 모드는 마스터 테이블이 없어 empty 안내(조치 불가 — facade 명시 오류), 모크 모드는 모크 배너를 표시합니다.
 - 요약 문구: 탭마다 `총 N건 · 활성 M건` 집계를 표시합니다.
+
+## 41) 2026-06-17 Community 게시글/신고 Supabase source 갱신
+
+- `Community > 게시글 관리`: source는 `community_posts`/`community_post_admin_notes` Supabase-backed hybrid다. 테이블 컬럼은 게시글 ID, 제목, 작성자, 게시판, 작성일, 신고 수, 상태를 유지하고 DB status `published`/`hidden`을 UI `게시`/`숨김`으로 매핑한다. 조치 action은 `post_hidden`/`post_shown`/`post_deleted`/`post_memo_added`, Target Type은 `CommunityPost`다.
+- `Community > 신고 관리`: source는 `community_reports` Supabase-backed hybrid다. 테이블 컬럼은 신고 ID, 대상 게시글, 대상 사용자, 신고자, 신고 사유, 신고일, 처리 상태를 유지하고 DB `process_status` `pending`/`resolved`를 UI `처리 대기`/`처리 완료`로 매핑한다. 신고 종결 action은 `report_resolved`, Target Type은 `CommunityReport`다.
+- `resolveCommunityReportSafe`는 `reportId + action + reason` 계약이며 action 값은 `hide_post`/`suspend_user`/`dismiss`다. `hide_post`는 대상 게시글을 실제 숨김 처리하고, `suspend_user`는 v13 사용자 정지 연동 전 intent-only payload만 남긴다.

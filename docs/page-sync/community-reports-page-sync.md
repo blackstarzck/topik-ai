@@ -142,3 +142,13 @@ last_reviewed_at: "2026-06-01"
 | 항목 | 미확정 내용 | 필요한 결정 주체 | 관리자 페이지 영향 | 사용자 화면 영향 | 추적 문서 |
 | --- | --- | --- | --- | --- | --- |
 | 신고 관리 최종 계약 | 신고 조치가 DetailDrawer 중심 표준 흐름으로 통합될지 결정이 필요합니다. | 기획/백엔드/프론트 | 필터/액션/감사 로그 계약 변동 가능 | 신고 처리 결과가 커뮤니티 게시글 노출과 사용자 접근성에 간접 반영됩니다. | docs/specs/page-ia/community-reports-page-ia.md |
+
+## 14. 2026-06-17 Supabase 전환 및 신고 조치 의미 정합화
+
+- 데이터 source: `community-data-source.ts`가 Supabase 설정과 `VITE_COMMUNITY_SOURCE=mock`, `VITE_SUPABASE_DISABLED`를 판별한다. Supabase 모드는 `community_reports` 조회와 `admin_resolve_community_report(p_report_id,p_action,p_reason)` RPC를 사용하고, mock 설정 또는 Supabase 비활성 시 기존 mock/store fallback으로 회귀한다.
+- 마이그레이션/적용: `supabase/migrations-admin/20260617173000_community.sql`(+ down)은 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
+- CRUD/조치: `process_status`는 DB ASCII `pending`/`resolved`, UI 라벨 `처리 대기`/`처리 완료`다. `resolution_action`은 `hide_post`/`suspend_user`/`dismiss`만 허용한다. `resolveCommunityReportSafe` 계약은 `reportId + action + reason`으로 확장됐다.
+- 신고 조치 버그 해소: 이전 mock은 신고만 종결하고 게시글/사용자 조치를 하지 않았으나, Supabase RPC는 단일 트랜잭션에서 의미를 정합화한다. `hide_post`는 대상 게시글이 있으면 실제 `community_posts.status='hidden'`으로 변경한다. `suspend_user`는 payload `user_suspend_integration=intent_only_v13_admin_set_user_status_pending`으로 의도만 기록하며 실제 정지는 v13 `admin_set_user_status` 연동 전까지 미연동이다. `dismiss`는 신고만 종결한다. 모든 action은 `process_status='resolved'`, `resolution_action`, `resolved_by`, `resolved_at`과 감사 로그를 남긴다.
+- 감사 계약: Target Type은 기존 범용 `Community`가 아니라 `CommunityReport`로 표준화한다. action은 `report_resolved`, 감사 확인 경로는 `/system/audit-logs?targetType=CommunityReport&targetId={reportId}`다. 원본 딥링크는 `/community/reports`다.
+- B2C 영향: 신고 큐 자체는 내부 운영 데이터지만 `hide_post` 결과는 게시글 비노출에 영향을 주는 것으로 `운영상 추정`한다. `suspend_user`는 현재 intent-only라 실제 사용자 접근 차단 영향은 미확정이다.
+- 미확정: 사용자 정지 v13 `admin_set_user_status` 연동, `RP-NNN` max+1 동시성, 신고 reason_code code table화.

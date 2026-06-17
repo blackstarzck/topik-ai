@@ -24,11 +24,11 @@ test('community posts use service-backed seed for list, URL restore, action, det
     selectFirstPolicy: true
   });
   await expect(postRow.locator('.ant-switch')).not.toHaveClass(/ant-switch-checked/);
-  await expectNotificationAuditHref(page, 'Community', 'POST-001');
+  await expectNotificationAuditHref(page, 'CommunityPost', 'POST-001');
 
   const drawer = await openRowOverlay(page, 'POST-001');
   await expect(drawer).toContainText('POST-001');
-  await expectAuditHref(drawer, 'Community', 'POST-001');
+  await expectAuditHref(drawer, 'CommunityPost', 'POST-001');
 });
 
 test('community reports keep report seed behind service and resolve through action facade', async ({
@@ -44,7 +44,7 @@ test('community reports keep report seed behind service and resolve through acti
   await reportRow.locator('button').first().click();
   await page.locator('.ant-dropdown:visible .table-action-menu__footer-button').first().click();
   await confirmVisibleAction(page, 'e2e community report source transition');
-  await expectNotificationAuditHref(page, 'Community', 'POST-002');
+  await expectNotificationAuditHref(page, 'CommunityReport', 'RP-001');
 
   const rowAfterAction = rowById(page, 'RP-001');
   await expect(rowAfterAction).toContainText('RP-001');

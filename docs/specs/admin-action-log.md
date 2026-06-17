@@ -114,3 +114,29 @@
 - 두 경로 모두 `Target Type = SystemMetadataGroup`, `Target ID = groupId` 감사 계약을 유지합니다.
 - 운영 값 삭제 후 확인 경로는 `/system/audit-logs?targetType=SystemMetadataGroup&targetId={groupId}` 입니다.
 - history/action 값에는 `item_deleted`를 사용합니다.
+
+## 2026-06-17 CommunityPost/CommunityReport 감사 로그 계약
+
+### CommunityPost
+
+- Target Type: `CommunityPost` (`admin_audit_logs.target_table='CommunityPost'`).
+- Target ID: `postId` (`POST-NNN`).
+- 원본 화면 딥링크: `/community/posts`, 감사 확인 경로 `/system/audit-logs?targetType=CommunityPost&targetId={postId}`.
+- RPC/action 사전:
+  - `admin_hide_community_post(p_post_id,p_reason,p_policy_code)` -> action `post_hidden`, diff `status.from/to`, payload `reason`, `policy_code`, `title`.
+  - `admin_show_community_post(p_post_id,p_reason,p_policy_code)` -> action `post_shown`, diff `status.from/to`, payload `reason`, `policy_code`, `title`.
+  - `admin_delete_community_post(p_post_id,p_reason)` -> action `post_deleted`, diff `deleted.from=false/to=true`, payload `reason`, `title`.
+  - `admin_add_community_post_memo(p_post_id,p_memo,p_reason)` -> action `post_memo_added`, payload `reason`, `memo_id`, `memo_title`, `memo_type`.
+- 모든 게시글 조치 RPC는 admin 권한과 운영 사유를 요구한다. 메모 RPC는 메모 제목/본문을 필수로 요구하며 `p_reason`은 payload에 optional로 저장된다.
+
+### CommunityReport
+
+- Target Type: `CommunityReport` (`admin_audit_logs.target_table='CommunityReport'`).
+- Target ID: `reportId` (`RP-NNN`).
+- 원본 화면 딥링크: `/community/reports`, 감사 확인 경로 `/system/audit-logs?targetType=CommunityReport&targetId={reportId}`.
+- RPC/action 사전: `admin_resolve_community_report(p_report_id,p_action,p_reason)` -> action `report_resolved`.
+- `p_action` 값과 의미:
+  - `hide_post`: 신고를 `resolved`로 종결하고, 대상 게시글이 있으면 같은 트랜잭션에서 `community_posts.status='hidden'`, `last_moderation_policy_code=reason_code or 'OTHER'`로 실제 변경한다.
+  - `suspend_user`: 신고를 `resolved`로 종결하고, payload `user_suspend_integration=intent_only_v13_admin_set_user_status_pending`으로 사용자 정지 의도만 기록한다. 실제 사용자 정지는 v13 `admin_set_user_status` 연동 전까지 수행하지 않는다.
+  - `dismiss`: 신고를 `resolved`로 종결하되 게시글/사용자 조치는 하지 않는다.
+- 감사 diff/payload: diff는 `process_status.from/to`를 기록하고, payload는 `action`, `reason`, `affected_post_id`, `affected_user_id`, `user_suspend_integration`을 포함한다.

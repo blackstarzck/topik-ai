@@ -39,6 +39,11 @@ export type CommunityPost = {
 
 export type CommunityReportProcessStatus = string;
 
+export type CommunityReportResolutionAction =
+  | 'hide_post'
+  | 'suspend_user'
+  | 'dismiss';
+
 export type CommunityReport = {
   id: string;
   targetPostId: string;
@@ -47,6 +52,10 @@ export type CommunityReport = {
   reporterId: string;
   reporterName: string;
   reason: string;
+  reasonCode?: string;
   createdAt: string;
   processStatus: CommunityReportProcessStatus;
+  resolutionAction?: CommunityReportResolutionAction;
+  resolvedBy?: string;
+  resolvedAt?: string;
 };

@@ -652,3 +652,66 @@
 - v13 소유 연관 객체: `user_notifications`(인앱 수신함), `profiles.notification_prefs`, `notification_settings`. `notification_log`는 deprecated(발송 이력 SoT 아님 — O-9). 공유 객체(attempts의 v13 read 등)는 `docs/architecture/shared-supabase-schema-ownership.md`를 따른다.
 - 발송 이력은 dispatch(발송 실행)–attempt(수신자×채널) 2계층이 SoT다. opt-out 제외는 `skipped`/`opted_out`으로 집계한다(미기록 금지).
 - 기존 message 기능(`mail`/`push` 채널 UI)은 channel 계약상 `email`/`push`로 매핑하며, `push`를 `in_app`으로 재해석하지 않는다(인앱은 별도 1급 채널).
+
+## 13.4 Community 게시글/신고 데이터 계약 (2026-06-17 확정)
+
+- 엔티티/테이블: `CommunityPost` / `community_posts`, `CommunityPostAdminNote` / `community_post_admin_notes`, `CommunityReport` / `community_reports`.
+- 전환 상태: mock-only 후보에서 Supabase 테이블 계약으로 승격 완료. 마이그레이션은 `supabase/migrations-admin/20260617173000_community.sql`(+ `supabase/migrations-admin/down/20260617173000_community.sql`)이며 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
+- 소유권: topik-ai, migration home `supabase/migrations-admin`. v13 소유 테이블 DDL은 변경하지 않는다.
+
+### 13.4.1 `community_posts` 컬럼 계약
+
+| DB 컬럼 | 화면/서비스 필드 | 분류 | 비고 |
+| --- | --- | --- | --- |
+| `id` | `id` | 확정 PK | text PK, seed/RPC 자연키 `POST-NNN`. 신규 helper는 현재 max+1 방식 |
+| `title` | `title` | 확정 컬럼 | 게시글 제목 |
+| `content_html` | `contentHtml` | 확정 컬럼 | 게시글 원문 HTML, 기본 `''` |
+| `author_id` | `authorId` | 확정 컬럼 | 작성자 ID snapshot |
+| `author_name` | `authorName` | 확정 컬럼 | 작성자 표시명 snapshot |
+| `board` | `board` | 확정 enum 후보 | CHECK는 현재 seed 한글 board 코드값. 장기 code table 후보 |
+| `status` | `status` | 확정 enum | DB ASCII `published`/`hidden`, UI 라벨 `게시`/`숨김` |
+| `last_moderation_policy_code` | `lastModerationPolicyCode` | 확정 enum 후보 | null 또는 `SPAM`/`ABUSE`/`AD`/`PRIVACY`/`DUPLICATE`/`OTHER` |
+| `reports_count` | `reportsCount` | 확정 컬럼 | integer >= 0, 기본 0 |
+| `created_at` | `createdAt` | 확정 컬럼 | timestamptz |
+| `updated_at` | `updatedAt` | 확정 컬럼 | timestamptz |
+| `updated_by` | `updatedBy` | 확정 컬럼 | RPC caller uuid text 또는 seed |
+
+### 13.4.2 `community_post_admin_notes` 컬럼 계약
+
+| DB 컬럼 | 화면/서비스 필드 | 분류 | 비고 |
+| --- | --- | --- | --- |
+| `id` | `id` | 확정 PK | text PK, `POST-NNN-MEMO-NN` helper max+1 |
+| `post_id` | `postId` | 확정 FK | `community_posts(id)` ON DELETE CASCADE |
+| `title` | `title` | 확정 컬럼 | 메모 제목 |
+| `type` | `type` | 확정 enum 후보 | CHECK는 현재 메모 유형 코드값. 장기 code table 후보 |
+| `author_id` | `authorId` | 확정 컬럼 | 관리자 ID snapshot 또는 caller uuid |
+| `author_name` | `authorName` | 확정 컬럼 | 관리자 표시명 snapshot |
+| `content` | `content` | 확정 컬럼 | 메모 본문 |
+| `created_at` | `createdAt` | 확정 컬럼 | timestamptz |
+
+### 13.4.3 `community_reports` 컬럼 계약
+
+| DB 컬럼 | 화면/서비스 필드 | 분류 | 비고 |
+| --- | --- | --- | --- |
+| `id` | `id` | 확정 PK | text PK, seed 자연키 `RP-NNN` |
+| `target_post_id` | `targetPostId` | 느슨참조 | `community_posts(id)` ON DELETE SET NULL |
+| `target_user_id` | `targetUserId` | 확정 컬럼 | 신고 대상 사용자 ID snapshot |
+| `target_user_name` | `targetUserName` | 확정 컬럼 | 신고 대상 사용자 표시명 snapshot |
+| `reporter_id` | `reporterId` | 확정 컬럼 | 신고자 ID snapshot |
+| `reporter_name` | `reporterName` | 확정 컬럼 | 신고자 표시명 snapshot |
+| `reason` | `reason` | 확정 컬럼 | 신고 사유 텍스트 |
+| `reason_code` | `reasonCode` | 확정 enum 후보 | null 또는 운영 정책 코드 후보 |
+| `process_status` | `processStatus` | 확정 enum | DB ASCII `pending`/`resolved`, UI 라벨 `처리 대기`/`처리 완료` |
+| `resolution_action` | `resolutionAction` | 확정 enum | null 또는 `hide_post`/`suspend_user`/`dismiss` |
+| `resolved_by` | `resolvedBy` | 확정 컬럼 | RPC caller uuid text |
+| `resolved_at` | `resolvedAt` | 확정 컬럼 | timestamptz |
+| `created_at` | `createdAt` | 확정 컬럼 | timestamptz |
+
+### 13.4.4 RPC/쓰기 계약
+
+- 읽기: RLS enable+force, admin select policy(`private.is_admin`)만 둔다.
+- 게시글 조치 RPC: `admin_hide_community_post(p_post_id,p_reason,p_policy_code)`, `admin_show_community_post(p_post_id,p_reason,p_policy_code)`, `admin_delete_community_post(p_post_id,p_reason)`, `admin_add_community_post_memo(p_post_id,p_memo jsonb,p_reason)`.
+- 신고 조치 RPC: `admin_resolve_community_report(p_report_id,p_action,p_reason)`이며 `p_action in ('hide_post','suspend_user','dismiss')`.
+- 감사 계약: 게시글 RPC는 `target_table='CommunityPost'`, action `post_hidden`/`post_shown`/`post_deleted`/`post_memo_added`; 신고 RPC는 `target_table='CommunityReport'`, action `report_resolved`를 기록한다.
+- 신고 의미 정합화: `hide_post`는 같은 트랜잭션에서 대상 게시글을 `status='hidden'`으로 실제 변경한다. `suspend_user`는 payload `user_suspend_integration=intent_only_v13_admin_set_user_status_pending`으로 의도만 남기며 실제 정지는 미연동이다. `dismiss`는 신고만 종결한다. 모든 경우 `process_status='resolved'`, `resolution_action`, `resolved_by`, `resolved_at`을 기록한다.
+- 미확정: `POST-NNN`/`RP-NNN` 및 memo helper max+1 동시성, `board`/`last_moderation_policy_code`/memo `type` code table화, `suspend_user`와 v13 `admin_set_user_status` 실제 연동.

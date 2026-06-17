@@ -73,9 +73,9 @@
 
 | 액션 | 성격 | 대상 식별 기준 | 확인/사유 필요 여부 | 성공 후 피드백 | 감사 로그 확인 경로 |
 | --- | --- | --- | --- | --- | --- |
-| 상세 보기 | 조회 | Community + reportId | 불필요 | 상세 보기 결과 패널을 열거나 관련 화면으로 이동합니다. | 조회 액션이므로 별도 감사 로그는 필요하지 않거나 원본 화면 흐름을 사용합니다. |
-| 게시글 숨김 | 파괴적 | Community + reportId | 확인 + 사유 필수 | 게시글 숨김 완료 후 대상 식별 정보와 후속 확인 경로를 안내합니다. | /system/audit-logs?targetType=Community&targetId={reportId} |
-| 사용자 정지 | 파괴적 | Community + reportId | 확인 + 사유 필수 | 사용자 정지 완료 후 대상 식별 정보와 후속 확인 경로를 안내합니다. | /system/audit-logs?targetType=Community&targetId={reportId} |
+| 상세 보기 | 조회 | CommunityReport + reportId | 불필요 | 상세 보기 결과 패널을 열거나 관련 화면으로 이동합니다. | 조회 액션이므로 별도 감사 로그는 필요하지 않거나 원본 화면 흐름을 사용합니다. |
+| 게시글 숨김 | 파괴적 | CommunityReport + reportId | 확인 + 사유 필수 | 게시글 숨김 완료 후 대상 식별 정보와 후속 확인 경로를 안내합니다. | /system/audit-logs?targetType=CommunityReport&targetId={reportId} |
+| 사용자 정지 | 파괴적 | CommunityReport + reportId | 확인 + 사유 필수 | 사용자 정지 완료 후 대상 식별 정보와 후속 확인 경로를 안내합니다. | /system/audit-logs?targetType=CommunityReport&targetId={reportId} |
 
 ## 8. 상태값/정책/운영 규칙
 
@@ -130,4 +130,13 @@
 - `대상 사용자`, `신고자` 컬럼은 raw ID를 단독 노출하지 않고 `이름 (ID)` 형식의 파란 링크로 표시합니다.
 - 두 링크 모두 `Users > 회원 상세`로 이동하는 단일 동선을 사용합니다.
 - 신고 상세 Modal의 사용자 관련 필드는 `이름 (ID)` 형식을 유지합니다.
+
+
+## 16. 2026-06-17 Supabase source 갱신 및 신고 조치 의미 정합화
+
+- source는 `community_reports` Supabase-backed hybrid로 전환됐다. `VITE_COMMUNITY_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`이면 기존 mock fallback을 사용한다.
+- 신고 조치 감사 Target Type은 `CommunityReport`이며 action은 `report_resolved`다. 감사 로그 경로는 `/system/audit-logs?targetType=CommunityReport&targetId={reportId}`로 고정한다.
+- `admin_resolve_community_report(p_report_id,p_action,p_reason)`은 `hide_post`/`suspend_user`/`dismiss`를 허용한다. `hide_post`는 대상 게시글을 실제 `hidden` 처리하고, `suspend_user`는 payload `user_suspend_integration=intent_only_v13_admin_set_user_status_pending`으로 intent-only 기록만 남기며, `dismiss`는 신고만 종결한다.
+- DB `process_status`는 `pending`/`resolved`, `resolution_action`은 `hide_post`/`suspend_user`/`dismiss`다. 이전 mock의 신고만 종결하고 게시글/사용자 조치를 하지 않던 의미 버그는 `hide_post` 경로에서 해소됐다.
+- 미확정은 사용자 정지 v13 `admin_set_user_status` 연동, `RP-NNN` max+1 동시성, 신고 reason_code code table화다.
 

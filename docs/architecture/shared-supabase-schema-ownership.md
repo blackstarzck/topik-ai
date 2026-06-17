@@ -69,3 +69,16 @@
 
 - 알림 기능 개발 실행계획안 rev3 §5.0 (2026-06-12). 종전 규칙("v13: admin-oriented schema 추가 금지" / "topik-ai: `topik_writing_*`만 소유")은 admin이 실데이터 계약을 갖기 시작하면서 도메인 기준 소유권으로 개정됐다.
 - 개정 승인: 오너의 알림 기능 자율 실행 지시(2026-06-12 /goal) — 증적 `logs/notification-feature-evidence.md` WP0-1.
+
+## 2026-06-17 Community 게시글/신고 Supabase 소유권 보강
+
+| 객체 | owner (migration home) | writer | reader | RLS 요약 |
+| --- | --- | --- | --- | --- |
+| `community_posts` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | admin RPC | admin | RLS enable+force, admin select only(`private.is_admin`). 직접 table write 경로 없음 |
+| `community_post_admin_notes` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | admin RPC | admin | RLS enable+force, admin select only(`private.is_admin`). `post_id`는 `community_posts(id)` ON DELETE CASCADE |
+| `community_reports` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | admin RPC | admin | RLS enable+force, admin select only(`private.is_admin`). 신고 종결은 RPC 단일 트랜잭션 |
+
+- 근거: `supabase/migrations-admin/20260617173000_community.sql` + `supabase/migrations-admin/down/20260617173000_community.sql`.
+- 적용: `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
+- 쓰기 경계: SECURITY DEFINER admin RPC 5종(`admin_hide_community_post`, `admin_show_community_post`, `admin_delete_community_post`, `admin_add_community_post_memo`, `admin_resolve_community_report`)만 사용한다. 모든 조치 RPC는 admin 권한을 검사하고 운영 사유를 요구하며 `admin_audit_logs`에 기록한다.
+- v13 경계: v13 소유 테이블 DDL은 변경하지 않는다. 신고 조치 `suspend_user`는 payload `user_suspend_integration=intent_only_v13_admin_set_user_status_pending`으로 의도만 기록하며 실제 사용자 정지는 v13 `admin_set_user_status` 연동 전까지 미연동 상태다.

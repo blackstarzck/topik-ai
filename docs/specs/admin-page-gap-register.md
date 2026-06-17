@@ -604,3 +604,29 @@
 - 2026-03-25 | 전역 입력형 `Descriptions` 행 높이 불일치 해소 | `src/styles/global.css`에서 `admin-form-descriptions`, `message-template-form-descriptions`의 bordered row `th/td` 기본 높이를 `56px`로 통일하고 `vertical-align: middle`을 적용해, 텍스트 셀과 `Select`/`Switch` 셀이 섞여 있어도 라벨 셀 높이가 들쭉날쭉하지 않도록 보정했습니다.
 
 - 2026-03-27 | `System > 메타데이터 관리` Tree 삭제 affordance/운영 값 수정 Modal 삭제 버튼 해소 | `src/features/system/pages/system-metadata-page.tsx`, `src/features/system/model/system-metadata-store.ts`, `src/features/system/api/system-metadata-service.ts`, `tests/e2e/system-metadata.spec.ts`를 기준으로 `설정 구조` Tree 노드 hover 삭제와 `운영 값 수정` Modal 삭제 버튼을 같은 ConfirmAction 흐름으로 연결했습니다. 삭제 후 `item_deleted` 이력, 감사 로그, Tree/테이블 갱신이 함께 반영되도록 정리했습니다.
+
+### 4.3.3 Community 게시글/신고 Supabase 전환 해소 기록 (2026-06-17)
+
+- 대상 파일
+  - `src/features/community/api/community-data-source.ts`
+  - `src/features/community/api/community-service.ts`
+  - `src/features/community/api/supabase-community-service.ts`
+  - `src/features/community/pages/community-posts-page.tsx`
+  - `src/features/community/pages/community-reports-page.tsx`
+  - `supabase/migrations-admin/20260617173000_community.sql`
+- 현 상태
+  - 2026-06-17 기준 Community 게시글/신고는 mock-only에서 Supabase-backed hybrid switch로 전환 완료했다.
+  - Supabase 모드는 `community_posts`, `community_post_admin_notes`, `community_reports`와 admin RPC 5종(`admin_hide_community_post`, `admin_show_community_post`, `admin_delete_community_post`, `admin_add_community_post_memo`, `admin_resolve_community_report`)을 사용한다.
+  - Supabase 미구성, `VITE_SUPABASE_DISABLED=true`, `VITE_COMMUNITY_SOURCE=mock`은 기존 mock source로 회귀한다.
+  - 마이그레이션 `supabase/migrations-admin/20260617173000_community.sql`(+ down)은 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했다.
+- 해소된 항목
+  - `Resolved`(2026-06-17): Community 게시글/신고 mock-only SoT. 조회/조치가 Supabase-backed 경로를 가지며 mock은 fallback으로 축소됐다.
+  - `Resolved`(2026-06-17): Community 조치 감사 로그 미적재/범용 Target Type. 게시글은 `Target Type=CommunityPost`, action `post_hidden`/`post_shown`/`post_deleted`/`post_memo_added`; 신고는 `Target Type=CommunityReport`, action `report_resolved`로 `admin_audit_logs`에 기록한다.
+  - `Resolved`(2026-06-17): 신고 조치 무동작 의미 버그. 이전 mock은 신고만 종결하고 게시글/사용자 조치를 하지 않았으나, `admin_resolve_community_report(..., 'hide_post', ...)`는 같은 트랜잭션에서 대상 게시글을 실제 `hidden` 처리한다. `suspend_user`는 v13 연동 전 intent-only payload(`user_suspend_integration=intent_only_v13_admin_set_user_status_pending`)로 기록한다.
+- 미확정/누락/오구현
+  - 사용자 정지 실제 연동은 v13 `admin_set_user_status` 연결 전까지 미확정이다.
+  - `POST-NNN`/`RP-NNN`/memo id max+1 채번은 동시성 리스크가 남아 있다.
+  - `board`, `last_moderation_policy_code`, memo `type`, 신고 `reason_code` code table화가 필요하다.
+- 분류
+  - `해소`: mock-only source 경계, 게시글/신고 감사 Target Type 세분화, 신고 `hide_post` 실제 게시글 숨김 처리
+  - `미확정`: 사용자 정지 연동, 채번 동시성, 코드 테이블화

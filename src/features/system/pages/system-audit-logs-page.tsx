@@ -50,6 +50,12 @@ function getTargetRoute(targetType: string, targetId: string): string | null {
   if (targetType === 'Community') {
     return '/community/posts';
   }
+  if (targetType === 'CommunityPost') {
+    return `/community/posts?selected=${targetId}`;
+  }
+  if (targetType === 'CommunityReport') {
+    return `/community/reports?searchField=id&keyword=${targetId}`;
+  }
   if (targetType === 'Billing' || targetType === 'Commerce') {
     if (targetId.startsWith('RF-')) {
       return `/commerce/refunds?keyword=${targetId}`;

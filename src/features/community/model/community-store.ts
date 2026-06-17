@@ -8,7 +8,8 @@ import type {
   CommunityAdminMemo,
   CommunityPolicyCode,
   CommunityPost,
-  CommunityReport
+  CommunityReport,
+  CommunityReportResolutionAction
 } from './types';
 
 type ModeratePostPayload = {
@@ -24,6 +25,13 @@ type AddPostMemoPayload = {
   createdAt: string;
 };
 
+type ResolveReportPayload = {
+  reportId: string;
+  action: CommunityReportResolutionAction;
+  reason: string;
+  resolvedAt: string;
+};
+
 type CommunityState = {
   posts: CommunityPost[];
   reports: CommunityReport[];
@@ -31,7 +39,7 @@ type CommunityState = {
   hidePost: (payload: ModeratePostPayload) => CommunityPost | null;
   deletePost: (postId: string) => CommunityPost | null;
   addPostMemo: (payload: AddPostMemoPayload) => CommunityPost | null;
-  resolveReport: (reportId: string) => CommunityReport | null;
+  resolveReport: (payload: ResolveReportPayload) => CommunityReport | null;
 };
 
 function clonePost(post: CommunityPost): CommunityPost {
@@ -145,16 +153,19 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
     set({ posts });
     return clonePost(updatedPost);
   },
-  resolveReport: (reportId) => {
+  resolveReport: (payload) => {
     let updatedReport: CommunityReport | null = null;
     const reports = get().reports.map((report) => {
-      if (report.id !== reportId) {
+      if (report.id !== payload.reportId) {
         return report;
       }
 
       updatedReport = {
         ...report,
-        processStatus: '처리 완료'
+        processStatus: '처리 완료',
+        resolutionAction: payload.action,
+        resolvedBy: 'mock-admin',
+        resolvedAt: payload.resolvedAt
       };
       return updatedReport;
     });
@@ -163,7 +174,23 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
       return null;
     }
 
-    set({ reports });
+    if (payload.action === 'hide_post' && updatedReport.targetPostId) {
+      const { posts } = updatePostById(
+        get().posts,
+        updatedReport.targetPostId,
+        (post) => ({
+          ...post,
+          status: '숨김',
+          lastModerationPolicyCode: 'OTHER',
+          lastModerationReason: payload.reason,
+          lastModeratedAt: payload.resolvedAt
+        })
+      );
+      set({ reports, posts });
+    } else {
+      set({ reports });
+    }
+
     return cloneReport(updatedReport);
   }
 }));

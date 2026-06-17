@@ -88,3 +88,10 @@
 - `Operation > 정책 관리`의 사용자 고지 정책 문서와 운영 정책 레지스트리 source는 `operation_policies`이며, 버전/이력 snapshot source는 `operation_policy_histories`입니다.
 - 정책 상태 enum은 DB ASCII `published`/`hidden`, UI 라벨 `게시`/`숨김`을 사용합니다.
 - B2C 연결은 기존과 같이 회원가입 약관 동의, 개인정보/결제·환불/마이페이지 정책 링크, 고객센터 정책 문서에 대한 `운영상 추정`으로 유지합니다.
+
+## 2026-06-17 Community 게시글/신고 Supabase 데이터 사용 보강
+
+- `Community > 게시글 관리` source는 `community_posts`와 `community_post_admin_notes`다. 게시글 제목/본문/작성자/게시판/상태/신고 수는 사용자 생성 콘텐츠이며, `status='hidden'` 또는 삭제는 커뮤니티 목록/상세/프로필 작성글 노출을 제어하는 것으로 `운영상 추정`한다.
+- `Community > 신고 관리` source는 `community_reports`다. 신고 큐 자체는 내부 운영 데이터지만, `admin_resolve_community_report(..., 'hide_post', ...)` 결과는 대상 게시글을 실제 `hidden` 처리하므로 B2C 게시글 비노출에 영향을 주는 것으로 `운영상 추정`한다.
+- `admin_resolve_community_report(..., 'suspend_user', ...)`는 현재 사용자 정지 의도만 감사 payload에 기록하며, 실제 B2C 접근 차단은 v13 `admin_set_user_status` 연동 전까지 미반영이다.
+- `community_post_admin_notes`는 운영 내부 메모로 `내부 전용`이다.

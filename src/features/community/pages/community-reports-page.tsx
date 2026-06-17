@@ -12,7 +12,10 @@ import {
   fetchCommunityReportsSafe,
   resolveCommunityReportSafe
 } from '../api/community-service';
-import type { CommunityReport } from '../model/types';
+import type {
+  CommunityReport,
+  CommunityReportResolutionAction
+} from '../model/types';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
@@ -51,6 +54,7 @@ type ReportRow = CommunityReport;
 type ReportActionState =
   | { type: 'hide-post'; row: ReportRow }
   | { type: 'suspend-user'; row: ReportRow }
+  | { type: 'dismiss'; row: ReportRow }
   | null;
 
 const reportProcessStatusFilterValues = ['처리 대기', '처리 완료'] as const;
@@ -63,6 +67,15 @@ const detailLabelMap: Record<string, string> = {
   reason: '신고 사유',
   createdAt: '신고일',
   processStatus: '처리 상태'
+};
+
+const reportActionByState: Record<
+  Exclude<ReportActionState, null>['type'],
+  CommunityReportResolutionAction
+> = {
+  'hide-post': 'hide_post',
+  'suspend-user': 'suspend_user',
+  dismiss: 'dismiss'
 };
 
 export default function CommunityReportsPage(): JSX.Element {
@@ -190,7 +203,11 @@ export default function CommunityReportsPage(): JSX.Element {
         return;
       }
 
-      const result = await resolveCommunityReportSafe(actionState.row.id);
+      const result = await resolveCommunityReportSafe(
+        actionState.row.id,
+        reportActionByState[actionState.type],
+        reason
+      );
 
       if (!result.ok) {
         notificationApi.error({
@@ -209,22 +226,36 @@ export default function CommunityReportsPage(): JSX.Element {
           message: '게시글 숨김 완료',
           description: (
             <Space direction="vertical">
-              <Text>대상 유형: {getTargetTypeLabel('Community')}</Text>
-              <Text>대상 ID: {actionState.row.targetPostId}</Text>
+              <Text>대상 유형: {getTargetTypeLabel('CommunityReport')}</Text>
+              <Text>대상 ID: {actionState.row.id}</Text>
+              <Text>게시글 ID: {actionState.row.targetPostId}</Text>
               <Text>사유/근거: {reason}</Text>
-              <AuditLogLink targetType="Community" targetId={actionState.row.targetPostId} />
+              <AuditLogLink targetType="CommunityReport" targetId={actionState.row.id} />
+            </Space>
+          )
+        });
+      } else if (actionState.type === 'suspend-user') {
+        notificationApi.success({
+          message: '사용자 정지 의도 기록 완료',
+          description: (
+            <Space direction="vertical">
+              <Text>대상 유형: {getTargetTypeLabel('CommunityReport')}</Text>
+              <Text>대상 ID: {actionState.row.id}</Text>
+              <Text>사용자 ID: {actionState.row.targetUserId}</Text>
+              <Text>사유/근거: {reason}</Text>
+              <AuditLogLink targetType="CommunityReport" targetId={actionState.row.id} />
             </Space>
           )
         });
       } else {
         notificationApi.success({
-          message: '사용자 정지 완료',
+          message: '신고 반려 완료',
           description: (
             <Space direction="vertical">
-              <Text>대상 유형: {getTargetTypeLabel('Users')}</Text>
-              <Text>대상 ID: {actionState.row.targetUserId}</Text>
+              <Text>대상 유형: {getTargetTypeLabel('CommunityReport')}</Text>
+              <Text>대상 ID: {actionState.row.id}</Text>
               <Text>사유/근거: {reason}</Text>
-              <AuditLogLink targetType="Users" targetId={actionState.row.targetUserId} />
+              <AuditLogLink targetType="CommunityReport" targetId={actionState.row.id} />
             </Space>
           )
         });
@@ -331,6 +362,11 @@ export default function CommunityReportsPage(): JSX.Element {
                 label: '사용자 정지',
                 danger: true,
                 onClick: () => setActionState({ type: 'suspend-user', row: record })
+              },
+              {
+                key: `dismiss-${record.id}`,
+                label: '신고 반려',
+                onClick: () => setActionState({ type: 'dismiss', row: record })
               }
             ]}
           />
@@ -447,19 +483,29 @@ export default function CommunityReportsPage(): JSX.Element {
       {actionState ? (
         <ConfirmAction
           open
-          title={actionState.type === 'hide-post' ? '게시글 숨김' : '사용자 정지'}
+          title={
+            actionState.type === 'hide-post'
+              ? '게시글 숨김'
+              : actionState.type === 'suspend-user'
+                ? '사용자 정지'
+                : '신고 반려'
+          }
           description={
             actionState.type === 'hide-post'
               ? '신고 대상 게시글을 숨김 처리합니다. 사유를 입력하세요.'
-              : '신고 대상 사용자를 정지 처리합니다. 사유를 입력하세요.'
+              : actionState.type === 'suspend-user'
+                ? '신고 대상 사용자 정지 의도를 기록합니다. 실제 v13 사용자 정지는 이번 증분에서 호출하지 않습니다. 사유를 입력하세요.'
+                : '신고를 추가 조치 없이 종결합니다. 반려 사유를 입력하세요.'
           }
-          targetType={actionState.type === 'hide-post' ? 'Community' : 'Users'}
-          targetId={
+          targetType="CommunityReport"
+          targetId={actionState.row.id}
+          confirmText={
             actionState.type === 'hide-post'
-              ? actionState.row.targetPostId
-              : actionState.row.targetUserId
+              ? '숨김 실행'
+              : actionState.type === 'suspend-user'
+                ? '정지 의도 기록'
+                : '반려 실행'
           }
-          confirmText={actionState.type === 'hide-post' ? '숨김 실행' : '정지 실행'}
           onCancel={() => setActionState(null)}
           onConfirm={handleConfirmAction}
         />
