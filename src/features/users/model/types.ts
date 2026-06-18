@@ -22,6 +22,67 @@ export type UserSummary = {
   termsConsentAt: string;
 };
 
+// 회원 상세 > 학습 현황 탭 모델. get_admin_user_learning_overview(120000) RPC 및
+// mock(getMockUserLearningOverview)이 반환하는 집계 계약과 1:1 대응한다.
+export type UserLearningKpi = {
+  totalAttempts: number;
+  solvedProblems: number;
+  correctRate: number | null;
+  averageScore: number | null;
+  totalStudyMinutes: number;
+  bookmarkedCount: number;
+  writingSubmissionCount: number;
+  writingFeedbackCount: number;
+  latestActivityAt: string;
+};
+
+export type UserLearningDomainAccuracy = {
+  domain: string;
+  attempts: number;
+  correctRate: number | null;
+  averageScore: number | null;
+};
+
+export type UserLearningWeakness = {
+  label: string;
+  source: 'domain' | 'tag' | 'writing_dimension' | 'goal';
+  severity: number;
+  evidenceCount: number;
+};
+
+export type UserLearningRecentAttempt = {
+  id: string;
+  problemId: string;
+  domain: string;
+  questionNo: number | null;
+  topikLevel: string;
+  difficulty: string;
+  title: string;
+  isCorrect: boolean | null;
+  score: number | null;
+  status: string;
+  submittedAt: string;
+  timeSpentSeconds: number;
+};
+
+export type UserLearningRecentWriting = {
+  submissionId: string;
+  questionNo: number;
+  submittedAt: string;
+  feedbackStatus: string;
+  scoreTotal: number | null;
+  scoreMax: number | null;
+  weaknessDimensions: string[];
+};
+
+export type UserLearningOverview = {
+  kpis: UserLearningKpi;
+  domainAccuracy: UserLearningDomainAccuracy[];
+  weaknesses: UserLearningWeakness[];
+  recentAttempts: UserLearningRecentAttempt[];
+  recentWriting: UserLearningRecentWriting[];
+};
+
 export type UsersSort = 'latest' | 'oldest';
 export type UsersStatusFilter = 'all' | UserStatus;
 export type UsersSearchField = 'all' | 'id' | 'realName' | 'email' | 'nickname';
@@ -142,4 +203,3 @@ export type InstructorQuery = {
   endDate: string;
   keyword: string;
 };
-

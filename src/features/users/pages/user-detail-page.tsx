@@ -19,13 +19,14 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import {
   addUserMemo,
   fetchUserByIdSafe,
+  fetchUserLearningOverviewSafe,
   getUserCommunityPosts,
   getUserMemos,
   setUserStatusSafe,
   type UserAdminMemo,
   type UserCommunityPost
 } from '../api/users-service';
-import type { UserStatus, UserSummary } from '../model/types';
+import type { UserLearningOverview, UserStatus, UserSummary } from '../model/types';
 import type { AsyncState } from '../../../shared/model/async-state';
 import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
@@ -52,8 +53,16 @@ const detailPaymentStatusFilterValues = ['완료', '취소', '환불'] as const;
 const detailCommunityBoardFilterValues = ['자유게시판', '후기', '질문'] as const;
 const detailCommunityStatusFilterValues = ['게시', '숨김'] as const;
 
+const learningWeaknessSourceLabels: Record<string, string> = {
+  domain: '영역',
+  tag: '태그',
+  writing_dimension: '작문 영역',
+  goal: '목표'
+};
+
 type UsersDetailTabKey =
   | 'profile'
+  | 'learning'
   | 'activity'
   | 'payments'
   | 'community'
@@ -81,6 +90,7 @@ function renderProfileValue(value: string): string {
 
 const allowedTabs: readonly UsersDetailTabKey[] = [
   'profile',
+  'learning',
   'activity',
   'payments',
   'community',
@@ -137,6 +147,12 @@ export default function UserDetailPage(): JSX.Element {
   const [memoContent, setMemoContent] = useState('');
   const [memoReason, setMemoReason] = useState('');
   const [memoSubmitting, setMemoSubmitting] = useState(false);
+  const [learningState, setLearningState] = useState<AsyncState<UserLearningOverview | null>>({
+    status: 'pending',
+    data: null,
+    errorMessage: null,
+    errorCode: null
+  });
 
   useEffect(() => {
     const controller = new AbortController();
@@ -172,6 +188,33 @@ export default function UserDetailPage(): JSX.Element {
     }
     setCurrentStatus(user.status);
   }, [user]);
+
+  // 학습 현황 탭: Supabase 모드는 실 DB(get_admin_user_learning_overview), 그 외 mock.
+  useEffect(() => {
+    const controller = new AbortController();
+    setLearningState((prev) => ({ ...prev, status: 'pending', errorMessage: null, errorCode: null }));
+    void fetchUserLearningOverviewSafe(userId, controller.signal).then((result) => {
+      if (controller.signal.aborted) {
+        return;
+      }
+      if (result.ok) {
+        setLearningState({
+          status: 'success',
+          data: result.data,
+          errorMessage: null,
+          errorCode: null
+        });
+        return;
+      }
+      setLearningState((prev) => ({
+        ...prev,
+        status: 'error',
+        errorMessage: result.error.message,
+        errorCode: result.error.code
+      }));
+    });
+    return () => controller.abort();
+  }, [userId]);
 
   // 커뮤니티/메모 탭은 Supabase 모드에서 실 DB로 조회한다(미설정 시 mock 표시).
   useEffect(() => {
@@ -645,6 +688,171 @@ export default function UserDetailPage(): JSX.Element {
     []
   );
 
+  const learningDomainColumns = useMemo<
+    TableColumnsType<UserLearningOverview['domainAccuracy'][number]>
+  >(
+    () => [
+      {
+        title: '영역',
+        dataIndex: 'domain',
+        sorter: createTextSorter((record) => record.domain)
+      },
+      {
+        title: '시도 수',
+        dataIndex: 'attempts',
+        width: 110,
+        sorter: createNumberSorter((record) => record.attempts)
+      },
+      {
+        title: '정답률',
+        dataIndex: 'correctRate',
+        width: 120,
+        sorter: createNumberSorter((record) => record.correctRate ?? -1),
+        render: (value: number | null) => (value == null ? '-' : `${value}%`)
+      },
+      {
+        title: '평균 점수',
+        dataIndex: 'averageScore',
+        width: 120,
+        sorter: createNumberSorter((record) => record.averageScore ?? -1),
+        render: (value: number | null) => (value == null ? '-' : value)
+      }
+    ],
+    []
+  );
+
+  const learningWeaknessColumns = useMemo<
+    TableColumnsType<UserLearningOverview['weaknesses'][number]>
+  >(
+    () => [
+      {
+        title: '약점',
+        dataIndex: 'label',
+        sorter: createTextSorter((record) => record.label)
+      },
+      {
+        title: '출처',
+        dataIndex: 'source',
+        width: 120,
+        render: (value: string) => learningWeaknessSourceLabels[value] ?? value
+      },
+      {
+        title: '심각도',
+        dataIndex: 'severity',
+        width: 100,
+        sorter: createNumberSorter((record) => record.severity)
+      },
+      {
+        title: '근거 수',
+        dataIndex: 'evidenceCount',
+        width: 100,
+        sorter: createNumberSorter((record) => record.evidenceCount)
+      }
+    ],
+    []
+  );
+
+  const learningAttemptColumns = useMemo<
+    TableColumnsType<UserLearningOverview['recentAttempts'][number]>
+  >(
+    () => [
+      {
+        title: '문제',
+        dataIndex: 'title',
+        sorter: createTextSorter((record) => record.title)
+      },
+      {
+        title: '영역',
+        dataIndex: 'domain',
+        width: 90,
+        sorter: createTextSorter((record) => record.domain)
+      },
+      {
+        title: '문항',
+        dataIndex: 'questionNo',
+        width: 80,
+        render: (value: number | null) => (value == null ? '-' : value)
+      },
+      {
+        title: '레벨',
+        dataIndex: 'topikLevel',
+        width: 110
+      },
+      {
+        title: '난이도',
+        dataIndex: 'difficulty',
+        width: 90
+      },
+      {
+        title: '정오',
+        dataIndex: 'isCorrect',
+        width: 90,
+        render: (value: boolean | null) => (value == null ? '-' : value ? '정답' : '오답')
+      },
+      {
+        title: '점수',
+        dataIndex: 'score',
+        width: 80,
+        render: (value: number | null) => (value == null ? '-' : value)
+      },
+      {
+        title: '소요(초)',
+        dataIndex: 'timeSpentSeconds',
+        width: 100,
+        sorter: createNumberSorter((record) => record.timeSpentSeconds)
+      },
+      {
+        title: '제출일',
+        dataIndex: 'submittedAt',
+        width: 120,
+        sorter: createTextSorter((record) => record.submittedAt)
+      }
+    ],
+    []
+  );
+
+  const learningWritingColumns = useMemo<
+    TableColumnsType<UserLearningOverview['recentWriting'][number]>
+  >(
+    () => [
+      {
+        title: '제출 ID',
+        dataIndex: 'submissionId',
+        width: 160,
+        sorter: createTextSorter((record) => record.submissionId)
+      },
+      {
+        title: '문항',
+        dataIndex: 'questionNo',
+        width: 80
+      },
+      {
+        title: '채점 상태',
+        dataIndex: 'feedbackStatus',
+        width: 120
+      },
+      {
+        title: '점수',
+        dataIndex: 'scoreTotal',
+        width: 110,
+        render: (value: number | null, record) =>
+          value == null ? '-' : `${value}/${record.scoreMax ?? '-'}`
+      },
+      {
+        title: '약점 영역',
+        dataIndex: 'weaknessDimensions',
+        render: (value: string[]) => (value && value.length ? value.join(', ') : '-')
+      },
+      {
+        title: '제출일',
+        dataIndex: 'submittedAt',
+        width: 120,
+        sorter: createTextSorter((record) => record.submittedAt)
+      }
+    ],
+    []
+  );
+
   const tabs = useMemo<NonNullable<TabsProps['items']>>(
     () => [
       {
@@ -694,6 +902,114 @@ export default function UserDetailPage(): JSX.Element {
             ]}
           />
         ) : null
+      },
+      {
+        key: 'learning',
+        label: '학습 현황',
+        children:
+          learningState.status === 'pending' ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: 32 }}>
+              <Spin />
+            </div>
+          ) : learningState.status === 'error' ? (
+            <Empty
+              description={learningState.errorMessage ?? '학습 현황을 불러오지 못했습니다.'}
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+            />
+          ) : learningState.data ? (
+            <Space direction="vertical" size={16} style={{ width: '100%' }}>
+              <Descriptions bordered column={3} size="small" title="요약">
+                <Descriptions.Item label="총 풀이 수">
+                  {learningState.data.kpis.totalAttempts}
+                </Descriptions.Item>
+                <Descriptions.Item label="정답률">
+                  {learningState.data.kpis.correctRate == null
+                    ? '-'
+                    : `${learningState.data.kpis.correctRate}%`}
+                </Descriptions.Item>
+                <Descriptions.Item label="평균 점수">
+                  {learningState.data.kpis.averageScore == null
+                    ? '-'
+                    : learningState.data.kpis.averageScore}
+                </Descriptions.Item>
+                <Descriptions.Item label="누적 학습시간">
+                  {learningState.data.kpis.totalStudyMinutes}분
+                </Descriptions.Item>
+                <Descriptions.Item label="북마크">
+                  {learningState.data.kpis.bookmarkedCount}
+                </Descriptions.Item>
+                <Descriptions.Item label="작문 제출/채점">
+                  {learningState.data.kpis.writingSubmissionCount} /{' '}
+                  {learningState.data.kpis.writingFeedbackCount}
+                </Descriptions.Item>
+                <Descriptions.Item label="최근 활동일">
+                  {learningState.data.kpis.latestActivityAt || '-'}
+                </Descriptions.Item>
+              </Descriptions>
+
+              <div>
+                <Text strong>영역별 정답률</Text>
+                <Table
+                  rowKey="domain"
+                  showSorterTooltip={false}
+                  size="small"
+                  pagination={false}
+                  style={{ marginTop: 8 }}
+                  dataSource={learningState.data.domainAccuracy}
+                  columns={learningDomainColumns}
+                />
+              </div>
+
+              <div>
+                <Text strong>약점 영역</Text>
+                <Table
+                  rowKey="label"
+                  showSorterTooltip={false}
+                  size="small"
+                  pagination={false}
+                  style={{ marginTop: 8 }}
+                  dataSource={learningState.data.weaknesses}
+                  columns={learningWeaknessColumns}
+                />
+              </div>
+
+              <div>
+                <Text strong>최근 풀이 이력</Text>
+                <Table
+                  rowKey="id"
+                  showSorterTooltip={false}
+                  size="small"
+                  pagination={false}
+                  style={{ marginTop: 8 }}
+                  dataSource={learningState.data.recentAttempts}
+                  columns={learningAttemptColumns}
+                  onRow={(record) => ({
+                    onClick: () => openDetailModal('풀이 상세', record),
+                    style: { cursor: 'pointer' }
+                  })}
+                />
+              </div>
+
+              <div>
+                <Text strong>최근 작문 채점</Text>
+                <Table
+                  rowKey="submissionId"
+                  showSorterTooltip={false}
+                  size="small"
+                  pagination={false}
+                  style={{ marginTop: 8 }}
+                  dataSource={learningState.data.recentWriting}
+                  columns={learningWritingColumns}
+                  onRow={(record) => ({
+                    onClick: () => openDetailModal('작문 채점 상세', record),
+                    style: { cursor: 'pointer' }
+                  })}
+                />
+              </div>
+            </Space>
+          ) : (
+            <Empty description="학습 데이터가 없습니다." image={Empty.PRESENTED_IMAGE_SIMPLE} />
+          )
       },
       {
         key: 'activity',
@@ -801,6 +1117,11 @@ export default function UserDetailPage(): JSX.Element {
       communityColumns,
       communityDisplay,
       currentStatus,
+      learningAttemptColumns,
+      learningDomainColumns,
+      learningState,
+      learningWeaknessColumns,
+      learningWritingColumns,
       logRows,
       logsColumns,
       memoColumns,
