@@ -15,7 +15,11 @@ import type { ChangeEvent } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
-import { fetchInstructorsSafe } from '../api/instructors-service';
+import {
+  fetchInstructorsSafe,
+  isInstructorsSupabase,
+  setInstructorStatusSafe
+} from '../api/instructors-service';
 import {
   defaultInstructorQuery,
   useInstructorsQueryStore
@@ -432,25 +436,45 @@ export default function InstructorManagementPage(): JSX.Element {
       const actionLabel =
         actionState.type === 'suspend' ? '강사 정지' : '강사 정지 해제';
 
-      setInstructorsState((prev) => {
-        const nextData = prev.data.map((item) =>
-          item.id === actionState.instructor.id
-            ? {
-                ...item,
-                status: nextStatus,
-                assignmentStatus:
-                  nextStatus === '정지' ? '조정 필요' : item.assignmentStatus,
-                lastActionAt: formatCurrentDateTime()
-              }
-            : item
-        );
+      if (isInstructorsSupabase) {
+        const result = await setInstructorStatusSafe({
+          instructorId: actionState.instructor.id,
+          nextStatus,
+          reason
+        });
 
-        return {
-          ...prev,
-          data: nextData,
-          status: nextData.length === 0 ? 'empty' : 'success'
-        };
-      });
+        if (!result.ok) {
+          notificationApi.error({
+            message: `${actionLabel} 실패`,
+            description: result.error.message
+          });
+          setActionState(null);
+          return;
+        }
+
+        // DB 반영분을 다시 불러와 화면을 동기화한다.
+        setReloadKey((prev) => prev + 1);
+      } else {
+        setInstructorsState((prev) => {
+          const nextData = prev.data.map((item) =>
+            item.id === actionState.instructor.id
+              ? {
+                  ...item,
+                  status: nextStatus,
+                  assignmentStatus:
+                    nextStatus === '정지' ? '조정 필요' : item.assignmentStatus,
+                  lastActionAt: formatCurrentDateTime()
+                }
+              : item
+          );
+
+          return {
+            ...prev,
+            data: nextData,
+            status: nextData.length === 0 ? 'empty' : 'success'
+          };
+        });
+      }
 
       notificationApi.success({
         message: `${actionLabel} 완료`,
