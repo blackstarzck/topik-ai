@@ -1,10 +1,10 @@
-import { Typography } from 'antd';
+import { Alert, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
+import { fetchSystemAdminsSafe } from '../api/system-admins-service';
 import { roleCatalog } from '../model/permission-types';
-import { usePermissionStore } from '../model/permission-store';
 import type { AdminPermissionAssignment, RoleKey } from '../model/permission-types';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
@@ -48,7 +48,9 @@ const detailLabelMap: Record<string, string> = {
 };
 
 export default function SystemAdminsPage(): JSX.Element {
-  const admins = usePermissionStore((state) => state.admins);
+  const [admins, setAdmins] = useState<AdminPermissionAssignment[]>([]);
+  const [loadState, setLoadState] = useState<'pending' | 'success' | 'error'>('pending');
+  const [loadErrorMessage, setLoadErrorMessage] = useState('');
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedRow, setSelectedRow] = useState<AdminPermissionAssignment | null>(null);
   const searchField = searchParams.get('searchField') ?? 'all';
@@ -62,6 +64,31 @@ export default function SystemAdminsPage(): JSX.Element {
     handleDraftReset,
     handleDetailOpenChange
   } = useSearchBarDateDraft(startDate, endDate);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    setLoadState('pending');
+    setLoadErrorMessage('');
+    void fetchSystemAdminsSafe(controller.signal).then((result) => {
+      if (controller.signal.aborted) {
+        return;
+      }
+
+      if (result.ok) {
+        setAdmins(result.data);
+        setLoadState('success');
+        return;
+      }
+
+      setLoadErrorMessage(result.error);
+      setLoadState('error');
+    });
+
+    return () => {
+      controller.abort();
+    };
+  }, []);
 
   const filteredRows = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
@@ -256,6 +283,16 @@ export default function SystemAdminsPage(): JSX.Element {
           />
         }
       >
+        {loadState === 'error' ? (
+          <Alert
+            type="error"
+            showIcon
+            style={{ marginBottom: 12 }}
+            message="관리자 계정 목록을 불러오지 못했습니다."
+            description={loadErrorMessage}
+          />
+        ) : null}
+
         <Paragraph type="secondary" style={{ marginBottom: 16 }}>
           관리자 계정 가시성은 계정 상태, 역할, 권한 수, 감사 로그 연결로 통일합니다.
           권한 부여/수정/회수는{' '}
@@ -268,6 +305,7 @@ export default function SystemAdminsPage(): JSX.Element {
         <AdminDataTable<AdminPermissionAssignment>
           rowKey="adminId"
           pagination={false}
+          loading={loadState === 'pending'}
           scroll={{ x: 1200 }}
           columns={columns}
           dataSource={filteredRows}

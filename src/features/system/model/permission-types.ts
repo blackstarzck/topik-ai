@@ -1,4 +1,4 @@
-export type AdminStatus = '활성' | '비활성';
+export type AdminStatus = '활성' | '비활성' | '탈퇴';
 
 export type RoleKey =
   | 'SUPER_ADMIN'
