@@ -26,7 +26,7 @@
 - 포인트 소멸 보류/해제/실행
 - TOPIK 쓰기 문항의 노출 상태(`service_status`) 변경, 태그 부여/제거, 수신·적재(`question_received` — 외부 공급 API 연동 시 추가)
 - Assessment/Content 모듈의 주요 저장 액션
-- 관리자 권한 변경
+- 관리자 등급(app_role) 변경
 
 ## 기본 필드
 
@@ -49,6 +49,10 @@
   - 액션 사전: `user_status_changed`(정지/해제). `active`는 해제/정상, `blocked`는 정지이며, `deleted` 상태 사용자는 RPC에서 변경을 차단합니다.
   - 기록 주체: `admin_set_user_status(target_id uuid, new_status text)` 단일 write 경로. platform_admin 전용이며 `profiles.status`만 토글하고 v13 `profiles` DDL은 변경하지 않습니다.
   - payload/diff 계약: `diff.status.from/to`를 기록하고 `payload.app_role`을 포함합니다. 화면 확인 단계의 사유는 성공 피드백과 감사 로그 확인 경로에 같은 `User + userId` 식별자를 사용해야 하며, reason 입력 UX가 별도로 확장되면 같은 Target Type/ID에 맞춰 저장 계약을 갱신해야 합니다.
+- 관리자 등급(app_role) 변경 로그는 `Target Type = AdminAccount`(`admin_audit_logs.target_table='AdminAccount'`), `Target ID = targetUserId`를 사용하며, `/system/permissions?adminId={targetUserId}` 원본 화면과 `/system/audit-logs?targetType=AdminAccount&targetId={targetUserId}` 후속 검증 경로로 역추적할 수 있어야 합니다.
+  - 액션 사전: `admin_role_changed`(관리자 `app_role` 변경). 허용 등급은 `platform_admin`/`content_admin`/`org_admin`/`learner`입니다.
+  - 기록 주체: `admin_set_admin_app_role(p_target_user_id uuid, p_new_app_role text, p_reason text)` 단일 write 경로. platform_admin 전용, reason 필수, 자기/마지막 platform_admin 강등 차단, `profiles.app_role`만 갱신(다음 로그인 반영, 토큰 미폐기)하며 v13 `profiles` DDL/트리거는 변경하지 않습니다. 조회는 `admin_list_admin_app_roles`(platform_admin 전용, learner 제외).
+  - payload/diff 계약: `diff.app_role.from/to`를 기록하고 `payload`에 `reason`/`target_email`/`target_display`/`session_policy='next_login'`을 포함합니다. 화면 카탈로그(37 permission/5 RoleKey)의 부여/회수는 메뉴 게이팅용 mock이며 감사 대상이 아닙니다.
 - 강사 조치 로그는 `Target Type = Instructor`, `Target ID = instructorId`를 사용합니다.
 - 이벤트 조치 로그는 `Target Type = OperationEvent`(`admin_audit_logs.target_table='OperationEvent'`), `Target ID = eventId`를 사용하며, `EVT-` 접두의 대상 ID는 `/operation/events?selected={eventId}` 원본 화면으로 역추적할 수 있어야 합니다.
   - 액션 사전: `event_saved`(등록/수정), `event_scheduled`(게시 예약), `event_published`(즉시 게시), `event_ended`(종료).

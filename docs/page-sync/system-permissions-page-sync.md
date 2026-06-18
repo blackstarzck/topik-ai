@@ -6,10 +6,10 @@ module: "System"
 page_name: "권한 관리"
 route: "/system/permissions"
 status: "구현됨"
-primary_entity: "SystemPermission"
-primary_table_candidate: "없음(profiles.app_role 파생 화면 카탈로그)"
+primary_entity: "AdminAuthorization (profiles.app_role)"
+primary_table_candidate: "v13 profiles.app_role (admin write RPC admin_set_admin_app_role)"
 owner_agent_scope: "shared"
-last_reviewed_at: "2026-06-17"
+last_reviewed_at: "2026-06-18"
 ---
 
 ## 1. 문서 목적
@@ -27,7 +27,7 @@ last_reviewed_at: "2026-06-17"
 | 라우트 | `/system/permissions` |
 | 현재 상태 | `구현됨` |
 | 페이지 유형 | `목록 운영형` |
-| 페이지 목적 한 줄 요약 | v13 `profiles.app_role`에서 파생한 RoleKey와 permission bundle을 조회하고 관리자 메뉴/표시 게이팅 기준을 검토하는 화면입니다. |
+| 페이지 목적 한 줄 요약 | platform_admin이 관리자별 v13 `profiles.app_role`(실인가 SoT)을 변경하고, 파생 RoleKey/permission 카탈로그는 메뉴/표시 게이팅 참고로 조회하는 화면입니다. |
 | 주요 운영자 | `SUPER_ADMIN` |
 | 주요 권한 | `system.permissions.manage` |
 | 코드 근거 | `src/features/system/pages/system-permissions-page.tsx` |
@@ -51,8 +51,9 @@ last_reviewed_at: "2026-06-17"
 
 | 기능/작업 | 설명 | 작업 성격 | 대상 데이터 | 결과 | 감사 로그 필요 여부 |
 | --- | --- | --- | --- | --- | --- |
-| 권한 관리 조회 | v13 `app_role`에서 파생된 RoleKey, permission bundle, 권한 정의를 확인합니다. | 조회 | `profiles.app_role` 파생 RoleKey + client permission catalog | 현재 상태 확인 | 불필요 |
-| 권한 변경 검토 | 화면상의 부여/수정/회수 mock 흐름을 통해 권한 변경 사유와 영향 범위를 검토합니다. | 시뮬레이션/후속 후보 | Admin + RoleKey/permissionKey | 실제 인가 반영 없음. app_role 변경 RPC 또는 조회 전용 재정의 필요 | 실제 변경 경로 확정 시 필요 |
+| 관리자 목록/등급 조회 | 관리자별 현재 `app_role`과 파생 RoleKey, 카탈로그 권한 수를 확인합니다(platform_admin 전용 조회). | 조회 | `admin_list_admin_app_roles` 결과(`app_role <> learner`) | 현재 상태 확인 | 불필요 |
+| 관리자 등급(app_role) 변경 | platform_admin이 관리자별 `app_role`을 변경합니다. 사유 필수, 자기/마지막 platform_admin 강등 차단, 다음 로그인 반영. | 조치(파괴적) | AdminAccount + targetUserId(`profiles.app_role`) | `admin_set_admin_app_role`로 실인가 변경 + 감사 기록 | 필수 |
+| 권한 카탈로그 조회 | 37 permission/5 RoleKey 카탈로그를 참고용으로 조회합니다. | 조회(읽기 전용) | client permission catalog | 메뉴 게이팅 참고. 실권한 변경 아님 | 불필요 |
 
 ## 5. 관리 데이터베이스(CRUD)
 
@@ -60,7 +61,7 @@ last_reviewed_at: "2026-06-17"
 
 | 엔티티 후보 | 테이블 후보 | CRUD | 관리자 UI 진입점 | 주요 필드 후보 | 감사 로그 Target | 사용자 화면 영향 | 미확정/차이 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| AdminAuthorization | v13 `profiles.app_role` | Read 확정, app_role 변경 경로 미확정 | 권한 관리 본문/상세/Modal | `app_role`, 파생 `RoleKey`, 파생 permission keys, 설명, 위험도, 적용 메뉴/액션 | Admin + adminId 후보 | 내부 전용 | `profiles.app_role`이 유일 SoT. 신규 RBAC 테이블 없음 |
+| AdminAuthorization | v13 `profiles.app_role` | Read + app_role 변경(platform_admin) 확정 | 권한 관리 본문/등급 변경 Modal | `app_role`, 파생 `RoleKey`, 파생 permission keys, 상태, 최근 로그인 | AdminAccount + targetUserId | 내부 전용 | `profiles.app_role`이 유일 SoT. write=`admin_set_admin_app_role`, read=`admin_list_admin_app_roles`. 신규 RBAC 테이블 없음 |
 | SystemPermissionCatalog | 없음(client bundle: `permissionCatalog`) | Read/표시 전용 | 권한 정의/역할 템플릿 | permission key, 권한명, 모듈, 범위 설명, 위험도, RoleKey defaultPermissions | 없음 | 내부 전용 | 메뉴/표시 게이팅 전용. DB 인가 SoT 아님 |
 
 ### CRUD 상세
@@ -69,15 +70,15 @@ last_reviewed_at: "2026-06-17"
 | --- | --- | --- | --- | --- | --- |
 | Create | `미지원` | 신규 permission/role 생성 없음 | 해당 없음 | 해당 없음 | 해당 없음 |
 | Read | `지원` | RoleKey/permission catalog 및 관리자별 파생 권한 조회 | `permission-store.ts` + auth session mapping | URL/필터/상세 복원 | empty/error 처리 |
-| Update | `후속 후보` | 실제 권한 변경은 permission row 수정이 아니라 `profiles.app_role` 변경 경로로만 가능 | app_role 변경 RPC 후보(미확정) | 목록, 상세, 감사 로그 | 실패 시 재조회 또는 rollback |
+| Update | `지원` | 관리자별 `app_role` 변경(platform_admin 전용). permission row 수정이 아님 | `admin_set_admin_app_role`(write) / `admin_list_admin_app_roles`(read) | 목록, 상세, 감사 로그(AdminAccount) | 서버 가드(forbidden/lockout/self-demote) 메시지 노출 + 재조회 |
 | Delete | `미지원` | permission 삭제/회수는 DB 인가 삭제가 아님 | 해당 없음 | 해당 없음 | 해당 없음 |
 
 ## 6. 관리자 조치와 감사 로그 계약
 
 | 조치 | 파괴적 여부 | 확인 단계 | 사유/근거 입력 | Target Type | Target ID | 감사 로그 확인 경로 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 권한 변경 검토(mock) | 예 | 필수 | 필수 | Admin | adminId | /system/audit-logs?targetType=Admin&targetId={adminId} |
-| app_role 변경(후속 후보) | 예 | 필수 | 필수 | Admin | adminId | /system/audit-logs?targetType=Admin&targetId={adminId} |
+| 관리자 등급(app_role) 변경 | 예 | 필수(확인 Modal) | 필수 | AdminAccount | targetUserId | /system/audit-logs?targetType=AdminAccount&targetId={targetUserId} |
+| 권한 카탈로그 부여/회수(mock) | 아니오 | 해당 없음 | 해당 없음 | 해당 없음(실권한 변경 아님) | 해당 없음 | 카탈로그는 메뉴 게이팅 참고, 감사 비대상 |
 
 ## 7. 사용자 화면 동기화 포인트
 
@@ -115,7 +116,7 @@ last_reviewed_at: "2026-06-17"
 - 선택 쿼리 파라미터: page, pageSize, keyword, status, tab, selected 등 페이지별 후보
 - 목록 복원 기준: 목록/필터/정렬/탭/상세 대상 복원
 - 상세 Drawer/Modal/하위 라우트 복원 여부: 행 클릭 Drawer/Modal 후보
-- 사용자 화면 동기화에 필요한 식별자: Admin + adminId 또는 `profiles.app_role`
+- 사용자 화면 동기화에 필요한 식별자: AdminAccount + targetUserId (`profiles.app_role`)
 
 ## 11. 네트워크 상태와 fail-safe
 
@@ -137,11 +138,11 @@ last_reviewed_at: "2026-06-17"
 - 양쪽 동기화가 필요한 결정:
   - app_role 변경 RPC/승인 정책 확정
   - 화면을 조회/시뮬레이션 전용으로 축소할지, app_role 변경 관리 화면으로 바꿀지 확정
-  - 감사 로그 Target Type은 `Admin + adminId` 기준 유지 여부 확정
+  - 감사 로그 Target Type은 `AdminAccount + targetUserId`, action `admin_role_changed`로 확정(2026-06-18)
 
 ## 13. 미확정 항목
 
 | 항목 | 미확정 내용 | 필요한 결정 주체 | 관리자 페이지 영향 | 사용자 화면 영향 | 추적 문서 |
 | --- | --- | --- | --- | --- | --- |
 | RBAC SoT | `Resolved/Decision-recorded`: 실제 인가 SoT는 v13 `profiles.app_role`; permission catalog는 메뉴/표시 게이팅 전용입니다. | 오너 위임 결정 완료 | 신규 RBAC 테이블 후보 제거, 화면 조치 의미 재정의 필요 | B2C 직접 영향 없음 | docs/specs/admin-data-contract.md |
-| app_role 변경 운영 | 관리자 `app_role` 변경 주체/RPC/승인 체계와 세션 재검증 정책은 미확정입니다. | 오너/백엔드/프론트 | 액션/감사 로그 계약 변동 가능 | B2C 직접 영향 없음 | docs/specs/admin-data-contract.md |
+| app_role 변경 운영 | `Resolved/Decision-recorded`(2026-06-18): platform_admin 전용 `admin_set_admin_app_role`, 단독 실행, 다음 로그인 반영(토큰 미폐기), org_admin→READ_ONLY 임시 유지. | 오너 결정 완료 | 액션/감사 `AdminAccount`/`admin_role_changed` 확정 | B2C 직접 영향 없음 | docs/specs/admin-data-contract.md §9.1.1.a |

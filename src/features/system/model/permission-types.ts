@@ -37,9 +37,9 @@ export type AdminPermissionAssignment = {
 
 export type PermissionAuditEvent = {
   id: string;
-  targetType: 'Admin';
+  targetType: 'Admin' | 'AdminAccount';
   targetId: string;
-  action: '권한 부여' | '권한 수정' | '권한 회수';
+  action: string;
   reason: string;
   changedBy: string;
   beforeRole: RoleKey;

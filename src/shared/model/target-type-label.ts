@@ -28,6 +28,7 @@
   Content: "콘텐츠",
   System: "시스템",
   Admin: "관리자",
+  AdminAccount: "관리자 계정",
   SystemMetadataGroup: "메타 그룹",
 };
 

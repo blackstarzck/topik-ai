@@ -157,6 +157,9 @@ function getTargetRoute(targetType: string, targetId: string): string | null {
     }
     return '/content/library';
   }
+  if (targetType === 'AdminAccount') {
+    return `/system/permissions?adminId=${targetId}`;
+  }
   if (targetType === 'Admin' || targetType === 'System') {
     return `/system/admins?keyword=${targetId}`;
   }

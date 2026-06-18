@@ -164,3 +164,15 @@
 - Read path: `/system/audit-logs` reads through `admin_list_audit_logs(p_target_type, p_target_id, p_keyword, p_start, p_end, p_limit=100, p_offset=0)`, a read-only `SECURITY DEFINER` RPC guarded by `private.is_admin`.
 - Actor resolution: the read RPC left joins `profiles` by `admin_user_id` and exposes `profiles.display_name` as `actor`, with uuid/system fallback.
 - Write path remains existing admin RPC INSERTs from notices, FAQ, events, policies, community, commerce, users, and metadata domains.
+
+## 2026-06-18 System 관리자 app_role 변경 RPC 소유권 보강
+
+| Object | Owner | Write path | Read path | Boundary |
+| --- | --- | --- | --- | --- |
+| `profiles.app_role` (write) | **v13** (table/trigger) · 변경 RPC는 **topik-ai** 소유 | admin RPC `admin_set_admin_app_role` | admin RPC `admin_list_admin_app_roles` + `get_admin_users` | platform_admin 전용. v13 `profiles` DDL/트리거 무변경. `private.protect_profile_columns`의 `is_admin(caller)` 우회로 admin write 허용(`status` 토글 선례와 동일), dev DB 2026-06-18 검증. self-verify(`RETURNING`) write |
+
+- 마이그레이션: `supabase/migrations-admin/20260618093000_admin_set_app_role.sql`(write RPC) + `supabase/migrations-admin/20260618094000_admin_list_admin_app_roles.sql`(admins-only read RPC), 각 down migration 포함.
+- 적용: `admin_schema_migrations` tracker 기준 2026-06-18 dev DB 적용 완료. 신규 테이블 0, 신규 함수 2, 테이블/정책/RLS 변경 없음.
+- 쓰기 경계: `admin_set_admin_app_role(p_target_user_id, p_new_app_role, p_reason)`는 platform_admin 전용, reason 필수, 자기/마지막 platform_admin 강등 차단. `profiles.app_role`만 갱신하고 세션은 다음 로그인 때 반영(토큰 미폐기).
+- 감사 경계: `admin_audit_logs.target_table='AdminAccount'`, `action='admin_role_changed'`, `diff={app_role:{from,to}}`, `payload={reason,target_email,target_display,session_policy:'next_login'}`.
+- 조회 경계: `admin_list_admin_app_roles(p_search)`는 platform_admin 전용으로 `app_role <> 'learner'`를 SQL에서 필터해 learner 페이지 잠식 없이 staff만 반환한다.
