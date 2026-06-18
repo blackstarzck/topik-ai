@@ -839,7 +839,7 @@ export default function UserDetailPage(): JSX.Element {
           value == null ? '-' : `${value}/${record.scoreMax ?? '-'}`
       },
       {
-        title: '약점 영역',
+        title: '약점 차원',
         dataIndex: 'weaknessDimensions',
         render: (value: string[]) => (value && value.length ? value.join(', ') : '-')
       },
