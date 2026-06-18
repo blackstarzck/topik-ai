@@ -1,8 +1,18 @@
 import type { UserStatus, UserSummary } from '../model/types';
-import { getMockUserById, mockUsers } from './mock-users';
+import { getMockUserById, getMockUserLearningOverview, mockUsers } from './mock-users';
 import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
 import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
-import { loadUsersFromSupabase, setUserStatusViaRpc } from './supabase-users-service';
+import {
+  addUserMemoViaRpc,
+  deleteUserMemoViaRpc,
+  getUserCommunityPostsFromSupabase,
+  getUserMemosFromSupabase,
+  loadUserLearningOverviewFromSupabase,
+  loadUsersFromSupabase,
+  setUserStatusViaRpc,
+  type UserAdminMemo,
+  type UserCommunityPost
+} from './supabase-users-service';
 
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -66,3 +76,60 @@ export function fetchUserByIdSafe(userId: string, signal?: AbortSignal) {
     return getMockUserById(userId) ?? null;
   });
 }
+
+export function fetchUserLearningOverviewSafe(userId: string, signal?: AbortSignal) {
+  return toSafeResult(async () => {
+    if (isSupabaseConfigured) {
+      return loadUserLearningOverviewFromSupabase(userId, signal);
+    }
+    await sleep(180, signal);
+    return getMockUserLearningOverview(userId);
+  });
+}
+
+export function getUserCommunityPosts(userId: string, signal?: AbortSignal) {
+  return toSafeResult<UserCommunityPost[]>(async () => {
+    if (isSupabaseConfigured) {
+      return getUserCommunityPostsFromSupabase(userId, signal);
+    }
+    await sleep(120, signal);
+    return [];
+  });
+}
+
+export function getUserMemos(userId: string, signal?: AbortSignal) {
+  return toSafeResult<UserAdminMemo[]>(async () => {
+    if (isSupabaseConfigured) {
+      return getUserMemosFromSupabase(userId, signal);
+    }
+    await sleep(120, signal);
+    return [];
+  });
+}
+
+export function addUserMemo(
+  userId: string,
+  content: string,
+  reason: string,
+  signal?: AbortSignal
+) {
+  return toSafeResult(async () => {
+    if (isSupabaseConfigured) {
+      return addUserMemoViaRpc(userId, content, reason, signal);
+    }
+    await sleep(120, signal);
+    return `${userId}-M${Date.now()}`;
+  });
+}
+
+export function deleteUserMemo(memoId: string, reason: string, signal?: AbortSignal) {
+  return toSafeResult(async () => {
+    if (isSupabaseConfigured) {
+      return deleteUserMemoViaRpc(memoId, reason, signal);
+    }
+    await sleep(120, signal);
+    return memoId;
+  });
+}
+
+export type { UserAdminMemo, UserCommunityPost };

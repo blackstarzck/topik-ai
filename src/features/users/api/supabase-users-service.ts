@@ -1,5 +1,6 @@
 import { supabaseClient } from '../../../shared/api/supabase-client';
 import type {
+  UserLearningOverview,
   SubscriptionStatus,
   TermsConsentStatus,
   UserStatus,
@@ -40,6 +41,46 @@ type ProfileNicknameRow = {
   nickname: string | null;
 };
 
+type AdminUserLearningOverviewRow = {
+  kpis: UserLearningOverview['kpis'];
+  domain_accuracy: UserLearningOverview['domainAccuracy'];
+  weaknesses: UserLearningOverview['weaknesses'];
+  recent_attempts: UserLearningOverview['recentAttempts'];
+  recent_writing: UserLearningOverview['recentWriting'];
+};
+
+type UserCommunityPostRow = {
+  id: string;
+  title: string;
+  board: string;
+  status: string;
+  reports_count: number;
+  created_at: string | null;
+};
+
+type UserAdminMemoRow = {
+  id: string;
+  admin_name: string;
+  content: string;
+  created_at: string | null;
+};
+
+export type UserCommunityPost = {
+  id: string;
+  title: string;
+  board: string;
+  createdAt: string;
+  reports: number;
+  status: string;
+};
+
+export type UserAdminMemo = {
+  id: string;
+  admin: string;
+  content: string;
+  createdAt: string;
+};
+
 // v13 profiles.status -> topik-ai UserStatus
 const STATUS_MAP: Record<string, UserStatus> = {
   active: '정상',
@@ -73,6 +114,16 @@ function mapTier(planLabel: string | null): UserTier {
 
 function toDateString(ts: string | null): string {
   return ts ? ts.slice(0, 10) : '';
+}
+
+function mapCommunityStatus(status: string): string {
+  if (status === 'published') {
+    return '게시';
+  }
+  if (status === 'hidden') {
+    return '숨김';
+  }
+  return status;
 }
 
 function nonEmpty(value: string | null | undefined): string | null {
@@ -188,4 +239,145 @@ export async function setUserStatusViaRpc(userId: string, nextStatus: UserStatus
   if (error) {
     throw new Error(error.message);
   }
+}
+
+export async function loadUserLearningOverviewFromSupabase(
+  userId: string,
+  signal?: AbortSignal
+): Promise<UserLearningOverview> {
+  if (!supabaseClient) {
+    throw new Error('Supabase client not configured');
+  }
+
+  const { data, error } = await supabaseClient.rpc('get_admin_user_learning_overview', {
+    target_id: userId
+  });
+  if (signal?.aborted) {
+    throw new DOMException('Request aborted', 'AbortError');
+  }
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const row = (Array.isArray(data) ? data[0] : data) as AdminUserLearningOverviewRow | null;
+  return {
+    kpis: row?.kpis ?? {
+      totalAttempts: 0,
+      solvedProblems: 0,
+      correctRate: null,
+      averageScore: null,
+      totalStudyMinutes: 0,
+      bookmarkedCount: 0,
+      writingSubmissionCount: 0,
+      writingFeedbackCount: 0,
+      latestActivityAt: ''
+    },
+    domainAccuracy: row?.domain_accuracy ?? [],
+    weaknesses: row?.weaknesses ?? [],
+    recentAttempts: row?.recent_attempts ?? [],
+    recentWriting: row?.recent_writing ?? []
+  };
+}
+
+export async function getUserCommunityPostsFromSupabase(
+  userId: string,
+  signal?: AbortSignal
+): Promise<UserCommunityPost[]> {
+  if (!supabaseClient) {
+    throw new Error('Supabase client not configured');
+  }
+
+  const { data, error } = await supabaseClient.rpc('admin_get_user_community_posts', {
+    p_target_user_id: userId,
+    p_limit: 100
+  });
+  if (signal?.aborted) {
+    throw new DOMException('Request aborted', 'AbortError');
+  }
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return ((data ?? []) as UserCommunityPostRow[]).map((row) => ({
+    id: row.id,
+    title: row.title,
+    board: row.board,
+    createdAt: toDateString(row.created_at),
+    reports: row.reports_count,
+    status: mapCommunityStatus(row.status)
+  }));
+}
+
+export async function getUserMemosFromSupabase(
+  userId: string,
+  signal?: AbortSignal
+): Promise<UserAdminMemo[]> {
+  if (!supabaseClient) {
+    throw new Error('Supabase client not configured');
+  }
+
+  const { data, error } = await supabaseClient.rpc('admin_list_user_memos', {
+    p_user_id: userId
+  });
+  if (signal?.aborted) {
+    throw new DOMException('Request aborted', 'AbortError');
+  }
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return ((data ?? []) as UserAdminMemoRow[]).map((row) => ({
+    id: row.id,
+    admin: row.admin_name,
+    content: row.content,
+    createdAt: toDateString(row.created_at)
+  }));
+}
+
+export async function addUserMemoViaRpc(
+  userId: string,
+  content: string,
+  reason: string,
+  signal?: AbortSignal
+): Promise<string> {
+  if (!supabaseClient) {
+    throw new Error('Supabase client not configured');
+  }
+
+  const { data, error } = await supabaseClient.rpc('admin_add_user_memo', {
+    p_user_id: userId,
+    p_content: content,
+    p_reason: reason
+  });
+  if (signal?.aborted) {
+    throw new DOMException('Request aborted', 'AbortError');
+  }
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return String(data);
+}
+
+export async function deleteUserMemoViaRpc(
+  memoId: string,
+  reason: string,
+  signal?: AbortSignal
+): Promise<string> {
+  if (!supabaseClient) {
+    throw new Error('Supabase client not configured');
+  }
+
+  const { data, error } = await supabaseClient.rpc('admin_delete_user_memo', {
+    p_memo_id: memoId,
+    p_reason: reason
+  });
+  if (signal?.aborted) {
+    throw new DOMException('Request aborted', 'AbortError');
+  }
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return String(data);
 }

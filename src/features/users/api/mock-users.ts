@@ -1,6 +1,7 @@
 ﻿import type {
   SubscriptionStatus,
   TermsConsentStatus,
+  UserLearningOverview,
   UserStatus,
   UserSummary,
   UserTier
@@ -68,3 +69,74 @@ export function getMockUserById(userId: string): UserSummary | undefined {
   return mockUsers.find((item) => item.id === userId);
 }
 
+export function getMockUserLearningOverview(userId: string): UserLearningOverview {
+  const seed = Math.max(1, Number.parseInt(userId.replace(/\D/g, ''), 10) || 1);
+  const attemptBase = 18 + (seed % 24);
+  const correctRate = 58 + (seed % 31);
+  const latestDate = formatDate(430 + (seed % 20));
+
+  return {
+    kpis: {
+      totalAttempts: attemptBase,
+      solvedProblems: Math.max(1, attemptBase - (seed % 5)),
+      correctRate,
+      averageScore: 62 + (seed % 25),
+      totalStudyMinutes: 240 + seed * 7,
+      bookmarkedCount: seed % 9,
+      writingSubmissionCount: 2 + (seed % 5),
+      writingFeedbackCount: 1 + (seed % 4),
+      latestActivityAt: latestDate
+    },
+    domainAccuracy: [
+      { domain: '읽기', attempts: 12 + (seed % 6), correctRate: correctRate - 4, averageScore: 68 },
+      { domain: '듣기', attempts: 9 + (seed % 5), correctRate: correctRate + 3, averageScore: 74 },
+      { domain: '쓰기', attempts: 3 + (seed % 4), correctRate: null, averageScore: 61 }
+    ],
+    weaknesses: [
+      { label: '문법 연결 표현', source: 'tag', severity: 3, evidenceCount: 5 + (seed % 3) },
+      { label: '중심 내용 파악', source: 'domain', severity: 2, evidenceCount: 4 + (seed % 2) },
+      { label: '쓰기 구성', source: 'writing_dimension', severity: 2, evidenceCount: 2 }
+    ],
+    recentAttempts: [
+      {
+        id: `${userId}-AT1`,
+        problemId: 'PR-READ-041',
+        domain: '읽기',
+        questionNo: 41,
+        topikLevel: 'TOPIK II',
+        difficulty: '중',
+        title: '세부 내용 파악',
+        isCorrect: seed % 2 === 0,
+        score: seed % 2 === 0 ? 2 : 0,
+        status: 'submitted',
+        submittedAt: latestDate,
+        timeSpentSeconds: 164
+      },
+      {
+        id: `${userId}-AT2`,
+        problemId: 'PR-LISTEN-018',
+        domain: '듣기',
+        questionNo: 18,
+        topikLevel: 'TOPIK I',
+        difficulty: '하',
+        title: '대화 장소 추론',
+        isCorrect: true,
+        score: 2,
+        status: 'submitted',
+        submittedAt: formatDate(428 + (seed % 18)),
+        timeSpentSeconds: 92
+      }
+    ],
+    recentWriting: [
+      {
+        submissionId: `${userId}-WS1`,
+        questionNo: 54,
+        submittedAt: latestDate,
+        feedbackStatus: 'completed',
+        scoreTotal: 32,
+        scoreMax: 50,
+        weaknessDimensions: ['구성', '문법']
+      }
+    ]
+  };
+}

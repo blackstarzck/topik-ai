@@ -3,6 +3,8 @@ import {
   Card,
   Descriptions,
   Empty,
+  Input,
+  Modal,
   notification,
   Space,
   Spin,
@@ -14,7 +16,15 @@ import type { TableColumnsType, TabsProps } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 
-import { fetchUserByIdSafe, setUserStatusSafe } from '../api/users-service';
+import {
+  addUserMemo,
+  fetchUserByIdSafe,
+  getUserCommunityPosts,
+  getUserMemos,
+  setUserStatusSafe,
+  type UserAdminMemo,
+  type UserCommunityPost
+} from '../api/users-service';
 import type { UserStatus, UserSummary } from '../model/types';
 import type { AsyncState } from '../../../shared/model/async-state';
 import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
@@ -121,6 +131,12 @@ export default function UserDetailPage(): JSX.Element {
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [detailModalState, setDetailModalState] = useState<DetailModalState>(null);
   const [currentStatus, setCurrentStatus] = useState<UserStatus>('정상');
+  const [communityPosts, setCommunityPosts] = useState<UserCommunityPost[]>([]);
+  const [adminMemos, setAdminMemos] = useState<UserAdminMemo[]>([]);
+  const [memoModalOpen, setMemoModalOpen] = useState(false);
+  const [memoContent, setMemoContent] = useState('');
+  const [memoReason, setMemoReason] = useState('');
+  const [memoSubmitting, setMemoSubmitting] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -156,6 +172,68 @@ export default function UserDetailPage(): JSX.Element {
     }
     setCurrentStatus(user.status);
   }, [user]);
+
+  // 커뮤니티/메모 탭은 Supabase 모드에서 실 DB로 조회한다(미설정 시 mock 표시).
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      return;
+    }
+    const controller = new AbortController();
+    void getUserCommunityPosts(userId, controller.signal).then((result) => {
+      if (!controller.signal.aborted && result.ok) {
+        setCommunityPosts(result.data);
+      }
+    });
+    return () => controller.abort();
+  }, [userId]);
+
+  const reloadMemos = useCallback(() => {
+    if (!isSupabaseConfigured) {
+      return;
+    }
+    void getUserMemos(userId).then((result) => {
+      if (result.ok) {
+        setAdminMemos(result.data);
+      }
+    });
+  }, [userId]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      return;
+    }
+    const controller = new AbortController();
+    void getUserMemos(userId, controller.signal).then((result) => {
+      if (!controller.signal.aborted && result.ok) {
+        setAdminMemos(result.data);
+      }
+    });
+    return () => controller.abort();
+  }, [userId]);
+
+  const handleAddMemo = useCallback(async () => {
+    const content = memoContent.trim();
+    const reason = memoReason.trim();
+    if (!content || !reason) {
+      notificationApi.warning({ message: '메모 내용과 사유를 모두 입력하세요.' });
+      return;
+    }
+    setMemoSubmitting(true);
+    const result = await addUserMemo(userId, content, reason);
+    setMemoSubmitting(false);
+    if (!result.ok) {
+      notificationApi.error({ message: '메모 추가 실패', description: result.error.message });
+      return;
+    }
+    notificationApi.success({
+      message: '관리자 메모를 추가했습니다.',
+      description: <AuditLogLink targetType="User" targetId={userId} />
+    });
+    setMemoModalOpen(false);
+    setMemoContent('');
+    setMemoReason('');
+    reloadMemos();
+  }, [memoContent, memoReason, notificationApi, reloadMemos, userId]);
 
   const activeTab = useMemo<UsersDetailTabKey>(() => {
     const tab = searchParams.get('tab');
@@ -339,6 +417,10 @@ export default function UserDetailPage(): JSX.Element {
     ],
     [userId]
   );
+
+  // Supabase 모드: 실 DB 조회 결과, 그 외(mock): 위 더미 행.
+  const communityDisplay = isSupabaseConfigured ? communityPosts : communityRows;
+  const memoDisplay = isSupabaseConfigured ? adminMemos : memoRows;
 
   const activityColumns = useMemo<TableColumnsType<(typeof activityRows)[number]>>(
     () => [
@@ -658,10 +740,10 @@ export default function UserDetailPage(): JSX.Element {
             showSorterTooltip={false}
             size="small"
             pagination={false}
-            dataSource={communityRows}
+            dataSource={communityDisplay}
             columns={communityColumns}
             onRow={(record) => ({
-              onClick: () => openDetailModal('커뮤니티 상세 (더미)', record),
+              onClick: () => openDetailModal('커뮤니티 상세', record),
               style: { cursor: 'pointer' }
             })}
           />
@@ -689,18 +771,27 @@ export default function UserDetailPage(): JSX.Element {
         key: 'admin-memo',
         label: '관리자 메모',
         children: (
-          <Table
-            rowKey="id"
-            showSorterTooltip={false}
-            size="small"
-            pagination={false}
-            dataSource={memoRows}
-            columns={memoColumns}
-            onRow={(record) => ({
-              onClick: () => openDetailModal('관리자 메모 상세 (더미)', record),
-              style: { cursor: 'pointer' }
-            })}
-          />
+          <Space direction="vertical" size={12} style={{ width: '100%' }}>
+            {isSupabaseConfigured ? (
+              <div style={{ textAlign: 'right' }}>
+                <Button type="primary" size="small" onClick={() => setMemoModalOpen(true)}>
+                  메모 추가
+                </Button>
+              </div>
+            ) : null}
+            <Table
+              rowKey="id"
+              showSorterTooltip={false}
+              size="small"
+              pagination={false}
+              dataSource={memoDisplay}
+              columns={memoColumns}
+              onRow={(record) => ({
+                onClick: () => openDetailModal('관리자 메모 상세', record),
+                style: { cursor: 'pointer' }
+              })}
+            />
+          </Space>
         )
       }
     ],
@@ -708,12 +799,12 @@ export default function UserDetailPage(): JSX.Element {
       activityColumns,
       activityRows,
       communityColumns,
-      communityRows,
+      communityDisplay,
       currentStatus,
       logRows,
       logsColumns,
       memoColumns,
-      memoRows,
+      memoDisplay,
       paymentColumns,
       paymentRows,
       openDetailModal,
@@ -805,6 +896,31 @@ export default function UserDetailPage(): JSX.Element {
         record={detailModalState?.record ?? null}
         onClose={closeDetailModal}
       />
+
+      <Modal
+        open={memoModalOpen}
+        title="관리자 메모 추가"
+        okText="추가"
+        cancelText="취소"
+        confirmLoading={memoSubmitting}
+        onOk={() => void handleAddMemo()}
+        onCancel={() => setMemoModalOpen(false)}
+        destroyOnHidden
+      >
+        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          <Input.TextArea
+            rows={4}
+            value={memoContent}
+            onChange={(event) => setMemoContent(event.target.value)}
+            placeholder="메모 내용을 입력하세요."
+          />
+          <Input
+            value={memoReason}
+            onChange={(event) => setMemoReason(event.target.value)}
+            placeholder="사유/근거 (감사 로그에 기록됩니다)"
+          />
+        </Space>
+      </Modal>
     </div>
   );
 }
