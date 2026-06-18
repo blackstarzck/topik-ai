@@ -1,5 +1,6 @@
 import { AppApiError } from '../../../shared/api/api-error';
 import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
+import { useAuthStore } from '../../auth/model/auth-store';
 import { usePermissionStore } from '../../system/model/permission-store';
 import type { AdminPermissionAssignment } from '../../system/model/permission-types';
 import { useCommunityStore } from '../model/community-store';
@@ -134,6 +135,18 @@ async function loadCommunityModeratorOptions(
   signal?: AbortSignal
 ): Promise<CommunityModeratorOptions> {
   await sleep(60, signal);
+
+  if (isSupabaseSource) {
+    // Live path: moderator identity = the logged-in admin (auth session), NOT the
+    // mock permission store. The page only consumes currentAdmin (memo author);
+    // the admins list is unused by the live screen.
+    const session = useAuthStore.getState().session;
+    const currentAdmin = session
+      ? { adminId: session.userId, name: session.displayName }
+      : null;
+    return { admins: currentAdmin ? [currentAdmin] : [], currentAdmin };
+  }
+
   const { admins, currentAdminId } = usePermissionStore.getState();
   const adminOptions = admins.map(({ adminId, name }) => ({ adminId, name }));
   const currentAdmin =

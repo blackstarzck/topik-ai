@@ -73,6 +73,11 @@ async function rejectBillingRefund(
 export function getBillingUserNameSafe(
   record: Pick<PaymentRow | RefundRow, 'userId' | 'userNickname'>
 ): string {
+  // Default (Supabase) path: the row already carries the DB-resolved nickname.
+  // Only the fully-mock path (Supabase unconfigured) enriches via the mock fixture.
+  if (isSupabaseConfigured) {
+    return record.userNickname;
+  }
   return getMockUserById(record.userId)?.realName ?? record.userNickname;
 }
 

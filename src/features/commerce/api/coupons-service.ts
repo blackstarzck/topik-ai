@@ -44,12 +44,23 @@ type CouponTemplateActionPayload = {
 
 const isSupabaseSource = commerceCouponsDataSource === 'supabase';
 
+// Plan tier is tenant/billing config, not coupon domain data, and has no DB
+// source yet. In the Supabase path it resolves from app config (default 'pro' =
+// no Free-plan cap) so the mock coupon store is never read in the default path.
+function resolveActivePlanTier(): CouponPlanTier {
+  if (isSupabaseSource) {
+    const env = import.meta.env as unknown as Record<string, string | undefined>;
+    return env.VITE_COMMERCE_PLAN_TIER === 'free' ? 'free' : 'pro';
+  }
+  return useCouponStore.getState().planTier;
+}
+
 async function enforceCouponFreePlanLimit(isCreate: boolean): Promise<void> {
   if (!isCreate) {
     return;
   }
 
-  const planTier = useCouponStore.getState().planTier;
+  const planTier = resolveActivePlanTier();
   if (planTier !== 'free') {
     return;
   }
@@ -67,7 +78,7 @@ async function enforceTemplateFreePlanLimit(isCreate: boolean): Promise<void> {
     return;
   }
 
-  const planTier = useCouponStore.getState().planTier;
+  const planTier = resolveActivePlanTier();
   if (planTier !== 'free') {
     return;
   }
@@ -193,9 +204,11 @@ function validateCouponPayload(payload: CouponSavePayload): void {
     payload.couponKind === 'manualIssue' &&
     payload.issueTargetType === 'specificMembers'
   ) {
-    const hasInvalidUser = payload.targetUserIds.some(
-      (userId) => !getMockUserById(userId)
-    );
+    // Mock-fixture existence check only in mock mode; in the Supabase path the
+    // target member IDs are validated server-side (real users are not fixtures).
+    const hasInvalidUser =
+      !isSupabaseSource &&
+      payload.targetUserIds.some((userId) => !getMockUserById(userId));
 
     if (hasInvalidUser) {
       throw createValidationError('존재하지 않는 회원입니다. 다시 확인해 주세요.');
@@ -340,7 +353,7 @@ async function loadCoupons(signal?: AbortSignal) {
 }
 
 async function loadCouponPlanTier(): Promise<CouponPlanTier> {
-  return useCouponStore.getState().planTier;
+  return resolveActivePlanTier();
 }
 
 async function loadCoupon(couponId: string, signal?: AbortSignal) {
