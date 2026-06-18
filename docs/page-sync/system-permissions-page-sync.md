@@ -145,4 +145,4 @@ last_reviewed_at: "2026-06-18"
 | 항목 | 미확정 내용 | 필요한 결정 주체 | 관리자 페이지 영향 | 사용자 화면 영향 | 추적 문서 |
 | --- | --- | --- | --- | --- | --- |
 | RBAC SoT | `Resolved/Decision-recorded`: 실제 인가 SoT는 v13 `profiles.app_role`; permission catalog는 메뉴/표시 게이팅 전용입니다. | 오너 위임 결정 완료 | 신규 RBAC 테이블 후보 제거, 화면 조치 의미 재정의 필요 | B2C 직접 영향 없음 | docs/specs/admin-data-contract.md |
-| app_role 변경 운영 | `Resolved/Decision-recorded`(2026-06-18): platform_admin 전용 `admin_set_admin_app_role`, 단독 실행, 다음 로그인 반영(토큰 미폐기), org_admin→READ_ONLY 임시 유지. | 오너 결정 완료 | 액션/감사 `AdminAccount`/`admin_role_changed` 확정 | B2C 직접 영향 없음 | docs/specs/admin-data-contract.md §9.1.1.a |
+| app_role 변경 운영 | `Resolved/Decision-recorded`(2026-06-18): platform_admin 전용 `admin_set_admin_app_role`, 단독 실행, 다음 로그인 반영(토큰 미폐기), org_admin→READ_ONLY 장기 유지 확정. | 오너 결정 완료 | 액션/감사 `AdminAccount`/`admin_role_changed` 확정 | B2C 직접 영향 없음 | docs/specs/admin-data-contract.md §9.1.1.a |

@@ -34,7 +34,9 @@ const detailLabelMap: Record<string, string> = {
   action: '조치',
   actor: '수행자',
   reason: '사유/근거',
-  createdAt: '시각'
+  createdAt: '시각',
+  diff: '변경 내용(diff)',
+  payload: '추가 정보(payload)'
 };
 
 function getTargetRoute(targetType: string, targetId: string): string | null {
@@ -268,17 +270,25 @@ export default function SystemAuditLogsPage(): JSX.Element {
     });
   }, [commitParams, draftEndDate, draftStartDate, keyword, searchField]);
 
-  const selectedDetailRecord = useMemo(
-    () =>
-      selectedRow
-        ? {
-            ...selectedRow,
-            targetTypeLabel: getTargetTypeLabel(selectedRow.targetType),
-            targetIdDisplay: getAuditTargetDisplay(selectedRow)
-          }
-        : null,
-    [selectedRow]
-  );
+  const selectedDetailRecord = useMemo(() => {
+    if (!selectedRow) {
+      return null;
+    }
+    const record: Record<string, unknown> = {
+      ...selectedRow,
+      targetTypeLabel: getTargetTypeLabel(selectedRow.targetType),
+      targetIdDisplay: getAuditTargetDisplay(selectedRow)
+    };
+    // diff/payload are present only for platform_admin (server-gated). Omit the
+    // rows entirely for other admins so the modal does not surface empty fields.
+    if (record.diff == null) {
+      delete record.diff;
+    }
+    if (record.payload == null) {
+      delete record.payload;
+    }
+    return record;
+  }, [selectedRow]);
 
   const todayPrefix = new Date().toISOString().slice(0, 10);
   const todayCount = filteredRows.filter((row) => row.createdAt.startsWith(todayPrefix)).length;

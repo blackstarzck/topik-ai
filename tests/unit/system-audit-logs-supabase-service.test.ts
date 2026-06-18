@@ -24,8 +24,43 @@ describe('mapSupabaseAuditLogRow', () => {
       action: 'custom_admin_action',
       actor: 'Admin Kim',
       reason: 'policy violation',
-      createdAt: '2026-06-17 10:12:13'
+      createdAt: '2026-06-17 10:12:13',
+      diff: { before: { status: 'active' }, after: { status: 'blocked' } },
+      payload: { reason: 'policy violation' }
     });
+  });
+
+  it('passes diff/payload through for platform_admin and maps null (gated) to undefined', () => {
+    const platformRow = mapSupabaseAuditLogRow({
+      log_id: '00000000-0000-0000-0000-000000000003',
+      target_type: 'AdminAccount',
+      target_id: '00000000-0000-0000-0000-000000000009',
+      action: 'admin_role_changed',
+      actor: 'Platform Admin',
+      reason: 'promotion',
+      diff: { app_role: { from: 'learner', to: 'org_admin' } },
+      payload: { reason: 'promotion', target_email: 'a@b.test' },
+      created_at: '2026-06-18T00:00:00Z',
+      total_count: 1
+    });
+    expect(platformRow.diff).toEqual({ app_role: { from: 'learner', to: 'org_admin' } });
+    expect(platformRow.payload).toEqual({ reason: 'promotion', target_email: 'a@b.test' });
+
+    // non-platform admin: the RPC returns null diff/payload -> mapped to undefined (hidden).
+    const gatedRow = mapSupabaseAuditLogRow({
+      log_id: '00000000-0000-0000-0000-000000000004',
+      target_type: 'AdminAccount',
+      target_id: '00000000-0000-0000-0000-000000000009',
+      action: 'admin_role_changed',
+      actor: 'Content Admin',
+      reason: 'promotion',
+      diff: null,
+      payload: null,
+      created_at: '2026-06-18T00:00:00Z',
+      total_count: 1
+    });
+    expect(gatedRow.diff).toBeUndefined();
+    expect(gatedRow.payload).toBeUndefined();
   });
 
   it('normalizes nullable actor and reason values', () => {

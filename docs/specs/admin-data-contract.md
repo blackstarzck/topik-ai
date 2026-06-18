@@ -202,7 +202,7 @@
   - 승인 체계: 단독 실행(2인 승인 없음). 자기 자신 platform_admin 강등과 마지막 platform_admin 강등은 RPC에서 차단한다(잠금 방지).
   - 세션 정책: 기존 세션 강제 만료·토큰 폐기는 하지 않는다. `profiles.app_role`만 갱신하며 변경은 다음 로그인 때 반영된다(`payload.session_policy='next_login'`).
   - 화면 정체성: `/system/permissions`는 조회/시뮬레이션 축소가 아니라 관리자별 `app_role` 변경 화면으로 개조한다. 37 permission/5 RoleKey 카탈로그는 메뉴 게이팅·참고용 읽기 전용으로 유지한다.
-  - `org_admin → READ_ONLY` 매핑은 임시 현행 유지한다(장기 정책은 후속 결정).
+  - `org_admin → READ_ONLY` 매핑은 장기 정책으로 유지 확정(오너 결정 2026-06-18; org_admin 고유 업무가 생기면 재검토).
 - 쓰기 계약: `profiles`는 v13 소유이며 admin repo에서 DDL/트리거를 변경하지 않는다. `private.protect_profile_columns` 트리거가 `is_admin(caller)`(content_admin/platform_admin, active)에 대해 컬럼 보호를 전면 우회하므로 platform_admin 호출자는 `app_role`을 쓸 수 있다(라이브 컬럼 `status`를 쓰는 `admin_set_user_status`와 동일 메커니즘). dev DB(2026-06-18)에서 직접 검증했고, RPC는 `UPDATE ... RETURNING`으로 self-verify하여 트리거가 향후 쓰기를 막으면 거짓 감사 없이 즉시 실패한다.
 - 감사 계약: `admin_audit_logs.target_table='AdminAccount'`, `action='admin_role_changed'`, `target_id`=대상 uuid, `diff={app_role:{from,to}}`, `payload={reason,target_email,target_display,session_policy:'next_login'}`.
 - 조회 계약: `/system/permissions` 관리자 목록은 `public.admin_list_admin_app_roles(p_search text default null)`(platform_admin 전용, `app_role <> 'learner'` 서버 필터, 검색 지원)로 읽는다. learner를 admin으로 승격하는 흐름은 이 목록 범위 밖이며 Users 디렉터리에서 처리한다.

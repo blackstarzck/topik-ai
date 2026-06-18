@@ -45,6 +45,7 @@
 - Users, Instructor, Community, Message, Operation, Commerce, Assessment, Content 변경 액션은 감사 로그 대상입니다.
 - 감사 로그는 `Target Type`, `Target ID` 기준으로 원본 화면을 역추적할 수 있어야 합니다.
 - 성공 피드백(notification)은 감사 로그와 동일한 식별 값을 사용해야 합니다.
+- 감사 상세의 `diff`(변경 내용)/`payload`(부가 정보)는 민감정보를 포함할 수 있어 **platform_admin에게만** 노출합니다(읽기 RPC `admin_list_audit_logs`가 비-platform admin에게는 NULL 반환). `Log ID`/`Target Type`/`Target ID`/`Action`/`Actor`/`Reason`/`Time` 기본 필드는 전체 admin에게 노출 유지합니다.
 - 회원 정지/해제 로그는 `Target Type = User`(`admin_audit_logs.target_table='User'`), `Target ID = userId`를 사용하며, `/users` 또는 `/users/{userId}` 기준 원본 화면과 `/system/audit-logs?targetType=User&targetId={userId}` 후속 검증 경로로 역추적할 수 있어야 합니다.
   - 액션 사전: `user_status_changed`(정지/해제). `active`는 해제/정상, `blocked`는 정지이며, `deleted` 상태 사용자는 RPC에서 변경을 차단합니다.
   - 기록 주체: `admin_set_user_status(target_id uuid, new_status text)` 단일 write 경로. platform_admin 전용이며 `profiles.status`만 토글하고 v13 `profiles` DDL은 변경하지 않습니다.

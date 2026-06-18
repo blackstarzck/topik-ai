@@ -40,7 +40,10 @@ export function mapSupabaseAuditLogRow(row: AuditLogDbRow): SystemAuditLogRow {
     action: row.action,
     actor: row.actor ?? '',
     reason: row.reason ?? '',
-    createdAt: toDateTime(row.created_at)
+    createdAt: toDateTime(row.created_at),
+    // platform_admin only; null for other admins (gated in admin_list_audit_logs).
+    diff: row.diff ?? undefined,
+    payload: row.payload ?? undefined
   });
 }
 

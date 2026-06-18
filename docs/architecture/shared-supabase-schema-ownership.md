@@ -176,3 +176,9 @@
 - 쓰기 경계: `admin_set_admin_app_role(p_target_user_id, p_new_app_role, p_reason)`는 platform_admin 전용, reason 필수, 자기/마지막 platform_admin 강등 차단. `profiles.app_role`만 갱신하고 세션은 다음 로그인 때 반영(토큰 미폐기).
 - 감사 경계: `admin_audit_logs.target_table='AdminAccount'`, `action='admin_role_changed'`, `diff={app_role:{from,to}}`, `payload={reason,target_email,target_display,session_policy:'next_login'}`.
 - 조회 경계: `admin_list_admin_app_roles(p_search)`는 platform_admin 전용으로 `app_role <> 'learner'`를 SQL에서 필터해 learner 페이지 잠식 없이 staff만 반환한다.
+
+## 2026-06-18 System 감사 로그 diff/payload 노출 게이팅
+
+- 결정(오너 2026-06-18): `admin_audit_logs.diff`/`payload`는 민감정보(회원 PII·정책 본문·환불/정지 사유 등)를 포함할 수 있어 **platform_admin에게만** 노출한다. content_admin/org_admin은 목록·필터·actor·`reason`은 보지만 diff/payload는 서버에서 NULL로 받는다(전송 단계 차단, 방어적 게이팅).
+- 마이그레이션: `supabase/migrations-admin/20260618095000_audit_logs_diff_payload_platform_only.sql`(+down). 읽기 RPC `admin_list_audit_logs` CREATE OR REPLACE만, 테이블/RLS/쓰기 경로 무변경(함수 수 불변).
+- 경계: `private.is_platform_admin(caller)`일 때만 diff/payload를 반환하고 payload 키워드 검색 분기도 허용한다. `reason`(payload->>'reason')은 전체 admin에게 유지. dev DB 검증 완료(platform=노출, content_admin=NULL·payload 검색 불가).

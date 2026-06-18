@@ -7,7 +7,8 @@ import type { V13AppRole } from './session-types';
  *
  * v13 keeps its 4 app_roles; topik-ai has 5 permission-bundle RoleKeys. Overlap-
  * minimum mapping: platform_admin = full, content_admin = assessment/content.
- * org_admin has no clean topik-ai counterpart -> conservative READ_ONLY for now.
+ * org_admin has no clean topik-ai counterpart -> READ_ONLY (owner-confirmed as the
+ * long-term policy on 2026-06-18; revisit only if org_admin gains its own duties).
  * learner is not an admin -> no access (null). Real authorization is enforced by
  * v13 RLS/RPC, not by this client-side bundle (the bundle only drives menu/UI).
  */
