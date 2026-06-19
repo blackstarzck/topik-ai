@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DB 변경 결과 보고서 — Operation/정책 mock→Supabase 전환</title>
+<style>
+  :root{--bg:#0f1115;--card:#171a21;--card2:#1d212b;--line:#2a2f3a;--fg:#e6e9ef;--mut:#9aa3b2;--acc:#6ea8fe;--ok:#41d18b;--warn:#f0b75b;--mono:"SFMono-Regular",Consolas,Menlo,monospace;}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--fg);font-family:"Segoe UI","Malgun Gothic",system-ui,sans-serif;line-height:1.6;font-size:15px}
+  .wrap{max-width:1080px;margin:0 auto;padding:32px 24px 80px}
+  h1{font-size:26px;margin:0 0 4px} h2{font-size:19px;margin:38px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)} h3{font-size:15px;margin:22px 0 8px;color:var(--acc)}
+  .sub{color:var(--mut);margin:0 0 18px}
+  .meta{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0 8px}
+  .chip{background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13px;color:var(--mut)} .chip b{color:var(--fg);font-weight:600}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:14px 0}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px} .kpi .n{font-size:24px;font-weight:700} .kpi .l{color:var(--mut);font-size:13px} .kpi.ok .n{color:var(--ok)} .kpi.add .n{color:var(--acc)}
+  table{width:100%;border-collapse:collapse;margin:10px 0;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top;font-size:13.5px} th{background:var(--card2);color:var(--mut);font-weight:600;font-size:12.5px;text-transform:uppercase} tr:last-child td{border-bottom:none}
+  code{font-family:var(--mono);background:#0b0d11;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12.5px;color:#d6deea}
+  .tag{display:inline-block;border-radius:6px;padding:1px 8px;font-size:11.5px;font-weight:700} .t-add{background:rgba(110,168,254,.15);color:var(--acc);border:1px solid rgba(110,168,254,.4)} .t-ok{background:rgba(65,209,139,.13);color:var(--ok);border:1px solid rgba(65,209,139,.4)} .t-none{background:rgba(154,163,178,.13);color:var(--mut);border:1px solid var(--line)} .t-warn{background:rgba(240,183,91,.13);color:var(--warn);border:1px solid rgba(240,183,91,.4)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:12px 0}
+  ul{margin:8px 0;padding-left:20px} li{margin:3px 0} .legend{font-size:12.5px;color:var(--mut);margin:4px 0 0} .ok-row td{color:var(--fg)}
+  .foot{margin-top:40px;color:var(--mut);font-size:12.5px;border-top:1px solid var(--line);padding-top:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>DB 변경 결과 보고서</h1>
+  <p class="sub">Operation / 정책 관리(<code>/operation/policies</code>) — mock 전용 → Supabase DB-backed 전환 (로드맵 증분 #4)</p>
+
+  <div class="meta">
+    <span class="chip">날짜 <b>2026-06-17</b></span>
+    <span class="chip">브랜치 <b>feat/operation-notices-db</b></span>
+    <span class="chip">dev <b>talkpik-dev</b></span>
+    <span class="chip">네임스페이스 <b>migrations-admin / admin_schema_migrations</b></span>
+    <span class="chip">구현 <b>Codex GPT-5.5</b></span>
+    <span class="chip">마이그레이션 <b>20260617170000_operation_policies.sql</b></span>
+  </div>
+
+  <h2>1. 요약</h2>
+  <div class="card">
+    정책 문서(헤드 + 버전 이력/스냅샷) 도메인을 메모리 mock에서 Supabase 영속+감사 경로로 전환. <b>2 테이블·admin RPC 4종(+helper 3)·RLS 정책 2개</b>를 추가하고 dev DB에 적용. 기존 객체 변경 0건.
+    등록/수정/상태변경/새버전/삭제/이버전게시 등 <b>모든 조치가 <code>operation_policy_histories</code>에 시점 스냅샷으로 append</b>되고 <code>admin_audit_logs</code>에 기록된다. 버전 게시 시 해당 이력 스냅샷을 헤드로 복원하고 <code>current_version_id</code>를 갱신한다.
+  </div>
+
+  <div class="grid">
+    <div class="kpi add"><div class="n">+2</div><div class="l">테이블</div></div>
+    <div class="kpi add"><div class="n">+4</div><div class="l">admin RPC (+helper 3)</div></div>
+    <div class="kpi add"><div class="n">+2</div><div class="l">RLS 정책</div></div>
+    <div class="kpi ok"><div class="n">0</div><div class="l">기존 객체 변경</div></div>
+    <div class="kpi ok"><div class="n">16+16</div><div class="l">시드 행</div></div>
+  </div>
+
+  <h2>2. 추가된 DB 객체</h2>
+  <h3>2.1 <code>operation_policies</code> (헤드, 21컬럼) <span class="tag t-add">ADDED</span></h3>
+  <table><thead><tr><th>그룹</th><th>컬럼/제약</th></tr></thead><tbody>
+    <tr><td>식별/버전</td><td><code>id</code> PK(POL-NNN), version_label, effective_date date, <code>current_version_id</code>(최신 이력 추적)</td></tr>
+    <tr><td>분류</td><td>category, policy_type(16종), tracking_status — policy-types 한글 코드값 · <code>status</code> CHECK(published/hidden ↔ 게시/숨김)</td></tr>
+    <tr><td>노출/동의</td><td>exposure_surfaces jsonb · requires_consent boolean</td></tr>
+    <tr><td>본문/메타</td><td>title, summary, body_html, admin_memo, related_admin_pages/related_user_pages/source_documents/legal_references jsonb 배열</td></tr>
+    <tr><td>감사</td><td>created_at/updated_at, updated_by</td></tr>
+  </tbody></table>
+
+  <h3>2.2 <code>operation_policy_histories</code> (버전 이력, 7컬럼) <span class="tag t-add">ADDED</span></h3>
+  <table><thead><tr><th>컬럼</th><th>타입/제약</th></tr></thead><tbody>
+    <tr><td><code>id</code></td><td>text PK (PH-NNNN)</td></tr>
+    <tr><td><code>policy_id</code></td><td>text FK → operation_policies(id) <b>ON DELETE CASCADE</b></td></tr>
+    <tr><td><code>action</code></td><td>등록/수정/상태변경/새버전/삭제/이버전게시</td></tr>
+    <tr><td><code>version_label / changed_at / changed_by</code></td><td>text / timestamptz / text</td></tr>
+    <tr><td><code>snapshot</code></td><td>jsonb — 해당 시점 OperationPolicy 전체 스냅샷</td></tr>
+  </tbody></table>
+  <p class="legend">인덱스: policies(created_at desc + status='published' 부분), histories(policy_id, policy_id+changed_at desc). RLS enable+force + admin select(양 테이블).</p>
+
+  <h3>2.3 admin RPC 4종 + helper 3 <span class="tag t-add">ADDED</span></h3>
+  <table><thead><tr><th>함수</th><th>action / 비고</th></tr></thead><tbody>
+    <tr><td><code>admin_save_operation_policy(p_id,p_policy,p_reason)</code></td><td>policy_saved (신규 POL-NNN / 새 버전)</td></tr>
+    <tr><td><code>admin_toggle_operation_policy_status(p_policy_id,p_next_status,p_reason)</code></td><td>policy_status_changed</td></tr>
+    <tr><td><code>admin_delete_operation_policy(p_policy_id,p_reason)</code></td><td>policy_deleted (cascade 전 snapshot 감사)</td></tr>
+    <tr><td><code>admin_publish_operation_policy_version(p_policy_id,p_history_id,p_reason)</code></td><td>policy_version_published (이력 snapshot→헤드 복원, current_version_id 갱신, from/to version)</td></tr>
+    <tr><td>helper ×3</td><td><code>operation_policy_snapshot</code>·<code>next_operation_policy_id</code>·<code>next_operation_policy_history_id</code> — public execute revoke</td></tr>
+  </tbody></table>
+  <p class="legend">전 RPC SECURITY DEFINER · reason 필수 · <code>admin_audit_logs</code>(target_table='OperationPolicy', target_id=policyId) + <code>operation_policy_histories</code> snapshot append.</p>
+
+  <h2>3. 미변경 객체</h2>
+  <table><thead><tr><th>객체</th><th>상태</th></tr></thead><tbody>
+    <tr><td><code>admin_audit_logs</code> (v13)</td><td><span class="tag t-none">미변경 · RPC INSERT만</span></td></tr>
+    <tr><td>operation_notices/faqs/events·topik_writing_*·notification_* 등</td><td><span class="tag t-none">미변경 (diff additions only)</span></td></tr>
+  </tbody></table>
+
+  <h2>4. before / after 스냅샷</h2>
+  <table><thead><tr><th>구분</th><th>before</th><th>after</th><th>Δ</th></tr></thead><tbody>
+    <tr><td>테이블</td><td>47</td><td>49</td><td><span class="tag t-add">+2</span></td></tr>
+    <tr><td>함수</td><td>93</td><td>100</td><td><span class="tag t-add">+7</span></td></tr>
+    <tr><td>정책</td><td>77</td><td>79</td><td><span class="tag t-add">+2</span></td></tr>
+  </tbody></table>
+  <p class="legend">diff <code>--exclude-own</code> → 총 37건(컬럼 28 + 함수 7 + 정책 2), <b>전부 added</b>, changed/removed 0.</p>
+
+  <h2>5. 검증 결과</h2>
+  <table><thead><tr><th>게이트</th><th>결과</th><th>근거</th></tr></thead><tbody>
+    <tr class="ok-row"><td>마이그레이션 적용 / 무변경 게이트</td><td><span class="tag t-ok">PASS</span></td><td>diff additions only (37)</td></tr>
+    <tr class="ok-row"><td>seed · RLS(force) · 서비스 컬럼 일치</td><td><span class="tag t-ok">PASS</span></td><td>policies 16행·21/21컬럼, histories 16행·7/7컬럼, force=true ×2, RPC 4 시그니처 일치</td></tr>
+    <tr class="ok-row"><td>typecheck · lint</td><td><span class="tag t-ok">PASS</span></td><td>exit 0</td></tr>
+    <tr class="ok-row"><td>e2e (operation-policies, mock)</td><td><span class="tag t-ok">PASS</span></td><td>2 passed — 등록/게시/삭제 + 새 버전/히스토리/이 버전 게시</td></tr>
+    <tr class="ok-row"><td>문서 동기화 (AGENTS.md §7)</td><td><span class="tag t-ok">PASS</span></td><td id="docsync">11개 SoT 문서 갱신 — 적용 스키마 정합 확인(소유권 2행·data-contract·action-log 4action·usage-map·transition·page-sync·page-ia·page-tables·gap-register·ia-change-log·doc-update-log). doc-update-log 항목은 Claude 보강</td></tr>
+    <tr class="ok-row"><td>harness:check</td><td><span class="tag t-ok">PASS</span></td><td id="harness">mojibake clean · 크로스링크 115 · route-doc 55/38 · lint · typecheck</td></tr>
+  </tbody></table>
+
+  <h2>6. 결정 · 미확정</h2>
+  <table><thead><tr><th>항목</th><th>상태</th></tr></thead><tbody>
+    <tr><td>status enum</td><td>ASCII published/hidden + UI 게시/숨김 매핑(확정). category/policy_type/tracking/surface는 한글 코드값(확정)</td></tr>
+    <tr><td>버전 모델</td><td>operation_policy_histories snapshot + current_version_id, '이 버전 게시'로 복원(확정)</td></tr>
+    <tr><td>배열</td><td>exposure_surfaces·related_*·source_documents·legal_references jsonb(확정)</td></tr>
+    <tr><td>actor</td><td>RPC가 caller 기록(기존 CURRENT_ACTOR 하드코딩 대체)</td></tr>
+    <tr><td>PK / changed_by / current_version_id</td><td><span class="tag t-warn">미확정</span> POL-NNN/PH-NNNN max+1 동시성, changed_by/updated_by uuid 표시명, current_version_id 모델 정교화</td></tr>
+    <tr><td>requires_consent</td><td><span class="tag t-warn">미확정</span> B2C 동의 재수집 트리거 연동</td></tr>
+  </tbody></table>
+
+  <h2>7. 변경 파일</h2>
+  <h3>신규</h3>
+  <ul>
+    <li><code>supabase/migrations-admin/20260617170000_operation_policies.sql</code> (+ down/)</li>
+    <li><code>src/features/operation/api/operation-policies-data-source.ts</code></li>
+    <li><code>src/features/operation/api/supabase-operation-policies-service.ts</code></li>
+  </ul>
+  <h3>수정</h3>
+  <ul>
+    <li><code>src/features/operation/api/policies-service.ts</code> — 데이터소스 분기 + reason</li>
+    <li><code>src/features/operation/pages/operation-policies-page.tsx</code> · <code>operation-policy-create-page.tsx</code> — 사유→RPC, actor 정합</li>
+    <li><code>tests/e2e/operation-policies.spec.ts</code></li>
+  </ul>
+  <p class="legend">마이그레이션은 구현 직후 <code>.codex-artifacts/operation-policies/BACKUP_up.sql</code>로 즉시 백업(증분 #3 파일 소실 교훈 반영).</p>
+
+  <div class="foot">생성: Claude Code(Opus 4.8) 오케스트레이션 · 구현 Codex GPT-5.5 · dev talkpik-dev · 로드맵 증분 #4 (이전: #1 공지 e4138a9 · #2 FAQ 62d4d34 · #3 이벤트 2c0be28)</div>
+</div>
+</body>
+</html>

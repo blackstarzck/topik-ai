@@ -144,3 +144,10 @@ last_reviewed_at: "2026-06-01"
 | 항목 | 미확정 내용 | 필요한 결정 주체 | 관리자 페이지 영향 | 사용자 화면 영향 | 추적 문서 |
 | --- | --- | --- | --- | --- | --- |
 | 회원 상세 최종 계약 | 탭별 하위 데이터 aggregate API와 원본 화면별 데이터 경계는 추가 확정이 필요합니다. | 기획/백엔드/프론트 | 필터/액션/감사 로그 계약 변동 가능 | 마이페이지 프로필, 결제 내역, 커뮤니티 활동 화면에 운영상 추정으로 연결됩니다. | docs/specs/page-ia/users-detail-page-ia.md |
+## 2026-06-18 학습 현황 탭 동기화
+
+- Admin `Users > 회원 상세 > 학습 현황`은 B2C 학습 결과 자체를 수정하지 않는 운영 조회 화면이다.
+- 참조 source는 v13 학습 테이블 read-only: `problem_attempts`, `problems`, `writing_submissions`, `writing_feedback`, `feedback_dimension_scores`, `learning_goals`.
+- B2C 영향 상태: `운영상 추정`. 사용자가 푼 문제, 정답 여부, 점수, 제출 시각, 작문 제출/피드백 상태가 관리자 요약으로 집계된다.
+- B2C에 직접 노출되는 답안 본문과 문장 첨삭 본문은 admin 화면에서 제외한다. 필요한 경우 별도 권한/감사 정책을 먼저 확정해야 한다.
+- 활동(`study_events`)과 결제(`payment_history`) 탭의 실데이터화는 이번 변경 범위에서 제외하며 기존 page-sync 미확정 항목으로 유지한다.

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DB 변경 결과 보고서 — Commerce/쿠폰 mock→Supabase 전환</title>
+<style>
+  :root{--bg:#0f1115;--card:#171a21;--card2:#1d212b;--line:#2a2f3a;--fg:#e6e9ef;--mut:#9aa3b2;--acc:#6ea8fe;--ok:#41d18b;--warn:#f0b75b;--mono:"SFMono-Regular",Consolas,Menlo,monospace;}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--fg);font-family:"Segoe UI","Malgun Gothic",system-ui,sans-serif;line-height:1.6;font-size:15px}
+  .wrap{max-width:1080px;margin:0 auto;padding:32px 24px 80px}
+  h1{font-size:26px;margin:0 0 4px} h2{font-size:19px;margin:38px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)} h3{font-size:15px;margin:22px 0 8px;color:var(--acc)}
+  .sub{color:var(--mut);margin:0 0 18px}
+  .meta{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0 8px}
+  .chip{background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13px;color:var(--mut)} .chip b{color:var(--fg);font-weight:600}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:14px 0}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px} .kpi .n{font-size:24px;font-weight:700} .kpi .l{color:var(--mut);font-size:13px} .kpi.ok .n{color:var(--ok)} .kpi.add .n{color:var(--acc)}
+  table{width:100%;border-collapse:collapse;margin:10px 0;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top;font-size:13.5px} th{background:var(--card2);color:var(--mut);font-weight:600;font-size:12.5px;text-transform:uppercase} tr:last-child td{border-bottom:none}
+  code{font-family:var(--mono);background:#0b0d11;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12.5px;color:#d6deea}
+  .tag{display:inline-block;border-radius:6px;padding:1px 8px;font-size:11.5px;font-weight:700} .t-add{background:rgba(110,168,254,.15);color:var(--acc);border:1px solid rgba(110,168,254,.4)} .t-ok{background:rgba(65,209,139,.13);color:var(--ok);border:1px solid rgba(65,209,139,.4)} .t-none{background:rgba(154,163,178,.13);color:var(--mut);border:1px solid var(--line)} .t-warn{background:rgba(240,183,91,.13);color:var(--warn);border:1px solid rgba(240,183,91,.4)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:12px 0}
+  ul{margin:8px 0;padding-left:20px} li{margin:3px 0} .legend{font-size:12.5px;color:var(--mut);margin:4px 0 0} .ok-row td{color:var(--fg)}
+  .foot{margin-top:40px;color:var(--mut);font-size:12.5px;border-top:1px solid var(--line);padding-top:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>DB 변경 결과 보고서</h1>
+  <p class="sub">Commerce / 쿠폰 관리(<code>/commerce/coupons</code>) — mock 전용 → Supabase DB-backed 전환 (로드맵 증분 #7)</p>
+
+  <div class="meta">
+    <span class="chip">날짜 <b>2026-06-17</b></span>
+    <span class="chip">브랜치 <b>feat/operation-notices-db</b></span>
+    <span class="chip">dev <b>talkpik-dev</b></span>
+    <span class="chip">네임스페이스 <b>migrations-admin / admin_schema_migrations</b></span>
+    <span class="chip">구현 <b>Codex GPT-5.5</b></span>
+    <span class="chip">마이그레이션 <b>20260617193000_commerce_coupons.sql</b></span>
+  </div>
+
+  <h2>1. 요약</h2>
+  <div class="card">
+    쿠폰 본체 + 정기 쿠폰 템플릿을 메모리 mock에서 Supabase 영속+감사 경로로 전환. <b>2 테이블(53/30컬럼)·admin RPC 7종(+helper 2)·RLS 정책 2개</b>를 추가하고 dev DB에 적용. 기존 객체 변경 0건.
+    혜택/조건/유효기간/발행·다운로드·사용 제한/적용범위 등 복잡한 구성은 컬럼 + jsonb로 보존하고, 조치는 store 내 임시 감사(AL-CPN-)에서 <code>admin_audit_logs</code>로 승격됐다. 발급/사용 원장과 scope/대상그룹 정규화는 후속 트랙.
+  </div>
+
+  <div class="grid">
+    <div class="kpi add"><div class="n">+2</div><div class="l">테이블 (53/30컬럼)</div></div>
+    <div class="kpi add"><div class="n">+7</div><div class="l">admin RPC (+helper 2)</div></div>
+    <div class="kpi add"><div class="n">+2</div><div class="l">RLS 정책</div></div>
+    <div class="kpi ok"><div class="n">0</div><div class="l">기존 객체 변경</div></div>
+    <div class="kpi ok"><div class="n">53/53·30/30</div><div class="l">서비스↔테이블 컬럼</div></div>
+  </div>
+
+  <h2>2. 추가된 DB 객체</h2>
+  <table><thead><tr><th>테이블</th><th>요약</th></tr></thead><tbody>
+    <tr><td><code>commerce_coupons</code> (53컬럼)</td><td>쿠폰 본체 — coupon_kind/benefit_type/validity_mode/issue·download·usage limit/applicable_scope 등 CHECK enum(camelCase ASCII), target_user_ids·scope_reference_ids·excluded_product_ids jsonb, status ASCII↔한글</td></tr>
+    <tr><td><code>commerce_coupon_subscription_templates</code> (30컬럼)</td><td>정기 템플릿 — target_grade_ids·scope jsonb, issue_schedule·usage_end_schedule jsonb({dayOfMonth,hour,minute}), status</td></tr>
+  </tbody></table>
+  <p class="legend">RLS enable+force + admin select(2테이블). target_user_ids는 v13 profiles 느슨참조(FK 없음).</p>
+
+  <h3>2.1 admin RPC 7종 + helper 2 <span class="tag t-add">ADDED</span></h3>
+  <table><thead><tr><th>함수</th><th>action · target</th></tr></thead><tbody>
+    <tr><td><code>admin_save_commerce_coupon</code></td><td>coupon_saved · CommerceCoupon</td></tr>
+    <tr><td><code>admin_duplicate_commerce_coupon</code></td><td>coupon_duplicated · CommerceCoupon</td></tr>
+    <tr><td><code>admin_set_commerce_coupon_issue_state</code></td><td>coupon_paused / coupon_resumed · CommerceCoupon (autoIssue만)</td></tr>
+    <tr><td><code>admin_delete_commerce_coupon</code></td><td>coupon_deleted · CommerceCoupon</td></tr>
+    <tr><td><code>admin_save_commerce_coupon_template</code></td><td>coupon_template_saved · CommerceCouponTemplate</td></tr>
+    <tr><td><code>admin_set_commerce_coupon_template_status</code></td><td>coupon_template_paused / resumed · CommerceCouponTemplate</td></tr>
+    <tr><td><code>admin_delete_commerce_coupon_template</code></td><td>coupon_template_deleted · CommerceCouponTemplate</td></tr>
+    <tr><td>helper ×2</td><td>next_commerce_coupon_id · next_commerce_coupon_template_id (public revoke)</td></tr>
+  </tbody></table>
+  <p class="legend">전 RPC SECURITY DEFINER · reason 필수 · <code>admin_audit_logs</code> 기록. supabase 경로 감사는 store(AL-CPN-)→admin_audit_logs 승격(mock 경로 store 유지).</p>
+
+  <h2>3. 미변경 객체</h2>
+  <table><thead><tr><th>객체</th><th>상태</th></tr></thead><tbody>
+    <tr><td><code>profiles</code>/users (v13)</td><td><span class="tag t-none">미변경 · target_user_ids 느슨참조</span></td></tr>
+    <tr><td><code>admin_audit_logs</code> (v13)</td><td><span class="tag t-none">미변경 · RPC INSERT만</span></td></tr>
+    <tr><td>commerce_point_*·operation_*·community_* 등</td><td><span class="tag t-none">미변경 (diff additions only)</span></td></tr>
+  </tbody></table>
+
+  <h2>4. before / after 스냅샷</h2>
+  <table><thead><tr><th>구분</th><th>before</th><th>after</th><th>Δ</th></tr></thead><tbody>
+    <tr><td>테이블</td><td>55</td><td>57</td><td><span class="tag t-add">+2</span></td></tr>
+    <tr><td>함수</td><td>114</td><td>123</td><td><span class="tag t-add">+9</span></td></tr>
+    <tr><td>정책</td><td>85</td><td>87</td><td><span class="tag t-add">+2</span></td></tr>
+  </tbody></table>
+  <p class="legend">diff <code>--exclude-own</code> → 총 94건(컬럼 83 + 함수 9 + 정책 2), <b>전부 added</b>, changed/removed 0.</p>
+
+  <h2>5. 검증 결과</h2>
+  <table><thead><tr><th>게이트</th><th>결과</th><th>근거</th></tr></thead><tbody>
+    <tr class="ok-row"><td>마이그레이션 적용 / 무변경 게이트</td><td><span class="tag t-ok">PASS</span></td><td>diff additions only (94)</td></tr>
+    <tr class="ok-row"><td>seed · RLS(force) · 서비스 컬럼 일치</td><td><span class="tag t-ok">PASS</span></td><td>coupons 6행·53/53, templates 2행·30/30, force ×2</td></tr>
+    <tr class="ok-row"><td>typecheck · lint</td><td><span class="tag t-ok">PASS</span></td><td>exit 0</td></tr>
+    <tr class="ok-row"><td>e2e (commerce-coupons, mock)</td><td><span class="tag t-ok">PASS</span></td><td>3 passed — 상세/감사 링크 + 정기 템플릿 생성</td></tr>
+    <tr class="ok-row"><td>문서 동기화 (AGENTS.md §7)</td><td><span class="tag t-ok">PASS</span></td><td id="docsync">11개 SoT 문서 갱신(소유권 2행·data-contract·action-log·usage-map·transition·page-sync·page-ia·page-tables·gap-register[store 감사→admin_audit_logs Resolved]·ia-change-log·doc-update-log). 신규 문서 0건</td></tr>
+    <tr class="ok-row"><td>harness:check</td><td><span class="tag t-ok">PASS</span></td><td id="harness">mojibake clean · 크로스링크 115 · route-doc 55/38 · lint · typecheck</td></tr>
+  </tbody></table>
+
+  <h2>6. 결정 · 미확정</h2>
+  <table><thead><tr><th>항목</th><th>상태</th></tr></thead><tbody>
+    <tr><td>enum 저장</td><td>coupon-types camelCase ASCII 그대로 + status 한글 라벨 매핑(확정)</td></tr>
+    <tr><td>구성/배열</td><td>scope·target·schedule jsonb(확정). scope-ref/대상그룹/알림 정규화 후속 <span class="tag t-warn">미확정</span></td></tr>
+    <tr><td>발급/사용 원장</td><td><span class="tag t-warn">미확정</span> commerce_coupon_issues/redemptions 후속 트랙</td></tr>
+    <tr><td>planTier(free 1개 제한)</td><td><span class="tag t-warn">미확정</span> 영속화 미정 — 현재 서비스 레이어(클라/config) 검증 유지</td></tr>
+    <tr><td>target_user_ids</td><td>v13 profiles 느슨참조(FK 없음)</td></tr>
+  </tbody></table>
+
+  <h2>7. 변경 파일</h2>
+  <h3>신규</h3>
+  <ul>
+    <li><code>supabase/migrations-admin/20260617193000_commerce_coupons.sql</code> (+ down/)</li>
+    <li><code>src/features/commerce/api/commerce-coupons-data-source.ts</code> · <code>supabase-commerce-coupons-service.ts</code></li>
+  </ul>
+  <h3>수정</h3>
+  <ul>
+    <li><code>src/features/commerce/api/coupons-service.ts</code> — 데이터소스 분기, supabase 경로 감사 admin_audit_logs 승격</li>
+    <li><code>src/shared/model/target-type-label.ts</code> — CommerceCoupon/CommerceCouponTemplate</li>
+  </ul>
+  <p class="legend">마이그레이션 구현 직후 <code>.codex-artifacts/commerce-coupons/BACKUP_up.sql</code>로 즉시 백업. 감사 역추적 딥링크(/commerce/coupons)는 기존 audit 페이지에 이미 존재.</p>
+
+  <div class="foot">생성: Claude Code(Opus 4.8) 오케스트레이션 · 구현 Codex GPT-5.5 · dev talkpik-dev · 로드맵 증분 #7 (이전: operation 4 + community + commerce 포인트)</div>
+</div>
+</body>
+</html>

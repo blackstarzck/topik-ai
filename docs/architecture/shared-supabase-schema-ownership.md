@@ -182,3 +182,18 @@
 - 결정(오너 2026-06-18): `admin_audit_logs.diff`/`payload`는 민감정보(회원 PII·정책 본문·환불/정지 사유 등)를 포함할 수 있어 **platform_admin에게만** 노출한다. content_admin/org_admin은 목록·필터·actor·`reason`은 보지만 diff/payload는 서버에서 NULL로 받는다(전송 단계 차단, 방어적 게이팅).
 - 마이그레이션: `supabase/migrations-admin/20260618095000_audit_logs_diff_payload_platform_only.sql`(+down). 읽기 RPC `admin_list_audit_logs` CREATE OR REPLACE만, 테이블/RLS/쓰기 경로 무변경(함수 수 불변).
 - 경계: `private.is_platform_admin(caller)`일 때만 diff/payload를 반환하고 payload 키워드 검색 분기도 허용한다. `reason`(payload->>'reason')은 전체 admin에게 유지. dev DB 검증 완료(platform=노출, content_admin=NULL·payload 검색 불가).
+## 2026-06-18 Users 상세 학습 테이블 read 참조
+
+| Object | Owner | Write path | Read path | Boundary |
+| --- | --- | --- | --- | --- |
+| `problem_attempts` | v13 | v13 learner/service flow | topik-ai admin RPC `get_admin_user_learning_overview(target_id)` | read-only aggregate/reference. No FK, trigger, policy, or column change from topik-ai. |
+| `problems` | v13 / Assessment content owner boundary | v13/content flow | topik-ai admin RPC `get_admin_user_learning_overview(target_id)` | read-only join for domain/question metadata. `prompt` is not returned. |
+| `writing_submissions` | v13 | v13 writing flow | topik-ai admin RPC `get_admin_user_learning_overview(target_id)` | read-only count/recent metadata. `answer_text` and `answer_json` are not returned. |
+| `writing_feedback` | v13 | v13 writing feedback flow | topik-ai admin RPC `get_admin_user_learning_overview(target_id)` | read-only score/status metadata. |
+| `feedback_dimension_scores` | v13 | v13 writing feedback flow | topik-ai admin RPC `get_admin_user_learning_overview(target_id)` | read-only weakness dimension aggregation. |
+| `sentence_feedback` | v13 | v13 writing feedback flow | no topik-ai admin read in this feature | sentence-level PII/text feedback remains excluded. |
+| `learning_goals` | v13 | v13 learner goal flow | topik-ai admin RPC `get_admin_user_learning_overview(target_id)` | read-only weak area aggregation. |
+
+- Migration home: `supabase/migrations-admin/20260618120000_admin_user_learning_overview.sql` only creates/replaces a read RPC and its down pair. It creates no tables and changes no v13 DDL.
+- Access gate: `private.is_platform_admin(auth.uid())`, `SECURITY DEFINER`, fixed `search_path`.
+- Privacy decision: admin learning overview can show operational aggregates, scores, and weakness labels, but not answer body or sentence correction body.

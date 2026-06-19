@@ -85,8 +85,21 @@
 ### `docs/harness`
 - `index.md`
 
+### `docs/runbooks`
+- `notification-worker-production-verification.md` — v13 transition email worker를 topik-ai production worker로 넘기기 전/후 SOT, Vercel readiness, smoke, cross-app state evidence를 기록하는 운영 검증 runbook
+- `notification-worker-production-evidence.example.md` — 실제 production evidence 파일 작성 시 secret 값을 남기지 않도록 돕는 redacted 예시 문서
+
+### `docs/swagger-api`
+- 상류 `TalkPik AI Service` API(Swagger) 스냅샷을 그룹별로 분리한 참조 문서다. 구 단일 문서 `topik-ai-service-api-reference.md`를 대체한다(생성 기준일 2026-06-17, Swagger UI `https://api.dotoretopik.com/docs`).
+- **admin 경계 주석**: admin은 이 상류 API로 문항을 push/배포하지 않는다 — 인바운드 수신 모델(결정 기록 `docs/architecture/metadata-tag-schema-transition-decision-record.md` §0). Writing API(`GET /api/writing/tasks` 등)는 v13 사용자 노출용이며 admin 배포 대상이 아니다.
+- `swagger-api/README.md` — 폴더 진입점·권장 읽기 순서·v13 Writing 연결 핵심
+- `swagger-api/openapi-reference.md` — 전체 endpoint/schema 색인(72 paths·74 operations·118 schemas)
+- `swagger-api/auth-and-errors.md` — 인증 헤더(`Bearer`/`X-API-Key`)·응답/에러 코드
+- `swagger-api/writing-api-v13-screen-map.html` — v13 Writing 화면 연결 맵(HTML)
+- 엔드포인트: `swagger-api/endpoints/admin-campaign.md`, `swagger-api/endpoints/admin-eval.md`, `swagger-api/endpoints/eval-auth.md`, `swagger-api/endpoints/evaluation.md`, `swagger-api/endpoints/external-campaign.md`, `swagger-api/endpoints/listening.md`, `swagger-api/endpoints/reading.md`, `swagger-api/endpoints/writing.md`
+- 스키마: `swagger-api/schemas/index.md`, `swagger-api/schemas/common.md`, `swagger-api/schemas/admin-campaign.md`, `swagger-api/schemas/admin-eval.md`, `swagger-api/schemas/eval-auth.md`, `swagger-api/schemas/evaluation.md`, `swagger-api/schemas/external-campaign.md`, `swagger-api/schemas/listening.md`, `swagger-api/schemas/reading.md`, `swagger-api/schemas/writing.md`
+
 ### `docs/specs`
-- `topik-ai-service-api-reference.md`
 - `admin-data-contract.md`
 - `notification-contract.md` — 알림 채널/class/template_key/status/dedupe 단일 계약 (2026-06-12)
 - `admin-page-gap-register.md`
@@ -145,6 +158,7 @@
 - Supabase 마이그레이션 디렉터리/네임스페이스 안내(`docs/` 밖, 외부 참조): `supabase/README.md`
 
 ## 관리 규칙
+- 2026-06-18 기준 `Users > 회원 상세` 학습 현황 탭은 신규 문서 없이 기존 SoT(`admin-data-contract`, `users-detail-page-ia`, `users-detail-page-sync`, `admin-data-usage-map`, `shared-supabase-schema-ownership`, `admin-action-log`)에서 추적한다.
 - 상위 개요, 메뉴 구조, 라우팅, 역할, 페이지 상태는 `docs/architecture/admin-overview.md`를 우선 확인한다.
 - 하네스 구조와 기본 검증 명령은 `docs/harness/index.md`를 우선 확인한다.
 - `docs/**` 문서를 추가/삭제/이동하면 같은 작업에서 `docs/README.md`를 반드시 갱신한다.

@@ -131,3 +131,8 @@
 - B2C 영향 상태는 `내부 전용`이다. 사용자 화면에 의도적으로 노출하지 않는 기술 로그다.
 - 조회 전용 — admin write·감사 액션 없음(RLS admin select 정책만, write RPC 없음). 적재는 백엔드/인프라 service-role 몫이며 적재 소스는 미정이다. `감사 로그`(`admin_audit_logs`)·v13 `notification_log`와는 별개다.
 - 미확정: 로그 적재 소스/주체, 보존기간·파티셔닝, `trace_id` 의미, `level` 코드값 표준.
+## 2026-06-18 Users 회원 상세 학습 현황 사용 맵
+
+| 모듈 | 관리자 화면 | 데이터 source | 관리자 노출 필드 | 데이터 성격 | B2C 노출 위치 | B2C 노출 상태 | 비고 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Users | `Users > 회원 상세 > 학습 현황` | v13 `problem_attempts`, `problems`, `writing_submissions`, `writing_feedback`, `feedback_dimension_scores`, `learning_goals` | 총 풀이, 풀이 완료 문제, 정답률, 평균 점수, 학습 시간, 북마크 수, 영역별 정답률, 약점, 최근 풀이 메타데이터, 최근 작문 제출/점수/약점 차원 | 학습 결과 집계 + 메타데이터 read-only | 학습 결과/마이페이지/작문 피드백 화면 후보 | 운영상 추정 | 답안 본문과 문장 첨삭 본문은 admin 미노출. 신규 테이블/FK/v13 DDL 없음. |

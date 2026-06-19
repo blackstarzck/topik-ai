@@ -232,3 +232,9 @@
 - RPC는 `SECURITY DEFINER` + `private.is_admin` 가드로 동작하고, `profiles(admin_user_id -> id)` 조인을 통해 `profiles.display_name`을 `actor`로 해석합니다.
 - 필터는 `target_table`, `target_id`, keyword `ILIKE`, `created_at` 범위이며, 정렬은 `created_at desc`, 페이지네이션은 `p_limit`/`p_offset`입니다.
 - 반환 컬럼은 `log_id`, `target_type`, `target_id`, `action`, `actor`, `reason`, `diff`, `payload`, `created_at`, `total_count`입니다. 단, `diff`/`payload` 민감정보 노출 범위는 미확정이므로 화면 노출은 보류합니다.
+## 2026-06-18 Users 학습 현황 조회 감사 로그 기준
+
+- `Users > 회원 상세 > 학습 현황`은 조회 전용 read RPC(`get_admin_user_learning_overview`)이므로 별도 `admin_audit_logs` write를 만들지 않는다.
+- 조회 데이터는 답안 본문/문장 첨삭 본문을 제외한 집계와 메타데이터로 제한한다.
+- 회원 정지/해제 같은 조치성 액션은 기존 `Target Type=Users`, `Target ID=userId`, 사유 필수, `/system/audit-logs?targetType=Users&targetId={userId}` 확인 경로를 유지한다.
+- 향후 답안 본문 또는 sentence feedback 열람이 승인되면 조회 행위 자체를 별도 감사 대상으로 재검토한다.

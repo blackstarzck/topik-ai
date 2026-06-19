@@ -1,0 +1,1198 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TOPIK 쓰기 추천 로직 설계도</title>
+    <style>
+      :root {
+        --bg: #f6f7f9;
+        --paper: #ffffff;
+        --ink: #18202b;
+        --muted: #667085;
+        --line: #d8dee8;
+        --brand: #1f5fbf;
+        --brand-soft: #eaf2ff;
+        --ok: #0f766e;
+        --warn: #a16207;
+        --danger: #b42318;
+        --code: #f1f5f9;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family:
+          Inter, Pretendard, "Noto Sans KR", "Apple SD Gothic Neo",
+          "Malgun Gothic", Arial, sans-serif;
+        line-height: 1.65;
+      }
+
+      header {
+        background: #102a4c;
+        color: #fff;
+        padding: 56px 24px 44px;
+      }
+
+      main,
+      .hero-inner {
+        max-width: 1120px;
+        margin: 0 auto;
+      }
+
+      main {
+        padding: 28px 24px 64px;
+      }
+
+      section {
+        background: var(--paper);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        margin: 18px 0;
+        padding: 28px;
+      }
+
+      h1,
+      h2,
+      h3 {
+        line-height: 1.25;
+        margin: 0 0 14px;
+      }
+
+      h1 {
+        font-size: 34px;
+        letter-spacing: 0;
+      }
+
+      h2 {
+        border-bottom: 1px solid var(--line);
+        font-size: 23px;
+        padding-bottom: 10px;
+      }
+
+      h3 {
+        color: #26374f;
+        font-size: 18px;
+        margin-top: 26px;
+      }
+
+      p {
+        margin: 0 0 12px;
+      }
+
+      a {
+        color: var(--brand);
+        text-decoration: none;
+      }
+
+      a:hover {
+        text-decoration: underline;
+      }
+
+      code,
+      pre {
+        background: var(--code);
+        border-radius: 6px;
+        font-family:
+          "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      }
+
+      code {
+        padding: 2px 5px;
+      }
+
+      pre {
+        border: 1px solid var(--line);
+        overflow-x: auto;
+        padding: 16px;
+        white-space: pre;
+      }
+
+      table {
+        border-collapse: collapse;
+        margin: 16px 0 8px;
+        width: 100%;
+      }
+
+      th,
+      td {
+        border: 1px solid var(--line);
+        padding: 10px 12px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        background: #f3f6fa;
+        color: #344054;
+        font-weight: 700;
+      }
+
+      ul,
+      ol {
+        margin: 8px 0 12px 22px;
+        padding: 0;
+      }
+
+      li {
+        margin: 4px 0;
+      }
+
+      .meta {
+        color: #c6d4e9;
+        font-size: 14px;
+        margin-bottom: 10px;
+      }
+
+      .hero-copy {
+        color: #e4ecf7;
+        font-size: 17px;
+        max-width: 840px;
+      }
+
+      .pill-row,
+      .grid {
+        display: grid;
+        gap: 12px;
+      }
+
+      .pill-row {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        margin-top: 24px;
+      }
+
+      .pill {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        border-radius: 10px;
+        padding: 14px;
+      }
+
+      .pill strong {
+        display: block;
+        font-size: 14px;
+      }
+
+      .pill span {
+        color: #d9e4f4;
+        display: block;
+        font-size: 13px;
+        margin-top: 3px;
+      }
+
+      .grid.two {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .grid.three {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 16px;
+      }
+
+      .callout {
+        border-left: 5px solid var(--brand);
+        background: var(--brand-soft);
+        border-radius: 8px;
+        margin: 16px 0;
+        padding: 14px 16px;
+      }
+
+      .callout.warning {
+        background: #fffbeb;
+        border-left-color: var(--warn);
+      }
+
+      .callout.danger {
+        background: #fff1f3;
+        border-left-color: var(--danger);
+      }
+
+      .callout.ok {
+        background: #ecfdf3;
+        border-left-color: var(--ok);
+      }
+
+      .tag {
+        background: #eef4ff;
+        border: 1px solid #c7d7fe;
+        border-radius: 999px;
+        color: #1d4ed8;
+        display: inline-block;
+        font-size: 12px;
+        margin: 2px 3px 2px 0;
+        padding: 2px 8px;
+      }
+
+      .small {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .nowrap {
+        white-space: nowrap;
+      }
+
+      @media (max-width: 820px) {
+        h1 {
+          font-size: 28px;
+        }
+
+        section {
+          padding: 20px;
+        }
+
+        .pill-row,
+        .grid.two,
+        .grid.three {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="hero-inner">
+        <div class="meta">Design document · 2026-06-17 · topik-ai admin + v13 SOT 기준</div>
+        <h1>TOPIK 쓰기 51~54 추천 로직 설계도</h1>
+        <p class="hero-copy">
+          이 문서는 관리자 앱의 SOT와 v13 사용자 앱 SOT를 기준으로, MVP에 적용 가능한
+          규칙 기반 문제 추천 로직을 정의한다. 구현 코드는 포함하지 않으며, 관리자
+          운영 범위와 v13 소비 흐름 사이의 계약을 맞추는 설계 문서다.
+        </p>
+        <div class="pill-row">
+          <div class="pill">
+            <strong>MVP 결정</strong>
+            <span>AI 추천 엔진이 아닌 규칙 기반 다음 행동 선택기</span>
+          </div>
+          <div class="pill">
+            <strong>관리자 역할</strong>
+            <span><code>service_status</code>와 태그로 후보 풀 관리</span>
+          </div>
+          <div class="pill">
+            <strong>v13 역할</strong>
+            <span>사용자 이력 기준으로 추천 실행과 상태 저장</span>
+          </div>
+          <div class="pill">
+            <strong>후속 범위</strong>
+            <span>약점 엔진, ML, 임베딩 검색은 별도 결정 후 진행</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section id="summary">
+        <h2>1. 결론</h2>
+        <div class="callout ok">
+          <p>
+            추천 로직은 <strong>후보 생성 → 점수화 → 재정렬 → 결과 저장</strong>
+            4단계로 구성한다. MVP에서는 학습자별 AI 분석을 하지 않고, 관리자 메타데이터,
+            v13의 온보딩 목표, 최근 풀이 이력, 기존 추천 실행 기록만 사용한다.
+          </p>
+        </div>
+        <div class="grid two">
+          <div class="card">
+            <h3>적용 범위</h3>
+            <ul>
+              <li>TOPIK 쓰기 51~54 문항</li>
+              <li><code>B-01</code> 홈 추천 카드</li>
+              <li><code>C-01</code> 문제 유형 추천</li>
+              <li><code>R-02</code> 피드백 후 다음 문제 추천</li>
+              <li><code>C-02</code> 문제 목록 fallback</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>비적용 범위</h3>
+            <ul>
+              <li>외부 AI provider 기반 추천</li>
+              <li>자동 약점 추론 모델</li>
+              <li>임베딩/유사도 검색</li>
+              <li>collaborative filtering</li>
+              <li>관리자의 사용자별 추천 row 직접 수정</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="sot">
+        <h2>2. SOT 기준과 해석</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>구분</th>
+              <th>확인한 기준</th>
+              <th>설계 반영</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>관리자 스키마 경계</td>
+              <td>
+                <code>topik-ai/docs/architecture/shared-supabase-schema-ownership.md</code>,
+                <code>metadata-tag-schema-transition-decision-record.md</code>
+              </td>
+              <td>
+                관리자 앱은 <code>topik_writing_*</code> 네임스페이스와 운영 태그,
+                노출 상태를 소유한다. v13 기존 테이블 DDL은 변경하지 않는다.
+              </td>
+            </tr>
+            <tr>
+              <td>문항 운영 계약</td>
+              <td>
+                <code>admin-data-contract.md</code>,
+                <code>assessment-question-manage-page-ia.md</code>,
+                <code>system-metadata-page-ia.md</code>
+              </td>
+              <td>
+                물리 노출 상태는 <code>service_status</code> 하나로 본다.
+                태그 변경과 상태 변경은 RPC와 감사 로그를 거친다.
+              </td>
+            </tr>
+            <tr>
+              <td>태그와 추천 키</td>
+              <td><code>metadata-tag-schema-rule.md</code></td>
+              <td>
+                사실 메타데이터와 운영 태그를 분리한다.
+                <code>recommendation_keys</code>는 점수 가산,
+                <code>avoid_repeat_keys</code>는 반복 회피에 사용한다.
+              </td>
+            </tr>
+            <tr>
+              <td>v13 MVP 범위</td>
+              <td>
+                <code>v13/docs/scope-decisions/2026-06-17-ai-deferred-and-mvp-scope.md</code>,
+                <code>v13/docs/development-core-planning/</code>
+              </td>
+              <td>
+                실서비스 AI 기능과 약점 기반 추천 엔진은 보류한다.
+                MVP는 규칙 기반 다음 문제 추천으로 제한한다.
+              </td>
+            </tr>
+            <tr>
+              <td>v13 화면 흐름</td>
+              <td>
+                <code>B-01</code>, <code>C-01</code>, <code>C-02</code>,
+                <code>R-02</code>, <code>X-07</code> Wireframe 문서
+              </td>
+              <td>
+                홈, 유형 추천, 피드백 후 다음 추천은 제공한다.
+                X-07 약점 추천은 후속/준비중 또는 R-02 규칙 추천으로 대체한다.
+              </td>
+            </tr>
+            <tr>
+              <td>v13 현재 구현</td>
+              <td>
+                <code>v13/src/lib/practice/next.ts</code>,
+                <code>v13/src/lib/practice/weakness.ts</code>,
+                <code>v13/supabase/migrations/*recommendations.sql</code>
+              </td>
+              <td>
+                <code>recommendation_runs</code>와
+                <code>recommendation_items</code>는 결과 캐시와 상태 저장으로 사용한다.
+                현재 fallback 구조를 고도화하되, AI로 포장하지 않는다.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="callout warning">
+          <p>
+            설계상 충돌 회피 원칙: <code>topik_writing_question_recommendation_view</code>
+            를 v13의 즉시 소비 소스로 고정하지 않는다. v13의 기존
+            <code>problems</code> 기반 경로와 새 관리자 문항 소스를 모두
+            <code>ProblemCandidate</code> 어댑터 뒤에 숨기고, 실제 컷오버는 별도
+            owner 결정으로 처리한다.
+          </p>
+        </div>
+      </section>
+
+      <section id="agent-consensus">
+        <h2>3. 멀티 에이전트 조사 합의</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>검토 역할</th>
+              <th>핵심 결론</th>
+              <th>반영 방식</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>v13 SOT 조사</td>
+              <td>
+                추천은 51~54 유형, 홈/C-01/R-02 흐름에 존재한다.
+                다만 AI/약점 엔진은 MVP 보류다.
+              </td>
+              <td>
+                MVP 추천은 규칙 기반으로 제한하고, 약점 화면은 후속 범위로 명시한다.
+              </td>
+            </tr>
+            <tr>
+              <td>관리자 SOT 조사</td>
+              <td>
+                <code>service_status</code>, <code>tag_master</code>,
+                <code>question_tags</code>,
+                <code>topik_writing_question_recommendation_view</code>가
+                추천 후보 풀 운영의 중심이다.
+              </td>
+              <td>
+                관리자 화면은 알고리즘 편집기가 아니라 후보 풀 품질 관리 화면으로 둔다.
+              </td>
+            </tr>
+            <tr>
+              <td>외부 근거 조사</td>
+              <td>
+                추천 시스템은 일반적으로 후보 생성, 점수화, 재정렬로 나눌 수 있고,
+                학습 추천에는 간격 복습과 retrieval practice가 근거가 된다.
+              </td>
+              <td>
+                ML 없이도 동일 구조를 규칙 기반으로 적용하고, 복습 예정 신호를 점수화한다.
+              </td>
+            </tr>
+            <tr>
+              <td>비판 검토</td>
+              <td>
+                사용자별 추천 row를 관리자에게 노출하거나, AI 추천처럼 표현하는 것은
+                SOT와 개인정보/감사 경계 리스크가 크다.
+              </td>
+              <td>
+                관리자 조치 로그와 추천 실행 로그를 분리하고, 추천 사유는 규칙 기반 문구로 제한한다.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="architecture">
+        <h2>4. 전체 구조</h2>
+        <pre aria-label="recommendation architecture diagram">topik-ai admin
+  ├─ question bank / manage
+  │   ├─ service_status: available | excluded | internal_test
+  │   ├─ topik_writing_tag_master
+  │   └─ topik_writing_question_tags
+  │
+  └─ topik_writing_question_recommendation_view
+      ├─ factual metadata: item_number, topic, difficulty, scenario
+      ├─ recommendation_keys
+      └─ avoid_repeat_keys
+
+v13 recommendation runtime
+  ├─ user signals: onboarding goal, recent attempts, feedback scores
+  ├─ candidate adapter: admin view or legacy problems
+  ├─ hard filter
+  ├─ scoring
+  ├─ re-ranking
+  └─ recommendation_runs / recommendation_items
+
+v13 user screens
+  ├─ B-01 dashboard recommendation card
+  ├─ C-01 problem type recommendations
+  ├─ R-02 next problem recommendation
+  └─ C-02 problem list fallback</pre>
+
+        <h3>핵심 분리</h3>
+        <div class="grid three">
+          <div class="card">
+            <strong>관리자 조치</strong>
+            <p class="small">
+              문항의 서비스 노출 가능성, 추천 목적 태그, 반복 방지 태그,
+              운영주의 태그를 관리한다. 모든 변경은 사유와 감사 로그를 남긴다.
+            </p>
+          </div>
+          <div class="card">
+            <strong>추천 실행</strong>
+            <p class="small">
+              v13에서 사용자별 이력과 목표를 읽어 후보를 선별한다.
+              관리자 앱은 사용자별 추천 결과를 직접 수정하지 않는다.
+            </p>
+          </div>
+          <div class="card">
+            <strong>결과 소비</strong>
+            <p class="small">
+              추천 결과는 화면 카드와 CTA로 노출하고, 시작/소비 상태만
+              <code>recommendation_items.status</code>에 반영한다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="candidate-contract">
+        <h2>5. 후보 데이터 계약</h2>
+        <p>
+          추천 함수는 실제 소스가 관리자 신규 문항 뷰인지, v13 legacy
+          <code>problems</code> 테이블인지 몰라도 되도록 공통 후보 타입만 소비한다.
+        </p>
+        <pre><code>type ProblemCandidate = {
+  problemId: string;
+  source: "topik_writing" | "legacy_problems";
+  itemNumber: 51 | 52 | 53 | 54;
+  title: string;
+  targetLevel: string | null;
+  difficultyLevel: number | null;
+  topicMain: string | null;
+  topicDetail: string | null;
+  questionTypeName: string | null;
+  scenarioType: string | null;
+  situationSummary: string | null;
+  serviceStatus: "available" | "excluded" | "internal_test" | "published";
+  recommendationKeys: string[];
+  avoidRepeatKeys: string[];
+  activeTags: Array&lt;{
+    tagCode: string;
+    tagGroup: string;
+    tagValue: string;
+  }&gt;;
+  estimatedMinutes: number;
+};</code></pre>
+
+        <table>
+          <thead>
+            <tr>
+              <th>소스</th>
+              <th>MVP 처리</th>
+              <th>전환 조건</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>topik_writing_question_recommendation_view</code></td>
+              <td>
+                관리자 신규 스키마가 준비된 환경의 1순위 후보 소스.
+                <code>service_status='available'</code>만 사용자 추천 후보로 사용한다.
+              </td>
+              <td>
+                v13 소비 컷오버 결정, RLS/읽기 경로, 문항 ID 매핑 검증 완료 후 활성화.
+              </td>
+            </tr>
+            <tr>
+              <td><code>problems</code> legacy source</td>
+              <td>
+                v13 현재 구현과 호환되는 전환기 후보 소스.
+                공개 상태 문항만 사용하고 추천 키가 없으면 기본 규칙으로 보정한다.
+              </td>
+              <td>
+                신규 topik writing source가 사용자 앱에서 검증될 때까지 유지한다.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="algorithm">
+        <h2>6. 추천 알고리즘</h2>
+        <h3>6.1 입력 신호</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>신호</th>
+              <th>예시 데이터</th>
+              <th>MVP 신뢰도</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>학습 목표</td>
+              <td>목표 TOPIK 등급, 선호 유형, 목표 난이도, 목표 풀이 수</td>
+              <td>높음. 온보딩 값 또는 기본값을 사용한다.</td>
+            </tr>
+            <tr>
+              <td>최근 풀이 이력</td>
+              <td>최근 문항, 최근 유형, 제출/완료 시각, 소비한 추천 item</td>
+              <td>높음. 사용자 소유 데이터이며 규칙 추천의 핵심이다.</td>
+            </tr>
+            <tr>
+              <td>피드백 점수</td>
+              <td>문법, 어휘, 구조, 표현, 주제 적합성 차원 점수</td>
+              <td>
+                중간. MVP에서는 AI 고도 분석으로 표현하지 않고,
+                존재하는 점수만 보조 신호로 쓴다.
+              </td>
+            </tr>
+            <tr>
+              <td>관리자 문항 메타</td>
+              <td>유형, 난이도, 주제, 추천 키, 반복 회피 키, 운영 태그</td>
+              <td>높음. 추천 품질을 좌우하는 운영 입력값이다.</td>
+            </tr>
+            <tr>
+              <td>권한/제한</td>
+              <td>구독, paywall, 제출 가능 횟수, 잠금 상태</td>
+              <td>높음. 추천 CTA가 실제 시작 가능 상태와 충돌하면 안 된다.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>6.2 후보 생성</h3>
+        <ol>
+          <li>현재 화면 context를 정한다: <code>dashboard</code>, <code>type_recommendation</code>, <code>next_problem</code>.</li>
+          <li>사용자 목표와 최근 풀이 이력을 읽는다.</li>
+          <li>어댑터를 통해 후보 문항을 로드한다.</li>
+          <li>문항 유형은 51~54로 제한한다.</li>
+          <li>신규 사용자라면 기본값을 적용한다: TOPIK II 3~4 수준, 중간 난이도, 51→52→53→54 순환.</li>
+        </ol>
+
+        <h3>6.3 Hard Filter</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>필터</th>
+              <th>규칙</th>
+              <th>실패 시 처리</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>노출 상태</td>
+              <td>
+                신규 소스는 <code>service_status='available'</code>,
+                legacy는 공개 상태 문항만 허용한다.
+              </td>
+              <td>후보 제외</td>
+            </tr>
+            <tr>
+              <td>관리자 제외 태그</td>
+              <td>
+                <span class="tag">추천 제외</span>
+                <span class="tag">노출 제외</span>
+                <span class="tag">검수 필요</span>
+                계열의 활성 태그는 추천 후보에서 제외한다.
+              </td>
+              <td>후보 제외</td>
+            </tr>
+            <tr>
+              <td>운영주의 태그</td>
+              <td>
+                운영주의 태그가 있는 문항은 primary 추천에서 제외한다.
+                운영 정책상 허용된 경고성 태그라면 alternative까지만 허용한다.
+              </td>
+              <td>primary 제외 또는 후보 제외</td>
+            </tr>
+            <tr>
+              <td>최근 동일 문항</td>
+              <td>최근 14일 내 풀이한 동일 문항은 primary 추천에서 제외한다.</td>
+              <td>primary 제외, 후보 부족 시 낮은 점수 alternative 허용</td>
+            </tr>
+            <tr>
+              <td>반복 회피 키</td>
+              <td>
+                최근 3개 풀이의 <code>avoid_repeat_keys</code>와 강하게 겹치면
+                primary에서 제외한다.
+              </td>
+              <td>primary 제외, alternative 감점</td>
+            </tr>
+            <tr>
+              <td>접근 가능성</td>
+              <td>
+                plan/quota/paywall로 바로 시작할 수 없으면 추천 CTA는 paywall
+                또는 문제 목록 fallback으로 연결한다.
+              </td>
+              <td>활성 추천 저장 전 차단 또는 paywall CTA</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>6.4 점수화</h3>
+        <p>
+          점수는 운영자가 화면에서 직접 편집하지 않는다. 초기 MVP에서는 코드 상수와
+          문서 버전으로 관리하고, 충분한 지표가 쌓인 뒤 별도 정책 카탈로그를 검토한다.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>요소</th>
+              <th>가중치 초안</th>
+              <th>의도</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>유형 순환 다음 단계</td>
+              <td class="nowrap">+20</td>
+              <td>이력이 적은 사용자는 51→52→53→54 균형 순환</td>
+            </tr>
+            <tr>
+              <td>최근 피드백 후 같은 유형 유지</td>
+              <td class="nowrap">+15</td>
+              <td>R-02에서 방금 푼 유형의 연습 연속성 유지</td>
+            </tr>
+            <tr>
+              <td>목표 레벨/난이도 적합</td>
+              <td class="nowrap">+12 ~ +15</td>
+              <td>온보딩 목표와 너무 벗어난 문제 방지</td>
+            </tr>
+            <tr>
+              <td><code>recommendation_keys</code> 일치</td>
+              <td class="nowrap">+12</td>
+              <td>관리자/외부 메타데이터가 제시한 추천 목적 반영</td>
+            </tr>
+            <tr>
+              <td>대표 문제/학습 흐름 태그</td>
+              <td class="nowrap">+8 ~ +10</td>
+              <td>초기 사용자와 방향 없는 사용자의 안정적 시작점 제공</td>
+            </tr>
+            <tr>
+              <td>복습 예정 신호</td>
+              <td class="nowrap">+10</td>
+              <td>간격 복습과 retrieval practice 반영</td>
+            </tr>
+            <tr>
+              <td>미풀이 문항</td>
+              <td class="nowrap">+10</td>
+              <td>같은 문항 반복 추천을 줄임</td>
+            </tr>
+            <tr>
+              <td><code>avoid_repeat_keys</code> 최근 겹침</td>
+              <td class="nowrap">-30</td>
+              <td>상황/자료/답변 유형 반복 노출 회피</td>
+            </tr>
+            <tr>
+              <td>같은 유형 과다 반복</td>
+              <td class="nowrap">-15</td>
+              <td>최근 3회 이상 같은 번호만 푸는 흐름 방지</td>
+            </tr>
+            <tr>
+              <td>난이도 급상승</td>
+              <td class="nowrap">-10</td>
+              <td>목표 난이도보다 2단계 이상 높은 문항 연속 방지</td>
+            </tr>
+            <tr>
+              <td>최근 skip/consume</td>
+              <td class="nowrap">-20</td>
+              <td>방금 넘긴 문제를 즉시 다시 추천하지 않음</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>6.5 재정렬</h3>
+        <ol>
+          <li>점수 상위 후보를 가져온다.</li>
+          <li>primary 1개와 alternative 최대 3개를 구성한다.</li>
+          <li>가능하면 primary와 alternative의 <code>itemNumber</code>, 주제, 반복 회피 키가 겹치지 않게 한다.</li>
+          <li>동점이면 미풀이, 낮은 운영 리스크, 오래 노출되지 않은 문항을 우선한다.</li>
+          <li>최종 후보가 없으면 추천 없음 상태를 정상 결과로 반환한다.</li>
+        </ol>
+
+        <h3>6.6 의사 코드</h3>
+        <pre><code>function generateRecommendation(userId, context) {
+  const activeRun = findReusableActiveRun(userId, context);
+  if (activeRun) return activeRun;
+
+  const signals = loadUserSignals(userId);
+  const candidates = loadProblemCandidates(context);
+  const filtered = applyHardFilters(candidates, signals, context);
+  const scored = filtered.map(candidate =&gt; ({
+    candidate,
+    score: scoreCandidate(candidate, signals, context),
+    reasonCodes: buildReasonCodes(candidate, signals, context),
+  }));
+  const ranked = rerankForDiversity(scored, signals);
+  const items = takePrimaryAndAlternatives(ranked);
+
+  if (items.length === 0) {
+    return emptyRecommendation("NO_AVAILABLE_CANDIDATE");
+  }
+
+  return persistRunAndItems(userId, context, items);
+}</code></pre>
+      </section>
+
+      <section id="reason-codes">
+        <h2>7. 추천 사유 코드와 사용자 문구</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>reason_code</th>
+              <th>사용자 문구 예시</th>
+              <th>주의</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>TYPE_ROTATION_NEXT</code></td>
+              <td>아직 덜 연습한 유형이라 다음 문제로 추천합니다.</td>
+              <td>신규 사용자 기본값</td>
+            </tr>
+            <tr>
+              <td><code>RECENT_TYPE_CONTINUATION</code></td>
+              <td>방금 푼 유형을 이어서 연습하기 좋습니다.</td>
+              <td>AI 분석 표현 금지</td>
+            </tr>
+            <tr>
+              <td><code>GOAL_DIFFICULTY_MATCH</code></td>
+              <td>현재 목표 난이도와 비슷한 문제입니다.</td>
+              <td>목표가 없으면 사용하지 않음</td>
+            </tr>
+            <tr>
+              <td><code>SPACED_REVIEW_DUE</code></td>
+              <td>이전에 연습한 흐름을 다시 꺼내 보기 좋은 시점입니다.</td>
+              <td>학습 전략 문구로 표현</td>
+            </tr>
+            <tr>
+              <td><code>REPRESENTATIVE_PRACTICE</code></td>
+              <td>이 유형을 처음 시작하기 좋은 대표 문제입니다.</td>
+              <td>대표 문제 태그 기반</td>
+            </tr>
+            <tr>
+              <td><code>UNATTEMPTED_AVAILABLE</code></td>
+              <td>아직 풀지 않은 공개 문제입니다.</td>
+              <td>fallback 사유</td>
+            </tr>
+            <tr>
+              <td><code>EMPTY_FALLBACK</code></td>
+              <td>지금 추천할 문제가 없습니다. 문제 목록에서 직접 선택해보세요.</td>
+              <td>v13 상태 문구와 일치</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="persistence">
+        <h2>8. 저장과 상태 전이</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>객체</th>
+              <th>역할</th>
+              <th>MVP 규칙</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>recommendation_runs</code></td>
+              <td>추천 실행 묶음</td>
+              <td>
+                <code>source_type='dashboard'</code>는 B-01,
+                <code>source_type='next_problem'</code>은 R-02에 사용한다.
+                C-01은 별도 enum 결정 전에는 transient 계산 또는 dashboard run 재사용을 권장한다.
+              </td>
+            </tr>
+            <tr>
+              <td><code>recommendation_items</code></td>
+              <td>추천 후보와 화면 순서</td>
+              <td>
+                <code>rank</code>, <code>reason</code>, <code>estimated_minutes</code>,
+                <code>weakness_tags</code>, <code>status</code>만 화면 소비에 사용한다.
+                "AI 추천 결과"로 표현하지 않는다.
+              </td>
+            </tr>
+            <tr>
+              <td><code>study_events</code></td>
+              <td>노출/클릭/시작/완료 계측</td>
+              <td>
+                추천 품질 판단은 먼저 이벤트와 완료율을 모은 뒤 한다.
+                원문 답안, 상세 피드백 본문, 개인정보성 payload는 저장하지 않는다.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>만료 정책 초안</h3>
+        <ul>
+          <li>R-02 다음 문제 추천: 24시간 또는 새 제출/피드백이 생기면 만료</li>
+          <li>B-01 홈 추천: 7일 또는 추천 item이 consumed 되면 재생성</li>
+          <li>C-01 유형 추천: MVP에서는 화면 요청 시 계산하고 별도 저장은 보류</li>
+          <li>skip 상태: 현재 enum에 <code>skipped</code>가 없으므로 MVP에서는 <code>expired</code> 처리 또는 no-op 중 하나를 결정한다.</li>
+        </ul>
+
+        <div class="callout danger">
+          <p>
+            보안/권한 주의: <code>recommendation_items</code>는 user-owned 데이터다.
+            관리자 화면에서 개인별 추천 row를 직접 조회하거나 수정하지 않는다.
+            클라이언트가 <code>status='consumed'</code> 외 컬럼을 바꾸지 못하도록
+            RLS와 RPC/서버 액션 경계를 검토해야 한다.
+          </p>
+        </div>
+      </section>
+
+      <section id="admin-ops">
+        <h2>9. 관리자 운영 설계</h2>
+        <h3>관리자가 조정할 수 있는 것</h3>
+        <ul>
+          <li><code>service_status</code>: <code>available</code>, <code>excluded</code>, <code>internal_test</code></li>
+          <li>추천 목적 태그: 대표 문제, 복습 적합, 유형 입문, 난이도 계단 등</li>
+          <li>반복 방지 태그: 같은 상황, 같은 자료형, 같은 답변 패턴 회피</li>
+          <li>운영주의 태그: 노출 전 경고, 내부 확인 필요, 콘텐츠 민감도</li>
+          <li>태그 마스터 활성/비활성: <code>/system/metadata</code>에서 권한자만 토글</li>
+        </ul>
+
+        <h3>관리자가 조정하지 않는 것</h3>
+        <ul>
+          <li>사용자별 추천 점수</li>
+          <li>사용자별 추천 결과 강제 변경</li>
+          <li>약점 추론 산식</li>
+          <li>추천 가중치 UI</li>
+          <li>AI provider 설정</li>
+        </ul>
+
+        <h3>감사 로그</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>조치</th>
+              <th>Target Type</th>
+              <th>Action</th>
+              <th>필수 조건</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>문항 노출 상태 변경</td>
+              <td><code>AssessmentQuestion</code></td>
+              <td><code>service_status_changed</code></td>
+              <td>사유, 변경 전후 diff, <code>questionId</code></td>
+            </tr>
+            <tr>
+              <td>문항 태그 부여</td>
+              <td><code>AssessmentQuestion</code></td>
+              <td><code>tag_assigned</code></td>
+              <td>사유 또는 memo, <code>tagCode</code>, <code>questionId</code></td>
+            </tr>
+            <tr>
+              <td>문항 태그 제거</td>
+              <td><code>AssessmentQuestion</code></td>
+              <td><code>tag_removed</code></td>
+              <td>사유 또는 memo, <code>tagCode</code>, <code>questionId</code></td>
+            </tr>
+            <tr>
+              <td>태그 마스터 활성 상태 변경</td>
+              <td><code>AssessmentTagMaster</code></td>
+              <td><code>tag_master_status_changed</code></td>
+              <td>권한자, 사유, 활성 할당 수 확인</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>운영자가 볼 지표</h3>
+        <ul>
+          <li>51~54 번호별 <code>available</code> 문항 수</li>
+          <li><code>excluded</code>, <code>internal_test</code>, 운영주의 태그 문항 수</li>
+          <li>최근 7일 R-02 empty 비율</li>
+          <li>추천 노출 → 시작 전환율</li>
+          <li>같은 문제 반복 추천 감지 건수</li>
+          <li><code>avoid_repeat_keys</code> 과다 중복 문항 그룹</li>
+        </ul>
+      </section>
+
+      <section id="screen-behavior">
+        <h2>10. 화면별 동작</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>화면</th>
+              <th>MVP 동작</th>
+              <th>비고</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>B-01 홈</td>
+              <td>
+                가장 적절한 1개 추천 카드 또는 C-01/C-02 이동 CTA를 보여준다.
+                기존 active dashboard run이 있으면 재사용한다.
+              </td>
+              <td>추천 없음은 C-02 직접 선택 CTA</td>
+            </tr>
+            <tr>
+              <td>C-01 문제 유형 추천</td>
+              <td>
+                51~54 유형별 추천 이유와 시작 CTA를 보여준다.
+                별도 저장 enum 추가 전에는 화면 계산형으로 유지한다.
+              </td>
+              <td>유형 탭 선택 시 C-02 필터로 연결</td>
+            </tr>
+            <tr>
+              <td>R-02 다음 문제 추천</td>
+              <td>
+                피드백 직후 primary 1개와 alternatives 최대 3개를 보여준다.
+                사유는 "최근 풀이 기준", "같은 유형 이어 풀기"처럼 규칙 기반으로 표현한다.
+              </td>
+              <td>X-07 약점 엔진과 분리</td>
+            </tr>
+            <tr>
+              <td>C-02 문제 목록</td>
+              <td>
+                추천 실패, 빈 상태, 사용자의 직접 탐색을 받는 fallback 화면이다.
+                필터와 정렬은 문항 메타데이터 기준으로 동작한다.
+              </td>
+              <td>추천이 없다는 상태도 정상 결과</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="phase-plan">
+        <h2>11. 단계별 적용 계획</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Phase</th>
+              <th>범위</th>
+              <th>완료 기준</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Phase 0: 설계 고정</td>
+              <td>이 문서를 기준으로 추천 용어, MVP/후속 경계, 관리자 운영 입력을 합의한다.</td>
+              <td>AI 추천 표현 금지, v13 DDL 무변경, 후보 풀 관리 원칙 합의</td>
+            </tr>
+            <tr>
+              <td>Phase 1: v13 규칙 추천 정리</td>
+              <td>
+                기존 <code>src/lib/practice/next.ts</code> fallback을 후보 생성/점수화/재정렬 함수로 정리한다.
+              </td>
+              <td>R-02에서 primary + alternatives, empty fallback, consumed 상태 검증</td>
+            </tr>
+            <tr>
+              <td>Phase 2: 관리자 후보 풀 연결</td>
+              <td>
+                <code>topik_writing_question_recommendation_view</code> 어댑터를 추가하되,
+                legacy source와 병행 가능한 feature flag를 둔다.
+              </td>
+              <td>available 문항만 추천, 제외/운영주의 태그 필터 검증</td>
+            </tr>
+            <tr>
+              <td>Phase 3: 운영 지표</td>
+              <td>추천 empty, 클릭, 시작, 완료, 반복 추천 감지 지표를 집계한다.</td>
+              <td>관리자에게 aggregate 지표만 노출, 사용자별 row 비노출</td>
+            </tr>
+            <tr>
+              <td>Phase 4: 후속 약점 엔진 검토</td>
+              <td>충분한 점수/완료 데이터가 쌓인 뒤 X-07 약점 추천과 모델 기반 확장을 재검토한다.</td>
+              <td>별도 scope decision, 데이터 품질 기준, privacy review 완료</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="acceptance">
+        <h2>12. 검증 기준</h2>
+        <h3>추천 로직 단위 검증</h3>
+        <ul>
+          <li><code>service_status!='available'</code> 문항은 신규 소스 추천에 나오지 않는다.</li>
+          <li>legacy source에서는 공개 상태가 아닌 문항이 나오지 않는다.</li>
+          <li>추천 제외/노출 제외/검수 필요 계열 태그가 있으면 후보에서 제외된다.</li>
+          <li>목표와 이력이 없는 신규 사용자는 51→52→53→54 순환을 따른다.</li>
+          <li>최근 풀이 문항과 같은 <code>avoid_repeat_keys</code>가 primary에 반복되지 않는다.</li>
+          <li>후보가 없으면 R-02는 empty 문구와 C-02 CTA를 보여준다.</li>
+        </ul>
+
+        <h3>권한/보안 검증</h3>
+        <ul>
+          <li>사용자는 본인 <code>recommendation_runs/items</code>만 조회한다.</li>
+          <li>사용자 클라이언트는 추천 item의 <code>status</code> 외 핵심 필드를 변경할 수 없다.</li>
+          <li>관리자 화면은 사용자별 추천 row를 직접 노출하지 않는다.</li>
+          <li>추천 로그에는 원문 답안, 상세 피드백 본문, 개인정보성 payload를 넣지 않는다.</li>
+          <li>관리자 상태/태그 변경은 RPC, 사유, 감사 로그 링크를 통과한다.</li>
+        </ul>
+
+        <h3>화면 검증</h3>
+        <ul>
+          <li>B-01, C-01, R-02, C-02에서 loading/empty/success/error/disabled 상태가 구분된다.</li>
+          <li>추천 사유는 최대 2줄 안에서 규칙 기반 문구로 표시된다.</li>
+          <li>paywall/제출 제한이 있으면 시작 CTA가 잠금 또는 paywall 흐름으로 연결된다.</li>
+          <li>추천이 없는 상태에서도 사용자는 C-02에서 직접 문제를 선택할 수 있다.</li>
+        </ul>
+      </section>
+
+      <section id="risks">
+        <h2>13. 리스크와 결정 필요 항목</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>리스크</th>
+              <th>설명</th>
+              <th>대응</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>source cutover 리스크</td>
+              <td>
+                관리자 신규 <code>topik_writing_*</code> source를 v13에서 즉시 소비하면
+                기존 <code>problems</code> 경로와 충돌할 수 있다.
+              </td>
+              <td>어댑터와 feature flag로 병행하고, 컷오버는 별도 owner 결정으로 처리</td>
+            </tr>
+            <tr>
+              <td>약점 추천 과대 표현</td>
+              <td>MVP에서 AI 분석/약점 엔진이 보류되어 있는데 화면 문구가 AI처럼 보일 수 있다.</td>
+              <td>추천 사유를 "최근 풀이 기준", "같은 유형", "미풀이 공개 문제"로 제한</td>
+            </tr>
+            <tr>
+              <td>태그 품질 의존</td>
+              <td>콘텐츠 기반 규칙 추천은 문항 메타데이터와 태그 품질에 의존한다.</td>
+              <td>운영 지표로 empty/반복/전환율을 보며 태그 사전을 개선</td>
+            </tr>
+            <tr>
+              <td>status update 권한</td>
+              <td>RLS만으로 컬럼 단위 update 제한이 부족할 수 있다.</td>
+              <td>소비 상태 변경 전용 RPC 또는 서버 액션으로 제한</td>
+            </tr>
+            <tr>
+              <td>C-01 source_type 부재</td>
+              <td>현재 <code>recommendation_runs.source_type</code>에 C-01 전용 값이 없다.</td>
+              <td>MVP는 transient 계산 또는 dashboard run 재사용, 후속 migration 결정</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="external-basis">
+        <h2>14. 외부 근거</h2>
+        <p>
+          아래 자료는 2026-06-17 기준으로 추천 시스템 구조와 학습 추천 원칙을 확인하기 위해 참고했다.
+          제품 초기에는 ML 모델보다 규칙과 계측을 먼저 두고, 추천 구조를 단계로 나누는 편이 운영 가능성이 높다.
+        </p>
+        <ul>
+          <li>
+            <a href="https://developers.google.com/machine-learning/recommendation/overview/types">Google Developers: Recommendation systems overview</a>
+            - 추천 시스템을 candidate generation, scoring, re-ranking 단계로 설명한다.
+          </li>
+          <li>
+            <a href="https://developers.google.com/machine-learning/recommendation/dnn/re-ranking">Google Developers: Re-ranking</a>
+            - 최종 단계에서 다양성, 신선도, 필터를 적용하는 구조를 설명한다.
+          </li>
+          <li>
+            <a href="https://developers.google.com/machine-learning/guides/rules-of-ml">Google Developers: Rules of Machine Learning</a>
+            - 초기 제품에서 단순한 휴리스틱과 계측을 먼저 갖추는 접근을 뒷받침한다.
+          </li>
+          <li>
+            <a href="https://ies.ed.gov/ncee/wwc/practiceguide/1">IES/What Works Clearinghouse: Organizing Instruction and Study to Improve Student Learning</a>
+            - 학습 내용을 시간 간격을 두고 다시 연습하는 원칙을 제시한다.
+          </li>
+          <li>
+            <a href="https://www.edresearch.edu.au/guides-resources/practice-guides/spacing-and-retrieval-practice-guide-full-publication">AERO: Spacing and retrieval practice guide</a>
+            - spacing과 retrieval practice를 수업/학습 설계에 적용하는 근거를 제공한다.
+          </li>
+          <li>
+            <a href="https://educationendowmentfoundation.org.uk/education-evidence/teaching-learning-toolkit/mastery-learning">EEF: Mastery learning</a>
+            - 목표 달성 후 다음 단계로 이동하는 mastery learning 관점을 참고하되, 효과 편차와 근거 제한을 함께 고려해야 한다.
+          </li>
+        </ul>
+      </section>
+
+      <section id="final-decision">
+        <h2>15. 채택할 설계 문장</h2>
+        <div class="callout ok">
+          <p>
+            TOPIK 쓰기 추천은 MVP에서 규칙 기반 다음 문제 선택기로 구현한다.
+            관리자 앱은 <code>service_status</code>, 활성 태그, 추천 키, 반복 회피 키를
+            통해 추천 후보 풀을 관리하고, v13은 사용자 목표와 최근 풀이 이력을 기준으로
+            후보를 점수화해 primary 1개와 alternative 최대 3개를 제시한다.
+            AI provider, 자동 약점 추론, 사용자별 추천 개입, 추천 가중치 관리자 UI는
+            후속 scope decision 전까지 포함하지 않는다.
+          </p>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

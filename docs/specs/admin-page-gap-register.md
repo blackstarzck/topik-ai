@@ -701,3 +701,10 @@
 - 분류
   - `해소`: 환불 Supabase read SoT, Supabase write 차단, 환불 감사 Target Type 세분화
   - `미확정`: 실제 결제 환불 집행 v13 연동, 느슨참조 정합, 채번 동시성, payments method reconcile
+### 2026-06-18 Users 회원 상세 학습 현황
+
+- `Resolved`: 회원 상세에 학습 현황(문제 풀이) 탭이 추가되어 `get_admin_user_learning_overview(target_id)` live RPC와 mock fallback을 모두 가진다.
+- `Resolved`: 학습 현황은 신규 테이블 없이 v13 학습 테이블 read-only 집계로 제공한다. v13 DDL/FK 변경 없음.
+- `Resolved`: 작문 답안 본문과 문장별 첨삭 본문은 admin 미노출로 결정했다.
+- `미확정`: 활동(`study_events`) 탭과 결제(`payment_history`) 탭의 실데이터화는 이번 범위에서 제외했다.
+- `미확정`: 작문 첨삭 전문 열람이 필요해질 경우 별도 권한, 감사 로그, PII 열람 정책 결정이 선행되어야 한다.

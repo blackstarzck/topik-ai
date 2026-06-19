@@ -6,8 +6,8 @@ module: "Message"
 page_name: "발송 이력"
 route: "/messages/history"
 status: "구현됨"
-primary_entity: "MessageHistory"
-primary_table_candidate: "message_histories, message_history_recipients"
+primary_entity: "NotificationDispatch, NotificationDeliveryAttempt"
+primary_table_candidate: "notification_dispatches, notification_delivery_attempts"
 owner_agent_scope: "shared"
 last_reviewed_at: "2026-06-01"
 ---
@@ -59,7 +59,7 @@ last_reviewed_at: "2026-06-01"
 
 | 엔티티 후보 | 테이블 후보 | CRUD | 관리자 UI 진입점 | 주요 필드 후보 | 감사 로그 Target | 사용자 화면 영향 | 미확정/차이 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| MessageHistory | message_histories, message_history_recipients | Create, Read, Update, Delete 후보 | 발송 이력 본문/상세/Modal | 템플릿명, 발송 그룹, 수신자 수, 성공/실패 수, 수신자별 상태, id, status, created_at, updated_at | Notification + historyId | 운영상 추정 | 현재 프론트엔드/문서 기준 후보 |
+| NotificationDispatch + NotificationDeliveryAttempt | notification_dispatches, notification_delivery_attempts | Read, Retry/상태 갱신 후보 | 발송 이력 본문/상세/Modal | 템플릿명, 발송 그룹, 수신자 수, 성공/실패 수, 수신자별 상태, id, dispatch_id, user_id, channel, status, sent_at, created_at, updated_at | Notification + dispatchId/attemptId | v13 X-09 owner-read 이력과 `notification_delivery_attempts` 공유 | 현재 Supabase adapter와 admin migration 기준 |
 
 ### CRUD 상세
 
@@ -144,4 +144,4 @@ last_reviewed_at: "2026-06-01"
 | 항목 | 미확정 내용 | 필요한 결정 주체 | 관리자 페이지 영향 | 사용자 화면 영향 | 추적 문서 |
 | --- | --- | --- | --- | --- | --- |
 | 발송 이력 최종 계약 | 재시도 대상 선정과 발송 실패 원인 code table은 추가 확정이 필요합니다. | 기획/백엔드/프론트 | 필터/액션/감사 로그 계약 변동 가능 | 사용자 알림/메일 수신 결과에 운영상 추정으로 연결됩니다. | docs/specs/page-ia/message-history-page-ia.md |
-| 엔티티/테이블 정합화 | 엔티티/테이블을 알림 발송 모델(notification_dispatches/notification_delivery_attempts)과 정합화 필요 — 별도 작업 | 기획/백엔드/프론트 | 필터/액션/감사 로그 계약 변동 가능 | 사용자 알림/메일 수신 결과에 운영상 추정으로 연결됩니다. | docs/specs/admin-data-contract.md |
+| 엔티티/테이블 정합화 | 2026-06-18 기준 엔티티/테이블을 알림 발송 모델(notification_dispatches/notification_delivery_attempts)로 정합화함. 남은 작업은 재시도/실패 사유 code table 세부 계약 확정 | 기획/백엔드/프론트 | 필터/액션/감사 로그 세부 계약 변동 가능 | 사용자 알림/메일 수신 결과는 `notification_delivery_attempts` owner-read 범위로 v13 X-09에 연결됩니다. | docs/specs/admin-data-contract.md |

@@ -19,6 +19,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 
 import {
   addUserMemo,
+  deleteUserMemo,
   fetchUserByIdSafe,
   fetchUserLearningOverviewSafe,
   getUserAccessLogs,
@@ -160,6 +161,7 @@ export default function UserDetailPage(): JSX.Element {
   const [memoContent, setMemoContent] = useState('');
   const [memoReason, setMemoReason] = useState('');
   const [memoSubmitting, setMemoSubmitting] = useState(false);
+  const [memoToDelete, setMemoToDelete] = useState<UserAdminMemo | null>(null);
   const [learningState, setLearningState] = useState<AsyncState<UserLearningOverview | null>>({
     status: 'pending',
     data: null,
@@ -314,6 +316,26 @@ export default function UserDetailPage(): JSX.Element {
     setMemoReason('');
     reloadMemos();
   }, [memoContent, memoReason, notificationApi, reloadMemos, userId]);
+
+  const handleDeleteMemo = useCallback(
+    async (reason: string) => {
+      if (!memoToDelete) {
+        return;
+      }
+      const result = await deleteUserMemo(memoToDelete.id, reason);
+      if (!result.ok) {
+        notificationApi.error({ message: '메모 삭제 실패', description: result.error.message });
+        return;
+      }
+      notificationApi.success({
+        message: '관리자 메모를 삭제했습니다.',
+        description: <AuditLogLink targetType="User" targetId={userId} />
+      });
+      setMemoToDelete(null);
+      reloadMemos();
+    },
+    [memoToDelete, notificationApi, reloadMemos, userId]
+  );
 
   const activeTab = useMemo<UsersDetailTabKey>(() => {
     const tab = searchParams.get('tab');
@@ -723,7 +745,28 @@ export default function UserDetailPage(): JSX.Element {
         dataIndex: 'createdAt',
         width: 130,
         sorter: createTextSorter((record) => record.createdAt)
-      }
+      },
+      ...(isSupabaseConfigured
+        ? [
+            {
+              title: '관리자 조치',
+              key: 'actions',
+              width: 110,
+              render: (_: unknown, record: UserAdminMemo) => (
+                <Button
+                  size="small"
+                  danger
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setMemoToDelete(record);
+                  }}
+                >
+                  삭제
+                </Button>
+              )
+            }
+          ]
+        : [])
     ],
     []
   );
@@ -1294,6 +1337,18 @@ export default function UserDetailPage(): JSX.Element {
           targetId={user.id}
           onCancel={closeActionModal}
           onConfirm={handleConfirmAction}
+        />
+      ) : null}
+      {memoToDelete ? (
+        <ConfirmAction
+          open
+          title="관리자 메모 삭제"
+          description="이 관리자 메모를 삭제합니다. 삭제 내역은 감사 로그에 기록됩니다."
+          confirmText="삭제"
+          targetType="User"
+          targetId={userId}
+          onCancel={() => setMemoToDelete(null)}
+          onConfirm={handleDeleteMemo}
         />
       ) : null}
       <TableRowDetailModal

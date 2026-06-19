@@ -1,0 +1,25 @@
+diff --git a/docs/specs/admin-data-contract.md b/docs/specs/admin-data-contract.md
+index 811b82a..f057e96 100644
+--- a/docs/specs/admin-data-contract.md
++++ b/docs/specs/admin-data-contract.md
+@@ -193,7 +193,19 @@
+ | `learner` | `null` | 없음 | 관리자 접근 불가 | `auth-store`가 unauthorized 처리 |
+ 
+ - 구현 함의: `/system/permissions`에서 개별 permission 부여/회수는 DB 권한 변경으로 간주하지 않는다. 실권한 변경이 필요하면 v13 소유 `profiles.app_role` 변경 경로 또는 별도 오너 승인된 RPC가 필요하며, admin repo에서 v13 `profiles` DDL을 변경하지 않는다.
+-- 미확정/오너 확인 필요: `org_admin`을 장기적으로 관리자 콘솔 조회 전용으로 유지할지, 관리자 `app_role` 변경을 누가/어떤 RPC로 수행할지, 권한 변경 화면을 조회/시뮬레이션으로 축소할지 `app_role` 매핑 조치 화면으로 바꿀지, 세션 중 `app_role` 변경 시 재인증/토큰 갱신 정책은 후속 결정이 필요하다.
++- 미확정/오너 확인 필요: `org_admin`을 장기적으로 관리자 콘솔 조회 전용으로 유지할지, 관리자 `app_role` 변경을 누가/어떤 RPC로 수행할지, 권한 변경 화면을 조회/시뮬레이션으로 축소할지 `app_role` 매핑 조치 화면으로 바꿀지, 세션 중 `app_role` 변경 시 재인증/토큰 갱신 정책은 후속 결정이 필요하다. → **아래 §9.1.1.a에서 확정(2026-06-18).**
++
++### 9.1.1.a System 관리자 app_role 변경 RPC 확정 (2026-06-18)
++
++- §9.1.1의 미확정 4항목을 다음과 같이 확정한다(오너 결정 2026-06-18).
++  - 변경 RPC/주체: 관리자 `app_role` 변경은 `public.admin_set_admin_app_role(p_target_user_id uuid, p_new_app_role text, p_reason text)` 단일 write 경로로만 수행한다. `SECURITY DEFINER`, `private.is_platform_admin` 전용(platform_admin만 변경), `p_reason` 필수, 허용값 `platform_admin`/`content_admin`/`org_admin`/`learner`.
++  - 승인 체계: 단독 실행(2인 승인 없음). 자기 자신 platform_admin 강등과 마지막 platform_admin 강등은 RPC에서 차단한다(잠금 방지).
++  - 세션 정책: 기존 세션 강제 만료·토큰 폐기는 하지 않는다. `profiles.app_role`만 갱신하며 변경은 다음 로그인 때 반영된다(`payload.session_policy='next_login'`).
++  - 화면 정체성: `/system/permissions`는 조회/시뮬레이션 축소가 아니라 관리자별 `app_role` 변경 화면으로 개조한다. 37 permission/5 RoleKey 카탈로그는 메뉴 게이팅·참고용 읽기 전용으로 유지한다.
++  - `org_admin → READ_ONLY` 매핑은 임시 현행 유지한다(장기 정책은 후속 결정).
++- 쓰기 계약: `profiles`는 v13 소유이며 admin repo에서 DDL/트리거를 변경하지 않는다. `private.protect_profile_columns` 트리거가 `is_admin(caller)`(content_admin/platform_admin, active)에 대해 컬럼 보호를 전면 우회하므로 platform_admin 호출자는 `app_role`을 쓸 수 있다(라이브 컬럼 `status`를 쓰는 `admin_set_user_status`와 동일 메커니즘). dev DB(2026-06-18)에서 직접 검증했고, RPC는 `UPDATE ... RETURNING`으로 self-verify하여 트리거가 향후 쓰기를 막으면 거짓 감사 없이 즉시 실패한다.
++- 감사 계약: `admin_audit_logs.target_table='AdminAccount'`, `action='admin_role_changed'`, `target_id`=대상 uuid, `diff={app_role:{from,to}}`, `payload={reason,target_email,target_display,session_policy:'next_login'}`.
++- 조회 계약: `/system/permissions` 관리자 목록은 `public.admin_list_admin_app_roles(p_search text default null)`(platform_admin 전용, `app_role <> 'learner'` 서버 필터, 검색 지원)로 읽는다. learner를 admin으로 승격하는 흐름은 이 목록 범위 밖이며 Users 디렉터리에서 처리한다.
+ 
+ ### 9.2 Community
+ 

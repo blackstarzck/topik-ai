@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>권한 화면 RBAC(app_role) 전환 — DB 변경 보고서 (2026-06-18)</title>
+<style>
+  :root { --ink:#1f2933; --muted:#6b7280; --ok:#15803d; --warn:#b45309; --line:#e5e7eb; --bg:#f8fafc; --code:#f1f5f9; --accent:#2563eb; }
+  * { box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Malgun Gothic",sans-serif; color:var(--ink); line-height:1.65; max-width:960px; margin:0 auto; padding:32px 20px 80px; background:#fff; }
+  h1 { font-size:25px; margin:0 0 4px; }
+  .sub { color:var(--muted); margin:0 0 24px; font-size:14px; }
+  h2 { font-size:19px; margin:34px 0 10px; padding-bottom:6px; border-bottom:2px solid var(--line); }
+  h3 { font-size:15.5px; margin:20px 0 8px; }
+  p,li { font-size:14.5px; }
+  code { background:var(--code); padding:1px 6px; border-radius:4px; font-size:13px; font-family:"SF Mono",Consolas,monospace; }
+  .pill { display:inline-block; font-size:12px; font-weight:600; padding:2px 9px; border-radius:999px; }
+  .pill.ok { background:#dcfce7; color:var(--ok); }
+  .pill.warn { background:#fef3c7; color:var(--warn); }
+  .card { background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:16px 18px; margin:14px 0; }
+  table { border-collapse:collapse; width:100%; margin:12px 0; font-size:13.5px; }
+  th,td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+  th { background:var(--bg); }
+  .ok-text { color:var(--ok); font-weight:600; }
+  .lead { font-size:15.5px; }
+  ul { margin:8px 0; padding-left:22px; }
+  .small { font-size:12.5px; color:var(--muted); }
+  .kbd { font-family:"SF Mono",Consolas,monospace; font-size:12.5px; }
+</style>
+</head>
+<body>
+
+<h1>권한 화면 → 관리자 등급(app_role) 변경 화면 전환 — DB 변경 보고서</h1>
+<p class="sub">2026-06-18 · 브랜치 <code>feat/operation-notices-db</code> · dev DB <code>fglggyfvzjdsbyckinqa</code> · 구현=Codex GPT-5.5, 검증·적용·문서·커밋=Claude</p>
+
+<div class="card">
+<p class="lead" style="margin-top:0"><b>한 줄 요약.</b> 관리자 권한 화면(<code>/system/permissions</code>)을 "구경용 권한 카탈로그"에서 <b>실제로 관리자의 등급(<code>profiles.app_role</code>)을 바꾸는 화면</b>으로 바꿨습니다. 이를 위해 DB에 <b>함수 2개</b>를 추가했고(테이블 변경 0), 가장 민감한 권한 상승 동작이라 <b>16건의 실 DB 검증</b> + <b>21개 에이전트 적대적 리뷰</b>를 거쳤습니다.</p>
+</div>
+
+<h2>1. 무엇을 왜 바꿨나 (쉽게)</h2>
+<p>이 관리자 도구에서 "누가 어떤 권한을 갖는지"의 <b>진짜 기준은 <code>profiles.app_role</code> 한 곳</b>입니다(2026-06-17 RBAC SoT 결정). 화면에 있던 37개 권한·5개 RoleKey 표는 사실 <b>메뉴를 보여줄지 말지를 정하는 표시용</b>일 뿐, 실제 권한을 바꾸지 않았습니다. 그래서 이 화면을 진짜로 등급을 바꿀 수 있는 화면으로 바꿨습니다.</p>
+<p>오너가 확정한 5가지 방침:</p>
+<table>
+<tr><th>항목</th><th>확정</th></tr>
+<tr><td>① 변경 방식</td><td><b>platform_admin만</b> 다른 관리자의 등급을 바꿀 수 있고, 바꾸면 "이전→새 등급 + 사유"를 감사 로그에 남긴다.</td></tr>
+<tr><td>② 승인</td><td><b>단독 실행</b>(2인 승인 없음).</td></tr>
+<tr><td>③ 반영 시점</td><td><b>다음 로그인 때 반영</b>. 강제 로그아웃·토큰 폐기는 하지 않는다.</td></tr>
+<tr><td>④ org_admin 매핑</td><td><code>org_admin → READ_ONLY</code> <b>임시 현행 유지</b>.</td></tr>
+<tr><td>⑤ 화면 정체성</td><td>조회용 축소가 아니라 <b>실제 등급 변경 화면으로 개조</b>. 카탈로그는 읽기 전용 참고로 잔존.</td></tr>
+</table>
+
+<h2>2. DB에 추가된 것 <span class="pill ok">함수 +2 · 테이블 0 · 정책 0</span></h2>
+<p class="small">무변경 검증: 함수 137 → 139 (정확히 +2), 테이블 61→61, RLS 정책 91→91, 뷰 1→1. 기존 테이블/트리거/정책 일절 변경 없음.</p>
+
+<h3>2-1. 쓰기 함수 <code>admin_set_admin_app_role(p_target_user_id, p_new_app_role, p_reason)</code></h3>
+<p>관리자의 <code>app_role</code>을 실제로 바꾸는 단 하나의 경로입니다. 마이그레이션 <code>20260618093000_admin_set_app_role.sql</code>.</p>
+<ul>
+<li><b>가드:</b> 미인증 → <code>unauthenticated</code>, platform_admin 아님 → <code>forbidden</code>, 사유 미입력 → <code>reason required</code>, 잘못된 등급 → <code>invalid app_role</code>.</li>
+<li><b>잠금 방지:</b> 자기 자신 platform_admin 강등 차단 + 마지막 platform_admin 강등 차단(혼자 남은 관리자가 스스로를 내려 잠기는 사고 방지).</li>
+<li><b>자기검증 쓰기:</b> <code>UPDATE … RETURNING</code>으로 실제 반영값을 확인 — 혹시라도 v13 보호 트리거가 향후 쓰기를 막으면 <b>거짓 감사 없이 즉시 실패</b>합니다.</li>
+<li><b>감사:</b> <code>admin_audit_logs</code>에 <code>action=admin_role_changed</code>, <code>target=AdminAccount</code>, <code>diff={app_role:{from,to}}</code>, <code>payload={reason,target_email,target_display,session_policy:'next_login'}</code> 기록.</li>
+</ul>
+
+<h3>2-2. 조회 함수 <code>admin_list_admin_app_roles(p_search)</code></h3>
+<p>화면의 관리자 목록을 읽는 함수입니다. 마이그레이션 <code>20260618094000_admin_list_admin_app_roles.sql</code>. <b>platform_admin 전용</b>, <code>app_role &lt;&gt; 'learner'</code>를 <b>SQL에서 필터</b>해 학습자(다수)가 페이지 한도를 잠식하지 못하게 합니다(아래 리뷰 F3 대응).</p>
+
+<h3>2-3. 핵심: v13 소유 컬럼에 어떻게 안전하게 쓰나</h3>
+<p><code>profiles</code>는 v13 소유이고, <code>private.protect_profile_columns</code> 트리거가 컬럼을 보호합니다. 트리거 원본을 확인한 결과 <b>관리자(<code>is_admin</code>: content_admin/platform_admin, active)에 대해서는 보호를 전면 우회</b>합니다 — 즉 platform_admin은 <code>app_role</code>을 쓸 수 있습니다. 이는 이미 운영 중인 <code>admin_set_user_status</code>가 <code>status</code> 컬럼을 쓰는 것과 <b>완전히 동일한 메커니즘</b>입니다. v13 DDL/트리거는 한 줄도 바꾸지 않았습니다.</p>
+
+<h2>3. 검증 — 가장 민감한 동작이라 실 DB로 확인 <span class="pill ok">전부 PASS</span></h2>
+<h3>3-1. 실 DB 적대적 프로브 16건 (모두 자동 롤백, 영구 변경 0)</h3>
+<table>
+<tr><th>구분</th><th>결과</th></tr>
+<tr><td>쓰기 happy-path (platform_admin이 learner→org_admin)</td><td class="ok-text">성공 + 감사 1건 기록 → 롤백</td></tr>
+<tr><td>비-platform_admin 호출 / 미인증</td><td class="ok-text">forbidden / unauthenticated</td></tr>
+<tr><td>자기 강등 / 잘못된 등급 / 사유 누락 / 동일값 / 없는 대상</td><td class="ok-text">각각 정확한 예외</td></tr>
+<tr><td>조회: admin만 반환(learner 0) / 비-platform forbidden / 미인증 / 검색 필터</td><td class="ok-text">전부 기대대로</td></tr>
+<tr><td>영구 변경 확인</td><td class="ok-text">대상 learner 그대로, 두 platform_admin 그대로 (롤백 정상)</td></tr>
+</table>
+
+<h3>3-2. 정적·통합 검증</h3>
+<ul>
+<li><b>무변경 게이트</b>: 함수 +2만, 테이블/정책/뷰 0 변경.</li>
+<li><b>typecheck / lint</b>: PASS. <b>단위 테스트</b>: 11파일 76건 PASS(신규 매퍼 테스트 4건 포함).</li>
+<li><b>화면 렌더(mock 미리보기)</b>: <code>/system/permissions</code>가 관리자 5명 목록·등급 변경 모달·AdminAccount 감사 경로·읽기 전용 카탈로그까지 <b>콘솔 오류 0</b>으로 정상 렌더.</li>
+<li><b>harness:check</b>: mojibake·문서 크로스링크(116문서)·라우트-문서 커버리지(55라우트)·lint·typecheck 전부 PASS.</li>
+</ul>
+
+<h2>4. 적대적 리뷰 — 21개 에이전트, 6개 관점 <span class="pill ok">15건 확인 · 전부 처리</span></h2>
+<p>각 발견을 독립 검증(거짓 양성 0)한 뒤 다음과 같이 처리했습니다.</p>
+<table>
+<tr><th>심각도</th><th>발견</th><th>처리</th></tr>
+<tr><td>medium</td><td>관리자 목록을 <code>get_admin_users</code>(전체 사용자 500행)로 읽어 대규모에서 admin 누락 가능</td><td class="ok-text">전용 조회 함수 <code>admin_list_admin_app_roles</code> 추가(서버에서 learner 제외)</td></tr>
+<tr><td>medium</td><td>비-platform_admin 안내 문구가 "목록 조회 가능"이라 했지만 실제론 거부됨</td><td class="ok-text">문구 정정(목록은 platform_admin 전용, 카탈로그만 참고 열람)</td></tr>
+<tr><td>low</td><td>변경 후 새로고침이 unmount race 위험</td><td class="ok-text"><code>mountedRef</code> 가드 추가</td></tr>
+<tr><td>nit</td><td>쓰기가 트리거 허용에 의존 — 조용한 실패 가능성</td><td class="ok-text"><code>RETURNING</code> 자기검증으로 즉시 실패하도록 강화</td></tr>
+<tr><td>nit</td><td>마지막-관리자 가드가 사실상 도달 불가 코드</td><td class="ok-text">방어적 의도임을 주석으로 명시(유지)</td></tr>
+<tr><td>doc(high·med)</td><td>SoT 문서 6종이 옛 mock 모델 기준</td><td class="ok-text">아래 5장처럼 6문서 동기화</td></tr>
+</table>
+<p class="small">문서화로 정리한 의도된 한계: learner→admin 승격은 이 목록 범위 밖(Users 디렉터리에서 처리), 자기 강등 차단은 서버가 최종 기준, 일부 영어 오류 문자열은 비보안 표시 문제로 수용.</p>
+
+<h2>5. 문서 동기화 (SoT 6종)</h2>
+<ul>
+<li><code>admin-data-contract.md</code> §9.1.1.a — 미확정 4항목을 확정 + 쓰기/감사/조회 계약 기록(동시 세션 편집 파일 → 내 줄만 추가).</li>
+<li><code>system-permissions-page-sync.md</code> — CRUD/조치/감사/식별자 표를 <code>AdminAccount</code>/<code>admin_role_changed</code> 기준으로 갱신.</li>
+<li><code>system-permissions-page-ia.md</code> §6 — 액션 표를 실 등급 변경 + 읽기전용 카탈로그로 교체.</li>
+<li><code>shared-supabase-schema-ownership.md</code> §3 — 2026-06-18 소유권 결정 블록 추가(2함수·트리거 우회·무변경).</li>
+<li><code>admin-action-log.md</code> — 관리자 등급 변경 액션 사전/기록주체/payload 계약 블록 추가.</li>
+<li><code>admin-doc-update-log.md</code> — 변경 로그 1행 추가(동시 세션 편집 파일 → 내 줄만 추가).</li>
+</ul>
+
+<h2>6. 동시 세션과의 경계</h2>
+<p>이 작업과 별개로 다른 세션이 같은 워킹트리에서 <b>알림 이메일 워커 / Vercel 이관</b>을 진행 중이었습니다. 두 공유 문서(<code>admin-data-contract.md</code>, <code>admin-doc-update-log.md</code>)는 <b>내 hunk만 외과적으로 스테이징</b>하여, 그 세션의 코드(<code>api/</code>, <code>vercel.json</code>, <code>package.json</code> 등)와 문서 변경은 <b>커밋에 포함하지 않았습니다.</b></p>
+
+<h2>7. 산출물</h2>
+<ul>
+<li>마이그레이션 2 + down 2: <code>supabase/migrations-admin/20260618093000_admin_set_app_role.sql</code>, <code>20260618094000_admin_list_admin_app_roles.sql</code>.</li>
+<li>프론트: 데이터소스 스위치 + 서비스(읽기/쓰기) + 화면 개조 + AdminAccount 라벨/딥링크.</li>
+<li>단위 테스트 1 + SoT 문서 6 동기화.</li>
+<li>증빙: 프로브 픽스처 <code>.codex-artifacts/rbac-app-role/probes/</code>, before/after 스냅샷, 리뷰 결과.</li>
+</ul>
+
+<p class="small" style="margin-top:30px">생성: Claude Code (Opus 4.8) · 본 보고서는 운영자/후속 세션 가독성용 평문 설명입니다.</p>
+
+</body>
+</html>

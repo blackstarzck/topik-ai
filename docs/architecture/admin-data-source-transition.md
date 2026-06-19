@@ -445,3 +445,12 @@ src/features/<feature>/
 - RPC 계약: `SECURITY DEFINER` + `private.is_admin` 가드, `profiles(admin_user_id -> id)` 조인으로 `display_name` actor 해석, 필터는 target type/id, keyword `ILIKE`, created_at 범위, 정렬은 `created_at desc`, 페이지네이션은 `limit/offset`이다.
 - DB 경계: 신규 테이블은 없고 `admin_audit_logs` 컬럼/RLS/쓰기 경로는 변경하지 않는다. 조회 인덱스만 `admin_audit_logs_target_lookup_idx`(`target_table`, `target_id`)와 `admin_audit_logs_created_at_desc_idx`(`created_at desc`) 2개를 추가했다.
 - 잔여 정책: `diff`/`payload` 민감정보 노출 범위는 미확정이므로 화면 노출은 보류한다.
+## 2026-06-18 Users 회원 상세 학습 현황 source 전환
+
+- 화면: `/users/:userId` `학습 현황` 탭.
+- safe facade: `fetchUserLearningOverviewSafe(userId, signal)`.
+- Supabase source: `get_admin_user_learning_overview(target_id uuid)`.
+- mock fallback: `getMockUserLearningOverview(userId)`.
+- fallback 조건: Supabase 미구성 또는 `VITE_SUPABASE_DISABLED=true`일 때 기존 mock 모드를 유지한다.
+- 전환 범위: 학습 현황 탭만 live read로 연결한다. 기존 `활동`/`결제` 탭 더미 데이터는 이번 범위에서 유지한다.
+- 보안/프라이버시: 답안 본문과 sentence feedback 본문은 source와 화면 모델에서 제외한다.

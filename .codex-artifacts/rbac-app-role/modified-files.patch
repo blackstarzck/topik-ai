@@ -1,0 +1,1167 @@
+diff --git a/src/features/system/model/permission-store.ts b/src/features/system/model/permission-store.ts
+index 8e13fa0..d20f8d6 100644
+--- a/src/features/system/model/permission-store.ts
++++ b/src/features/system/model/permission-store.ts
+@@ -35,6 +35,13 @@ type PermissionStore = {
+   audits: PermissionAuditEvent[];
+   setCurrentAdminId: (adminId: string) => void;
+   setSessionAdmin: (assignment: AdminPermissionAssignment | null) => void;
++  setAdminAppRole: (payload: {
++    adminId: string;
++    appRole: string;
++    role: RoleKey;
++    reason: string;
++    changedBy: string;
++  }) => PermissionAuditEvent | null;
+   grantPermissions: (payload: GrantPermissionPayload) => PermissionAuditEvent | null;
+   updatePermissions: (payload: UpdatePermissionPayload) => PermissionAuditEvent | null;
+   revokePermissions: (payload: RevokePermissionPayload) => PermissionAuditEvent | null;
+@@ -202,6 +209,49 @@ export const usePermissionStore = create<PermissionStore>((set, get) => ({
+       const others = state.admins.filter((item) => item.adminId !== assignment.adminId);
+       return { admins: [assignment, ...others], currentAdminId: assignment.adminId };
+     }),
++  setAdminAppRole: (payload) => {
++    const target = get().admins.find((item) => item.adminId === payload.adminId);
++    if (!target) {
++      return null;
++    }
++
++    if (target.role === payload.role) {
++      return null;
++    }
++
++    const beforePermissions = normalizePermissionKeys(target.permissions);
++    const afterPermissions = normalizePermissionKeys(getRole(payload.role)?.defaultPermissions ?? []);
++    const audit: PermissionAuditEvent = {
++      id: `AL-PERM-${String(get().audits.length + 1).padStart(5, '0')}`,
++      targetType: 'AdminAccount',
++      targetId: payload.adminId,
++      action: '관리자 등급 변경',
++      reason: payload.reason.trim(),
++      changedBy: payload.changedBy,
++      beforeRole: target.role,
++      afterRole: payload.role,
++      beforePermissions,
++      afterPermissions,
++      createdAt: formatNow()
++    };
++
++    set((state) => ({
++      admins: state.admins.map((item) =>
++        item.adminId === payload.adminId
++          ? {
++              ...item,
++              role: payload.role,
++              permissions: afterPermissions,
++              updatedAt: audit.createdAt,
++              updatedBy: payload.changedBy
++            }
++          : item
++      ),
++      audits: [audit, ...state.audits]
++    }));
++
++    return audit;
++  },
+   grantPermissions: (payload) => {
+     const target = get().admins.find((item) => item.adminId === payload.adminId);
+     if (!target) {
+diff --git a/src/features/system/model/permission-types.ts b/src/features/system/model/permission-types.ts
+index 1f36ff8..f3ce636 100644
+--- a/src/features/system/model/permission-types.ts
++++ b/src/features/system/model/permission-types.ts
+@@ -37,9 +37,9 @@ export type AdminPermissionAssignment = {
+ 
+ export type PermissionAuditEvent = {
+   id: string;
+-  targetType: 'Admin';
++  targetType: 'Admin' | 'AdminAccount';
+   targetId: string;
+-  action: '권한 부여' | '권한 수정' | '권한 회수';
++  action: string;
+   reason: string;
+   changedBy: string;
+   beforeRole: RoleKey;
+diff --git a/src/features/system/pages/system-audit-logs-page.tsx b/src/features/system/pages/system-audit-logs-page.tsx
+index b55488c..982f0be 100644
+--- a/src/features/system/pages/system-audit-logs-page.tsx
++++ b/src/features/system/pages/system-audit-logs-page.tsx
+@@ -157,6 +157,9 @@ function getTargetRoute(targetType: string, targetId: string): string | null {
+     }
+     return '/content/library';
+   }
++  if (targetType === 'AdminAccount') {
++    return `/system/permissions?adminId=${targetId}`;
++  }
+   if (targetType === 'Admin' || targetType === 'System') {
+     return `/system/admins?keyword=${targetId}`;
+   }
+diff --git a/src/features/system/pages/system-permissions-page.tsx b/src/features/system/pages/system-permissions-page.tsx
+index 0d4d663..be9097c 100644
+--- a/src/features/system/pages/system-permissions-page.tsx
++++ b/src/features/system/pages/system-permissions-page.tsx
+@@ -2,7 +2,6 @@ import {
+   Alert,
+   Button,
+   Card,
+-  Checkbox,
+   Descriptions,
+   Form,
+   Input,
+@@ -11,57 +10,98 @@ import {
+   Space,
+   Tag,
+   Typography,
+-  message,
+   notification
+ } from 'antd';
+ import type { TableColumnsType } from 'antd';
+-import { useCallback, useMemo, useState } from 'react';
+-import { Link } from 'react-router-dom';
++import { useCallback, useEffect, useMemo, useState } from 'react';
++import { Link, useSearchParams } from 'react-router-dom';
+ 
++import { useAuthStore } from '../../auth/model/auth-store';
++import type { V13AppRole } from '../../auth/model/session-types';
+ import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
+ import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
+-import { markRequiredDescriptionItems } from '../../../shared/ui/descriptions/description-label';
+ import { PageTitle } from '../../../shared/ui/page-title/page-title';
+-import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
+ import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
+-import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
+-import { createTextSorter } from '../../../shared/ui/table/table-column-utils';
+ import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
+-import { usePermissionStore } from '../model/permission-store';
++import { createTextSorter } from '../../../shared/ui/table/table-column-utils';
++import {
++  changeAdminAppRoleSafe,
++  fetchAdminAppRolesSafe,
++  type AdminAppRoleRow
++} from '../api/system-permissions-service';
++import { systemPermissionsDataSource } from '../api/system-permissions-data-source';
+ import { permissionCatalog, roleCatalog } from '../model/permission-types';
+-import type {
+-  AdminPermissionAssignment,
+-  PermissionAuditEvent,
+-  PermissionDefinition,
+-  RoleDefinition,
+-  RoleKey
+-} from '../model/permission-types';
++import type { PermissionDefinition, RoleDefinition, RoleKey } from '../model/permission-types';
+ 
+ const { Paragraph, Text, Title } = Typography;
+ 
+-const CURRENT_ACTOR = 'admin_park';
++const appRoleOptions: Array<{ value: V13AppRole; label: string; description: string }> = [
++  {
++    value: 'platform_admin',
++    label: '플랫폼 관리자',
++    description: '전체 관리자 기능과 관리자 app_role 변경 권한'
++  },
++  {
++    value: 'content_admin',
++    label: '콘텐츠 관리자',
++    description: '콘텐츠·평가 운영 중심 권한'
++  },
++  {
++    value: 'org_admin',
++    label: '조직 관리자',
++    description: '현재 임시 매핑상 READ_ONLY로 표시'
++  },
++  {
++    value: 'learner',
++    label: '학습자',
++    description: '관리자 콘솔 접근 불가'
++  }
++];
++
++const roleNameMap: Record<RoleKey, string> = {
++  SUPER_ADMIN: '최고 관리자',
++  OPS_ADMIN: '운영 관리자',
++  CONTENT_MANAGER: '콘텐츠 관리자',
++  CS_MANAGER: '고객지원 관리자',
++  READ_ONLY: '읽기 전용'
++};
+ 
+-type PermissionModalMode = 'grant' | 'update' | 'revoke';
++const appRoleLabelMap: Record<V13AppRole, string> = Object.fromEntries(
++  appRoleOptions.map((option) => [option.value, option.label])
++) as Record<V13AppRole, string>;
+ 
+-type PermissionModalState = {
+-  mode: PermissionModalMode;
+-  adminId: string;
++type RoleChangeModalState = {
++  admin: AdminAppRoleRow;
+ } | null;
+ 
+-type PermissionFormValues = {
+-  role: RoleKey;
+-  permissionKeys: string[];
++type RoleChangeFormValues = {
++  appRole: V13AppRole;
+   reason: string;
+ };
+ 
+-type DetailModalState =
+-  | {
+-      title: string;
+-      record: Record<string, unknown>;
+-    }
+-  | null;
++type DetailModalState = {
++  title: string;
++  record: Record<string, unknown>;
++} | null;
++
++function getRoleLabel(roleKey: RoleKey | null): string {
++  return roleKey ? `${roleNameMap[roleKey]} (${roleKey})` : '관리자 접근 없음';
++}
+ 
+-function formatRiskTag(risk: string): JSX.Element {
++function getStatusLabel(status: string): string {
++  if (status === 'active') {
++    return '정상';
++  }
++  if (status === 'blocked') {
++    return '정지';
++  }
++  if (status === 'deleted') {
++    return '탈퇴';
++  }
++  return status;
++}
++
++function getRiskTag(risk: string): JSX.Element {
+   if (risk === 'high') {
+     return <Tag color="volcano">High</Tag>;
+   }
+@@ -72,282 +112,194 @@ function formatRiskTag(risk: string): JSX.Element {
+ }
+ 
+ export default function SystemPermissionsPage(): JSX.Element {
+-  const admins = usePermissionStore((state) => state.admins);
+-  const audits = usePermissionStore((state) => state.audits);
+-  const grantPermissions = usePermissionStore((state) => state.grantPermissions);
+-  const updatePermissions = usePermissionStore((state) => state.updatePermissions);
+-  const revokePermissions = usePermissionStore((state) => state.revokePermissions);
+-
+-  const [modalState, setModalState] = useState<PermissionModalState>(null);
++  const [searchParams] = useSearchParams();
++  const session = useAuthStore((state) => state.session);
++  const authStatus = useAuthStore((state) => state.status);
++  const [rows, setRows] = useState<AdminAppRoleRow[]>([]);
++  const [loadState, setLoadState] = useState<'pending' | 'success' | 'error'>('pending');
++  const [loadErrorMessage, setLoadErrorMessage] = useState('');
++  const [modalState, setModalState] = useState<RoleChangeModalState>(null);
+   const [detailModalState, setDetailModalState] = useState<DetailModalState>(null);
+-  const [messageApi, messageContextHolder] = message.useMessage();
++  const [submitting, setSubmitting] = useState(false);
+   const [notificationApi, notificationContextHolder] = notification.useNotification();
+-  const [form] = Form.useForm<PermissionFormValues>();
+-
+-  const permissionNameMap = useMemo(
+-    () => Object.fromEntries(permissionCatalog.map((permission) => [permission.key, permission.name])),
+-    []
+-  );
+-
+-  const selectedAdmin = useMemo(() => {
+-    if (!modalState) {
+-      return null;
+-    }
++  const [form] = Form.useForm<RoleChangeFormValues>();
+ 
+-    return admins.find((item) => item.adminId === modalState.adminId) ?? null;
+-  }, [admins, modalState]);
++  const isPlatformAdmin =
++    systemPermissionsDataSource === 'mock' || session?.appRole === 'platform_admin';
+ 
+-  const roleOptions = useMemo(
+-    () =>
+-      roleCatalog.map((role) => ({
+-        label: `${role.name} (${role.key})`,
+-        value: role.key
+-      })),
+-    []
+-  );
+-
+-  const permissionOptions = useMemo(
+-    () =>
+-      permissionCatalog.map((permission) => ({
+-        label: `${permission.name} (${permission.key})`,
+-        value: permission.key
+-      })),
+-    []
+-  );
++  const selectedAdminId = searchParams.get('adminId') ?? '';
+ 
+-  const watchedPermissionKeys = Form.useWatch('permissionKeys', form);
+-  const selectedPermissionDescriptions = useMemo(
+-    () =>
+-      permissionCatalog.filter((permission) =>
+-        (watchedPermissionKeys ?? []).includes(permission.key)
+-      ),
+-    [watchedPermissionKeys]
+-  );
+-
+-  const openModal = useCallback(
+-    (mode: PermissionModalMode, admin: AdminPermissionAssignment) => {
+-      setModalState({ mode, adminId: admin.adminId });
+-
+-      if (mode === 'grant') {
+-        const available = permissionCatalog
+-          .map((permission) => permission.key)
+-          .filter((key) => !admin.permissions.includes(key));
+-        form.setFieldsValue({
+-          role: admin.role,
+-          permissionKeys: available.slice(0, Math.min(2, available.length)),
+-          reason: ''
+-        });
++  const loadRows = useCallback((signal?: AbortSignal) => {
++    setLoadState('pending');
++    setLoadErrorMessage('');
++    void fetchAdminAppRolesSafe(signal).then((result) => {
++      if (signal?.aborted) {
+         return;
+       }
+-
+-      if (mode === 'update') {
+-        form.setFieldsValue({
+-          role: admin.role,
+-          permissionKeys: admin.permissions,
+-          reason: ''
+-        });
++      if (result.ok) {
++        setRows(result.data);
++        setLoadState('success');
+         return;
+       }
++      setRows([]);
++      setLoadErrorMessage(result.error.message);
++      setLoadState('error');
++    });
++  }, []);
+ 
+-      form.setFieldsValue({
+-        role: admin.role,
+-        permissionKeys: admin.permissions.slice(0, Math.min(2, admin.permissions.length)),
+-        reason: ''
+-      });
++  useEffect(() => {
++    const controller = new AbortController();
++    loadRows(controller.signal);
++    return () => controller.abort();
++  }, [loadRows]);
++
++  const selectedModalAppRole = Form.useWatch('appRole', form);
++
++  const openChangeModal = useCallback(
++    (admin: AdminAppRoleRow) => {
++      setModalState({ admin });
++      form.setFieldsValue({ appRole: admin.appRole, reason: '' });
+     },
+     [form]
+   );
+ 
+-  const closeModal = useCallback(() => {
++  const closeChangeModal = useCallback(() => {
+     setModalState(null);
+     form.resetFields();
+   }, [form]);
+ 
+-  const openDetailModal = useCallback((title: string, record: Record<string, unknown>) => {
+-    setDetailModalState({ title, record });
+-  }, []);
+-
+-  const applyRoleDefaults = useCallback(() => {
+-    const role = form.getFieldValue('role') as RoleKey | undefined;
+-    const roleDefinition = roleCatalog.find((item) => item.key === role);
+-    if (!roleDefinition) {
+-      return;
+-    }
+-
+-    form.setFieldValue('permissionKeys', roleDefinition.defaultPermissions);
+-  }, [form]);
+-
+-  const handleSubmit = useCallback(async () => {
+-    if (!modalState || !selectedAdmin) {
++  const handleChangeSubmit = useCallback(async () => {
++    if (!modalState) {
+       return;
+     }
+ 
+     const values = await form.validateFields();
+-    const reason = values.reason.trim();
+-    let result: PermissionAuditEvent | null = null;
+-
+-    if (modalState.mode === 'grant') {
+-      result = grantPermissions({
+-        adminId: selectedAdmin.adminId,
+-        permissionKeys: values.permissionKeys,
+-        reason,
+-        changedBy: CURRENT_ACTOR
+-      });
+-    } else if (modalState.mode === 'update') {
+-      result = updatePermissions({
+-        adminId: selectedAdmin.adminId,
+-        role: values.role,
+-        permissionKeys: values.permissionKeys,
+-        reason,
+-        changedBy: CURRENT_ACTOR
+-      });
+-    } else {
+-      result = revokePermissions({
+-        adminId: selectedAdmin.adminId,
+-        permissionKeys: values.permissionKeys,
+-        reason,
+-        changedBy: CURRENT_ACTOR
+-      });
+-    }
++    setSubmitting(true);
++    const result = await changeAdminAppRoleSafe({
++      targetUserId: modalState.admin.adminId,
++      newAppRole: values.appRole,
++      reason: values.reason.trim()
++    });
++    setSubmitting(false);
+ 
+-    if (!result) {
+-      messageApi.warning('변경 사항이 없거나 처리할 대상이 없습니다.');
++    if (!result.ok) {
++      notificationApi.error({
++        message: '등급 변경 실패',
++        description: result.error.message
++      });
+       return;
+     }
+ 
+     notificationApi.success({
+-      message: `${result.action} 완료`,
++      message: '관리자 등급 변경 완료',
+       description: (
+         <Space direction="vertical">
+-          <Text>대상 유형: {getTargetTypeLabel(result.targetType)}</Text>
+-          <Text>대상 ID: {result.targetId}</Text>
+-          <Text>사유/근거: {result.reason}</Text>
+-          <AuditLogLink targetType={result.targetType} targetId={result.targetId} />
++          <Text>대상 유형: {getTargetTypeLabel('AdminAccount')}</Text>
++          <Text>대상 ID: {modalState.admin.adminId}</Text>
++          <Text>반영 정책: 다음 로그인 때 반영</Text>
++          <AuditLogLink targetType="AdminAccount" targetId={modalState.admin.adminId} />
+         </Space>
+       )
+     });
++    closeChangeModal();
++    loadRows();
++  }, [closeChangeModal, form, loadRows, modalState, notificationApi]);
+ 
+-    closeModal();
+-  }, [
+-    closeModal,
+-    form,
+-    grantPermissions,
+-    messageApi,
+-    modalState,
+-    notificationApi,
+-    revokePermissions,
+-    selectedAdmin,
+-    updatePermissions
+-  ]);
+-
+-  const adminColumns = useMemo<TableColumnsType<AdminPermissionAssignment>>(
++  const adminColumns = useMemo<TableColumnsType<AdminAppRoleRow>>(
+     () => [
+       {
+-        title: '관리자 ID',
+-        dataIndex: 'adminId',
+-        width: 140,
+-        sorter: createTextSorter((record) => record.adminId),
+-        render: (adminId: string) => (
+-          <Link
+-            className="table-navigation-link"
+-            to={`/system/audit-logs?targetType=Admin&targetId=${adminId}`}
+-            onClick={(event) => event.stopPropagation()}
+-          >
+-            {adminId}
+-          </Link>
++        title: '관리자',
++        dataIndex: 'displayName',
++        width: 180,
++        sorter: createTextSorter((record) => record.displayName),
++        render: (displayName: string, record) => (
++          <Space direction="vertical" size={0}>
++            <Text strong>{displayName}</Text>
++            <Text type="secondary">{record.email || record.adminId}</Text>
++          </Space>
+         )
+       },
+       {
+-        title: '이름',
+-        dataIndex: 'name',
+-        width: 120,
+-        sorter: createTextSorter((record) => record.name)
++        title: 'app_role',
++        dataIndex: 'appRole',
++        width: 170,
++        sorter: createTextSorter((record) => record.appRole),
++        render: (appRole: V13AppRole) => (
++          <Tag color={appRole === 'platform_admin' ? 'blue' : 'default'}>
++            {appRoleLabelMap[appRole]} ({appRole})
++          </Tag>
++        )
+       },
+       {
+-        title: '상태',
+-        dataIndex: 'status',
+-        width: 100,
+-        sorter: createTextSorter((record) => record.status),
+-        render: (status: string) => <StatusBadge status={status} />
++        title: '매핑 RoleKey',
++        dataIndex: 'roleKey',
++        width: 190,
++        sorter: createTextSorter((record) => record.roleKey ?? ''),
++        render: (roleKey: RoleKey | null) => getRoleLabel(roleKey)
+       },
+       {
+-        title: '역할',
+-        dataIndex: 'role',
+-        width: 150,
+-        sorter: createTextSorter((record) => record.role),
+-        render: (role: RoleKey) => roleCatalog.find((item) => item.key === role)?.name ?? role
++        title: '카탈로그 권한 수',
++        dataIndex: 'permissionCount',
++        width: 130,
++        sorter: createTextSorter((record) => String(record.permissionCount))
+       },
+       {
+-        title: '권한 수',
+-        key: 'permissionCount',
+-        width: 90,
+-        sorter: createTextSorter((record) => String(record.permissions.length)),
+-        render: (_, record) => record.permissions.length
++        title: '상태',
++        dataIndex: 'status',
++        width: 100,
++        sorter: createTextSorter((record) => record.status),
++        render: (status: string) => getStatusLabel(status)
+       },
+       {
+-        title: '최근 수정',
+-        dataIndex: 'updatedAt',
++        title: '최근 로그인',
++        dataIndex: 'lastLoginAt',
+         width: 170,
+-        sorter: createTextSorter((record) => record.updatedAt)
++        sorter: createTextSorter((record) => record.lastLoginAt)
+       },
+       {
+-        title: '액션',
++        title: '조치',
+         key: 'actions',
+-        width: 120,
+-        onCell: () => ({
+-          onClick: (event) => event.stopPropagation()
+-        }),
++        width: 130,
++        onCell: () => ({ onClick: (event) => event.stopPropagation() }),
+         render: (_, record) => (
+-          <TableActionMenu
+-            items={[
+-              {
+-                key: `grant-${record.adminId}`,
+-                label: '권한 부여',
+-                onClick: () => openModal('grant', record)
+-              },
+-              {
+-                key: `update-${record.adminId}`,
+-                label: '권한 수정',
+-                onClick: () => openModal('update', record)
+-              },
+-              {
+-                key: `revoke-${record.adminId}`,
+-                label: '권한 회수',
+-                danger: true,
+-                onClick: () => openModal('revoke', record)
+-              }
+-            ]}
+-          />
++          <Button
++            size="small"
++            disabled={!isPlatformAdmin}
++            onClick={() => openChangeModal(record)}
++          >
++            등급 변경
++          </Button>
+         )
+       }
+     ],
+-    [openModal]
++    [isPlatformAdmin, openChangeModal]
+   );
+ 
+   const roleColumns = useMemo<TableColumnsType<RoleDefinition>>(
+     () => [
+       {
+-        title: '역할 코드',
++        title: 'RoleKey',
+         dataIndex: 'key',
+-        width: 150,
++        width: 160,
+         sorter: createTextSorter((record) => record.key)
+       },
+       {
+-        title: '역할명',
+-        dataIndex: 'name',
+-        width: 150,
+-        sorter: createTextSorter((record) => record.name)
+-      },
+-      {
+-        title: '설명',
+-        dataIndex: 'description',
+-        sorter: createTextSorter((record) => record.description)
++        title: '표시명',
++        dataIndex: 'key',
++        width: 160,
++        sorter: createTextSorter((record) => roleNameMap[record.key]),
++        render: (roleKey: RoleKey) => roleNameMap[roleKey]
+       },
+       {
+         title: '기본 권한 수',
+-        width: 120,
++        width: 130,
+         sorter: createTextSorter((record) => String(record.defaultPermissions.length)),
+         render: (_, role) => role.defaultPermissions.length
++      },
++      {
++        title: '설명',
++        dataIndex: 'description',
++        sorter: createTextSorter((record) => record.description)
+       }
+     ],
+     []
+@@ -370,11 +322,11 @@ export default function SystemPermissionsPage(): JSX.Element {
+       {
+         title: '모듈',
+         dataIndex: 'module',
+-        width: 100,
++        width: 120,
+         sorter: createTextSorter((record) => record.module)
+       },
+       {
+-        title: '권한 범위 설명',
++        title: '범위 설명',
+         dataIndex: 'scopeDescription',
+         sorter: createTextSorter((record) => record.scopeDescription)
+       },
+@@ -383,103 +335,90 @@ export default function SystemPermissionsPage(): JSX.Element {
+         dataIndex: 'risk',
+         width: 100,
+         sorter: createTextSorter((record) => record.risk),
+-        render: (risk: string) => formatRiskTag(risk)
+-      }
+-    ],
+-    []
+-  );
+-
+-  const auditColumns = useMemo<TableColumnsType<PermissionAuditEvent>>(
+-    () => [
+-      {
+-        title: '로그 ID',
+-        dataIndex: 'id',
+-        width: 130,
+-        sorter: createTextSorter((record) => record.id)
+-      },
+-      {
+-        title: '대상',
+-        dataIndex: 'targetId',
+-        width: 140,
+-        sorter: createTextSorter((record) => record.targetId),
+-        render: (targetId: string) => (
+-          <Link
+-            className="table-navigation-link"
+-            to={`/system/audit-logs?targetType=Admin&targetId=${targetId}`}
+-            onClick={(event) => event.stopPropagation()}
+-          >
+-            {targetId}
+-          </Link>
+-        )
+-      },
+-      {
+-        title: '조치',
+-        dataIndex: 'action',
+-        width: 110,
+-        sorter: createTextSorter((record) => record.action)
+-      },
+-      {
+-        title: '사유/근거',
+-        dataIndex: 'reason',
+-        sorter: createTextSorter((record) => record.reason)
+-      },
+-      {
+-        title: '수행자',
+-        dataIndex: 'changedBy',
+-        width: 120,
+-        sorter: createTextSorter((record) => record.changedBy)
+-      },
+-      {
+-        title: '시각',
+-        dataIndex: 'createdAt',
+-        width: 170,
+-        sorter: createTextSorter((record) => record.createdAt)
++        render: (risk: string) => getRiskTag(risk)
+       }
+     ],
+     []
+   );
+ 
+-  const modalTitle = useMemo(() => {
+-    if (!modalState || !selectedAdmin) {
+-      return '';
+-    }
+-
+-    if (modalState.mode === 'grant') {
+-      return `권한 부여 - ${selectedAdmin.adminId}`;
+-    }
+-    if (modalState.mode === 'update') {
+-      return `권한 수정 - ${selectedAdmin.adminId}`;
+-    }
+-    return `권한 회수 - ${selectedAdmin.adminId}`;
+-  }, [modalState, selectedAdmin]);
+-
+-  const recentAuditRows = useMemo(() => audits.slice(0, 8), [audits]);
++  const modalAdmin = modalState?.admin ?? null;
++  const demotesSelf =
++    Boolean(modalAdmin && session?.userId === modalAdmin.adminId) &&
++    modalAdmin?.appRole === 'platform_admin' &&
++    selectedModalAppRole !== 'platform_admin';
+ 
+   return (
+     <div>
+-      {messageContextHolder}
+       {notificationContextHolder}
+       <PageTitle title="권한 관리" />
+ 
++      <Card style={{ marginBottom: 12 }}>
++        <Space direction="vertical" size={12} style={{ width: '100%' }}>
++          <Alert
++            type="info"
++            showIcon
++            message="실제 관리자 권한 기준은 profiles.app_role입니다."
++            description="이 화면의 등급 변경은 profiles.app_role만 갱신합니다. 기존 세션 강제 만료나 토큰 폐기는 하지 않으며, 변경된 권한은 다음 로그인 때 반영됩니다."
++          />
++          <Alert
++            type="warning"
++            showIcon
++            message="권한 카탈로그는 참고 전용입니다."
++            description="아래 37개 permission과 5개 RoleKey는 메뉴 게이팅과 운영자 이해를 위한 client bundle입니다. 개별 permission 부여/회수는 실권한 변경이 아닙니다."
++          />
++          {systemPermissionsDataSource === 'mock' ? (
++            <Alert
++              type="warning"
++              showIcon
++              message="Mock 데이터소스"
++              description="VITE_SUPABASE_DISABLED 또는 VITE_SYSTEM_PERMISSIONS_SOURCE=mock 경로입니다. 기존 permission-store 시뮬레이션으로 회귀 확인만 수행하며 실권한은 변경되지 않습니다."
++            />
++          ) : null}
++          {!isPlatformAdmin && authStatus !== 'mock' ? (
++            <Alert
++              type="error"
++              showIcon
++              message="platform_admin만 관리자 등급을 변경할 수 있습니다."
++              description="목록과 카탈로그는 조회할 수 있지만 등급 변경 조치는 서버에서 거부됩니다."
++            />
++          ) : null}
++        </Space>
++      </Card>
++
+       <Card style={{ marginBottom: 12 }}>
+         <Title level={5} style={{ marginTop: 0 }}>
+-          관리자별 권한 부여 상태
++          관리자별 app_role
+         </Title>
+         <Paragraph type="secondary">
+-          운영 흐름은 관리자 조회 - 권한 조치 - 감사 로그 확인 순서를 기본으로 유지합니다.
++          운영 흐름: 관리자 확인 - 등급 변경 - 사유 입력 - 감사 로그 확인. 마지막 platform_admin 강등과 자기 자신 강등은 서버 RPC에서 차단합니다.
+         </Paragraph>
+-        <AdminDataTable
++        {loadState === 'error' ? (
++          <Alert
++            type="error"
++            showIcon
++            message="관리자 목록을 불러오지 못했습니다."
++            description={loadErrorMessage}
++            style={{ marginBottom: 12 }}
++          />
++        ) : null}
++        <AdminDataTable<AdminAppRoleRow>
+           rowKey="adminId"
++          loading={loadState === 'pending'}
+           pagination={false}
+-          scroll={{ x: 1200 }}
++          scroll={{ x: 1180 }}
+           columns={adminColumns}
+-          dataSource={admins}
++          dataSource={rows}
++          rowClassName={(record) => (record.adminId === selectedAdminId ? 'ant-table-row-selected' : '')}
+           onRow={(record) => ({
+             onClick: () =>
+-              openDetailModal('관리자 권한 상세', {
+-                ...record,
+-                roleName: roleCatalog.find((role) => role.key === record.role)?.name ?? record.role,
+-                permissionNames: record.permissions.map((permission) => permissionNameMap[permission])
++              setDetailModalState({
++                title: '관리자 app_role 상세',
++                record: {
++                  ...record,
++                  appRoleLabel: appRoleLabelMap[record.appRole],
++                  mappedRole: getRoleLabel(record.roleKey),
++                  auditLog: `/system/audit-logs?targetType=AdminAccount&targetId=${record.adminId}`
++                }
+               }),
+             style: { cursor: 'pointer' }
+           })}
+@@ -488,8 +427,35 @@ export default function SystemPermissionsPage(): JSX.Element {
+ 
+       <Card style={{ marginBottom: 12 }}>
+         <Title level={5} style={{ marginTop: 0 }}>
+-          역할 템플릿
++          app_role 변경 감사 경로
+         </Title>
++        <Descriptions
++          bordered
++          size="small"
++          column={1}
++          items={[
++            { key: 'targetType', label: 'Target Type', children: 'AdminAccount' },
++            { key: 'action', label: 'Action', children: 'admin_role_changed' },
++            {
++              key: 'route',
++              label: '감사 로그 확인',
++              children: (
++                <Link to="/system/audit-logs?targetType=AdminAccount">
++                  /system/audit-logs?targetType=AdminAccount
++                </Link>
++              )
++            }
++          ]}
++        />
++      </Card>
++
++      <Card style={{ marginBottom: 12 }}>
++        <Title level={5} style={{ marginTop: 0 }}>
++          RoleKey 카탈로그(읽기 전용)
++        </Title>
++        <Paragraph type="secondary">
++          RoleKey는 app_role에서 파생된 메뉴 게이팅용 표시값입니다. org_admin은 임시 현행대로 READ_ONLY에 매핑됩니다.
++        </Paragraph>
+         <AdminDataTable<RoleDefinition>
+           rowKey="key"
+           pagination={false}
+@@ -497,23 +463,27 @@ export default function SystemPermissionsPage(): JSX.Element {
+           dataSource={roleCatalog}
+           onRow={(record) => ({
+             onClick: () =>
+-              openDetailModal('역할 템플릿 상세', {
+-                ...record,
+-                defaultPermissionNames: record.defaultPermissions.map(
+-                  (permission) => permissionNameMap[permission]
+-                )
++              setDetailModalState({
++                title: 'RoleKey 카탈로그 상세',
++                record: {
++                  key: record.key,
++                  name: roleNameMap[record.key],
++                  description: record.description,
++                  defaultPermissionCount: record.defaultPermissions.length,
++                  defaultPermissions: record.defaultPermissions
++                }
+               }),
+             style: { cursor: 'pointer' }
+           })}
+         />
+       </Card>
+ 
+-      <Card style={{ marginBottom: 12 }}>
++      <Card>
+         <Title level={5} style={{ marginTop: 0 }}>
+-          권한 정의
++          Permission 카탈로그(읽기 전용)
+         </Title>
+         <Paragraph type="secondary">
+-          권한 정의는 메뉴 노출, 조치 가능 여부, 감사 로그 검증 경로를 함께 관리합니다.
++          이 목록은 메뉴 노출과 화면 조치 가능 여부를 설명하는 참고 자료입니다. DB 인가 SoT가 아니며 이 화면에서 개별 권한을 부여하거나 회수하지 않습니다.
+         </Paragraph>
+         <AdminDataTable<PermissionDefinition>
+           rowKey="key"
+@@ -522,32 +492,7 @@ export default function SystemPermissionsPage(): JSX.Element {
+           columns={permissionColumns}
+           dataSource={permissionCatalog}
+           onRow={(record) => ({
+-            onClick: () => openDetailModal('권한 정의 상세', record),
+-            style: { cursor: 'pointer' }
+-          })}
+-        />
+-      </Card>
+-
+-      <Card>
+-        <Title level={5} style={{ marginTop: 0 }}>
+-          최근 권한 변경 이력
+-        </Title>
+-        <AdminDataTable<PermissionAuditEvent>
+-          rowKey="id"
+-          pagination={false}
+-          columns={auditColumns}
+-          dataSource={recentAuditRows}
+-          onRow={(record) => ({
+-            onClick: () =>
+-              openDetailModal('권한 변경 이력 상세', {
+-                ...record,
+-                beforePermissionNames: record.beforePermissions.map(
+-                  (permission) => permissionNameMap[permission]
+-                ),
+-                afterPermissionNames: record.afterPermissions.map(
+-                  (permission) => permissionNameMap[permission]
+-                )
+-              }),
++            onClick: () => setDetailModalState({ title: 'Permission 카탈로그 상세', record }),
+             style: { cursor: 'pointer' }
+           })}
+         />
+@@ -561,157 +506,83 @@ export default function SystemPermissionsPage(): JSX.Element {
+       />
+ 
+       <Modal
+-        open={Boolean(modalState && selectedAdmin)}
+-        title={modalTitle}
+-        okText={
+-          modalState?.mode === 'grant'
+-            ? '부여 실행'
+-            : modalState?.mode === 'update'
+-              ? '수정 적용'
+-              : '회수 실행'
+-        }
++        open={Boolean(modalAdmin)}
++        title="관리자 등급 변경"
++        okText="등급 변경"
+         cancelText="취소"
+-        onCancel={closeModal}
+-        onOk={() => void handleSubmit()}
+-        okButtonProps={{ danger: modalState?.mode === 'revoke' }}
+-        width={760}
++        okButtonProps={{
++          danger: selectedModalAppRole === 'learner' || demotesSelf,
++          loading: submitting,
++          disabled: !isPlatformAdmin || demotesSelf
++        }}
++        onCancel={closeChangeModal}
++        onOk={() => void handleChangeSubmit()}
+         destroyOnHidden
+       >
+-        {selectedAdmin ? (
+-          <Form<PermissionFormValues> form={form}>
+-            <Alert
+-              type={modalState?.mode === 'revoke' ? 'warning' : 'info'}
+-              showIcon
+-              style={{ marginBottom: 12 }}
+-              message={
+-                modalState?.mode === 'grant'
+-                  ? '권한 부여 확인'
+-                  : modalState?.mode === 'update'
+-                    ? '권한 수정 확인'
+-                    : '권한 회수 확인'
+-              }
+-              description={`대상 유형: ${getTargetTypeLabel('Admin')} / 대상 ID: ${selectedAdmin.adminId}`}
+-            />
+-
++        {modalAdmin ? (
++          <Space direction="vertical" size={12} style={{ width: '100%' }}>
+             <Descriptions
+               bordered
+               size="small"
+               column={1}
+-              className="admin-form-descriptions"
+-              items={markRequiredDescriptionItems(
+-                [
+-                  {
+-                    key: 'admin',
+-                    label: '대상 관리자',
+-                    children: (
+-                      <Text>
+-                        {selectedAdmin.adminId} / {selectedAdmin.name}
+-                      </Text>
+-                    )
+-                  },
+-                  {
+-                    key: 'role',
+-                    label: '역할',
+-                    children: (
+-                      <Form.Item
+-                        name="role"
+-                        rules={[{ required: true, message: '역할을 선택해 주세요.' }]}
+-                      >
+-                        <Select
+-                          options={roleOptions}
+-                          disabled={modalState?.mode === 'grant' || modalState?.mode === 'revoke'}
+-                        />
+-                      </Form.Item>
+-                    )
+-                  },
+-                  ...(modalState?.mode === 'update'
+-                    ? [
+-                        {
+-                          key: 'roleDefaults',
+-                          label: '기본 권한',
+-                          children: (
+-                            <Button onClick={applyRoleDefaults}>
+-                              선택한 역할의 기본 권한 불러오기
+-                            </Button>
+-                          )
+-                        }
+-                      ]
+-                    : []),
+-                  {
+-                    key: 'permissionKeys',
+-                    label:
+-                      modalState?.mode === 'grant'
+-                        ? '부여할 권한'
+-                        : modalState?.mode === 'update'
+-                          ? '권한 목록'
+-                          : '회수할 권한',
+-                    children: (
+-                      <Form.Item
+-                        name="permissionKeys"
+-                        rules={[{ required: true, message: '권한을 1개 이상 선택해 주세요.' }]}
+-                      >
+-                        <Checkbox.Group
+-                          options={
+-                            modalState?.mode === 'grant'
+-                              ? permissionOptions.filter(
+-                                  (option) => !selectedAdmin.permissions.includes(option.value)
+-                                )
+-                              : modalState?.mode === 'revoke'
+-                                ? permissionOptions.filter((option) =>
+-                                    selectedAdmin.permissions.includes(option.value)
+-                                  )
+-                                : permissionOptions
+-                          }
+-                          style={{
+-                            display: 'grid',
+-                            gridTemplateColumns: 'repeat(2, minmax(260px, 1fr))',
+-                            gap: 8
+-                          }}
+-                        />
+-                      </Form.Item>
+-                    )
+-                  },
++              items={[
++                { key: 'admin', label: '관리자', children: modalAdmin.displayName },
++                { key: 'email', label: '이메일', children: modalAdmin.email || modalAdmin.adminId },
++                {
++                  key: 'current',
++                  label: '현재 app_role',
++                  children: `${appRoleLabelMap[modalAdmin.appRole]} (${modalAdmin.appRole})`
++                },
++                {
++                  key: 'currentRoleKey',
++                  label: '현재 RoleKey',
++                  children: getRoleLabel(modalAdmin.roleKey)
++                }
++              ]}
++            />
++            <Alert
++              type="warning"
++              showIcon
++              message="잠금 방지"
++              description="마지막 platform_admin 강등과 자기 자신 platform_admin 강등은 차단됩니다. 변경은 다음 로그인 때 반영됩니다."
++            />
++            {demotesSelf ? (
++              <Alert
++                type="error"
++                showIcon
++                message="자기 자신의 platform_admin 등급 강등은 허용하지 않습니다."
++              />
++            ) : null}
++            <Form<RoleChangeFormValues> form={form} layout="vertical">
++              <Form.Item
++                label="새 app_role"
++                name="appRole"
++                rules={[{ required: true, message: '새 app_role을 선택하세요.' }]}
++              >
++                <Select
++                  options={appRoleOptions.map((option) => ({
++                    value: option.value,
++                    label: `${option.label} (${option.value})`
++                  }))}
++                />
++              </Form.Item>
++              <Form.Item
++                label="사유/근거"
++                name="reason"
++                rules={[
++                  { required: true, message: '사유를 입력하세요.' },
+                   {
+-                    key: 'reason',
+-                    label: '사유/근거',
+-                    children: (
+-                      <Form.Item
+-                        name="reason"
+-                        rules={[{ required: true, message: '변경 사유를 입력해 주세요.' }]}
+-                      >
+-                        <div>
+-                          <Paragraph style={{ marginBottom: 8 }} type="secondary">
+-                            권한 변경 내역은 감사 로그에 기록됩니다.
+-                          </Paragraph>
+-                          <Input.TextArea
+-                            rows={4}
+-                            placeholder="권한 변경 사유를 입력해 주세요."
+-                          />
+-                        </div>
+-                      </Form.Item>
+-                    )
++                    validator: (_, value: string | undefined) =>
++                      value?.trim()
++                        ? Promise.resolve()
++                        : Promise.reject(new Error('공백만 입력할 수 없습니다.'))
+                   }
+-                ],
+-                ['role', 'permissionKeys', 'reason']
+-              )}
+-            />
+-
+-            {selectedPermissionDescriptions.length > 0 ? (
+-              <Card
+-                size="small"
+-                title="선택 권한 범위 미리보기"
+-                style={{ marginTop: 12 }}
++                ]}
+               >
+-                <Space direction="vertical">
+-                  {selectedPermissionDescriptions.map((permission) => (
+-                    <Text key={permission.key}>
+-                      {permission.name}: {permission.scopeDescription}
+-                    </Text>
+-                  ))}
+-                </Space>
+-              </Card>
+-            ) : null}
+-          </Form>
++                <Input.TextArea rows={4} placeholder="등급 변경 사유와 승인 근거를 입력하세요." />
++              </Form.Item>
++            </Form>
++          </Space>
+         ) : null}
+       </Modal>
+     </div>
+diff --git a/src/shared/model/target-type-label.ts b/src/shared/model/target-type-label.ts
+index 9c9aff3..60ba818 100644
+--- a/src/shared/model/target-type-label.ts
++++ b/src/shared/model/target-type-label.ts
+@@ -28,6 +28,7 @@
+   Content: "콘텐츠",
+   System: "시스템",
+   Admin: "관리자",
++  AdminAccount: "관리자 계정",
+   SystemMetadataGroup: "메타 그룹",
+ };
+ 

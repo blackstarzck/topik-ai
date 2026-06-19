@@ -1,0 +1,143 @@
+diff --git a/src/features/users/pages/user-detail-page.tsx b/src/features/users/pages/user-detail-page.tsx
+index d26f3ef..cbbde0f 100644
+--- a/src/features/users/pages/user-detail-page.tsx
++++ b/src/features/users/pages/user-detail-page.tsx
+@@ -20,17 +20,23 @@ import {
+   addUserMemo,
+   fetchUserByIdSafe,
+   fetchUserLearningOverviewSafe,
++  getUserAccessLogs,
++  getUserActivity,
+   getUserCommunityPosts,
+   getUserMemos,
++  getUserPayments,
+   setUserStatusSafe,
++  type UserAccessLog,
++  type UserActivityEvent,
+   type UserAdminMemo,
+-  type UserCommunityPost
++  type UserCommunityPost,
++  type UserPaymentRecord
+ } from '../api/users-service';
+ import type { UserLearningOverview, UserStatus, UserSummary } from '../model/types';
+ import type { AsyncState } from '../../../shared/model/async-state';
+ import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
+ import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
+ import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
+ import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
+ import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
+ import {
+@@ -143,6 +150,9 @@ export default function UserDetailPage(): JSX.Element {
+   const [currentStatus, setCurrentStatus] = useState<UserStatus>('정상');
+   const [communityPosts, setCommunityPosts] = useState<UserCommunityPost[]>([]);
+   const [adminMemos, setAdminMemos] = useState<UserAdminMemo[]>([]);
++  const [userActivity, setUserActivity] = useState<UserActivityEvent[]>([]);
++  const [userPayments, setUserPayments] = useState<UserPaymentRecord[]>([]);
++  const [userAccessLogs, setUserAccessLogs] = useState<UserAccessLog[]>([]);
+   const [memoModalOpen, setMemoModalOpen] = useState(false);
+   const [memoContent, setMemoContent] = useState('');
+   const [memoReason, setMemoReason] = useState('');
+@@ -254,6 +264,30 @@ export default function UserDetailPage(): JSX.Element {
+     return () => controller.abort();
+   }, [userId]);
+ 
++  // 활동/결제/접속 로그 탭은 Supabase 모드에서 admin RPC로 조회한다(미설정 시 mock 표시).
++  useEffect(() => {
++    if (!isSupabaseConfigured) {
++      return;
++    }
++    const controller = new AbortController();
++    void getUserActivity(userId, controller.signal).then((result) => {
++      if (!controller.signal.aborted && result.ok) {
++        setUserActivity(result.data);
++      }
++    });
++    void getUserPayments(userId, controller.signal).then((result) => {
++      if (!controller.signal.aborted && result.ok) {
++        setUserPayments(result.data);
++      }
++    });
++    void getUserAccessLogs(userId, controller.signal).then((result) => {
++      if (!controller.signal.aborted && result.ok) {
++        setUserAccessLogs(result.data);
++      }
++    });
++    return () => controller.abort();
++  }, [userId]);
++
+   const handleAddMemo = useCallback(async () => {
+     const content = memoContent.trim();
+     const reason = memoReason.trim();
+@@ -464,6 +498,9 @@ export default function UserDetailPage(): JSX.Element {
+   // Supabase 모드: 실 DB 조회 결과, 그 외(mock): 위 더미 행.
+   const communityDisplay = isSupabaseConfigured ? communityPosts : communityRows;
+   const memoDisplay = isSupabaseConfigured ? adminMemos : memoRows;
++  const activityDisplay = isSupabaseConfigured ? userActivity : activityRows;
++  const paymentDisplay = isSupabaseConfigured ? userPayments : paymentRows;
++  const logDisplay = isSupabaseConfigured ? userAccessLogs : logRows;
+ 
+   const activityColumns = useMemo<TableColumnsType<(typeof activityRows)[number]>>(
+     () => [
+@@ -1020,10 +1062,10 @@ export default function UserDetailPage(): JSX.Element {
+             showSorterTooltip={false}
+             size="small"
+             pagination={false}
+-            dataSource={activityRows}
++            dataSource={activityDisplay}
+             columns={activityColumns}
+             onRow={(record) => ({
+-              onClick: () => openDetailModal('활동 상세 (더미)', record),
++              onClick: () => openDetailModal('활동 상세', record),
+               style: { cursor: 'pointer' }
+             })}
+           />
+@@ -1038,10 +1080,10 @@ export default function UserDetailPage(): JSX.Element {
+             showSorterTooltip={false}
+             size="small"
+             pagination={false}
+-            dataSource={paymentRows}
++            dataSource={paymentDisplay}
+             columns={paymentColumns}
+             onRow={(record) => ({
+-              onClick: () => openDetailModal('결제 상세 (더미)', record),
++              onClick: () => openDetailModal('결제 상세', record),
+               style: { cursor: 'pointer' }
+             })}
+           />
+@@ -1074,10 +1116,10 @@ export default function UserDetailPage(): JSX.Element {
+             showSorterTooltip={false}
+             size="small"
+             pagination={false}
+-            dataSource={logRows}
++            dataSource={logDisplay}
+             columns={logsColumns}
+             onRow={(record) => ({
+-              onClick: () => openDetailModal('로그 상세 (더미)', record),
++              onClick: () => openDetailModal('로그 상세', record),
+               style: { cursor: 'pointer' }
+             })}
+           />
+@@ -1113,7 +1155,7 @@ export default function UserDetailPage(): JSX.Element {
+     ],
+     [
+       activityColumns,
+-      activityRows,
++      activityDisplay,
+       communityColumns,
+       communityDisplay,
+       currentStatus,
+@@ -1122,12 +1164,12 @@ export default function UserDetailPage(): JSX.Element {
+       learningState,
+       learningWeaknessColumns,
+       learningWritingColumns,
+-      logRows,
++      logDisplay,
+       logsColumns,
+       memoColumns,
+       memoDisplay,
+       paymentColumns,
+-      paymentRows,
++      paymentDisplay,
+       openDetailModal,
+       user
+     ]

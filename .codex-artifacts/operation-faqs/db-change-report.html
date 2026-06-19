@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DB 변경 결과 보고서 — Operation/FAQ mock→Supabase 전환</title>
+<style>
+  :root{--bg:#0f1115;--card:#171a21;--card2:#1d212b;--line:#2a2f3a;--fg:#e6e9ef;--mut:#9aa3b2;--acc:#6ea8fe;--ok:#41d18b;--warn:#f0b75b;--mono:"SFMono-Regular",Consolas,Menlo,monospace;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:"Segoe UI","Malgun Gothic",system-ui,sans-serif;line-height:1.6;font-size:15px}
+  .wrap{max-width:1080px;margin:0 auto;padding:32px 24px 80px}
+  h1{font-size:26px;margin:0 0 4px} h2{font-size:19px;margin:38px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)} h3{font-size:15px;margin:22px 0 8px;color:var(--acc)}
+  .sub{color:var(--mut);margin:0 0 18px}
+  .meta{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0 8px}
+  .chip{background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13px;color:var(--mut)} .chip b{color:var(--fg);font-weight:600}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:14px 0}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px} .kpi .n{font-size:24px;font-weight:700} .kpi .l{color:var(--mut);font-size:13px} .kpi.ok .n{color:var(--ok)} .kpi.add .n{color:var(--acc)}
+  table{width:100%;border-collapse:collapse;margin:10px 0;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top;font-size:13.5px} th{background:var(--card2);color:var(--mut);font-weight:600;font-size:12.5px;text-transform:uppercase;letter-spacing:.03em} tr:last-child td{border-bottom:none}
+  code{font-family:var(--mono);background:#0b0d11;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12.5px;color:#d6deea}
+  .tag{display:inline-block;border-radius:6px;padding:1px 8px;font-size:11.5px;font-weight:700} .t-add{background:rgba(110,168,254,.15);color:var(--acc);border:1px solid rgba(110,168,254,.4)} .t-ok{background:rgba(65,209,139,.13);color:var(--ok);border:1px solid rgba(65,209,139,.4)} .t-none{background:rgba(154,163,178,.13);color:var(--mut);border:1px solid var(--line)} .t-warn{background:rgba(240,183,91,.13);color:var(--warn);border:1px solid rgba(240,183,91,.4)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:12px 0}
+  ul{margin:8px 0;padding-left:20px} li{margin:3px 0} .legend{font-size:12.5px;color:var(--mut);margin:4px 0 0} .ok-row td{color:var(--fg)}
+  .foot{margin-top:40px;color:var(--mut);font-size:12.5px;border-top:1px solid var(--line);padding-top:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>DB 변경 결과 보고서</h1>
+  <p class="sub">Operation / FAQ(<code>/operation/faq</code>) — mock 전용 → Supabase DB-backed 전환 (로드맵 증분 #2)</p>
+
+  <div class="meta">
+    <span class="chip">날짜 <b>2026-06-17</b></span>
+    <span class="chip">브랜치 <b>feat/operation-notices-db</b></span>
+    <span class="chip">dev <b>talkpik-dev</b></span>
+    <span class="chip">네임스페이스 <b>migrations-admin / admin_schema_migrations</b></span>
+    <span class="chip">구현 <b>Codex GPT-5.5</b></span>
+    <span class="chip">마이그레이션 <b>20260617123000_operation_faqs.sql</b></span>
+  </div>
+
+  <h2>1. 요약</h2>
+  <div class="card">
+    FAQ(원문·대표노출 큐레이션·지표) 3계층을 메모리 mock에서 Supabase 영속+감사 경로로 전환. <b>3 테이블·admin RPC 5종·RLS 정책 3개</b>를 admin 운영 네임스페이스에 추가하고 dev DB에 적용. 기존 객체 변경 0건.
+    큐레이션 검증 규칙(<code>UNIQUE(surface, display_rank)</code>, 비공개 FAQ에 노출 중 금지, FAQ 비공개 시 연결 큐레이션 자동 paused)을 DB RPC로 이식했다.
+  </div>
+
+  <div class="grid">
+    <div class="kpi add"><div class="n">+3</div><div class="l">테이블</div></div>
+    <div class="kpi add"><div class="n">+5</div><div class="l">admin RPC</div></div>
+    <div class="kpi add"><div class="n">+3</div><div class="l">RLS 정책</div></div>
+    <div class="kpi ok"><div class="n">0</div><div class="l">기존 객체 변경</div></div>
+    <div class="kpi ok"><div class="n">3+3+3</div><div class="l">시드 행</div></div>
+  </div>
+
+  <h2>2. 추가된 DB 객체</h2>
+
+  <h3>2.1 <code>operation_faqs</code> <span class="tag t-add">ADDED</span></h3>
+  <table><thead><tr><th>컬럼</th><th>타입/제약</th></tr></thead><tbody>
+    <tr><td><code>id</code></td><td>text PK (자연키 FAQ-NNN)</td></tr>
+    <tr><td><code>question</code> / <code>answer</code></td><td>text NOT NULL</td></tr>
+    <tr><td><code>search_keywords</code></td><td>jsonb NOT NULL default '[]' · CHECK(array)</td></tr>
+    <tr><td><code>category</code></td><td>text CHECK in (계정/결제/커뮤니티/메시지) — 한글 저장</td></tr>
+    <tr><td><code>status</code></td><td>text CHECK in (published/hidden) default hidden · UI 공개/숨김 매핑</td></tr>
+    <tr><td><code>created_at/updated_at/updated_by</code></td><td>timestamptz / text</td></tr>
+  </tbody></table>
+  <p class="legend">인덱스 created_at desc + status='published' 부분.</p>
+
+  <h3>2.2 <code>operation_faq_curations</code> <span class="tag t-add">ADDED</span></h3>
+  <table><thead><tr><th>컬럼</th><th>타입/제약</th></tr></thead><tbody>
+    <tr><td><code>id</code></td><td>text PK (FAQCUR-NNN)</td></tr>
+    <tr><td><code>faq_id</code></td><td>text FK → operation_faqs(id) <b>ON DELETE CASCADE</b></td></tr>
+    <tr><td><code>surface</code></td><td>text CHECK (help_center/home_top/payment_help/onboarding)</td></tr>
+    <tr><td><code>curation_mode</code></td><td>text CHECK (manual/auto)</td></tr>
+    <tr><td><code>display_rank</code></td><td>smallint CHECK (&gt;0)</td></tr>
+    <tr><td><code>exposure_status</code></td><td>text CHECK (active/paused)</td></tr>
+    <tr><td><code>pinned_start_at/pinned_end_at</code></td><td>date · CHECK(start ≤ end)</td></tr>
+  </tbody></table>
+  <p class="legend">제약 <b>UNIQUE(surface, display_rank)</b> + faq_id 인덱스.</p>
+
+  <h3>2.3 <code>operation_faq_metrics</code> <span class="tag t-add">ADDED</span></h3>
+  <table><thead><tr><th>컬럼</th><th>타입/제약</th></tr></thead><tbody>
+    <tr><td><code>faq_id</code></td><td>text PK FK → operation_faqs(id) CASCADE</td></tr>
+    <tr><td><code>view_count/search_hit_count/helpful_count/not_helpful_count</code></td><td>integer default 0 · CHECK(&gt;=0)</td></tr>
+    <tr><td><code>last_viewed_at</code></td><td>timestamptz</td></tr>
+  </tbody></table>
+  <p class="legend"><b>읽기 전용</b> — admin write RPC 없음(seed/read만). 실집계 파이프라인 §6 미확정.</p>
+
+  <h3>2.4 RLS <span class="tag t-add">ADDED</span></h3>
+  <ul><li>3 테이블 모두 ENABLE + FORCE, admin select 정책(<code>private.is_admin</code>)만. 쓰기는 RPC 단일 경로.</li></ul>
+
+  <h3>2.5 admin RPC 5종 <span class="tag t-add">ADDED</span></h3>
+  <table><thead><tr><th>함수</th><th>action / target</th><th>특이 규칙</th></tr></thead><tbody>
+    <tr><td><code>admin_save_operation_faq</code></td><td>faq_saved · OperationFaq</td><td>category/status 검증; hidden 저장 시 연결 curation paused</td></tr>
+    <tr><td><code>admin_toggle_operation_faq_status</code></td><td>faq_status_changed · OperationFaq</td><td>hidden 전환 시 연결 curation 일괄 paused, <code>paused_curation_ids</code> 감사 기록</td></tr>
+    <tr><td><code>admin_delete_operation_faq</code></td><td>faq_deleted · OperationFaq</td><td>cascade(curation/metric), 개수 감사</td></tr>
+    <tr><td><code>admin_save_operation_faq_curation</code></td><td>faq_curation_saved · OperationFaqCuration</td><td><b>UNIQUE(surface,rank) 차단</b>, 비공개 FAQ에 active 금지</td></tr>
+    <tr><td><code>admin_delete_operation_faq_curation</code></td><td>faq_curation_deleted · OperationFaqCuration</td><td>—</td></tr>
+  </tbody></table>
+  <p class="legend">전 RPC SECURITY DEFINER · reason 필수 · <code>admin_audit_logs</code> diff/payload 기록 · revoke public + grant authenticated.</p>
+
+  <h2>3. 미변경 객체</h2>
+  <table><thead><tr><th>객체</th><th>상태</th></tr></thead><tbody>
+    <tr><td><code>admin_audit_logs</code> (v13)</td><td><span class="tag t-none">미변경 · RPC INSERT만</span></td></tr>
+    <tr><td><code>topik_writing_*</code> · <code>notification_*</code> · operation_notices 등</td><td><span class="tag t-none">미변경 (diff additions only)</span></td></tr>
+  </tbody></table>
+
+  <h2>4. before / after 스냅샷</h2>
+  <table><thead><tr><th>구분</th><th>before</th><th>after</th><th>Δ</th></tr></thead><tbody>
+    <tr><td>테이블</td><td>43</td><td>46</td><td><span class="tag t-add">+3</span></td></tr>
+    <tr><td>함수</td><td>84</td><td>89</td><td><span class="tag t-add">+5</span></td></tr>
+    <tr><td>정책</td><td>73</td><td>76</td><td><span class="tag t-add">+3</span></td></tr>
+  </tbody></table>
+  <p class="legend">diff <code>--exclude-own</code> → 총 34건(컬럼 26 + 함수 5 + 정책 3), <b>전부 added</b>, changed/removed 0.</p>
+
+  <h2>5. 검증 결과</h2>
+  <table><thead><tr><th>게이트</th><th>결과</th><th>근거</th></tr></thead><tbody>
+    <tr class="ok-row"><td>마이그레이션 적용 / 무변경 게이트</td><td><span class="tag t-ok">PASS</span></td><td>applied 1; diff additions only (34)</td></tr>
+    <tr class="ok-row"><td>시드 · RLS(force) · UNIQUE(surface,rank)</td><td><span class="tag t-ok">PASS</span></td><td>3/3/3행, force=true ×3, unique 제약 present</td></tr>
+    <tr class="ok-row"><td>typecheck · lint</td><td><span class="tag t-ok">PASS</span></td><td>exit 0</td></tr>
+    <tr class="ok-row"><td>e2e (operation-faq, mock)</td><td><span class="tag t-ok">PASS</span></td><td>2 passed — FAQ/큐레이션 감사 target 확인</td></tr>
+    <tr class="ok-row"><td>문서 동기화 (AGENTS.md §7)</td><td><span class="tag t-ok">PASS</span></td><td id="docsync">11개 SoT 문서 갱신 — 적용 스키마와 정합 확인(소유권 3행·data-contract·action-log 5action·usage-map·data-source-transition·page-sync·page-ia·page-tables·gap-register·ia-change-log·doc-update-log). 신규 문서 0건</td></tr>
+    <tr class="ok-row"><td>harness:check</td><td><span class="tag t-ok">PASS</span></td><td id="harness">mojibake clean · 크로스링크 115 · route-doc 55/38 · lint · typecheck</td></tr>
+  </tbody></table>
+
+  <h2>6. 결정 · 미확정</h2>
+  <table><thead><tr><th>항목</th><th>상태</th></tr></thead><tbody>
+    <tr><td>status enum</td><td>ASCII published/hidden + UI 공개/비공개 매핑(확정)</td></tr>
+    <tr><td>category</td><td>한글 저장(계정/결제/커뮤니티/메시지) — code table 미승격(현행 유지)</td></tr>
+    <tr><td>큐레이션 검증</td><td>UNIQUE(surface,rank)·비공개 active 금지·FAQ 비공개 시 paused — DB RPC 이식(확정)</td></tr>
+    <tr><td>PK 체계</td><td><span class="tag t-warn">미확정</span> FAQ-NNN/FAQCUR-NNN max+1 동시성 리스크</td></tr>
+    <tr><td>metrics 집계</td><td><span class="tag t-warn">미확정</span> 현재 seed only — 실 조회/검색/도움됨 집계 소스·파이프라인 미정</td></tr>
+    <tr><td>updated_by</td><td><span class="tag t-warn">미확정</span> 호출자 uuid 저장(표시명 정합 후속)</td></tr>
+  </tbody></table>
+
+  <h2>7. 변경 파일</h2>
+  <h3>신규</h3>
+  <ul>
+    <li><code>supabase/migrations-admin/20260617123000_operation_faqs.sql</code> (+ down/)</li>
+    <li><code>src/features/operation/api/operation-faqs-data-source.ts</code></li>
+    <li><code>src/features/operation/api/supabase-operation-faqs-service.ts</code></li>
+  </ul>
+  <h3>수정</h3>
+  <ul>
+    <li><code>src/features/operation/api/faqs-service.ts</code> — 데이터소스 분기 + reason 스레딩</li>
+    <li><code>src/features/operation/pages/operation-faq-page.tsx</code> — 사유→RPC, 감사 target</li>
+    <li><code>src/features/system/pages/system-audit-logs-page.tsx</code> — OperationFaq/Curation 역추적 딥링크</li>
+    <li><code>tests/e2e/operation-faq.spec.ts</code></li>
+  </ul>
+  <p class="legend">참고: Codex 범위 외 산출물(<code>recommendation-logic-design</code>)은 <code>.codex-artifacts/operation-faqs/codex-recommendation-logic-design.html</code>로 격리, 관련 README/로그 노이즈 revert.</p>
+
+  <div class="foot">생성: Claude Code(Opus 4.8) 오케스트레이션 · 구현 Codex GPT-5.5 · dev talkpik-dev · 로드맵 증분 #2 (증분 #1 = operation_notices, 커밋 e4138a9)</div>
+</div>
+</body>
+</html>
