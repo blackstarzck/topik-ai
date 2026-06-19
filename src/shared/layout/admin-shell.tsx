@@ -76,6 +76,12 @@ const menuConfig: MenuNode[] = [
         label: adminMenuLabels.usersReferrals,
         to: '/users/referrals',
         permissionKeys: ['users.referrals.manage']
+      },
+      {
+        key: '/users/institution-codes',
+        label: adminMenuLabels.usersInstitutionCodes,
+        to: '/users/institution-codes',
+        permissionKeys: ['users.institution-codes.manage']
       }
     ]
   },
@@ -389,6 +395,9 @@ function resolveSelectedKey(pathname: string): string {
   }
   if (pathname.startsWith('/users/referrals')) {
     return '/users/referrals';
+  }
+  if (pathname.startsWith('/users/institution-codes')) {
+    return '/users/institution-codes';
   }
   if (pathname === '/users' || pathname.startsWith('/users/')) {
     return '/users';

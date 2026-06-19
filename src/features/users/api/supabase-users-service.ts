@@ -26,6 +26,11 @@ type AdminUserRow = {
   plan_label: string | null;
   status: string;
   nationality_country_code: string | null;
+  // 소셜 로그인 provider 배열(auth.identities, 'email' 제외). 없으면 빈 배열/NULL.
+  social_providers: string[] | null;
+  // 박람회/기관 유입 코드(profiles.affiliation_code) + institution_codes.label 조인 표시명.
+  affiliation_code: string | null;
+  affiliation_label: string | null;
   submission_count: number;
   last_activity: string | null;
   last_sign_in_at: string | null;
@@ -203,9 +208,14 @@ function mapRowToUserSummary(row: AdminUserRow): UserSummary {
     subscriptionStatus,
     // 국적 코드 원본 보존(NULL/빈 값은 빈 문자열). 국가명 변환은 UI 렌더 시 수행.
     nationalityCode: nonEmpty(row.nationality_country_code) ?? '',
+    // 소셜 로그인 provider 목록 보존(NULL은 빈 배열). 라벨/색상 변환은 UI 렌더 시 수행.
+    socialProviders: Array.isArray(row.social_providers) ? row.social_providers : [],
     // 약관 동의(인증약관) 상태와 최종 동의일. 동의 기록이 없으면 날짜는 빈 문자열.
     termsConsentStatus: mapConsentStatus(row.consent_status),
-    termsConsentAt: toDateString(row.consent_accepted_at)
+    termsConsentAt: toDateString(row.consent_accepted_at),
+    // 박람회/기관 유입 코드 + 표시명(institution_codes 조인). 없으면 빈 문자열.
+    affiliationCode: nonEmpty(row.affiliation_code) ?? '',
+    affiliationLabel: nonEmpty(row.affiliation_label) ?? ''
   };
 }
 

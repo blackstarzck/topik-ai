@@ -8,6 +8,7 @@ import {
   Modal,
   notification,
   Space,
+  Tag,
   Typography
 } from 'antd';
 import type { TableColumnsType } from 'antd';
@@ -40,6 +41,7 @@ import {
   matchesSearchField,
   parseSearchDate
 } from '../../../shared/ui/search-bar/search-bar-utils';
+import { SocialProviderTags } from '../../../shared/ui/social-provider/social-provider-tags';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
@@ -385,6 +387,30 @@ export default function UsersPage(): JSX.Element {
         sorter: createTextSorter((record) => formatNationality(record.nationalityCode))
       },
       {
+        title: '소셜 로그인',
+        dataIndex: 'socialProviders',
+        key: 'socialProviders',
+        width: 170,
+        render: (_: string[], record) => (
+          <SocialProviderTags providers={record.socialProviders} />
+        )
+      },
+      {
+        title: '기관 소속',
+        dataIndex: 'affiliationLabel',
+        key: 'affiliation',
+        width: 200,
+        render: (_: string, record) =>
+          record.affiliationCode ? (
+            <Tag color="blue">{record.affiliationLabel || record.affiliationCode}</Tag>
+          ) : (
+            emptyProfileValue
+          ),
+        sorter: createTextSorter(
+          (record) => record.affiliationLabel || record.affiliationCode
+        )
+      },
+      {
         title: '가입일',
         dataIndex: 'joinedAt',
         width: 120,
@@ -584,7 +610,7 @@ export default function UsersPage(): JSX.Element {
           dataSource={filteredUsers}
           onRow={handleRowClick}
           loading={usersState.status === 'pending'}
-          scroll={{ x: 1910, y: 560 }}
+          scroll={{ x: 2280, y: 560 }}
           pagination={{
             current: query.page,
             pageSize: query.pageSize,

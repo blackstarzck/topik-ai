@@ -6,6 +6,7 @@ export const adminMenuLabels = {
   usersList: '회원 목록',
   usersGroups: '강사 관리',
   usersReferrals: '추천인 관리',
+  usersInstitutionCodes: '기관 코드',
   community: '커뮤니티',
   communityPosts: '게시글 관리',
   communityReports: '신고 관리',

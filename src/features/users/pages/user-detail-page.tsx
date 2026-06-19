@@ -10,6 +10,7 @@ import {
   Spin,
   Table,
   Tabs,
+  Tag,
   Typography
 } from 'antd';
 import type { TableColumnsType, TabsProps } from 'antd';
@@ -37,6 +38,7 @@ import type { AsyncState } from '../../../shared/model/async-state';
 import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
+import { SocialProviderTags } from '../../../shared/ui/social-provider/social-provider-tags';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
 import {
@@ -68,6 +70,7 @@ const learningWeaknessSourceLabels: Record<string, string> = {
 
 type UsersDetailTabKey =
   | 'profile'
+  | 'affiliation'
   | 'learning'
   | 'activity'
   | 'payments'
@@ -96,6 +99,7 @@ function renderProfileValue(value: string): string {
 
 const allowedTabs: readonly UsersDetailTabKey[] = [
   'profile',
+  'affiliation',
   'learning',
   'activity',
   'payments',
@@ -912,6 +916,11 @@ export default function UserDetailPage(): JSX.Element {
                 label: '국적',
                 children: renderProfileValue(formatNationality(user.nationalityCode))
               },
+              {
+                key: 'socialProviders',
+                label: '소셜 로그인',
+                children: <SocialProviderTags providers={user.socialProviders} />
+              },
               { key: 'joinedAt', label: '가입일', children: user.joinedAt },
               { key: 'lastLoginAt', label: '최근 로그인', children: user.lastLoginAt },
               {
@@ -934,6 +943,46 @@ export default function UserDetailPage(): JSX.Element {
                 key: 'termsConsentAt',
                 label: '약관 동의일',
                 children: renderProfileValue(user.termsConsentAt)
+              }
+            ]}
+          />
+        ) : null
+      },
+      {
+        key: 'affiliation',
+        label: '기관 소속',
+        children: user ? (
+          <Descriptions
+            bordered
+            column={1}
+            items={[
+              {
+                key: 'memberKind',
+                label: '회원 구분',
+                children: user.affiliationCode ? (
+                  <Tag color="blue">기관 회원</Tag>
+                ) : (
+                  <Tag>일반 회원</Tag>
+                )
+              },
+              {
+                key: 'affiliationCode',
+                label: '유입 코드',
+                children: renderProfileValue(user.affiliationCode)
+              },
+              {
+                key: 'affiliationLabel',
+                label: '기관/행사',
+                children: renderProfileValue(user.affiliationLabel)
+              },
+              {
+                key: 'affiliationNote',
+                label: '안내',
+                children: (
+                  <Text type="secondary">
+                    박람회/기관 유입 QR로 가입 시 코드가 기록됩니다. 코드의 의미는 회원 관리 ▸ 기관 코드에서 관리합니다.
+                  </Text>
+                )
               }
             ]}
           />

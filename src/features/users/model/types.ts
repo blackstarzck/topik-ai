@@ -17,9 +17,18 @@ export type UserSummary = {
   // v13 가입 시 수집되는 국적 ISO 3166-1 alpha-2 코드 원본(미입력 시 빈 문자열).
   // 화면 표시(국가명 한글)는 shared/model/country-name 의 formatNationality 로 변환.
   nationalityCode: string;
+  // 연동된 소셜 로그인 제공자 목록(예: ['google', 'kakao']). auth.identities 에서
+  // 'email'(이메일·비밀번호 가입)을 제외한 provider 집계. 소셜 미연동 시 빈 배열.
+  // 화면 표시(브랜드 라벨/색상 태그)는 shared/ui/social-provider 에서 처리.
+  socialProviders: string[];
   // 약관 동의(인증약관) 상태와 최종 동의일(YYYY-MM-DD, 미동의 시 빈 문자열).
   termsConsentStatus: TermsConsentStatus;
   termsConsentAt: string;
+  // 박람회/기관 유입 코드(v13 profiles.affiliation_code). 비어있으면 일반(유입경로 없음) 회원.
+  // 코드 자체는 의미가 없고, 의미(기관/행사명)는 admin institution_codes 카탈로그가 소유한다.
+  affiliationCode: string;
+  // affiliationCode 를 institution_codes.label 로 해석한 표시명(없음/미등록 시 빈 문자열).
+  affiliationLabel: string;
 };
 
 // 회원 상세 > 학습 현황 탭 모델. get_admin_user_learning_overview(120000) RPC 및

@@ -15,6 +15,7 @@ export type SimplePageRouteKey =
   | 'user-detail'
   | 'instructor-management'
   | 'users-referrals'
+  | 'institution-codes'
   | 'community-posts'
   | 'community-reports'
   | 'message-mail'
@@ -86,6 +87,7 @@ export const adminRouteDefinitions = [
   { kind: 'page', path: '/users/:userId', page: 'user-detail' },
   { kind: 'page', path: '/users/groups', page: 'instructor-management' },
   { kind: 'page', path: '/users/referrals', page: 'users-referrals' },
+  { kind: 'page', path: '/users/institution-codes', page: 'institution-codes' },
 
   { kind: 'page', path: '/community/posts', page: 'community-posts' },
   { kind: 'page', path: '/community/reports', page: 'community-reports' },

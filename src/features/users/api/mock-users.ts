@@ -18,6 +18,27 @@ const consentStatuses: TermsConsentStatus[] = [
 ];
 // 국적 ISO alpha-2 코드 표본(빈 값 = 미입력). 다양한 국가 + 미입력 케이스 노출.
 const nationalityCodes: string[] = ['KR', 'US', 'VN', 'JP', 'CN', ''];
+// 소셜 로그인 provider 표본. 빈 배열 = 이메일·비밀번호 가입(소셜 미연동, 화면에서 '-').
+// 단일/복수 연동 + 미연동을 고루 노출해 태그 렌더를 검증한다.
+const socialProvidersSamples: string[][] = [
+  ['google'],
+  [],
+  ['kakao'],
+  ['facebook'],
+  ['google', 'facebook'],
+  ['naver'],
+  ['apple']
+];
+// 박람회/기관 유입 코드 표본. 대부분 미유입(''), 일부만 박람회 코드(institution_codes 시드와 정렬).
+const affiliationSamples: { code: string; label: string }[] = [
+  { code: '', label: '' },
+  { code: '', label: '' },
+  { code: '', label: '' },
+  { code: 'EXPO2026-BOOTH-A', label: '2026 한국어교육 박람회 · A부스' },
+  { code: '', label: '' },
+  { code: '', label: '' },
+  { code: 'EXPO2026-BOOTH-B', label: '2026 한국어교육 박람회 · B부스' }
+];
 const familyNames = ['김', '이', '박', '최', '정', '강', '조', '윤', '장', '임'];
 const givenNames = [
   '민준',
@@ -48,6 +69,7 @@ export const mockUsers: UserSummary[] = Array.from({ length: 420 }, (_, index) =
   const lastLoginAt = formatDate((index % 180) + 120);
   const realName = `${familyNames[index % familyNames.length]}${givenNames[(index * 3) % givenNames.length]}`;
   const termsConsentStatus = consentStatuses[index % consentStatuses.length];
+  const affiliation = affiliationSamples[index % affiliationSamples.length];
 
   return {
     id,
@@ -60,8 +82,11 @@ export const mockUsers: UserSummary[] = Array.from({ length: 420 }, (_, index) =
     tier,
     subscriptionStatus,
     nationalityCode: nationalityCodes[index % nationalityCodes.length],
+    socialProviders: socialProvidersSamples[index % socialProvidersSamples.length],
     termsConsentStatus,
-    termsConsentAt: termsConsentStatus === '미동의' ? '' : joinedAt
+    termsConsentAt: termsConsentStatus === '미동의' ? '' : joinedAt,
+    affiliationCode: affiliation.code,
+    affiliationLabel: affiliation.label
   };
 });
 

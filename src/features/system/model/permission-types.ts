@@ -79,6 +79,13 @@ export const permissionCatalog: PermissionDefinition[] = [
     risk: 'medium'
   },
   {
+    key: 'users.institution-codes.manage',
+    name: '기관 코드 관리',
+    module: '회원',
+    scopeDescription: '박람회/기관 유입 QR 코드를 등록·수정합니다.',
+    risk: 'medium'
+  },
+  {
     key: 'community.posts.hide',
     name: '게시글 숨김',
     module: '커뮤니티',
@@ -329,6 +336,7 @@ export const roleCatalog: RoleDefinition[] = [
       'users.read',
       'users.groups.manage',
       'users.referrals.manage',
+      'users.institution-codes.manage',
       'community.posts.hide',
       'community.posts.delete',
       'community.reports.resolve',
