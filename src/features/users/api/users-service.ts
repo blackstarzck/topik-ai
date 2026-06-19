@@ -5,13 +5,19 @@ import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
 import {
   addUserMemoViaRpc,
   deleteUserMemoViaRpc,
+  getUserAccessLogsFromSupabase,
+  getUserActivityFromSupabase,
   getUserCommunityPostsFromSupabase,
   getUserMemosFromSupabase,
+  getUserPaymentsFromSupabase,
   loadUserLearningOverviewFromSupabase,
   loadUsersFromSupabase,
   setUserStatusViaRpc,
+  type UserAccessLog,
+  type UserActivityEvent,
   type UserAdminMemo,
-  type UserCommunityPost
+  type UserCommunityPost,
+  type UserPaymentRecord
 } from './supabase-users-service';
 
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
@@ -107,6 +113,36 @@ export function getUserMemos(userId: string, signal?: AbortSignal) {
   });
 }
 
+export function getUserActivity(userId: string, signal?: AbortSignal) {
+  return toSafeResult<UserActivityEvent[]>(async () => {
+    if (isSupabaseConfigured) {
+      return getUserActivityFromSupabase(userId, signal);
+    }
+    await sleep(120, signal);
+    return [];
+  });
+}
+
+export function getUserPayments(userId: string, signal?: AbortSignal) {
+  return toSafeResult<UserPaymentRecord[]>(async () => {
+    if (isSupabaseConfigured) {
+      return getUserPaymentsFromSupabase(userId, signal);
+    }
+    await sleep(120, signal);
+    return [];
+  });
+}
+
+export function getUserAccessLogs(userId: string, signal?: AbortSignal) {
+  return toSafeResult<UserAccessLog[]>(async () => {
+    if (isSupabaseConfigured) {
+      return getUserAccessLogsFromSupabase(userId, signal);
+    }
+    await sleep(120, signal);
+    return [];
+  });
+}
+
 export function addUserMemo(
   userId: string,
   content: string,
@@ -132,4 +168,10 @@ export function deleteUserMemo(memoId: string, reason: string, signal?: AbortSig
   });
 }
 
-export type { UserAdminMemo, UserCommunityPost };
+export type {
+  UserAccessLog,
+  UserActivityEvent,
+  UserAdminMemo,
+  UserCommunityPost,
+  UserPaymentRecord
+};

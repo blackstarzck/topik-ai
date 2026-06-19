@@ -20,11 +20,17 @@ import {
   addUserMemo,
   fetchUserByIdSafe,
   fetchUserLearningOverviewSafe,
+  getUserAccessLogs,
+  getUserActivity,
   getUserCommunityPosts,
   getUserMemos,
+  getUserPayments,
   setUserStatusSafe,
+  type UserAccessLog,
+  type UserActivityEvent,
   type UserAdminMemo,
-  type UserCommunityPost
+  type UserCommunityPost,
+  type UserPaymentRecord
 } from '../api/users-service';
 import type { UserLearningOverview, UserStatus, UserSummary } from '../model/types';
 import type { AsyncState } from '../../../shared/model/async-state';
@@ -143,6 +149,9 @@ export default function UserDetailPage(): JSX.Element {
   const [currentStatus, setCurrentStatus] = useState<UserStatus>('정상');
   const [communityPosts, setCommunityPosts] = useState<UserCommunityPost[]>([]);
   const [adminMemos, setAdminMemos] = useState<UserAdminMemo[]>([]);
+  const [userActivity, setUserActivity] = useState<UserActivityEvent[]>([]);
+  const [userPayments, setUserPayments] = useState<UserPaymentRecord[]>([]);
+  const [userAccessLogs, setUserAccessLogs] = useState<UserAccessLog[]>([]);
   const [memoModalOpen, setMemoModalOpen] = useState(false);
   const [memoContent, setMemoContent] = useState('');
   const [memoReason, setMemoReason] = useState('');
@@ -249,6 +258,30 @@ export default function UserDetailPage(): JSX.Element {
     void getUserMemos(userId, controller.signal).then((result) => {
       if (!controller.signal.aborted && result.ok) {
         setAdminMemos(result.data);
+      }
+    });
+    return () => controller.abort();
+  }, [userId]);
+
+  // 활동/결제/접속 로그 탭은 Supabase 모드에서 admin RPC로 조회한다(미설정 시 mock 표시).
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      return;
+    }
+    const controller = new AbortController();
+    void getUserActivity(userId, controller.signal).then((result) => {
+      if (!controller.signal.aborted && result.ok) {
+        setUserActivity(result.data);
+      }
+    });
+    void getUserPayments(userId, controller.signal).then((result) => {
+      if (!controller.signal.aborted && result.ok) {
+        setUserPayments(result.data);
+      }
+    });
+    void getUserAccessLogs(userId, controller.signal).then((result) => {
+      if (!controller.signal.aborted && result.ok) {
+        setUserAccessLogs(result.data);
       }
     });
     return () => controller.abort();
@@ -464,6 +497,9 @@ export default function UserDetailPage(): JSX.Element {
   // Supabase 모드: 실 DB 조회 결과, 그 외(mock): 위 더미 행.
   const communityDisplay = isSupabaseConfigured ? communityPosts : communityRows;
   const memoDisplay = isSupabaseConfigured ? adminMemos : memoRows;
+  const activityDisplay = isSupabaseConfigured ? userActivity : activityRows;
+  const paymentDisplay = isSupabaseConfigured ? userPayments : paymentRows;
+  const logDisplay = isSupabaseConfigured ? userAccessLogs : logRows;
 
   const activityColumns = useMemo<TableColumnsType<(typeof activityRows)[number]>>(
     () => [
@@ -1020,10 +1056,10 @@ export default function UserDetailPage(): JSX.Element {
             showSorterTooltip={false}
             size="small"
             pagination={false}
-            dataSource={activityRows}
+            dataSource={activityDisplay}
             columns={activityColumns}
             onRow={(record) => ({
-              onClick: () => openDetailModal('활동 상세 (더미)', record),
+              onClick: () => openDetailModal('활동 상세', record),
               style: { cursor: 'pointer' }
             })}
           />
@@ -1038,10 +1074,10 @@ export default function UserDetailPage(): JSX.Element {
             showSorterTooltip={false}
             size="small"
             pagination={false}
-            dataSource={paymentRows}
+            dataSource={paymentDisplay}
             columns={paymentColumns}
             onRow={(record) => ({
-              onClick: () => openDetailModal('결제 상세 (더미)', record),
+              onClick: () => openDetailModal('결제 상세', record),
               style: { cursor: 'pointer' }
             })}
           />
@@ -1074,10 +1110,10 @@ export default function UserDetailPage(): JSX.Element {
             showSorterTooltip={false}
             size="small"
             pagination={false}
-            dataSource={logRows}
+            dataSource={logDisplay}
             columns={logsColumns}
             onRow={(record) => ({
-              onClick: () => openDetailModal('로그 상세 (더미)', record),
+              onClick: () => openDetailModal('로그 상세', record),
               style: { cursor: 'pointer' }
             })}
           />
@@ -1113,7 +1149,7 @@ export default function UserDetailPage(): JSX.Element {
     ],
     [
       activityColumns,
-      activityRows,
+      activityDisplay,
       communityColumns,
       communityDisplay,
       currentStatus,
@@ -1122,12 +1158,12 @@ export default function UserDetailPage(): JSX.Element {
       learningState,
       learningWeaknessColumns,
       learningWritingColumns,
-      logRows,
+      logDisplay,
       logsColumns,
       memoColumns,
       memoDisplay,
       paymentColumns,
-      paymentRows,
+      paymentDisplay,
       openDetailModal,
       user
     ]

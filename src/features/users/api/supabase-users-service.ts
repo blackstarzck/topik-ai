@@ -81,6 +81,57 @@ export type UserAdminMemo = {
   createdAt: string;
 };
 
+type UserActivityRow = {
+  id: string;
+  event_type: string;
+  content: string;
+  ip: string;
+  created_at: string;
+};
+
+type UserPaymentRow = {
+  id: string;
+  product: string;
+  amount_krw: number;
+  method: string;
+  status: string;
+  paid_at: string | null;
+};
+
+type UserAccessLogRow = {
+  id: string;
+  log_type: string;
+  ip: string;
+  device: string;
+  created_at: string;
+};
+
+// 회원 상세 탭 표시 모델 — 페이지의 더미 행 모양과 동일(소스 스위치 union 호환).
+export type UserActivityEvent = {
+  id: string;
+  type: string;
+  content: string;
+  createdAt: string;
+  ip: string;
+};
+
+export type UserPaymentRecord = {
+  id: string;
+  product: string;
+  amount: string;
+  method: string;
+  paidAt: string;
+  status: string;
+};
+
+export type UserAccessLog = {
+  id: string;
+  type: string;
+  ip: string;
+  device: string;
+  createdAt: string;
+};
+
 // v13 profiles.status -> topik-ai UserStatus
 const STATUS_MAP: Record<string, UserStatus> = {
   active: '정상',
@@ -331,6 +382,91 @@ export async function getUserMemosFromSupabase(
     admin: row.admin_name,
     content: row.content,
     createdAt: toDateString(row.created_at)
+  }));
+}
+
+export async function getUserActivityFromSupabase(
+  userId: string,
+  signal?: AbortSignal
+): Promise<UserActivityEvent[]> {
+  if (!supabaseClient) {
+    throw new Error('Supabase client not configured');
+  }
+
+  const { data, error } = await supabaseClient.rpc('admin_get_user_activity', {
+    p_target_user_id: userId,
+    p_limit: 100
+  });
+  if (signal?.aborted) {
+    throw new DOMException('Request aborted', 'AbortError');
+  }
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return ((data ?? []) as UserActivityRow[]).map((row) => ({
+    id: row.id,
+    type: row.event_type,
+    content: row.content,
+    createdAt: row.created_at,
+    ip: row.ip
+  }));
+}
+
+export async function getUserPaymentsFromSupabase(
+  userId: string,
+  signal?: AbortSignal
+): Promise<UserPaymentRecord[]> {
+  if (!supabaseClient) {
+    throw new Error('Supabase client not configured');
+  }
+
+  const { data, error } = await supabaseClient.rpc('admin_get_user_payments', {
+    p_target_user_id: userId,
+    p_limit: 100
+  });
+  if (signal?.aborted) {
+    throw new DOMException('Request aborted', 'AbortError');
+  }
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return ((data ?? []) as UserPaymentRow[]).map((row) => ({
+    id: row.id,
+    product: row.product,
+    amount: `₩${(row.amount_krw ?? 0).toLocaleString()}`,
+    method: row.method,
+    paidAt: row.paid_at ?? '',
+    status: row.status
+  }));
+}
+
+export async function getUserAccessLogsFromSupabase(
+  userId: string,
+  signal?: AbortSignal
+): Promise<UserAccessLog[]> {
+  if (!supabaseClient) {
+    throw new Error('Supabase client not configured');
+  }
+
+  const { data, error } = await supabaseClient.rpc('admin_get_user_access_logs', {
+    p_target_user_id: userId,
+    p_limit: 100
+  });
+  if (signal?.aborted) {
+    throw new DOMException('Request aborted', 'AbortError');
+  }
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return ((data ?? []) as UserAccessLogRow[]).map((row) => ({
+    id: row.id,
+    type: row.log_type,
+    ip: row.ip,
+    device: row.device,
+    createdAt: row.created_at
   }));
 }
 
