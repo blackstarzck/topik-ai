@@ -8,6 +8,7 @@ import {
   getUserAccessLogsFromSupabase,
   getUserActivityFromSupabase,
   getUserCommunityPostsFromSupabase,
+  getUserLegalConsentsFromSupabase,
   getUserMemosFromSupabase,
   getUserPaymentsFromSupabase,
   loadUserLearningOverviewFromSupabase,
@@ -17,6 +18,7 @@ import {
   type UserActivityEvent,
   type UserAdminMemo,
   type UserCommunityPost,
+  type UserLegalConsent,
   type UserPaymentRecord
 } from './supabase-users-service';
 
@@ -123,6 +125,16 @@ export function getUserActivity(userId: string, signal?: AbortSignal) {
   });
 }
 
+export function getUserLegalConsents(userId: string, signal?: AbortSignal) {
+  return toSafeResult<UserLegalConsent[]>(async () => {
+    if (isSupabaseConfigured) {
+      return getUserLegalConsentsFromSupabase(userId, signal);
+    }
+    await sleep(120, signal);
+    return [];
+  });
+}
+
 export function getUserPayments(userId: string, signal?: AbortSignal) {
   return toSafeResult<UserPaymentRecord[]>(async () => {
     if (isSupabaseConfigured) {
@@ -173,5 +185,6 @@ export type {
   UserActivityEvent,
   UserAdminMemo,
   UserCommunityPost,
+  UserLegalConsent,
   UserPaymentRecord
 };

@@ -130,6 +130,10 @@ export type OperationPolicy = {
   summary: string;
   legalReferences: string[];
   bodyHtml: string;
+  /** Optional English content (admin-managed). Projected to v13 legal_documents (locale en). */
+  titleEn?: string;
+  bodyHtmlEn?: string;
+  summaryEn?: string;
   adminMemo: string;
   status: OperationPolicyStatus;
   createdAt: string;

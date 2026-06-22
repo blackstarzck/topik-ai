@@ -14,7 +14,9 @@ import {
   loadOperationPolicyHistory,
   publishOperationPolicyHistoryVersion,
   saveOperationPolicy,
-  setOperationPolicyStatus
+  sendTermsChangeNotification,
+  setOperationPolicyStatus,
+  type TermsChangeNotificationResult
 } from './supabase-operation-policies-service';
 
 export type SavePolicyPayload = Pick<
@@ -294,4 +296,15 @@ export function publishPolicyHistoryVersionSafe(
   signal?: AbortSignal
 ) {
   return toSafeResult(() => persistPolicyHistoryVersionPublish(payload, signal));
+}
+
+export function sendTermsChangeNotificationSafe(reason: string, signal?: AbortSignal) {
+  return toSafeResult<TermsChangeNotificationResult>(async () => {
+    if (isSupabaseSource) {
+      return sendTermsChangeNotification(reason, signal);
+    }
+    // mock 모드: 실제 발송 없이 성공 응답(파이프라인은 Supabase 모드에서만 동작).
+    await sleep(200, signal);
+    return { recipients: 0, inAppDispatch: null, emailDispatch: null };
+  });
 }

@@ -16,6 +16,7 @@ import {
   fetchPoliciesSafe,
   fetchPolicyHistorySafe,
   publishPolicyHistoryVersionSafe,
+  sendTermsChangeNotificationSafe,
   togglePolicyStatusSafe
 } from '../api/policies-service';
 import type {
@@ -256,6 +257,7 @@ export default function OperationPoliciesPage(): JSX.Element {
   const [actionState, setActionState] = useState<PolicyActionState>(null);
   const [previewState, setPreviewState] = useState<PolicyPreviewState>(null);
   const [deleteTarget, setDeleteTarget] = useState<OperationPolicy | null>(null);
+  const [notifyTarget, setNotifyTarget] = useState<OperationPolicy | null>(null);
   const [historyPublishState, setHistoryPublishState] =
     useState<PolicyHistoryPublishState>(null);
   const [historyReloadKey, setHistoryReloadKey] = useState(0);
@@ -683,6 +685,10 @@ export default function OperationPoliciesPage(): JSX.Element {
     setDeleteTarget(policy);
   }, []);
 
+  const promptSendNotification = useCallback((policy: OperationPolicy) => {
+    setNotifyTarget(policy);
+  }, []);
+
   const promptPublishHistoryVersion = useCallback(
     (policy: OperationPolicy, historyEntry: OperationPolicyHistoryEntry) => {
       setHistoryPublishState({ policy, historyEntry });
@@ -693,6 +699,7 @@ export default function OperationPoliciesPage(): JSX.Element {
   const closeActionModal = useCallback(() => setActionState(null), []);
   const closePreviewModal = useCallback(() => setPreviewState(null), []);
   const closeDeleteModal = useCallback(() => setDeleteTarget(null), []);
+  const closeNotifyModal = useCallback(() => setNotifyTarget(null), []);
   const closeHistoryPublishModal = useCallback(
     () => setHistoryPublishState(null),
     []
@@ -864,6 +871,42 @@ export default function OperationPoliciesPage(): JSX.Element {
       notificationApi,
       previewState?.editTarget?.id
     ]
+  );
+
+  const handleSendNotification = useCallback(
+    async (reason: string) => {
+      if (!notifyTarget) {
+        return;
+      }
+
+      const result = await sendTermsChangeNotificationSafe(reason);
+
+      if (!result.ok) {
+        notificationApi.error({
+          message: '약관 변경 알림 발송 실패',
+          description: (
+            <Space direction="vertical">
+              <Text>{result.error.message}</Text>
+              <Text type="secondary">오류 코드: {result.error.code}</Text>
+            </Space>
+          )
+        });
+        return;
+      }
+
+      setNotifyTarget(null);
+      notificationApi.success({
+        message: '약관 변경 알림 발송',
+        description: (
+          <Space direction="vertical">
+            <Text>대상(활성 회원): {result.data.recipients}명</Text>
+            <Text>인앱은 전원 발송, 이메일은 수신 동의 사용자에게 전달됩니다.</Text>
+            <Text type="secondary">사유/근거: {reason}</Text>
+          </Space>
+        )
+      });
+    },
+    [notifyTarget, notificationApi]
   );
 
   const handlePublishHistoryVersion = useCallback(
@@ -1457,6 +1500,20 @@ export default function OperationPoliciesPage(): JSX.Element {
         />
       ) : null}
 
+      {notifyTarget ? (
+        <ConfirmAction
+          open
+          title="사용자에게 약관 변경 알림"
+          description={`현재 게시된 "${notifyTarget.title}" 버전(${notifyTarget.versionLabel}) 기준으로 전체 활성 회원에게 인앱+이메일 알림을 발송합니다. 이메일 CTA는 약관 동의 화면으로 연결됩니다. 발송 사유를 입력하세요.`}
+          targetType="Notification"
+          targetId={notifyTarget.id}
+          confirmText="알림 발송"
+          reasonPlaceholder="약관 변경 알림 발송 사유를 입력하세요."
+          onCancel={closeNotifyModal}
+          onConfirm={handleSendNotification}
+        />
+      ) : null}
+
       {historyPublishState ? (
         <ConfirmAction
           open
@@ -1507,6 +1564,16 @@ export default function OperationPoliciesPage(): JSX.Element {
               >
                 새 버전 등록
               </Button>
+              {(selectedPolicy.policyType === '이용약관' ||
+                selectedPolicy.policyType === '개인정보 처리방침') &&
+              selectedPolicy.status === '게시' ? (
+                <Button
+                  size="large"
+                  onClick={() => promptSendNotification(selectedPolicy)}
+                >
+                  사용자에게 알림
+                </Button>
+              ) : null}
               <Button size="large" onClick={() => promptToggleStatus(selectedPolicy)}>
                 {selectedPolicy.status === '게시' ? '숨김' : '게시'}
               </Button>

@@ -37,6 +37,9 @@ type OperationPolicyRow = {
   legal_references: unknown;
   summary: string | null;
   body_html: string;
+  title_en: string | null;
+  body_html_en: string | null;
+  summary_en: string | null;
   admin_memo: string | null;
   current_version_id: string | null;
   created_at: string | null;
@@ -81,6 +84,9 @@ const POLICY_COLUMNS = [
   'legal_references',
   'summary',
   'body_html',
+  'title_en',
+  'body_html_en',
+  'summary_en',
   'admin_memo',
   'current_version_id',
   'created_at',
@@ -187,6 +193,9 @@ function mapPolicyRow(row: OperationPolicyRow): OperationPolicy {
     summary: row.summary ?? '',
     legalReferences: parseStringList(row.legal_references),
     bodyHtml: row.body_html,
+    titleEn: row.title_en ?? '',
+    bodyHtmlEn: row.body_html_en ?? '',
+    summaryEn: row.summary_en ?? '',
     adminMemo: row.admin_memo ?? '',
     status: UI_POLICY_STATUS_BY_DB[row.status] ?? '숨김',
     createdAt: toDate(row.created_at),
@@ -251,6 +260,57 @@ function defaultSavePolicyReason(payload: SavePolicyPayload): string {
     return '신규 정책 저장';
   }
   return payload.mode === 'version' ? '새 정책 버전 등록' : '정책 내용 수정';
+}
+
+// 이용약관/개인정보 처리방침만 v13 사용자 측 legal_documents 로 투영(projection)한다.
+const LEGAL_DOC_TYPE_BY_POLICY_TYPE: Partial<
+  Record<OperationPolicy['policyType'], 'terms' | 'privacy'>
+> = {
+  이용약관: 'terms',
+  '개인정보 처리방침': 'privacy'
+};
+
+// 발행(게시) 시점에 operation_policies(SoT) 내용을 v13 소유 RPC로 legal_documents 미러에 투영한다.
+// topik-ai 는 legal_documents 를 직접 쓰지 않고 v13 소유 SECURITY DEFINER RPC만 호출(소유권 경계 준수).
+async function syncLegalProjection(
+  policy: OperationPolicy | null,
+  signal?: AbortSignal
+): Promise<void> {
+  if (!policy) {
+    return;
+  }
+  if (!LEGAL_DOC_TYPE_BY_POLICY_TYPE[policy.policyType]) {
+    return;
+  }
+  if (policy.status !== '게시') {
+    return;
+  }
+
+  const client = requireClient();
+  const { error } = await client.rpc('admin_sync_legal_document_from_operation_policy', {
+    p_source_policy_id: policy.id,
+    p_source_policy_history_id: null,
+    p_policy_type: policy.policyType,
+    p_version: policy.versionLabel,
+    p_effective_date: policy.effectiveDate || null,
+    p_requires_consent: policy.requiresConsent,
+    p_title_ko: policy.title,
+    p_body_ko: policy.bodyHtml,
+    p_summary_ko: policy.summary,
+    p_title_en: policy.titleEn || null,
+    p_body_en: policy.bodyHtmlEn || null,
+    p_summary_en: policy.summaryEn || null
+  });
+
+  throwIfAborted(signal);
+  if (error) {
+    if (error.message.includes('immutable version conflict')) {
+      throw new Error(
+        '이미 게시된 동일 버전의 약관 내용은 변경할 수 없습니다. 새 버전으로 발행해 주세요.'
+      );
+    }
+    throw new Error(`사용자 약관(legal_documents) 동기화 실패: ${error.message}`);
+  }
 }
 
 export async function loadOperationPolicies(
@@ -369,7 +429,9 @@ export async function setOperationPolicyStatus(
     throw new Error(error.message);
   }
 
-  return loadOperationPolicy(payload.policyId, signal);
+  const updated = await loadOperationPolicy(payload.policyId, signal);
+  await syncLegalProjection(updated, signal);
+  return updated;
 }
 
 export async function deleteOperationPolicy(
@@ -409,5 +471,42 @@ export async function publishOperationPolicyHistoryVersion(
     throw new Error(error.message);
   }
 
-  return loadOperationPolicy(payload.policyId, signal);
+  const updated = await loadOperationPolicy(payload.policyId, signal);
+  await syncLegalProjection(updated, signal);
+  return updated;
+}
+
+export type TermsChangeNotificationResult = {
+  recipients: number;
+  inAppDispatch: string | null;
+  emailDispatch: string | null;
+};
+
+// 관리자 수동 발송: 이용약관 버전 변경 알림(인앱+이메일)을 전체 활성 사용자에게 발송한다.
+// v13 디스패처/이메일 워커가 집행한다(인앱=즉시 카드, 이메일=수신설정 사용자 대상).
+export async function sendTermsChangeNotification(
+  reason: string,
+  signal?: AbortSignal
+): Promise<TermsChangeNotificationResult> {
+  const client = requireClient();
+  const trimmed = requireReason(reason);
+  const { data, error } = await client.rpc('admin_send_terms_change_notification', {
+    p_reason: trimmed
+  });
+
+  throwIfAborted(signal);
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const payload = (data ?? {}) as {
+    recipients?: number;
+    in_app_dispatch?: string;
+    email_dispatch?: string;
+  };
+  return {
+    recipients: payload.recipients ?? 0,
+    inAppDispatch: payload.in_app_dispatch ?? null,
+    emailDispatch: payload.email_dispatch ?? null
+  };
 }

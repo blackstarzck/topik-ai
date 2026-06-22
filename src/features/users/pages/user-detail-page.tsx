@@ -25,6 +25,7 @@ import {
   getUserAccessLogs,
   getUserActivity,
   getUserCommunityPosts,
+  getUserLegalConsents,
   getUserMemos,
   getUserPayments,
   setUserStatusSafe,
@@ -32,6 +33,7 @@ import {
   type UserActivityEvent,
   type UserAdminMemo,
   type UserCommunityPost,
+  type UserLegalConsent,
   type UserPaymentRecord
 } from '../api/users-service';
 import type { UserLearningOverview, UserStatus, UserSummary } from '../model/types';
@@ -157,6 +159,7 @@ export default function UserDetailPage(): JSX.Element {
   const [userActivity, setUserActivity] = useState<UserActivityEvent[]>([]);
   const [userPayments, setUserPayments] = useState<UserPaymentRecord[]>([]);
   const [userAccessLogs, setUserAccessLogs] = useState<UserAccessLog[]>([]);
+  const [legalConsents, setLegalConsents] = useState<UserLegalConsent[]>([]);
   const [memoModalOpen, setMemoModalOpen] = useState(false);
   const [memoContent, setMemoContent] = useState('');
   const [memoReason, setMemoReason] = useState('');
@@ -288,6 +291,11 @@ export default function UserDetailPage(): JSX.Element {
     void getUserAccessLogs(userId, controller.signal).then((result) => {
       if (!controller.signal.aborted && result.ok) {
         setUserAccessLogs(result.data);
+      }
+    });
+    void getUserLegalConsents(userId, controller.signal).then((result) => {
+      if (!controller.signal.aborted && result.ok) {
+        setLegalConsents(result.data);
       }
     });
     return () => controller.abort();
@@ -986,6 +994,34 @@ export default function UserDetailPage(): JSX.Element {
                 key: 'termsConsentAt',
                 label: '약관 동의일',
                 children: renderProfileValue(user.termsConsentAt)
+              },
+              {
+                key: 'legalConsentVersions',
+                label: '동의한 약관 버전',
+                span: 2,
+                children:
+                  legalConsents.length > 0 ? (
+                    <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                      {legalConsents.map((consent) => (
+                        <span key={consent.docType}>
+                          <Typography.Text strong>{consent.docLabel}</Typography.Text>{' '}
+                          <Tag>{consent.version}</Tag>
+                          {consent.isCurrent ? (
+                            <Tag color="green">최신</Tag>
+                          ) : (
+                            <Tag color="orange">구버전(재동의 필요)</Tag>
+                          )}{' '}
+                          <Typography.Text type="secondary">
+                            {consent.acceptedAt} · {consent.source}
+                          </Typography.Text>
+                        </span>
+                      ))}
+                    </Space>
+                  ) : (
+                    <Typography.Text type="secondary">
+                      표시할 동의 버전 정보가 없습니다.
+                    </Typography.Text>
+                  )
               }
             ]}
           />
@@ -1250,6 +1286,7 @@ export default function UserDetailPage(): JSX.Element {
       learningState,
       learningWeaknessColumns,
       learningWritingColumns,
+      legalConsents,
       logDisplay,
       logsColumns,
       memoColumns,

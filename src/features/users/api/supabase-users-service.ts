@@ -423,6 +423,66 @@ export async function getUserActivityFromSupabase(
   }));
 }
 
+// 회원이 동의한 약관 버전(이용약관/개인정보) — admin_get_user_legal_consents 반환 행.
+type UserLegalConsentRow = {
+  doc_type: string;
+  version: string;
+  title: string;
+  source: string;
+  accepted_at: string;
+  is_current: boolean;
+};
+
+export type UserLegalConsent = {
+  docType: string;
+  docLabel: string;
+  version: string;
+  title: string;
+  source: string;
+  acceptedAt: string;
+  isCurrent: boolean;
+};
+
+const LEGAL_DOC_LABEL: Record<string, string> = {
+  terms: '이용약관',
+  privacy: '개인정보 처리방침'
+};
+
+const LEGAL_CONSENT_SOURCE_LABEL: Record<string, string> = {
+  signup: '가입 시',
+  re_consent: '재동의',
+  settings: '설정 변경'
+};
+
+export async function getUserLegalConsentsFromSupabase(
+  userId: string,
+  signal?: AbortSignal
+): Promise<UserLegalConsent[]> {
+  if (!supabaseClient) {
+    throw new Error('Supabase client not configured');
+  }
+
+  const { data, error } = await supabaseClient.rpc('admin_get_user_legal_consents', {
+    p_user_id: userId
+  });
+  if (signal?.aborted) {
+    throw new DOMException('Request aborted', 'AbortError');
+  }
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return ((data ?? []) as UserLegalConsentRow[]).map((row) => ({
+    docType: row.doc_type,
+    docLabel: LEGAL_DOC_LABEL[row.doc_type] ?? row.doc_type,
+    version: row.version,
+    title: row.title,
+    source: LEGAL_CONSENT_SOURCE_LABEL[row.source] ?? row.source,
+    acceptedAt: row.accepted_at,
+    isCurrent: row.is_current
+  }));
+}
+
 export async function getUserPaymentsFromSupabase(
   userId: string,
   signal?: AbortSignal
