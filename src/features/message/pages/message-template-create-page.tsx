@@ -172,12 +172,14 @@ export default function MessageTemplateCreatePage({
                   label="사유/근거"
                   name="reason"
                   rules={[{ required: true, message: '본문 저장 사유를 입력하세요.' }]}
+                  style={{ marginBottom: 16 }}
                 >
                   <Input.TextArea rows={2} placeholder="예: 공지 본문 문구 갱신" />
                 </Form.Item>
               ) : null}
               <Form.Item
                 name="bodyHtml"
+                className="message-template-body-item"
                 rules={[{ required: true, message: '본문을 입력하세요.' }]}
                 style={{ marginBottom: 0 }}
               >

@@ -1174,19 +1174,29 @@ body {
   min-width: 0;
 }
 
+/* 모든 항목은 라벨을 위로 쌓는 세로 레이아웃을 유지하되, 높이 성장은 하지 않는다
+   (사유/근거 같은 짧은 항목이 남은 높이를 차지해 에디터와 벌어지는 문제 방지). */
 .message-template-content-form .ant-form-item,
 .message-template-content-form .ant-form-item-row,
 .message-template-content-form .ant-form-item-control,
 .message-template-content-form .ant-form-item-control-input,
-.message-template-content-form .ant-form-item-control-input-content,
-.message-template-content-form .message-template-html-editor {
+.message-template-content-form .ant-form-item-control-input-content {
   display: flex;
-  flex: 1;
   flex-direction: column;
-  height: 100%;
   min-height: 0;
   min-width: 0;
   width: 100%;
+}
+
+/* 본문 에디터 항목만 카드의 남은 높이를 채운다. */
+.message-template-content-form .message-template-body-item,
+.message-template-content-form .message-template-body-item .ant-form-item-row,
+.message-template-content-form .message-template-body-item .ant-form-item-control,
+.message-template-content-form .message-template-body-item .ant-form-item-control-input,
+.message-template-content-form .message-template-body-item .ant-form-item-control-input-content,
+.message-template-content-form .message-template-html-editor {
+  flex: 1;
+  height: 100%;
 }
 
 .content-html-editor,

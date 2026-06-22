@@ -37,6 +37,7 @@ import {
   MessageTemplateFormFields,
   getMessageChannelMeta,
   parseMessageTemplateMode,
+  shouldShowNotificationLink,
   type TemplateMetaFormValues
 } from '../ui/message-template-form-fields';
 import type { AsyncState } from '../../../shared/model/async-state';
@@ -336,19 +337,22 @@ export function MessageChannelPage({
         targetGroupIds: template.targetGroupIds,
         status: template.status,
         triggerLabel: template.triggerLabel,
+        // 이동 경로(link_url)는 인앱/푸시(supabase는 전 채널)에서 노출되므로 함께 채운다.
+        ...(shouldShowNotificationLink(channel)
+          ? { linkUrl: template.linkUrl ?? '' }
+          : {}),
         ...(isSupabaseSource
           ? {
               templateKey: template.templateKey,
               templateClass: template.templateClass,
               mandatory: template.mandatory ?? false,
-              linkUrl: template.linkUrl ?? '',
               reason: ''
             }
           : {})
       });
       setEditorState({ kind: 'edit', template });
     },
-    [isSupabaseSource, templateForm]
+    [channel, isSupabaseSource, templateForm]
   );
   const openPreviewModal = useCallback((template: MessageTemplate) => {
     setPreviewTemplate(template);
@@ -870,13 +874,33 @@ export function MessageChannelPage({
         key: 'targetGroups',
         label: '발송 그룹',
         children: renderGroupNames(groups, previewTemplate.targetGroupIds)
-      }
+      },
+      ...(shouldShowNotificationLink(channel)
+        ? [
+            {
+              key: 'linkUrl',
+              label: '이동 경로',
+              children:
+                previewTemplate.linkUrl && previewTemplate.linkUrl.trim().length > 0
+                  ? previewTemplate.linkUrl
+                  : '미설정 (앱 기본 화면)'
+            }
+          ]
+        : [])
     ]
     : [];
+  // 미리보기의 기본 액션은 본문 작성 화면(등록 상세)으로 이동하므로 '본문 수정'으로 라벨링.
+  // 공용 channel page이므로 채널별로 표기를 맞춘다.
+  const editBodyActionLabel =
+    channel === 'mail'
+      ? '이메일 본문 수정'
+      : channel === 'push'
+        ? '푸시 본문 수정'
+        : '인앱 알림 본문 수정';
   const previewFooterActions = previewTemplate
     ? [
         <Button key="edit" type="primary" onClick={() => openTemplateDetail(previewTemplate)}>
-          템플릿 수정
+          {editBodyActionLabel}
         </Button>
       ]
     : [];
