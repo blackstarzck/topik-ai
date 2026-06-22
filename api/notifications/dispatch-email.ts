@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import nodemailer from 'nodemailer';
 
 declare const process: {
   env: Record<string, string | undefined>;
@@ -89,7 +90,7 @@ type ResolvedContent = {
 const BATCH_LIMIT = 50;
 const MAX_RETRY = 3;
 const ERROR_MESSAGE_MAX = 500;
-const DEFAULT_FROM = 'onboarding@resend.dev';
+const DEFAULT_FROM = '도토리 토픽 <guest@keduall.com>';
 const DISPLAY_NAME_FALLBACK = '학습자';
 const SITE_URL_FALLBACK = 'https://app.talkpik.ai';
 
@@ -240,9 +241,13 @@ async function applyFailure(
 }
 
 async function dispatchPendingEmailAttempts(): Promise<Response> {
-  const resendApiKey = process.env.RESEND_API_KEY;
-  if (!resendApiKey) {
-    return jsonResponse({ ok: false, error: 'resend_not_configured' }, { status: 503 });
+  // 발송 transport = 커스텀 SMTP(예: Daou Office outbound). SMTP 미구성 시 정직한
+  // no-op(503) — attempt를 일절 건드리지 않는다. (Resend 의존 제거)
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+  if (!smtpHost || !smtpUser || !smtpPass) {
+    return jsonResponse({ ok: false, error: 'smtp_not_configured' }, { status: 503 });
   }
 
   const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
@@ -254,7 +259,14 @@ async function dispatchPendingEmailAttempts(): Promise<Response> {
   const supabase = createClient<WorkerSchema, 'public'>(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false }
   });
-  const fromAddress = process.env.RESEND_FROM ?? DEFAULT_FROM;
+  const fromAddress = process.env.SMTP_FROM ?? DEFAULT_FROM;
+  const smtpPort = Number(process.env.SMTP_PORT ?? 465);
+  const transporter = nodemailer.createTransport({
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpPort === 465, // 465 = implicit TLS
+    auth: { user: smtpUser, pass: smtpPass }
+  });
 
   const { data: attempts, error: selectError } = await supabase
     .from('notification_delivery_attempts')
@@ -312,47 +324,20 @@ async function dispatchPendingEmailAttempts(): Promise<Response> {
       html = appendUnsubscribeLink(html, token);
     }
 
-    let response: Response;
+    // SMTP 전송. 정직성 경계: 전송이 성공(resolve)했을 때만 'sent'로 기록.
     try {
-      response = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${resendApiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          from: fromAddress,
-          to: recipient,
-          subject,
-          html
-        })
+      const info = await transporter.sendMail({
+        from: fromAddress,
+        to: recipient,
+        subject,
+        html
       });
-    } catch (error) {
-      failed += 1;
-      await applyFailure(
-        supabase,
-        attempt,
-        'fetch_error',
-        error instanceof Error ? error.message : 'network error'
-      );
-      continue;
-    }
-
-    const bodyText = await response.text();
-
-    if (response.ok) {
-      let providerMessageId: string | null = null;
-      try {
-        providerMessageId = (JSON.parse(bodyText) as { id?: string }).id ?? null;
-      } catch {
-        providerMessageId = null;
-      }
 
       const { error: updateError } = await supabase
         .from('notification_delivery_attempts')
         .update({
           status: 'sent',
-          provider_message_id: providerMessageId,
+          provider_message_id: info.messageId ?? null,
           error_code: null,
           error_message: null,
           sent_at: new Date().toISOString()
@@ -363,13 +348,13 @@ async function dispatchPendingEmailAttempts(): Promise<Response> {
         console.error('[dispatch-email] mark sent failed', attempt.id, updateError.message);
       }
       sent += 1;
-    } else {
+    } catch (error) {
       failed += 1;
       await applyFailure(
         supabase,
         attempt,
-        String(response.status),
-        bodyText.slice(0, ERROR_MESSAGE_MAX)
+        'smtp_error',
+        error instanceof Error ? error.message.slice(0, ERROR_MESSAGE_MAX) : 'smtp send error'
       );
     }
   }
