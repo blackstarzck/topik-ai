@@ -396,3 +396,9 @@
 - Updated `docs/specs/admin-data-contract.md` (§9.1 Users) to add the `socialProviders`/`social_providers text[]` contract.
 - Reason: 회원 목록 테이블과 회원 상세 프로필에 사용자의 소셜 로그인 내역(Google/Kakao/Facebook 등)을 노출한다. `get_admin_users`가 `auth.identities.provider`에서 `'email'`을 제외한 소셜 provider를 집계해 반환하고(미연동 빈 배열), 화면은 `shared/ui/social-provider`의 `SocialProviderTags`로 브랜드 아이콘을 렌더한다(무료 Simple Icons(CC0)·Google 멀티컬러 G를 인라인 SVG로 내장, 외부 핫링크 없음; 빈 배열은 `-`). 마이그레이션 `supabase/migrations-admin/20260618130000_admin_users_social_providers.sql`(+ down), 2026-06-18 dev DB 적용.
 - Validation: `npm run typecheck`, `npm run lint`, `npm run check:mojibake` passed; `get_admin_users` RPC를 platform_admin 컨텍스트로 호출해 google→`["google"]`/이메일 전용→`[]` 확인; mock 모드 dev 서버에서 목록 컬럼(index 4, 닉네임 index 2 보존)·상세 항목 렌더를 DOM으로 검증.
+
+## 2026-06-23 - Users list/detail email verification (가입 미완료) column
+
+- Updated `docs/specs/admin-data-contract.md` (§9.1 Users) to add the `emailVerificationStatus`/`email_confirmed boolean` contract.
+- Reason: v13 매직링크가 아닌 이메일+비밀번호 가입 중 확인메일 미인증(중도이탈) 계정이 회원 목록에 빈 이름/닉네임으로 섞여 노출됨. `get_admin_users`가 `auth.users.email_confirmed_at IS NOT NULL`을 `email_confirmed`로 반환하고, 회원 목록은 `이메일 인증` 배지+컬럼 필터로, 회원 상세 프로필 탭은 `이메일 인증` 항목으로 가입 완료/미완료를 구분한다(소셜 가입은 자동 인증→항상 인증 완료). auth.users 읽기 전용, write 없음. 마이그레이션 `supabase/migrations-admin/20260623100000_admin_users_email_verified.sql`(+ down), 2026-06-23 dev DB 적용.
+- Validation: `npm run typecheck`, `npm run lint`, `npm run check:mojibake` passed; `get_admin_users`를 platform_admin 컨텍스트로 호출해 미인증 4건→`email_confirmed=false`(빈 이름/닉네임 일치)·인증 12건→`true` 확인; mock 모드 dev 서버에서 목록 `이메일 인증` 컬럼 배지/필터(미인증 46건, 회원명 `-`)와 상세 프로필 항목을 DOM으로 검증.

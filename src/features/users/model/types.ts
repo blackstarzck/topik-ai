@@ -3,6 +3,10 @@ export type UserTier = '일반' | '프리미엄';
 export type SubscriptionStatus = '구독' | '미구독';
 // 회원가입(일반·SNS) 필수 약관 동의 상태. 현재 필수 문서 = 이용약관(terms) + 개인정보처리방침(privacy).
 export type TermsConsentStatus = '동의 완료' | '일부 동의' | '미동의';
+// 이메일 인증(가입 완료) 여부. auth.users.email_confirmed_at 기준.
+// '미인증' = 이메일 가입 후 확인메일을 누르지 않은 가입 미완료(중도이탈) 계정.
+// 소셜(google 등) 가입은 자동 인증되어 항상 '인증 완료'.
+export type EmailVerificationStatus = '인증 완료' | '미인증';
 
 export type UserSummary = {
   id: string;
@@ -24,6 +28,9 @@ export type UserSummary = {
   // 약관 동의(인증약관) 상태와 최종 동의일(YYYY-MM-DD, 미동의 시 빈 문자열).
   termsConsentStatus: TermsConsentStatus;
   termsConsentAt: string;
+  // 이메일 인증(가입 완료) 여부. '미인증' = 가입 미완료(중도이탈) 계정으로 회원명/닉네임이
+  // 비어있을 수 있다. 회원 상태(정상/정지/탈퇴)와는 직교한다.
+  emailVerificationStatus: EmailVerificationStatus;
   // 박람회/기관 유입 코드(v13 profiles.affiliation_code). 비어있으면 일반(유입경로 없음) 회원.
   // 코드 자체는 의미가 없고, 의미(기관/행사명)는 admin institution_codes 카탈로그가 소유한다.
   affiliationCode: string;

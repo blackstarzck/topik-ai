@@ -1,6 +1,7 @@
 import { supabaseClient } from '../../../shared/api/supabase-client';
 import type {
   UserLearningOverview,
+  EmailVerificationStatus,
   SubscriptionStatus,
   TermsConsentStatus,
   UserStatus,
@@ -34,6 +35,8 @@ type AdminUserRow = {
   submission_count: number;
   last_activity: string | null;
   last_sign_in_at: string | null;
+  // auth.users.email_confirmed_at IS NOT NULL. false = 이메일 미인증(가입 미완료).
+  email_confirmed?: boolean | null;
   created_at: string;
   // 약관 동의(인증약관) 집계: legal_documents(requires_consent) ⋈ user_consents.
   consent_status: string;
@@ -173,6 +176,12 @@ function mapConsentStatus(consentStatus: string): TermsConsentStatus {
   return CONSENT_STATUS_MAP[consentStatus] ?? '미동의';
 }
 
+// auth.users.email_confirmed_at 기반 플래그 -> 표시 상태. 명시적 false 만 '미인증'으로
+// 본다(컬럼이 없는 구버전 RPC 응답에서 전원을 미인증으로 오표시하지 않도록).
+function mapEmailVerification(emailConfirmed: boolean | null | undefined): EmailVerificationStatus {
+  return emailConfirmed === false ? '미인증' : '인증 완료';
+}
+
 // v13 plan_label (free text) -> topik-ai UserTier. PROPOSED (F5): free/basic -> 일반, else 프리미엄.
 function mapTier(planLabel: string | null): UserTier {
   const label = (planLabel ?? '').trim().toLowerCase();
@@ -184,6 +193,25 @@ function mapTier(planLabel: string | null): UserTier {
 
 function toDateString(ts: string | null): string {
   return ts ? ts.slice(0, 10) : '';
+}
+
+// timestamptz(UTC) -> 'YYYY-MM-DD HH:mm' (KST, UTC+9 고정·한국은 DST 없음). 빈/유효하지 않은 값은 ''.
+// 회원 목록·상세의 가입일/최근 접속을 분 단위까지 노출한다(시간을 버리던 toDateString 슬라이스 대체).
+function toKstDateTimeString(ts: string | null): string {
+  if (!ts) {
+    return '';
+  }
+  const parsed = new Date(ts);
+  if (Number.isNaN(parsed.getTime())) {
+    return '';
+  }
+  const kst = new Date(parsed.getTime() + 9 * 60 * 60 * 1000);
+  const yyyy = kst.getUTCFullYear();
+  const mm = String(kst.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(kst.getUTCDate()).padStart(2, '0');
+  const hh = String(kst.getUTCHours()).padStart(2, '0');
+  const mi = String(kst.getUTCMinutes()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
 }
 
 function mapCommunityStatus(status: string): string {
@@ -213,8 +241,8 @@ function mapRowToUserSummary(row: AdminUserRow): UserSummary {
     // Preserve profiles.nickname exactly. Null/empty values are rendered as an
     // empty-state marker in the UI, not replaced with display_name/email fallbacks.
     nickname: nickname ?? '',
-    joinedAt: toDateString(row.created_at),
-    lastLoginAt: toDateString(row.last_sign_in_at),
+    joinedAt: toKstDateTimeString(row.created_at),
+    lastLoginAt: toKstDateTimeString(row.last_sign_in_at),
     status: mapStatus(row.status),
     tier,
     // GAP: no subscription join in the RPC. PROPOSED heuristic from plan tier — NOT real
@@ -227,6 +255,8 @@ function mapRowToUserSummary(row: AdminUserRow): UserSummary {
     // 약관 동의(인증약관) 상태와 최종 동의일. 동의 기록이 없으면 날짜는 빈 문자열.
     termsConsentStatus: mapConsentStatus(row.consent_status),
     termsConsentAt: toDateString(row.consent_accepted_at),
+    // 이메일 인증(가입 완료) 여부. 가입 미완료(미인증) 계정 식별용.
+    emailVerificationStatus: mapEmailVerification(row.email_confirmed),
     // 박람회/기관 유입 코드 + 표시명(institution_codes 조인). 없으면 빈 문자열.
     affiliationCode: nonEmpty(row.affiliation_code) ?? '',
     affiliationLabel: nonEmpty(row.affiliation_label) ?? ''

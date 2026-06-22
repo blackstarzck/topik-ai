@@ -20,6 +20,7 @@ import {
   useUsersQueryStore
 } from '../model/users-query-store';
 import type {
+  EmailVerificationStatus,
   TermsConsentStatus,
   UserStatus,
   UserSummary,
@@ -63,6 +64,7 @@ const userTierFilterValues = ['일반', '프리미엄'] as const;
 const userSubscriptionStatusFilterValues = ['구독', '미구독'] as const;
 const userStatusFilterValues = ['정상', '정지', '탈퇴'] as const;
 const userConsentStatusFilterValues = ['동의 완료', '일부 동의', '미동의'] as const;
+const userEmailVerificationFilterValues = ['인증 완료', '미인증'] as const;
 
 const searchFieldOptions: { label: string; value: UsersSearchField }[] = [
   { label: '전체', value: 'all' },
@@ -413,13 +415,16 @@ export default function UsersPage(): JSX.Element {
       {
         title: '가입일',
         dataIndex: 'joinedAt',
-        width: 120,
+        width: 160,
+        // 기본 노출 순서 = 최근 가입자가 위로(내림차순). joinedAt이 분 단위 문자열이라
+        // 같은 날짜라도 가입 시각까지 비교해 정확히 정렬된다.
+        defaultSortOrder: 'descend',
         sorter: createTextSorter((record) => record.joinedAt)
       },
       {
         title: '최근 접속',
         dataIndex: 'lastLoginAt',
-        width: 120,
+        width: 160,
         sorter: createTextSorter((record) => record.lastLoginAt)
       },
       {
@@ -457,6 +462,19 @@ export default function UsersPage(): JSX.Element {
         ),
         sorter: createTextSorter((record) => record.termsConsentStatus),
         render: (consentStatus: TermsConsentStatus) => <StatusBadge status={consentStatus} />
+      },
+      {
+        title: createStatusColumnTitle('이메일 인증', ['인증 완료', '미인증']),
+        dataIndex: 'emailVerificationStatus',
+        width: 130,
+        ...createDefinedColumnFilterProps(
+          userEmailVerificationFilterValues,
+          (record) => record.emailVerificationStatus
+        ),
+        sorter: createTextSorter((record) => record.emailVerificationStatus),
+        render: (emailVerificationStatus: EmailVerificationStatus) => (
+          <StatusBadge status={emailVerificationStatus} />
+        )
       },
       {
         title: '액션',
@@ -610,7 +628,7 @@ export default function UsersPage(): JSX.Element {
           dataSource={filteredUsers}
           onRow={handleRowClick}
           loading={usersState.status === 'pending'}
-          scroll={{ x: 2280, y: 560 }}
+          scroll={{ x: 2490, y: 560 }}
           pagination={{
             current: query.page,
             pageSize: query.pageSize,

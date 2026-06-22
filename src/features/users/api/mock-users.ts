@@ -1,4 +1,5 @@
 ﻿import type {
+  EmailVerificationStatus,
   SubscriptionStatus,
   TermsConsentStatus,
   UserLearningOverview,
@@ -60,33 +61,48 @@ function formatDate(dayOffset: number): string {
   return date.toISOString().slice(0, 10);
 }
 
+// 가입일/최근 접속용 'YYYY-MM-DD HH:mm'. minuteSeed로 시:분을 결정적으로 분산시켜
+// 같은 날짜 안에서도 정렬 순서가 명확하도록(실데이터의 KST 분 단위 표기와 형식 일치).
+function formatDateTime(dayOffset: number, minuteSeed: number): string {
+  const hh = String(minuteSeed % 24).padStart(2, '0');
+  const mi = String((minuteSeed * 7) % 60).padStart(2, '0');
+
+  return `${formatDate(dayOffset)} ${hh}:${mi}`;
+}
+
 export const mockUsers: UserSummary[] = Array.from({ length: 420 }, (_, index) => {
   const id = `U${String(index + 1).padStart(5, '0')}`;
   const status = statuses[index % statuses.length];
   const tier = tiers[index % tiers.length];
   const subscriptionStatus = subscriptions[(index + 1) % subscriptions.length];
-  const joinedAt = formatDate(index % 365);
-  const lastLoginAt = formatDate((index % 180) + 120);
+  const joinedAt = formatDateTime(index % 365, index);
+  const lastLoginAt = formatDateTime((index % 180) + 120, index + 11);
   const realName = `${familyNames[index % familyNames.length]}${givenNames[(index * 3) % givenNames.length]}`;
   const termsConsentStatus = consentStatuses[index % consentStatuses.length];
   const affiliation = affiliationSamples[index % affiliationSamples.length];
+  // 일부(약 1/9)를 미인증으로 둬 배지/필터를 검증. 가입 미완료 계정은 이름/닉네임이
+  // 비어있는 경우가 많으므로 미인증 표본은 회원명/닉네임을 빈 값으로 렌더(실데이터 모사).
+  const emailVerificationStatus: EmailVerificationStatus =
+    index % 9 === 7 ? '미인증' : '인증 완료';
+  const isUnverified = emailVerificationStatus === '미인증';
 
   return {
     id,
-    realName,
+    realName: isUnverified ? '' : realName,
     email: `member${index + 1}@topik.ai`,
-    nickname: `member_${index + 1}`,
+    nickname: isUnverified ? '' : `member_${index + 1}`,
     joinedAt,
-    lastLoginAt,
+    lastLoginAt: isUnverified ? '' : lastLoginAt,
     status,
     tier,
     subscriptionStatus,
     nationalityCode: nationalityCodes[index % nationalityCodes.length],
     socialProviders: socialProvidersSamples[index % socialProvidersSamples.length],
     termsConsentStatus,
-    termsConsentAt: termsConsentStatus === '미동의' ? '' : joinedAt,
+    termsConsentAt: termsConsentStatus === '미동의' ? '' : joinedAt.slice(0, 10),
     affiliationCode: affiliation.code,
-    affiliationLabel: affiliation.label
+    affiliationLabel: affiliation.label,
+    emailVerificationStatus
   };
 });
 

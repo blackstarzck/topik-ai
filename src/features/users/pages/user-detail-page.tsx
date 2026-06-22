@@ -917,6 +917,11 @@ export default function UserDetailPage(): JSX.Element {
                 label: '회원 상태',
                 children: <StatusBadge status={currentStatus} />
               },
+              {
+                key: 'emailVerification',
+                label: '이메일 인증',
+                children: <StatusBadge status={user.emailVerificationStatus} />
+              },
               { key: 'tier', label: '회원 등급', children: user.tier },
               {
                 key: 'subscriptionStatus',

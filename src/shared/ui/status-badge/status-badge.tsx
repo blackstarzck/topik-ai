@@ -7,6 +7,8 @@ const colorMap: Record<string, string> = {
   '동의 완료': 'green',
   '일부 동의': 'gold',
   '미동의': 'volcano',
+  '인증 완료': 'green',
+  '미인증': 'gold',
   '게시': 'green',
   '숨김': 'orange',
   '완료': 'blue',
