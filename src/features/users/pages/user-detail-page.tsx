@@ -22,14 +22,12 @@ import {
   deleteUserMemo,
   fetchUserByIdSafe,
   fetchUserLearningOverviewSafe,
-  getUserAccessLogs,
   getUserActivity,
   getUserCommunityPosts,
   getUserLegalConsents,
   getUserMemos,
   getUserPayments,
   setUserStatusSafe,
-  type UserAccessLog,
   type UserActivityEvent,
   type UserAdminMemo,
   type UserCommunityPost,
@@ -60,7 +58,7 @@ const { Text } = Typography;
 
 const emptyProfileValue = '-';
 
-const detailPaymentStatusFilterValues = ['완료', '취소', '환불'] as const;
+const detailPaymentStatusFilterValues = ['완료', '환불', '실패', '대기'] as const;
 const detailCommunityBoardFilterValues = ['자유게시판', '후기', '질문'] as const;
 const detailCommunityStatusFilterValues = ['게시', '숨김'] as const;
 
@@ -78,7 +76,6 @@ type UsersDetailTabKey =
   | 'activity'
   | 'payments'
   | 'community'
-  | 'logs'
   | 'admin-memo';
 
 type PendingAction = 'suspend' | 'unsuspend' | 'withdraw' | null;
@@ -107,7 +104,6 @@ const allowedTabs: readonly UsersDetailTabKey[] = [
   'activity',
   'payments',
   'community',
-  'logs',
   'admin-memo'
 ];
 
@@ -158,7 +154,6 @@ export default function UserDetailPage(): JSX.Element {
   const [adminMemos, setAdminMemos] = useState<UserAdminMemo[]>([]);
   const [userActivity, setUserActivity] = useState<UserActivityEvent[]>([]);
   const [userPayments, setUserPayments] = useState<UserPaymentRecord[]>([]);
-  const [userAccessLogs, setUserAccessLogs] = useState<UserAccessLog[]>([]);
   const [legalConsents, setLegalConsents] = useState<UserLegalConsent[]>([]);
   const [memoModalOpen, setMemoModalOpen] = useState(false);
   const [memoContent, setMemoContent] = useState('');
@@ -272,7 +267,8 @@ export default function UserDetailPage(): JSX.Element {
     return () => controller.abort();
   }, [userId]);
 
-  // 활동/결제/접속 로그 탭은 Supabase 모드에서 admin RPC로 조회한다(미설정 시 mock 표시).
+  // 활동(study_events)/결제(payment_history) 탭과 약관 동의 버전은 Supabase 모드에서 admin RPC로
+  // 조회한다(미설정 시 mock 표시). 접속 로그 목록 탭은 제거됨(프로필 '최근 로그인'만 노출).
   useEffect(() => {
     if (!isSupabaseConfigured) {
       return;
@@ -286,11 +282,6 @@ export default function UserDetailPage(): JSX.Element {
     void getUserPayments(userId, controller.signal).then((result) => {
       if (!controller.signal.aborted && result.ok) {
         setUserPayments(result.data);
-      }
-    });
-    void getUserAccessLogs(userId, controller.signal).then((result) => {
-      if (!controller.signal.aborted && result.ok) {
-        setUserAccessLogs(result.data);
       }
     });
     void getUserLegalConsents(userId, controller.signal).then((result) => {
@@ -426,21 +417,19 @@ export default function UserDetailPage(): JSX.Element {
     [actionMeta, notificationApi, pendingAction, user]
   );
 
-  const activityRows = useMemo(
+  const activityRows = useMemo<UserActivityEvent[]>(
     () => [
       {
         id: `${userId}-A1`,
-        type: '로그인',
-        content: 'TOPIK 웹 로그인',
-        createdAt: '2026-03-03 09:12',
-        ip: '121.133.11.42'
+        type: '문제 제출',
+        reference: 'PR 3f9a1c2b',
+        createdAt: '2026-03-03 09:12'
       },
       {
         id: `${userId}-A2`,
-        type: '게시글',
-        content: '시험 학습 질문',
-        createdAt: '2026-03-03 12:40',
-        ip: '121.133.11.42'
+        type: '작문 제출',
+        reference: 'WS 7c2d4e10',
+        createdAt: '2026-03-03 12:40'
       }
     ],
     [userId]
@@ -490,26 +479,6 @@ export default function UserDetailPage(): JSX.Element {
     [userId]
   );
 
-  const logRows = useMemo(
-    () => [
-      {
-        id: `${userId}-L1`,
-        type: '로그인',
-        ip: '121.133.11.42',
-        device: 'Windows Chrome',
-        createdAt: '2026-03-03 09:12'
-      },
-      {
-        id: `${userId}-L2`,
-        type: 'API',
-        ip: '121.133.11.42',
-        device: 'Windows Chrome',
-        createdAt: '2026-03-03 09:15'
-      }
-    ],
-    [userId]
-  );
-
   const memoRows = useMemo(
     () => [
       {
@@ -533,38 +502,26 @@ export default function UserDetailPage(): JSX.Element {
   const memoDisplay = isSupabaseConfigured ? adminMemos : memoRows;
   const activityDisplay = isSupabaseConfigured ? userActivity : activityRows;
   const paymentDisplay = isSupabaseConfigured ? userPayments : paymentRows;
-  const logDisplay = isSupabaseConfigured ? userAccessLogs : logRows;
 
   const activityColumns = useMemo<TableColumnsType<(typeof activityRows)[number]>>(
     () => [
       {
-        title: '활동 ID',
-        dataIndex: 'id',
-        width: 160,
-        sorter: createTextSorter((record) => record.id)
-      },
-      {
         title: '활동 유형',
         dataIndex: 'type',
-        width: 120,
+        width: 160,
         sorter: createTextSorter((record) => record.type)
       },
       {
-        title: '콘텐츠',
-        dataIndex: 'content',
-        sorter: createTextSorter((record) => record.content)
+        title: '참조',
+        dataIndex: 'reference',
+        width: 160,
+        sorter: createTextSorter((record) => record.reference)
       },
       {
         title: '활동 시각',
         dataIndex: 'createdAt',
-        width: 180,
+        width: 200,
         sorter: createTextSorter((record) => record.createdAt)
-      },
-      {
-        title: 'IP',
-        dataIndex: 'ip',
-        width: 160,
-        sorter: createTextSorter((record) => record.ip)
       }
     ],
     []
@@ -611,7 +568,7 @@ export default function UserDetailPage(): JSX.Element {
         sorter: createTextSorter((record) => record.paidAt)
       },
       {
-        title: createStatusColumnTitle('상태', ['완료', '취소', '환불']),
+        title: createStatusColumnTitle('상태', ['완료', '환불', '실패', '대기']),
         dataIndex: 'status',
         width: 100,
         ...createDefinedColumnFilterProps(
@@ -679,42 +636,6 @@ export default function UserDetailPage(): JSX.Element {
         ),
         sorter: createTextSorter((record) => record.status),
         render: (status: string) => <StatusBadge status={status} />
-      }
-    ],
-    []
-  );
-
-  const logsColumns = useMemo<TableColumnsType<(typeof logRows)[number]>>(
-    () => [
-      {
-        title: '로그 ID',
-        dataIndex: 'id',
-        width: 150,
-        sorter: createTextSorter((record) => record.id)
-      },
-      {
-        title: '로그 유형',
-        dataIndex: 'type',
-        width: 120,
-        sorter: createTextSorter((record) => record.type)
-      },
-      {
-        title: 'IP',
-        dataIndex: 'ip',
-        width: 160,
-        sorter: createTextSorter((record) => record.ip)
-      },
-      {
-        title: '기기',
-        dataIndex: 'device',
-        width: 170,
-        sorter: createTextSorter((record) => record.device)
-      },
-      {
-        title: '시각',
-        dataIndex: 'createdAt',
-        width: 190,
-        sorter: createTextSorter((record) => record.createdAt)
       }
     ],
     []
@@ -944,6 +865,23 @@ export default function UserDetailPage(): JSX.Element {
     []
   );
 
+  // 온보딩 현황(학습 현황 탭 상단 카드). 가입/약관 단계는 프로필(UserSummary)에서, 학습 목표
+  // 단계는 학습 RPC의 onboarding 블록(learning_goals)에서 파생한다.
+  const onboardingSummary = useMemo(() => {
+    const ob = learningState.data?.onboarding;
+    if (!ob) {
+      return null;
+    }
+    const consentDone = user?.termsConsentStatus === '동의 완료';
+    const statusLabel = !consentDone
+      ? '약관 동의 대기'
+      : ob.hasGoal
+        ? '완료'
+        : '학습 목표 설정 대기';
+    const statusColor = statusLabel === '완료' ? 'green' : 'orange';
+    return { ob, statusLabel, statusColor };
+  }, [learningState.data, user]);
+
   const tabs = useMemo<NonNullable<TabsProps['items']>>(
     () => [
       {
@@ -1082,6 +1020,48 @@ export default function UserDetailPage(): JSX.Element {
             />
           ) : learningState.data ? (
             <Space direction="vertical" size={16} style={{ width: '100%' }}>
+              {onboardingSummary ? (
+                <Descriptions bordered column={2} size="small" title="온보딩 현황">
+                  <Descriptions.Item label="온보딩 상태">
+                    <Tag color={onboardingSummary.statusColor}>
+                      {onboardingSummary.statusLabel}
+                    </Tag>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="가입일">{user?.joinedAt || '-'}</Descriptions.Item>
+                  <Descriptions.Item label="약관 동의">
+                    {user ? <StatusBadge status={user.termsConsentStatus} /> : '-'}
+                    {user?.termsConsentAt ? (
+                      <Typography.Text type="secondary"> · {user.termsConsentAt}</Typography.Text>
+                    ) : null}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="학습 목표">
+                    {onboardingSummary.ob.hasGoal ? (
+                      `${onboardingSummary.ob.topikLevel || '-'} · 목표 ${
+                        onboardingSummary.ob.targetGrade ?? '-'
+                      }급`
+                    ) : (
+                      <Tag color="orange">미설정</Tag>
+                    )}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="시험 예정일">
+                    {onboardingSummary.ob.examDate || '-'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="주간 목표">
+                    {onboardingSummary.ob.weeklyGoalMinutes == null
+                      ? '-'
+                      : `${onboardingSummary.ob.weeklyGoalMinutes}분`}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="관심·약점 영역" span={2}>
+                    {onboardingSummary.ob.weakAreas.length
+                      ? onboardingSummary.ob.weakAreas.join(', ')
+                      : '-'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="목표 설정일" span={2}>
+                    {onboardingSummary.ob.goalUpdatedAt || '-'}
+                  </Descriptions.Item>
+                </Descriptions>
+              ) : null}
+
               <Descriptions bordered column={3} size="small" title="요약">
                 <Descriptions.Item label="총 풀이 수">
                   {learningState.data.kpis.totalAttempts}
@@ -1105,6 +1085,15 @@ export default function UserDetailPage(): JSX.Element {
                 <Descriptions.Item label="작문 제출/채점">
                   {learningState.data.kpis.writingSubmissionCount} /{' '}
                   {learningState.data.kpis.writingFeedbackCount}
+                </Descriptions.Item>
+                <Descriptions.Item label="연속 학습일">
+                  {learningState.data.kpis.streakDays}일
+                </Descriptions.Item>
+                <Descriptions.Item label="주간 학습(실적/목표)">
+                  {learningState.data.kpis.weeklyStudiedMinutes}분 /{' '}
+                  {learningState.data.kpis.weeklyGoalMinutes == null
+                    ? '목표 미설정'
+                    : `${learningState.data.kpis.weeklyGoalMinutes}분`}
                 </Descriptions.Item>
                 <Descriptions.Item label="최근 활동일">
                   {learningState.data.kpis.latestActivityAt || '-'}
@@ -1230,24 +1219,6 @@ export default function UserDetailPage(): JSX.Element {
         )
       },
       {
-        key: 'logs',
-        label: '로그',
-        children: (
-          <Table
-            rowKey="id"
-            showSorterTooltip={false}
-            size="small"
-            pagination={false}
-            dataSource={logDisplay}
-            columns={logsColumns}
-            onRow={(record) => ({
-              onClick: () => openDetailModal('로그 상세', record),
-              style: { cursor: 'pointer' }
-            })}
-          />
-        )
-      },
-      {
         key: 'admin-memo',
         label: '관리자 메모',
         children: (
@@ -1287,10 +1258,9 @@ export default function UserDetailPage(): JSX.Element {
       learningWeaknessColumns,
       learningWritingColumns,
       legalConsents,
-      logDisplay,
-      logsColumns,
       memoColumns,
       memoDisplay,
+      onboardingSummary,
       paymentColumns,
       paymentDisplay,
       openDetailModal,

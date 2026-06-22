@@ -42,7 +42,23 @@ export type UserLearningKpi = {
   bookmarkedCount: number;
   writingSubmissionCount: number;
   writingFeedbackCount: number;
+  // 연속 학습일(KST, 오늘/어제 기준), 주간 목표 학습 분(미설정 시 null), 이번 주 누적 학습 분.
+  streakDays: number;
+  weeklyGoalMinutes: number | null;
+  weeklyStudiedMinutes: number;
   latestActivityAt: string;
+};
+
+// 회원 상세 > 학습 현황 탭의 온보딩 현황 카드. v13 learning_goals(온보딩 마지막 단계 산출물)에서
+// 파생한다. 약관 동의/가입 단계는 프로필(UserSummary)의 termsConsentStatus·joinedAt로 표시한다.
+export type UserOnboarding = {
+  hasGoal: boolean;
+  topikLevel: string;
+  targetGrade: number | null;
+  examDate: string;
+  weeklyGoalMinutes: number | null;
+  weakAreas: string[];
+  goalUpdatedAt: string;
 };
 
 export type UserLearningDomainAccuracy = {
@@ -90,6 +106,7 @@ export type UserLearningOverview = {
   weaknesses: UserLearningWeakness[];
   recentAttempts: UserLearningRecentAttempt[];
   recentWriting: UserLearningRecentWriting[];
+  onboarding: UserOnboarding;
 };
 
 export type UsersSort = 'latest' | 'oldest';

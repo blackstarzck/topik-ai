@@ -52,6 +52,7 @@ type AdminUserLearningOverviewRow = {
   weaknesses: UserLearningOverview['weaknesses'];
   recent_attempts: UserLearningOverview['recentAttempts'];
   recent_writing: UserLearningOverview['recentWriting'];
+  onboarding: UserLearningOverview['onboarding'];
 };
 
 type UserCommunityPostRow = {
@@ -86,21 +87,34 @@ export type UserAdminMemo = {
   createdAt: string;
 };
 
+// v13 study_events 원장 행(admin_get_user_study_events). reference = 연관 문제/제출/시도 단축 참조.
 type UserActivityRow = {
   id: string;
   event_type: string;
-  content: string;
-  ip: string;
-  created_at: string;
+  reference: string;
+  occurred_at: string;
 };
 
+// v13 payment_history 행(admin_get_user_payment_history). 금액/결제일/상태는 RPC에서 표시 문자열로 가공.
 type UserPaymentRow = {
   id: string;
   product: string;
-  amount_krw: number;
+  amount: string;
   method: string;
   status: string;
-  paid_at: string | null;
+  paid_at: string;
+};
+
+// v13 study_events.event_type(고정 카탈로그) → 한글 표시 라벨.
+const STUDY_EVENT_LABEL: Record<string, string> = {
+  practice_started: '학습 시작',
+  attempt_submitted: '문제 제출',
+  draft_autosaved: '작문 임시저장',
+  submission_submitted: '작문 제출',
+  feedback_viewed: '피드백 확인',
+  report_viewed: '리포트 확인',
+  recommendation_clicked: '추천 클릭',
+  export_downloaded: '내보내기'
 };
 
 type UserAccessLogRow = {
@@ -112,12 +126,12 @@ type UserAccessLogRow = {
 };
 
 // 회원 상세 탭 표시 모델 — 페이지의 더미 행 모양과 동일(소스 스위치 union 호환).
+// 활동 = v13 study_events 원장(유형/참조/시각). 접속 IP는 study_events에 없어 제거됨.
 export type UserActivityEvent = {
   id: string;
   type: string;
-  content: string;
+  reference: string;
   createdAt: string;
-  ip: string;
 };
 
 export type UserPaymentRecord = {
@@ -331,12 +345,24 @@ export async function loadUserLearningOverviewFromSupabase(
       bookmarkedCount: 0,
       writingSubmissionCount: 0,
       writingFeedbackCount: 0,
+      streakDays: 0,
+      weeklyGoalMinutes: null,
+      weeklyStudiedMinutes: 0,
       latestActivityAt: ''
     },
     domainAccuracy: row?.domain_accuracy ?? [],
     weaknesses: row?.weaknesses ?? [],
     recentAttempts: row?.recent_attempts ?? [],
-    recentWriting: row?.recent_writing ?? []
+    recentWriting: row?.recent_writing ?? [],
+    onboarding: row?.onboarding ?? {
+      hasGoal: false,
+      topikLevel: '',
+      targetGrade: null,
+      examDate: '',
+      weeklyGoalMinutes: null,
+      weakAreas: [],
+      goalUpdatedAt: ''
+    }
   };
 }
 
@@ -403,7 +429,7 @@ export async function getUserActivityFromSupabase(
     throw new Error('Supabase client not configured');
   }
 
-  const { data, error } = await supabaseClient.rpc('admin_get_user_activity', {
+  const { data, error } = await supabaseClient.rpc('admin_get_user_study_events', {
     p_target_user_id: userId,
     p_limit: 100
   });
@@ -416,10 +442,9 @@ export async function getUserActivityFromSupabase(
 
   return ((data ?? []) as UserActivityRow[]).map((row) => ({
     id: row.id,
-    type: row.event_type,
-    content: row.content,
-    createdAt: row.created_at,
-    ip: row.ip
+    type: STUDY_EVENT_LABEL[row.event_type] ?? row.event_type,
+    reference: row.reference,
+    createdAt: row.occurred_at
   }));
 }
 
@@ -491,7 +516,7 @@ export async function getUserPaymentsFromSupabase(
     throw new Error('Supabase client not configured');
   }
 
-  const { data, error } = await supabaseClient.rpc('admin_get_user_payments', {
+  const { data, error } = await supabaseClient.rpc('admin_get_user_payment_history', {
     p_target_user_id: userId,
     p_limit: 100
   });
@@ -505,9 +530,9 @@ export async function getUserPaymentsFromSupabase(
   return ((data ?? []) as UserPaymentRow[]).map((row) => ({
     id: row.id,
     product: row.product,
-    amount: `₩${(row.amount_krw ?? 0).toLocaleString()}`,
+    amount: row.amount,
     method: row.method,
-    paidAt: row.paid_at ?? '',
+    paidAt: row.paid_at,
     status: row.status
   }));
 }

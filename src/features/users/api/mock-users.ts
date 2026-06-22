@@ -99,6 +99,7 @@ export function getMockUserLearningOverview(userId: string): UserLearningOvervie
   const attemptBase = 18 + (seed % 24);
   const correctRate = 58 + (seed % 31);
   const latestDate = formatDate(430 + (seed % 20));
+  const weeklyGoalMinutes = 150 + (seed % 4) * 30;
 
   return {
     kpis: {
@@ -110,6 +111,9 @@ export function getMockUserLearningOverview(userId: string): UserLearningOvervie
       bookmarkedCount: seed % 9,
       writingSubmissionCount: 2 + (seed % 5),
       writingFeedbackCount: 1 + (seed % 4),
+      streakDays: 1 + (seed % 12),
+      weeklyGoalMinutes,
+      weeklyStudiedMinutes: 40 + (seed % 6) * 25,
       latestActivityAt: latestDate
     },
     domainAccuracy: [
@@ -162,6 +166,15 @@ export function getMockUserLearningOverview(userId: string): UserLearningOvervie
         scoreMax: 50,
         weaknessDimensions: ['구성', '문법']
       }
-    ]
+    ],
+    onboarding: {
+      hasGoal: true,
+      topikLevel: 'TOPIK II',
+      targetGrade: 3 + (seed % 4),
+      examDate: formatDate(380 + (seed % 30)),
+      weeklyGoalMinutes,
+      weakAreas: ['vocabulary', 'grammar'],
+      goalUpdatedAt: latestDate
+    }
   };
 }

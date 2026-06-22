@@ -5,7 +5,6 @@ import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
 import {
   addUserMemoViaRpc,
   deleteUserMemoViaRpc,
-  getUserAccessLogsFromSupabase,
   getUserActivityFromSupabase,
   getUserCommunityPostsFromSupabase,
   getUserLegalConsentsFromSupabase,
@@ -14,7 +13,6 @@ import {
   loadUserLearningOverviewFromSupabase,
   loadUsersFromSupabase,
   setUserStatusViaRpc,
-  type UserAccessLog,
   type UserActivityEvent,
   type UserAdminMemo,
   type UserCommunityPost,
@@ -145,16 +143,6 @@ export function getUserPayments(userId: string, signal?: AbortSignal) {
   });
 }
 
-export function getUserAccessLogs(userId: string, signal?: AbortSignal) {
-  return toSafeResult<UserAccessLog[]>(async () => {
-    if (isSupabaseConfigured) {
-      return getUserAccessLogsFromSupabase(userId, signal);
-    }
-    await sleep(120, signal);
-    return [];
-  });
-}
-
 export function addUserMemo(
   userId: string,
   content: string,
@@ -181,7 +169,6 @@ export function deleteUserMemo(memoId: string, reason: string, signal?: AbortSig
 }
 
 export type {
-  UserAccessLog,
   UserActivityEvent,
   UserAdminMemo,
   UserCommunityPost,
