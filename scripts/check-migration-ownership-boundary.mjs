@@ -94,6 +94,12 @@ const ALLOWED_PROFILE_WRITE_FILES = new Map([
   [
     'supabase/migrations-admin/20260618093000_admin_set_app_role.sql',
     ['app_role']
+  ],
+  [
+    // Users > 기관 코드 회원 배정/해제 — admin_assign/clear_institution_code 가
+    // profiles.affiliation_code 만 platform_admin + reason + self-verify 로 쓴다.
+    'supabase/migrations-admin/20260623110000_institution_code_membership.sql',
+    ['affiliation_code']
   ]
 ]);
 

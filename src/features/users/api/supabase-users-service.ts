@@ -299,17 +299,23 @@ function mergeProfileNicknames(
   }));
 }
 
-export async function loadUsersFromSupabase(signal?: AbortSignal): Promise<UserSummary[]> {
+export async function loadUsersFromSupabase(
+  signal?: AbortSignal,
+  affiliation?: string | null
+): Promise<UserSummary[]> {
   if (!supabaseClient) {
     throw new Error('Supabase client not configured');
   }
   // Dev: a single page of up to 100 covers the dev dataset. Prod (>100 users) needs
   // server-side pagination (follow-up — the page currently filters client-side).
+  // affiliation 은 서버사이드 기관 필터: null=전체 / @affiliated / @general / 특정 코드.
+  // 클라이언트 필터로는 page_size 캡(첫 페이지)만 걸러지므로 서버에서 적용한다.
   const { data, error } = await supabaseClient.rpc('get_admin_users', {
     search: null,
     sort: 'activity',
     page: 1,
-    page_size: 100
+    page_size: 100,
+    affiliation: affiliation && affiliation.trim() ? affiliation.trim() : null
   });
   if (signal?.aborted) {
     throw new DOMException('Request aborted', 'AbortError');

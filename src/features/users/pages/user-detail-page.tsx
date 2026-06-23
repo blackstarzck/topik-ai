@@ -6,6 +6,7 @@ import {
   Input,
   Modal,
   notification,
+  Select,
   Space,
   Spin,
   Table,
@@ -34,9 +35,16 @@ import {
   type UserLegalConsent,
   type UserPaymentRecord
 } from '../api/users-service';
+import {
+  assignInstitutionCodeSafe,
+  clearInstitutionCodeSafe,
+  fetchInstitutionCodesSafe
+} from '../api/institution-codes-service';
 import type { UserLearningOverview, UserStatus, UserSummary } from '../model/types';
+import type { InstitutionCode } from '../model/institution-codes-types';
 import type { AsyncState } from '../../../shared/model/async-state';
 import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
+import { usePermissionStore } from '../../system/model/permission-store';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
 import { SocialProviderTags } from '../../../shared/ui/social-provider/social-provider-tags';
@@ -136,6 +144,184 @@ function buildActionMeta(
   };
 }
 
+type NotificationApi = ReturnType<typeof notification.useNotification>[0];
+
+type AffiliationTabPanelProps = {
+  userId: string;
+  affiliationCode: string;
+  affiliationLabel: string;
+  canManage: boolean;
+  notificationApi: NotificationApi;
+  onChanged: () => void;
+};
+
+// 회원 상세 > 기관 소속 탭. 읽기(회원 구분/코드/행사) + 편집(배정·변경·해제) 자체 상태로 운영.
+// 변경은 platform_admin RPC(admin_assign/clear_institution_code)로 수행하고 onChanged 로 상위 재조회.
+function AffiliationTabPanel({
+  userId,
+  affiliationCode,
+  affiliationLabel,
+  canManage,
+  notificationApi,
+  onChanged
+}: AffiliationTabPanelProps): JSX.Element {
+  const [codes, setCodes] = useState<InstitutionCode[]>([]);
+  const [selectedCode, setSelectedCode] = useState<string>('');
+  const [reason, setReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [clearOpen, setClearOpen] = useState(false);
+
+  useEffect(() => {
+    if (!canManage) {
+      return;
+    }
+    const controller = new AbortController();
+    void fetchInstitutionCodesSafe(controller.signal).then((result) => {
+      if (!controller.signal.aborted && result.ok) {
+        setCodes(result.data);
+      }
+    });
+    return () => controller.abort();
+  }, [canManage]);
+
+  // 배정/변경 피커는 활성 코드만(종료 코드 신규 배정은 RPC가 차단).
+  const activeOptions = useMemo(
+    () =>
+      codes
+        .filter((code) => code.status === '활성')
+        .map((code) => ({ value: code.code, label: `${code.label} (${code.code})` })),
+    [codes]
+  );
+
+  const handleAssign = useCallback(async () => {
+    if (!selectedCode) {
+      notificationApi.warning({ message: '배정할 기관 코드를 선택하세요.' });
+      return;
+    }
+    if (!reason.trim()) {
+      notificationApi.warning({ message: '변경 사유를 입력하세요.' });
+      return;
+    }
+    setSubmitting(true);
+    const result = await assignInstitutionCodeSafe([userId], selectedCode, reason.trim());
+    setSubmitting(false);
+    if (!result.ok) {
+      notificationApi.error({ message: '기관 소속 변경 실패', description: result.error.message });
+      return;
+    }
+    notificationApi.success({
+      message: '기관 소속 변경 완료',
+      description:
+        result.data > 0
+          ? `${selectedCode} 로 설정되었습니다.`
+          : '이미 동일한 코드라 변경 사항이 없습니다.'
+    });
+    setSelectedCode('');
+    setReason('');
+    onChanged();
+  }, [notificationApi, onChanged, reason, selectedCode, userId]);
+
+  const handleClear = useCallback(
+    async (clearReason: string) => {
+      const result = await clearInstitutionCodeSafe([userId], clearReason);
+      if (!result.ok) {
+        notificationApi.error({ message: '기관 소속 해제 실패', description: result.error.message });
+        setClearOpen(false);
+        return;
+      }
+      notificationApi.success({ message: '기관 소속 해제 완료' });
+      setClearOpen(false);
+      onChanged();
+    },
+    [notificationApi, onChanged, userId]
+  );
+
+  return (
+    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+      <Descriptions
+        bordered
+        column={1}
+        items={[
+          {
+            key: 'memberKind',
+            label: '회원 구분',
+            children: affiliationCode ? (
+              <Tag color="blue">기관 회원</Tag>
+            ) : (
+              <Tag>일반 회원</Tag>
+            )
+          },
+          {
+            key: 'affiliationCode',
+            label: '유입 코드',
+            children: renderProfileValue(affiliationCode)
+          },
+          {
+            key: 'affiliationLabel',
+            label: '기관/행사',
+            children: renderProfileValue(affiliationLabel)
+          },
+          {
+            key: 'affiliationNote',
+            label: '안내',
+            children: (
+              <Text type="secondary">
+                박람회/기관 유입 QR로 가입 시 코드가 기록됩니다. 코드의 의미는 회원 관리 ▸ 기관 코드에서 관리합니다.
+              </Text>
+            )
+          }
+        ]}
+      />
+
+      {canManage ? (
+        <Card size="small" title="기관 소속 설정">
+          <Space direction="vertical" size={12} style={{ width: '100%' }}>
+            <Select
+              value={selectedCode || undefined}
+              onChange={setSelectedCode}
+              options={activeOptions}
+              placeholder="배정/변경할 활성 코드를 선택하세요."
+              showSearch
+              optionFilterProp="label"
+              style={{ width: '100%', maxWidth: 420 }}
+            />
+            <Input.TextArea
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              rows={2}
+              placeholder="감사 기록에 남길 변경 사유를 입력하세요."
+              style={{ maxWidth: 420 }}
+            />
+            <Space>
+              <Button type="primary" loading={submitting} onClick={() => void handleAssign()}>
+                {affiliationCode ? '소속 변경' : '소속 배정'}
+              </Button>
+              {affiliationCode ? (
+                <Button danger onClick={() => setClearOpen(true)}>
+                  소속 해제
+                </Button>
+              ) : null}
+            </Space>
+          </Space>
+        </Card>
+      ) : null}
+
+      {clearOpen ? (
+        <ConfirmAction
+          open
+          title="기관 소속 해제"
+          description={`${affiliationCode} 소속을 해제합니다. 사유를 기록하세요.`}
+          targetType="Users"
+          targetId={userId}
+          confirmText="해제 실행"
+          onCancel={() => setClearOpen(false)}
+          onConfirm={handleClear}
+        />
+      ) : null}
+    </Space>
+  );
+}
+
 export default function UserDetailPage(): JSX.Element {
   const { userId = '' } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -166,6 +352,20 @@ export default function UserDetailPage(): JSX.Element {
     errorMessage: null,
     errorCode: null
   });
+  // 기관 소속 변경 후 회원 정보를 재조회하기 위한 키.
+  const [userReloadKey, setUserReloadKey] = useState(0);
+
+  // 기관 코드 회원 배정/해제 권한(메뉴 게이팅과 동일 키). 미보유 시 편집 컨트롤 숨김.
+  const currentAdminId = usePermissionStore((state) => state.currentAdminId);
+  const admins = usePermissionStore((state) => state.admins);
+  const canManageInstitutionCodes = useMemo(() => {
+    const me = admins.find((item) => item.adminId === currentAdminId);
+    return me?.permissions.includes('users.institution-codes.manage') ?? false;
+  }, [admins, currentAdminId]);
+
+  const handleAffiliationChanged = useCallback(() => {
+    setUserReloadKey((prev) => prev + 1);
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -191,7 +391,7 @@ export default function UserDetailPage(): JSX.Element {
       }));
     });
     return () => controller.abort();
-  }, [userId]);
+  }, [userId, userReloadKey]);
 
   const user = userState.data ?? undefined;
 
@@ -974,39 +1174,13 @@ export default function UserDetailPage(): JSX.Element {
         key: 'affiliation',
         label: '기관 소속',
         children: user ? (
-          <Descriptions
-            bordered
-            column={1}
-            items={[
-              {
-                key: 'memberKind',
-                label: '회원 구분',
-                children: user.affiliationCode ? (
-                  <Tag color="blue">기관 회원</Tag>
-                ) : (
-                  <Tag>일반 회원</Tag>
-                )
-              },
-              {
-                key: 'affiliationCode',
-                label: '유입 코드',
-                children: renderProfileValue(user.affiliationCode)
-              },
-              {
-                key: 'affiliationLabel',
-                label: '기관/행사',
-                children: renderProfileValue(user.affiliationLabel)
-              },
-              {
-                key: 'affiliationNote',
-                label: '안내',
-                children: (
-                  <Text type="secondary">
-                    박람회/기관 유입 QR로 가입 시 코드가 기록됩니다. 코드의 의미는 회원 관리 ▸ 기관 코드에서 관리합니다.
-                  </Text>
-                )
-              }
-            ]}
+          <AffiliationTabPanel
+            userId={userId}
+            affiliationCode={user.affiliationCode}
+            affiliationLabel={user.affiliationLabel}
+            canManage={canManageInstitutionCodes}
+            notificationApi={notificationApi}
+            onChanged={handleAffiliationChanged}
           />
         ) : null
       },
@@ -1254,9 +1428,11 @@ export default function UserDetailPage(): JSX.Element {
     [
       activityColumns,
       activityDisplay,
+      canManageInstitutionCodes,
       communityColumns,
       communityDisplay,
       currentStatus,
+      handleAffiliationChanged,
       learningAttemptColumns,
       learningDomainColumns,
       learningState,
@@ -1265,11 +1441,13 @@ export default function UserDetailPage(): JSX.Element {
       legalConsents,
       memoColumns,
       memoDisplay,
+      notificationApi,
       onboardingSummary,
       paymentColumns,
       paymentDisplay,
       openDetailModal,
-      user
+      user,
+      userId
     ]
   );
 

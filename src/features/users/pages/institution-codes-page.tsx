@@ -1,4 +1,5 @@
 import {
+  Alert,
   Button,
   Descriptions,
   Form,
@@ -14,11 +15,15 @@ import type { TableColumnsType } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
+  assignInstitutionCodeSafe,
+  clearInstitutionCodeSafe,
   createInstitutionCodeSafe,
+  fetchInstitutionCodeMembersSafe,
   fetchInstitutionCodesSafe,
   isInstitutionCodesSupabase,
   updateInstitutionCodeSafe
 } from '../api/institution-codes-service';
+import { fetchUsersSafe } from '../api/users-service';
 import {
   institutionCodeKinds,
   institutionCodeStatuses
@@ -26,10 +31,14 @@ import {
 import type {
   InstitutionCode,
   InstitutionCodeKind,
+  InstitutionCodeMember,
   InstitutionCodeStatus
 } from '../model/institution-codes-types';
+import type { UserSummary } from '../model/types';
+import { usePermissionStore } from '../../system/model/permission-store';
 import type { AsyncState } from '../../../shared/model/async-state';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
+import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
@@ -101,6 +110,29 @@ export default function InstitutionCodesPage(): JSX.Element {
   const [createForm] = Form.useForm<CreateFormValues>();
   const [editForm] = Form.useForm<EditFormValues>();
 
+  // 회원 관리(코드별 회원 추가/제거) 모달.
+  const [memberTarget, setMemberTarget] = useState<InstitutionCode | null>(null);
+  const [membersState, setMembersState] = useState<AsyncState<InstitutionCodeMember[]>>({
+    status: 'pending',
+    data: [],
+    errorMessage: null,
+    errorCode: null
+  });
+  const [memberReload, setMemberReload] = useState(0);
+  const [allUsers, setAllUsers] = useState<UserSummary[]>([]);
+  const [addForm] = Form.useForm<{ userIds: string[]; reason: string }>();
+  const [addSubmitting, setAddSubmitting] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState<InstitutionCodeMember | null>(null);
+
+  // 회원 배정/해제 권한(메뉴 게이팅과 동일 키). 코드 생성/수정(is_admin)과 달리 회원 관리는
+  // platform_admin RPC라, 권한 미보유자에겐 회원 관리 컨트롤을 숨긴다(다른 두 화면과 일관).
+  const currentAdminId = usePermissionStore((state) => state.currentAdminId);
+  const admins = usePermissionStore((state) => state.admins);
+  const canManageMembers = useMemo(() => {
+    const me = admins.find((item) => item.adminId === currentAdminId);
+    return me?.permissions.includes('users.institution-codes.manage') ?? false;
+  }, [admins, currentAdminId]);
+
   useEffect(() => {
     const controller = new AbortController();
 
@@ -139,6 +171,64 @@ export default function InstitutionCodesPage(): JSX.Element {
     };
   }, [reloadKey]);
 
+  // 회원 관리 모달이 열린 코드의 소속 회원 목록 로드.
+  useEffect(() => {
+    if (!memberTarget) {
+      return;
+    }
+    const code = memberTarget.code;
+    const controller = new AbortController();
+
+    setMembersState((prev) => ({
+      ...prev,
+      status: 'pending',
+      errorMessage: null,
+      errorCode: null
+    }));
+
+    void fetchInstitutionCodeMembersSafe(code, undefined, controller.signal).then((result) => {
+      if (controller.signal.aborted) {
+        return;
+      }
+      if (result.ok) {
+        setMembersState({
+          status: result.data.length === 0 ? 'empty' : 'success',
+          data: result.data,
+          errorMessage: null,
+          errorCode: null
+        });
+        return;
+      }
+      setMembersState((prev) => ({
+        ...prev,
+        status: 'error',
+        errorMessage: result.error.message,
+        errorCode: result.error.code
+      }));
+    });
+
+    return () => {
+      controller.abort();
+    };
+  }, [memberTarget, memberReload]);
+
+  // 회원 추가 피커용 회원 디렉터리(최초 모달 오픈 시 1회). 실패해도 제거 기능엔 영향 없음.
+  useEffect(() => {
+    if (!memberTarget || allUsers.length > 0) {
+      return;
+    }
+    const controller = new AbortController();
+    void fetchUsersSafe(controller.signal).then((result) => {
+      if (controller.signal.aborted || !result.ok) {
+        return;
+      }
+      setAllUsers(result.data);
+    });
+    return () => {
+      controller.abort();
+    };
+  }, [memberTarget, allUsers.length]);
+
   const summary = useMemo(
     () => ({
       total: codesState.data.length,
@@ -155,6 +245,103 @@ export default function InstitutionCodesPage(): JSX.Element {
   const openEdit = useCallback((record: InstitutionCode) => {
     setEditTarget(record);
   }, []);
+
+  const openMembers = useCallback((record: InstitutionCode) => {
+    setMemberTarget(record);
+  }, []);
+
+  const closeMembers = useCallback(() => {
+    setMemberTarget(null);
+    setRemoveTarget(null);
+  }, []);
+
+  // 회원 추가 모달이 열릴 때 이전 입력값 초기화(폼 마운트 후).
+  useEffect(() => {
+    if (memberTarget) {
+      addForm.resetFields();
+    }
+  }, [memberTarget, addForm]);
+
+  // 이미 이 코드 소속인 회원은 추가 피커에서 제외. 라벨에 현재 소속 코드를 함께 표기.
+  const memberUserIdSet = useMemo(
+    () => new Set(membersState.data.map((member) => member.userId)),
+    [membersState.data]
+  );
+  const addUserOptions = useMemo(
+    () =>
+      allUsers
+        .filter((user) => !memberUserIdSet.has(user.id))
+        .map((user) => {
+          const name = user.realName || user.nickname || '(이름 없음)';
+          const current = user.affiliationCode ? ` · 현재: ${user.affiliationCode}` : '';
+          return {
+            value: user.id,
+            label: `${name} · ${user.email}${current}`
+          };
+        }),
+    [allUsers, memberUserIdSet]
+  );
+
+  const handleAddMembers = useCallback(async () => {
+    if (!memberTarget || addSubmitting) {
+      return;
+    }
+    // submitting을 검증 await 전에 세워 더블 서밋 창을 닫는다.
+    setAddSubmitting(true);
+    let values: { userIds: string[]; reason: string };
+    try {
+      values = await addForm.validateFields();
+    } catch {
+      setAddSubmitting(false);
+      return;
+    }
+    if (!values.userIds || values.userIds.length === 0) {
+      setAddSubmitting(false);
+      return;
+    }
+
+    const result = await assignInstitutionCodeSafe(
+      values.userIds,
+      memberTarget.code,
+      values.reason
+    );
+    setAddSubmitting(false);
+
+    if (!result.ok) {
+      notificationApi.error({ message: '회원 추가 실패', description: result.error.message });
+      return;
+    }
+
+    notificationApi.success({
+      message: '회원 추가 완료',
+      description: `${result.data.toLocaleString()}명이 ${memberTarget.code} 에 배정되었습니다. (변경 없음 제외)`
+    });
+    addForm.resetFields();
+    setMemberReload((prev) => prev + 1);
+    setReloadKey((prev) => prev + 1);
+  }, [addForm, addSubmitting, memberTarget, notificationApi]);
+
+  const handleRemoveConfirm = useCallback(
+    async (reason: string) => {
+      if (!memberTarget || !removeTarget) {
+        return;
+      }
+      const result = await clearInstitutionCodeSafe([removeTarget.userId], reason);
+      if (!result.ok) {
+        notificationApi.error({ message: '회원 제거 실패', description: result.error.message });
+        setRemoveTarget(null);
+        return;
+      }
+      notificationApi.success({
+        message: '회원 제거 완료',
+        description: `${removeTarget.realName || removeTarget.email} 의 ${memberTarget.code} 소속이 해제되었습니다.`
+      });
+      setRemoveTarget(null);
+      setMemberReload((prev) => prev + 1);
+      setReloadKey((prev) => prev + 1);
+    },
+    [memberTarget, removeTarget, notificationApi]
+  );
 
   const handleCreateSubmit = useCallback(async () => {
     let values: CreateFormValues;
@@ -335,15 +522,49 @@ export default function InstitutionCodesPage(): JSX.Element {
       {
         title: '액션',
         key: 'action',
-        width: 90,
+        width: 150,
         render: (_, record) => (
-          <Button type="link" size="small" onClick={() => openEdit(record)}>
-            수정
-          </Button>
+          <Space size={0}>
+            {canManageMembers ? (
+              <Button type="link" size="small" onClick={() => openMembers(record)}>
+                회원 관리
+              </Button>
+            ) : null}
+            <Button type="link" size="small" onClick={() => openEdit(record)}>
+              수정
+            </Button>
+          </Space>
         )
       }
     ],
-    [openEdit]
+    [canManageMembers, openEdit, openMembers]
+  );
+
+  const memberColumns = useMemo<TableColumnsType<InstitutionCodeMember>>(
+    () => [
+      {
+        title: '회원',
+        key: 'member',
+        render: (_, record) => (
+          <Text>{record.realName || record.nickname || '(이름 없음)'}</Text>
+        )
+      },
+      { title: '이메일', dataIndex: 'email' },
+      { title: '상태', dataIndex: 'status', width: 80 },
+      { title: '가입일', dataIndex: 'joinedAt', width: 120 },
+      {
+        title: '액션',
+        key: 'action',
+        width: 80,
+        render: (_, record) =>
+          canManageMembers ? (
+            <Button type="link" size="small" danger onClick={() => setRemoveTarget(record)}>
+              제거
+            </Button>
+          ) : null
+      }
+    ],
+    [canManageMembers]
   );
 
   const toolbar = (
@@ -532,6 +753,99 @@ export default function InstitutionCodesPage(): JSX.Element {
           </Descriptions>
         </Form>
       </Modal>
+
+      <Modal
+        open={memberTarget !== null}
+        width={720}
+        title={memberTarget ? `회원 관리 · ${memberTarget.code}` : '회원 관리'}
+        footer={<Button onClick={closeMembers}>닫기</Button>}
+        onCancel={closeMembers}
+        destroyOnHidden
+      >
+        {memberTarget ? (
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+            <Text type="secondary">{memberTarget.label}</Text>
+
+            {canManageMembers ? (
+              <Form form={addForm} layout="vertical">
+                <Form.Item
+                  label="회원 추가"
+                  name="userIds"
+                  rules={[{ required: true, message: '추가할 회원을 선택하세요.' }]}
+                >
+                  <Select
+                    mode="multiple"
+                    placeholder="이름 또는 이메일로 검색하세요."
+                    options={addUserOptions}
+                    showSearch
+                    optionFilterProp="label"
+                    maxTagCount="responsive"
+                  />
+                </Form.Item>
+                <Form.Item
+                  label="사유/근거"
+                  name="reason"
+                  rules={[{ required: true, message: '배정 사유를 입력하세요.' }]}
+                >
+                  <Input.TextArea rows={2} placeholder="감사 기록에 남길 사유를 입력하세요." />
+                </Form.Item>
+                <Button
+                  type="primary"
+                  loading={addSubmitting}
+                  onClick={() => void handleAddMembers()}
+                >
+                  선택 회원 추가
+                </Button>
+              </Form>
+            ) : null}
+
+            <div>
+              <Text strong>
+                소속 회원 {membersState.data.length.toLocaleString()}명
+              </Text>
+              {membersState.status === 'error' ? (
+                <Alert
+                  type="error"
+                  showIcon
+                  style={{ marginTop: 8 }}
+                  message={membersState.errorMessage ?? '회원 목록 조회에 실패했습니다.'}
+                />
+              ) : null}
+              <div style={{ marginTop: 8 }}>
+                <AdminDataTable<InstitutionCodeMember>
+                  rowKey="userId"
+                  columns={memberColumns}
+                  dataSource={membersState.data}
+                  loading={membersState.status === 'pending'}
+                  pagination={false}
+                  scroll={{ y: 280 }}
+                />
+              </div>
+            </div>
+
+            {!isInstitutionCodesSupabase ? (
+              <Text type="secondary">
+                현재 mock 데이터 — 회원 추가/제거는 화면에만 반영되며 목록은 비어 있습니다.
+              </Text>
+            ) : null}
+          </Space>
+        ) : null}
+      </Modal>
+
+      {memberTarget && removeTarget ? (
+        <ConfirmAction
+          open
+          title="기관 소속 해제"
+          description={`${removeTarget.realName || removeTarget.email} 의 ${
+            memberTarget.code
+          } 소속을 해제합니다. 사유를 기록하세요.`}
+          targetType="Users"
+          targetId={removeTarget.userId}
+          confirmText="해제 실행"
+          onCancel={() => setRemoveTarget(null)}
+          onConfirm={handleRemoveConfirm}
+        />
+      ) : null}
     </>
   );
 }

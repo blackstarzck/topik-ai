@@ -46,17 +46,41 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   });
 }
 
-async function loadUsers(signal?: AbortSignal): Promise<UserSummary[]> {
-  // Phase B (read-first): real v13 directory when connected; mock otherwise (unchanged).
-  if (isSupabaseConfigured) {
-    return loadUsersFromSupabase(signal);
+// 회원 목록 "기관 소속" 필터를 mock 경로에서도 동일하게 적용(@affiliated/@general/특정 코드).
+// 서버 경로는 get_admin_users(affiliation) 가 동일 의미로 거른다.
+function filterMockUsersByAffiliation(
+  users: UserSummary[],
+  affiliation?: string | null
+): UserSummary[] {
+  const value = affiliation?.trim();
+  if (!value) {
+    return users;
   }
-  await sleep(280, signal);
-  return mockUsers;
+  if (value === '@affiliated') {
+    return users.filter((user) => user.affiliationCode.trim() !== '');
+  }
+  if (value === '@general') {
+    return users.filter((user) => user.affiliationCode.trim() === '');
+  }
+  return users.filter((user) => user.affiliationCode === value);
 }
 
-export function fetchUsersSafe(signal?: AbortSignal) {
-  return toSafeResult(() => withRetry(() => loadUsers(signal), { maxRetries: 1 }));
+async function loadUsers(
+  signal?: AbortSignal,
+  affiliation?: string | null
+): Promise<UserSummary[]> {
+  // Phase B (read-first): real v13 directory when connected; mock otherwise (unchanged).
+  if (isSupabaseConfigured) {
+    return loadUsersFromSupabase(signal, affiliation);
+  }
+  await sleep(280, signal);
+  return filterMockUsersByAffiliation(mockUsers, affiliation);
+}
+
+export function fetchUsersSafe(signal?: AbortSignal, affiliation?: string | null) {
+  return toSafeResult(() =>
+    withRetry(() => loadUsers(signal, affiliation), { maxRetries: 1 })
+  );
 }
 
 /**

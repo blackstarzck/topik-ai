@@ -28,3 +28,27 @@ export type InstitutionCode = {
   createdAt: string;
   updatedAt: string;
 };
+
+/**
+ * 기관 코드 상세 > 소속 회원 행. admin_list_institution_code_members RPC와 1:1.
+ * 관리자가 코드에 회원을 직접 배정/해제할 때 보여주는 최소 식별 정보.
+ */
+export type InstitutionCodeMember = {
+  userId: string;
+  realName: string;
+  nickname: string;
+  email: string;
+  /** v13 profiles.status 를 한글로 표시(정상/정지/탈퇴). */
+  status: string;
+  /** 가입일(YYYY-MM-DD). */
+  joinedAt: string;
+};
+
+/**
+ * 회원 목록 "기관 소속" 필터 센티넬. get_admin_users(affiliation) 서버 필터와 1:1.
+ * '@' 는 institution_codes.code 정규식([A-Za-z0-9_-])에 들어갈 수 없어 코드 값과 충돌하지 않는다.
+ * 그 외 값은 특정 코드 정확 일치로 해석된다(빈 문자열 = 전체).
+ */
+export const AFFILIATION_FILTER_ALL = '';
+export const AFFILIATION_FILTER_AFFILIATED = '@affiliated';
+export const AFFILIATION_FILTER_GENERAL = '@general';

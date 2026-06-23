@@ -1,4 +1,4 @@
-﻿import type { ChangeEvent } from 'react';
+﻿import type { ChangeEvent, Key } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
@@ -7,6 +7,7 @@ import {
   Input,
   Modal,
   notification,
+  Select,
   Space,
   Tag,
   Typography
@@ -15,6 +16,18 @@ import type { TableColumnsType } from 'antd';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { fetchUsersSafe, setUserStatusSafe } from '../api/users-service';
+import {
+  assignInstitutionCodeSafe,
+  clearInstitutionCodeSafe,
+  fetchInstitutionCodesSafe
+} from '../api/institution-codes-service';
+import {
+  AFFILIATION_FILTER_AFFILIATED,
+  AFFILIATION_FILTER_ALL,
+  AFFILIATION_FILTER_GENERAL
+} from '../model/institution-codes-types';
+import type { InstitutionCode } from '../model/institution-codes-types';
+import { usePermissionStore } from '../../system/model/permission-store';
 import {
   defaultUsersQuery,
   useUsersQueryStore
@@ -197,6 +210,26 @@ export default function UsersPage(): JSX.Element {
     handleDetailOpenChange
   } = useSearchBarDateDraft(query.startDate, query.endDate);
 
+  // 서버사이드 "기관 소속" 필터 값('' | @affiliated | @general | 특정 코드).
+  const [affiliationFilter, setAffiliationFilter] = useState<string>(
+    AFFILIATION_FILTER_ALL
+  );
+  // 기관 코드 카탈로그 — 필터 옵션 + 일괄 배정 모달 코드 피커용.
+  const [institutionCodes, setInstitutionCodes] = useState<InstitutionCode[]>([]);
+  // 다중 선택 + 일괄 배정/해제 모달.
+  const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
+  const [bulkMode, setBulkMode] = useState<'assign' | 'clear' | null>(null);
+  const [bulkSubmitting, setBulkSubmitting] = useState(false);
+  const [bulkForm] = Form.useForm<{ code: string; reason: string }>();
+
+  // 기관 코드 회원 배정/해제 권한(메뉴 게이팅과 동일 키). 미보유 시 일괄 액션 숨김.
+  const currentAdminId = usePermissionStore((state) => state.currentAdminId);
+  const admins = usePermissionStore((state) => state.admins);
+  const canManageInstitutionCodes = useMemo(() => {
+    const me = admins.find((item) => item.adminId === currentAdminId);
+    return me?.permissions.includes('users.institution-codes.manage') ?? false;
+  }, [admins, currentAdminId]);
+
   useEffect(() => {
     const parsed = parseUsersQuery(searchParams);
     replaceQuery(parsed);
@@ -205,6 +238,8 @@ export default function UsersPage(): JSX.Element {
   useEffect(() => {
     const controller = new AbortController();
 
+    // 데이터셋이 새로 로드되면(필터/재조회 포함) 이전 선택은 무효 → 초기화.
+    setSelectedRowKeys([]);
     setUsersState((prev) => ({
       ...prev,
       status: 'pending',
@@ -212,7 +247,7 @@ export default function UsersPage(): JSX.Element {
       errorCode: null
     }));
 
-    void fetchUsersSafe(controller.signal).then((result) => {
+    void fetchUsersSafe(controller.signal, affiliationFilter).then((result) => {
       if (controller.signal.aborted) {
         return;
       }
@@ -238,7 +273,21 @@ export default function UsersPage(): JSX.Element {
     return () => {
       controller.abort();
     };
-  }, [query.page, query.pageSize, reloadKey]);
+  }, [query.page, query.pageSize, reloadKey, affiliationFilter]);
+
+  // 기관 코드 카탈로그 로드(필터 옵션 + 일괄 배정 코드 피커). 실패해도 목록 기능엔 영향 없음.
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetchInstitutionCodesSafe(controller.signal).then((result) => {
+      if (controller.signal.aborted || !result.ok) {
+        return;
+      }
+      setInstitutionCodes(result.data);
+    });
+    return () => {
+      controller.abort();
+    };
+  }, []);
 
   const commitQuery = useCallback(
     (next: Partial<UsersQuery>) => {
@@ -253,6 +302,118 @@ export default function UsersPage(): JSX.Element {
     () => filterUsers(usersState.data, query),
     [usersState.data, query]
   );
+
+  const affiliationFilterOptions = useMemo(() => {
+    const base = {
+      label: '구분',
+      options: [
+        { value: AFFILIATION_FILTER_ALL, label: '전체 회원' },
+        { value: AFFILIATION_FILTER_AFFILIATED, label: '기관 회원만' },
+        { value: AFFILIATION_FILTER_GENERAL, label: '일반 회원만' }
+      ]
+    };
+    if (institutionCodes.length === 0) {
+      return [base];
+    }
+    return [
+      base,
+      {
+        label: '코드별',
+        options: institutionCodes.map((code) => ({
+          value: code.code,
+          label: `${code.label} (${code.code})`
+        }))
+      }
+    ];
+  }, [institutionCodes]);
+
+  // 일괄 배정 코드 피커는 활성 코드만(종료 코드 신규 배정은 RPC가 차단).
+  const activeCodeOptions = useMemo(
+    () =>
+      institutionCodes
+        .filter((code) => code.status === '활성')
+        .map((code) => ({ value: code.code, label: `${code.label} (${code.code})` })),
+    [institutionCodes]
+  );
+
+  const selectedCount = selectedRowKeys.length;
+
+  const handleAffiliationChange = useCallback(
+    (value: string) => {
+      setAffiliationFilter(value);
+      commitQuery({ page: 1 });
+    },
+    [commitQuery]
+  );
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedRowKeys([]);
+  }, []);
+
+  const handleOpenBulkAssign = useCallback(() => {
+    setBulkMode('assign');
+  }, []);
+
+  const handleOpenBulkClear = useCallback(() => {
+    setBulkMode('clear');
+  }, []);
+
+  // 모달이 열릴 때(폼 마운트 후) 이전 입력값을 비운다.
+  useEffect(() => {
+    if (bulkMode) {
+      bulkForm.resetFields();
+    }
+  }, [bulkMode, bulkForm]);
+
+  const handleCloseBulk = useCallback(() => {
+    if (bulkSubmitting) {
+      return;
+    }
+    setBulkMode(null);
+  }, [bulkSubmitting]);
+
+  const handleBulkSubmit = useCallback(async () => {
+    if (!bulkMode || bulkSubmitting) {
+      return;
+    }
+    const ids = selectedRowKeys.map(String);
+    if (ids.length === 0) {
+      setBulkMode(null);
+      return;
+    }
+
+    // submitting을 검증 await 전에 세워 더블 서밋 창을 닫는다.
+    setBulkSubmitting(true);
+    let values: { code: string; reason: string };
+    try {
+      values = await bulkForm.validateFields();
+    } catch {
+      setBulkSubmitting(false);
+      return;
+    }
+    const result =
+      bulkMode === 'assign'
+        ? await assignInstitutionCodeSafe(ids, values.code, values.reason)
+        : await clearInstitutionCodeSafe(ids, values.reason);
+    setBulkSubmitting(false);
+
+    const actionLabel = bulkMode === 'assign' ? '기관 코드 배정' : '기관 소속 해제';
+    if (!result.ok) {
+      notificationApi.error({
+        message: `${actionLabel} 실패`,
+        description: result.error.message
+      });
+      return;
+    }
+
+    notificationApi.success({
+      message: `${actionLabel} 완료`,
+      description: `${result.data.toLocaleString()}명 처리되었습니다. (선택 ${ids.length}명, 변경 없음 제외)`
+    });
+    setBulkMode(null);
+    setSelectedRowKeys([]);
+    setReloadKey((prev) => prev + 1);
+  }, [bulkForm, bulkMode, bulkSubmitting, notificationApi, selectedRowKeys]);
 
   const handleSuspend = useCallback((user: UserSummary) => {
     setActionState({ type: 'suspend', user });
@@ -561,6 +722,16 @@ export default function UsersPage(): JSX.Element {
     setReloadKey((prev) => prev + 1);
   }, []);
 
+  // 다중 선택은 기관 코드 배정 권한자에게만 노출(선택 후 일괄 배정/해제).
+  const rowSelection = canManageInstitutionCodes
+    ? {
+        selectedRowKeys,
+        onChange: (keys: Key[]) => setSelectedRowKeys(keys),
+        fixed: true as const,
+        preserveSelectedRowKeys: false
+      }
+    : undefined;
+
   return (
     <div>
       {notificationContextHolder}
@@ -607,12 +778,45 @@ export default function UsersPage(): JSX.Element {
             onApply={handleApplyDateRange}
             onDetailOpenChange={handleDetailOpenChange}
             onReset={handleDraftReset}
+            extra={
+              <Space size={8} align="center">
+                <Text type="secondary">기관 소속</Text>
+                <Select
+                  value={affiliationFilter}
+                  onChange={handleAffiliationChange}
+                  options={affiliationFilterOptions}
+                  style={{ width: 240 }}
+                  aria-label="기관 소속 필터"
+                />
+              </Space>
+            }
             summary={
               <Text type="secondary">총 {filteredUsers.length.toLocaleString()}건</Text>
             }
           />
         }
       >
+        {canManageInstitutionCodes && selectedCount > 0 ? (
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginBottom: 12 }}
+            message={`${selectedCount.toLocaleString()}명 선택됨`}
+            action={
+              <Space>
+                <Button size="small" type="primary" onClick={handleOpenBulkAssign}>
+                  기관 코드 지정
+                </Button>
+                <Button size="small" onClick={handleOpenBulkClear}>
+                  기관 소속 해제
+                </Button>
+                <Button size="small" type="text" onClick={handleClearSelection}>
+                  선택 해제
+                </Button>
+              </Space>
+            }
+          />
+        ) : null}
         {usersState.status === 'empty' ? (
           <Alert
             type="info"
@@ -626,6 +830,7 @@ export default function UsersPage(): JSX.Element {
           rowKey="id"
           columns={columns}
           dataSource={filteredUsers}
+          rowSelection={rowSelection}
           onRow={handleRowClick}
           loading={usersState.status === 'pending'}
           scroll={{ x: 2490, y: 560 }}
@@ -684,6 +889,50 @@ export default function UsersPage(): JSX.Element {
             <Input.TextArea rows={4} placeholder="운영 메모를 입력하세요." />
           </Form.Item>
         </Form>
+      </Modal>
+
+      <Modal
+        open={bulkMode !== null}
+        title={bulkMode === 'assign' ? '기관 코드 지정' : '기관 소속 해제'}
+        okText={bulkMode === 'assign' ? '배정' : '해제'}
+        cancelText="취소"
+        confirmLoading={bulkSubmitting}
+        onCancel={handleCloseBulk}
+        onOk={handleBulkSubmit}
+        destroyOnHidden
+      >
+        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          <Text type="secondary">
+            선택한 회원 {selectedCount.toLocaleString()}명에게 적용됩니다.
+            {bulkMode === 'assign'
+              ? ' 이미 같은 코드인 회원은 변경 없이 건너뜁니다.'
+              : ' 기관 소속이 없는 회원은 변경 없이 건너뜁니다.'}
+          </Text>
+          <Form form={bulkForm} layout="vertical">
+            {bulkMode === 'assign' ? (
+              <Form.Item
+                label="기관 코드"
+                name="code"
+                rules={[{ required: true, message: '배정할 기관 코드를 선택하세요.' }]}
+              >
+                <Select
+                  placeholder="활성 코드를 선택하세요."
+                  options={activeCodeOptions}
+                  showSearch
+                  optionFilterProp="label"
+                />
+              </Form.Item>
+            ) : null}
+            <Form.Item
+              label="사유/근거"
+              name="reason"
+              rules={[{ required: true, message: '조치 사유를 입력하세요.' }]}
+              style={{ marginBottom: 0 }}
+            >
+              <Input.TextArea rows={3} placeholder="감사 기록에 남길 사유를 입력하세요." />
+            </Form.Item>
+          </Form>
+        </Space>
       </Modal>
     </div>
   );

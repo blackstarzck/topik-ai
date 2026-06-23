@@ -2,6 +2,7 @@ import { supabaseClient } from '../../../shared/api/supabase-client';
 import type {
   InstitutionCode,
   InstitutionCodeKind,
+  InstitutionCodeMember,
   InstitutionCodeStatus
 } from '../model/institution-codes-types';
 
@@ -122,4 +123,95 @@ export async function updateInstitutionCodeViaRpc(
   }
 
   return (data as string | null) ?? input.code;
+}
+
+// admin_list_institution_code_members RPC 행. status 는 v13 원본(active/blocked/deleted).
+type InstitutionCodeMemberRow = {
+  user_id: string;
+  email: string | null;
+  display_name: string | null;
+  nickname: string | null;
+  status: string | null;
+  app_role: string | null;
+  plan_label: string | null;
+  created_at: string | null;
+  last_sign_in_at: string | null;
+};
+
+// v13 profiles.status -> 한글 표시(회원 목록 매핑과 동일 규칙).
+const MEMBER_STATUS_LABEL: Record<string, string> = {
+  active: '정상',
+  blocked: '정지',
+  deleted: '탈퇴'
+};
+
+function mapMemberRow(row: InstitutionCodeMemberRow): InstitutionCodeMember {
+  return {
+    userId: row.user_id,
+    realName: row.display_name?.trim() ? row.display_name.trim() : '',
+    nickname: row.nickname?.trim() ? row.nickname.trim() : '',
+    email: row.email ?? '',
+    status: MEMBER_STATUS_LABEL[row.status ?? ''] ?? '정상',
+    joinedAt: row.created_at ? row.created_at.slice(0, 10) : ''
+  };
+}
+
+export async function loadInstitutionCodeMembersFromSupabase(
+  code: string,
+  search?: string,
+  signal?: AbortSignal
+): Promise<InstitutionCodeMember[]> {
+  const client = requireClient();
+  throwIfAborted(signal);
+
+  const { data, error } = await client.rpc('admin_list_institution_code_members', {
+    p_code: code,
+    p_search: search && search.trim() ? search.trim() : null
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+  throwIfAborted(signal);
+
+  return ((data as InstitutionCodeMemberRow[] | null) ?? []).map(mapMemberRow);
+}
+
+export async function assignInstitutionCodeViaRpc(
+  userIds: string[],
+  code: string,
+  reason: string,
+  signal?: AbortSignal
+): Promise<number> {
+  const client = requireClient();
+  throwIfAborted(signal);
+
+  const { data, error } = await client.rpc('admin_assign_institution_code', {
+    p_user_ids: userIds,
+    p_code: code,
+    p_reason: reason.trim()
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return typeof data === 'number' ? data : Number(data ?? 0);
+}
+
+export async function clearInstitutionCodeViaRpc(
+  userIds: string[],
+  reason: string,
+  signal?: AbortSignal
+): Promise<number> {
+  const client = requireClient();
+  throwIfAborted(signal);
+
+  const { data, error } = await client.rpc('admin_clear_institution_code', {
+    p_user_ids: userIds,
+    p_reason: reason.trim()
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return typeof data === 'number' ? data : Number(data ?? 0);
 }
