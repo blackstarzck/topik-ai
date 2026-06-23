@@ -1,0 +1,87 @@
+[
+  {
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "topik_level": "TOPIK_II",
+    "target_grade": 4,
+    "exam_date": null,
+    "weekly_goal_minutes": 240,
+    "weak_areas": [
+      "vocabulary",
+      "grammar",
+      "essay-thesis",
+      "long-form-cohesion",
+      "essay-structure",
+      "reading-comprehension"
+    ],
+    "is_active": true,
+    "updated_at": "2026-06-20 04:07:33.112846+00"
+  },
+  {
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "topik_level": "TOPIK_II",
+    "target_grade": 4,
+    "exam_date": "2026-11-15",
+    "weekly_goal_minutes": 120,
+    "weak_areas": [
+      "writing"
+    ],
+    "is_active": true,
+    "updated_at": "2026-06-20 12:40:44.833832+00"
+  },
+  {
+    "user_id": "112a6b57-9564-4990-8bf3-6b536d622008",
+    "topik_level": "TOPIK_II",
+    "target_grade": 4,
+    "exam_date": null,
+    "weekly_goal_minutes": null,
+    "weak_areas": [],
+    "is_active": true,
+    "updated_at": "2026-06-22 01:01:22.218761+00"
+  },
+  {
+    "user_id": "70fb911d-a14a-4035-8d0c-568dfb7f1ed1",
+    "topik_level": "TOPIK_II",
+    "target_grade": 6,
+    "exam_date": "2026-07-09",
+    "weekly_goal_minutes": 240,
+    "weak_areas": [
+      "long-form-cohesion"
+    ],
+    "is_active": true,
+    "updated_at": "2026-06-22 02:13:36.928039+00"
+  },
+  {
+    "user_id": "f78e8a56-5649-4ec8-b319-e13e467bc94e",
+    "topik_level": "TOPIK_II",
+    "target_grade": 4,
+    "exam_date": null,
+    "weekly_goal_minutes": null,
+    "weak_areas": [],
+    "is_active": true,
+    "updated_at": "2026-06-22 02:31:53.997918+00"
+  },
+  {
+    "user_id": "438a5c75-6d9c-499f-b0f5-af3d3a5554f6",
+    "topik_level": "TOPIK_II",
+    "target_grade": 4,
+    "exam_date": null,
+    "weekly_goal_minutes": null,
+    "weak_areas": [],
+    "is_active": true,
+    "updated_at": "2026-06-22 02:32:27.649725+00"
+  },
+  {
+    "user_id": "47139ff2-2b82-4b17-ac7d-d13b3be5e3c1",
+    "topik_level": "TOPIK_II",
+    "target_grade": 3,
+    "exam_date": "2026-08-20",
+    "weekly_goal_minutes": 240,
+    "weak_areas": [
+      "vocabulary",
+      "essay-thesis",
+      "essay-structure"
+    ],
+    "is_active": true,
+    "updated_at": "2026-06-22 02:33:01.00379+00"
+  }
+]

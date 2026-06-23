@@ -1,0 +1,134 @@
+[
+  {
+    "id": "8f1f111e-4e11-4d4f-be15-39424b8be748",
+    "admin_user_id": "2b329e99-587b-4042-9a51-6da6fe4a5c7f",
+    "action": "notification_dispatch_created",
+    "target_table": "Notification",
+    "target_id": "31ea88b0-3d92-48a2-a2d2-b4280cf8f431",
+    "diff": null,
+    "payload": {
+      "class": "operational",
+      "reason": "e2e dry-run: 약관 v2026.03 개정 발송",
+      "channel": "in_app",
+      "mandatory": true,
+      "target_type": "group",
+      "scheduled_at": null,
+      "template_key": "legal_terms_changed",
+      "bypass_reason": "e2e dry-run: 약관 v2026.03 개정 발송",
+      "target_group_ids": [
+        "63b5a30d-4ac3-4f2d-9a7c-44a34d0b5be7"
+      ]
+    },
+    "created_at": "2026-06-22 01:45:16.969679+00"
+  },
+  {
+    "id": "ab2b8e20-8151-44e1-a1ee-25890788233b",
+    "admin_user_id": "2b329e99-587b-4042-9a51-6da6fe4a5c7f",
+    "action": "notification_dispatch_created",
+    "target_table": "Notification",
+    "target_id": "a3c65269-3be9-44c0-b425-09325c47cdc9",
+    "diff": null,
+    "payload": {
+      "class": "operational",
+      "reason": "e2e dry-run: 약관 v2026.03 개정 발송",
+      "channel": "email",
+      "mandatory": false,
+      "target_type": "group",
+      "scheduled_at": null,
+      "template_key": "legal_terms_changed",
+      "bypass_reason": null,
+      "target_group_ids": [
+        "63b5a30d-4ac3-4f2d-9a7c-44a34d0b5be7"
+      ]
+    },
+    "created_at": "2026-06-22 01:45:16.969679+00"
+  },
+  {
+    "id": "5139e11c-a77f-4de8-969d-9db71177ca1a",
+    "admin_user_id": "2b329e99-587b-4042-9a51-6da6fe4a5c7f",
+    "action": "notification_dispatch_created",
+    "target_table": "Notification",
+    "target_id": "9c3d4d6e-af6c-44d7-9016-a549bf8b0b1c",
+    "diff": null,
+    "payload": {
+      "class": "operational",
+      "reason": "이용약관 v2026.03 개정 안내 (SMTP)",
+      "channel": "in_app",
+      "mandatory": true,
+      "target_type": "group",
+      "scheduled_at": null,
+      "template_key": "legal_terms_changed",
+      "bypass_reason": "이용약관 v2026.03 개정 안내 (SMTP)",
+      "target_group_ids": [
+        "63b5a30d-4ac3-4f2d-9a7c-44a34d0b5be7"
+      ]
+    },
+    "created_at": "2026-06-22 05:12:47.025608+00"
+  },
+  {
+    "id": "2014720e-1503-4cdd-b357-0fefccb1b7e0",
+    "admin_user_id": "2b329e99-587b-4042-9a51-6da6fe4a5c7f",
+    "action": "notification_dispatch_created",
+    "target_table": "Notification",
+    "target_id": "5e543ebb-7520-4b47-89c2-7342ffcaae59",
+    "diff": null,
+    "payload": {
+      "class": "operational",
+      "reason": "이용약관 v2026.03 개정 안내 (SMTP)",
+      "channel": "email",
+      "mandatory": false,
+      "target_type": "group",
+      "scheduled_at": null,
+      "template_key": "legal_terms_changed",
+      "bypass_reason": null,
+      "target_group_ids": [
+        "63b5a30d-4ac3-4f2d-9a7c-44a34d0b5be7"
+      ]
+    },
+    "created_at": "2026-06-22 05:12:47.025608+00"
+  },
+  {
+    "id": "38f3e171-68c7-446e-bbc8-0c3dd0eb8e46",
+    "admin_user_id": "2b329e99-587b-4042-9a51-6da6fe4a5c7f",
+    "action": "notification_dispatch_created",
+    "target_table": "Notification",
+    "target_id": "2ce72b3e-ff88-4c69-8e31-cdc9c23f464f",
+    "diff": null,
+    "payload": {
+      "class": "operational",
+      "reason": "이용약관 v2026.03 개정 안내 — 전체 회원 알림",
+      "channel": "in_app",
+      "mandatory": true,
+      "target_type": "group",
+      "scheduled_at": null,
+      "template_key": "legal_terms_changed",
+      "bypass_reason": "이용약관 v2026.03 개정 안내 — 전체 회원 알림",
+      "target_group_ids": [
+        "63b5a30d-4ac3-4f2d-9a7c-44a34d0b5be7"
+      ]
+    },
+    "created_at": "2026-06-22 01:54:54.138949+00"
+  },
+  {
+    "id": "23813e54-7e6c-4218-b9bf-6a00bcc3100d",
+    "admin_user_id": "2b329e99-587b-4042-9a51-6da6fe4a5c7f",
+    "action": "notification_dispatch_created",
+    "target_table": "Notification",
+    "target_id": "c5153210-9022-4c6d-929c-3e535125c08f",
+    "diff": null,
+    "payload": {
+      "class": "operational",
+      "reason": "이용약관 v2026.03 개정 안내 — 전체 회원 알림",
+      "channel": "email",
+      "mandatory": false,
+      "target_type": "group",
+      "scheduled_at": null,
+      "template_key": "legal_terms_changed",
+      "bypass_reason": null,
+      "target_group_ids": [
+        "63b5a30d-4ac3-4f2d-9a7c-44a34d0b5be7"
+      ]
+    },
+    "created_at": "2026-06-22 01:54:54.138949+00"
+  }
+]

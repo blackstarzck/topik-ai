@@ -1,0 +1,62 @@
+[
+  {
+    "name": "20260610200100_topik_writing_topic_master.sql",
+    "applied_at": "2026-06-10 04:42:43.189067+00"
+  },
+  {
+    "name": "20260610200200_topik_writing_tag_master.sql",
+    "applied_at": "2026-06-10 04:42:44.831793+00"
+  },
+  {
+    "name": "20260610200300_topik_writing_51_questions.sql",
+    "applied_at": "2026-06-10 04:42:46.474307+00"
+  },
+  {
+    "name": "20260610200400_topik_writing_52_questions.sql",
+    "applied_at": "2026-06-10 04:42:48.013029+00"
+  },
+  {
+    "name": "20260610200500_topik_writing_53_questions.sql",
+    "applied_at": "2026-06-10 04:42:49.761881+00"
+  },
+  {
+    "name": "20260610200600_topik_writing_54_questions.sql",
+    "applied_at": "2026-06-10 04:42:51.304727+00"
+  },
+  {
+    "name": "20260610200700_topik_writing_question_tags.sql",
+    "applied_at": "2026-06-10 04:42:52.885986+00"
+  },
+  {
+    "name": "20260610200800_topik_writing_question_source_map.sql",
+    "applied_at": "2026-06-10 04:42:54.461736+00"
+  },
+  {
+    "name": "20260610200900_topik_writing_question_recommendation_view.sql",
+    "applied_at": "2026-06-10 04:42:55.999639+00"
+  },
+  {
+    "name": "20260610201000_topik_writing_indexes.sql",
+    "applied_at": "2026-06-10 04:42:57.710697+00"
+  },
+  {
+    "name": "20260610201100_topik_writing_rls.sql",
+    "applied_at": "2026-06-10 04:42:59.860342+00"
+  },
+  {
+    "name": "20260610201200_topik_writing_admin_rpcs.sql",
+    "applied_at": "2026-06-10 04:43:01.489849+00"
+  },
+  {
+    "name": "20260611190100_topik_writing_drop_review_columns.sql",
+    "applied_at": "2026-06-11 06:04:29.789074+00"
+  },
+  {
+    "name": "20260611210100_topik_writing_tag_master_admin_rpc.sql",
+    "applied_at": "2026-06-11 07:58:42.875437+00"
+  },
+  {
+    "name": "20260612153000_drop_question_tag_note_contract.sql",
+    "applied_at": "2026-06-12 03:01:19.027597+00"
+  }
+]

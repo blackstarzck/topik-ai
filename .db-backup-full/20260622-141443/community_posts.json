@@ -1,0 +1,44 @@
+[
+  {
+    "id": "POST-001",
+    "title": "TOPIK 필기 노트 공유",
+    "content_html": "<p>TOPIK 필기 노트를 공유합니다.</p>",
+    "author_id": "U00012",
+    "author_name": "이하은",
+    "board": "자유게시판",
+    "status": "published",
+    "last_moderation_policy_code": null,
+    "reports_count": 0,
+    "created_at": "2026-03-01 15:00:00+00",
+    "updated_at": "2026-03-01 15:00:00+00",
+    "updated_by": "seed"
+  },
+  {
+    "id": "POST-002",
+    "title": "운영 정책 문의",
+    "content_html": "<p>신고 누적 시 제재 기준 문의입니다.</p>",
+    "author_id": "U00047",
+    "author_name": "조현우",
+    "board": "질문",
+    "status": "published",
+    "last_moderation_policy_code": null,
+    "reports_count": 3,
+    "created_at": "2026-02-28 15:00:00+00",
+    "updated_at": "2026-02-28 15:00:00+00",
+    "updated_by": "seed"
+  },
+  {
+    "id": "POST-003",
+    "title": "시험 후기 공유",
+    "content_html": "<p>최근 TOPIK 시험 후기를 공유합니다.</p>",
+    "author_id": "U00019",
+    "author_name": "장도윤",
+    "board": "후기",
+    "status": "hidden",
+    "last_moderation_policy_code": "AD",
+    "reports_count": 1,
+    "created_at": "2026-02-27 15:00:00+00",
+    "updated_at": "2026-03-10 07:33:51+00",
+    "updated_by": "admin_lee"
+  }
+]

@@ -1,0 +1,25 @@
+[
+  {
+    "user_id": "112a6b57-9564-4990-8bf3-6b536d622008",
+    "reminder_time": null,
+    "reminder_days": [],
+    "channels": {
+      "email": true,
+      "in_app": true
+    },
+    "timezone": "Asia/Seoul",
+    "updated_at": "2026-06-22 05:12:44.56086+00"
+  },
+  {
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "reminder_time": null,
+    "reminder_days": [],
+    "channels": {
+      "zalo": false,
+      "email": false,
+      "in_app": true
+    },
+    "timezone": "Asia/Seoul",
+    "updated_at": "2026-06-21 15:46:38.754414+00"
+  }
+]

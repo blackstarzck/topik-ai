@@ -1,0 +1,800 @@
+[
+  {
+    "id": "44f56650-98a2-47e3-bce8-9498e9321cd2",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: Actual UI answer growth-e2e-1782008729832Event notice answer growth-real-1782007697481",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "Actual UI answer growth-e2e-1782008729832Event notice answer growth-real-1782007697481",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 86,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 02:25:51.715+00",
+    "created_at": "2026-06-21 02:08:23.577193+00",
+    "updated_at": "2026-06-21 02:58:09.9649+00"
+  },
+  {
+    "id": "56fe44f3-6905-42e9-8c37-6083e1892e7e",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: 22222222222222222222222",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "22222222222222222222222",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 23,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 14:26:31.421+00",
+    "created_at": "2026-06-21 14:26:32.142446+00",
+    "updated_at": "2026-06-21 14:44:50.782062+00"
+  },
+  {
+    "id": "5ee62c4e-99de-4113-af5d-a6d16cb590cb",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "problem_id": "0027601f-b936-4339-926d-5d5c43f36ae2",
+    "question_no": 51,
+    "answer_text": "ㄱ: 테스트입니다.\nㄴ: 테스트입니다.ㄲ",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "테스트입니다.",
+        "ㄴ": "테스트입니다.ㄲ"
+      }
+    },
+    "char_count": 15,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 14:48:49.604+00",
+    "created_at": "2026-06-21 14:48:38.934816+00",
+    "updated_at": "2026-06-21 14:49:07.172313+00"
+  },
+  {
+    "id": "c7c0f14c-2cfd-4556-9c4a-94fe3b143754",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: ffffffffffffffffffffffffff",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "ffffffffffffffffffffffffff",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 26,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 15:12:57.282+00",
+    "created_at": "2026-06-21 15:12:57.943734+00",
+    "updated_at": "2026-06-21 15:12:58.380476+00"
+  },
+  {
+    "id": "6521bf41-2272-4893-8e76-4f570083bcc2",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: 분석 단계 UI 확인용 답안입니다. 제출 후 분석 상태 카드와 단계 진행 링을 확인합니다. ㄱ: 222222222222222222222222",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "분석 단계 UI 확인용 답안입니다. 제출 후 분석 상태 카드와 단계 진행 링을 확인합니다. ㄱ: 222222222222222222222222",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 78,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 15:17:35.82+00",
+    "created_at": "2026-06-21 15:17:36.642532+00",
+    "updated_at": "2026-06-21 15:17:40.449897+00"
+  },
+  {
+    "id": "7a30eb6a-cd20-448b-87f6-29515ecffc99",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: 링 확인용 답안 ㄱ: 2222222222222",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "링 확인용 답안 ㄱ: 2222222222222",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 25,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 15:18:50.17+00",
+    "created_at": "2026-06-21 15:18:50.836701+00",
+    "updated_at": "2026-06-21 15:20:45.424728+00"
+  },
+  {
+    "id": "7e633e85-ebab-4acf-af2e-f32b83739f10",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: 분석 단계 UI 확인용 답안입니다. 제출 후 분석 상태 카드와 단계 진행 링을 확인합니다. ㄱ: 222222222222222222222222",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "분석 단계 UI 확인용 답안입니다. 제출 후 분석 상태 카드와 단계 진행 링을 확인합니다. ㄱ: 222222222222222222222222",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 78,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 15:20:45.48+00",
+    "created_at": "2026-06-21 15:20:46.151897+00",
+    "updated_at": "2026-06-21 15:20:50.899631+00"
+  },
+  {
+    "id": "5b47eab7-41d5-4a13-ae8f-b499e6336bab",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: ring geom ㄱ: 2222222222",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "ring geom ㄱ: 2222222222",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 23,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 15:21:54.201+00",
+    "created_at": "2026-06-21 15:21:54.873075+00",
+    "updated_at": "2026-06-21 15:22:33.491344+00"
+  },
+  {
+    "id": "e69349b7-7ba7-4a08-9a0d-ad64636af782",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: steps zoom ㄱ: 2222222222",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "steps zoom ㄱ: 2222222222",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 24,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 15:25:07.093+00",
+    "created_at": "2026-06-21 15:25:07.752989+00",
+    "updated_at": "2026-06-21 15:25:11.110096+00"
+  },
+  {
+    "id": "5054910d-5636-4629-858a-47357440a726",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: 분석 단계 UI 확인용 답안입니다. 제출 후 분석 상태 카드와 단계 진행 링을 확인합니다. ㄱ: 222222222222222222222222",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "분석 단계 UI 확인용 답안입니다. 제출 후 분석 상태 카드와 단계 진행 링을 확인합니다. ㄱ: 222222222222222222222222",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 78,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 15:25:11.919+00",
+    "created_at": "2026-06-21 15:25:12.570274+00",
+    "updated_at": "2026-06-21 15:25:16.476454+00"
+  },
+  {
+    "id": "226ad863-d811-42e1-a3ed-5c8c416b1815",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: steps zoom ㄱ: 2222222222",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "steps zoom ㄱ: 2222222222",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 24,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 15:27:16.438+00",
+    "created_at": "2026-06-21 15:27:17.121462+00",
+    "updated_at": "2026-06-21 15:29:02.558642+00"
+  },
+  {
+    "id": "8646b493-f778-47dd-944c-bb43598b2e94",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: steps zoom ㄱ: 2222222222",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "steps zoom ㄱ: 2222222222",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 24,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 15:30:42.438+00",
+    "created_at": "2026-06-21 15:30:43.1243+00",
+    "updated_at": "2026-06-21 15:31:04.235957+00"
+  },
+  {
+    "id": "4bff9819-55ba-4672-8b14-aab62e011a53",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: 분석 단계 UI 확인용 답안입니다. 제출 후 분석 상태 카드와 단계 진행 링을 확인합니다. ㄱ: 222222222222222222222222",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "분석 단계 UI 확인용 답안입니다. 제출 후 분석 상태 카드와 단계 진행 링을 확인합니다. ㄱ: 222222222222222222222222",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 78,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 15:31:03.869+00",
+    "created_at": "2026-06-21 15:31:04.52584+00",
+    "updated_at": "2026-06-21 15:31:08.293566+00"
+  },
+  {
+    "id": "66db6a38-148d-4eaf-9ac0-f8cc2e2962fb",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: Analysis page state answer analysis-page-state-5de3b822-2af7-40e1-8512-9c2af6899582-desktop-1280-0. The submitted answer",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "Analysis page state answer analysis-page-state-5de3b822-2af7-40e1-8512-9c2af6899582-desktop-1280-0. The submitted answer",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 120,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 15:32:55.975+00",
+    "created_at": "2026-06-21 15:32:56.639707+00",
+    "updated_at": "2026-06-21 15:32:59.269643+00"
+  },
+  {
+    "id": "945df84a-7753-4f83-ace9-fd2165ce6e2a",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: ring verify ㄱ: 222222222222",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "ring verify ㄱ: 222222222222",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 27,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 15:51:03.114+00",
+    "created_at": "2026-06-21 15:51:03.817276+00",
+    "updated_at": "2026-06-21 15:51:03.853377+00"
+  },
+  {
+    "id": "4973e9e2-1f25-4a7f-a88f-3fa22c65d640",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: active probe ㄱ: 2222222",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "active probe ㄱ: 2222222",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 23,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 15:52:03.464+00",
+    "created_at": "2026-06-21 15:52:04.208035+00",
+    "updated_at": "2026-06-21 15:57:01.170042+00"
+  },
+  {
+    "id": "0c18121c-068b-41d0-8295-0ba76a257788",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: ring verify ㄱ: 222222222222",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "ring verify ㄱ: 222222222222",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 27,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 15:57:05.917+00",
+    "created_at": "2026-06-21 15:57:06.57514+00",
+    "updated_at": "2026-06-21 15:58:34.524288+00"
+  },
+  {
+    "id": "300fc11e-a6a5-4e5c-9eff-bdfbe67a418e",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: monotonic ㄱ: 22222222",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "monotonic ㄱ: 22222222",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 21,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 15:58:34.563+00",
+    "created_at": "2026-06-21 15:58:35.24141+00",
+    "updated_at": "2026-06-21 16:00:26.936801+00"
+  },
+  {
+    "id": "9ec562d4-18ce-47c2-97fe-b80627db07ef",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: shadow check ㄱ: 22222222",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "shadow check ㄱ: 22222222",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 24,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 16:00:26.561+00",
+    "created_at": "2026-06-21 16:00:27.231928+00",
+    "updated_at": "2026-06-21 16:00:30.772251+00"
+  },
+  {
+    "id": "80b2e071-b489-439f-a98f-df9988f608fe",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: Analysis page state answer analysis-page-state-b332add2-a0ae-41ef-8683-9ea28cc00d56-mobile-360-0. The submitted answer s",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "Analysis page state answer analysis-page-state-b332add2-a0ae-41ef-8683-9ea28cc00d56-mobile-360-0. The submitted answer s",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 120,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 16:03:38.785+00",
+    "created_at": "2026-06-21 16:03:39.458189+00",
+    "updated_at": "2026-06-21 16:03:42.367606+00"
+  },
+  {
+    "id": "aef7cbdd-3c2b-406d-8417-70c3b9db8148",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: Analysis page state answer analysis-page-state-f06bcf89-fbb2-4186-8e62-3b0cc60942e0-desktop-1280-0. The submitted answer",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "Analysis page state answer analysis-page-state-f06bcf89-fbb2-4186-8e62-3b0cc60942e0-desktop-1280-0. The submitted answer",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 120,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 16:03:53.152+00",
+    "created_at": "2026-06-21 16:03:53.833562+00",
+    "updated_at": "2026-06-21 16:03:56.477941+00"
+  },
+  {
+    "id": "0b9032b8-3de0-4728-84a2-aeeca72496d3",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: horizontal desktop ㄱ: 2222222222",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "horizontal desktop ㄱ: 2222222222",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 32,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 16:20:03.658+00",
+    "created_at": "2026-06-21 16:20:04.486826+00",
+    "updated_at": "2026-06-21 16:20:08.888999+00"
+  },
+  {
+    "id": "aefce652-00b2-453a-acdc-341cfac228aa",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: stacked mobile ㄱ: 2222222222",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "stacked mobile ㄱ: 2222222222",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 28,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 16:20:08.879+00",
+    "created_at": "2026-06-21 16:20:09.562788+00",
+    "updated_at": "2026-06-21 16:20:12.995164+00"
+  },
+  {
+    "id": "21876856-2073-4b84-90fa-7b8e1574236c",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: Analysis page state answer analysis-page-state-ac809442-1ba6-46c2-a4fa-1a21b880a0d7-mobile-360-0. The submitted answer s",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "Analysis page state answer analysis-page-state-ac809442-1ba6-46c2-a4fa-1a21b880a0d7-mobile-360-0. The submitted answer s",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 120,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 16:22:03.056+00",
+    "created_at": "2026-06-21 16:22:03.812211+00",
+    "updated_at": "2026-06-21 16:22:07.62451+00"
+  },
+  {
+    "id": "b1b9994b-fc7a-4a3b-bd4c-c4841f5985de",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: Analysis failed state answer analysis-page-state-ac809442-1ba6-46c2-a4fa-1a21b880a0d7-failed-mobile-360-0. The failed an",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "Analysis failed state answer analysis-page-state-ac809442-1ba6-46c2-a4fa-1a21b880a0d7-failed-mobile-360-0. The failed an",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 120,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 16:22:07.491+00",
+    "created_at": "2026-06-21 16:22:08.159773+00",
+    "updated_at": "2026-06-21 16:22:13.102392+00"
+  },
+  {
+    "id": "533cd9b6-c37d-47ad-9f76-0a201504dce6",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: failed asset probe ㄱ: 22222222",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "failed asset probe ㄱ: 22222222",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 30,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 16:24:40.201+00",
+    "created_at": "2026-06-21 16:24:40.888923+00",
+    "updated_at": "2026-06-21 16:28:50.40188+00"
+  },
+  {
+    "id": "d2c93a16-948f-48f0-a4d1-7a8e5157f3b5",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: Analysis page state answer analysis-page-state-1191f7b0-c81f-4a7c-81c4-761a38d7ee5a-mobile-360-0. The submitted answer s",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "Analysis page state answer analysis-page-state-1191f7b0-c81f-4a7c-81c4-761a38d7ee5a-mobile-360-0. The submitted answer s",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 120,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 16:29:06.603+00",
+    "created_at": "2026-06-21 16:29:07.356746+00",
+    "updated_at": "2026-06-21 16:29:10.164794+00"
+  },
+  {
+    "id": "ce081cfa-b789-42de-8038-8398faf3cb08",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: horizontal desktop ㄱ: 2222222222",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "horizontal desktop ㄱ: 2222222222",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 32,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 16:30:07.745+00",
+    "created_at": "2026-06-21 16:30:08.603239+00",
+    "updated_at": "2026-06-21 16:30:11.608013+00"
+  },
+  {
+    "id": "23b7247b-2627-4a02-b6c8-97664457fc60",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: v3 white+border ㄱ: 22222222",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "v3 white+border ㄱ: 22222222",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 27,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 16:38:17.202+00",
+    "created_at": "2026-06-21 16:38:17.896187+00",
+    "updated_at": "2026-06-21 16:38:33.612989+00"
+  },
+  {
+    "id": "a81a1a7e-0b09-4815-90ec-5f8631bd5f2a",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: Analysis page state answer analysis-page-state-55114230-a035-4156-b896-38295c48be96-mobile-360-0. The submitted answer s",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "Analysis page state answer analysis-page-state-55114230-a035-4156-b896-38295c48be96-mobile-360-0. The submitted answer s",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 120,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 16:38:33.262+00",
+    "created_at": "2026-06-21 16:38:33.952307+00",
+    "updated_at": "2026-06-21 16:38:36.63859+00"
+  },
+  {
+    "id": "ec1092b8-f287-4a25-99ee-a3c92ec1cb14",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: Analysis failed state answer analysis-page-state-27f12262-3152-4849-8af9-1e5dfe67574c-failed-desktop-1280-1. The failed",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "Analysis failed state answer analysis-page-state-27f12262-3152-4849-8af9-1e5dfe67574c-failed-desktop-1280-1. The failed ",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 119,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 16:39:05.75+00",
+    "created_at": "2026-06-21 16:38:57.501307+00",
+    "updated_at": "2026-06-21 16:42:42.474922+00"
+  },
+  {
+    "id": "17a693fa-525e-4425-af03-35c780b8d147",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: equal height check ㄱ: 22222222222222222222",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "equal height check ㄱ: 22222222222222222222",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 42,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 16:55:16.62+00",
+    "created_at": "2026-06-21 16:55:17.327491+00",
+    "updated_at": "2026-06-21 16:55:34.469905+00"
+  },
+  {
+    "id": "7fa81706-90fe-4e9b-ba4d-e7373f6a3407",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: Analysis page state answer analysis-page-state-2e616839-9174-4097-84b9-d110329d757c-mobile-360-0. The submitted answer s",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "Analysis page state answer analysis-page-state-2e616839-9174-4097-84b9-d110329d757c-mobile-360-0. The submitted answer s",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 120,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 16:55:34.053+00",
+    "created_at": "2026-06-21 16:55:34.744692+00",
+    "updated_at": "2026-06-21 16:55:37.3927+00"
+  },
+  {
+    "id": "83fdd171-53be-40da-8e09-12559a379ba3",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: v4 handoff ㄱ: 22222222",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "v4 handoff ㄱ: 22222222",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 22,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 16:56:51.207+00",
+    "created_at": "2026-06-21 16:56:51.890316+00",
+    "updated_at": "2026-06-21 21:44:06.71412+00"
+  },
+  {
+    "id": "06139247-fb1c-4f83-8e64-2545280dc9fe",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: center check ㄱ: 2222222222",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "center check ㄱ: 2222222222",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 26,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 21:44:06.718+00",
+    "created_at": "2026-06-21 21:44:06.988027+00",
+    "updated_at": "2026-06-21 21:44:23.046442+00"
+  },
+  {
+    "id": "c152ec42-3070-46c3-a809-ff20c016eb7d",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: Analysis page state answer analysis-page-state-b6742cca-350f-4ded-b1e7-a6bb3252a76c-mobile-360-0. The submitted answer s",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "Analysis page state answer analysis-page-state-b6742cca-350f-4ded-b1e7-a6bb3252a76c-mobile-360-0. The submitted answer s",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 120,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-21 21:44:23.153+00",
+    "created_at": "2026-06-21 21:44:23.325938+00",
+    "updated_at": "2026-06-21 21:44:26.25658+00"
+  },
+  {
+    "id": "af624d9c-6ef1-4e5c-95af-0166b37fcaed",
+    "user_id": "70fb911d-a14a-4035-8d0c-568dfb7f1ed1",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: 참가하고 싶으신 분들은\nㄴ: 문의해 주시기를 바랍니다",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "참가하고 싶으신 분들은",
+        "ㄴ": "문의해 주시기를 바랍니다"
+      }
+    },
+    "char_count": 25,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-22 02:15:23.337+00",
+    "created_at": "2026-06-22 02:14:25.570284+00",
+    "updated_at": "2026-06-22 02:15:59.532932+00"
+  },
+  {
+    "id": "6b47eb8a-7d40-4a3e-bd17-19a8d3c9f54e",
+    "user_id": "112a6b57-9564-4990-8bf3-6b536d622008",
+    "problem_id": "4a7e53fb-196a-4d8f-9a3b-10dd56f95d9b",
+    "question_no": 51,
+    "answer_text": "ㄱ: aaaaaaaaaaaaaaaaaaa",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "aaaaaaaaaaaaaaaaaaa",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 19,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-22 02:23:04.811+00",
+    "created_at": "2026-06-22 02:23:04.578924+00",
+    "updated_at": "2026-06-22 02:23:05.993708+00"
+  },
+  {
+    "id": "ecdb99c9-2eea-4c75-901b-7ac0715a6fe9",
+    "user_id": "f78e8a56-5649-4ec8-b319-e13e467bc94e",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: ,''',\n'',\nㄴ: ,'''',\n'",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": ",''',\n'',\n",
+        "ㄴ": ",'''',\n'\n"
+      }
+    },
+    "char_count": 17,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-22 02:32:25.664+00",
+    "created_at": "2026-06-22 02:32:31.442786+00",
+    "updated_at": "2026-06-22 02:32:34.511013+00"
+  },
+  {
+    "id": "ce4911ee-9e40-4bf9-acb6-0195e365c3bd",
+    "user_id": "112a6b57-9564-4990-8bf3-6b536d622008",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: kkkkkkkkkkkkkkkkkkkkkkkkkkkk",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "kkkkkkkkkkkkkkkkkkkkkkkkkkkk",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 28,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-22 02:36:31.623+00",
+    "created_at": "2026-06-22 02:36:31.417696+00",
+    "updated_at": "2026-06-22 02:36:33.664508+00"
+  },
+  {
+    "id": "034e4280-53b6-4602-9b13-fe480dfd3eb4",
+    "user_id": "47139ff2-2b82-4b17-ac7d-d13b3be5e3c1",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: dsafds\nㄴ: sdafds",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "dsafds",
+        "ㄴ": "sdafds"
+      }
+    },
+    "char_count": 12,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-22 02:36:48.84+00",
+    "created_at": "2026-06-22 02:36:47.318339+00",
+    "updated_at": "2026-06-22 02:36:51.296125+00"
+  },
+  {
+    "id": "4c617b27-7520-4bd5-80c5-d8bc6e7e1bf3",
+    "user_id": "112a6b57-9564-4990-8bf3-6b536d622008",
+    "problem_id": "007785ff-0105-41a1-b884-2227ba6a7540",
+    "question_no": 51,
+    "answer_text": "ㄱ: asdasdasdasdsadasdasdasdsad",
+    "answer_json": {
+      "_v": "51.v1",
+      "blanks": {
+        "ㄱ": "asdasdasdasdsadasdasdasdsad",
+        "ㄴ": ""
+      }
+    },
+    "char_count": 27,
+    "autosave_status": "superseded",
+    "last_saved_at": "2026-06-22 02:57:23.739+00",
+    "created_at": "2026-06-22 02:57:23.563576+00",
+    "updated_at": "2026-06-22 02:57:25.530833+00"
+  }
+]

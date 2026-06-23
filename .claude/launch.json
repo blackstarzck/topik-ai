@@ -9,6 +9,18 @@
       "autoPort": true
     },
     {
+      "name": "topik-ai-mock",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "set VITE_SUPABASE_DISABLED=true&& npm --prefix C:/Users/admin/Desktop/workspace/topik-ai run dev -- --host 127.0.0.1 --port 4188 --strictPort"],
+      "port": 4188
+    },
+    {
+      "name": "topik-ai-supabase",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "set VITE_SUPABASE_URL=https://fglggyfvzjdsbyckinqa.supabase.co&& npm --prefix C:/Users/admin/Desktop/workspace/topik-ai run dev -- --host 127.0.0.1 --port 4189 --strictPort"],
+      "port": 4189
+    },
+    {
       "name": "v13",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--dir", "C:/Users/admin/Desktop/workspace/topik-project/v13", "dev"],

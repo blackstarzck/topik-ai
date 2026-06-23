@@ -1,0 +1,26 @@
+[
+  {
+    "faq_id": "FAQ-001",
+    "view_count": 842,
+    "search_hit_count": 214,
+    "helpful_count": 122,
+    "not_helpful_count": 11,
+    "last_viewed_at": "2026-03-23 00:10:00+00"
+  },
+  {
+    "faq_id": "FAQ-002",
+    "view_count": 615,
+    "search_hit_count": 167,
+    "helpful_count": 93,
+    "not_helpful_count": 14,
+    "last_viewed_at": "2026-03-22 23:40:00+00"
+  },
+  {
+    "faq_id": "FAQ-003",
+    "view_count": 148,
+    "search_hit_count": 42,
+    "helpful_count": 19,
+    "not_helpful_count": 7,
+    "last_viewed_at": "2026-03-22 09:05:00+00"
+  }
+]

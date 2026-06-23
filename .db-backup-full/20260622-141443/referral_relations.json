@@ -1,0 +1,90 @@
+[
+  {
+    "id": "REL-0001-1",
+    "referral_id": "REF-0001",
+    "referred_user_id": "U00201",
+    "referred_user_name": "최서연",
+    "joined_at": "2026-02-15 10:00",
+    "confirmed_at": "2026-02-17 11:00",
+    "status": "완료",
+    "anomaly_flag": "",
+    "review_note": ""
+  },
+  {
+    "id": "REL-0001-2",
+    "referral_id": "REF-0001",
+    "referred_user_id": "U00202",
+    "referred_user_name": "정도윤",
+    "joined_at": "2026-02-18 10:00",
+    "confirmed_at": "2026-02-20 11:00",
+    "status": "완료",
+    "anomaly_flag": "",
+    "review_note": ""
+  },
+  {
+    "id": "REL-0001-3",
+    "referral_id": "REF-0001",
+    "referred_user_id": "U00203",
+    "referred_user_name": "강예린",
+    "joined_at": "2026-02-22 10:00",
+    "confirmed_at": "2026-02-24 11:00",
+    "status": "완료",
+    "anomaly_flag": "",
+    "review_note": ""
+  },
+  {
+    "id": "REL-0002-1",
+    "referral_id": "REF-0002",
+    "referred_user_id": "U00210",
+    "referred_user_name": "조시우",
+    "joined_at": "2026-02-25 10:00",
+    "confirmed_at": "2026-02-27 11:00",
+    "status": "완료",
+    "anomaly_flag": "자기추천 의심",
+    "review_note": "운영 검토 필요"
+  },
+  {
+    "id": "REL-0002-2",
+    "referral_id": "REF-0002",
+    "referred_user_id": "U00211",
+    "referred_user_name": "윤유진",
+    "joined_at": "2026-02-26 10:00",
+    "confirmed_at": "2026-02-28 11:00",
+    "status": "완료",
+    "anomaly_flag": "",
+    "review_note": ""
+  },
+  {
+    "id": "REL-0002-3",
+    "referral_id": "REF-0002",
+    "referred_user_id": "U00212",
+    "referred_user_name": "장현우",
+    "joined_at": "2026-03-01 10:00",
+    "confirmed_at": "",
+    "status": "대기",
+    "anomaly_flag": "",
+    "review_note": ""
+  },
+  {
+    "id": "REL-0003-1",
+    "referral_id": "REF-0003",
+    "referred_user_id": "U00220",
+    "referred_user_name": "임지원",
+    "joined_at": "2026-02-10 10:00",
+    "confirmed_at": "2026-02-12 11:00",
+    "status": "완료",
+    "anomaly_flag": "동일 기기 반복",
+    "review_note": "운영 검토 완료"
+  },
+  {
+    "id": "REL-0003-2",
+    "referral_id": "REF-0003",
+    "referred_user_id": "U00221",
+    "referred_user_name": "김민준",
+    "joined_at": "2026-02-11 10:00",
+    "confirmed_at": "",
+    "status": "취소",
+    "anomaly_flag": "",
+    "review_note": ""
+  }
+]

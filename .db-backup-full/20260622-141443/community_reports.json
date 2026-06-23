@@ -1,0 +1,47 @@
+[
+  {
+    "id": "RP-001",
+    "target_post_id": "POST-002",
+    "target_user_id": "U00047",
+    "target_user_name": "조현우",
+    "reporter_id": "U00012",
+    "reporter_name": "이하은",
+    "reason": "욕설 포함",
+    "reason_code": "ABUSE",
+    "process_status": "pending",
+    "resolution_action": null,
+    "resolved_by": null,
+    "resolved_at": null,
+    "created_at": "2026-03-03 05:12:00+00"
+  },
+  {
+    "id": "RP-002",
+    "target_post_id": null,
+    "target_user_id": "U00019",
+    "target_user_name": "장도윤",
+    "reporter_id": "U00031",
+    "reporter_name": "김민준",
+    "reason": "광고성 게시물",
+    "reason_code": "AD",
+    "process_status": "pending",
+    "resolution_action": null,
+    "resolved_by": null,
+    "resolved_at": null,
+    "created_at": "2026-03-04 00:31:00+00"
+  },
+  {
+    "id": "RP-003",
+    "target_post_id": "POST-003",
+    "target_user_id": "U00077",
+    "target_user_name": "조현우",
+    "reporter_id": "U00001",
+    "reporter_name": "김민준",
+    "reason": "스팸",
+    "reason_code": "SPAM",
+    "process_status": "resolved",
+    "resolution_action": "hide_post",
+    "resolved_by": "admin_lee",
+    "resolved_at": "2026-03-10 07:33:51+00",
+    "created_at": "2026-03-04 01:05:00+00"
+  }
+]

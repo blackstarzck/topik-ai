@@ -1,0 +1,747 @@
+[
+  {
+    "id": "PH-0001",
+    "policy_id": "POL-001",
+    "action": "created",
+    "version_label": "v2026.03",
+    "changed_at": "2026-03-20 00:10:00+00",
+    "changed_by": "admin_park",
+    "snapshot": {
+      "id": "POL-001",
+      "title": "TOPIK AI 이용약관",
+      "status": "게시",
+      "summary": "서비스 이용 조건, 계정 운영 기준, 결제 및 콘텐츠 이용 제한 사항을 정리한 기본 약관입니다.",
+      "bodyHtml": "<h2>TOPIK AI 이용약관</h2><p>회원은 계정 생성 시 본 약관에 동의하며, 학습 서비스와 커뮤니티 기능을 약관 범위 내에서 이용할 수 있습니다.</p>",
+      "category": "법률/약관",
+      "adminMemo": "회원가입 고객센터, 마이페이지 약관 링크 기준 문서입니다.",
+      "createdAt": "2026-03-17",
+      "updatedAt": "2026-03-20 09:10",
+      "updatedBy": "admin_park",
+      "policyType": "이용약관",
+      "versionLabel": "v2026.03",
+      "effectiveDate": "2026-03-20",
+      "trackingStatus": "코드 반영",
+      "legalReferences": [
+        "전자상거래 등에서의 소비자보호에 관한 법률",
+        "민법"
+      ],
+      "requiresConsent": true,
+      "sourceDocuments": [
+        "docs/specs/page-ia/operation-policies-page-ia.md",
+        "docs/specs/admin-data-usage-map.md"
+      ],
+      "exposureSurfaces": [
+        "회원가입",
+        "마이페이지",
+        "고객센터"
+      ],
+      "relatedUserPages": [
+        "회원가입 > 약관 동의",
+        "마이페이지 > 정책 링크",
+        "고객센터 > 정책 문서"
+      ],
+      "relatedAdminPages": [
+        "Operation > 정책 관리",
+        "Users > 회원 목록",
+        "Users > 회원 상세"
+      ]
+    }
+  },
+  {
+    "id": "PH-0002",
+    "policy_id": "POL-002",
+    "action": "created",
+    "version_label": "v2026.03",
+    "changed_at": "2026-03-20 00:25:00+00",
+    "changed_by": "admin_park",
+    "snapshot": {
+      "id": "POL-002",
+      "title": "TOPIK AI 개인정보 처리방침",
+      "status": "게시",
+      "summary": "수집 항목, 처리 목적, 보관 기간, 파기 절차를 공지합니다.",
+      "bodyHtml": "<h2>개인정보 처리방침</h2><p>회사는 서비스 제공에 필요한 최소한의 개인정보를 수집합니다.</p>",
+      "category": "법률/약관",
+      "adminMemo": "앱 설정 법적 고지와 회원가입 하단 노출 기준 문서입니다.",
+      "createdAt": "2026-03-17",
+      "updatedAt": "2026-03-20 09:25",
+      "updatedBy": "admin_park",
+      "policyType": "개인정보 처리방침",
+      "versionLabel": "v2026.03",
+      "effectiveDate": "2026-03-20",
+      "trackingStatus": "코드 반영",
+      "legalReferences": [
+        "개인정보 보호법",
+        "정보통신망 이용촉진 및 정보보호 등에 관한 법률"
+      ],
+      "requiresConsent": true,
+      "sourceDocuments": [
+        "docs/specs/page-ia/operation-policies-page-ia.md",
+        "docs/specs/admin-data-usage-map.md"
+      ],
+      "exposureSurfaces": [
+        "회원가입",
+        "마이페이지",
+        "고객센터",
+        "앱 설정"
+      ],
+      "relatedUserPages": [
+        "회원가입 > 약관 동의",
+        "마이페이지 > 개인정보/수신 동의 설정",
+        "앱 설정 > 법적 고지"
+      ],
+      "relatedAdminPages": [
+        "Operation > 정책 관리",
+        "Users > 회원 상세",
+        "Message > 메일"
+      ]
+    }
+  },
+  {
+    "id": "PH-0003",
+    "policy_id": "POL-003",
+    "action": "created",
+    "version_label": "v2026.04",
+    "changed_at": "2026-03-24 06:40:00+00",
+    "changed_by": "admin_kim",
+    "snapshot": {
+      "id": "POL-003",
+      "title": "결제ㆍ환불 정책",
+      "status": "게시",
+      "summary": "결제 승인, 환불 가능 조건, 부분 환불 제한과 고객 안내 기준을 추적합니다.",
+      "bodyHtml": "<h2>결제ㆍ환불 정책</h2><p>결제 후 7일 이내이며 학습 이력이 없는 경우 전액 환불을 원칙으로 검토합니다.</p>",
+      "category": "결제/리워드",
+      "adminMemo": "결제 내역/환불 관리 화면의 부분 환불, 고객 안내 규칙을 함께 추적합니다.",
+      "createdAt": "2026-03-20",
+      "updatedAt": "2026-03-24 15:40",
+      "updatedBy": "admin_kim",
+      "policyType": "결제ㆍ환불 정책",
+      "versionLabel": "v2026.04",
+      "effectiveDate": "2026-04-01",
+      "trackingStatus": "문서 추적",
+      "legalReferences": [
+        "전자상거래 등에서의 소비자보호에 관한 법률",
+        "전자상거래 등에서의 소비자보호 지침"
+      ],
+      "requiresConsent": true,
+      "sourceDocuments": [
+        "docs/specs/page-ia/commerce-refunds-page-ia.md",
+        "docs/specs/page-ia/commerce-payments-page-ia.md",
+        "docs/specs/admin-page-gap-register.md"
+      ],
+      "exposureSurfaces": [
+        "결제",
+        "마이페이지",
+        "고객센터",
+        "관리자 콘솔"
+      ],
+      "relatedUserPages": [
+        "결제 > 약관/환불 안내",
+        "마이페이지 > 정책 링크",
+        "고객센터 > 정책 문서"
+      ],
+      "relatedAdminPages": [
+        "Commerce > 결제 내역",
+        "Commerce > 환불 관리",
+        "Commerce > 포인트 관리"
+      ]
+    }
+  },
+  {
+    "id": "PH-0004",
+    "policy_id": "POL-004",
+    "action": "created",
+    "version_label": "v2026.03",
+    "changed_at": "2026-03-22 01:15:00+00",
+    "changed_by": "admin_han",
+    "snapshot": {
+      "id": "POL-004",
+      "title": "청소년 보호정책",
+      "status": "게시",
+      "summary": "유해 정보 차단, 신고 접수, 청소년 보호 책임자 안내 기준을 제공합니다.",
+      "bodyHtml": "<h2>청소년 보호정책</h2><p>청소년 유해 정보 노출 방지와 신고 처리 기준을 운영 정책으로 관리합니다.</p>",
+      "category": "커뮤니티/안전",
+      "adminMemo": "커뮤니티 안전 정책과 법적 고지 영역을 연결하는 기준 문서입니다.",
+      "createdAt": "2026-03-18",
+      "updatedAt": "2026-03-22 10:15",
+      "updatedBy": "admin_han",
+      "policyType": "청소년 보호정책",
+      "versionLabel": "v2026.03",
+      "effectiveDate": "2026-03-22",
+      "trackingStatus": "코드 반영",
+      "legalReferences": [
+        "청소년보호법",
+        "정보통신망 이용촉진 및 정보보호 등에 관한 법률"
+      ],
+      "requiresConsent": false,
+      "sourceDocuments": [
+        "docs/specs/page-ia/community-posts-page-ia.md",
+        "docs/specs/admin-page-gap-register.md"
+      ],
+      "exposureSurfaces": [
+        "고객센터",
+        "앱 설정",
+        "관리자 콘솔"
+      ],
+      "relatedUserPages": [
+        "커뮤니티 > 게시글 작성/이용 안내",
+        "고객센터 > 정책 문서",
+        "앱 설정 > 법적 고지"
+      ],
+      "relatedAdminPages": [
+        "Community > 게시글 관리",
+        "Community > 신고 관리",
+        "Operation > 정책 관리"
+      ]
+    }
+  },
+  {
+    "id": "PH-0005",
+    "policy_id": "POL-005",
+    "action": "created",
+    "version_label": "v2026.03",
+    "changed_at": "2026-03-25 02:05:00+00",
+    "changed_by": "admin_lee",
+    "snapshot": {
+      "id": "POL-005",
+      "title": "커뮤니티 게시글 제재 정책",
+      "status": "게시",
+      "summary": "게시글 숨김/삭제 시 적용하는 정책 코드, 자유 사유, 내부 메모 기록 규칙입니다.",
+      "bodyHtml": "<h2>커뮤니티 게시글 제재 정책</h2><p>게시글 조치 시 정책 코드와 자유 사유를 함께 기록하고 감사 로그에 내부 메모를 남깁니다.</p>",
+      "category": "커뮤니티/안전",
+      "adminMemo": "게시글 관리의 ConfirmAction 정책 코드 기준입니다.",
+      "createdAt": "2026-03-21",
+      "updatedAt": "2026-03-25 11:05",
+      "updatedBy": "admin_lee",
+      "policyType": "커뮤니티 게시글 제재 정책",
+      "versionLabel": "v2026.03",
+      "effectiveDate": "2026-03-25",
+      "trackingStatus": "코드 반영",
+      "legalReferences": [
+        "정보통신망 이용촉진 및 정보보호 등에 관한 법률",
+        "청소년보호법"
+      ],
+      "requiresConsent": false,
+      "sourceDocuments": [
+        "docs/specs/page-ia/community-posts-page-ia.md",
+        "src/features/community/pages/community-posts-page.tsx"
+      ],
+      "exposureSurfaces": [
+        "고객센터",
+        "앱 설정",
+        "관리자 콘솔"
+      ],
+      "relatedUserPages": [
+        "커뮤니티 > 게시글 작성/이용 안내",
+        "고객센터 > 정책 문서"
+      ],
+      "relatedAdminPages": [
+        "Community > 게시글 관리",
+        "Community > 신고 관리",
+        "System > 감사 로그"
+      ]
+    }
+  },
+  {
+    "id": "PH-0006",
+    "policy_id": "POL-006",
+    "action": "created",
+    "version_label": "v2026.03-draft",
+    "changed_at": "2026-03-26 00:40:00+00",
+    "changed_by": "admin_park",
+    "snapshot": {
+      "id": "POL-006",
+      "title": "추천인 보상 정책",
+      "status": "숨김",
+      "summary": "추천 코드 확정 시점, 보상 수단, 회수 규칙을 추적하는 운영 정책 초안입니다.",
+      "bodyHtml": "<h2>추천인 보상 정책</h2><p>추천 코드는 추천인 1명당 1개를 기준으로 관리하며 확정과 보상 지급을 정책 흐름으로 기록합니다.</p>",
+      "category": "결제/리워드",
+      "adminMemo": "추천인 페이지의 policySnapshot과 스냅 이슈를 정책 관리로 연결할 초안입니다.",
+      "createdAt": "2026-03-25",
+      "updatedAt": "2026-03-26 09:40",
+      "updatedBy": "admin_park",
+      "policyType": "추천인 보상 정책",
+      "versionLabel": "v2026.03-draft",
+      "effectiveDate": "2026-03-26",
+      "trackingStatus": "문서 추적",
+      "legalReferences": [
+        "서비스 운영 정책 초안",
+        "추천인 관리 상세 IA"
+      ],
+      "requiresConsent": false,
+      "sourceDocuments": [
+        "docs/specs/page-ia/users-referrals-page-ia.md",
+        "src/features/users/pages/users-referrals-page.tsx"
+      ],
+      "exposureSurfaces": [
+        "관리자 콘솔",
+        "마이페이지"
+      ],
+      "relatedUserPages": [
+        "마이페이지 > 정책 링크",
+        "결제 > 쿠폰/포인트 적용",
+        "이벤트 > 상세"
+      ],
+      "relatedAdminPages": [
+        "Users > 추천인 관리",
+        "Commerce > 포인트 관리",
+        "System > 감사 로그"
+      ]
+    }
+  },
+  {
+    "id": "PH-0007",
+    "policy_id": "POL-007",
+    "action": "created",
+    "version_label": "v2026.03-draft",
+    "changed_at": "2026-03-26 00:55:00+00",
+    "changed_by": "admin_park",
+    "snapshot": {
+      "id": "POL-007",
+      "title": "포인트 운영정책",
+      "status": "숨김",
+      "summary": "적립 원천 분류, 차감 우선순위, 만료/보류/복구 기준을 추적합니다.",
+      "bodyHtml": "<h2>포인트 운영정책</h2><p>포인트는 추천, 미션, 이벤트, 결제, 환불, 관리자 원천으로 발생할 수 있으며 원장 단위로 검증합니다.</p>",
+      "category": "결제/리워드",
+      "adminMemo": "포인트 관리 living IA의 정책 후보를 운영 정책으로 집약했습니다.",
+      "createdAt": "2026-03-25",
+      "updatedAt": "2026-03-26 09:55",
+      "updatedBy": "admin_park",
+      "policyType": "포인트 운영정책",
+      "versionLabel": "v2026.03-draft",
+      "effectiveDate": "2026-03-26",
+      "trackingStatus": "문서 추적",
+      "legalReferences": [
+        "포인트 관리 상세 IA",
+        "서비스 운영 정책 초안"
+      ],
+      "requiresConsent": false,
+      "sourceDocuments": [
+        "docs/specs/page-ia/commerce-points-page-ia.md",
+        "docs/specs/admin-page-gap-register.md"
+      ],
+      "exposureSurfaces": [
+        "관리자 콘솔",
+        "결제",
+        "마이페이지"
+      ],
+      "relatedUserPages": [
+        "결제 > 쿠폰/포인트 적용",
+        "마이페이지 > 정책 링크"
+      ],
+      "relatedAdminPages": [
+        "Commerce > 포인트 관리",
+        "Users > 추천인 관리",
+        "Operation > 이벤트"
+      ]
+    }
+  },
+  {
+    "id": "PH-0008",
+    "policy_id": "POL-008",
+    "action": "created",
+    "version_label": "v2026.03",
+    "changed_at": "2026-03-26 01:05:00+00",
+    "changed_by": "admin_lee",
+    "snapshot": {
+      "id": "POL-008",
+      "title": "쿠폰 운영정책",
+      "status": "게시",
+      "summary": "고객 다운로드, 자동 발행, 쿠폰 코드 생성, 지정 발행 기준을 모은 정책 문서입니다.",
+      "bodyHtml": "<h2>쿠폰 운영정책</h2><p>쿠폰은 고객 다운로드, 자동 발행, 쿠폰 코드 생성, 지정 발행 4가지 유형으로 운영합니다.</p>",
+      "category": "결제/리워드",
+      "adminMemo": "쿠폰 관리 상세 IA와 이벤트 보상 연결 규칙을 함께 반영했습니다.",
+      "createdAt": "2026-03-23",
+      "updatedAt": "2026-03-26 10:05",
+      "updatedBy": "admin_lee",
+      "policyType": "쿠폰 운영정책",
+      "versionLabel": "v2026.03",
+      "effectiveDate": "2026-03-24",
+      "trackingStatus": "코드 반영",
+      "legalReferences": [
+        "쿠폰 관리 상세 IA",
+        "이벤트 운영 정책 확인 메모"
+      ],
+      "requiresConsent": false,
+      "sourceDocuments": [
+        "docs/specs/page-ia/commerce-coupons-page-ia.md",
+        "docs/specs/page-ia/operation-events-page-ia.md"
+      ],
+      "exposureSurfaces": [
+        "관리자 콘솔",
+        "결제",
+        "마이페이지"
+      ],
+      "relatedUserPages": [
+        "결제 > 쿠폰/포인트 적용",
+        "이벤트 > 상세",
+        "마이페이지 > 정책 링크"
+      ],
+      "relatedAdminPages": [
+        "Commerce > 쿠폰 관리",
+        "Operation > 이벤트",
+        "Message > 메일"
+      ]
+    }
+  },
+  {
+    "id": "PH-0009",
+    "policy_id": "POL-009",
+    "action": "created",
+    "version_label": "v2026.03-draft",
+    "changed_at": "2026-03-26 01:12:00+00",
+    "changed_by": "admin_kim",
+    "snapshot": {
+      "id": "POL-009",
+      "title": "이벤트 운영정책",
+      "status": "숨김",
+      "summary": "이벤트 노출, 참여 조건, 보상 연결, 메시지/쿠폰 연동, 종료 후 복구 여부를 추적합니다.",
+      "bodyHtml": "<h2>이벤트 운영정책</h2><p>이벤트는 목록 검색지와 등록 상세 페이지를 분리해 운영하고 게시 예약과 종료 조치 감사 로그를 남깁니다.</p>",
+      "category": "운영/콘텐츠",
+      "adminMemo": "이벤트 보상 수단과 종료 후 복구 가능 여부는 계속 확정 대상입니다.",
+      "createdAt": "2026-03-25",
+      "updatedAt": "2026-03-26 10:12",
+      "updatedBy": "admin_kim",
+      "policyType": "이벤트 운영정책",
+      "versionLabel": "v2026.03-draft",
+      "effectiveDate": "2026-03-26",
+      "trackingStatus": "문서 추적",
+      "legalReferences": [
+        "이벤트 상세 IA",
+        "서비스 운영 정책 초안"
+      ],
+      "requiresConsent": false,
+      "sourceDocuments": [
+        "docs/specs/page-ia/operation-events-page-ia.md",
+        "docs/specs/admin-page-gap-register.md"
+      ],
+      "exposureSurfaces": [
+        "관리자 콘솔",
+        "고객센터"
+      ],
+      "relatedUserPages": [
+        "이벤트 > 상세",
+        "고객센터 > 정책 문서"
+      ],
+      "relatedAdminPages": [
+        "Operation > 이벤트",
+        "Commerce > 쿠폰 관리",
+        "Message > 대상 그룹"
+      ]
+    }
+  },
+  {
+    "id": "PH-0010",
+    "policy_id": "POL-010",
+    "action": "created",
+    "version_label": "v2026.03",
+    "changed_at": "2026-03-26 01:18:00+00",
+    "changed_by": "admin_han",
+    "snapshot": {
+      "id": "POL-010",
+      "title": "FAQ 노출 정책",
+      "status": "게시",
+      "summary": "FAQ 질문 공개/비공개와 추천, 결제 화면 후보 FAQ 노출 릴레이션 규칙입니다.",
+      "bodyHtml": "<h2>FAQ 노출 정책</h2><p>FAQ는 질문 관리와 노출 관리, 직접 보기 3개 축으로 운영합니다.</p>",
+      "category": "운영/콘텐츠",
+      "adminMemo": "FAQ 노출 관리와 챗봇 지원 참조 기준을 동시에 추적합니다.",
+      "createdAt": "2026-03-24",
+      "updatedAt": "2026-03-26 10:18",
+      "updatedBy": "admin_han",
+      "policyType": "FAQ 노출 정책",
+      "versionLabel": "v2026.03",
+      "effectiveDate": "2026-03-25",
+      "trackingStatus": "코드 반영",
+      "legalReferences": [
+        "FAQ 상세 IA"
+      ],
+      "requiresConsent": false,
+      "sourceDocuments": [
+        "docs/specs/page-ia/operation-faq-page-ia.md",
+        "docs/specs/admin-data-usage-map.md"
+      ],
+      "exposureSurfaces": [
+        "관리자 콘솔",
+        "고객센터"
+      ],
+      "relatedUserPages": [
+        "FAQ > 고객센터 FAQ",
+        "챗봇 > 상담 전환 안내"
+      ],
+      "relatedAdminPages": [
+        "Operation > FAQ",
+        "Operation > 챗봇 설정",
+        "System > 감사 로그"
+      ]
+    }
+  },
+  {
+    "id": "PH-0011",
+    "policy_id": "POL-011",
+    "action": "created",
+    "version_label": "v2026.03-candidate",
+    "changed_at": "2026-03-26 01:22:00+00",
+    "changed_by": "admin_park",
+    "snapshot": {
+      "id": "POL-011",
+      "title": "챗봇 상담 전환 정책",
+      "status": "숨김",
+      "summary": "챗봇 fallback, 상담 연결, FAQ 지원 참조, 버전 비교 기준을 placeholder 단계에서 추적합니다.",
+      "bodyHtml": "<h2>챗봇 상담 전환 정책</h2><p>챗봇 설정 화면은 아직 placeholder이며 상담 전환 기준을 먼저 확정해야 합니다.</p>",
+      "category": "운영/콘텐츠",
+      "adminMemo": "현재는 문서 추적용 후보 정책입니다.",
+      "createdAt": "2026-03-25",
+      "updatedAt": "2026-03-26 10:22",
+      "updatedBy": "admin_park",
+      "policyType": "챗봇 상담 전환 정책",
+      "versionLabel": "v2026.03-candidate",
+      "effectiveDate": "2026-03-26",
+      "trackingStatus": "정책 미확정",
+      "legalReferences": [
+        "챗봇 설정 상세 IA"
+      ],
+      "requiresConsent": false,
+      "sourceDocuments": [
+        "docs/specs/page-ia/operation-chatbot-page-ia.md",
+        "docs/specs/admin-page-gap-register.md"
+      ],
+      "exposureSurfaces": [
+        "관리자 콘솔",
+        "고객센터"
+      ],
+      "relatedUserPages": [
+        "챗봇 > 상담 전환 안내",
+        "FAQ > 고객센터 FAQ"
+      ],
+      "relatedAdminPages": [
+        "Operation > 챗봇 설정",
+        "Operation > FAQ",
+        "Message > 메일"
+      ]
+    }
+  },
+  {
+    "id": "PH-0012",
+    "policy_id": "POL-012",
+    "action": "created",
+    "version_label": "v2026.03",
+    "changed_at": "2026-03-26 01:28:00+00",
+    "changed_by": "admin_lee",
+    "snapshot": {
+      "id": "POL-012",
+      "title": "메일 발송 운영정책",
+      "status": "게시",
+      "summary": "메일 템플릿 메타 등록, TinyMCE 본문 작성, 즉시/예약 발송, 수신 그룹 연동 규칙입니다.",
+      "bodyHtml": "<h2>메일 발송 운영정책</h2><p>메일 템플릿 목록에서 메타를 등록하고 등록 상세 페이지에서 TinyMCE 본문을 작성합니다.</p>",
+      "category": "메시지/알림",
+      "adminMemo": "메일 템플릿과 발송 이력 검증 정책을 함께 묶었습니다.",
+      "createdAt": "2026-03-24",
+      "updatedAt": "2026-03-26 10:28",
+      "updatedBy": "admin_lee",
+      "policyType": "메일 발송 운영정책",
+      "versionLabel": "v2026.03",
+      "effectiveDate": "2026-03-25",
+      "trackingStatus": "코드 반영",
+      "legalReferences": [
+        "메일 상세 IA",
+        "정보통신망 이용촉진 및 정보보호 등에 관한 법률"
+      ],
+      "requiresConsent": false,
+      "sourceDocuments": [
+        "docs/specs/page-ia/message-mail-page-ia.md",
+        "docs/specs/page-ia/message-history-page-ia.md"
+      ],
+      "exposureSurfaces": [
+        "관리자 콘솔",
+        "앱 설정"
+      ],
+      "relatedUserPages": [
+        "이메일 > 운영/정책 안내"
+      ],
+      "relatedAdminPages": [
+        "Message > 메일",
+        "Message > 대상 그룹",
+        "Message > 발송 이력"
+      ]
+    }
+  },
+  {
+    "id": "PH-0013",
+    "policy_id": "POL-013",
+    "action": "created",
+    "version_label": "v2026.03",
+    "changed_at": "2026-03-26 01:31:00+00",
+    "changed_by": "admin_lee",
+    "snapshot": {
+      "id": "POL-013",
+      "title": "푸시 발송 운영정책",
+      "status": "게시",
+      "summary": "푸시 템플릿 메타 등록, TinyMCE 본문 작성, 즉시/예약 발송과 상태 전환 기준입니다.",
+      "bodyHtml": "<h2>푸시 발송 운영정책</h2><p>푸시 템플릿 메타 등록 후 본문 상세에서 HTML 기반 콘텐츠를 작성하고 대상 그룹과 예약 시각을 검증합니다.</p>",
+      "category": "메시지/알림",
+      "adminMemo": "푸시 템플릿 운영과 발송 이력 검증 규칙의 공통 기준입니다.",
+      "createdAt": "2026-03-24",
+      "updatedAt": "2026-03-26 10:31",
+      "updatedBy": "admin_lee",
+      "policyType": "푸시 발송 운영정책",
+      "versionLabel": "v2026.03",
+      "effectiveDate": "2026-03-25",
+      "trackingStatus": "코드 반영",
+      "legalReferences": [
+        "푸시 상세 IA",
+        "정보통신망 이용촉진 및 정보보호 등에 관한 법률"
+      ],
+      "requiresConsent": false,
+      "sourceDocuments": [
+        "docs/specs/page-ia/message-push-page-ia.md",
+        "docs/specs/page-ia/message-history-page-ia.md"
+      ],
+      "exposureSurfaces": [
+        "관리자 콘솔",
+        "앱 설정"
+      ],
+      "relatedUserPages": [
+        "앱/웹 푸시 > 운영/정책 안내"
+      ],
+      "relatedAdminPages": [
+        "Message > 푸시",
+        "Message > 대상 그룹",
+        "Message > 발송 이력"
+      ]
+    }
+  },
+  {
+    "id": "PH-0014",
+    "policy_id": "POL-014",
+    "action": "created",
+    "version_label": "v2026.03-candidate",
+    "changed_at": "2026-03-26 01:36:00+00",
+    "changed_by": "admin_kim",
+    "snapshot": {
+      "id": "POL-014",
+      "title": "발송 실패/재시도 정책",
+      "status": "숨김",
+      "summary": "발송 실패 건의 재시도 범위, 중복 발송 방지, CSV 내보내기 감사 여부를 추적합니다.",
+      "bodyHtml": "<h2>발송 실패/재시도 정책</h2><p>발송 실패 이력은 재시도 범위와 중복 발송 방지 기준이 확정되어야 합니다.</p>",
+      "category": "메시지/알림",
+      "adminMemo": "발송 이력 페이지 스냅 이슈를 정책 관리에서 추적하도록 추가한 후보 문서입니다.",
+      "createdAt": "2026-03-25",
+      "updatedAt": "2026-03-26 10:36",
+      "updatedBy": "admin_kim",
+      "policyType": "발송 실패/재시도 정책",
+      "versionLabel": "v2026.03-candidate",
+      "effectiveDate": "2026-03-26",
+      "trackingStatus": "정책 미확정",
+      "legalReferences": [
+        "발송 이력 상세 IA"
+      ],
+      "requiresConsent": false,
+      "sourceDocuments": [
+        "docs/specs/page-ia/message-history-page-ia.md",
+        "docs/specs/admin-page-gap-register.md"
+      ],
+      "exposureSurfaces": [
+        "관리자 콘솔"
+      ],
+      "relatedUserPages": [
+        "이메일 > 운영/정책 안내",
+        "앱/웹 푸시 > 운영/정책 안내"
+      ],
+      "relatedAdminPages": [
+        "Message > 발송 이력",
+        "Message > 메일",
+        "Message > 푸시"
+      ]
+    }
+  },
+  {
+    "id": "PH-0015",
+    "policy_id": "POL-015",
+    "action": "created",
+    "version_label": "v2026.03-draft",
+    "changed_at": "2026-03-26 01:42:00+00",
+    "changed_by": "admin_park",
+    "snapshot": {
+      "id": "POL-015",
+      "title": "관리자 권한 변경 정책",
+      "status": "숨김",
+      "summary": "권한 부여/수정, 회수 사유 입력, 감사 추적, 승인 체계 미확정 항목을 관리합니다.",
+      "bodyHtml": "<h2>관리자 권한 변경 정책</h2><p>권한 변경은 대상 관리자, 변경 권한, 사유, 수행자를 함께 기록하고 감사 로그에서 추적할 수 있어야 합니다.</p>",
+      "category": "관리자/보안",
+      "adminMemo": "actor 하드코딩과 승인 체계 미확정이 남아 있어 문서 추적 상태로 관리합니다.",
+      "createdAt": "2026-03-25",
+      "updatedAt": "2026-03-26 10:42",
+      "updatedBy": "admin_park",
+      "policyType": "관리자 권한 변경 정책",
+      "versionLabel": "v2026.03-draft",
+      "effectiveDate": "2026-03-26",
+      "trackingStatus": "문서 추적",
+      "legalReferences": [
+        "권한 관리 상세 IA",
+        "내부 보안 운영 지침 초안"
+      ],
+      "requiresConsent": false,
+      "sourceDocuments": [
+        "docs/specs/page-ia/system-permissions-page-ia.md",
+        "docs/specs/admin-page-gap-register.md",
+        "src/features/system/pages/system-permissions-page.tsx"
+      ],
+      "exposureSurfaces": [
+        "관리자 콘솔"
+      ],
+      "relatedUserPages": [],
+      "relatedAdminPages": [
+        "System > 권한 관리",
+        "System > 관리자 계정",
+        "System > 감사 로그"
+      ]
+    }
+  },
+  {
+    "id": "PH-0016",
+    "policy_id": "POL-016",
+    "action": "created",
+    "version_label": "v2026.03",
+    "changed_at": "2026-03-20 00:30:00+00",
+    "changed_by": "admin_park",
+    "snapshot": {
+      "id": "POL-016",
+      "title": "마케팅 정보 수신 동의",
+      "status": "게시",
+      "summary": "프로모션 메일/푸시 발송을 위한 수신 동의 항목과 철회 방법을 정리합니다.",
+      "bodyHtml": "<h2>마케팅 정보 수신 동의</h2><p>회원은 메일, 앱 푸시, 문자 수신 동의를 선택적으로 설정할 수 있으며 언제든지 철회할 수 있습니다.</p>",
+      "category": "메시지/알림",
+      "adminMemo": "메일/푸시 템플릿 운영과 수신 거부 처리 기준의 동의 문서입니다.",
+      "createdAt": "2026-03-17",
+      "updatedAt": "2026-03-20 09:30",
+      "updatedBy": "admin_park",
+      "policyType": "마케팅 정보 수신 동의",
+      "versionLabel": "v2026.03",
+      "effectiveDate": "2026-03-20",
+      "trackingStatus": "코드 반영",
+      "legalReferences": [
+        "정보통신망 이용촉진 및 정보보호 등에 관한 법률"
+      ],
+      "requiresConsent": true,
+      "sourceDocuments": [
+        "docs/specs/page-ia/message-mail-page-ia.md",
+        "docs/specs/page-ia/message-push-page-ia.md",
+        "docs/specs/admin-data-usage-map.md"
+      ],
+      "exposureSurfaces": [
+        "회원가입",
+        "마이페이지",
+        "앱 설정",
+        "관리자 콘솔"
+      ],
+      "relatedUserPages": [
+        "회원가입 > 마케팅 수신 동의",
+        "마이페이지 > 개인정보/수신 동의 설정"
+      ],
+      "relatedAdminPages": [
+        "Message > 메일",
+        "Message > 푸시",
+        "Users > 회원 상세"
+      ]
+    }
+  }
+]

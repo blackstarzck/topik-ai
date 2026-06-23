@@ -1,0 +1,104 @@
+[
+  {
+    "id": "CPT-0001",
+    "template_name": "웰컴 회원 정기 쿠폰",
+    "issue_target_type": "shoppingGrade",
+    "target_grade_ids": [
+      "SHOP-GRADE-WELCOME"
+    ],
+    "target_grade_names": [
+      "웰컴"
+    ],
+    "benefit_type": "amountDiscount",
+    "benefit_value": 3000,
+    "min_order_amount": 10000,
+    "max_discount_amount": null,
+    "applicable_scope": "allProducts",
+    "applicable_scope_reference_ids": [],
+    "applicable_scope_reference_names": [],
+    "excluded_product_mode": "none",
+    "excluded_product_ids": [],
+    "excluded_product_names": [],
+    "is_stackable": false,
+    "issue_schedule": {
+      "hour": 7,
+      "minute": 0,
+      "dayOfMonth": 1
+    },
+    "usage_end_schedule": {
+      "hour": 23,
+      "minute": 59,
+      "dayOfMonth": 28
+    },
+    "status": "active",
+    "issued_coupon_count": 1820,
+    "last_issued_at": "2026-02-28 22:00:00+00",
+    "next_issued_at": "2026-03-31 22:00:00+00",
+    "issue_alert_enabled": true,
+    "expire_alert_enabled": false,
+    "alert_channel": "webAppPush",
+    "admin_memo": "웰컴 등급 대상 월별 리텐션 쿠폰입니다.",
+    "policy_notes": [
+      "정기 쿠폰은 대상 등급과 사용 종료 일정을 함께 확인합니다."
+    ],
+    "created_at": "2026-01-02 01:30:00+00",
+    "updated_at": "2026-03-24 05:10:00+00",
+    "updated_by": "admin_kim"
+  },
+  {
+    "id": "CPT-0002",
+    "template_name": "VIP 재구매 유도 쿠폰",
+    "issue_target_type": "shoppingGrade",
+    "target_grade_ids": [
+      "SHOP-GRADE-VIP"
+    ],
+    "target_grade_names": [
+      "VIP"
+    ],
+    "benefit_type": "rateDiscount",
+    "benefit_value": 12,
+    "min_order_amount": 30000,
+    "max_discount_amount": 15000,
+    "applicable_scope": "specificCategory",
+    "applicable_scope_reference_ids": [
+      "CAT-TOPIK-READING",
+      "CAT-TOPIK-SPEAKING"
+    ],
+    "applicable_scope_reference_names": [
+      "TOPIK 읽기",
+      "TOPIK 말하기"
+    ],
+    "excluded_product_mode": "specific",
+    "excluded_product_ids": [
+      "PRD-COURSE-003"
+    ],
+    "excluded_product_names": [
+      "TOPIK 집중 과정"
+    ],
+    "is_stackable": true,
+    "issue_schedule": {
+      "hour": 7,
+      "minute": 0,
+      "dayOfMonth": 1
+    },
+    "usage_end_schedule": {
+      "hour": 23,
+      "minute": 30,
+      "dayOfMonth": 21
+    },
+    "status": "paused",
+    "issued_coupon_count": 420,
+    "last_issued_at": "2026-01-31 22:00:00+00",
+    "next_issued_at": "2026-03-31 22:00:00+00",
+    "issue_alert_enabled": true,
+    "expire_alert_enabled": true,
+    "alert_channel": "webAppPush",
+    "admin_memo": "VIP 등급 전환 프로모션과 겹치지 않도록 3월 발행을 중지했습니다.",
+    "policy_notes": [
+      "정기 쿠폰은 대상 등급과 사용 종료 일정을 함께 확인합니다."
+    ],
+    "created_at": "2026-01-10 00:20:00+00",
+    "updated_at": "2026-03-10 09:05:00+00",
+    "updated_by": "admin_park"
+  }
+]

@@ -1,0 +1,838 @@
+[
+  {
+    "id": "3327e5e7-1ed7-44e7-bebd-c0ec9dc751d4",
+    "template_id": "478e65af-3388-4d94-9620-435907c165e8",
+    "template_key": "study_reminder",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "schedule",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 4,
+    "status": "completed",
+    "actor_id": null,
+    "reason": null,
+    "dedupe_key": "sched:in_app:study_reminder:2026-06-15T02:20Z",
+    "scheduled_at": null,
+    "started_at": "2026-06-15 02:20:00.110964+00",
+    "completed_at": "2026-06-15 02:20:00.110964+00",
+    "created_at": "2026-06-15 02:20:00.110964+00"
+  },
+  {
+    "id": "d43ba727-61da-412b-a7c0-50f987a9dd57",
+    "template_id": "478e65af-3388-4d94-9620-435907c165e8",
+    "template_key": "study_reminder",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "schedule",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 5,
+    "status": "completed",
+    "actor_id": null,
+    "reason": null,
+    "dedupe_key": "sched:study_reminder:2026-06-12T09:10Z",
+    "scheduled_at": null,
+    "started_at": "2026-06-12 09:17:29.290179+00",
+    "completed_at": "2026-06-12 09:17:29.290179+00",
+    "created_at": "2026-06-12 09:17:29.290179+00"
+  },
+  {
+    "id": "67924900-d716-41fe-93b1-2ab2212fdc66",
+    "template_id": "478e65af-3388-4d94-9620-435907c165e8",
+    "template_key": "study_reminder",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "schedule",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 1,
+    "status": "completed",
+    "actor_id": null,
+    "reason": null,
+    "dedupe_key": "sched:in_app:study_reminder:2026-06-15T00:00Z",
+    "scheduled_at": null,
+    "started_at": "2026-06-15 00:00:00.180652+00",
+    "completed_at": "2026-06-15 00:00:00.180652+00",
+    "created_at": "2026-06-15 00:00:00.180652+00"
+  },
+  {
+    "id": "9110d8af-29f1-46fb-afa5-afe007143d24",
+    "template_id": "a433e235-72ed-4954-9dc9-b815d01e2679",
+    "template_key": "feedback_ready",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "event",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 1,
+    "status": "completed",
+    "actor_id": null,
+    "reason": null,
+    "dedupe_key": "event:feedback_ready:evt-smoke-1",
+    "scheduled_at": null,
+    "started_at": "2026-06-12 09:18:22.893297+00",
+    "completed_at": "2026-06-12 09:18:22.893297+00",
+    "created_at": "2026-06-12 09:18:22.893297+00"
+  },
+  {
+    "id": "7b027e39-9416-413c-a800-dcc42ae6a0da",
+    "template_id": "a433e235-72ed-4954-9dc9-b815d01e2679",
+    "template_key": "feedback_ready",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "event",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 1,
+    "status": "completed",
+    "actor_id": null,
+    "reason": null,
+    "dedupe_key": "event:feedback_ready:evt-smoke-2",
+    "scheduled_at": null,
+    "started_at": "2026-06-12 09:18:22.893297+00",
+    "completed_at": "2026-06-12 09:18:22.893297+00",
+    "created_at": "2026-06-12 09:18:22.893297+00"
+  },
+  {
+    "id": "a2650b1a-c536-4642-8796-2b32eb516f46",
+    "template_id": "a433e235-72ed-4954-9dc9-b815d01e2679",
+    "template_key": "feedback_ready",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "event",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 1,
+    "status": "completed",
+    "actor_id": null,
+    "reason": null,
+    "dedupe_key": "event:feedback_ready:evt-smoke-3",
+    "scheduled_at": null,
+    "started_at": "2026-06-12 09:18:22.893297+00",
+    "completed_at": "2026-06-12 09:18:22.893297+00",
+    "created_at": "2026-06-12 09:18:22.893297+00"
+  },
+  {
+    "id": "bc2f9869-d676-4bbf-a338-bbb365254d23",
+    "template_id": "478e65af-3388-4d94-9620-435907c165e8",
+    "template_key": "study_reminder",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "schedule",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 1,
+    "status": "completed",
+    "actor_id": null,
+    "reason": null,
+    "dedupe_key": "sched:study_reminder:2026-06-12T09:20Z",
+    "scheduled_at": null,
+    "started_at": "2026-06-12 09:20:00.140972+00",
+    "completed_at": "2026-06-12 09:20:00.140972+00",
+    "created_at": "2026-06-12 09:20:00.140972+00"
+  },
+  {
+    "id": "66a35677-82ad-4b76-92a3-5ae561ab149c",
+    "template_id": "7b31a96a-2c8c-4ecb-998d-6fd8de8e5a89",
+    "template_key": "e2e_notice",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "test",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 1,
+    "status": "completed",
+    "actor_id": "5a16831a-bafd-454c-9abf-cdec388f885c",
+    "reason": "V-3 E2E 테스트 발송 — 렌더링 확인",
+    "dedupe_key": "admin:5f5598d4-19b4-4d3c-a9e2-539c4106cad6",
+    "scheduled_at": null,
+    "started_at": "2026-06-12 10:42:26.673022+00",
+    "completed_at": "2026-06-12 10:43:05.613475+00",
+    "created_at": "2026-06-12 10:42:26.673022+00"
+  },
+  {
+    "id": "a9e2d110-6f3a-41c7-a063-1695aebd9636",
+    "template_id": "7b31a96a-2c8c-4ecb-998d-6fd8de8e5a89",
+    "template_key": "e2e_notice",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "group",
+    "target_group_ids": [
+      "85e0a5f2-00a8-4877-b41a-ff1c1313487f"
+    ],
+    "target_snapshot": null,
+    "recipient_count": 2,
+    "status": "completed",
+    "actor_id": "5a16831a-bafd-454c-9abf-cdec388f885c",
+    "reason": "V-3 E2E 그룹 즉시 발송 (optin 수신/optout 제외 검증)",
+    "dedupe_key": "admin:60e167c7-2f34-481e-95ca-dc6be662d131",
+    "scheduled_at": null,
+    "started_at": "2026-06-12 10:42:45.857074+00",
+    "completed_at": "2026-06-12 10:43:05.613475+00",
+    "created_at": "2026-06-12 10:42:45.857074+00"
+  },
+  {
+    "id": "fb816d62-b0ec-4920-9a75-9e880953f6e3",
+    "template_id": "a433e235-72ed-4954-9dc9-b815d01e2679",
+    "template_key": "feedback_ready",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "event",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 1,
+    "status": "completed",
+    "actor_id": null,
+    "reason": null,
+    "dedupe_key": "event:in_app:feedback_ready:nteml-live-1",
+    "scheduled_at": null,
+    "started_at": "2026-06-15 02:15:47.256224+00",
+    "completed_at": "2026-06-15 02:15:47.256224+00",
+    "created_at": "2026-06-15 02:15:47.256224+00"
+  },
+  {
+    "id": "bbf07c46-bcb5-4ae4-a53e-c17515b44179",
+    "template_id": "4ceb1419-b935-4a93-b50b-26ae9c1d589b",
+    "template_key": "feedback_ready",
+    "channels": [
+      "email"
+    ],
+    "target_type": "event",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 1,
+    "status": "completed",
+    "actor_id": null,
+    "reason": null,
+    "dedupe_key": "event:email:feedback_ready:nteml-live-1",
+    "scheduled_at": null,
+    "started_at": "2026-06-15 02:15:47.256224+00",
+    "completed_at": "2026-06-15 02:15:47.256224+00",
+    "created_at": "2026-06-15 02:15:47.256224+00"
+  },
+  {
+    "id": "283d8ea2-90c6-4779-bd40-511cdc2bc636",
+    "template_id": "7b31a96a-2c8c-4ecb-998d-6fd8de8e5a89",
+    "template_key": "e2e_notice",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "group",
+    "target_group_ids": [
+      "85e0a5f2-00a8-4877-b41a-ff1c1313487f"
+    ],
+    "target_snapshot": null,
+    "recipient_count": 2,
+    "status": "completed",
+    "actor_id": "5a16831a-bafd-454c-9abf-cdec388f885c",
+    "reason": "V-3 E2E 예약 발송 (2분 후)",
+    "dedupe_key": "admin:5bdfed22-7eb0-4f85-a8b1-237ef4055767",
+    "scheduled_at": "2026-06-12 10:53:00+00",
+    "started_at": "2026-06-12 10:54:23.558944+00",
+    "completed_at": "2026-06-12 10:54:23.558944+00",
+    "created_at": "2026-06-12 10:51:18.880774+00"
+  },
+  {
+    "id": "3a7e9d44-d331-49cb-99a4-7cc313dbce67",
+    "template_id": "7b31a96a-2c8c-4ecb-998d-6fd8de8e5a89",
+    "template_key": "e2e_notice",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "group",
+    "target_group_ids": [
+      "85e0a5f2-00a8-4877-b41a-ff1c1313487f"
+    ],
+    "target_snapshot": null,
+    "recipient_count": 2,
+    "status": "completed",
+    "actor_id": "5a16831a-bafd-454c-9abf-cdec388f885c",
+    "reason": "V-3 mandatory bypass 즉시 발송 — 점검 공지",
+    "dedupe_key": "admin:370f92c7-16ee-4b78-addb-f1047e29a020",
+    "scheduled_at": null,
+    "started_at": "2026-06-12 10:54:02.818707+00",
+    "completed_at": "2026-06-12 10:54:23.558944+00",
+    "created_at": "2026-06-12 10:54:02.818707+00"
+  },
+  {
+    "id": "ed14c6fb-390a-4a0e-866f-cb1c107f2334",
+    "template_id": "bfc35b09-7e8c-4cfd-a1ba-3a10475d6342",
+    "template_key": "e2e_mandatory_notice",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "group",
+    "target_group_ids": [
+      "85e0a5f2-00a8-4877-b41a-ff1c1313487f"
+    ],
+    "target_snapshot": null,
+    "recipient_count": 2,
+    "status": "completed",
+    "actor_id": "5a16831a-bafd-454c-9abf-cdec388f885c",
+    "reason": "V-3 mandatory bypass 즉시 발송 재시도",
+    "dedupe_key": "admin:0ad87d96-eef3-48ae-87ce-8bb5b275a995",
+    "scheduled_at": null,
+    "started_at": "2026-06-12 10:55:10.809014+00",
+    "completed_at": "2026-06-12 10:55:29.510665+00",
+    "created_at": "2026-06-12 10:55:10.809014+00"
+  },
+  {
+    "id": "4fba9afd-b525-408f-89cc-367d56914ac9",
+    "template_id": "a433e235-72ed-4954-9dc9-b815d01e2679",
+    "template_key": "feedback_ready",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "event",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 1,
+    "status": "completed",
+    "actor_id": null,
+    "reason": null,
+    "dedupe_key": "event:in_app:feedback_ready:nteml-live-cta",
+    "scheduled_at": null,
+    "started_at": "2026-06-15 02:18:19.983941+00",
+    "completed_at": "2026-06-15 02:18:19.983941+00",
+    "created_at": "2026-06-15 02:18:19.983941+00"
+  },
+  {
+    "id": "268892b9-f005-4682-b997-fb80f97ccd59",
+    "template_id": "4ceb1419-b935-4a93-b50b-26ae9c1d589b",
+    "template_key": "feedback_ready",
+    "channels": [
+      "email"
+    ],
+    "target_type": "event",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 1,
+    "status": "completed",
+    "actor_id": null,
+    "reason": null,
+    "dedupe_key": "event:email:feedback_ready:nteml-live-cta",
+    "scheduled_at": null,
+    "started_at": "2026-06-15 02:18:19.983941+00",
+    "completed_at": "2026-06-15 02:18:19.983941+00",
+    "created_at": "2026-06-15 02:18:19.983941+00"
+  },
+  {
+    "id": "6f41e55b-cc92-4e5a-99ff-8e06f5ca0a03",
+    "template_id": "a076755d-18c1-45ac-8d1d-f6ebf3d34fb0",
+    "template_key": "weekly_summary",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "schedule",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 1,
+    "status": "completed",
+    "actor_id": null,
+    "reason": null,
+    "dedupe_key": "sched:in_app:weekly_summary:2026-06-15T02:20Z",
+    "scheduled_at": null,
+    "started_at": "2026-06-15 02:20:00.110964+00",
+    "completed_at": "2026-06-15 02:20:00.110964+00",
+    "created_at": "2026-06-15 02:20:00.110964+00"
+  },
+  {
+    "id": "81d9beaf-88f4-4430-a861-2c356f9b60a4",
+    "template_id": "478e65af-3388-4d94-9620-435907c165e8",
+    "template_key": "study_reminder",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "schedule",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 1,
+    "status": "completed",
+    "actor_id": null,
+    "reason": null,
+    "dedupe_key": "sched:study_reminder:2026-06-12T11:00Z",
+    "scheduled_at": null,
+    "started_at": "2026-06-12 11:07:07.122778+00",
+    "completed_at": "2026-06-12 11:07:07.122778+00",
+    "created_at": "2026-06-12 11:07:07.122778+00"
+  },
+  {
+    "id": "3b65b046-e8bb-4b0b-913b-5ec89c0f500c",
+    "template_id": "478e65af-3388-4d94-9620-435907c165e8",
+    "template_key": "study_reminder",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "schedule",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 1,
+    "status": "completed",
+    "actor_id": null,
+    "reason": null,
+    "dedupe_key": "sched:in_app:study_reminder:2026-06-15T06:30Z",
+    "scheduled_at": null,
+    "started_at": "2026-06-15 06:30:00.082317+00",
+    "completed_at": "2026-06-15 06:30:00.082317+00",
+    "created_at": "2026-06-15 06:30:00.082317+00"
+  },
+  {
+    "id": "3b0d58cb-36aa-4e0f-89ec-4c94e1ccfdf0",
+    "template_id": "478e65af-3388-4d94-9620-435907c165e8",
+    "template_key": "study_reminder",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "schedule",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 2,
+    "status": "completed",
+    "actor_id": null,
+    "reason": null,
+    "dedupe_key": "sched:in_app:study_reminder:2026-06-16T00:00Z",
+    "scheduled_at": null,
+    "started_at": "2026-06-16 00:00:00.077494+00",
+    "completed_at": "2026-06-16 00:00:00.077494+00",
+    "created_at": "2026-06-16 00:00:00.077494+00"
+  },
+  {
+    "id": "bd6c713f-17fb-42d8-aec6-62cd98c447bd",
+    "template_id": "478e65af-3388-4d94-9620-435907c165e8",
+    "template_key": "study_reminder",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "schedule",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 1,
+    "status": "completed",
+    "actor_id": null,
+    "reason": null,
+    "dedupe_key": "sched:study_reminder:2026-06-12T11:50Z",
+    "scheduled_at": null,
+    "started_at": "2026-06-12 11:50:00.148914+00",
+    "completed_at": "2026-06-12 11:50:00.148914+00",
+    "created_at": "2026-06-12 11:50:00.148914+00"
+  },
+  {
+    "id": "2cdd2089-2e44-4bd5-96cd-5f8c00470741",
+    "template_id": "478e65af-3388-4d94-9620-435907c165e8",
+    "template_key": "study_reminder",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "schedule",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 2,
+    "status": "completed",
+    "actor_id": null,
+    "reason": null,
+    "dedupe_key": "sched:study_reminder:2026-06-13T00:00Z",
+    "scheduled_at": null,
+    "started_at": "2026-06-13 00:00:00.094671+00",
+    "completed_at": "2026-06-13 00:00:00.094671+00",
+    "created_at": "2026-06-13 00:00:00.094671+00"
+  },
+  {
+    "id": "2bbf3c96-80d2-4445-9349-3634222509fd",
+    "template_id": "478e65af-3388-4d94-9620-435907c165e8",
+    "template_key": "study_reminder",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "schedule",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 1,
+    "status": "completed",
+    "actor_id": null,
+    "reason": null,
+    "dedupe_key": "sched:in_app:study_reminder:2026-06-16T02:00Z",
+    "scheduled_at": null,
+    "started_at": "2026-06-16 02:00:00.080384+00",
+    "completed_at": "2026-06-16 02:00:00.080384+00",
+    "created_at": "2026-06-16 02:00:00.080384+00"
+  },
+  {
+    "id": "5aa1455f-c62f-43cf-907d-4ac737b330ed",
+    "template_id": "478e65af-3388-4d94-9620-435907c165e8",
+    "template_key": "study_reminder",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "schedule",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 1,
+    "status": "completed",
+    "actor_id": null,
+    "reason": null,
+    "dedupe_key": "sched:study_reminder:2026-06-13T02:00Z",
+    "scheduled_at": null,
+    "started_at": "2026-06-13 02:00:00.106477+00",
+    "completed_at": "2026-06-13 02:00:00.106477+00",
+    "created_at": "2026-06-13 02:00:00.106477+00"
+  },
+  {
+    "id": "5bc2981f-a664-4e92-be47-732d386e0190",
+    "template_id": "478e65af-3388-4d94-9620-435907c165e8",
+    "template_key": "study_reminder",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "schedule",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 1,
+    "status": "completed",
+    "actor_id": null,
+    "reason": null,
+    "dedupe_key": "sched:study_reminder:2026-06-13T06:30Z",
+    "scheduled_at": null,
+    "started_at": "2026-06-13 06:30:00.085159+00",
+    "completed_at": "2026-06-13 06:30:00.085159+00",
+    "created_at": "2026-06-13 06:30:00.085159+00"
+  },
+  {
+    "id": "0ba41eb1-1674-4b23-b529-780af0046f54",
+    "template_id": "478e65af-3388-4d94-9620-435907c165e8",
+    "template_key": "study_reminder",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "schedule",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 1,
+    "status": "completed",
+    "actor_id": null,
+    "reason": null,
+    "dedupe_key": "sched:in_app:study_reminder:2026-06-16T06:30Z",
+    "scheduled_at": null,
+    "started_at": "2026-06-16 06:30:00.087108+00",
+    "completed_at": "2026-06-16 06:30:00.087108+00",
+    "created_at": "2026-06-16 06:30:00.087108+00"
+  },
+  {
+    "id": "5f9e0f0f-3f98-47af-b5e2-ca6b8e9cfe46",
+    "template_id": "478e65af-3388-4d94-9620-435907c165e8",
+    "template_key": "study_reminder",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "schedule",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 3,
+    "status": "completed",
+    "actor_id": null,
+    "reason": null,
+    "dedupe_key": "sched:in_app:study_reminder:2026-06-17T00:00Z",
+    "scheduled_at": null,
+    "started_at": "2026-06-17 00:00:00.087586+00",
+    "completed_at": "2026-06-17 00:00:00.087586+00",
+    "created_at": "2026-06-17 00:00:00.087586+00"
+  },
+  {
+    "id": "f010926f-4e28-4ebf-a201-4160cbaf952e",
+    "template_id": "478e65af-3388-4d94-9620-435907c165e8",
+    "template_key": "study_reminder",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "schedule",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 1,
+    "status": "completed",
+    "actor_id": null,
+    "reason": null,
+    "dedupe_key": "sched:in_app:study_reminder:2026-06-17T02:00Z",
+    "scheduled_at": null,
+    "started_at": "2026-06-17 02:00:00.187366+00",
+    "completed_at": "2026-06-17 02:00:00.187366+00",
+    "created_at": "2026-06-17 02:00:00.187366+00"
+  },
+  {
+    "id": "2b6c3953-d404-4669-8fdb-9cc9c6588234",
+    "template_id": "478e65af-3388-4d94-9620-435907c165e8",
+    "template_key": "study_reminder",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "schedule",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 1,
+    "status": "completed",
+    "actor_id": null,
+    "reason": null,
+    "dedupe_key": "sched:in_app:study_reminder:2026-06-17T06:30Z",
+    "scheduled_at": null,
+    "started_at": "2026-06-17 06:30:00.088131+00",
+    "completed_at": "2026-06-17 06:30:00.088131+00",
+    "created_at": "2026-06-17 06:30:00.088131+00"
+  },
+  {
+    "id": "5f18ca2b-77b4-4f86-b9a6-84794247f380",
+    "template_id": "478e65af-3388-4d94-9620-435907c165e8",
+    "template_key": "study_reminder",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "schedule",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 2,
+    "status": "completed",
+    "actor_id": null,
+    "reason": null,
+    "dedupe_key": "sched:in_app:study_reminder:2026-06-18T00:00Z",
+    "scheduled_at": null,
+    "started_at": "2026-06-18 00:00:00.101892+00",
+    "completed_at": "2026-06-18 00:00:00.101892+00",
+    "created_at": "2026-06-18 00:00:00.101892+00"
+  },
+  {
+    "id": "3010d394-3716-4d34-b870-9e9a2e52721f",
+    "template_id": "478e65af-3388-4d94-9620-435907c165e8",
+    "template_key": "study_reminder",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "schedule",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 1,
+    "status": "completed",
+    "actor_id": null,
+    "reason": null,
+    "dedupe_key": "sched:in_app:study_reminder:2026-06-18T02:00Z",
+    "scheduled_at": null,
+    "started_at": "2026-06-18 02:00:00.092006+00",
+    "completed_at": "2026-06-18 02:00:00.092006+00",
+    "created_at": "2026-06-18 02:00:00.092006+00"
+  },
+  {
+    "id": "67ff4b7e-9052-43b9-b052-1e7c8354a87b",
+    "template_id": "478e65af-3388-4d94-9620-435907c165e8",
+    "template_key": "study_reminder",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "schedule",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 1,
+    "status": "completed",
+    "actor_id": null,
+    "reason": null,
+    "dedupe_key": "sched:in_app:study_reminder:2026-06-18T06:30Z",
+    "scheduled_at": null,
+    "started_at": "2026-06-18 06:30:00.284694+00",
+    "completed_at": "2026-06-18 06:30:00.284694+00",
+    "created_at": "2026-06-18 06:30:00.284694+00"
+  },
+  {
+    "id": "726695ac-bc08-4272-a7b1-36a2cab96cdb",
+    "template_id": "478e65af-3388-4d94-9620-435907c165e8",
+    "template_key": "study_reminder",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "schedule",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 3,
+    "status": "completed",
+    "actor_id": null,
+    "reason": null,
+    "dedupe_key": "sched:in_app:study_reminder:2026-06-19T00:00Z",
+    "scheduled_at": null,
+    "started_at": "2026-06-19 00:00:00.192775+00",
+    "completed_at": "2026-06-19 00:00:00.192775+00",
+    "created_at": "2026-06-19 00:00:00.192775+00"
+  },
+  {
+    "id": "b8ec135a-e20c-4aea-af38-afcc8df4af7a",
+    "template_id": "478e65af-3388-4d94-9620-435907c165e8",
+    "template_key": "study_reminder",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "schedule",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 1,
+    "status": "completed",
+    "actor_id": null,
+    "reason": null,
+    "dedupe_key": "sched:in_app:study_reminder:2026-06-14T23:40Z",
+    "scheduled_at": null,
+    "started_at": "2026-06-14 23:40:00.143435+00",
+    "completed_at": "2026-06-14 23:40:00.143435+00",
+    "created_at": "2026-06-14 23:40:00.143435+00"
+  },
+  {
+    "id": "7dfac214-4627-4d61-8c51-bc56d207c80e",
+    "template_id": "478e65af-3388-4d94-9620-435907c165e8",
+    "template_key": "study_reminder",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "schedule",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 1,
+    "status": "completed",
+    "actor_id": null,
+    "reason": null,
+    "dedupe_key": "sched:in_app:study_reminder:2026-06-19T02:00Z",
+    "scheduled_at": null,
+    "started_at": "2026-06-19 02:00:00.066677+00",
+    "completed_at": "2026-06-19 02:00:00.066677+00",
+    "created_at": "2026-06-19 02:00:00.066677+00"
+  },
+  {
+    "id": "738f0492-fc0c-4459-bc49-e1f13d28f577",
+    "template_id": "478e65af-3388-4d94-9620-435907c165e8",
+    "template_key": "study_reminder",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "schedule",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 1,
+    "status": "completed",
+    "actor_id": null,
+    "reason": null,
+    "dedupe_key": "sched:in_app:study_reminder:2026-06-19T06:30Z",
+    "scheduled_at": null,
+    "started_at": "2026-06-19 06:30:00.1743+00",
+    "completed_at": "2026-06-19 06:30:00.1743+00",
+    "created_at": "2026-06-19 06:30:00.1743+00"
+  },
+  {
+    "id": "071d8810-6fd9-4f04-afbd-77e76fd4e64a",
+    "template_id": "a076755d-18c1-45ac-8d1d-f6ebf3d34fb0",
+    "template_key": "weekly_summary",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "schedule",
+    "target_group_ids": [],
+    "target_snapshot": null,
+    "recipient_count": 1,
+    "status": "completed",
+    "actor_id": null,
+    "reason": null,
+    "dedupe_key": "sched:in_app:weekly_summary:2026-06-21T11:00Z",
+    "scheduled_at": null,
+    "started_at": "2026-06-21 11:00:00.205079+00",
+    "completed_at": "2026-06-21 11:00:00.205079+00",
+    "created_at": "2026-06-21 11:00:00.205079+00"
+  },
+  {
+    "id": "2ce72b3e-ff88-4c69-8e31-cdc9c23f464f",
+    "template_id": "feba6942-ab7c-4e87-b2f4-0a266b1e2ace",
+    "template_key": "legal_terms_changed",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "group",
+    "target_group_ids": [
+      "63b5a30d-4ac3-4f2d-9a7c-44a34d0b5be7"
+    ],
+    "target_snapshot": null,
+    "recipient_count": 4,
+    "status": "completed",
+    "actor_id": "2b329e99-587b-4042-9a51-6da6fe4a5c7f",
+    "reason": "이용약관 v2026.03 개정 안내 — 전체 회원 알림",
+    "dedupe_key": "admin:6304534a-5f45-425d-a7b9-9f57cff7021c",
+    "scheduled_at": null,
+    "started_at": "2026-06-22 01:54:54.138949+00",
+    "completed_at": "2026-06-22 01:54:54.923171+00",
+    "created_at": "2026-06-22 01:54:54.138949+00"
+  },
+  {
+    "id": "c5153210-9022-4c6d-929c-3e535125c08f",
+    "template_id": "99a4459d-9bdb-4d7c-a63c-b31f916ccb29",
+    "template_key": "legal_terms_changed",
+    "channels": [
+      "email"
+    ],
+    "target_type": "group",
+    "target_group_ids": [
+      "63b5a30d-4ac3-4f2d-9a7c-44a34d0b5be7"
+    ],
+    "target_snapshot": null,
+    "recipient_count": 3,
+    "status": "completed",
+    "actor_id": "2b329e99-587b-4042-9a51-6da6fe4a5c7f",
+    "reason": "이용약관 v2026.03 개정 안내 — 전체 회원 알림",
+    "dedupe_key": "admin:7e2bad5e-99b7-42af-bca9-35c89cb70472",
+    "scheduled_at": null,
+    "started_at": "2026-06-22 01:54:54.138949+00",
+    "completed_at": "2026-06-22 01:54:54.923171+00",
+    "created_at": "2026-06-22 01:54:54.138949+00"
+  },
+  {
+    "id": "9c3d4d6e-af6c-44d7-9016-a549bf8b0b1c",
+    "template_id": "feba6942-ab7c-4e87-b2f4-0a266b1e2ace",
+    "template_key": "legal_terms_changed",
+    "channels": [
+      "in_app"
+    ],
+    "target_type": "group",
+    "target_group_ids": [
+      "63b5a30d-4ac3-4f2d-9a7c-44a34d0b5be7"
+    ],
+    "target_snapshot": null,
+    "recipient_count": 12,
+    "status": "completed",
+    "actor_id": "2b329e99-587b-4042-9a51-6da6fe4a5c7f",
+    "reason": "이용약관 v2026.03 개정 안내 (SMTP)",
+    "dedupe_key": "admin:0dbbb023-1f37-41ba-a665-2bc2f3af2056",
+    "scheduled_at": null,
+    "started_at": "2026-06-22 05:12:47.025608+00",
+    "completed_at": "2026-06-22 05:12:47.864346+00",
+    "created_at": "2026-06-22 05:12:47.025608+00"
+  },
+  {
+    "id": "5e543ebb-7520-4b47-89c2-7342ffcaae59",
+    "template_id": "99a4459d-9bdb-4d7c-a63c-b31f916ccb29",
+    "template_key": "legal_terms_changed",
+    "channels": [
+      "email"
+    ],
+    "target_type": "group",
+    "target_group_ids": [
+      "63b5a30d-4ac3-4f2d-9a7c-44a34d0b5be7"
+    ],
+    "target_snapshot": null,
+    "recipient_count": 11,
+    "status": "completed",
+    "actor_id": "2b329e99-587b-4042-9a51-6da6fe4a5c7f",
+    "reason": "이용약관 v2026.03 개정 안내 (SMTP)",
+    "dedupe_key": "admin:979e0c99-3476-47c3-bc2f-a11cc015bf79",
+    "scheduled_at": null,
+    "started_at": "2026-06-22 05:12:47.025608+00",
+    "completed_at": "2026-06-22 05:12:47.864346+00",
+    "created_at": "2026-06-22 05:12:47.025608+00"
+  }
+]

@@ -166,7 +166,11 @@ export default function MessageTemplateCreatePage({
         }
       >
           {template ? (
-            <Form form={contentForm} className="message-template-content-form">
+            <Form
+              form={contentForm}
+              layout="vertical"
+              className="message-template-content-form"
+            >
               {isSupabaseSource ? (
                 <Form.Item
                   label="사유/근거"
