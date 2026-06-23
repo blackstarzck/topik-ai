@@ -20,7 +20,6 @@ AI 생성 TOPIK 읽기 문제 및 다중 문제 세션, 북마크 지원, 제출
 |`POST`|`/api/reading/generate`|Generate a reading problem|
 |`GET`|`/api/reading/history`|Get reading submission history|
 |`GET`|`/api/reading/question-types`|List reading question types|
-|`POST`|`/api/reading/session`|Create a reading session|
 |`GET`|`/api/reading/session/{session_id}`|Get reading session state|
 |`GET`|`/api/reading/session/{session_id}/results`|Get reading session results|
 |`POST`|`/api/reading/session/{session_id}/submit`|Submit a session answer|
@@ -185,50 +184,6 @@ Responses:
 |---|---|---|
 |application/json|array<ReadingQuestionTypeInfo>|[{"type":"main_idea","label":"중심 내용 파악","range":"32-34","description":"Identify the main idea of the passage."}]|
 - `401` Missing or invalid JWT.
-
-### POST /api/reading/session
-
-Summary: Create a reading session
-Operation ID: `create_reading_session_api_reading_session_post`
-
-Description:
-
-Create a reading session / 읽기 세션 생성
-
-**EN:** Creates a multi-question reading session and generates all problems synchronously
-before responding. Send the target level, optional question types, and question count.
-For incremental delivery use `POST /session/stream` instead.
-
-**KR:** 여러 문제로 구성된 읽기 세션을 만들고 모든 문제를 동기적으로 생성한 뒤 응답합니다.
-목표 등급, 선택적 문제 유형, 문제 수를 전송하세요. 점진적 전달이 필요하면
-`POST /session/stream`을 사용하세요.
-
-**Rate limit / 속도 제한:** 5 requests/minute
-
-Required request headers / auth:
-|Scheme|Header|Description|
-|---|---|---|
-|BearerAuth|`Authorization: Bearer <jwt>`|JWT Bearer token. Dashboard tokens come from POST /api/eval/auth/login.|
-
-Parameters:
-- None declared.
-
-Request body:
-- Required: yes
-|mediaType|schema|example|
-|---|---|---|
-|application/json|[ReadingSessionCreateRequest](../schemas/reading.md#readingsessioncreaterequest)|-|
-
-Responses:
-- `200` Session created with all problems generated up front.
-  - Response content:
-|mediaType|schema|example|
-|---|---|---|
-|application/json|[ReadingSessionResponse](../schemas/reading.md#readingsessionresponse)|{"session_id":"9c1e...","status":"in_progress","total_questions":5,"current_index":0,"problems":[{"id":"f47ac10b-58cc-4372-a567-0e02b2c3d479","question_type":"main_idea","difficulty":"medium","passage":"최근 도시에서는...","question":"이 글의 중심 내용은?","choices":[{"number":1,"text":"..."}]}],"started_at":"2024-11-15T09:30:00"}|
-- `401` Missing or invalid JWT.
-- `422` Invalid request body (target_level / question_types / question_count).
-- `429` Rate limit exceeded (5 requests/minute).
-- `502` AI problem generation failed (LLM unavailable).
 
 ### GET /api/reading/session/{session_id}
 

@@ -3,8 +3,8 @@
 이 폴더는 `https://api.dotoretopik.com/docs` Swagger 내용을 에이전트가 읽기 쉽게 나눈 문서입니다. 기존의 긴 단일 문서 대신, 필요한 API 그룹과 스키마 그룹만 열어볼 수 있도록 분리했습니다.
 
 - Swagger UI: https://api.dotoretopik.com/docs
-- OpenAPI JSON: http://58.236.187.135:9009/openapi.json
-- 생성 기준일: 2026-06-17
+- OpenAPI JSON: https://api.dotoretopik.com/openapi.json
+- 생성 기준일: 2026-06-23
 
 ## 먼저 볼 문서
 
@@ -22,11 +22,12 @@
 | --- | --- | --- | --- |
 | Admin Campaign API | [endpoints/admin-campaign.md](./endpoints/admin-campaign.md) | 내부 캠페인 리뷰어/관리자 대시보드 API입니다. 사용자 앱 화면용이 아닙니다. | 24 |
 | Admin Evaluation API | [endpoints/admin-eval.md](./endpoints/admin-eval.md) | 내부 평가 대시보드에서 채점 제출물, 데이터셋, 리뷰, 평가 실행을 관리합니다. | 12 |
+| Admin Users API | [endpoints/admin-users.md](./endpoints/admin-users.md) | 관리자/사용자 계정 목록·생성·조회·수정·삭제와 비밀번호 재설정 API입니다. 조회는 `admin`, 모든 변경은 `super_admin` 권한이 필요합니다. | 6 |
 | Eval Auth API | [endpoints/eval-auth.md](./endpoints/eval-auth.md) | 내부 평가 대시보드 로그인 API입니다. | 1 |
 | Evaluation API | [endpoints/evaluation.md](./endpoints/evaluation.md) | Writing 제출 후 채점 상태와 피드백을 조회합니다. | 2 |
 | External Campaign API | [endpoints/external-campaign.md](./endpoints/external-campaign.md) | 랜딩/캠페인 공개 API입니다. `X-API-Key` 인증을 사용합니다. | 6 |
 | Listening API | [endpoints/listening.md](./endpoints/listening.md) | TOPIK 듣기 세션, 오디오, 북마크, 이력, SSE 생성 API입니다. | 10 |
-| Reading API | [endpoints/reading.md](./endpoints/reading.md) | TOPIK 읽기 문제 생성, 세션, 북마크, 이력, 제출 API입니다. | 10 |
+| Reading API | [endpoints/reading.md](./endpoints/reading.md) | TOPIK 읽기 문제 생성, 세션(SSE), 북마크, 이력, 제출 API입니다. | 9 |
 | Writing API | [endpoints/writing.md](./endpoints/writing.md) | TOPIK 쓰기 문제, 자동저장, 제출, 챗 튜터, 이력, PDF export API입니다. | 9 |
 
 ## 스키마 문서
@@ -38,6 +39,7 @@
 | Common/shared | [schemas/common.md](./schemas/common.md) | 3 |
 | Admin Campaign API | [schemas/admin-campaign.md](./schemas/admin-campaign.md) | 26 |
 | Admin Evaluation API | [schemas/admin-eval.md](./schemas/admin-eval.md) | 18 |
+| Admin Users API | [schemas/admin-users.md](./schemas/admin-users.md) | 5 |
 | Eval Auth API | [schemas/eval-auth.md](./schemas/eval-auth.md) | 3 |
 | Evaluation API | [schemas/evaluation.md](./schemas/evaluation.md) | 9 |
 | External Campaign API | [schemas/external-campaign.md](./schemas/external-campaign.md) | 11 |
@@ -64,7 +66,7 @@
 
 | 항목 | 값 |
 | --- | --- |
-| OpenAPI paths | 72 |
-| Operations | 74 |
-| Component schemas | 118 |
+| OpenAPI paths | 74 |
+| Operations | 79 |
+| Component schemas | 123 |
 | Security schemes | 2 |

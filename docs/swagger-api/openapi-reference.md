@@ -3,8 +3,8 @@
 [Back to Swagger API README](./README.md)
 
 Source Swagger UI: https://api.dotoretopik.com/docs
-Source OpenAPI JSON: http://58.236.187.135:9009/openapi.json
-Generated: 2026-06-17
+Source OpenAPI JSON: https://api.dotoretopik.com/openapi.json
+Generated: 2026-06-23
 
 This file is intentionally short. The previous single-file reference was split so agents can open only the API group or schema group they need.
 
@@ -12,9 +12,9 @@ This file is intentionally short. The previous single-file reference was split s
 
 |Item|Count|
 |---|---|
-|OpenAPI paths|72|
-|Operations|74|
-|Component schemas|118|
+|OpenAPI paths|74|
+|Operations|79|
+|Component schemas|123|
 |Security schemes|2|
 
 ## Main Files
@@ -31,11 +31,12 @@ This file is intentionally short. The previous single-file reference was split s
 |---|---|---|
 |Admin Campaign API|24|[endpoints/admin-campaign.md](./endpoints/admin-campaign.md)|
 |Admin Evaluation API|12|[endpoints/admin-eval.md](./endpoints/admin-eval.md)|
+|Admin Users API|6|[endpoints/admin-users.md](./endpoints/admin-users.md)|
 |Eval Auth API|1|[endpoints/eval-auth.md](./endpoints/eval-auth.md)|
 |Evaluation API|2|[endpoints/evaluation.md](./endpoints/evaluation.md)|
 |External Campaign API|6|[endpoints/external-campaign.md](./endpoints/external-campaign.md)|
 |Listening API|10|[endpoints/listening.md](./endpoints/listening.md)|
-|Reading API|10|[endpoints/reading.md](./endpoints/reading.md)|
+|Reading API|9|[endpoints/reading.md](./endpoints/reading.md)|
 |Writing API|9|[endpoints/writing.md](./endpoints/writing.md)|
 
 ## Schema Files
@@ -45,6 +46,7 @@ This file is intentionally short. The previous single-file reference was split s
 |Common/shared|3|[schemas/common.md](./schemas/common.md)|
 |Admin Campaign API|26|[schemas/admin-campaign.md](./schemas/admin-campaign.md)|
 |Admin Evaluation API|18|[schemas/admin-eval.md](./schemas/admin-eval.md)|
+|Admin Users API|5|[schemas/admin-users.md](./schemas/admin-users.md)|
 |Eval Auth API|3|[schemas/eval-auth.md](./schemas/eval-auth.md)|
 |Evaluation API|9|[schemas/evaluation.md](./schemas/evaluation.md)|
 |External Campaign API|11|[schemas/external-campaign.md](./schemas/external-campaign.md)|
@@ -92,6 +94,12 @@ This file is intentionally short. The previous single-file reference was split s
 |`GET`|`/api/admin/eval/submissions/{submission_id}`|Admin Evaluation API|[endpoints/admin-eval.md](./endpoints/admin-eval.md#get-apiadminevalsubmissionssubmissionid)|
 |`GET`|`/api/admin/eval/users`|Admin Evaluation API|[endpoints/admin-eval.md](./endpoints/admin-eval.md#get-apiadminevalusers)|
 |`GET`|`/api/admin/eval/users/{user_id}/submissions`|Admin Evaluation API|[endpoints/admin-eval.md](./endpoints/admin-eval.md#get-apiadminevalusersuseridsubmissions)|
+|`GET`|`/api/admin/users`|Admin Users API|[endpoints/admin-users.md](./endpoints/admin-users.md#get-apiadminusers)|
+|`POST`|`/api/admin/users`|Admin Users API|[endpoints/admin-users.md](./endpoints/admin-users.md#post-apiadminusers)|
+|`DELETE`|`/api/admin/users/{user_id}`|Admin Users API|[endpoints/admin-users.md](./endpoints/admin-users.md#delete-apiadminusersuserid)|
+|`GET`|`/api/admin/users/{user_id}`|Admin Users API|[endpoints/admin-users.md](./endpoints/admin-users.md#get-apiadminusersuserid)|
+|`PATCH`|`/api/admin/users/{user_id}`|Admin Users API|[endpoints/admin-users.md](./endpoints/admin-users.md#patch-apiadminusersuserid)|
+|`POST`|`/api/admin/users/{user_id}/password`|Admin Users API|[endpoints/admin-users.md](./endpoints/admin-users.md#post-apiadminusersuseridpassword)|
 |`POST`|`/api/eval/auth/login`|Eval Auth API|[endpoints/eval-auth.md](./endpoints/eval-auth.md#post-apievalauthlogin)|
 |`GET`|`/api/evaluation/{submission_id}`|Evaluation API|[endpoints/evaluation.md](./endpoints/evaluation.md#get-apievaluationsubmissionid)|
 |`GET`|`/api/evaluation/{submission_id}/feedback`|Evaluation API|[endpoints/evaluation.md](./endpoints/evaluation.md#get-apievaluationsubmissionidfeedback)|
@@ -115,7 +123,6 @@ This file is intentionally short. The previous single-file reference was split s
 |`POST`|`/api/reading/generate`|Reading API|[endpoints/reading.md](./endpoints/reading.md#post-apireadinggenerate)|
 |`GET`|`/api/reading/history`|Reading API|[endpoints/reading.md](./endpoints/reading.md#get-apireadinghistory)|
 |`GET`|`/api/reading/question-types`|Reading API|[endpoints/reading.md](./endpoints/reading.md#get-apireadingquestion-types)|
-|`POST`|`/api/reading/session`|Reading API|[endpoints/reading.md](./endpoints/reading.md#post-apireadingsession)|
 |`GET`|`/api/reading/session/{session_id}`|Reading API|[endpoints/reading.md](./endpoints/reading.md#get-apireadingsessionsessionid)|
 |`GET`|`/api/reading/session/{session_id}/results`|Reading API|[endpoints/reading.md](./endpoints/reading.md#get-apireadingsessionsessionidresults)|
 |`POST`|`/api/reading/session/{session_id}/submit`|Reading API|[endpoints/reading.md](./endpoints/reading.md#post-apireadingsessionsessionidsubmit)|

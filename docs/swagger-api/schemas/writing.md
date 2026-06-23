@@ -16,14 +16,14 @@ Each table shows field required status, type, enum, default, example value, and 
 |[TopikWriting52Response](#topikwriting52response)|object|
 |[TopikWriting53Response](#topikwriting53response)|object|
 |[TopikWriting54Response](#topikwriting54response)|object|
+|[TopikWritingQuestionListResponse](#topikwritingquestionlistresponse)|object|
 |[WritingChatRequest](#writingchatrequest)|object|
 |[WritingGenerateRequestV2](#writinggeneraterequestv2)|object|
 |[WritingHistoryItem](#writinghistoryitem)|object|
 |[WritingHistoryResponse](#writinghistoryresponse)|object|
+|[WritingRecommendationItem](#writingrecommendationitem)|object|
+|[WritingRecommendationListResponse](#writingrecommendationlistresponse)|object|
 |[WritingSubmitRequest](#writingsubmitrequest)|object|
-|[WritingTaskListItem](#writingtasklistitem)|object|
-|[WritingTaskListResponse](#writingtasklistresponse)|object|
-|[WritingTaskResponse](#writingtaskresponse)|object|
 
 ## DeleteSubmissionResponse
 
@@ -321,6 +321,18 @@ Type: `object`
 |model_outline|no|anyOf<object<string, -> \| null>|-|-|-|-|
 |rubric|no|anyOf<object<string, -> \| null>|-|-|-|-|
 
+## TopikWritingQuestionListResponse
+
+Paginated list of TOPIK writing questions (rich §7 metadata, per item type).
+Type: `object`
+
+|name|required|type|enum|default|example|description|
+|---|---|---|---|---|---|---|
+|items|yes|array<oneOf<TopikWriting51Response \| TopikWriting52Response \| TopikWriting53Response \| TopikWriting54Response>>|-|-|-|Questions of the requested item type; each item is the §7 discriminated union shape (keyed by item_number).|
+|total|yes|integer|-|-|[62]|Total questions matching the filters, ignoring pagination.|
+|limit|yes|integer|-|-|[10]|Page size applied.|
+|offset|yes|integer|-|-|[0]|Offset applied.|
+
 ## WritingChatRequest
 
 Request for chat tutor interaction.
@@ -412,6 +424,41 @@ Type: `object`
 |submissions|yes|array<WritingHistoryItem>|-|-|-|Page of submissions, newest first / 제출 목록 (최신순)|
 |total|yes|integer|-|-|[1]|Total number of submissions matching the filters / 필터에 일치하는 전체 제출 수|
 
+## WritingRecommendationItem
+
+One row of the guide §7.9 recommendation view — common columns only (no prompt body).
+Maps `topik_writing_question_recommendation_view`: the cross-type list/filter shape.
+Full per-number metadata (prompt_text, essay_type, blanks, …) is served by
+GET /api/writing/tasks/{task_type}.
+Type: `object`
+
+|name|required|type|enum|default|example|description|
+|---|---|---|---|---|---|---|
+|question_id|yes|string|-|-|-|-|
+|item_number|yes|integer|-|-|-|-|
+|target_level|no|anyOf<string \| null>|-|-|-|-|
+|difficulty_level|no|anyOf<integer \| null>|-|-|-|-|
+|topic_main|yes|string|-|-|-|-|
+|topic_detail|yes|string|-|-|-|-|
+|speech_act|no|anyOf<string \| null>|-|-|-|-|
+|scenario_type|yes|string|-|-|-|-|
+|recommendation_keys|no|anyOf<array<-> \| null>|-|-|-|-|
+|avoid_repeat_keys|no|anyOf<array<-> \| null>|-|-|-|-|
+|review_status|yes|string|-|-|-|-|
+|service_status|yes|string|-|-|-|-|
+
+## WritingRecommendationListResponse
+
+Paginated cross-type list of writing questions (guide §7.9 view, 노출 가능 only).
+Type: `object`
+
+|name|required|type|enum|default|example|description|
+|---|---|---|---|---|---|---|
+|items|yes|array<WritingRecommendationItem>|-|-|-|Questions across item types 51–54 (common §7.9 columns only).|
+|total|yes|integer|-|-|[128]|Total questions matching the filters, ignoring pagination.|
+|limit|yes|integer|-|-|[10]|Page size applied.|
+|offset|yes|integer|-|-|[0]|Offset applied.|
+
 ## WritingSubmitRequest
 
 Request to submit a writing for evaluation.
@@ -439,52 +486,3 @@ Schema examples:
 |text|yes|string|-|-|["현대 사회에서 의사소통의 중요성은 점점 더 커지고 있다. 사람들은 다양한 매체를 통해 서로의 생각을 나누며 관계를 형성한다. 그러나 정보가 넘쳐나는 환경에서는 정확하고 진실한 소통이 더욱 어려워지기도 한다. 따라서 우리는 상대를 존중하는 태도로 경청하고 명확하게 표현하는 능력을 길러야 한다."]|Student's writing content. Minimum length depends on task_type (Q51/Q52: 5, Q53: 20, Q54: 100 chars).|
 |lang|no|string|-|ko|["ko"]<br>{"default":"ko"}|User interface language code. One of: ko, en, vi.|
 |passage_context|no|string|-|-|["다음을 읽고 ㉠과 ㉡에 들어갈 말을 각각 쓰십시오. ..."]<br>{"default":""}|Q51/Q52 only: original passage with ㉠/㉡ blanks. Sent from frontend if not stored in DB; empty otherwise.|
-
-## WritingTaskListItem
-
-Lightweight writing task item for listing.
-Type: `object`
-
-|name|required|type|enum|default|example|description|
-|---|---|---|---|---|---|---|
-|id|yes|string|-|-|["task_5f9c2e10"]|Unique task identifier.|
-|task_type|yes|string|-|-|["Q54"]|TOPIK II writing task type. One of: Q51, Q52, Q53, Q54.|
-|title|yes|string|-|-|["의사소통의 중요성에 대해 쓰기"]|Short display title for the task.|
-|topic|no|string|-|-|["의사소통의 중요성"]<br>{"default":""}|Topic of the writing task.|
-|generated_by|no|string|-|human|["human"]<br>{"default":"human"}|Origin of the task. One of: 'human', 'llm', 'fallback'.|
-|difficulty_level|no|integer|-|5|[5]<br>{"default":5}|Difficulty rating, typically 1 (easiest) to 10 (hardest).|
-
-## WritingTaskListResponse
-
-Paginated list of writing tasks.
-Type: `object`
-
-|name|required|type|enum|default|example|description|
-|---|---|---|---|---|---|---|
-|items|yes|array<WritingTaskListItem>|-|-|[[{"difficulty_level":5,"generated_by":"human","id":"task_5f9c2e10","task_type":"Q54","title":"의사소통의 중요성에 대해 쓰기","topic":"의사소통의 중요성"}]]|Writing tasks in the current page.|
-|total|yes|integer|-|-|[128]|Total number of tasks available across all pages.|
-
-## WritingTaskResponse
-
-Full writing task returned from DB or LLM for practice.
-Type: `object`
-
-|name|required|type|enum|default|example|description|
-|---|---|---|---|---|---|---|
-|id|yes|string|-|-|["task_5f9c2e10"]|Unique task identifier.|
-|task_type|yes|string|-|-|["Q54"]|TOPIK II writing task type. One of: Q51, Q52, Q53, Q54.|
-|title|yes|string|-|-|["의사소통의 중요성에 대해 쓰기"]|Short display title for the task.|
-|prompt|yes|string|-|-|["다음을 주제로 하여 자신의 생각을 600~700자로 글을 쓰십시오."]|Full task prompt/instructions shown to the student.|
-|topic|no|string|-|-|["의사소통의 중요성"]<br>{"default":""}|Topic of the writing task.|
-|generated_by|no|string|-|human|["human"]<br>{"default":"human"}|Origin of the task. One of: 'human', 'llm', 'fallback'.|
-|difficulty_level|no|integer|-|5|[5]<br>{"default":5}|Difficulty rating, typically 1 (easiest) to 10 (hardest).|
-|target_char_count|no|anyOf<integer \| null>|-|-|[700]|Recommended answer length in characters; null if not applicable.|
-|max_score|no|integer|-|50|[50]<br>{"default":50}|Maximum achievable score (Q51/Q52: 10, Q53: 30, Q54: 50).|
-|reference_material|no|anyOf<object<string, -> \| null>|-|-|[{"caption":"연도별 인구 변화","type":"graph"}]|Optional supporting material (chart/data/passage) for the task; null if none.|
-|instruction|no|anyOf<string \| null>|-|-|["㉠과 ㉡에 들어갈 말을 각각 쓰십시오."]|Q51/Q52 only: blank-fill instruction text; null for other task types.|
-|passage|no|anyOf<string \| null>|-|-|["안녕하세요. 다음 주에 모임이 있어서 ㉠. 꼭 참석해 ㉡."]|Q51/Q52 only: passage text containing the blanks; null for other task types.|
-|blanks|no|anyOf<array<string> \| null>|-|-|[["㉠","㉡"]]|Q51/Q52 only: ordered blank labels to fill, e.g. ['㉠', '㉡']; null otherwise.|
-|header|no|anyOf<object<string, -> \| null>|-|-|[{"recipient":"김 선생님","subject":"모임 안내"}]|Q51/Q52 only: document header fields, e.g. {'recipient': ..., 'subject': ...}; null otherwise.|
-|greeting|no|anyOf<string \| null>|-|-|["안녕하세요."]|Q51/Q52 only: greeting line of the document; null otherwise.|
-|body_lines|no|anyOf<array<string> \| null>|-|-|[["다음 주에 모임이 있습니다.","꼭 참석해 주시기 바랍니다."]]|Q51/Q52 only: ordered body lines of the document; null otherwise.|
-|closing|no|anyOf<string \| null>|-|-|["감사합니다."]|Q51/Q52 only: closing line of the document; null otherwise.|

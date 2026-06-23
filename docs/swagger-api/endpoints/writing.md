@@ -23,8 +23,8 @@ TOPIK II 작문 AI 채점 제출, 작문 주제 생성, AI 채팅 튜터로 실�
 |`DELETE`|`/api/writing/history/{submission_id}`|Delete writing submission|
 |`POST`|`/api/writing/save-draft`|Auto-save writing draft|
 |`POST`|`/api/writing/submit`|Submit writing for AI evaluation|
-|`GET`|`/api/writing/tasks`|List writing tasks|
-|`GET`|`/api/writing/tasks/{task_type}`|Get a specific writing task (DB or AI fallback)|
+|`GET`|`/api/writing/tasks`|List writing questions across types (§7.9 view, 노출 가능 only)|
+|`GET`|`/api/writing/tasks/{task_type}`|List TOPIK II writing questions of a type (메타데이터 적용)|
 
 ## Endpoint Details
 
@@ -446,35 +446,23 @@ Responses:
 
 ### GET /api/writing/tasks
 
-Summary: List writing tasks
+Summary: List writing questions across types (§7.9 view, 노출 가능 only)
 Operation ID: `list_writing_tasks_api_writing_tasks_get`
 
 Description:
 
-List writing tasks / 작문 문제 목록 조회
+List writing questions across types / 유형 통합 작문 문제 목록 (§7.9 추천 뷰)
 
-**EN:** Returns a paginated list of available TOPIK II writing tasks stored in the
-database. Filter by task type or topic keyword.
+**EN:** Paginated cross-type list of TOPIK II writing questions read from the guide
+§7.9 recommendation view (`topik_writing_question_recommendation_view`) — common
+columns only (no prompt body). Only `service_status = '노출 가능'` rows are returned.
+For the full per-number metadata of one question, use GET /api/writing/tasks/{task_type}.
 
-**KR:** 데이터베이스에 저장된 TOPIK II 작문 문제 목록을 페이지네이션으로 반환합니다.
-문제 유형 또는 주제 키워드로 필터링 가능합니다.
+**KR:** 51~54번을 한 번에 조회하는 추천 뷰 기반 목록입니다(§7.9). 공통 컬럼만 포함하며
+`노출 가능` 문제만 반환합니다. 문제 본문·세부 메타데이터는 /api/writing/tasks/{task_type}에서 조회합니다.
 
-**Example response / 응답 예시:**
-```json
-{
-  "tasks": [
-    {
-      "id": "abc123",
-      "task_type": "task54",
-      "topic": "인터넷 중독",
-      "difficulty": 5,
-      "question": "다음을 참고하여 '인터넷 중독의 원인과 해결 방안'에 대한 글을 쓰십시오.",
-      "is_active": true
-    }
-  ],
-  "total": 1
-}
-```
+**Filters / 필터:** `item_number`(51|52|53|54, optional), `topic_main`, `topic_detail`,
+`difficulty_level`(1~6). Invalid `item_number` → 422. Empty result → 200 with `items: []`.
 
 Required request headers / auth:
 |Scheme|Header|Description|
@@ -484,56 +472,44 @@ Required request headers / auth:
 Parameters:
 |name|in|required|type|description|example|
 |---|---|---|---|---|---|
-|task_type|query|no|anyOf<string \| null>|-|-|
-|topic|query|no|anyOf<string \| null>|-|-|
-|limit|query|no|integer|-|{"default":10}|
-|offset|query|no|integer|-|{"default":0}|
+|item_number|query|no|anyOf<string \| null>|Filter by item type 51\|52\|53\|54 (accepts Q53/task53).|-|
+|topic_main|query|no|anyOf<string \| null>|Filter by 종합 주제 (exact match).|-|
+|topic_detail|query|no|anyOf<string \| null>|Filter by 세부 주제 (exact match).|-|
+|difficulty_level|query|no|anyOf<integer \| null>|Filter by 내부 난이도 1~6.|-|
+|limit|query|no|integer|Page size.|{"default":10}|
+|offset|query|no|integer|Pagination offset.|{"default":0}|
 
 Request body:
 - None declared.
 
 Responses:
-- `200` Paginated list of available writing tasks.
+- `200` Paginated cross-type list of serviceable writing questions.
   - Response content:
 |mediaType|schema|example|
 |---|---|---|
-|application/json|[WritingTaskListResponse](../schemas/writing.md#writingtasklistresponse)|{"tasks":[{"id":"abc123","task_type":"task54","topic":"인터넷 중독","difficulty":5,"question":"다음을 참고하여 '인터넷 중독의 원인과 해결 방안'에 대한 글을 쓰십시오.","is_active":true}],"total":1}|
+|application/json|[WritingRecommendationListResponse](../schemas/writing.md#writingrecommendationlistresponse)|{"items":[{"question_id":"topik-writing-53-0063","item_number":53,"target_level":"3급","difficulty_level":3,"topic_main":"사회","topic_detail":"경제","speech_act":null,"scenario_type":"자료 설명","recommendation_keys":[],"avoid_repeat_keys":[],"review_status":"검수 완료","service_status":"노출 가능"}],"total":128,"limit":10,"offset":0}|
 - `401` Missing or invalid JWT.
-- `422` Validation Error
-  - Response content:
-|mediaType|schema|example|
-|---|---|---|
-|application/json|[HTTPValidationError](../schemas/common.md#httpvalidationerror)|-|
+- `422` Invalid item_number filter (must be 51\|52\|53\|54).
 
 ### GET /api/writing/tasks/{task_type}
 
-Summary: Get a specific writing task (DB or AI fallback)
+Summary: List TOPIK II writing questions of a type (메타데이터 적용)
 Operation ID: `get_writing_task_api_writing_tasks__task_type__get`
 
 Description:
 
-Get a specific writing task / 특정 작문 문제 조회
+List writing questions of a type / 유형별 작문 문제 목록 (메타데이터 적용)
 
-**EN:** Fetches a writing task by type (and optionally topic/difficulty).
-Tries the database first; if no matching task is found, generates one via AI (LLM fallback).
+**EN:** Returns a paginated list of TOPIK II writing questions for the given item type
+(`51|52|53|54`) from the rich-metadata tables (`topik_writing_5X_questions`). Each item
+is shaped by the §7 discriminated union, keyed by `item_number`. No status gating — all
+rows are returned. Empty results return `200` with `items: []` (not 404).
 
-**KR:** 유형(및 선택적으로 주제/난이도)으로 작문 문제를 조회합니다.
-데이터베이스를 먼저 확인하고, 적합한 문제가 없으면 AI로 생성합니다 (LLM 폴백).
+**KR:** 지정한 유형(`51|52|53|54`)의 작문 문제를 리치 메타데이터 테이블에서
+페이지네이션 리스트로 반환합니다. 각 item은 §7 판별 유니온 구조(`item_number` 기준)이며,
+검수/서비스 상태 필터링은 하지 않습니다(전부 반환). 결과가 없으면 `items: []`로 200을 반환합니다.
 
-**Path parameter / 경로 파라미터:**
-- `task_type`: `task51` | `task53` | `task54`
-
-**Example response / 응답 예시:**
-```json
-{
-  "id": "abc123",
-  "task_type": "task54",
-  "topic": "1인 가구 증가",
-  "question": "다음을 참고하여 '1인 가구 증가의 원인과 문제점 및 해결 방안'에 대한 글을 쓰십시오.",
-  "passage": "최근 우리 사회에서 1인 가구가 빠르게 증가하고 있다...",
-  "difficulty": 6
-}
-```
+**Path / 경로 파라미터:** `task_type` = `51` | `52` | `53` | `54` (also accepts `Q53`, `task53`).
 
 Required request headers / auth:
 |Scheme|Header|Description|
@@ -543,23 +519,21 @@ Required request headers / auth:
 Parameters:
 |name|in|required|type|description|example|
 |---|---|---|---|---|---|
-|task_type|path|yes|string|-|-|
-|topic|query|no|anyOf<string \| null>|-|-|
-|difficulty|query|no|anyOf<integer \| null>|-|-|
+|task_type|path|yes|string|`51` \| `52` \| `53` \| `54` (also accepts `Q53`, `task53`).|-|
+|topic_main|query|no|anyOf<string \| null>|Filter by 종합 주제 (exact match).|-|
+|topic_detail|query|no|anyOf<string \| null>|Filter by 세부 주제 (exact match).|-|
+|difficulty_level|query|no|anyOf<integer \| null>|Filter by 내부 난이도 1~6.|-|
+|limit|query|no|integer|Page size.|{"default":10}|
+|offset|query|no|integer|Pagination offset.|{"default":0}|
 
 Request body:
 - None declared.
 
 Responses:
-- `200` Writing task from the database, or an AI-generated fallback.
+- `200` Paginated list of rich-metadata questions for the item type.
   - Response content:
 |mediaType|schema|example|
 |---|---|---|
-|application/json|[WritingTaskResponse](../schemas/writing.md#writingtaskresponse)|{"id":"abc123","task_type":"task54","topic":"1인 가구 증가","question":"다음을 참고하여 '1인 가구 증가의 원인과 문제점 및 해결 방안'에 대한 글을 쓰십시오.","passage":"최근 우리 사회에서 1인 가구가 빠르게 증가하고 있다...","difficulty":6}|
+|application/json|[TopikWritingQuestionListResponse](../schemas/writing.md#topikwritingquestionlistresponse)|{"items":[{"question_id":"topik-writing-53-0063","item_number":53,"topic_main":"사회","topic_detail":"경제","prompt_text":"다음 자료를 보고 200~300자로 쓰십시오.","review_status":"검수 완료","service_status":"노출 가능"}],"total":62,"limit":10,"offset":0}|
 - `401` Missing or invalid JWT.
-- `404` No active writing task found for the requested type/filters.
-- `422` Validation Error
-  - Response content:
-|mediaType|schema|example|
-|---|---|---|
-|application/json|[HTTPValidationError](../schemas/common.md#httpvalidationerror)|-|
+- `422` Invalid task_type (must be 51\|52\|53\|54).

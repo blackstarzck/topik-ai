@@ -4,6 +4,11 @@
 
 |Schema|File|
 |---|---|
+|AdminCreateUserRequest|[admin-users.md](./admin-users.md#admincreateuserrequest)|
+|AdminResetPasswordRequest|[admin-users.md](./admin-users.md#adminresetpasswordrequest)|
+|AdminUpdateUserRequest|[admin-users.md](./admin-users.md#adminupdateuserrequest)|
+|AdminUserListResponse|[admin-users.md](./admin-users.md#adminuserlistresponse)|
+|AdminUserResponse|[admin-users.md](./admin-users.md#adminuserresponse)|
 |Body_upload_attachment_api_external_campaign_uploads_post|[external-campaign.md](./external-campaign.md#bodyuploadattachmentapiexternalcampaignuploadspost)|
 |CampaignAssignRequest|[admin-campaign.md](./admin-campaign.md#campaignassignrequest)|
 |CampaignAuditEntry|[admin-campaign.md](./admin-campaign.md#campaignauditentry)|
@@ -109,6 +114,7 @@
 |TopikWriting52Response|[writing.md](./writing.md#topikwriting52response)|
 |TopikWriting53Response|[writing.md](./writing.md#topikwriting53response)|
 |TopikWriting54Response|[writing.md](./writing.md#topikwriting54response)|
+|TopikWritingQuestionListResponse|[writing.md](./writing.md#topikwritingquestionlistresponse)|
 |TraitScoreDetail|[evaluation.md](./evaluation.md#traitscoredetail)|
 |UserSubmissionItem|[admin-eval.md](./admin-eval.md#usersubmissionitem)|
 |UserSubmissionsResponse|[admin-eval.md](./admin-eval.md#usersubmissionsresponse)|
@@ -118,7 +124,6 @@
 |WritingGenerateRequestV2|[writing.md](./writing.md#writinggeneraterequestv2)|
 |WritingHistoryItem|[writing.md](./writing.md#writinghistoryitem)|
 |WritingHistoryResponse|[writing.md](./writing.md#writinghistoryresponse)|
+|WritingRecommendationItem|[writing.md](./writing.md#writingrecommendationitem)|
+|WritingRecommendationListResponse|[writing.md](./writing.md#writingrecommendationlistresponse)|
 |WritingSubmitRequest|[writing.md](./writing.md#writingsubmitrequest)|
-|WritingTaskListItem|[writing.md](./writing.md#writingtasklistitem)|
-|WritingTaskListResponse|[writing.md](./writing.md#writingtasklistresponse)|
-|WritingTaskResponse|[writing.md](./writing.md#writingtaskresponse)|
