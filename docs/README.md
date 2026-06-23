@@ -112,8 +112,9 @@
 - `page-ia/analytics-overview-page-ia.md`
 - `page-ia/assessment-level-tests-page-ia.md`
 - `page-ia/assessment-question-bank-eps-topik-page-ia.md`
-- `page-ia/assessment-question-bank-page-ia.md`
-- `page-ia/assessment-question-manage-page-ia.md`
+- `page-ia/assessment-question-bank-page-ia.md` — TOPIK 쓰기 문항 통합 페이지(조회 + 노출/태그 관리, route-backed 탭 문항/가져온 문항) — 2026-06-23 IA 통합
+- `page-ia/assessment-question-bank-imported-page-ia.md` — 가져온 문항(인박스): 외부 공급 API 수신·검수 완료분 승격(`/assessment/question-bank/imported` 탭)
+- `page-ia/assessment-question-manage-page-ia.md` — [supersede] 구 관리 페이지(`/assessment/question-bank/manage` → bank로 redirect), bank 통합 문서로 승계
 - `page-ia/commerce-coupons-page-ia.md`
 - `page-ia/commerce-payments-page-ia.md`
 - `page-ia/commerce-points-page-ia.md`
@@ -151,6 +152,9 @@
 ### `docs/checklists`
 - `admin-essential-checklist.md`
 - `codex-response-completion-checklist.md`
+
+### `docs/plans`
+- `plans/assessment-ia-consolidation-plan.md` — 평가 메뉴 IA 통합 실행계획(쓰기 3페이지 → 메뉴 1 + route-backed 탭 2: 문항/가져온 문항) — 2026-06-23
 
 ## 운영 문서
 - 실행 지침: `AGENTS.md`

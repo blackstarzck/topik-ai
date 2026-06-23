@@ -402,3 +402,15 @@
 - Updated `docs/specs/admin-data-contract.md` (§9.1 Users) to add the `emailVerificationStatus`/`email_confirmed boolean` contract.
 - Reason: v13 매직링크가 아닌 이메일+비밀번호 가입 중 확인메일 미인증(중도이탈) 계정이 회원 목록에 빈 이름/닉네임으로 섞여 노출됨. `get_admin_users`가 `auth.users.email_confirmed_at IS NOT NULL`을 `email_confirmed`로 반환하고, 회원 목록은 `이메일 인증` 배지+컬럼 필터로, 회원 상세 프로필 탭은 `이메일 인증` 항목으로 가입 완료/미완료를 구분한다(소셜 가입은 자동 인증→항상 인증 완료). auth.users 읽기 전용, write 없음. 마이그레이션 `supabase/migrations-admin/20260623100000_admin_users_email_verified.sql`(+ down), 2026-06-23 dev DB 적용.
 - Validation: `npm run typecheck`, `npm run lint`, `npm run check:mojibake` passed; `get_admin_users`를 platform_admin 컨텍스트로 호출해 미인증 4건→`email_confirmed=false`(빈 이름/닉네임 일치)·인증 12건→`true` 확인; mock 모드 dev 서버에서 목록 `이메일 인증` 컬럼 배지/필터(미인증 46건, 회원명 `-`)와 상세 프로필 항목을 DOM으로 검증.
+
+## 2026-06-23 - Assessment 쓰기 문항 IA 통합 + 외부 공급 API 수신
+
+- Updated `docs/specs/page-ia/assessment-question-bank-page-ia.md`(통합 페이지로 재정의: 조회 + 노출/태그 관리 인라인, route-backed 탭 문항/가져온 문항), `docs/specs/page-ia/assessment-question-manage-page-ia.md`(supersede 주석 — `/assessment/question-bank/manage` → bank로 redirect), `docs/README.md`(가져온 문항 인박스 page-IA + `docs/plans` 섹션 추가), `docs/plans/assessment-ia-consolidation-plan.md`·`docs/specs/page-ia/assessment-question-bank-imported-page-ia.md` 신규.
+- Reason: 평가 메뉴의 쓰기 3페이지(목록/관리/인박스)가 비효율적(목록·관리가 동일 권한 `assessment.question-bank.manage`)이라 메뉴 1개 + route-backed 탭 2개(문항 = 목록+관리 통합, 가져온 문항(인박스))로 통합했다. 인박스는 외부 공급 API `GET /api/writing/tasks` 수신분을 무손실 적재(`topik_writing_question_import`)하고 **검수 완료**분만 §7 운영 테이블로 승격(upsert keyed on `question_id`, 승격 시 admin 관리 포인트 `service_status`/태그/`created_at` 보존). Opus 4.8 + GPT-5.5 토론으로 IA 확정.
+- Validation: `npm run test:e2e:mock` 10/10 PASS(통합 렌더·탭 전환 신규 2건 포함), `npm run typecheck`/`lint`(내 파일)/`check:mojibake` PASS, `node scripts/check-route-doc-coverage.mjs`·`check-doc-crosslinks.mjs`에서 내 신규 문서 누락 해소(잔여 누락은 동시 세션 문서). dev DB 실 적재→승격 701건·검수 미완료 1건 held 검증 완료.
+
+## 2026-06-23 - Assessment 운영 조치(노출 상태) 일괄 처리 + 페이지네이션 수정
+
+- Updated `docs/specs/page-ia/assessment-question-bank-page-ia.md`(운영 조치 일괄 처리 블록쿼트 — rowSelection·일괄 바·방향별 차등 마찰·신규 RPC 2종·페이지네이션 수정).
+- Reason: 문항 700+건의 노출 상태를 단건씩 바꾸는 게 비효율적 → 일괄 처리 추가(오너 2026-06-23 결정: 단계적 구현·노출은 개수확인만·반복방지 경고만·운영주의 차단). 검수 게이트가 인바운드 전환으로 삭제돼 노출에 서버 백스톱이 없던 점을 새 일괄 RPC가 유일 가드로 흡수. 마이그 `20260623180000`(`admin_bulk_set_writing_question_service_status` — auth.uid+is_content_admin·문항별 격리·멱등·available 시 운영주의 차단·batch_id 감사), `20260623181000`(단건 `admin_update_topik_question` 감사 payload 에 reason 키 추가 — 감사 읽기 RPC 정합). 프론트: `bulk-service-status-modal.tsx` 신규 + manage 페이지 rowSelection·일괄 바·Gmail식 선택 배너, imported 페이지 포함 `pageSize`→`defaultPageSize` 페이지네이션 수정. 2026-06-23 dev DB 적용.
+- Validation: `npm run typecheck`/`lint`/`check:mojibake`/`check:migration-boundary` PASS; `npm run test:e2e:mock` **12/12 PASS**(일괄 노출 제외·노출 가능 신규 2건 포함); dev DB 실 RPC 프로브(content_admin uid, BEGIN/ROLLBACK으로 무변경): 라운드트립 changed=3·감사 3행·멱등 unchanged=3, 가드 4종(unauth/forbidden/bad-status/empty), not-found 격리 failed=1, 운영주의 차단 blocked=1, 단건 RPC reason+note 동시기록 확인.

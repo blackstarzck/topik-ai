@@ -1,5 +1,7 @@
 # Assessment > TOPIK 쓰기 문항 관리 상세 IA
 
+> **2026-06-23 supersede(IA 통합)**: 이 페이지는 라우트 `/assessment/question-bank`로 통합됐다(조회 + 노출/태그 관리 인라인). `/assessment/question-bank/manage`는 `/assessment/question-bank`로 **redirect**되며, 통합 후 SoT는 `docs/specs/page-ia/assessment-question-bank-page-ia.md`다. 본 문서는 통합 이전 관리 표면 계약의 역사 기록으로 보존한다. (Opus 4.8 + GPT-5.5 토론)
+
 ## 1. 문서 목적
 
 - `Assessment > TOPIK 쓰기 문항 관리`의 목록 운영 구조를 하나의 SoT로 고정한다.

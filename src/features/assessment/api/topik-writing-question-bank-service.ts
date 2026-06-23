@@ -5,6 +5,7 @@ import type {
   AssessmentQuestionNumber,
   AssessmentQuestionSummary,
   AssessmentServiceStatus,
+  BulkServiceStatusResult,
   TopikWritingQuestionTagRow,
   TopikWritingTagMasterCatalogRow,
   TopikWritingTagMasterRow,
@@ -465,6 +466,53 @@ export async function setTopikWritingServiceStatus(
   reason: string
 ): Promise<void> {
   await callUpdateRpc(questionId, { service_status: nextStatus, __note: reason });
+}
+
+// ---------------------------------------------------------------------------
+// 운영 조치 일괄 처리 — admin_bulk_set_writing_question_service_status (0005).
+// 선택 문항 N건을 한 번의 RPC 왕복으로 변경. 문항별 격리·멱등·노출 게이트·감사
+// (batch_id 묶음)는 전부 RPC 내장. 결과 jsonb를 camelCase 모델로 매핑한다.
+// ---------------------------------------------------------------------------
+
+function mapBulkResult(data: unknown): BulkServiceStatusResult {
+  const row = (data ?? {}) as Record<string, unknown>;
+  const rawDetails = Array.isArray(row.details) ? row.details : [];
+  return {
+    total: Number(row.total ?? 0),
+    changed: Number(row.changed ?? 0),
+    unchanged: Number(row.unchanged ?? 0),
+    blocked: Number(row.blocked ?? 0),
+    failed: Number(row.failed ?? 0),
+    batchId: typeof row.batch_id === 'string' ? row.batch_id : '',
+    details: rawDetails.map((entry) => {
+      const detail = (entry ?? {}) as Record<string, unknown>;
+      return {
+        questionId: typeof detail.question_id === 'string' ? detail.question_id : '',
+        kind: detail.kind === 'blocked' ? 'blocked' : 'failed',
+        message: typeof detail.message === 'string' ? detail.message : ''
+      };
+    })
+  };
+}
+
+export async function setTopikWritingServiceStatusBulk(
+  questionIds: string[],
+  nextStatus: AssessmentServiceStatus,
+  reason: string
+): Promise<BulkServiceStatusResult> {
+  const client = requireClient();
+  const { data, error } = await client.rpc(
+    'admin_bulk_set_writing_question_service_status',
+    {
+      p_question_ids: questionIds,
+      p_next_status: nextStatus,
+      p_reason: reason
+    }
+  );
+  if (error) {
+    throw new Error(error.message);
+  }
+  return mapBulkResult(data);
 }
 
 // ---------------------------------------------------------------------------

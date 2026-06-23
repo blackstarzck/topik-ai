@@ -38,7 +38,7 @@ export type SimplePageRouteKey =
   | 'commerce-points'
   | 'assessment-question-bank'
   | 'assessment-question-detail'
-  | 'assessment-question-manage'
+  | 'assessment-imported-tasks'
   | 'analytics-overview'
   | 'system-admins'
   | 'system-permissions'
@@ -233,8 +233,8 @@ export const adminRouteDefinitions = [
   },
   {
     kind: 'page',
-    path: '/assessment/question-bank/manage',
-    page: 'assessment-question-manage'
+    path: '/assessment/question-bank/imported',
+    page: 'assessment-imported-tasks'
   },
   {
     kind: 'page',
@@ -385,6 +385,11 @@ export const adminRouteDefinitions = [
   },
   { kind: 'redirect', path: '/billing/refunds', to: '/commerce/refunds' },
   { kind: 'redirect', path: '/commerce', to: '/commerce/payments' },
+  {
+    kind: 'redirect',
+    path: '/assessment/question-bank/manage',
+    to: '/assessment/question-bank'
+  },
   {
     kind: 'redirect',
     path: '/assessment',

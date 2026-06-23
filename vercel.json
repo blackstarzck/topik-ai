@@ -4,6 +4,10 @@
     {
       "path": "/api/notifications/dispatch-email",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/writing-tasks/ingest",
+      "schedule": "0 18 * * *"
     }
   ],
   "rewrites": [

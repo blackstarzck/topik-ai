@@ -8,9 +8,13 @@ import {
   notification
 } from 'antd';
 import type { TableColumnsType } from 'antd';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-import { updateAssessmentQuestionServiceStatusSafe } from '../api/assessment-question-bank-service';
+import {
+  updateAssessmentQuestionServiceStatusBulkSafe,
+  updateAssessmentQuestionServiceStatusSafe
+} from '../api/assessment-question-bank-service';
 import { questionBankDataSource } from '../api/question-bank-data-source';
 import { useAssessmentQuestionFilters } from '../model/use-assessment-question-filters';
 import { useAssessmentQuestionList } from '../model/use-assessment-question-list';
@@ -21,6 +25,8 @@ import {
 } from '../model/use-question-bank-masters';
 import { AssessmentQuestionBankToolbar } from '../ui/assessment-question-bank-toolbar';
 import { QuestionTagEditModal } from '../ui/question-tag-edit-modal';
+import { AssessmentBankTabs } from '../ui/assessment-bank-tabs';
+import { BulkServiceStatusModal } from '../ui/bulk-service-status-modal';
 import {
   REPEAT_AVOID_EXCESS_THRESHOLD,
   SERVICE_STATUS_LABELS,
@@ -121,6 +127,7 @@ const OPERATION_ACTIONS: { nextStatus: AssessmentServiceStatus; copy: OperationA
 ];
 
 export default function AssessmentQuestionManagePage(): JSX.Element {
+  const navigate = useNavigate();
   const filters = useAssessmentQuestionFilters();
   const { state, reload } = useAssessmentQuestionList();
   const { topicOptions } = useQuestionBankTopicMaster();
@@ -128,6 +135,10 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
     useQuestionBankTags();
   const { tagMasterRows } = useQuestionBankTagMaster();
   const [actionState, setActionState] = useState<OperationActionState>(null);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
+  const [bulkStatus, setBulkStatus] = useState<AssessmentServiceStatus | null>(
+    null
+  );
   const [tagEditQuestionId, setTagEditQuestionId] = useState<string | null>(null);
   const [notificationApi, notificationContextHolder] =
     notification.useNotification();
@@ -178,6 +189,22 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
     topicMainFilter
   ]);
 
+  // 선택된 문항 — 필터된 목록과 교차(stale 키 방어). 일괄 조치는 이 집합에만 적용.
+  const selectedQuestions = useMemo(
+    () =>
+      filteredQuestions.filter((question) =>
+        selectedRowKeys.includes(question.questionId)
+      ),
+    [filteredQuestions, selectedRowKeys]
+  );
+
+  // 필터(=URL 파라미터)가 바뀌면 선택을 초기화한다. 페이지네이션은 URL을 바꾸지
+  // 않으므로 페이지 이동 중에는 선택이 유지된다(preserveSelectedRowKeys=false).
+  const filterSignature = searchParams.toString();
+  useEffect(() => {
+    setSelectedRowKeys([]);
+  }, [filterSignature]);
+
   const summaryItems = useMemo(() => {
     const countOf = (status: AssessmentServiceStatus) =>
       currentNumberQuestions.filter(
@@ -217,6 +244,18 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
     });
     return byCode;
   }, [tagMasterRows]);
+
+  // 노출(available) 일괄 전환 시 서버가 차단할 운영주의 태그 활성 건수 — 모달에서
+  // "N건 자동 제외" 안내로 기대치를 맞춘다(실제 차단은 RPC가 강제).
+  const bulkCautionCount = useMemo(
+    () =>
+      selectedQuestions.filter((question) =>
+        (tagsByQuestionId[question.questionId] ?? []).some(
+          (tag) => tagGroupByCode[tag.tagCode] === TAG_GROUP_OPERATION_CAUTION
+        )
+      ).length,
+    [selectedQuestions, tagGroupByCode, tagsByQuestionId]
+  );
 
   const handleTagMutated = useCallback(
     (action: 'tag_assigned' | 'tag_removed', tagLabel: string) => {
@@ -285,6 +324,72 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
     [actionState, notificationApi, reload]
   );
 
+  const handleBulkConfirm = useCallback(
+    async (reason: string) => {
+      if (!bulkStatus) {
+        return;
+      }
+      const targetIds = selectedQuestions.map((question) => question.questionId);
+      const result = await updateAssessmentQuestionServiceStatusBulkSafe({
+        questionIds: targetIds,
+        nextStatus: bulkStatus,
+        reason
+      });
+
+      if (!result.ok) {
+        notificationApi.error({
+          message: '노출 상태를 일괄 변경하지 못했습니다.',
+          description: result.error.message
+        });
+        return;
+      }
+
+      const summary = result.data;
+      const statusLabel = SERVICE_STATUS_LABELS[bulkStatus];
+      setBulkStatus(null);
+      setSelectedRowKeys([]);
+      reload();
+
+      const hasIssue = summary.blocked > 0 || summary.failed > 0;
+      const description = (
+        <Space direction="vertical" size={4}>
+          <Text>
+            변경 {summary.changed.toLocaleString()}건 · 변경없음{' '}
+            {summary.unchanged.toLocaleString()}건
+            {summary.blocked > 0
+              ? ` · 차단 ${summary.blocked.toLocaleString()}건`
+              : ''}
+            {summary.failed > 0
+              ? ` · 실패 ${summary.failed.toLocaleString()}건`
+              : ''}
+          </Text>
+          {summary.details.slice(0, 5).map((detail) => (
+            <Text key={`${detail.kind}-${detail.questionId}`} type="secondary">
+              [{detail.kind === 'blocked' ? '차단' : '실패'}] {detail.questionId}:{' '}
+              {detail.message}
+            </Text>
+          ))}
+          {summary.batchId && summary.batchId !== 'mock-batch' ? (
+            <Text type="secondary">batch: {summary.batchId}</Text>
+          ) : null}
+        </Space>
+      );
+
+      if (hasIssue) {
+        notificationApi.warning({
+          message: '노출 상태를 일괄 변경했습니다(일부 제외).',
+          description
+        });
+      } else {
+        notificationApi.success({
+          message: `${statusLabel}로 ${summary.changed.toLocaleString()}건을 변경했습니다.`,
+          description
+        });
+      }
+    },
+    [bulkStatus, notificationApi, reload, selectedQuestions]
+  );
+
   const manageColumns = useMemo<TableColumnsType<AssessmentQuestionSummary>>(
     () => [
       {
@@ -297,8 +402,17 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
       {
         title: '문항 ID',
         dataIndex: 'questionId',
-        width: 200,
-        sorter: createTextSorter((record) => record.questionId)
+        width: 220,
+        sorter: createTextSorter((record) => record.questionId),
+        render: (questionId: string) => (
+          <Button
+            type="link"
+            style={{ padding: 0, height: 'auto' }}
+            onClick={() => navigate(`/assessment/question-bank/${questionId}`)}
+          >
+            {questionId}
+          </Button>
+        )
       },
       {
         title: '주제(종합/세부)',
@@ -389,7 +503,7 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
         render: (_, record) => <Text>{record.updatedAt || '-'}</Text>
       }
     ],
-    [tagCountByQuestionId]
+    [tagCountByQuestionId, navigate]
   );
 
   const actionCopy = actionState
@@ -438,7 +552,9 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
     <>
       {notificationContextHolder}
       <div>
-        <PageTitle title="TOPIK 쓰기 문항 관리" />
+        <PageTitle title="TOPIK 쓰기 문항" />
+
+        <AssessmentBankTabs active="questions" />
 
         <ListSummaryCards items={summaryItems} />
 
@@ -485,6 +601,60 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
             />
           ) : null}
 
+          {selectedQuestions.length > 0 ? (
+            <div
+              data-testid="bulk-action-bar"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                flexWrap: 'wrap',
+                marginBottom: 16,
+                padding: '8px 12px',
+                background: '#f5f5f5',
+                border: '1px solid #f0f0f0',
+                borderRadius: 6
+              }}
+            >
+              <Text strong>선택 {selectedQuestions.length.toLocaleString()}건</Text>
+              {selectedQuestions.length < filteredQuestions.length ? (
+                <Button
+                  type="link"
+                  style={{ padding: 0, height: 'auto' }}
+                  onClick={() =>
+                    setSelectedRowKeys(
+                      filteredQuestions.map((question) => question.questionId)
+                    )
+                  }
+                >
+                  필터 결과 전체 {filteredQuestions.length.toLocaleString()}건 선택
+                </Button>
+              ) : null}
+              <span style={{ flex: 1 }} />
+              <Text type="secondary">일괄 노출 상태:</Text>
+              <Button
+                size="small"
+                danger
+                onClick={() => setBulkStatus('available')}
+              >
+                노출 가능
+              </Button>
+              <Button size="small" onClick={() => setBulkStatus('excluded')}>
+                노출 제외
+              </Button>
+              <Button size="small" onClick={() => setBulkStatus('internal_test')}>
+                내부 테스트
+              </Button>
+              <Button
+                size="small"
+                type="text"
+                onClick={() => setSelectedRowKeys([])}
+              >
+                선택 해제
+              </Button>
+            </div>
+          ) : null}
+
           {filteredQuestions.length === 0 ? (
             <Empty
               image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -493,8 +663,18 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
           ) : (
             <AdminDataTable<AssessmentQuestionSummary>
               rowKey="questionId"
-              pagination={{ pageSize: 10 }}
-              scroll={{ x: 1460 }}
+              rowSelection={{
+                selectedRowKeys,
+                onChange: (keys) => setSelectedRowKeys(keys as string[]),
+                preserveSelectedRowKeys: false
+              }}
+              pagination={{
+                defaultPageSize: 10,
+                showSizeChanger: true,
+                pageSizeOptions: [10, 20, 50, 100],
+                showTotal: (total) => `총 ${total.toLocaleString()}건`
+              }}
+              scroll={{ x: 1520 }}
               tableLayout="fixed"
               columns={manageColumns}
               dataSource={filteredQuestions}
@@ -513,6 +693,17 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
             reasonPlaceholder={actionCopy.reasonPlaceholder}
             onCancel={() => setActionState(null)}
             onConfirm={handleConfirmOperationAction}
+          />
+        ) : null}
+
+        {bulkStatus ? (
+          <BulkServiceStatusModal
+            open
+            nextStatus={bulkStatus}
+            selectedQuestions={selectedQuestions}
+            cautionCount={bulkCautionCount}
+            onCancel={() => setBulkStatus(null)}
+            onConfirm={handleBulkConfirm}
           />
         ) : null}
 

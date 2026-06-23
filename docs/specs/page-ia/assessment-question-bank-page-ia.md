@@ -1,14 +1,16 @@
-# Assessment > TOPIK 쓰기 문항 목록 상세 IA
+# Assessment > TOPIK 쓰기 문항 (조회+관리 통합) 상세 IA
 
 ## 1. 문서 목적
 
 - `Assessment > TOPIK 쓰기 문항 목록`의 목록 조회 구조와 2depth 문항 상세 페이지 구조를 하나의 SoT로 고정한다.
 - 이 문서의 1차 대상은 문항 목록 페이지(`/assessment/question-bank`)와 2depth 문항 상세 페이지다. `문항 관리`(관리 포인트: 태그 + 노출 통제)는 별도 라우트/페이지로 분리되어 `docs/specs/page-ia/assessment-question-manage-page-ia.md`가 소유한다.
 - 2026-06-11 인바운드 모델 전환(`docs/architecture/metadata-tag-schema-transition-decision-record.md` §0)에 따라 이 페이지의 정체성은 **조회 전용**으로 재정의됐다. 문항 본문·메타데이터는 외부(공급) API가 **완성 상태로 공급**하며, admin은 문제를 저작·생성·분류·검수하지 않는다. 이 페이지는 수신·적재된 문항과 메타데이터를 열람하는 화면이다.
-- 운영 기본 흐름은 `검색 -> 상세 열람`이다. 조치(태그 부여/제거, `service_status` 노출 통제)는 문항 관리 페이지 책임이며, 이 페이지에는 쓰기 액션이 없다.
-- `51~54번` 문제 유형 차이를 반영하면서도 검색 파라미터, URL 복원 계약을 관리 페이지와 일관되게 유지한다.
+- 운영 기본 흐름은 `검색 -> 상세 열람 -> 조치(노출/태그) -> 감사 로그 확인`이다. 2026-06-23 IA 통합으로 노출 통제(`service_status`)·태그 부여/제거 쓰기 액션이 이 페이지에 인라인으로 들어왔다(구 관리 페이지 흡수, 권한 `assessment.question-bank.manage` 동일).
+- `51~54번` 문제 유형 차이를 반영하면서도 검색 파라미터, URL 복원 계약을 일관되게 유지한다.
 
-> 상위 개념어로서 "문제은행"은 목록/관리 두 페이지를 아우르는 도메인 명칭으로만 사용한다. 라우트 `/assessment/question-bank`는 문항 목록 페이지가 소유하고, 문항 관리 페이지(`/assessment/question-bank/manage`)는 `docs/specs/page-ia/assessment-question-manage-page-ia.md`가 소유한다.
+> **2026-06-23 IA 통합(Opus 4.8 + GPT-5.5 토론)**: 구 목록·관리 두 페이지를 라우트 `/assessment/question-bank` **단일 통합 페이지**로 합쳤다(조회 + 노출/태그 관리 인라인). 상단 **route-backed 탭 2개**: `문항`(이 페이지) / `가져온 문항(인박스)`(`/assessment/question-bank/imported`). `/assessment/question-bank/manage`는 `/assessment/question-bank`로 **redirect**되며 구 manage 문서는 supersede됐다. 2depth 상세는 `/assessment/question-bank/:questionId` 유지.
+
+> **2026-06-23 운영 조치 일괄 처리(노출 상태)**: 행 다중선택(`rowSelection`) + 하단 일괄 바로 선택 N건의 `service_status`(노출 가능/노출 제외/내부 테스트)를 한 번에 변경한다. "방향별 차등 마찰" 설계 — 숨김 시 "노출 중 K건 사라짐" 경고, 노출(available) 시 운영주의 태그 활성 건은 **서버에서 자동 차단**(반복방지는 경고만, 오너 2026-06-23 결정). 페이지(10건) vs 필터 전체 N건 선택은 Gmail식 배너로 분리, 사유 필수, 변경 문항마다 감사(공통 `batch_id`). 백엔드: RPC `admin_bulk_set_writing_question_service_status(text[],text,text)`(`auth.uid()`+`is_content_admin`, 문항별 격리·멱등 무변경 무감사·available 시 운영주의 차단, `{total,changed,unchanged,blocked,failed,details,batch_id}` 반환 — 마이그 `20260623180000`). 단건 RPC `admin_update_topik_question`은 감사 사유를 `payload.note`+`payload.reason` 동시 기록으로 정합화(마이그 `20260623181000` — 감사 읽기 RPC가 `reason` 키 노출). 서비스 facade `updateAssessmentQuestionServiceStatusBulkSafe`. 페이지네이션 `defaultPageSize`(비제어)로 n/페이지 셀렉터가 실제 반영되도록 수정.
 
 > 현행 코드 주의(2026-06-11 갱신): 구현의 검수 표면(페이지 제목 `TOPIK 쓰기 문제 검수`, 검수 상태 축, 2depth 페이지의 검수 메모 카드·검수 액션)은 재정의 P3 코드 컷오버(커밋 `202f905`)에서 **전부 제거 완료**됐다. 검수 4컬럼 물리 제거 마이그레이션 `0013`도 2026-06-11 적용 완료됐다(DB 검수 잔존 0건 — 증적 로그 P3 재채점 절). 본 문서의 "(제거 완료 — 재정의 P3)" 표기는 이 컷오버를 가리킨다.
 
@@ -17,9 +19,9 @@
 | 항목 | 내용 |
 | --- | --- |
 | 모듈 | Assessment |
-| 페이지명 | TOPIK 쓰기 문항 목록 (조회 전용) |
+| 페이지명 | TOPIK 쓰기 문항 (조회 + 관리 통합) |
 | 현재 상태 | 구현됨 — 데이터 소스는 facade 스위치(**`topik_writing` 기본** — 재정의 P3 컷오버 완료 / `legacy` 롤백(env `VITE_QUESTION_BANK_SOURCE=legacy`) / `mock`). 검수 표면은 재정의 P3에서 제거 완료(커밋 `202f905`) |
-| 페이지 유형 | 목록 조회형 + 2depth 문항 상세(조회 전용) |
+| 페이지 유형 | 통합(조회+관리)형 + route-backed 탭(문항/가져온 문항) + 2depth 상세 |
 | 목록 라우트 | `/assessment/question-bank` |
 | 상세 라우트 | `/assessment/question-bank/:questionId` (2026-06-11 재정의 P3 구현에서 구 검수 라우트 `…/review/:questionId` 개명 완료) |
 | 주요 권한 | `assessment.question-bank.manage` |
