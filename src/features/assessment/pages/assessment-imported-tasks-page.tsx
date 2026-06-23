@@ -1,5 +1,6 @@
-import { Alert, Button, Empty, Tag, Tooltip, notification } from 'antd';
+import { Alert, Button, Empty, Input, Space, Tag, Tooltip, notification } from 'antd';
 import type { TableColumnsType } from 'antd';
+import { SearchOutlined } from '@ant-design/icons';
 import { useCallback, useMemo, useState } from 'react';
 
 import { questionBankDataSource } from '../api/question-bank-data-source';
@@ -87,6 +88,14 @@ export default function AssessmentImportedTasksPage(): JSX.Element {
     ];
   }, [state.data]);
 
+  const topicFilterOptions = useMemo(
+    () =>
+      Array.from(new Set(state.data.map((task) => task.topic).filter(Boolean)))
+        .sort((a, b) => a.localeCompare(b, 'ko'))
+        .map((value) => ({ text: value, value })),
+    [state.data]
+  );
+
   const columns = useMemo<TableColumnsType<ImportedWritingTask>>(
     () => [
       {
@@ -94,6 +103,11 @@ export default function AssessmentImportedTasksPage(): JSX.Element {
         dataIndex: 'itemNumber',
         width: 100,
         sorter: createTextSorter((record) => String(record.itemNumber ?? '')),
+        filters: ITEM_NUMBERS.map((number) => ({
+          text: `${number}번`,
+          value: number
+        })),
+        onFilter: (value, record) => record.itemNumber === value,
         render: (itemNumber: number | null) =>
           itemNumber ? `${itemNumber}번` : '미상'
       },
@@ -101,7 +115,55 @@ export default function AssessmentImportedTasksPage(): JSX.Element {
         title: '소스 ID',
         dataIndex: 'sourceTaskId',
         width: 300,
-        sorter: createTextSorter((record) => record.sourceTaskId)
+        sorter: createTextSorter((record) => record.sourceTaskId),
+        filterIcon: (filtered) => (
+          <SearchOutlined style={{ color: filtered ? '#1677ff' : undefined }} />
+        ),
+        filterDropdown: ({
+          setSelectedKeys,
+          selectedKeys,
+          confirm,
+          clearFilters
+        }) => (
+          <div
+            style={{ padding: 8 }}
+            onKeyDown={(event) => event.stopPropagation()}
+          >
+            <Input
+              allowClear
+              placeholder="소스 ID 검색"
+              value={selectedKeys[0] as string | undefined}
+              onChange={(event) =>
+                setSelectedKeys(event.target.value ? [event.target.value] : [])
+              }
+              onPressEnter={() => confirm()}
+              style={{ marginBottom: 8, display: 'block', width: 220 }}
+            />
+            <Space>
+              <Button
+                type="primary"
+                size="small"
+                icon={<SearchOutlined />}
+                onClick={() => confirm()}
+              >
+                검색
+              </Button>
+              <Button
+                size="small"
+                onClick={() => {
+                  clearFilters?.();
+                  confirm();
+                }}
+              >
+                초기화
+              </Button>
+            </Space>
+          </div>
+        ),
+        onFilter: (value, record) =>
+          record.sourceTaskId
+            .toLowerCase()
+            .includes(String(value).toLowerCase())
       },
       {
         title: '제목',
@@ -115,6 +177,8 @@ export default function AssessmentImportedTasksPage(): JSX.Element {
         dataIndex: 'topic',
         width: 140,
         sorter: createTextSorter((record) => record.topic),
+        filters: topicFilterOptions,
+        onFilter: (value, record) => record.topic === value,
         render: (topic: string) => topic || '-'
       },
       {
@@ -124,6 +188,11 @@ export default function AssessmentImportedTasksPage(): JSX.Element {
         sorter: createTextSorter((record) =>
           String(record.difficultyLevel ?? '')
         ),
+        filters: [1, 2, 3, 4, 5, 6].map((level) => ({
+          text: `난이도 ${level}`,
+          value: level
+        })),
+        onFilter: (value, record) => record.difficultyLevel === value,
         render: (difficulty: number | null) => difficulty ?? '-'
       },
       {
@@ -152,7 +221,7 @@ export default function AssessmentImportedTasksPage(): JSX.Element {
         render: (lastSeenAt: string) => lastSeenAt || '-'
       }
     ],
-    []
+    [topicFilterOptions]
   );
 
   return (

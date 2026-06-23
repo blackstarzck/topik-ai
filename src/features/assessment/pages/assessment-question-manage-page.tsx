@@ -2,12 +2,14 @@ import {
   Alert,
   Button,
   Empty,
+  Input,
   Space,
   Tag,
   Typography,
   notification
 } from 'antd';
 import type { TableColumnsType } from 'antd';
+import { SearchOutlined } from '@ant-design/icons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -20,10 +22,8 @@ import { useAssessmentQuestionFilters } from '../model/use-assessment-question-f
 import { useAssessmentQuestionList } from '../model/use-assessment-question-list';
 import {
   useQuestionBankTagMaster,
-  useQuestionBankTags,
-  useQuestionBankTopicMaster
+  useQuestionBankTags
 } from '../model/use-question-bank-masters';
-import { AssessmentQuestionBankToolbar } from '../ui/assessment-question-bank-toolbar';
 import { QuestionTagEditModal } from '../ui/question-tag-edit-modal';
 import { AssessmentBankTabs } from '../ui/assessment-bank-tabs';
 import { BulkServiceStatusModal } from '../ui/bulk-service-status-modal';
@@ -32,6 +32,8 @@ import {
   SERVICE_STATUS_LABELS,
   TAG_GROUP_OPERATION_CAUTION,
   TAG_GROUP_REPEAT_AVOID,
+  assessmentDifficultyLevels,
+  assessmentQuestionNumbers,
   assessmentServiceStatuses,
   getServiceStatusColor,
   getServiceStatusLabel,
@@ -39,9 +41,12 @@ import {
 } from '../model/assessment-question-bank-schema';
 import {
   applyCommonQuestionFilters,
-  filterQuestionsByNumbers,
-  getQuestionLevelText
+  filterQuestionsByNumbers
 } from '../model/assessment-question-bank-presenter';
+import {
+  TableActionMenu,
+  type TableActionMenuItem
+} from '../../../shared/ui/table/table-action-menu';
 import type {
   AssessmentQuestionNumber,
   AssessmentQuestionSummary,
@@ -130,7 +135,6 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
   const navigate = useNavigate();
   const filters = useAssessmentQuestionFilters();
   const { state, reload } = useAssessmentQuestionList();
-  const { topicOptions } = useQuestionBankTopicMaster();
   const { tagsByQuestionId, tagCountByQuestionId, reload: reloadTags } =
     useQuestionBankTags();
   const { tagMasterRows } = useQuestionBankTagMaster();
@@ -330,10 +334,16 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
         return;
       }
       const targetIds = selectedQuestions.map((question) => question.questionId);
+      // 노출 가능은 사유 입력 대신 개수 확인 팝업이라 사유가 비어 온다 → 감사용
+      // 사유를 자동 생성한다(숨김 방향은 모달에서 사유 필수).
+      const reasonForRpc =
+        bulkStatus === 'available' && !reason.trim()
+          ? `노출 가능 일괄 전환(개수 확인) — 총 ${targetIds.length}건`
+          : reason;
       const result = await updateAssessmentQuestionServiceStatusBulkSafe({
         questionIds: targetIds,
         nextStatus: bulkStatus,
-        reason
+        reason: reasonForRpc
       });
 
       if (!result.ok) {
@@ -390,55 +400,173 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
     [bulkStatus, notificationApi, reload, selectedQuestions]
   );
 
+  // 문항 상세 보기 진입 — 현재 검색/필터(searchParams)를 쿼리로 보존해 상세에서
+  // 뒤로 돌아올 때 목록 상태가 복원되게 한다(구 목록 페이지 계약 계승).
+  const openDetail = useCallback(
+    (questionId: string) => {
+      const qs = searchParams.toString();
+      navigate(
+        qs
+          ? `/assessment/question-bank/${questionId}?${qs}`
+          : `/assessment/question-bank/${questionId}`
+      );
+    },
+    [navigate, searchParams]
+  );
+
+  // 컬럼 헤더 필터 옵션 — 주제·TOPIK 급수는 데이터에서 distinct 추출.
+  const topicMainFilterOptions = useMemo(
+    () =>
+      Array.from(new Set(state.data.map((q) => q.topicMain).filter(Boolean)))
+        .sort((a, b) => a.localeCompare(b, 'ko'))
+        .map((value) => ({ text: value, value })),
+    [state.data]
+  );
+
+  const targetLevelFilterOptions = useMemo(
+    () =>
+      Array.from(new Set(state.data.map((q) => q.targetLevel).filter(Boolean)))
+        .sort((a, b) => a.localeCompare(b, 'ko'))
+        .map((value) => ({ text: value, value })),
+    [state.data]
+  );
+
+  // 더보기 메뉴 — 상세 보기 + 운영 조치(노출 상태 전환). 현재 상태 조치는 비활성.
+  const createRowActionItems = useCallback(
+    (record: AssessmentQuestionSummary): TableActionMenuItem[] => [
+      {
+        key: 'detail',
+        label: '상세 보기',
+        onClick: () => openDetail(record.questionId)
+      },
+      ...OPERATION_ACTIONS.map((action) => ({
+        key: `status-${action.nextStatus}`,
+        label: action.copy.label,
+        disabled: record.serviceStatus === action.nextStatus,
+        onClick: () =>
+          setActionState({
+            questionId: record.questionId,
+            nextStatus: action.nextStatus
+          })
+      }))
+    ],
+    [openDetail]
+  );
+
   const manageColumns = useMemo<TableColumnsType<AssessmentQuestionSummary>>(
     () => [
       {
         title: '문항 번호',
         dataIndex: 'questionNumber',
-        width: 100,
+        width: 110,
         sorter: createTextSorter((record) => record.questionNumber),
+        filters: assessmentQuestionNumbers.map((number) => ({
+          text: `${number}번`,
+          value: number
+        })),
+        onFilter: (value, record) => record.questionNumber === value,
         render: (questionNumber: AssessmentQuestionNumber) => `${questionNumber}번`
       },
       {
         title: '문항 ID',
         dataIndex: 'questionId',
-        width: 220,
+        width: 230,
         sorter: createTextSorter((record) => record.questionId),
+        filterIcon: (filtered) => (
+          <SearchOutlined style={{ color: filtered ? '#1677ff' : undefined }} />
+        ),
+        filterDropdown: ({
+          setSelectedKeys,
+          selectedKeys,
+          confirm,
+          clearFilters
+        }) => (
+          <div
+            style={{ padding: 8 }}
+            onKeyDown={(event) => event.stopPropagation()}
+          >
+            <Input
+              allowClear
+              placeholder="문항 ID 검색"
+              value={selectedKeys[0] as string | undefined}
+              onChange={(event) =>
+                setSelectedKeys(event.target.value ? [event.target.value] : [])
+              }
+              onPressEnter={() => confirm()}
+              style={{ marginBottom: 8, display: 'block', width: 220 }}
+            />
+            <Space>
+              <Button
+                type="primary"
+                size="small"
+                icon={<SearchOutlined />}
+                onClick={() => confirm()}
+              >
+                검색
+              </Button>
+              <Button
+                size="small"
+                onClick={() => {
+                  clearFilters?.();
+                  confirm();
+                }}
+              >
+                초기화
+              </Button>
+            </Space>
+          </div>
+        ),
+        onFilter: (value, record) =>
+          record.questionId.toLowerCase().includes(String(value).toLowerCase()),
         render: (questionId: string) => (
           <Button
             type="link"
             style={{ padding: 0, height: 'auto' }}
-            onClick={() => navigate(`/assessment/question-bank/${questionId}`)}
+            onClick={() => openDetail(questionId)}
           >
             {questionId}
           </Button>
         )
       },
       {
-        title: '주제(종합/세부)',
-        key: 'topicAxis',
-        width: 200,
-        sorter: createTextSorter(
-          (record) => `${record.topicMain} ${record.topicDetail}`
-        ),
-        render: (_, record) => (
-          <Space direction="vertical" size={2}>
-            <Text strong>{record.topicMain}</Text>
-            <Text type="secondary">{record.topicDetail || '-'}</Text>
-          </Space>
-        )
+        title: '주제',
+        dataIndex: 'topicMain',
+        width: 160,
+        sorter: createTextSorter((record) => record.topicMain),
+        filters: topicMainFilterOptions,
+        onFilter: (value, record) => record.topicMain === value,
+        render: (topicMain: string) => <Text>{topicMain || '-'}</Text>
       },
       {
-        title: '유형/난이도',
-        key: 'typeAndLevel',
-        width: 170,
-        sorter: createTextSorter((record) => record.questionTypeName),
-        render: (_, record) => (
-          <Space direction="vertical" size={2}>
-            <Text>{record.questionTypeName}</Text>
-            <Text type="secondary">{getQuestionLevelText(record) || '-'}</Text>
-          </Space>
-        )
+        title: '난이도',
+        dataIndex: 'difficultyLevel',
+        width: 110,
+        sorter: (a, b) => (a.difficultyLevel ?? 0) - (b.difficultyLevel ?? 0),
+        filters: assessmentDifficultyLevels.map((level) => ({
+          text: `난이도 ${level}`,
+          value: level
+        })),
+        onFilter: (value, record) => record.difficultyLevel === value,
+        render: (difficultyLevel: number | null) =>
+          difficultyLevel == null ? (
+            <Text type="secondary">-</Text>
+          ) : (
+            <Text>난이도 {difficultyLevel}</Text>
+          )
+      },
+      {
+        title: 'TOPIK 급수',
+        dataIndex: 'targetLevel',
+        width: 130,
+        sorter: createTextSorter((record) => record.targetLevel),
+        filters: targetLevelFilterOptions,
+        onFilter: (value, record) => record.targetLevel === value,
+        render: (targetLevel: string) =>
+          targetLevel ? (
+            <Text>{targetLevel}</Text>
+          ) : (
+            <Text type="secondary">-</Text>
+          )
       },
       {
         title: createStatusColumnTitle('노출 상태', serviceStatusLabels),
@@ -472,38 +600,29 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
         }
       },
       {
-        title: '운영 조치',
-        key: 'operationAction',
-        width: 280,
-        render: (_, record) => (
-          <Space size={4} wrap>
-            {OPERATION_ACTIONS.map((action) => (
-              <Button
-                key={action.nextStatus}
-                size="small"
-                disabled={record.serviceStatus === action.nextStatus}
-                onClick={() =>
-                  setActionState({
-                    questionId: record.questionId,
-                    nextStatus: action.nextStatus
-                  })
-                }
-              >
-                {action.copy.label}
-              </Button>
-            ))}
-          </Space>
-        )
-      },
-      {
         title: '최근 수정',
         key: 'updatedAt',
         width: 160,
         sorter: createTextSorter((record) => record.updatedAt),
         render: (_, record) => <Text>{record.updatedAt || '-'}</Text>
+      },
+      {
+        title: '',
+        key: 'rowActions',
+        width: 100,
+        fixed: 'right',
+        render: (_, record) => (
+          <TableActionMenu items={createRowActionItems(record)} />
+        )
       }
     ],
-    [tagCountByQuestionId, navigate]
+    [
+      createRowActionItems,
+      openDetail,
+      tagCountByQuestionId,
+      targetLevelFilterOptions,
+      topicMainFilterOptions
+    ]
   );
 
   const actionCopy = actionState
@@ -558,15 +677,7 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
 
         <ListSummaryCards items={summaryItems} />
 
-        <AdminListCard
-          toolbar={
-            <AssessmentQuestionBankToolbar
-              filters={filters}
-              topicOptions={topicOptions}
-              resultCount={filteredQuestions.length}
-            />
-          }
-        >
+        <AdminListCard>
           {questionBankDataSource === 'mock' ? (
             <Alert
               type="info"
@@ -662,6 +773,7 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
             />
           ) : (
             <AdminDataTable<AssessmentQuestionSummary>
+              className="assessment-bank-table"
               rowKey="questionId"
               rowSelection={{
                 selectedRowKeys,
@@ -674,7 +786,7 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
                 pageSizeOptions: [10, 20, 50, 100],
                 showTotal: (total) => `총 ${total.toLocaleString()}건`
               }}
-              scroll={{ x: 1520 }}
+              scroll={{ x: 1360 }}
               tableLayout="fixed"
               columns={manageColumns}
               dataSource={filteredQuestions}

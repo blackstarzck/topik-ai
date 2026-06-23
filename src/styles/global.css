@@ -1702,6 +1702,25 @@ body {
   font-size: 12px;
 }
 
+/* 통합 문항 테이블(assessment-bank-table): 체크(선택) 행 배경 강조 제거 — 오너
+   요청(2026-06-23). 선택은 체크박스로만 표시하고 행 배경은 일반 행과 동일하게 둔다
+   (정상 #fff, hover는 일반 행과 동일). 고정(상세) 열 셀이 스크롤 시 비치지 않도록
+   불투명 #fff로 둔다. antd CSS-in-JS 주입 순서와 무관하게 이기도록 클래스 2개
+   (래퍼)+td.ant-table-cell로 명시도를 antd 기본 규칙보다 높인다. 이 클래스 한정. */
+.assessment-bank-table.admin-data-table
+  .ant-table-tbody
+  > tr.ant-table-row-selected
+  > td.ant-table-cell {
+  background: #fff !important;
+}
+
+.assessment-bank-table.admin-data-table
+  .ant-table-tbody
+  > tr.ant-table-row-selected
+  > td.ant-table-cell.ant-table-cell-row-hover {
+  background: rgba(0, 0, 0, 0.04) !important;
+}
+
 @keyframes route-fade-in {
   from {
     opacity: 0;

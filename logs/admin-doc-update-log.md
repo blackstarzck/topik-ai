@@ -414,3 +414,9 @@
 - Updated `docs/specs/page-ia/assessment-question-bank-page-ia.md`(운영 조치 일괄 처리 블록쿼트 — rowSelection·일괄 바·방향별 차등 마찰·신규 RPC 2종·페이지네이션 수정).
 - Reason: 문항 700+건의 노출 상태를 단건씩 바꾸는 게 비효율적 → 일괄 처리 추가(오너 2026-06-23 결정: 단계적 구현·노출은 개수확인만·반복방지 경고만·운영주의 차단). 검수 게이트가 인바운드 전환으로 삭제돼 노출에 서버 백스톱이 없던 점을 새 일괄 RPC가 유일 가드로 흡수. 마이그 `20260623180000`(`admin_bulk_set_writing_question_service_status` — auth.uid+is_content_admin·문항별 격리·멱등·available 시 운영주의 차단·batch_id 감사), `20260623181000`(단건 `admin_update_topik_question` 감사 payload 에 reason 키 추가 — 감사 읽기 RPC 정합). 프론트: `bulk-service-status-modal.tsx` 신규 + manage 페이지 rowSelection·일괄 바·Gmail식 선택 배너, imported 페이지 포함 `pageSize`→`defaultPageSize` 페이지네이션 수정. 2026-06-23 dev DB 적용.
 - Validation: `npm run typecheck`/`lint`/`check:mojibake`/`check:migration-boundary` PASS; `npm run test:e2e:mock` **12/12 PASS**(일괄 노출 제외·노출 가능 신규 2건 포함); dev DB 실 RPC 프로브(content_admin uid, BEGIN/ROLLBACK으로 무변경): 라운드트립 changed=3·감사 3행·멱등 unchanged=3, 가드 4종(unauth/forbidden/bad-status/empty), not-found 격리 failed=1, 운영주의 차단 blocked=1, 단건 RPC reason+note 동시기록 확인.
+
+## 2026-06-23 - Assessment 통합 테이블 재설계(컬럼·필터·더보기) + 노출 가능 개수 팝업
+
+- Updated `docs/specs/page-ia/assessment-question-bank-page-ia.md`(테이블 재설계 블록쿼트 — 노출 가능 개수 확인 팝업·주제 단일/난이도·TOPIK 급수 분리·헤더 필터+문항 ID 검색·상단 툴바 제거·더보기 드롭다운·선택 행 배경 제거·인박스 탭 필터).
+- Reason: 오너 요청으로 통합 문항 테이블을 운영 친화적으로 재설계. 노출 가능 일괄은 사유 입력 대신 번호별 개수 확인 팝업(사유 자동 생성), 컬럼은 주제 단일·난이도/TOPIK 급수 분리, 필터를 상단 툴바에서 컬럼 헤더로 이동(antd 클라 필터 + 문항 ID filterDropdown 검색), 행 액션을 shared `TableActionMenu`(더보기) 드롭다운으로 통합(운영 조치 흡수), 선택 행 배경 강조 제거. 인박스 탭도 헤더 필터(문항 번호·주제·난이도)+소스 ID 검색 추가. 코드 변경만(스키마/RPC 무변경).
+- Validation: `npm run typecheck`/`lint`/`check:mojibake` PASS; `npm run test:e2e:mock` **13/13 PASS**(더보기 메뉴·상세 이동·헤더 검색 트리거로 갱신); mock 프리뷰 실측 — 문항 탭 필터 트리거 5·더보기 4·툴바 검색 제거, 인박스 탭 필터 트리거 4 확인.
