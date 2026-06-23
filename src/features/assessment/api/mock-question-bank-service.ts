@@ -2,6 +2,7 @@ import type {
   AssessmentQuestionDetail,
   AssessmentQuestionSummary,
   AssessmentServiceStatus,
+  BulkServiceStatusResult,
   TopikWritingQuestionTagRow,
   TopikWritingTagMasterCatalogRow,
   TopikWritingTagMasterRow,
@@ -392,6 +393,50 @@ export async function setMockServiceStatus(
     throw new Error('문항 대상을 찾을 수 없습니다.');
   }
   found.serviceStatus = nextStatus;
+}
+
+/**
+ * 운영 조치 일괄 처리 모크 — 실RPC와 동일한 결과 shape를 화면 수준에서 재현한다
+ * (멱등 무변경/미존재 실패 분리). 실DB·감사에는 쓰지 않으며 차단(운영주의 게이트)은
+ * 모크에서 재현하지 않는다(D-12 — 게이트 실검증은 dev DB 경로 RT). batchId는 모크
+ * 고정 sentinel.
+ */
+export async function setMockServiceStatusBulk(
+  questionIds: string[],
+  nextStatus: AssessmentServiceStatus
+): Promise<BulkServiceStatusResult> {
+  const unique = Array.from(new Set(questionIds));
+  let changed = 0;
+  let unchanged = 0;
+  let failed = 0;
+  const details: BulkServiceStatusResult['details'] = [];
+
+  for (const questionId of unique) {
+    const found = mockDetails.find((detail) => detail.questionId === questionId);
+    if (!found) {
+      failed += 1;
+      if (details.length < 50) {
+        details.push({ questionId, kind: 'failed', message: '문항 대상을 찾을 수 없습니다.' });
+      }
+      continue;
+    }
+    if (found.serviceStatus === nextStatus) {
+      unchanged += 1;
+      continue;
+    }
+    found.serviceStatus = nextStatus;
+    changed += 1;
+  }
+
+  return {
+    total: unique.length,
+    changed,
+    unchanged,
+    blocked: 0,
+    failed,
+    details,
+    batchId: 'mock-batch'
+  };
 }
 
 export async function assignMockQuestionTag(

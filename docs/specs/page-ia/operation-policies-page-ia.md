@@ -209,6 +209,6 @@
   - `src/features/operation/api/policies-service.ts`
   - `src/features/operation/model/policy-store.ts`
   - `src/features/operation/model/policy-types.ts`
-- 정책 히스토리 mock SoT는 `OperationPolicyHistoryEntry[]`로 관리하며, 현재 조치 이력은 등록/수정/상태 변경/히스토리 버전 게시/삭제 5종으로 기록한다. 각 이력 엔트리는 `snapshot: OperationPolicy`를 포함해 expandable row에서 해당 시점의 버전 스냅샷을 렌더한다.
+- 정책 데이터 source는 2026-06-17 기준 mock-only에서 Supabase-backed(`operation_policies`, `operation_policy_histories`)로 전환됐다. `VITE_OPERATION_POLICIES_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`이면 mock fallback을 사용한다. 정책 히스토리는 `OperationPolicyHistoryEntry[]` 화면 모델로 렌더하며 각 이력 엔트리는 `snapshot: OperationPolicy`를 포함해 expandable row에서 해당 시점의 버전 스냅샷을 렌더한다.
 - cross-page 정책 근거 매핑은 `docs/specs/admin-policy-source-map.md`를 기준으로 seed/UI와 함께 관리한다.
 - `정책 본문 미리보기` Modal은 별도 메타 `Descriptions` 없이 헤더 제목과 HTML 본문만 렌더한다. 현재 정책 미리보기일 때만 `내용 수정` 푸터 버튼을 노출하고, 히스토리 `본문 보기`는 읽기 전용으로 사용한다.

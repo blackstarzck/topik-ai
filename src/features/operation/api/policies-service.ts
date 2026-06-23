@@ -6,6 +6,18 @@ import type {
   OperationPolicyHistoryEntry,
   OperationPolicyStatus
 } from '../model/policy-types';
+import { operationPoliciesDataSource } from './operation-policies-data-source';
+import {
+  deleteOperationPolicy,
+  loadOperationPolicies,
+  loadOperationPolicy,
+  loadOperationPolicyHistory,
+  publishOperationPolicyHistoryVersion,
+  saveOperationPolicy,
+  sendTermsChangeNotification,
+  setOperationPolicyStatus,
+  type TermsChangeNotificationResult
+} from './supabase-operation-policies-service';
 
 export type SavePolicyPayload = Pick<
   OperationPolicy,
@@ -26,17 +38,22 @@ export type SavePolicyPayload = Pick<
   | 'adminMemo'
 > & {
   id?: string;
+  mode?: 'create' | 'edit' | 'version';
+  reason?: string;
 };
 
 export type TogglePolicyStatusPayload = {
   policyId: string;
   nextStatus: OperationPolicyStatus;
+  reason?: string;
 };
 
 export type DeletePolicyPayload = {
   policyId: string;
   reason: string;
 };
+
+const isSupabaseSource = operationPoliciesDataSource === 'supabase';
 
 export type PublishPolicyHistoryVersionPayload = {
   policyId: string;
@@ -79,6 +96,10 @@ function createPolicyNotFoundError(): AppApiError {
 }
 
 async function loadPolicies(signal?: AbortSignal): Promise<OperationPolicy[]> {
+  if (isSupabaseSource) {
+    return loadOperationPolicies(signal);
+  }
+
   await sleep(220, signal);
   return useOperationPolicyStore.getState().policies;
 }
@@ -87,6 +108,14 @@ async function loadPolicy(
   policyId: string,
   signal?: AbortSignal
 ): Promise<OperationPolicy> {
+  if (isSupabaseSource) {
+    const policy = await loadOperationPolicy(policyId, signal);
+    if (!policy) {
+      throw createPolicyNotFoundError();
+    }
+    return policy;
+  }
+
   await sleep(220, signal);
   const policy = useOperationPolicyStore
     .getState()
@@ -103,6 +132,15 @@ async function loadPolicyHistory(
   policyId: string,
   signal?: AbortSignal
 ): Promise<OperationPolicyHistoryEntry[]> {
+  if (isSupabaseSource) {
+    const policy = await loadOperationPolicy(policyId, signal);
+    const histories = await loadOperationPolicyHistory(policyId, signal);
+    if (!policy && histories.length === 0) {
+      throw createPolicyNotFoundError();
+    }
+    return histories;
+  }
+
   await sleep(180, signal);
 
   const storeState = useOperationPolicyStore.getState();
@@ -130,6 +168,10 @@ async function persistPolicy(
   payload: SavePolicyPayload,
   signal?: AbortSignal
 ): Promise<OperationPolicy> {
+  if (isSupabaseSource) {
+    return saveOperationPolicy(payload, signal);
+  }
+
   await sleep(240, signal);
 
   if (payload.id) {
@@ -149,6 +191,14 @@ async function persistPolicyStatus(
   payload: TogglePolicyStatusPayload,
   signal?: AbortSignal
 ): Promise<OperationPolicy> {
+  if (isSupabaseSource) {
+    const updated = await setOperationPolicyStatus(payload, signal);
+    if (!updated) {
+      throw createPolicyNotFoundError();
+    }
+    return updated;
+  }
+
   await sleep(220, signal);
   const updated = useOperationPolicyStore.getState().togglePolicyStatus(payload);
 
@@ -163,6 +213,14 @@ async function persistPolicyDelete(
   payload: DeletePolicyPayload,
   signal?: AbortSignal
 ): Promise<OperationPolicy> {
+  if (isSupabaseSource) {
+    const deleted = await deleteOperationPolicy(payload, signal);
+    if (!deleted) {
+      throw createPolicyNotFoundError();
+    }
+    return deleted;
+  }
+
   await sleep(220, signal);
   const deleted = useOperationPolicyStore.getState().deletePolicy(payload);
 
@@ -177,6 +235,14 @@ async function persistPolicyHistoryVersionPublish(
   payload: PublishPolicyHistoryVersionPayload,
   signal?: AbortSignal
 ): Promise<OperationPolicy> {
+  if (isSupabaseSource) {
+    const published = await publishOperationPolicyHistoryVersion(payload, signal);
+    if (!published) {
+      throw createPolicyNotFoundError();
+    }
+    return published;
+  }
+
   await sleep(220, signal);
   const published = useOperationPolicyStore
     .getState()
@@ -230,4 +296,15 @@ export function publishPolicyHistoryVersionSafe(
   signal?: AbortSignal
 ) {
   return toSafeResult(() => persistPolicyHistoryVersionPublish(payload, signal));
+}
+
+export function sendTermsChangeNotificationSafe(reason: string, signal?: AbortSignal) {
+  return toSafeResult<TermsChangeNotificationResult>(async () => {
+    if (isSupabaseSource) {
+      return sendTermsChangeNotification(reason, signal);
+    }
+    // mock 모드: 실제 발송 없이 성공 응답(파이프라인은 Supabase 모드에서만 동작).
+    await sleep(200, signal);
+    return { recipients: 0, inAppDispatch: null, emailDispatch: null };
+  });
 }

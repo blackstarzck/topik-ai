@@ -1,0 +1,50 @@
+[
+  {
+    "id": "SYS-001",
+    "level": "INFO",
+    "component": "notification-worker",
+    "message": "dispatch batch completed",
+    "trace_id": "trace-sys-001",
+    "context": {
+      "seed": true,
+      "source": "mock-system-logs"
+    },
+    "created_at": "2026-03-11 00:11:42+00"
+  },
+  {
+    "id": "SYS-002",
+    "level": "WARN",
+    "component": "billing-sync",
+    "message": "payment webhook delayed",
+    "trace_id": "trace-sys-002",
+    "context": {
+      "seed": true,
+      "source": "mock-system-logs"
+    },
+    "created_at": "2026-03-11 00:47:03+00"
+  },
+  {
+    "id": "SYS-003",
+    "level": "ERROR",
+    "component": "community-service",
+    "message": "report queue retry limit reached",
+    "trace_id": "trace-sys-003",
+    "context": {
+      "seed": true,
+      "source": "mock-system-logs"
+    },
+    "created_at": "2026-03-11 01:02:19+00"
+  },
+  {
+    "id": "SYS-004",
+    "level": "ERROR",
+    "component": "admin-auth",
+    "message": "temporary token validation failed",
+    "trace_id": "trace-sys-004",
+    "context": {
+      "seed": true,
+      "source": "mock-system-logs"
+    },
+    "created_at": "2026-03-11 01:38:11+00"
+  }
+]

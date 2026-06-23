@@ -1,0 +1,68 @@
+[
+  {
+    "tag_assignment_id": 6,
+    "question_id": "topik-writing-51-0002",
+    "item_number": 51,
+    "tag_code": "ops_expression_caution",
+    "tag_value": null,
+    "is_active": false,
+    "assigned_by": "E2E Admin",
+    "assigned_at": "2026-06-11 06:50:45.864679+00",
+    "removed_at": "2026-06-11 06:50:47.977426+00"
+  },
+  {
+    "tag_assignment_id": 7,
+    "question_id": "topik-writing-51-0002",
+    "item_number": 51,
+    "tag_code": "avoid_same_answer",
+    "tag_value": null,
+    "is_active": true,
+    "assigned_by": "E2E Admin",
+    "assigned_at": "2026-06-11 06:59:13.179397+00",
+    "removed_at": null
+  },
+  {
+    "tag_assignment_id": 8,
+    "question_id": "topik-writing-51-0002",
+    "item_number": 51,
+    "tag_code": "ops_expression_caution",
+    "tag_value": null,
+    "is_active": false,
+    "assigned_by": "E2E Admin",
+    "assigned_at": "2026-06-12 00:56:12.300829+00",
+    "removed_at": "2026-06-12 00:56:14.238752+00"
+  },
+  {
+    "tag_assignment_id": 9,
+    "question_id": "topik-writing-51-0002",
+    "item_number": 51,
+    "tag_code": "representative_question",
+    "tag_value": null,
+    "is_active": false,
+    "assigned_by": "E2E Admin",
+    "assigned_at": "2026-06-12 01:51:09.069047+00",
+    "removed_at": "2026-06-12 01:51:09.539305+00"
+  },
+  {
+    "tag_assignment_id": 10,
+    "question_id": "topik-writing-51-0002",
+    "item_number": 51,
+    "tag_code": "ops_expression_caution",
+    "tag_value": null,
+    "is_active": false,
+    "assigned_by": "E2E Admin",
+    "assigned_at": "2026-06-12 03:04:41.14492+00",
+    "removed_at": "2026-06-12 03:04:43.215448+00"
+  },
+  {
+    "tag_assignment_id": 11,
+    "question_id": "topik-writing-51-0002",
+    "item_number": 51,
+    "tag_code": "ops_expression_caution",
+    "tag_value": null,
+    "is_active": false,
+    "assigned_by": "E2E Admin",
+    "assigned_at": "2026-06-12 03:19:34.439694+00",
+    "removed_at": "2026-06-12 03:19:36.44056+00"
+  }
+]

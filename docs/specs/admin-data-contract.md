@@ -37,7 +37,7 @@
 
 - 데이터베이스 테이블명 후보는 영어 복수형 snake_case를 기본값으로 사용한다.
 - 모듈 접두가 없으면 다른 도메인과 충돌하거나 의미가 약해지는 경우에만 모듈 접두를 붙인다.
-- 예시: `users`, `instructors`, `referrals`, `community_posts`, `community_reports`, `message_templates`, `message_groups`, `message_histories`, `message_history_recipients`, `operation_notices`, `operation_faqs`, `operation_faq_curations`, `operation_faq_metrics`, `operation_events`, `operation_policies`, `operation_policy_histories`
+- 예시: `users`, `instructors`, `referrals`, `community_posts`, `community_reports`, `message_templates`, `message_groups`, `notification_dispatches`, `notification_delivery_attempts`, `operation_notices`, `operation_faqs`, `operation_faq_curations`, `operation_faq_metrics`, `operation_events`, `operation_policies`, `operation_policy_histories`
 
 ### 4.3 컬럼명/필드명 후보
 
@@ -105,7 +105,7 @@
 
 | 사이드바 경로                    | 엔티티 후보                                                             | 테이블 후보                                                                                                 | 데이터 소스 구조                                                                                      | 하드코딩 분류                                                                                                                                                                                                                     | 관리자 패턴 검수                                                                                                                            | 상태   |
 | -------------------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| `Users > 회원 목록`              | `User`                                                                  | `users`                                                                                                     | `users-service.ts` + `mock-users.ts` + query store                                                    | 검색 상태는 `schema candidate`, 상태값은 enum 후보                                                                                                                                                                                | `검색 -> 상세(이동) -> 조치 -> 감사 로그 확인` 유지                                                                                         | `PASS` |
+| `Users > 회원 목록`              | `User`                                                                  | v13 `profiles`/`auth.users` + `writing_submissions` 집계, admin RPC `get_admin_users`/`admin_set_user_status` | `supabase-users-service.ts` + `users-service.ts` + `mock-users.ts` fallback + query store              | 검색/정렬/페이지네이션 인자는 RPC 계약, 상태값은 `active`/`blocked`/`deleted` 기반 표준 상태 후보                                                                                                                                | `검색 -> 상세(이동) -> 조치 -> 감사 로그 확인` 유지. Supabase 모드 정지/해제는 `User + userId` 감사 로그 기록                                 | `PASS` |
 | `Users > 강사 관리`              | `Instructor`                                                            | `instructors`                                                                                               | `instructors-service.ts` + `mock-instructors.ts`                                                      | 국가/소속/활동상태는 `code table candidate`                                                                                                                                                                                       | 행 클릭 `DetailDrawer`와 조치/감사 로그 흐름 일치                                                                                           | `PASS` |
 | `Users > 추천인 관리`            | `Referral`                                                              | `referrals`, `referral_relations`, `referral_reward_ledgers`                                                | `referrals-service.ts` + `mock-referrals.ts`                                                          | 상태/이상치/리워드 유형은 `code table candidate`                                                                                                                                                                                  | 행 클릭 `DetailDrawer`와 조치/감사 로그 흐름 일치                                                                                           | `PASS` |
 | `Users > 회원 상세`              | `User` + 하위 컬렉션                                                    | `users`, `user_activities`, `user_payments`, `user_community_posts`, `user_access_logs`, `user_admin_memos` | 페이지가 `mock-users`와 로컬 배열을 직접 사용                                                         | 활동/결제/커뮤니티/로그/메모 배열이 모두 `schema candidate`                                                                                                                                                                       | 상세 진입 자체는 맞지만 하위 데이터가 service 경계 밖에 있음                                                                                | `FAIL` |
@@ -114,15 +114,15 @@
 | `Message > 메일`                 | `MessageTemplate`                                                       | `message_templates`                                                                                         | `messages-service.ts` + `message-store.ts`                                                            | 채널/모드/상태/카테고리는 `code table candidate`                                                                                                                                                                                  | 목록 -> 등록 상세 -> 발송/삭제 -> 감사 로그 흐름 유지                                                                                       | `PASS` |
 | `Message > 푸시`                 | `MessageTemplate`                                                       | `message_templates`                                                                                         | `messages-service.ts` + `message-store.ts`                                                            | 채널/모드/상태/카테고리는 `code table candidate`                                                                                                                                                                                  | 목록 -> 등록 상세 -> 발송/삭제 -> 감사 로그 흐름 유지                                                                                       | `PASS` |
 | `Message > 대상 그룹`            | `MessageGroup`                                                          | `message_groups`, `message_group_rules`                                                                     | `messages-service.ts` + `message-store.ts` + `message-group-segment-schema.ts`                        | 세그먼트 필드/옵션은 `code table candidate`, 그룹 메타는 `schema candidate`                                                                                                                                                       | 생성/수정 Drawer와 재계산/삭제/감사 로그 흐름 일치                                                                                          | `PASS` |
-| `Message > 발송 이력`            | `MessageHistory`                                                        | `message_histories`, `message_history_recipients`                                                           | `messages-service.ts` + `message-store.ts`                                                            | 상태/액션 타입은 `code table candidate`                                                                                                                                                                                           | 행 클릭 `DetailDrawer`, 재시도, 감사 로그 흐름 일치                                                                                         | `PASS` |
+| `Message > 발송 이력`            | `NotificationDispatch` + `NotificationDeliveryAttempt`                  | `notification_dispatches`, `notification_delivery_attempts`                                                 | `messages-service.ts` + `message-store.ts` + `notification-supabase-adapter.ts`                       | 상태/액션 타입은 `code table candidate`, 발송 본문은 dispatch, 수신자별 결과는 attempt 계층으로 추적                                                                                                                               | 행 클릭 `DetailDrawer`, 재시도, 감사 로그 흐름 일치. `notification_delivery_attempts`는 v13 X-09 owner-read 이력과 공유                         | `PASS` |
 | `Message > 템플릿 등록 상세`     | `MessageTemplate`                                                       | `message_templates`                                                                                         | store 직접 조회 + 저장                                                                                | 본문/제목/타겟 그룹은 `schema candidate`                                                                                                                                                                                          | 편집형 상세 페이지 패턴으로 허용 가능                                                                                                       | `WARN` |
-| `Operation > 공지사항`           | `OperationNotice`                                                       | `operation_notices`                                                                                         | `notices-service.ts` + `operation-store.ts`                                                           | 상태값은 `code table candidate`, HTML 본문은 `schema candidate`                                                                                                                                                                   | 목록/미리보기/게시 조치/감사 로그 흐름 유지                                                                                                 | `PASS` |
-| `Operation > 공지사항 등록 상세` | `OperationNotice`                                                       | `operation_notices`                                                                                         | `fetchNoticeSafe` + `saveNoticeSafe`                                                                  | 제목/본문은 `schema candidate`                                                                                                                                                                                                    | 등록 상세 페이지 패턴으로 적절                                                                                                              | `PASS` |
-| `Operation > FAQ`                | `OperationFaq` + `OperationFaqCuration` + `OperationFaqMetric`          | `operation_faqs`, `operation_faq_curations`, `operation_faq_metrics`                                        | `faqs-service.ts` + `operation-store.ts` + `faq-schema.ts`                                            | 카테고리/공개상태/노출 위치/설정 방식/노출 상태는 `code table candidate`, 질문/답변/검색 키워드/노출 순서/지표는 `schema candidate`                                                                                               | 행 클릭 `DetailDrawer`, FAQ 조치와 FAQ 노출 조치를 분리한 감사 로그 흐름 유지                                                               | `PASS` |
+| `Operation > 공지사항`           | `OperationNotice`                                                       | `operation_notices`                                                                                         | `notices-service.ts` + `operation-notices-data-source.ts` + `supabase-operation-notices-service.ts` + `operation-store.ts`(mock fallback) | schema candidate에서 실 테이블 계약으로 승격 완료. 상태 저장 enum은 DB ASCII `published`/`hidden`, UI 라벨은 `게시`/`숨김`으로 서비스 경계에서 매핑                                                                               | 목록/미리보기/게시 조치/감사 로그 흐름 유지, Supabase 모드는 admin RPC 경유                                                                  | `PASS` |
+| `Operation > 공지사항 등록 상세` | `OperationNotice`                                                       | `operation_notices`                                                                                         | `fetchNoticeSafe` + `saveNoticeSafe` + data-source switch                                             | `title`/`body_html`은 `operation_notices` 필수 컬럼, 신규 저장 기본 상태는 DB `hidden`(`숨김`)                                                                                                                                      | 등록 상세 페이지 패턴으로 적절                                                                                                              | `PASS` |
+| `Operation > FAQ`                | `OperationFaq` + `OperationFaqCuration` + `OperationFaqMetric`          | `operation_faqs`, `operation_faq_curations`, `operation_faq_metrics`                                        | `faqs-service.ts` + `operation-faqs-data-source.ts` + `supabase-operation-faqs-service.ts` + `operation-store.ts`(mock fallback) | schema candidate에서 실 테이블 계약으로 승격 완료. status 저장 enum은 DB ASCII `published`/`hidden`, UI 라벨은 `공개`/`비공개`로 서비스 경계에서 매핑. surface/mode/exposure는 ASCII, category는 한글 코드 저장 | 행 클릭 `DetailDrawer`, FAQ 조치와 FAQ 노출 조치를 분리한 감사 로그 흐름 유지. Supabase 모드는 admin RPC 경유, metrics는 seed/read 전용 | `PASS` |
 | `Operation > 정책 관리`          | `OperationPolicy`, `OperationPolicyHistoryEntry`                        | `operation_policies`, `operation_policy_histories`                                                          | `policies-service.ts` + `policy-store.ts`                                                             | 운영 영역/정책 유형/노출 위치/추적 상태/상태/히스토리 조치 코드와 연관 관리자/사용자 화면 옵션값은 `code table candidate`, 문서명/버전/시행일/연관 관리자 화면 선택값/연관 사용자 화면 선택값/추적 근거 문서/요약/법령/본문 HTML/관리자 메모/히스토리 사유/히스토리 snapshot은 `schema candidate` | 목록 검색/상세 Drawer/히스토리 expandable row/히스토리 `본문 보기`/히스토리 `이 버전 게시`/본문 미리보기/게시-숨김/삭제/감사 로그 흐름 유지 | `PASS` |
 | `Operation > 정책 등록 상세`     | `OperationPolicy`                                                       | `operation_policies`                                                                                        | `fetchPolicySafe` + `savePolicySafe`                                                                  | TinyMCE 본문, 법령/근거, 동의 필요 여부, 연관 관리자/사용자 화면 선택값, 추적 근거 문서는 `schema candidate`                                                                                                                                  | 단계형 등록 상세 페이지 패턴과 목록 복귀 URL 복원 기준, `정책 등록`/`내용 수정`/`새 버전 등록` 3개 editor mode가 구현과 정렬됨              | `PASS` |
-| `Operation > 이벤트`             | `OperationEvent`                                                        | `operation_events`                                                                                          | `events-service.ts` + `operation-store.ts`                                                            | 유형/진행 상태/노출 상태/indexingPolicy는 `code table candidate`, 본문 HTML/보상/배너/랜딩/SEO 메타는 `schema candidate`                                                                                                          | 목록 검수 + 상세 Drawer + 감사 로그 흐름 구현 기준이 코드와 문서에 정렬됨                                                                   | `PASS` |
-| `Operation > 이벤트 등록 상세`   | `OperationEvent`                                                        | `operation_events`                                                                                          | `fetchEventSafe` + `saveEventSafe` + `scheduleEventPublishSafe`                                       | 본문 HTML/참여 조건/보상 정책/SEO override 필드는 `schema candidate`                                                                                                                                                              | 등록 상세 페이지 패턴과 저장/게시 예약 경계가 구현 기준으로 정렬됨                                                                          | `PASS` |
+| `Operation > 이벤트`             | `OperationEvent`                                                        | `operation_events`                                                                                          | `events-service.ts` + `operation-events-data-source.ts` + `supabase-operation-events-service.ts` + `operation-store.ts`(mock fallback) | schema candidate에서 실 테이블 계약으로 승격 완료. `visibility_status`/`progress_status`/`indexing_policy`는 DB ASCII, `event_type`/`reward_type`은 한글 코드, `exposure_channels`/`banner_images`는 jsonb 배열로 저장 | 목록 검수 + 상세 Drawer + `OperationEvent` 감사 로그 흐름 유지. Supabase 모드는 admin RPC 경유, mock은 fallback으로 축소됨 | `PASS` |
+| `Operation > 이벤트 등록 상세`   | `OperationEvent`                                                        | `operation_events`                                                                                          | `fetchEventSafe` + `saveEventSafe` + `scheduleEventPublishSafe` + `publishEventSafe` + `endEventSafe` + data-source switch | 본문 HTML/참여 조건/보상 정책/SEO override 필드는 `operation_events` 실 컬럼 계약으로 승격 완료. 보상 정책/메시지 템플릿은 FK 없이 denormalized snapshot으로 저장 | 등록 상세 페이지 패턴과 저장/게시 예약/즉시 게시/종료 경계가 admin RPC 기준으로 정렬됨 | `PASS` |
 | `Commerce > 쿠폰 관리`           | `CommerceCoupon`, `CommerceCouponSubscriptionTemplate`                  | `commerce_coupons`, `commerce_coupon_subscription_templates`                                                | `coupons-service.ts` + `coupon-store.ts` + `coupon-form-schema.ts` + `coupon-template-form-schema.ts` | 상태/혜택/적용 범위/알림 채널/쇼핑 등급/카테고리/상품 참조는 `code table candidate`, 쿠폰/템플릿 메타와 관리자 메모는 `schema candidate`                                                                                          | 목록/템플릿 탭/상세 Drawer/감사 로그 흐름 구현 기준이 정렬됨                                                                                | `PASS` |
 | `Commerce > 포인트 관리`         | `CommercePointPolicy`, `CommercePointLedger`, `CommercePointExpiration` | `commerce_point_policies`, `commerce_point_ledgers`, `commerce_point_expirations`                           | placeholder, 문서 기준 `points-service.ts` + `point-store.ts` + `point-schema.ts` 후보                | 정책 상태/정책 유형/원장 유형/발생 원천/소멸 상태는 `code table candidate`, 적립/차감 수량, 잔액, 소멸 예정일, 사유는 `schema candidate`                                                                                          | `탭 -> 목록 -> 상세 Drawer/Modal -> 조치 -> 감사 로그 확인` 초안 확정                                                                       | `WARN` |
 
@@ -146,8 +146,8 @@
   - 목록의 조치 메뉴와 별도의 `TableRowDetailModal`이 분리되어 있어 표준 관리자 흐름보다 약하다.
   - 향후에는 행 클릭 `DetailDrawer` 안에서 신고 정보, 게시글 링크, 사용자 링크, 처리/감사 로그 확인을 한 흐름으로 묶는 편이 적절하다.
 - `Message`, `Operation`
-  - 감사 로그 `Target Type`이 각각 `Message`, `Operation` 단일 값으로 묶여 있다.
-- 현재 ID prefix로는 구분 가능하지만, 장기적으로는 `MessageTemplate`, `MessageGroup`, `MessageHistory`, `OperationNotice`, `OperationFaq`, `OperationPolicy`처럼 엔티티 단위 식별이 더 안정적이다.
+  - 감사 로그 `Target Type`이 일부 화면에서 `Message`, `Operation` 단일 값으로 묶여 있다.
+- 현재 ID prefix로는 구분 가능하지만, 장기적으로는 `MessageTemplate`, `MessageGroup`, `MessageHistory`, `OperationNotice`, `OperationFaq`, `OperationEvent`, `OperationPolicy`처럼 엔티티 단위 식별이 더 안정적이다.
 
 ### 8.3 P3
 
@@ -161,8 +161,14 @@
 
 - `Users > 회원 목록`
   - query: `page`, `pageSize`, `sort`, `status`, `searchField`, `startDate`, `endDate`, `keyword`
-  - 핵심 필드: `id`, `realName`, `email`, `nickname`, `joinedAt`, `lastLoginAt`, `status`, `tier`, `subscriptionStatus`
-  - v13 source: `realName`은 `profiles.display_name`, `nickname`은 `profiles.nickname`을 사용한다. `get_admin_users` RPC가 `nickname`을 누락하는 경우 service 계층에서 `profiles(id,nickname)`을 보강 조회하며, 두 필드가 `NULL`이면 이메일/ID/local-part fallback을 만들지 않고 UI에서 `-`로 표시한다.
+  - 핵심 필드: `id`, `realName`, `email`, `nickname`, `joinedAt`, `lastLoginAt`, `status`, `tier`, `subscriptionStatus`, `socialProviders`, `emailVerificationStatus`
+  - 전환 상태: 회원 목록 source는 mock 후보에서 Supabase-backed `get_admin_users` read RPC로 승격 완료했다. 마이그레이션은 `supabase/migrations-admin/20260617210000_admin_users_directory.sql`(+ down)이며, `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했다.
+  - v13 source: `realName`은 `profiles.display_name`, `nickname`은 `profiles.nickname`, `email`은 `auth.users.email`, `lastLoginAt`은 `auth.users.last_sign_in_at`, `joinedAt`은 `profiles.created_at`, `tier`는 `profiles.plan_label`, `status`는 `profiles.status`를 사용한다. 활동 집계는 `writing_submissions`의 `count(*)`와 `max(submitted_at)`이며, 목록 총건수는 `total_count` window 컬럼이다. 두 표시명 필드가 `NULL`이면 이메일/ID/local-part fallback을 만들지 않고 UI에서 `-`로 표시한다.
+  - RPC read 계약: `get_admin_users(search text, sort text, page integer, page_size integer)`는 platform_admin 전용이며 반환 컬럼은 `user_id`, `email`, `display_name`, `nickname`, `app_role`, `plan_label`, `status`, `submission_count`, `last_activity`, `last_sign_in_at`, `email_confirmed`, `created_at`, `total_count`다. PostgREST 함수 매칭을 위해 인자명 `search`, `sort`, `page`, `page_size`는 프론트 JSON 키와 정확히 일치해야 하며, 함수 부재/인자 불일치가 기존 404 원인이었다.
+  - 소셜 로그인(socialProviders): `get_admin_users`가 `auth.identities.provider`에서 `'email'`(이메일·비밀번호 가입)을 제외한 소셜 provider를 `social_providers text[]`로 집계해 반환한다(미연동 시 빈 배열). v13/Supabase Auth 소유 `auth.identities`에 대한 읽기 전용 종속이며(기존 `auth.users` 조인과 동일), SECURITY DEFINER 소유자(postgres) 권한으로 읽는다. 회원 목록·상세 공통으로 노출하고, 화면은 `shared/ui/social-provider`의 `SocialProviderTags`로 브랜드 아이콘을 렌더한다(무료 Simple Icons(CC0)·Google 멀티컬러 G를 인라인 SVG로 내장, 외부 핫링크 없음. 빈 배열은 `-`, 아이콘 없는 provider는 라벨 텍스트 폴백). 마이그레이션 `supabase/migrations-admin/20260618130000_admin_users_social_providers.sql`(+ down), `admin_schema_migrations` tracker 기준 2026-06-18 dev DB 적용 완료.
+  - 이메일 인증(emailVerificationStatus): `get_admin_users`가 `auth.users.email_confirmed_at IS NOT NULL`을 `email_confirmed boolean`으로 반환한다. 이메일+비밀번호 가입은 확인메일 인증 전까지 `false`(가입 미완료·중도이탈)이며, 소셜(google 등) 가입은 자동 인증되어 항상 `true`다. v13/Supabase Auth 소유 `auth.users`에 대한 읽기 전용 종속이며 write는 없다(표시·식별 전용). 프론트는 `false`만 `'미인증'`으로 매핑하고(`mapEmailVerification`), 회원 목록은 배지+컬럼 필터(`이메일 인증`)로, 회원 상세 프로필 탭은 `이메일 인증` 항목으로 노출한다. 회원 상태(`정상`/`정지`/`탈퇴`)와는 직교한다. 표시명/닉네임이 비는 별개 원인(가입 경로별 `display_name`/`nickname` 채움 차이)은 본 플래그와 독립적이다. 마이그레이션 `supabase/migrations-admin/20260623100000_admin_users_email_verified.sql`(+ down), `admin_schema_migrations` tracker 기준 2026-06-23 dev DB 적용 완료.
+  - RPC write 계약: 정지/해제는 `admin_set_user_status(target_id uuid, new_status text)`를 사용한다. `new_status`는 `active`/`blocked`만 허용하고 `deleted`는 차단한다. v13 `profiles` DDL은 변경하지 않고 `profiles.status`만 토글하며, `admin_audit_logs`에는 `action='user_status_changed'`, `target_table='User'`, `target_id=userId`, `diff.status.from/to`, `payload.app_role`을 기록한다.
+  - 프론트 계약: `supabase-users-service.ts`는 기존 코드 그대로 위 RPC 2종을 호출하며, RPC 인자명과 서비스 JSON 키를 임의 변경하지 않는다.
 - `Users > 강사 관리`
   - query: `page`, `pageSize`, `sort`, `status`, `activityStatus`, `country`, `organization`, `searchField`, `startDate`, `endDate`, `keyword`
   - 핵심 필드: `id`, `realName`, `email`, `organization`, `country`, `status`, `activityStatus`, `assignmentStatus`, `courseCount`, `studentCount`, `lastActivityAt`, `lastActionAt`
@@ -172,6 +178,36 @@
 - `Users > 회원 상세`
   - URL: `tab`
   - 하위 컬렉션 후보: `activities`, `payments`, `communityPosts`, `accessLogs`, `adminMemos`
+
+### 9.1.1 System 관리자/권한 RBAC SoT 결정 (2026-06-17)
+
+- 결정: (A) `profiles.app_role`을 관리자 인가의 유일 SoT로 확정한다. `src/features/auth/model/session-types.ts`는 v13 `profiles.app_role` 4값(`learner`, `content_admin`, `org_admin`, `platform_admin`)을 SoT로 선언하고, `src/features/auth/model/auth-store.ts`는 로그인 세션에서 `profiles.app_role`을 읽어 `RoleKey`/permission bundle을 파생한다.
+- 코드 근거: `src/features/auth/model/app-role-mapping.ts`는 v13 4값을 TOPIK AI Admin 5개 `RoleKey`로 매핑하며, 주석으로 "Real authorization is enforced by v13 RLS/RPC, not by this client-side bundle"이라고 경계를 고정한다. `src/features/system/model/permission-store.ts`의 권한 부여/수정/회수는 Zustand 메모리와 mock audit만 갱신하고 DB/RPC 권한 SoT를 쓰지 않는다.
+- RLS/RPC 근거: admin 마이그레이션과 topik writing 마이그레이션은 `private.is_admin`, `private.is_content_admin`, `private.is_platform_admin` 가드로 `profiles.app_role` 기반 인가를 수행한다. `get_admin_users`/`admin_set_user_status`도 `private.is_platform_admin` 전용이며 `profiles.app_role`을 반환/감사 payload에 기록한다.
+- 기각안: (B) 신규 `system_roles`/`system_permissions`/`role_permissions`/`admin_permissions` RBAC 레이어는 채택하지 않는다. 이유는 현재 라이브 인가가 v13 `profiles.app_role` + RLS/RPC 헬퍼에 고정되어 있고, admin은 v13 테이블 DDL 변경 금지 경계를 가진 상태에서 별도 권한 테이블을 SoT로 만들면 동기화/이중인가/회귀 리스크가 커지기 때문이다.
+- 화면 카탈로그 계약: `permissionCatalog` 37개 permission key와 `roleCatalog` 5개 `RoleKey`는 DB 인가 SoT가 아니라 관리자 메뉴/표시 게이팅 및 운영자 이해를 위한 client bundle이다. 화면의 권한 부여/수정/회수 UI는 실제 인가 반영 조치로 표기하지 않고, `app_role` 매핑 변경 또는 조회/시뮬레이션 전용으로 재정의해야 한다.
+
+| v13 `profiles.app_role` | TOPIK AI Admin `RoleKey` | 화면 권한 bundle | 실인가 의미 | 비고 |
+| --- | --- | --- | --- | --- |
+| `platform_admin` | `SUPER_ADMIN` | `roleCatalog.SUPER_ADMIN.defaultPermissions` | platform 관리자 RPC/RLS 허용 | 관리자/회원/시스템 고위험 조치의 주된 실인가 역할 |
+| `content_admin` | `CONTENT_MANAGER` | `roleCatalog.CONTENT_MANAGER.defaultPermissions` | content/admin 헬퍼 허용 범위 | 평가/콘텐츠/일부 admin read/write 가드에 사용 |
+| `org_admin` | `READ_ONLY` | `roleCatalog.READ_ONLY.defaultPermissions` | 별도 admin write 권한으로 확인되지 않음 | 보수적 화면 매핑. 실제 운영 허용 범위는 오너 확인 필요 |
+| `learner` | `null` | 없음 | 관리자 접근 불가 | `auth-store`가 unauthorized 처리 |
+
+- 구현 함의: `/system/permissions`에서 개별 permission 부여/회수는 DB 권한 변경으로 간주하지 않는다. 실권한 변경이 필요하면 v13 소유 `profiles.app_role` 변경 경로 또는 별도 오너 승인된 RPC가 필요하며, admin repo에서 v13 `profiles` DDL을 변경하지 않는다.
+- 미확정/오너 확인 필요: `org_admin`을 장기적으로 관리자 콘솔 조회 전용으로 유지할지, 관리자 `app_role` 변경을 누가/어떤 RPC로 수행할지, 권한 변경 화면을 조회/시뮬레이션으로 축소할지 `app_role` 매핑 조치 화면으로 바꿀지, 세션 중 `app_role` 변경 시 재인증/토큰 갱신 정책은 후속 결정이 필요하다. → **아래 §9.1.1.a에서 확정(2026-06-18).**
+
+### 9.1.1.a System 관리자 app_role 변경 RPC 확정 (2026-06-18)
+
+- §9.1.1의 미확정 4항목을 다음과 같이 확정한다(오너 결정 2026-06-18).
+  - 변경 RPC/주체: 관리자 `app_role` 변경은 `public.admin_set_admin_app_role(p_target_user_id uuid, p_new_app_role text, p_reason text)` 단일 write 경로로만 수행한다. `SECURITY DEFINER`, `private.is_platform_admin` 전용(platform_admin만 변경), `p_reason` 필수, 허용값 `platform_admin`/`content_admin`/`org_admin`/`learner`.
+  - 승인 체계: 단독 실행(2인 승인 없음). 자기 자신 platform_admin 강등과 마지막 platform_admin 강등은 RPC에서 차단한다(잠금 방지).
+  - 세션 정책: 기존 세션 강제 만료·토큰 폐기는 하지 않는다. `profiles.app_role`만 갱신하며 변경은 다음 로그인 때 반영된다(`payload.session_policy='next_login'`).
+  - 화면 정체성: `/system/permissions`는 조회/시뮬레이션 축소가 아니라 관리자별 `app_role` 변경 화면으로 개조한다. 37 permission/5 RoleKey 카탈로그는 메뉴 게이팅·참고용 읽기 전용으로 유지한다.
+  - `org_admin → READ_ONLY` 매핑은 장기 정책으로 유지 확정(오너 결정 2026-06-18; org_admin 고유 업무가 생기면 재검토).
+- 쓰기 계약: `profiles`는 v13 소유이며 admin repo에서 DDL/트리거를 변경하지 않는다. `private.protect_profile_columns` 트리거가 `is_admin(caller)`(content_admin/platform_admin, active)에 대해 컬럼 보호를 전면 우회하므로 platform_admin 호출자는 `app_role`을 쓸 수 있다(라이브 컬럼 `status`를 쓰는 `admin_set_user_status`와 동일 메커니즘). dev DB(2026-06-18)에서 직접 검증했고, RPC는 `UPDATE ... RETURNING`으로 self-verify하여 트리거가 향후 쓰기를 막으면 거짓 감사 없이 즉시 실패한다.
+- 감사 계약: `admin_audit_logs.target_table='AdminAccount'`, `action='admin_role_changed'`, `target_id`=대상 uuid, `diff={app_role:{from,to}}`, `payload={reason,target_email,target_display,session_policy:'next_login'}`.
+- 조회 계약: `/system/permissions` 관리자 목록은 `public.admin_list_admin_app_roles(p_search text default null)`(platform_admin 전용, `app_role <> 'learner'` 서버 필터, 검색 지원)로 읽는다. learner를 admin으로 승격하는 흐름은 이 목록 범위 밖이며 Users 디렉터리에서 처리한다.
 
 ### 9.2 Community
 
@@ -199,6 +235,10 @@
 - `Operation > 공지사항`
   - query: `status`, `sortField`, `sortOrder`, `preview`
   - 핵심 필드: `id`, `title`, `author`, `createdAt`, `status`, `bodyHtml`, `updatedAt`, `updatedBy`
+  - Supabase source: `operation_notices`(소유 topik-ai, tracker `admin_schema_migrations`, migration home `supabase/migrations-admin`)
+  - status 저장 코드: `published`(`게시`) / `hidden`(`숨김`)
+  - write RPC: `admin_save_operation_notice`, `admin_toggle_operation_notice_status`, `admin_delete_operation_notice`
+  - 감사 로그: `target_table='OperationNotice'`, `target_id=noticeId`, action `notice_saved`/`notice_status_changed`/`notice_deleted`
 - `Operation > 정책 관리`
   - query: `status`, `category`, `policyType`, `trackingStatus`, `summaryFilter`, `sortField`, `sortOrder`, `searchField`, `keyword`, `startDate`, `endDate`, `selected`
 - 핵심 필드: `id`, `category`, `policyType`, `title`, `versionLabel`, `effectiveDate`, `exposureSurfaces`, `requiresConsent`, `trackingStatus`, `relatedAdminPages`, `relatedUserPages`, `sourceDocuments`, `summary`, `legalReferences`, `bodyHtml`, `adminMemo`, `status`, `createdAt`, `updatedAt`, `updatedBy`, `policyHistories[].id`, `policyHistories[].action`, `policyHistories[].versionLabel`, `policyHistories[].status`, `policyHistories[].trackingStatus`, `policyHistories[].changedAt`, `policyHistories[].changedBy`, `policyHistories[].note`, `policyHistories[].snapshot`
@@ -215,12 +255,35 @@
     - FAQ 원문: `id`, `question`, `answer`, `searchKeywords`, `category`, `status`, `createdAt`, `updatedAt`, `updatedBy`
     - FAQ 노출: `id`, `faqId`, `surface`, `curationMode`, `displayRank`, `exposureStatus`, `pinnedStartAt`, `pinnedEndAt`, `updatedAt`, `updatedBy`
     - FAQ 지표: `faqId`, `viewCount`, `searchHitCount`, `helpfulCount`, `notHelpfulCount`, `lastViewedAt`
+  - Supabase source: `operation_faqs`, `operation_faq_curations`, `operation_faq_metrics`(소유 topik-ai, tracker `admin_schema_migrations`, migration home `supabase/migrations-admin`)
+  - enum 저장 코드:
+    - FAQ status: `published`(`공개`) / `hidden`(`비공개`)
+    - FAQ category: `계정` / `결제` / `커뮤니티` / `메시지`
+    - curation surface: `help_center` / `home_top` / `payment_help` / `onboarding`
+    - curation mode: `manual` / `auto`
+    - curation exposure status: `active` / `paused`
+  - write RPC: `admin_save_operation_faq`, `admin_toggle_operation_faq_status`, `admin_delete_operation_faq`, `admin_save_operation_faq_curation`, `admin_delete_operation_faq_curation`
+  - 감사 로그: FAQ 원문은 `target_table='OperationFaq'`, `target_id=faqId`, action `faq_saved`/`faq_status_changed`/`faq_deleted`; 큐레이션은 `target_table='OperationFaqCuration'`, `target_id=curationId`, action `faq_curation_saved`/`faq_curation_deleted`
+  - 지표 계약: `operation_faq_metrics`는 admin write RPC가 없는 seed/read 전용 스냅샷이며 실집계 파이프라인은 미확정
 - `Operation > 이벤트`
   - query: `searchField`, `keyword`, `startDate`, `endDate`, `status`, `eventType`, `sortField`, `sortOrder`, `selected`
   - 핵심 필드: `id`, `title`, `summary`, `bodyHtml`, `eventType`, `progressStatus`, `visibilityStatus`, `startAt`, `endAt`, `exposureChannels`, `targetGroupId`, `targetGroupName`, `participantCount`, `participantLimit`, `rewardType`, `rewardPolicyId`, `rewardPolicyName`, `rewardPolicySummary`, `bannerImageUrl`, `landingUrl`, `messageTemplateName`, `slug`, `metaTitle`, `metaDescription`, `ogImageUrl`, `canonicalUrl`, `indexingPolicy`, `adminMemo`, `updatedAt`, `updatedBy`
+  - Supabase source: `operation_events`(소유 topik-ai, tracker `admin_schema_migrations`, migration home `supabase/migrations-admin`)
+  - enum 저장 코드:
+    - event type: `프로모션` / `출석` / `챌린지` / `리워드`
+    - visibility status: `exposed`(`노출`) / `hidden`(`숨김`) / `scheduled`(`예약`)
+    - progress status: `ongoing`(`진행중`) / `upcoming`(`예정`) / `ended`(`종료`) — 읽기 시 기간 기준 파생
+    - exposure channels: `앱홈` / `웹홈` / `이벤트탭` jsonb 배열
+    - reward type: `없음` / `쿠폰` / `포인트` / `배지`
+    - banner image source type: `file` / `url`
+    - indexing policy: `index` / `noindex`
+  - write RPC: `admin_save_operation_event`, `admin_schedule_operation_event`, `admin_publish_operation_event`, `admin_end_operation_event`
+  - 감사 로그: `target_table='OperationEvent'`, `target_id=eventId`, action `event_saved`/`event_scheduled`/`event_published`/`event_ended`
+  - 비정규화 결정: `reward_policy_id`/`reward_policy_name`, `message_template_id`/`message_template_name`은 외부 도메인 FK 없이 denormalized 문자열 snapshot으로 저장한다. 배너 이미지는 `banner_images` jsonb 배열과 대표 배너 파생 필드를 함께 사용하며, 정규화/asset FK 전환은 후속이다.
 - `Operation > 이벤트 등록 상세`
   - query: 목록 복귀용 `searchField`, `keyword`, `startDate`, `endDate`, `status`, `eventType`, `sortField`, `sortOrder`
   - 핵심 필드: `id`, `slug`, `title`, `summary`, `bodyHtml`, `eventType`, `progressStatus`, `visibilityStatus`, `startAt`, `endAt`, `exposureChannels`, `targetGroupId`, `targetGroupName`, `participantLimit`, `rewardType`, `rewardPolicyId`, `rewardPolicyName`, `bannerImageUrl`, `landingUrl`, `messageTemplateName`, `metaTitle`, `metaDescription`, `ogImageUrl`, `canonicalUrl`, `indexingPolicy`, `adminMemo`, `updatedAt`, `updatedBy`
+  - 데이터소스 전환: `operation-events-data-source.ts`가 Supabase 설정과 `VITE_OPERATION_EVENTS_SOURCE`에 따라 mock/Supabase를 분기한다. `VITE_SUPABASE_DISABLED=true` 또는 `VITE_OPERATION_EVENTS_SOURCE=mock`은 기존 mock 경로로 회귀한다.
 
 ### 9.5 Commerce
 
@@ -428,7 +491,196 @@
 - 추진 경로: 공급 계약(엔드포인트/페이로드/인증/델타 규칙)은 D-11 재작성 요청 문서("문항 공급(인바운드) API 계약 요청")로 추진한다.
 - 인터림: 공급 개시 전까지 P2 백필 466행이 초기 코퍼스다(전 행 `service_status='internal_test'`).
 
-## 13. 알림(Notification) 데이터 계약 (2026-06-12 신설)
+## 13. Operation 공지사항 데이터 계약 (2026-06-17 신설)
+
+- 엔티티/테이블: `OperationNotice` / `operation_notices`.
+- 승격 상태: 기존 `schema candidate`/mock-only 계약에서 Supabase 실 테이블 계약으로 승격 완료했습니다.
+- 소유권: topik-ai, migration home `supabase/migrations-admin`, tracker `admin_schema_migrations`. 마이그레이션은 `supabase/migrations-admin/20260617120000_operation_notices.sql`(+ down)이며 2026-06-17 dev DB 적용 완료했습니다. v13 소유 테이블 DDL은 변경하지 않으며 `admin_audit_logs`에는 RPC가 INSERT만 수행합니다.
+- 테이블 제약/인덱스: `id text primary key`, `status text not null check (status in ('published','hidden')) default 'hidden'`, `created_at desc` 인덱스와 `status='published'` 부분 인덱스를 사용합니다.
+- 컬럼 계약
+
+| DB 컬럼 | 화면/서비스 필드 | 분류 | 비고 |
+| --- | --- | --- | --- |
+| `id` | `id` | 확정 PK | 자연키 `NOTICE-NNN` 유지. 신규 RPC 채번은 현재 첫 증분에서 max+1 방식입니다. |
+| `title` | `title` | 확정 컬럼 | `text not null`, 공지 제목 |
+| `body_html` | `bodyHtml` | 확정 컬럼 | `text not null`, TinyMCE HTML 본문 |
+| `status` | `status` | 확정 enum | DB ASCII `published`/`hidden`, UI 라벨 `게시`/`숨김` |
+| `author` | `author` | 확정 컬럼 | `text not null`, 작성자 |
+| `created_at` | `createdAt` | 확정 컬럼 | `timestamptz`, 기본 `now()` |
+| `updated_at` | `updatedAt` | 확정 컬럼 | `timestamptz` |
+| `updated_by` | `updatedBy` | 확정 컬럼 | 마지막 수정자. 현재 호출자 uuid 저장이며 표시명 매핑은 후속 정합 필요 |
+
+- 읽기 계약: RLS enable+force. admin은 `operation_notices_admin_select` 정책(`private.is_admin`)으로 조회합니다. anon/비admin은 조회할 수 없습니다.
+- 쓰기 계약: 화면 직접 테이블 write는 허용하지 않고, SECURITY DEFINER RPC 3종(`admin_save_operation_notice(p_id,p_notice jsonb,p_reason)`, `admin_toggle_operation_notice_status(p_notice_id,p_next_status,p_reason)`, `admin_delete_operation_notice(p_notice_id,p_reason)`)만 사용합니다. `p_reason`은 필수이며 INSERT/UPDATE/DELETE RLS 정책은 만들지 않습니다.
+- 감사 계약: RPC는 `admin_audit_logs`에 `target_table='OperationNotice'`, `target_id=noticeId`, action `notice_saved`/`notice_status_changed`/`notice_deleted`, `diff`, `payload.reason`을 기록합니다.
+- 데이터소스 전환: `notices-service.ts`의 `fetchNoticesSafe`/`fetchNoticeSafe`/`saveNoticeSafe`/`toggleNoticeStatusSafe`/`deleteNoticeSafe` safe 반환 계약은 유지하고, `operation-notices-data-source.ts`가 Supabase 설정과 `VITE_OPERATION_NOTICES_SOURCE`에 따라 mock/Supabase를 분기합니다. `VITE_SUPABASE_DISABLED=true`는 기존 mock 경로로 회귀합니다.
+- 미확정: 자연키 `NOTICE-NNN`의 max+1 채번 동시성 리스크(sequence/table 채번 전환 여부), `updated_by` uuid의 관리자 표시명 매핑, B2C 실제 노출 surface, 상단 고정/예약 게시 정책, HTML sanitize/preview 서버 정책은 page-sync와 gap register에서 계속 추적합니다.
+
+## 13.1 Operation FAQ 데이터 계약 (2026-06-17 신설)
+
+- 엔티티/테이블: `OperationFaq` / `operation_faqs`, `OperationFaqCuration` / `operation_faq_curations`, `OperationFaqMetric` / `operation_faq_metrics`.
+- 승격 상태: 기존 `schema candidate`/mock-only 계약에서 Supabase 실 테이블 계약으로 승격 완료했습니다.
+- 소유권: topik-ai, migration home `supabase/migrations-admin`, tracker `admin_schema_migrations`. 마이그레이션은 `supabase/migrations-admin/20260617123000_operation_faqs.sql`(+ down)이며 2026-06-17 dev DB 적용 완료했습니다. v13 소유 테이블 DDL은 변경하지 않으며 `admin_audit_logs`에는 RPC가 INSERT만 수행합니다.
+- 테이블 제약/인덱스:
+  - `operation_faqs`: `id text primary key`, 자연키 `FAQ-NNN`(RPC max+1), `question`/`answer text not null`, `search_keywords jsonb default '[]'` + array CHECK, `category text check (category in ('계정','결제','커뮤니티','메시지'))`, `status text check (status in ('published','hidden')) default 'hidden'`, `created_at desc` 인덱스, `status='published'` 부분 인덱스.
+  - `operation_faq_curations`: `id text primary key`, 자연키 `FAQCUR-NNN`, `faq_id` FK -> `operation_faqs(id)` ON DELETE CASCADE, `surface text check (surface in ('help_center','home_top','payment_help','onboarding'))`, `curation_mode text check (curation_mode in ('manual','auto'))`, `display_rank smallint check (display_rank > 0)`, `exposure_status text check (exposure_status in ('active','paused'))`, `pinned_start_at`/`pinned_end_at date`, `UNIQUE(surface, display_rank)`, `faq_id` 인덱스.
+  - `operation_faq_metrics`: `faq_id text primary key` FK -> `operation_faqs(id)` ON DELETE CASCADE, `view_count`/`search_hit_count`/`helpful_count`/`not_helpful_count int default 0 check (>= 0)`, `last_viewed_at timestamptz`. admin write RPC가 없는 seed/read 전용입니다.
+- FAQ 원문 컬럼 계약
+
+| DB 컬럼 | 화면/서비스 필드 | 분류 | 비고 |
+| --- | --- | --- | --- |
+| `id` | `id` | 확정 PK | 자연키 `FAQ-NNN` 유지. 신규 RPC 채번은 현재 증분에서 max+1 방식입니다. |
+| `question` | `question` | 확정 컬럼 | `text not null`, FAQ 질문 |
+| `answer` | `answer` | 확정 컬럼 | `text not null`, FAQ 답변. HTML 편집기가 아니라 plain text 입력 기준 |
+| `search_keywords` | `searchKeywords` | 확정 컬럼 | `jsonb` array CHECK, 기본 `[]` |
+| `category` | `category` | 확정 enum | DB 저장 한글 코드 `계정`/`결제`/`커뮤니티`/`메시지` |
+| `status` | `status` | 확정 enum | DB ASCII `published`/`hidden`, UI 라벨 `공개`/`비공개` |
+| `created_at` | `createdAt` | 확정 컬럼 | `timestamptz`, 기본 `now()` |
+| `updated_at` | `updatedAt` | 확정 컬럼 | `timestamptz` |
+| `updated_by` | `updatedBy` | 확정 컬럼 | 마지막 수정자. 현재 호출자 uuid 저장이며 표시명 매핑은 후속 정합 필요 |
+
+- FAQ 큐레이션 컬럼 계약
+
+| DB 컬럼 | 화면/서비스 필드 | 분류 | 비고 |
+| --- | --- | --- | --- |
+| `id` | `id` | 확정 PK | 자연키 `FAQCUR-NNN` 유지. 신규 RPC 채번은 현재 증분에서 max+1 방식입니다. |
+| `faq_id` | `faqId` | 확정 FK | `operation_faqs(id)` ON DELETE CASCADE |
+| `surface` | `surface` | 확정 enum | ASCII `help_center`/`home_top`/`payment_help`/`onboarding` |
+| `curation_mode` | `curationMode` | 확정 enum | ASCII `manual`/`auto` |
+| `display_rank` | `displayRank` | 확정 컬럼 | `smallint`, 1 이상. `UNIQUE(surface, display_rank)` 적용 |
+| `exposure_status` | `exposureStatus` | 확정 enum | ASCII `active`/`paused` |
+| `pinned_start_at` | `pinnedStartAt` | 확정 컬럼 | 선택 date |
+| `pinned_end_at` | `pinnedEndAt` | 확정 컬럼 | 선택 date |
+| `updated_at` | `updatedAt` | 확정 컬럼 | `timestamptz` |
+| `updated_by` | `updatedBy` | 확정 컬럼 | 마지막 수정자. 현재 호출자 uuid 저장이며 표시명 매핑은 후속 정합 필요 |
+
+- FAQ 지표 컬럼 계약
+
+| DB 컬럼 | 화면/서비스 필드 | 분류 | 비고 |
+| --- | --- | --- | --- |
+| `faq_id` | `faqId` | 확정 PK/FK | `operation_faqs(id)` ON DELETE CASCADE |
+| `view_count` | `viewCount` | 확정 지표 | `int >= 0`, 기본 0 |
+| `search_hit_count` | `searchHitCount` | 확정 지표 | `int >= 0`, 기본 0 |
+| `helpful_count` | `helpfulCount` | 확정 지표 | `int >= 0`, 기본 0 |
+| `not_helpful_count` | `notHelpfulCount` | 확정 지표 | `int >= 0`, 기본 0 |
+| `last_viewed_at` | `lastViewedAt` | 확정 지표 | `timestamptz`, 선택 |
+
+- 읽기 계약: RLS enable+force. admin은 `private.is_admin` 기반 select 정책으로 3테이블을 조회합니다. anon/비admin은 조회할 수 없습니다.
+- 쓰기 계약: 화면 직접 테이블 write는 허용하지 않고, SECURITY DEFINER RPC 5종(`admin_save_operation_faq`, `admin_toggle_operation_faq_status`, `admin_delete_operation_faq`, `admin_save_operation_faq_curation`, `admin_delete_operation_faq_curation`)만 사용합니다. `p_reason`은 필수이며 INSERT/UPDATE/DELETE RLS 정책은 만들지 않습니다. `admin_toggle_operation_faq_status`가 `hidden`으로 전환하면 연결 active 큐레이션을 `paused`로 강등합니다.
+- 감사 계약: RPC는 `admin_audit_logs`에 FAQ 원문 `target_table='OperationFaq'`, `target_id=faqId`, action `faq_saved`/`faq_status_changed`/`faq_deleted`; 큐레이션 `target_table='OperationFaqCuration'`, `target_id=curationId`, action `faq_curation_saved`/`faq_curation_deleted`, `diff`, `payload.reason`을 기록합니다. hidden 전환으로 강등된 큐레이션은 `payload.paused_curation_ids`에 남깁니다.
+- 데이터소스 전환: `faqs-service.ts`의 safe 반환 계약은 유지하고, `operation-faqs-data-source.ts`가 Supabase 설정과 `VITE_OPERATION_FAQS_SOURCE`에 따라 mock/Supabase를 분기합니다. `VITE_SUPABASE_DISABLED=true`는 기존 mock 경로로 회귀합니다. `supabase-operation-faqs-service.ts`가 status ASCII와 UI 라벨, DB row와 화면 모델 매핑을 담당합니다.
+- 미확정: 자연키 `FAQ-NNN`/`FAQCUR-NNN`의 max+1 채번 동시성 리스크(sequence/table 채번 전환 여부), `updated_by` uuid의 관리자 표시명 매핑, `operation_faq_metrics` 실집계 파이프라인(seed only)은 page-sync와 gap register에서 계속 추적합니다.
+
+## 13.2 Operation 이벤트 데이터 계약 (2026-06-17 신설)
+
+- 엔티티/테이블: `OperationEvent` / `operation_events`.
+- 승격 상태: 기존 `schema candidate`/mock-only 계약에서 Supabase 실 테이블 계약으로 승격 완료했습니다.
+- 소유권: topik-ai, migration home `supabase/migrations-admin`, tracker `admin_schema_migrations`. 마이그레이션은 `supabase/migrations-admin/20260617152000_operation_events.sql`(+ down)이며 2026-06-17 dev DB 적용 완료했습니다. v13 소유 테이블 DDL은 변경하지 않으며 `admin_audit_logs`에는 RPC가 INSERT만 수행합니다.
+- 테이블 제약/인덱스: `id text primary key`, 자연키 `EVT-NNN`(RPC max+1), `visibility_status in ('exposed','hidden','scheduled')`, `progress_status in ('ongoing','upcoming','ended')`, `event_type in ('프로모션','출석','챌린지','리워드')`, `reward_type in ('없음','쿠폰','포인트','배지')`, `banner_image_source_type in ('file','url')`, `indexing_policy in ('index','noindex')`, `exposure_channels`/`banner_images` jsonb array CHECK를 사용합니다. 인덱스는 `created_at desc`와 `visibility_status='exposed'` 부분 인덱스를 사용합니다.
+- 초기 seed: 3행(`EVT-001` exposed/ongoing, `EVT-002` scheduled/upcoming, `EVT-003` hidden/ended).
+- 컬럼 계약
+
+| DB 컬럼 | 화면/서비스 필드 | 분류 | 비고 |
+| --- | --- | --- | --- |
+| `id` | `id` | 확정 PK | 자연키 `EVT-NNN` 유지. 신규 RPC 채번은 현재 증분에서 max+1 방식입니다. |
+| `title` | `title` | 확정 컬럼 | `text not null`, 이벤트명 |
+| `summary` | `summary` | 확정 컬럼 | 이벤트 요약 |
+| `body_html` | `bodyHtml` | 확정 컬럼 | 이벤트 상세/랜딩 HTML 본문 |
+| `slug` | `slug` | 확정 컬럼 | 사용자 랜딩 URL 후보 식별자 |
+| `event_type` | `eventType` | 확정 enum | DB 저장 한글 코드 `프로모션`/`출석`/`챌린지`/`리워드` |
+| `visibility_status` | `visibilityStatus` | 확정 enum | DB ASCII `exposed`/`hidden`/`scheduled`, UI 라벨 `노출`/`숨김`/`예약` |
+| `progress_status` | `progressStatus` | 확정 enum | DB ASCII `ongoing`/`upcoming`/`ended`, UI 라벨 `진행중`/`예정`/`종료`. 읽기 시 기간 기준으로 파생합니다. |
+| `start_at` | `startAt` | 확정 컬럼 | 이벤트 시작일 |
+| `end_at` | `endAt` | 확정 컬럼 | 이벤트 종료일 |
+| `exposure_channels` | `exposureChannels` | 확정 jsonb array | 한글 채널 값 `앱홈`/`웹홈`/`이벤트탭` 배열 |
+| `target_group_id` | `targetGroupId` | denormalized 참조 | Message 그룹 외부 FK 없이 문자열 snapshot으로 저장 |
+| `target_group_name` | `targetGroupName` | denormalized 표시값 | Message 그룹명 snapshot |
+| `participant_count` | `participantCount` | 확정 컬럼 + 집계 후보 | 현재 표시용 수치. 실집계 source는 후속 확정 필요 |
+| `participant_limit` | `participantLimit` | 확정 컬럼 | 참여 제한 수. null이면 제한 없음 |
+| `reward_type` | `rewardType` | 확정 enum | DB 저장 한글 코드 `없음`/`쿠폰`/`포인트`/`배지` |
+| `reward_policy_id` | `rewardPolicyId` | denormalized 참조 | Commerce/Reward 외부 FK 없이 문자열 snapshot으로 저장 |
+| `reward_policy_name` | `rewardPolicyName` | denormalized 표시값 | 보상 정책명 snapshot |
+| `message_template_id` | `messageTemplateId` | denormalized 참조 | Message 템플릿 외부 FK 없이 문자열 snapshot으로 저장 |
+| `message_template_name` | `messageTemplateName` | denormalized 표시값 | 메시지 템플릿명 snapshot |
+| `banner_image_url` | `bannerImageUrl` | 확정 컬럼 | 대표 배너 URL 파생/저장값 |
+| `banner_image_source_type` | `bannerImageSourceType` | 확정 enum | ASCII `file`/`url` |
+| `banner_image_file_name` | `bannerImageFileName` | 확정 컬럼 | 대표 배너 파일명 또는 표시명 |
+| `banner_images` | `bannerImages` | 확정 jsonb array | 정렬 가능한 배너 이미지 배열. 정규 asset 테이블은 후속 |
+| `landing_url` | `landingUrl` | 확정 컬럼 | 프로모션 랜딩/상세 URL 후보 |
+| `meta_title` | `metaTitle` | 확정 컬럼 | 공유/SEO title override |
+| `meta_description` | `metaDescription` | 확정 컬럼 | 공유/SEO description override |
+| `og_image_url` | `ogImageUrl` | 확정 컬럼 | 공유 이미지 URL |
+| `canonical_url` | `canonicalUrl` | 확정 컬럼 | canonical URL override |
+| `indexing_policy` | `indexingPolicy` | 확정 enum | ASCII `index`/`noindex` |
+| `admin_memo` | `adminMemo` | 확정 컬럼 | 관리자 내부 메모 |
+| `created_at` | `createdAt` | 확정 컬럼 | `timestamptz`, 기본 `now()` |
+| `updated_at` | `updatedAt` | 확정 컬럼 | `timestamptz` |
+| `updated_by` | `updatedBy` | 확정 컬럼 | 마지막 수정자 uuid. 관리자 표시명 매핑은 후속 정합 필요 |
+
+- 읽기 계약: RLS enable+force. admin은 `private.is_admin` 기반 select 정책으로 조회합니다. anon/비admin은 조회할 수 없습니다.
+- 쓰기 계약: 화면 직접 테이블 write는 허용하지 않고, SECURITY DEFINER RPC 4종(`admin_save_operation_event`, `admin_schedule_operation_event`, `admin_publish_operation_event`, `admin_end_operation_event`)만 사용합니다. `p_reason`은 필수이며 INSERT/UPDATE/DELETE RLS 정책은 만들지 않습니다.
+- 감사 계약: RPC는 `admin_audit_logs`에 `target_table='OperationEvent'`, `target_id=eventId`, action `event_saved`/`event_scheduled`/`event_published`/`event_ended`, `diff`, `payload.reason`을 기록합니다. 예약은 `visibility_status='scheduled'`, 게시는 `visibility_status='exposed'`, 종료는 `progress_status='ended'` 및 `visibility_status='hidden'`을 기록합니다.
+- 데이터소스 전환: `events-service.ts`의 safe 반환 계약은 유지하고, `operation-events-data-source.ts`가 Supabase 설정과 `VITE_OPERATION_EVENTS_SOURCE`에 따라 mock/Supabase를 분기합니다. `VITE_SUPABASE_DISABLED=true`는 기존 mock 경로로 회귀합니다. `supabase-operation-events-service.ts`가 ASCII status와 UI 라벨, DB row와 화면 모델 매핑을 담당합니다.
+- 미확정: 자연키 `EVT-NNN`의 max+1 채번 동시성 리스크(sequence/table 채번 전환 여부), `updated_by` uuid의 관리자 표시명 매핑, 배너 이미지/보상 정책/메시지 템플릿 정규화, `participant_count` 집계 source는 page-sync와 gap register에서 계속 추적합니다.
+
+## 13.3 Operation 정책 관리 데이터 계약 (2026-06-17 신설)
+
+- 엔티티/테이블: `OperationPolicy` / `operation_policies`, `OperationPolicyHistory` / `operation_policy_histories`.
+- 전환 상태: 기존 `schema candidate`/mock-only 계약에서 Supabase 실 테이블 계약으로 승격 완료했다. 마이그레이션은 `supabase/migrations-admin/20260617170000_operation_policies.sql`(+ down)이며, `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했다.
+- 소유권: topik-ai, migration home `supabase/migrations-admin`. v13 소유 테이블 DDL은 변경하지 않는다.
+
+### 13.3.1 `operation_policies` 컬럼 계약
+
+| DB 컬럼 | 화면/서비스 필드 | 분류 | 비고 |
+| --- | --- | --- | --- |
+| `id` | `id` | 확정 PK | text PK, 자연키 `POL-NNN`. 신규 RPC 채번은 현재 max+1 방식 |
+| `category` | `category` | 확정 enum | `policy-types.ts` 한글 코드값 |
+| `policy_type` | `policyType` | 확정 enum | 16종 한글 코드값(`policy-types.ts`) |
+| `title` | `title` | 확정 컬럼 | 정책 문서명 |
+| `status` | `status` | 확정 enum | DB ASCII `published`/`hidden`, UI 라벨 `게시`/`숨김` |
+| `tracking_status` | `trackingStatus` | 확정 enum | `policy-types.ts` 한글 코드값 |
+| `exposure_surfaces` | `exposureSurfaces` | 확정 jsonb array | 노출 위치 배열 |
+| `related_admin_pages` | `relatedAdminPages` | 확정 jsonb array | 연관 관리자 화면 배열 |
+| `related_user_pages` | `relatedUserPages` | 확정 jsonb array | 연관 사용자 화면 배열 |
+| `source_documents` | `sourceDocuments` | 확정 jsonb array | 추적 근거 문서 배열 |
+| `legal_references` | `legalReferences` | 확정 jsonb array | 법령/근거 배열 |
+| `requires_consent` | `requiresConsent` | 확정 컬럼 | boolean, 사용자 동의 필요 여부 |
+| `effective_date` | `effectiveDate` | 확정 컬럼 | date, 시행일 |
+| `version_label` | `versionLabel` | 확정 컬럼 | 버전 표시값 |
+| `summary` | `summary` | 확정 컬럼 | 정책 요약 |
+| `body_html` | `bodyHtml` | 확정 컬럼 | TinyMCE HTML 본문 |
+| `admin_memo` | `adminMemo` | 확정 컬럼 | 관리자 메모 |
+| `current_version_id` | `currentVersionId` | 확정 컬럼 | 최신 히스토리 추적용 `operation_policy_histories.id` 후보 |
+| `created_at` | `createdAt` | 확정 컬럼 | timestamptz |
+| `updated_at` | `updatedAt` | 확정 컬럼 | timestamptz |
+| `updated_by` | `updatedBy` | 확정 컬럼 | RPC caller uuid 기록, 표시명 매핑은 미확정 |
+
+### 13.3.2 `operation_policy_histories` 컬럼 계약
+
+| DB 컬럼 | 화면/서비스 필드 | 분류 | 비고 |
+| --- | --- | --- | --- |
+| `id` | `id` | 확정 PK | text PK, 자연키 `PH-NNNN` |
+| `policy_id` | `policyId` | 확정 FK | `operation_policies(id)` ON DELETE CASCADE, `policy_id` 인덱스 |
+| `action` | `action` | 확정 enum | 저장/상태 변경/삭제/버전 게시 이력 action |
+| `version_label` | `versionLabel` | 확정 컬럼 | 시점 버전 표시값 |
+| `changed_at` | `changedAt` | 확정 컬럼 | 변경 시각 |
+| `changed_by` | `changedBy` | 확정 컬럼 | RPC caller uuid 기록, 표시명 매핑은 미확정 |
+| `snapshot` | `snapshot` | 확정 jsonb | 시점 `OperationPolicy` snapshot |
+
+### 13.3.3 RPC 계약
+
+- 읽기 계약: RLS enable+force. admin은 `private.is_admin` 기반 select 정책으로 `operation_policies`, `operation_policy_histories`를 조회한다.
+- 쓰기 계약: 직접 테이블 write를 만들지 않고 SECURITY DEFINER admin RPC만 사용한다. 4개 RPC 모두 reason 필수이며, 매 조치 시 `admin_audit_logs.target_table='OperationPolicy'`, `target_id=policyId`를 기록하고 `operation_policy_histories`에 snapshot을 append한다.
+- `admin_save_operation_policy(p_id, p_policy jsonb, p_reason)` → audit action `policy_saved`, 신규/수정 저장 후 현재 snapshot append.
+- `admin_toggle_operation_policy_status(p_policy_id, p_next_status, p_reason)` → audit action `policy_status_changed`, DB status ASCII `published`/`hidden` 전환 후 snapshot append.
+- `admin_delete_operation_policy(p_policy_id, p_reason)` → audit action `policy_deleted`, cascade 삭제 전 snapshot을 감사하고 histories append.
+- `admin_publish_operation_policy_version(p_policy_id, p_history_id, p_reason)` → audit action `policy_version_published`, 해당 history snapshot을 헤드로 게시하고 `current_version_id`를 갱신하며 payload에는 from/to version을 포함한다.
+- helper 3종: `operation_policy_snapshot`, `next_operation_policy_id`, `next_operation_policy_history_id`. public execute는 revoke한다.
+
+- 데이터소스 전환: `operation-policies-data-source.ts`가 `VITE_OPERATION_POLICIES_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`이면 mock으로 회귀한다. `policies-service.ts`의 safe facade 7종(`fetchPoliciesSafe`, `fetchPolicySafe`, `fetchPolicyHistorySafe`, `savePolicySafe`, `togglePolicyStatusSafe`, `deletePolicySafe`, `publishPolicyHistoryVersionSafe`) 계약은 유지한다. `savePolicySafe`/`togglePolicyStatusSafe`에는 reason이 추가됐고, `deletePolicySafe`/`publishPolicyHistoryVersionSafe`는 기존 reason 계약을 유지한다.
+- 미확정: `POL-NNN`/`PH-NNNN` max+1 동시성, `changed_by`/`updated_by` uuid 표시명, `current_version_id` 화면 모델 정합, `requires_consent` 기반 B2C 동의 재수집 트리거.
+
+## 14. 알림(Notification) 데이터 계약 (2026-06-12 신설)
 
 > 단일 SoT: **`docs/specs/notification-contract.md`** — 채널 4종(`in_app`/`email`/`push`/`zalo`), class 4종(`transactional`/`operational`/`learning`/`marketing` + mandatory 규칙), template_key 7종, dispatch/attempt status enum, dedupe_key 2단 형식. 본 절은 색인이다.
 
@@ -436,3 +688,175 @@
 - v13 소유 연관 객체: `user_notifications`(인앱 수신함), `profiles.notification_prefs`, `notification_settings`. `notification_log`는 deprecated(발송 이력 SoT 아님 — O-9). 공유 객체(attempts의 v13 read 등)는 `docs/architecture/shared-supabase-schema-ownership.md`를 따른다.
 - 발송 이력은 dispatch(발송 실행)–attempt(수신자×채널) 2계층이 SoT다. opt-out 제외는 `skipped`/`opted_out`으로 집계한다(미기록 금지).
 - 기존 message 기능(`mail`/`push` 채널 UI)은 channel 계약상 `email`/`push`로 매핑하며, `push`를 `in_app`으로 재해석하지 않는다(인앱은 별도 1급 채널).
+
+## 13.4 Community 게시글/신고 데이터 계약 (2026-06-17 확정)
+
+- 엔티티/테이블: `CommunityPost` / `community_posts`, `CommunityPostAdminNote` / `community_post_admin_notes`, `CommunityReport` / `community_reports`.
+- 전환 상태: mock-only 후보에서 Supabase 테이블 계약으로 승격 완료. 마이그레이션은 `supabase/migrations-admin/20260617173000_community.sql`(+ `supabase/migrations-admin/down/20260617173000_community.sql`)이며 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
+- 소유권: topik-ai, migration home `supabase/migrations-admin`. v13 소유 테이블 DDL은 변경하지 않는다.
+
+### 13.4.1 `community_posts` 컬럼 계약
+
+| DB 컬럼 | 화면/서비스 필드 | 분류 | 비고 |
+| --- | --- | --- | --- |
+| `id` | `id` | 확정 PK | text PK, seed/RPC 자연키 `POST-NNN`. 신규 helper는 현재 max+1 방식 |
+| `title` | `title` | 확정 컬럼 | 게시글 제목 |
+| `content_html` | `contentHtml` | 확정 컬럼 | 게시글 원문 HTML, 기본 `''` |
+| `author_id` | `authorId` | 확정 컬럼 | 작성자 ID snapshot |
+| `author_name` | `authorName` | 확정 컬럼 | 작성자 표시명 snapshot |
+| `board` | `board` | 확정 enum 후보 | CHECK는 현재 seed 한글 board 코드값. 장기 code table 후보 |
+| `status` | `status` | 확정 enum | DB ASCII `published`/`hidden`, UI 라벨 `게시`/`숨김` |
+| `last_moderation_policy_code` | `lastModerationPolicyCode` | 확정 enum 후보 | null 또는 `SPAM`/`ABUSE`/`AD`/`PRIVACY`/`DUPLICATE`/`OTHER` |
+| `reports_count` | `reportsCount` | 확정 컬럼 | integer >= 0, 기본 0 |
+| `created_at` | `createdAt` | 확정 컬럼 | timestamptz |
+| `updated_at` | `updatedAt` | 확정 컬럼 | timestamptz |
+| `updated_by` | `updatedBy` | 확정 컬럼 | RPC caller uuid text 또는 seed |
+
+### 13.4.2 `community_post_admin_notes` 컬럼 계약
+
+| DB 컬럼 | 화면/서비스 필드 | 분류 | 비고 |
+| --- | --- | --- | --- |
+| `id` | `id` | 확정 PK | text PK, `POST-NNN-MEMO-NN` helper max+1 |
+| `post_id` | `postId` | 확정 FK | `community_posts(id)` ON DELETE CASCADE |
+| `title` | `title` | 확정 컬럼 | 메모 제목 |
+| `type` | `type` | 확정 enum 후보 | CHECK는 현재 메모 유형 코드값. 장기 code table 후보 |
+| `author_id` | `authorId` | 확정 컬럼 | 관리자 ID snapshot 또는 caller uuid |
+| `author_name` | `authorName` | 확정 컬럼 | 관리자 표시명 snapshot |
+| `content` | `content` | 확정 컬럼 | 메모 본문 |
+| `created_at` | `createdAt` | 확정 컬럼 | timestamptz |
+
+### 13.4.3 `community_reports` 컬럼 계약
+
+| DB 컬럼 | 화면/서비스 필드 | 분류 | 비고 |
+| --- | --- | --- | --- |
+| `id` | `id` | 확정 PK | text PK, seed 자연키 `RP-NNN` |
+| `target_post_id` | `targetPostId` | 느슨참조 | `community_posts(id)` ON DELETE SET NULL |
+| `target_user_id` | `targetUserId` | 확정 컬럼 | 신고 대상 사용자 ID snapshot |
+| `target_user_name` | `targetUserName` | 확정 컬럼 | 신고 대상 사용자 표시명 snapshot |
+| `reporter_id` | `reporterId` | 확정 컬럼 | 신고자 ID snapshot |
+| `reporter_name` | `reporterName` | 확정 컬럼 | 신고자 표시명 snapshot |
+| `reason` | `reason` | 확정 컬럼 | 신고 사유 텍스트 |
+| `reason_code` | `reasonCode` | 확정 enum 후보 | null 또는 운영 정책 코드 후보 |
+| `process_status` | `processStatus` | 확정 enum | DB ASCII `pending`/`resolved`, UI 라벨 `처리 대기`/`처리 완료` |
+| `resolution_action` | `resolutionAction` | 확정 enum | null 또는 `hide_post`/`suspend_user`/`dismiss` |
+| `resolved_by` | `resolvedBy` | 확정 컬럼 | RPC caller uuid text |
+| `resolved_at` | `resolvedAt` | 확정 컬럼 | timestamptz |
+| `created_at` | `createdAt` | 확정 컬럼 | timestamptz |
+
+### 13.4.4 RPC/쓰기 계약
+
+- 읽기: RLS enable+force, admin select policy(`private.is_admin`)만 둔다.
+- 게시글 조치 RPC: `admin_hide_community_post(p_post_id,p_reason,p_policy_code)`, `admin_show_community_post(p_post_id,p_reason,p_policy_code)`, `admin_delete_community_post(p_post_id,p_reason)`, `admin_add_community_post_memo(p_post_id,p_memo jsonb,p_reason)`.
+- 신고 조치 RPC: `admin_resolve_community_report(p_report_id,p_action,p_reason)`이며 `p_action in ('hide_post','suspend_user','dismiss')`.
+- 감사 계약: 게시글 RPC는 `target_table='CommunityPost'`, action `post_hidden`/`post_shown`/`post_deleted`/`post_memo_added`; 신고 RPC는 `target_table='CommunityReport'`, action `report_resolved`를 기록한다.
+- 신고 의미 정합화: `hide_post`는 같은 트랜잭션에서 대상 게시글을 `status='hidden'`으로 실제 변경한다. `suspend_user`는 payload `user_suspend_integration=intent_only_v13_admin_set_user_status_pending`으로 의도만 남기며 실제 정지는 미연동이다. `dismiss`는 신고만 종결한다. 모든 경우 `process_status='resolved'`, `resolution_action`, `resolved_by`, `resolved_at`을 기록한다.
+- 미확정: `POST-NNN`/`RP-NNN` 및 memo helper max+1 동시성, `board`/`last_moderation_policy_code`/memo `type` code table화, `suspend_user`와 v13 `admin_set_user_status` 실제 연동.
+
+## 13.5 Commerce 포인트 데이터 계약 (2026-06-17 확정)
+
+- 엔티티/테이블: `CommercePointPolicy` / `commerce_point_policies`, `CommercePointLedger` / `commerce_point_ledgers`, `CommercePointExpiration` / `commerce_point_expirations`.
+- 전환 상태: mock-only 후보에서 Supabase 테이블 계약으로 승격 완료. 마이그레이션은 `supabase/migrations-admin/20260617190000_commerce_points.sql`(+ down)이며 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
+- 소유권: topik-ai, migration home `supabase/migrations-admin`. v13 `profiles`는 `user_id` text 느슨참조이며 FK 없음.
+- `commerce_point_policies` 19컬럼: `id`, `name`, `policy_type`, `category`, `amount`, `points`, `status`, `description`, `condition_summary`, `earn_debit_rule`, `expiration_rule`, `target_condition`, `trigger_source`, `duplication_rule`, `manual_adjustment_rule`, `note`, `created_at`, `updated_at`, `updated_by`. `id`는 `POL-NNNN`, `policy_type/category`는 `earn`/`debit`/`expire`, `status`는 `draft`/`active`/`inactive`.
+- `commerce_point_ledgers` 20컬럼: `id`, `user_id`, `user_name`, `entry_type`, `source_type`, `amount`, `balance_after`, `available_balance_after`, `status`, `expiration_at`, `source`, `source_id`, `source_label`, `policy_id`, `policy_name`, `reason`, `approval_memo`, `occurred_at`, `created_at`, `created_by`. `id`는 `PL-NNNN`, `entry_type`은 `earn`/`debit`/`revoke`/`restore`/`expire`, `source_type`은 `referral`/`mission`/`event`/`payment`/`refund`/`admin`/`system`, `status`는 `completed`/`held`/`cancelled`. `balance_after`와 `available_balance_after`는 CHECK `>= 0`.
+- `commerce_point_expirations` 17컬럼: `id`, `user_id`, `user_name`, `source_type`, `scheduled_amount`, `available_amount`, `expire_at`, `status`, `hold_reason`, `held_by`, `held_at`, `processed_at`, `related_ledger_id`, `policy_id`, `policy_name`, `calculation_memo`, `created_at`. `id`는 `EXP-NNNN`, `status`는 `scheduled`/`held`/`completed`/`cancelled`, `scheduled_amount`와 `available_amount`는 CHECK `>= 0`.
+- UI 라벨: DB enum-like 값은 ASCII 저장을 유지하고, 한글 라벨은 `point-types`/`point-schema` 기준으로 매핑한다.
+- RPC/잔액 계약: 직접 table write 없이 SECURITY DEFINER admin RPC 5종만 사용한다. `admin_create_manual_point_adjustment(p_user_id,p_amount,p_reason)`는 사용자별 `pg_advisory_xact_lock`과 최신 ledger `for update`를 사용해 최신 `available_balance_after + p_amount`를 `balance_after`/`available_balance_after`로 서버에서 계산한다. 음수 잔액은 RPC 가드와 CHECK 제약으로 차단하며, Supabase 경로에서 클라이언트 잔액 계산은 하지 않는다.
+- helper: `next_commerce_point_policy_id()`, `next_commerce_point_ledger_id()`는 public execute를 revoke한다. 현재 `POL-NNNN`/`PL-NNNN` max+1 채번은 장기 동시성 정책 미확정이다.
+- 미확정: 음수 잔액 허용/차감 우선순위/환불 복구 정책, 정책 저장 사유 UI 필드 부재(note -> reason 전달, 빈 값 RPC 오류), `EXP-NNNN` 생성 helper/자동 소멸 cron, `user_id` FK 없는 느슨참조 표시명 정합.
+
+## 2026-06-17 Commerce 쿠폰 데이터 계약
+
+### `commerce_coupons`
+
+- 전환 상태: mock-only 후보에서 Supabase 테이블 계약으로 승격 완료. 마이그레이션은 `supabase/migrations-admin/20260617193000_commerce_coupons.sql`(+ down)이며 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
+- 53컬럼: `id`, `coupon_name`, `coupon_kind`, `coupon_status`, `issue_state`, `issue_target_type`, `target_group_ids`, `target_group_names`, `target_user_ids`, `auto_issue_trigger_type`, `code_generation_mode`, `coupon_code`, `code_count`, `audience`, `benefit_type`, `benefit_value`, `min_order_amount`, `max_discount_amount`, `applicable_scope`, `applicable_scope_reference_ids`, `excluded_product_ids`, `is_stackable`, `is_secret_coupon`, `issue_limit_mode`, `issue_limit`, `download_limit_mode`, `download_limit`, `usage_limit_mode`, `usage_limit`, `validity_mode`, `valid_from`, `valid_until`, `expire_after_days`, `linked_message_template_id`, `linked_message_template_name`, `linked_crm_campaign_id`, `linked_crm_campaign_name`, `linked_event_id`, `linked_event_name`, `download_url`, `issue_count`, `download_count`, `use_count`, `last_issued_at`, `last_downloaded_at`, `last_used_at`, `policy_notes`, `admin_memo`, `issue_alert`, `expire_alert`, `created_at`, `updated_at`, `updated_by`.
+- enum/check: `coupon_kind`=`customerDownload`/`autoIssue`/`couponCode`/`manualIssue`, `coupon_status`=`waiting`/`active`/`ended`, `issue_state`=`normal`/`paused`, `issue_target_type`=`allMembers`/`specificGroup`/`specificMembers`, `auto_issue_trigger_type`=`firstSignup`/`firstOrderComplete`/`shoppingGradeChange`/`birthday`, `code_generation_mode`=`single`/`bulk`, `audience`=`memberOnly`/`memberAndGuest`, `benefit_type`=`amountDiscount`/`rateDiscount`/`freeShipping`/`fixedPrice`, `applicable_scope`=`allProducts`/`specificCategory`/`specificProduct`, limit mode=`unlimited`/`limited`, `validity_mode`=`fixedDate`/`afterIssued`/`unlimited`.
+- JSONB 배열: `target_group_ids`, `target_group_names`, `target_user_ids`, `applicable_scope_reference_ids`, `excluded_product_ids`, `policy_notes`. JSONB 객체: `issue_alert`, `expire_alert`. `target_user_ids`는 v13 `profiles` 느슨참조이며 FK 없음.
+
+### `commerce_coupon_subscription_templates`
+
+- 30컬럼: `id`, `template_name`, `issue_target_type`, `target_grade_ids`, `target_grade_names`, `benefit_type`, `benefit_value`, `min_order_amount`, `max_discount_amount`, `applicable_scope`, `applicable_scope_reference_ids`, `applicable_scope_reference_names`, `excluded_product_mode`, `excluded_product_ids`, `excluded_product_names`, `is_stackable`, `issue_schedule`, `usage_end_schedule`, `status`, `issued_coupon_count`, `last_issued_at`, `next_issued_at`, `issue_alert_enabled`, `expire_alert_enabled`, `alert_channel`, `admin_memo`, `policy_notes`, `created_at`, `updated_at`, `updated_by`.
+- enum/check: `issue_target_type='shoppingGrade'`, `excluded_product_mode`=`none`/`specific`, `status`=`active`/`paused`, `alert_channel='webAppPush'`. `issue_schedule`과 `usage_end_schedule`은 JSONB 객체이며 적용/제외 범위와 정책 메모는 JSONB 배열로 저장한다.
+
+### Admin RPC / 감사 계약
+
+- 쿠폰 본체 Target Type은 `CommerceCoupon`: `admin_save_commerce_coupon` -> `coupon_saved`, `admin_duplicate_commerce_coupon` -> `coupon_duplicated`, `admin_set_commerce_coupon_issue_state` -> `coupon_paused`/`coupon_resumed`, `admin_delete_commerce_coupon` -> `coupon_deleted`.
+- 정기 템플릿 Target Type은 `CommerceCouponTemplate`: `admin_save_commerce_coupon_template` -> `coupon_template_saved`, `admin_set_commerce_coupon_template_status` -> `coupon_template_paused`/`coupon_template_resumed`, `admin_delete_commerce_coupon_template` -> `coupon_template_deleted`.
+- 모든 write RPC는 reason 필수이며 `admin_audit_logs`에 기록한다. 후속 미확정은 발급/사용 원장(`commerce_coupon_issues`, `commerce_coupon_redemptions`), scope-ref/대상 그룹/알림 정규화, `planTier` 영속화, v13 `target_user_ids` 정합 정책이다.
+## 2026-06-17 Commerce 환불 데이터 계약
+
+- 엔티티/테이블: `CommerceRefund` / `commerce_refunds`.
+- 전환 상태: mock/Supabase 합성 조회에서 Supabase workflow table 계약으로 전환 완료. 마이그레이션은 `supabase/migrations-admin/20260617203000_commerce_refunds.sql`(+ down)이며 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
+- 소유권: topik-ai, migration home `supabase/migrations-admin`. `payment_id`와 `user_id`는 v13 `payment_history`/사용자 식별자 느슨참조이며 FK가 없다.
+- `commerce_refunds` 12컬럼: `id`, `payment_id`, `user_id`, `user_nickname`, `requested_amount`, `reason`, `status`, `requested_at`, `processed_by`, `processed_at`, `review_reason`, `created_at`.
+- 제약/enum: `id`는 `RF-NNNN` 형식(`^RF-[0-9]+$`), `requested_amount >= 0`, `status in ('pending','approved','rejected')`. UI 라벨은 `pending=처리 대기`, `approved=승인`, `rejected=거절`.
+- RLS: enable+force, admin select policy만 허용한다. 직접 table write 경로는 만들지 않는다.
+- helper: `next_commerce_refund_id()`는 `RF-NNNN` max+1 채번이며 public execute를 revoke한다.
+- seed: `pending`/`approved`/`rejected` 각 1건, 총 3건.
+- Admin RPC / 감사 계약: `admin_approve_billing_refund(p_refund_id,p_reason)` -> `refund_approved`, `admin_reject_billing_refund(p_refund_id,p_reason)` -> `refund_rejected`. Target Type은 `CommerceRefund`, Target ID는 `refundId`, reason은 필수이고 `pending` 상태만 처리한다.
+- v13 경계: 실제 결제 환불 집행과 v13 `payment_history.status` 갱신은 미연동이다. 승인 payload는 `intent_only_v13_payment_history_pending=true`를 기록한다.
+- 미확정: 실제 결제 환불 집행 v13 연동, `payment_id` 느슨참조 정합, `RF-NNNN` max+1 동시성, payments `method` 컬럼 reconcile.
+## 11.7 2026-06-17 System 메타데이터 그룹/항목 Supabase 계약
+
+- 전환 상태: `system_metadata_groups`/`system_metadata_group_items`는 더 이상 후보가 아니라 `admin_schema_migrations` tracker로 2026-06-17 dev DB 적용된 topik-ai 소유 admin 테이블이다.
+- 마이그레이션: `supabase/migrations-admin/20260617211000_system_metadata.sql` + down migration.
+- `SystemMetadataGroup` table: `public.system_metadata_groups`
+  - PK: `group_id` text, `META-GRP-NNN` 형식
+  - columns(16): `group_id`, `group_name`, `description`, `owner_role`, `item_code_prefix`, `manager_type`, `owner_module`, `status`, `sync_status`, `exposure_status`, `linked_admin_pages`, `linked_user_surfaces`, `schema_candidate_notes`, `created_at`, `updated_at`, `updated_by`
+  - JSONB arrays: `linked_admin_pages`, `linked_user_surfaces`, `schema_candidate_notes`
+  - unique: lower(`group_name`)
+- `SystemMetadataItem` table: `public.system_metadata_group_items`
+  - PK: `item_id` text, FK: `group_id` -> `system_metadata_groups(group_id)` ON DELETE CASCADE
+  - columns(12): `item_id`, `group_id`, `code`, `label`, `description`, `sort_order`, `status`, `exposure_status`, `is_default`, `created_at`, `updated_at`, `updated_by`
+  - unique: (`group_id`, upper(`code`)), (`group_id`, lower(`label`))
+- enum/check store 값: `manager_type` = `codeTable`/`selectOption`/`exposureRule`/`segmentField`; `owner_module` = `Users`/`Message`/`Operation`/`Commerce`/`Content`/`System`; `status` = `active`/`inactive`; `sync_status` = `live`/`review`/`draft`; `exposure_status` = `confirmed`/`inferred`/`internalOnly`/`planned`; `sort_order > 0`. DB store 값은 ASCII이고 UI는 한글 라벨로 매핑한다.
+- 데이터소스: `system-metadata-data-source.ts`는 `VITE_SYSTEM_METADATA_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`일 때 mock fallback을 사용한다. 그 외 Supabase 모드에서 `system-metadata-service.ts` Safe 7종 계약은 유지된다.
+- 응답 계약: 프론트는 기존처럼 `SystemMetadataGroup.items[]` 중첩 배열을 받는다. Supabase 서비스가 `system_metadata_groups` + `system_metadata_group_items`를 조회한 뒤 `group_id` 기준으로 중첩 매핑한다.
+- 감사 계약: `Target Type = SystemMetadataGroup`, `Target ID = groupId`, 딥링크 `/system/metadata?selected={groupId}`. 항목 조치도 그룹 단위 target을 사용한다.
+- DB audit action strings: `metadata_group_saved`, `metadata_item_saved`, `metadata_group_status_changed`, `metadata_item_status_changed`, `metadata_item_deleted`, `metadata_items_reordered`. 모든 write RPC는 `reason` 필수다.
+- 미확정: `META-GRP-NNN`/`META-ITEM-NNN` next-id max+1 동시성, `is_default` 단일성 정책의 최종 업무 규칙, `admin_locations`/history 정규화 여부.
+- 비범위: `/system/metadata`에 임베드된 AssessmentMasterCatalog(`topik_writing_*`)는 이번 SystemMetadataGroup 전환과 무관하며 기존 Supabase 계약을 유지한다.
+
+## 11.8 2026-06-17 System 시스템 로그 Supabase 계약
+
+- 엔티티/테이블: `SystemLog` / `public.system_logs`.
+- 전환 상태: mock-only 후보에서 Supabase read-only table 계약으로 전환 완료. 마이그레이션은 `supabase/migrations-admin/20260617213000_system_logs.sql`(+ down)이며 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
+- 소유권: topik-ai, migration home `supabase/migrations-admin`. `system_logs`는 기술 로그이며 `admin_audit_logs` 감사 로그와 별개다. v13 `notification_log`와도 무관하다.
+- `system_logs` 7컬럼: `id`, `level`, `message`, `component`, `trace_id`, `context`, `created_at`.
+- 제약/enum: `id` text PK, `level in ('INFO','WARN','ERROR')`, `trace_id` text null, `context` jsonb null, `created_at` timestamptz. `level`은 현재 대문자 저장 코드값을 유지한다.
+- 인덱스: `created_at desc`, `level` 부분 인덱스(`WARN`,`ERROR`), `component`.
+- RLS: enable+force, admin select policy(`private.is_admin`)만 허용한다. admin write policy/RPC는 없다.
+- 데이터소스: `system-logs-data-source.ts`가 `VITE_SYSTEM_LOGS_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`이면 mock fallback을 사용한다. Supabase 모드는 `system_logs`를 `created_at desc`로 읽고, `system-logs-service.ts`의 `fetchSystemLogsSafe` 계약은 유지한다.
+- seed: INFO/WARN/ERROR 분포의 4건.
+- 비범위/미확정: 로그 적재 소스/주체, 보존기간·파티셔닝, `trace_id` 의미, `level` 코드값 장기 표준화 여부.
+
+## 11.9 2026-06-18 System 감사 로그 읽기 RPC 계약
+
+- 엔티티/테이블: `AuditLog` / `public.admin_audit_logs`.
+- 전환 상태: `/system/audit-logs`는 mock/store 병합 후보에서 Supabase live read 계약으로 승격 완료했다. 마이그레이션은 `supabase/migrations-admin/20260618001000_admin_audit_logs_read.sql`(+ `supabase/migrations-admin/down/20260618001000_admin_audit_logs_read.sql`)이며 `admin_schema_migrations` tracker 기준 2026-06-18 dev DB 적용 완료했다.
+- DB 경계: 신규 테이블은 없고 `admin_audit_logs` 컬럼, RLS, write path는 변경하지 않는다. 추가 인덱스는 `admin_audit_logs_target_lookup_idx`(`target_table`, `target_id`)와 `admin_audit_logs_created_at_desc_idx`(`created_at desc`)다.
+- 읽기 RPC: `admin_list_audit_logs(p_target_type text default null, p_target_id text default null, p_keyword text default null, p_start timestamptz default null, p_end timestamptz default null, p_limit int default 100, p_offset int default 0)`.
+- 보안/동작: `SECURITY DEFINER`, `private.is_admin(auth.uid())` 가드, read-only. `profiles(admin_user_id -> id)` 조인으로 `profiles.display_name`을 `actor`로 반환한다.
+- 필터/정렬: `target_table`, `target_id`, keyword `ILIKE`(`action`, `target_id`, `payload::text`), `created_at` 범위 필터를 지원하고 `created_at desc`로 정렬한다. `p_limit`은 1~500으로 보정하며 `p_offset`은 0 이상이다.
+- 반환 컬럼: `log_id`, `target_type`, `target_id`, `action`, `actor`, `reason`, `diff`, `payload`, `created_at`, `total_count`.
+- 화면 표시 경계: `reason`은 `payload->>'reason'`에서 파생한다. `diff`/`payload`는 반환 계약에는 포함되지만 민감정보 노출 범위가 미확정이므로 화면 미노출 보류 상태다.
+## 2026-06-18 Users 회원 상세 학습 현황 데이터 계약
+
+### 오너 결정 기록
+
+| 결정 | 결정값 | 근거 | 트레이드오프 | 결정일 |
+| --- | --- | --- | --- | --- |
+| 범위 | (b) 요약 KPI + 영역별 정답률 + 약점 + 최근 풀이 이력 | v13 `problem_attempts`, `problems`, `writing_submissions`, `writing_feedback`, `feedback_dimension_scores`, `learning_goals` read만으로 관리자가 학습자 상태를 파악할 수 있는 최대 범위다. 신규 테이블 0건, v13 DDL 변경 0건을 지킨다. | 추천 실행/작문 첨삭 전문까지 포함하는 (c)는 PII와 추천 정책 검증 범위가 커서 제외한다. | 2026-06-18 |
+| 거버넌스·프라이버시 | 답안 본문(`writing_submissions.answer_text`)과 문장 첨삭 본문(`sentence_feedback.original_text/corrected_text/comment`)은 admin 화면에 노출하지 않는다. | 운영자는 학습 상태 판단에 집계, 점수, 약점 차원, 최근 제출 메타데이터만으로 충분하다. 학습 PII 본문은 별도 승인·감사 정책 없이는 노출하지 않는다. | 세부 작문 품질 판단은 제한되지만 개인정보 노출면과 감사 부담이 줄어든다. | 2026-06-18 |
+| 더미 탭 동시 전환 | 활동(`study_events`)·결제(`payment_history`) 탭 실데이터화는 이번 범위에서 제외한다. | 이번 변경의 핵심은 문제 풀이 학습 현황이며, 두 탭을 동시에 전환하면 결제/활동 계약과 UI 회귀 범위가 커진다. | 기존 더미 탭은 남지만 학습 현황 탭은 live RPC + mock fallback으로 완결한다. | 2026-06-18 |
+
+### RPC / 화면 모델
+
+- RPC: `get_admin_user_learning_overview(target_id uuid)`
+- 위치: `supabase/migrations-admin/20260618120000_admin_user_learning_overview.sql` 및 down 파일.
+- 권한: `SECURITY DEFINER`, `private.is_platform_admin(auth.uid())`, `set search_path = pg_catalog, public`.
+- 읽기 source: v13 소유 `problem_attempts`, `problems`, `writing_submissions`, `writing_feedback`, `feedback_dimension_scores`, `learning_goals`.
+- 반환 모델: `UserLearningOverview` (`kpis`, `domainAccuracy`, `weaknesses`, `recentAttempts`, `recentWriting`).
+- PII 제외: `selected_answer`, `problems.prompt`, `writing_submissions.answer_text`, `sentence_feedback.*text/comment`는 반환하지 않는다.
+- mock fallback: `getMockUserLearningOverview(userId)`가 `VITE_SUPABASE_DISABLED` 모드 렌더 안전성을 유지한다.

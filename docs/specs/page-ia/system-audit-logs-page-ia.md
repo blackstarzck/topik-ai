@@ -121,10 +121,14 @@
 - 본문 레이아웃 메모: 요약 카드 아래 목록 본문은 `AdminListCard(toolbar=SearchBar, body=안내 문구 -> Table)` 구조를 사용합니다.
 - 예상 feature 파일: src/features/system/pages/*
 - 권한/로그 처리 메모: 조회 중심 화면이라도 관련 원본 화면의 감사 로그로 역추적할 수 있어야 합니다.
+- 2026-06-18 source: Supabase 모드는 `admin_list_audit_logs(p_target_type, p_target_id, p_keyword, p_start, p_end, p_limit=100, p_offset=0)` 읽기 RPC를 통해 live `admin_audit_logs`를 단일 source로 사용합니다. `system-audit-logs-data-source.ts`는 `VITE_SYSTEM_AUDIT_LOGS_SOURCE=mock` 또는 Supabase 미구성/비활성 조건에서 기존 mock/store audit 병합 fallback을 사용합니다.
+- 2026-06-18 RPC 동작: `SECURITY DEFINER` + `private.is_admin` 가드, `profiles(admin_user_id -> id)` 조인으로 actor 표시명 해석, Target Type/ID/keyword/created_at 범위 필터, `created_at desc` 정렬, `limit/offset` 페이지네이션을 사용합니다. 반환 컬럼은 `log_id`, `target_type`, `target_id`, `action`, `actor`, `reason`, `diff`, `payload`, `created_at`, `total_count`입니다.
+- 2026-06-18 DB 경계: 신규 테이블은 없고 `admin_audit_logs` 컬럼/RLS/쓰기 경로는 변경하지 않습니다. 조회 인덱스 `admin_audit_logs_target_lookup_idx`와 `admin_audit_logs_created_at_desc_idx`만 추가됐습니다.
 
 ## 14. 오픈 이슈
 
 - 필드 diff 요약/마스킹 범위와 대용량 보관 정책 미정
+- `diff`/`payload` 민감정보 노출 범위가 미확정이므로 RPC 반환에는 포함되지만 화면 노출은 보류합니다.
 ## 15. 사용자 표시 규칙
 
 - `대상 ID` 컬럼이 `Users` 대상을 가리키는 경우 raw ID를 단독 노출하지 않고 `이름 (ID)` 형식의 파란 링크로 표시합니다.

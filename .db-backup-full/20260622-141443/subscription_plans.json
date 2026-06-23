@@ -1,0 +1,53 @@
+[
+  {
+    "plan_key": "topik_monthly",
+    "name": "TALKPIK 월간",
+    "cadence": "monthly",
+    "price_cents": 990000,
+    "currency": "KRW",
+    "features": [
+      "AI 작문 첨삭 무제한",
+      "약점 추천 문제",
+      "학습 리포트",
+      "__seed:conformance-20260602"
+    ],
+    "recommended": false,
+    "active": true,
+    "created_at": "2026-06-01 23:46:39.476172+00",
+    "updated_at": "2026-06-01 23:46:39.476172+00"
+  },
+  {
+    "plan_key": "topik_quarterly",
+    "name": "TALKPIK 분기",
+    "cadence": "quarterly",
+    "price_cents": 2670000,
+    "currency": "KRW",
+    "features": [
+      "월간 혜택 전부",
+      "분기 17% 할인",
+      "우선 첨삭 큐",
+      "__seed:conformance-20260602"
+    ],
+    "recommended": true,
+    "active": true,
+    "created_at": "2026-06-01 23:46:39.476172+00",
+    "updated_at": "2026-06-01 23:46:39.476172+00"
+  },
+  {
+    "plan_key": "topik_yearly",
+    "name": "TALKPIK 연간",
+    "cadence": "yearly",
+    "price_cents": 9900000,
+    "currency": "KRW",
+    "features": [
+      "월간 혜택 전부",
+      "연간 17% 할인",
+      "모의고사 PDF 내보내기",
+      "__seed:conformance-20260602"
+    ],
+    "recommended": false,
+    "active": true,
+    "created_at": "2026-06-01 23:46:39.476172+00",
+    "updated_at": "2026-06-01 23:46:39.476172+00"
+  }
+]

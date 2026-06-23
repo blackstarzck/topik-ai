@@ -854,13 +854,16 @@ export default function OperationFaqPage(): JSX.Element {
 
   const handleSaveFaq = useCallback(async () => {
     const values = await faqForm.validateFields();
+    const reason =
+      faqEditorState?.type === 'edit' ? 'FAQ 원문 수정' : 'FAQ 신규 등록';
     const result = await saveFaqSafe({
       id: faqEditorState?.type === 'edit' ? faqEditorState.faq.id : undefined,
       question: values.question.trim(),
       answer: values.answer.trim(),
       searchKeywords: parseKeywords(values.searchKeywordsText),
       category: values.category,
-      status: values.status
+      status: values.status,
+      reason
     });
 
     if (!result.ok) {
@@ -900,9 +903,7 @@ export default function OperationFaqPage(): JSX.Element {
         <Space direction="vertical">
           <Text>대상 유형: {getTargetTypeLabel('OperationFaq')}</Text>
           <Text>대상 ID: {result.data.id}</Text>
-          <Text>
-            조치: {faqEditorState?.type === 'edit' ? 'FAQ 원문 수정' : 'FAQ 신규 등록'}
-          </Text>
+          <Text>사유/근거: {reason}</Text>
           <AuditLogLink targetType="OperationFaq" targetId={result.data.id} />
         </Space>
       )
@@ -912,6 +913,10 @@ export default function OperationFaqPage(): JSX.Element {
   const handleSaveCuration = useCallback(async () => {
     const values = await curationForm.validateFields();
     const pinnedDateRange = values.pinnedDateRange;
+    const reason =
+      curationEditorState?.type === 'edit'
+        ? 'FAQ 노출 규칙 수정'
+        : 'FAQ 대표 노출 추가';
 
     const result = await saveFaqCurationSafe({
       id:
@@ -924,7 +929,8 @@ export default function OperationFaqPage(): JSX.Element {
       displayRank: Number(values.displayRank),
       exposureStatus: values.exposureStatus,
       pinnedStartAt: pinnedDateRange?.[0]?.format('YYYY-MM-DD') ?? null,
-      pinnedEndAt: pinnedDateRange?.[1]?.format('YYYY-MM-DD') ?? null
+      pinnedEndAt: pinnedDateRange?.[1]?.format('YYYY-MM-DD') ?? null,
+      reason
     });
 
     if (!result.ok) {
@@ -972,12 +978,7 @@ export default function OperationFaqPage(): JSX.Element {
         <Space direction="vertical">
           <Text>대상 유형: {getTargetTypeLabel('OperationFaqCuration')}</Text>
           <Text>대상 ID: {result.data.id}</Text>
-          <Text>
-            조치:{' '}
-            {curationEditorState?.type === 'edit'
-              ? 'FAQ 노출 규칙 수정'
-              : 'FAQ 대표 노출 추가'}
-          </Text>
+          <Text>사유/근거: {reason}</Text>
           <AuditLogLink
             targetType="OperationFaqCuration"
             targetId={result.data.id}
@@ -1001,7 +1002,7 @@ export default function OperationFaqPage(): JSX.Element {
       }
 
       if (dangerState.type === 'deleteFaq') {
-        const result = await deleteFaqSafe(dangerState.faq.id);
+        const result = await deleteFaqSafe(dangerState.faq.id, reason);
         if (!result.ok) {
           notificationApi.error({
             message: 'FAQ 삭제 실패',
@@ -1035,7 +1036,8 @@ export default function OperationFaqPage(): JSX.Element {
       if (dangerState.type === 'toggleFaqStatus') {
         const result = await toggleFaqStatusSafe({
           faqId: dangerState.faq.id,
-          nextStatus: dangerState.nextStatus
+          nextStatus: dangerState.nextStatus,
+          reason
         });
 
         if (!result.ok) {
@@ -1074,7 +1076,10 @@ export default function OperationFaqPage(): JSX.Element {
       }
 
       if (dangerState.type === 'deleteCuration') {
-        const result = await deleteFaqCurationSafe(dangerState.curation.id);
+        const result = await deleteFaqCurationSafe(
+          dangerState.curation.id,
+          reason
+        );
         if (!result.ok) {
           notificationApi.error({
             message: 'FAQ 노출 삭제 실패',
@@ -1116,7 +1121,8 @@ export default function OperationFaqPage(): JSX.Element {
         displayRank: dangerState.curation.displayRank,
         exposureStatus: dangerState.nextStatus,
         pinnedStartAt: dangerState.curation.pinnedStartAt,
-        pinnedEndAt: dangerState.curation.pinnedEndAt
+        pinnedEndAt: dangerState.curation.pinnedEndAt,
+        reason
       });
 
       if (!result.ok) {

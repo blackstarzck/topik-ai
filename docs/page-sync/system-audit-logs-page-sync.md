@@ -140,3 +140,13 @@ last_reviewed_at: "2026-06-01"
 | 항목 | 미확정 내용 | 필요한 결정 주체 | 관리자 페이지 영향 | 사용자 화면 영향 | 추적 문서 |
 | --- | --- | --- | --- | --- | --- |
 | 감사 로그 최종 계약 | Message/Operation/Commerce 같은 범용 Target Type 세분화가 필요합니다. | 기획/백엔드/프론트 | 필터/액션/감사 로그 계약 변동 가능 | B2C 직접 노출 없음. 운영 증적 데이터입니다. | docs/specs/page-ia/system-audit-logs-page-ia.md |
+
+## 14. 2026-06-18 Supabase live read 동기화
+
+- 데이터소스 상태: `/system/audit-logs`는 Supabase-backed live read 화면입니다. Supabase 모드에서는 `admin_audit_logs`를 단일 source로 읽고, mock 모드는 기존 static audit seed + store audit 병합 fallback으로만 사용합니다.
+- source switch: `system-audit-logs-data-source.ts`가 `VITE_SYSTEM_AUDIT_LOGS_SOURCE=mock`, `VITE_SUPABASE_DISABLED`, Supabase 설정 여부를 판별합니다.
+- 읽기 RPC: `admin_list_audit_logs(p_target_type, p_target_id, p_keyword, p_start, p_end, p_limit=100, p_offset=0)`를 `supabase-system-audit-logs-service.ts`에서 호출합니다.
+- actor 해석: RPC가 `admin_audit_logs.admin_user_id`와 `profiles.id`를 left join하고 `profiles.display_name`을 `actor`로 반환합니다. 표시명이 없으면 uuid 또는 `system` fallback을 사용합니다.
+- 필터/페이지네이션: Target Type(`target_table`), Target ID(`target_id`), keyword `ILIKE`, created_at 범위 필터와 `limit/offset` 페이지네이션을 사용하며 정렬은 `created_at desc`입니다.
+- 반환/표시: RPC 반환은 `log_id`, `target_type`, `target_id`, `action`, `actor`, `reason`, `diff`, `payload`, `created_at`, `total_count`입니다. `diff`/`payload`는 민감정보 노출 범위가 미확정이므로 화면 미노출 보류 상태를 유지합니다.
+- Phase 0 해소: 기존 "감사 로그 화면 mock SoT·실 admin_audit_logs 미읽음" 제약은 2026-06-18 dev DB 적용으로 해소됐습니다. 모든 admin RPC(공지·FAQ·이벤트·정책·community·commerce·users·메타데이터)가 `admin_audit_logs`에 적재한 감사가 이제 화면에서 실조회됩니다.

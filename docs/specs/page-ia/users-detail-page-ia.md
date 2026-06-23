@@ -132,4 +132,13 @@
 - `프로필` 탭의 `사용자 ID`와 `이름` 필드는 분리해 표시합니다.
 - `이름` 필드는 `profiles.display_name`만 노출하고, UUID는 `사용자 ID` 필드와 감사 로그 Target ID에서 확인합니다.
 - `profiles.display_name` 또는 `profiles.nickname`이 `NULL`이면 이메일/ID/local-part를 임의 표시명으로 만들지 않고 해당 필드에 `-`를 표시합니다.
+## 2026-06-18 학습 현황(문제 풀이) 탭 추가
+
+- 탭 구성은 `프로필 / 학습 현황 / 활동 / 결제 / 커뮤니티 / 로그 / 관리자 메모`로 확장한다.
+- `학습 현황` 탭은 본문 카드 안의 `Tabs` 항목으로만 배치하며 `PageTitle` 또는 카드 외부 액션 영역으로 분리하지 않는다.
+- 데이터 source는 `get_admin_user_learning_overview(target_id uuid)` RPC다. Supabase 미구성 또는 `VITE_SUPABASE_DISABLED=true`에서는 `mock-users.ts`의 목 폴백을 사용한다.
+- 표시 범위는 요약 KPI, 영역별 정답률, 약점, 최근 풀이 이력, 최근 작문 제출 요약이다.
+- 답안 원문, 문제 prompt 전문, 문장별 첨삭 원문/수정문/코멘트는 표시하지 않는다.
+- 조회 전용 탭이므로 탭 진입과 행 상세 확인은 감사 로그를 남기지 않는다. 회원 상태 조치 감사 로그 계약은 기존 `Users + userId`를 유지한다.
+- 네트워크 상태: 탭 내부에서 `pending/success/empty/error`를 분리 표시하고, 전체 회원 상세 화면을 중단하지 않는다.
 

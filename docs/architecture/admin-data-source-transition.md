@@ -11,14 +11,20 @@
 ### 2.1 이미 분리된 패턴
 
 - `Users` 계열은 `mock-*` 파일과 `fetch*Safe` service가 분리되어 있다.
-- `Users > 회원 목록/상세`은 v13 Supabase 연결 시 `get_admin_users` RPC를 1차 source로 사용하고, RPC가 `profiles.nickname`을 반환하지 않는 배포에서는 `profiles(id,nickname)` 보강 조회로 닉네임 컬럼을 병합한다. `display_name`은 회원명(`realName`) source이고 `nickname`은 닉네임 source이며, 둘 중 하나가 `NULL`이면 이메일/ID/local-part fallback을 만들지 않고 UI에서 `-`로 표시한다.
+- `Users > 회원 목록`은 2026-06-17 P0 결손 RPC 핫픽스로 mock 후보에서 Supabase-backed source로 승격 완료했다. `supabase-users-service.ts`의 기존 호출 계약은 그대로 유지하고, Supabase 모드 read는 `get_admin_users(search, sort, page, page_size)`, 정지/해제 write는 `admin_set_user_status(target_id, new_status)`를 사용한다. 두 RPC는 `supabase/migrations-admin/20260617210000_admin_users_directory.sql`(+ down)에 작성됐고 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했다.
+- `Users > 회원 목록` read source는 v13 `profiles` + `auth.users` 조인과 `writing_submissions` 집계다. `display_name`은 회원명(`realName`) source이고 `nickname`은 닉네임 source이며, 둘 중 하나가 `NULL`이면 이메일/ID/local-part fallback을 만들지 않고 UI에서 `-`로 표시한다. `get_admin_users` 인자명은 PostgREST 매칭을 위해 프론트 JSON 키 `search`/`sort`/`page`/`page_size`와 정확히 일치해야 하며, 이 함수 부재가 기존 404 런타임 실패 원인이었다.
+- `Users > 회원 목록` write source는 `admin_set_user_status` 단일 경로다. 신규 테이블은 없고 v13 `profiles` DDL은 변경하지 않으며, `profiles.status`만 `active`/`blocked`로 토글하고 `deleted`는 차단한다. 감사 로그는 `User + userId`, action `user_status_changed`로 남긴다.
+- `Users > 회원 상세`은 별도 탭 파생 데이터 source 정리가 아직 남아 있다.
 - `Community > 게시글 관리/신고 관리`는 `api/mock-community.ts`가 초기 seed/factory를 소유하고, `community-service.ts`가 목록 조회/게시·숨김·삭제/신고 처리 safe facade를 제공한다. 조치 후 live state는 `community-store.ts`에 남긴다.
-- `System > 시스템 로그`는 `api/mock-system-logs.ts`와 `system-logs-service.ts`가 목록 source를 소유한다.
+- `System > 시스템 로그`는 2026-06-17 mock-only에서 Supabase read-only source로 전환 완료했다. `system-logs-data-source.ts`가 `VITE_SYSTEM_LOGS_SOURCE=mock`, `VITE_SUPABASE_DISABLED`, Supabase 설정 여부를 판별하고, `system-logs-service.ts`의 `fetchSystemLogsSafe` 계약은 유지한다. Supabase 모드는 `system_logs`를 `created_at desc`로 읽는다. 로그 적재는 backend/infra service-role 경로로 남아 있으며 소스/주체는 미정이다.
 - `System > 감사 로그`는 `system-audit-logs-service.ts`가 static audit seed(`api/mock-system-audit-logs.ts`)와 permission/coupon/metadata store audit 병합 책임을 소유한다. 페이지는 merge 세부를 알지 않는다.
 - `Message` 계열은 `api/mock-messages.ts`가 `initialGroups/templates/histories` seed/factory를 소유하고, `messages-service.ts`가 실제 렌더 source와 저장/발송/토글/삭제/재시도 action facade를 제공한다. 발송/재시도/그룹 변경 live state는 `message-store.ts`에 남긴다.
 - `Message > 대상 그룹`은 세그먼트 옵션/기본값/Query Builder 필드 정의를 `src/features/message/model/message-group-segment-schema.ts`로 분리해 page-local 하드코딩을 줄였다.
 - `Operation > 공지사항/FAQ/이벤트`는 기존 service/store 구조를 유지하되, 초기 seed/factory를 `api/mock-operation.ts`로 분리했다. `operation-store.ts`는 조치 후 live state만 담당한다.
-- `Operation > 정책 관리`는 `policies-service.ts`를 통해 목록/상세/저장/게시 상태 변경/히스토리 조회/히스토리 버전 게시/삭제를 감싸고, 초기 정책/히스토리 seed는 `api/mock-operation-policies.ts`가 소유한다. 조치 후 정책 live state는 `policy-store.ts`에 남긴다. 정책 이력은 등록/수정/상태 변경/히스토리 버전 게시/삭제 5종 액션으로 기록하며, 각 이력 엔트리는 `snapshot: OperationPolicy`를 포함해 Drawer expandable row에서 해당 시점의 버전 스냅샷을 렌더한다. `OperationPolicy` 계약에는 `relatedAdminPages[]`, `relatedUserPages[]`, `sourceDocuments[]`가 함께 포함되며, `relatedUserPages[]`는 현재 운영상 추정 user surface를 기본값으로 채운다. 정책 등록 상세는 신규 등록, 현재 정책 내용 수정, 기존 정책 기준 새 버전 등록(`mode=version&sourcePolicyId`) 3개 editor mode를 사용한다. cross-page 정책 근거 매핑의 문서 SoT는 `docs/specs/admin-policy-source-map.md`에서 추적한다.
+- `Operation > 공지사항`은 2026-06-17 mock-only에서 Supabase DB-backed hybrid switch로 전환 완료했다. `operation-notices-data-source.ts`와 `supabase-operation-notices-service.ts`가 Supabase 경로를 담당하고, `notices-service.ts`의 `fetch*Safe`/`save*Safe`/`toggle*Safe`/`delete*Safe` 계약은 유지한다. Supabase 설정이 없거나 `VITE_SUPABASE_DISABLED=true` 또는 `VITE_OPERATION_NOTICES_SOURCE=mock`이면 기존 mock 경로로 회귀한다. Supabase 모드는 `operation_notices` 조회와 admin RPC 3종을 사용하며, 마이그레이션은 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했다.
+- `Operation > FAQ`는 2026-06-17 mock-only에서 Supabase DB-backed hybrid switch로 전환 완료했다. `operation-faqs-data-source.ts`와 `supabase-operation-faqs-service.ts`가 Supabase 경로를 담당하고, `faqs-service.ts`의 `fetch*Safe`/`save*Safe`/`toggle*Safe`/`delete*Safe` 계약은 유지한다. Supabase 설정이 없거나 `VITE_SUPABASE_DISABLED=true` 또는 `VITE_OPERATION_FAQS_SOURCE=mock`이면 기존 mock 경로로 회귀한다. Supabase 모드는 `operation_faqs`/`operation_faq_curations`/`operation_faq_metrics` 조회와 admin RPC 5종을 사용하며, metrics는 admin write RPC가 없는 seed/read 전용이다. 마이그레이션은 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했다.
+- `Operation > 이벤트`는 2026-06-17 mock-only에서 Supabase DB-backed hybrid switch로 전환 완료했다. `operation-events-data-source.ts`와 `supabase-operation-events-service.ts`가 Supabase 경로를 담당하고, `events-service.ts`의 `fetch*Safe`/`save*Safe`/`schedule*Safe`/`publish*Safe`/`end*Safe` 계약은 유지한다. Supabase 설정이 없거나 `VITE_SUPABASE_DISABLED=true` 또는 `VITE_OPERATION_EVENTS_SOURCE=mock`이면 기존 mock 경로로 회귀한다. Supabase 모드는 `operation_events` 조회와 admin RPC 4종을 사용하며, 마이그레이션은 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했다.
+- `Operation > 정책 관리`는 2026-06-17 mock-only에서 Supabase DB-backed hybrid switch로 전환 완료했다. `operation-policies-data-source.ts`와 Supabase 정책 service가 Supabase 경로를 담당하고, `policies-service.ts`의 safe facade 7종(`fetchPoliciesSafe`/`fetchPolicySafe`/`fetchPolicyHistorySafe`/`savePolicySafe`/`togglePolicyStatusSafe`/`deletePolicySafe`/`publishPolicyHistoryVersionSafe`) 계약은 유지한다. Supabase 설정이 없거나 `VITE_SUPABASE_DISABLED=true` 또는 `VITE_OPERATION_POLICIES_SOURCE=mock`이면 기존 mock 경로로 회귀한다. Supabase 모드는 `operation_policies`/`operation_policy_histories` 조회와 admin RPC 4종을 사용하며, 마이그레이션은 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했다.
 - `Operation > 이벤트 등록 상세`는 Message store를 직접 읽지 않고 `messages-service.ts`의 option DTO(`fetchMessageOptionSourcesSafe`)를 통해 대상 그룹/메시지 템플릿 선택지를 받는다.
 - `Commerce > 쿠폰 관리`는 `coupons-service.ts`를 통해 쿠폰/정기 쿠폰 템플릿의 조회/저장/발행 중지/재개/삭제를 감싸고, 초기 seed/factory는 `api/mock-coupons.ts`가 소유한다. `coupon-store.ts`는 live state와 message option snapshot 기반 파생 표시만 담당한다.
 - `Commerce > 포인트 관리`는 `api/mock-points.ts`가 정책/원장/소멸 예정 seed/factory를 소유하고, `points-service.ts`가 조회/수동 조정/정책 저장/소멸 보류 facade를 제공한다.
@@ -91,8 +97,8 @@ src/features/<feature>/
 - 상세 데이터가 목록 행의 확장 정보라면 `getById` 또는 `buildDetail` helper를 통해 같은 source에서 파생한다.
 - 폼 옵션, 기본값, Query Builder 필드 정의처럼 나중에 메타데이터 API나 코드 테이블로 치환될 정적 정책값은 page가 아니라 feature `model/*-schema.ts`에서 단일 SoT로 관리한다.
 - 이벤트 등록 상세의 대상 그룹/메시지 템플릿/보상 정책 옵션은 page-local 자유 입력으로 남기지 않고, 각 도메인 service 또는 schema source를 통해 `select` 옵션으로 주입한다.
-- 이벤트 배너 이미지는 현재 mock 기준으로 정렬 가능한 `bannerImages[]`를 SoT로 사용하고, 첫 번째 이미지를 대표 배너로 보고 `bannerImageUrl`, `bannerImageFileName`, `ogImageUrl`를 파생한다.
-- DB/API 단계에서는 단일 URL 필드가 아니라 정렬 가능한 asset list 또는 `bannerAssetIds[]`를 기준 계약으로 전환한다.
+- 이벤트 배너 이미지는 화면 모델 기준으로 정렬 가능한 `bannerImages[]`를 SoT로 사용하고, 첫 번째 이미지를 대표 배너로 보고 `bannerImageUrl`, `bannerImageFileName`, `ogImageUrl`를 파생한다. Supabase 모드는 `operation_events.banner_images` jsonb 배열과 `banner_image_source_type`(`file`/`url`)으로 보관한다.
+- 장기 asset 서비스 단계에서는 단일 URL 필드가 아니라 정렬 가능한 asset list 또는 `bannerAssetIds[]`를 기준 계약으로 전환한다.
 
 ### 4.3 shared 계층
 
@@ -325,3 +331,126 @@ src/features/<feature>/
   - `service_status`(`available`/`excluded`/`internal_test`)가 유일한 물리 노출 상태다(D-6 유지). '서비스_노출상태' 태그 그룹은 시드에서 제외하고 RPC에서 부여를 차단한다. `operationStatus` 4값 union은 재정의 P3에서 제거한다. v13 `lifecycle_status` 종속은 해소됐다(신규 스키마가 자체 노출 컬럼 보유).
   - ~~검수 상태 2축(D-2)~~ — **2026-06-11 §0으로 철회**(검수 개념 삭제, 편차 E1 철회). `review_status`/`review_workflow_status`/`review_passed`/`validation_result` 컬럼 물리 제거는 재정의 P3 마이그레이션.
   - 채택 계약·식별자 매핑·편차 목록(E2~E4 — E1 철회)은 `docs/specs/admin-data-contract.md` §12에서 추적한다.
+
+## 10.4.1 2026-06-17 Users 회원 목록 Supabase 전환 메모
+
+- 대상 화면: `Users > 회원 목록`(`/users`).
+- 전환 상태: P0 결손 RPC 핫픽스로 Supabase 모드 404 런타임 실패를 해소했다. `get_admin_users`/`admin_set_user_status` RPC 2종은 `supabase/migrations-admin/20260617210000_admin_users_directory.sql`에 작성했고, 대응 down 스크립트를 둔다. 적용 이력은 `admin_schema_migrations`가 담당하며, 2026-06-17 dev DB 적용 완료했다.
+- 데이터소스 경계: `supabase-users-service.ts`는 기존 코드 그대로 RPC 2종을 호출한다. read RPC 인자명은 `search`, `sort`, `page`, `page_size`로 프론트 JSON 키와 정확히 일치해야 PostgREST가 함수를 매칭한다.
+- Supabase read 경로: `get_admin_users(search text, sort text, page integer, page_size integer)`는 platform_admin 전용이며 `profiles` + `auth.users`를 조인하고 `writing_submissions` 제출 수/최근 제출 시각을 집계한다. 반환 컬럼은 `user_id`, `email`, `display_name`, `nickname`, `app_role`, `plan_label`, `status`, `submission_count`, `last_activity`, `last_sign_in_at`, `created_at`, `total_count`다.
+- Supabase write 경로: `admin_set_user_status(target_id uuid, new_status text)`는 platform_admin 전용이며 `new_status`는 `active`/`blocked`만 허용하고 `deleted` 사용자는 차단한다. 신규 테이블은 없고 v13 `profiles` DDL은 변경하지 않으며 `profiles.status`만 토글한다.
+- 감사/사유 경계: 감사 로그는 `target_table='User'`, `target_id=userId`, action `user_status_changed`, `diff.status.from/to`, `payload.app_role`을 사용한다. 화면 사유 입력/저장 계약을 확장할 경우에도 `User + userId` Target Type/ID는 유지한다.
+
+## 10.5 2026-06-17 Operation 공지사항 Supabase 전환 메모
+
+- 대상 화면: `Operation > 공지사항`(`/operation/notices`, `/operation/notices/create`, `/operation/notices/create/:noticeId`).
+- 전환 상태: mock-only에서 Supabase-backed hybrid 스위치 구조로 전환 완료. `operation_notices` 테이블과 admin RPC 3종은 `supabase/migrations-admin/20260617120000_operation_notices.sql`에 작성했고, 대응 down 스크립트는 `supabase/migrations-admin/down/`에 둔다. 적용 이력은 `admin_schema_migrations`가 담당하며, 2026-06-17 dev DB 적용 완료했다.
+- 데이터소스 경계: `notices-service.ts`의 safe facade 계약(`{ ok, data, error }`)은 유지하고, `operation-notices-data-source.ts`가 `isSupabaseConfigured`와 `VITE_OPERATION_NOTICES_SOURCE`를 판별한다. Supabase 미구성, `VITE_SUPABASE_DISABLED=true`, `VITE_OPERATION_NOTICES_SOURCE=mock`은 기존 mock source(`mock-operation.ts` + `operation-store.ts`)로 회귀한다.
+- Supabase 경로: `supabase-operation-notices-service.ts`가 `operation_notices` row를 `OperationNotice` 화면 모델로 매핑하고, DB status ASCII `published`/`hidden`을 UI 라벨 `게시`/`숨김`으로 변환한다. 저장/상태 변경/삭제는 SECURITY DEFINER admin RPC 3종(`admin_save_operation_notice`, `admin_toggle_operation_notice_status`, `admin_delete_operation_notice`) 경유이며, 직접 테이블 write 경로는 만들지 않는다.
+- 감사/사유 경계: 세 RPC 모두 reason 필수이며, 감사 로그는 `target_table='OperationNotice'`, `target_id=noticeId`, action `notice_saved`/`notice_status_changed`/`notice_deleted`를 사용한다. 상태 변경과 삭제는 확인 모달 사유를 RPC까지 전달하고, 등록/수정 상세에는 별도 사유 입력 UX가 없으므로 서비스 경계에서 저장 사유를 보강한다.
+- 잔여 정책: B2C 실제 노출 surface는 사용자 공지 목록/상세 기준의 운영상 추정으로 남긴다. 상단 고정/예약 게시, HTML sanitize/preview 서버 정책, 자연키 `NOTICE-NNN` max+1 동시성 리스크, `updated_by` uuid 표시명 정합은 `docs/page-sync/operation-notices-page-sync.md`와 `docs/specs/admin-page-gap-register.md`에서 계속 추적한다.
+
+## 10.6 2026-06-17 Operation FAQ Supabase 전환 메모
+
+- 대상 화면: `Operation > FAQ`(`/operation/faq`).
+- 전환 상태: mock-only에서 Supabase-backed hybrid 스위치 구조로 전환 완료. `operation_faqs`, `operation_faq_curations`, `operation_faq_metrics` 테이블과 admin RPC 5종은 `supabase/migrations-admin/20260617123000_operation_faqs.sql`에 작성했고, 대응 down 스크립트는 `supabase/migrations-admin/down/`에 둔다. 적용 이력은 `admin_schema_migrations`가 담당하며, 2026-06-17 dev DB 적용 완료했다.
+- 데이터소스 경계: `faqs-service.ts`의 safe facade 계약(`{ ok, data, error }`)은 유지하고, `operation-faqs-data-source.ts`가 `isSupabaseConfigured`, `VITE_SUPABASE_DISABLED`, `VITE_OPERATION_FAQS_SOURCE`를 판별한다. Supabase 미구성, `VITE_SUPABASE_DISABLED=true`, `VITE_OPERATION_FAQS_SOURCE=mock`은 기존 mock source(`mock-operation.ts` + `operation-store.ts`)로 회귀한다.
+- Supabase 경로: `supabase-operation-faqs-service.ts`가 3테이블 row를 FAQ 마스터/노출/지표 화면 모델로 매핑하고, DB status ASCII `published`/`hidden`을 UI 라벨 `공개`/`비공개`로 변환한다. `surface`, `curation_mode`, `exposure_status`는 DB와 서비스 경계에서 ASCII 코드를 유지하고, category는 한글 코드(`계정`/`결제`/`커뮤니티`/`메시지`)를 저장한다.
+- 감사/사유 경계: FAQ 원문 저장/상태 변경/삭제는 `admin_save_operation_faq`, `admin_toggle_operation_faq_status`, `admin_delete_operation_faq` RPC를 사용하고, 큐레이션 저장/삭제는 `admin_save_operation_faq_curation`, `admin_delete_operation_faq_curation` RPC를 사용한다. 5개 RPC 모두 reason 필수이며, 감사 로그는 `OperationFaq`/`OperationFaqCuration` Target Type과 action `faq_saved`/`faq_status_changed`/`faq_deleted`/`faq_curation_saved`/`faq_curation_deleted`를 사용한다.
+- 잔여 정책: B2C 실제 FAQ 노출 surface는 고객센터/도움말 기준 운영상 추정으로 남긴다. 자연키 `FAQ-NNN`/`FAQCUR-NNN` max+1 채번 동시성 리스크, `updated_by` uuid 표시명 정합, `operation_faq_metrics` 실집계 파이프라인(seed only)은 `docs/page-sync/operation-faq-page-sync.md`와 `docs/specs/admin-page-gap-register.md`에서 계속 추적한다.
+
+## 10.7 2026-06-17 Operation 이벤트 Supabase 전환 메모
+
+- 대상 화면: `Operation > 이벤트`(`/operation/events`, `/operation/events/create`, `/operation/events/create/:eventId`).
+- 전환 상태: mock-only에서 Supabase-backed hybrid 스위치 구조로 전환 완료. `operation_events` 테이블과 admin RPC 4종은 `supabase/migrations-admin/20260617152000_operation_events.sql`에 작성했고, 대응 down 스크립트는 `supabase/migrations-admin/down/`에 둔다. 적용 이력은 `admin_schema_migrations`가 담당하며, 2026-06-17 dev DB 적용 완료했다.
+- 데이터소스 경계: `events-service.ts`의 safe facade 계약(`{ ok, data, error }`)은 유지하고, `operation-events-data-source.ts`가 `isSupabaseConfigured`, `VITE_SUPABASE_DISABLED`, `VITE_OPERATION_EVENTS_SOURCE`를 판별한다. Supabase 미구성, `VITE_SUPABASE_DISABLED=true`, `VITE_OPERATION_EVENTS_SOURCE=mock`은 기존 mock source(`mock-operation.ts` + `operation-store.ts`)로 회귀한다.
+- Supabase 경로: `supabase-operation-events-service.ts`가 `operation_events` row를 `OperationEvent` 화면 모델로 매핑한다. DB `visibility_status`는 ASCII `exposed`/`hidden`/`scheduled`이고 UI 라벨은 `노출`/`숨김`/`예약`이다. DB `progress_status`는 ASCII `ongoing`/`upcoming`/`ended`이며 읽기 시 날짜 기준으로 파생한다. `event_type`/`reward_type`은 한글 코드를 저장하고, `exposure_channels`와 `banner_images`는 jsonb 배열로 보관한다.
+- 감사/사유 경계: 이벤트 저장/예약/즉시 게시/종료는 `admin_save_operation_event`, `admin_schedule_operation_event`, `admin_publish_operation_event`, `admin_end_operation_event` RPC를 사용한다. 4개 RPC 모두 reason 필수이며, 감사 로그는 `OperationEvent` Target Type과 action `event_saved`/`event_scheduled`/`event_published`/`event_ended`를 사용한다. 종료는 `progress_status='ended'` 및 `visibility_status='hidden'`으로 전환한다.
+- 잔여 정책: B2C 실제 이벤트 목록/상세/프로모션 랜딩 노출은 `노출 예정`으로 남긴다. 자연키 `EVT-NNN` max+1 채번 동시성 리스크, `updated_by` uuid 표시명 정합, 배너 이미지/보상 정책/메시지 템플릿 정규화, `participant_count` 집계 source는 `docs/page-sync/operation-events-page-sync.md`와 `docs/specs/admin-page-gap-register.md`에서 계속 추적한다.
+
+## 10.8 2026-06-17 Operation 정책 관리 Supabase 전환 메모
+
+- 대상 화면: `Operation > 정책 관리`(`/operation/policies`, `/operation/policies/create`, `/operation/policies/create/:policyId`).
+- 전환 상태: mock-only에서 Supabase-backed hybrid 스위치 구조로 전환 완료. `operation_policies`, `operation_policy_histories` 테이블과 admin RPC 4종은 `supabase/migrations-admin/20260617170000_operation_policies.sql`에 작성했고, 대응 down 스크립트는 `supabase/migrations-admin/down/`에 둔다. 적용 이력은 `admin_schema_migrations`가 담당하며, 2026-06-17 dev DB 적용 완료했다.
+- 데이터소스 경계: `policies-service.ts`의 safe facade 7종 계약은 유지하고, `operation-policies-data-source.ts`가 `VITE_OPERATION_POLICIES_SOURCE=mock` 및 `VITE_SUPABASE_DISABLED`를 판별한다. Supabase 미구성, `VITE_SUPABASE_DISABLED=true`, `VITE_OPERATION_POLICIES_SOURCE=mock`은 기존 mock source(`mock-operation-policies.ts` + `policy-store.ts`)로 회귀한다.
+- Supabase 경로: `operation_policies.status`는 DB ASCII `published`/`hidden`이고 UI 라벨은 `게시`/`숨김`이다. `exposure_surfaces`, `related_admin_pages`, `related_user_pages`, `source_documents`, `legal_references`는 jsonb 배열로 보관한다. `current_version_id`는 최신 히스토리 추적에 사용한다.
+- 감사/사유 경계: 정책 저장/상태 변경/삭제/히스토리 버전 게시는 `admin_save_operation_policy`, `admin_toggle_operation_policy_status`, `admin_delete_operation_policy`, `admin_publish_operation_policy_version` RPC를 사용한다. 4개 RPC 모두 reason 필수이며, 감사 로그는 `OperationPolicy` Target Type과 action `policy_saved`/`policy_status_changed`/`policy_deleted`/`policy_version_published`를 사용하고, 각 조치마다 `operation_policy_histories`에 snapshot을 append한다.
+- 잔여 정책: 자연키 `POL-NNN`/`PH-NNNN` max+1 채번 동시성, `changed_by`/`updated_by` uuid 표시명 정합, `current_version_id` 화면 모델, `requires_consent` 기반 B2C 동의 재수집 트리거는 `docs/page-sync/operation-policies-page-sync.md`와 `docs/specs/admin-page-gap-register.md`에서 계속 추적한다.
+
+## 10.9 2026-06-17 Community 게시글/신고 Supabase 전환 메모
+
+- 대상 화면: `Community > 게시글 관리`(`/community/posts`), `Community > 신고 관리`(`/community/reports`).
+- 전환 상태: mock-only에서 Supabase-backed hybrid switch 구조로 전환 완료. `community_posts`, `community_post_admin_notes`, `community_reports` 테이블과 admin RPC 5종은 `supabase/migrations-admin/20260617173000_community.sql`에 작성했고, 대응 down 스크립트는 `supabase/migrations-admin/down/`에 둔다. 적용 이력은 `admin_schema_migrations`가 담당하며, 2026-06-17 dev DB 적용 완료했다.
+- 데이터소스 경계: `community-service.ts`의 safe facade 7종 계약은 유지하고, `community-data-source.ts`가 `VITE_COMMUNITY_SOURCE=mock` 및 `VITE_SUPABASE_DISABLED`를 판별한다. Supabase 미구성, `VITE_SUPABASE_DISABLED=true`, `VITE_COMMUNITY_SOURCE=mock`은 기존 mock source(`mock-community.ts` + `community-store.ts`)로 회귀한다. `resolveCommunityReportSafe`는 `reportId + action + reason` 계약으로 확장됐다.
+- Supabase 경로: `community_posts.status`는 DB ASCII `published`/`hidden`이고 UI 라벨은 `게시`/`숨김`이다. `community_reports.process_status`는 DB ASCII `pending`/`resolved`, `resolution_action`은 `hide_post`/`suspend_user`/`dismiss`다.
+- 감사/사유 경계: 게시글 숨김/게시/삭제/메모는 `CommunityPost` Target Type과 action `post_hidden`/`post_shown`/`post_deleted`/`post_memo_added`를 사용한다. 신고 종결은 `CommunityReport` Target Type과 action `report_resolved`를 사용한다. 게시글 딥링크는 `/community/posts`, 신고 딥링크는 `/community/reports`다.
+- 신고 조치 의미 정합화: 이전 mock은 신고만 종결하고 게시글/사용자 조치를 하지 않았으나, Supabase RPC는 `hide_post`일 때 같은 트랜잭션에서 대상 게시글을 실제 `hidden` 처리한다. `suspend_user`는 payload `user_suspend_integration=intent_only_v13_admin_set_user_status_pending` 의도만 기록하고 실제 정지는 v13 `admin_set_user_status` 연동 후 확정한다. `dismiss`는 종결만 수행한다.
+- 잔여 정책: `POST-NNN`/`RP-NNN` max+1 채번 동시성, board/policy_code/memo type code table화, 사용자 정지 v13 연동은 page-sync와 gap register에서 계속 추적한다.
+
+## 10.10 2026-06-17 Commerce 포인트 Supabase 전환 메모
+
+- 대상 화면: `Commerce > 포인트 관리`(`/commerce/points`).
+- 전환 상태: mock-only에서 Supabase-backed hybrid switch 구조로 전환 완료. `commerce_point_policies`, `commerce_point_ledgers`, `commerce_point_expirations` 테이블과 admin RPC 5종은 `supabase/migrations-admin/20260617190000_commerce_points.sql`에 작성했고, 대응 down 스크립트는 `supabase/migrations-admin/down/`에 둔다. 적용 이력은 `admin_schema_migrations`가 담당하며, 2026-06-17 dev DB 적용 완료했다.
+- 데이터소스 경계: `points-service.ts`의 safe facade 7종 계약은 유지하고, `commerce-points-data-source.ts`가 `VITE_COMMERCE_POINTS_SOURCE=mock` 및 `VITE_SUPABASE_DISABLED`를 판별한다. Supabase 미구성, `VITE_SUPABASE_DISABLED=true`, `VITE_COMMERCE_POINTS_SOURCE=mock`은 기존 mock source(`mock-points.ts` + point store 경로)로 회귀한다.
+- Supabase 경로: DB enum-like 값은 ASCII(`draft`/`active`/`inactive`, `earn`/`debit`/`scheduled` 등)를 저장하고 UI 한글 라벨은 `point-types`/`point-schema`에서 매핑한다. RLS는 3테이블 모두 enable+force 및 admin select only다.
+- 서버측 잔액 계산: 수동 포인트 조정은 `admin_create_manual_point_adjustment(p_user_id,p_amount,p_reason)`만 사용한다. RPC가 사용자별 advisory lock과 최신 ledger `for update`를 통해 최신 `available_balance_after`를 읽고 `balance_after`/`available_balance_after`를 계산한다. 음수 잔액은 RPC 가드와 CHECK 제약으로 차단하며, Supabase 경로에서 클라이언트 잔액 계산은 제거된 계약이다.
+- 감사/사유 경계: 정책 저장/상태 변경, 수동 조정, 소멸 보류/해제는 각각 `CommercePointPolicy`/`CommercePointLedger`/`CommercePointExpiration` Target Type과 action `point_policy_saved`/`point_policy_status_changed`/`point_manual_adjusted`/`point_expiration_held`/`point_expiration_released`를 사용한다. 5개 RPC 모두 reason 필수다.
+- 잔여 정책: 음수 잔액 허용 여부와 차감 우선순위/환불 복구 정책, 정책 저장 사유 UI 필드 부재(note -> reason 전달), `POL-NNNN`/`PL-NNNN` max+1 채번 동시성, 소멸 자동 처리 cron, `user_id`의 v13 profiles 느슨참조(FK 없음)는 page-sync와 gap register에서 계속 추적한다.
+
+## 10.11 2026-06-17 Commerce 쿠폰 Supabase 전환 메모
+
+- 대상 화면: `Commerce > 쿠폰 관리`(`/commerce/coupons`).
+- 전환 상태: mock-only에서 Supabase-backed hybrid switch 구조로 전환 완료. `commerce_coupons`, `commerce_coupon_subscription_templates` 테이블과 admin RPC 7종은 `supabase/migrations-admin/20260617193000_commerce_coupons.sql`에 작성했고, 대응 down 스크립트를 둔다. 적용 이력은 `admin_schema_migrations`가 담당하며, 2026-06-17 dev DB 적용 완료했다.
+- 데이터소스 경계: `coupons-service.ts`의 `*Safe` 14종 계약은 유지하고, `commerce-coupons-data-source.ts`가 `VITE_COMMERCE_COUPONS_SOURCE=mock` 및 `VITE_SUPABASE_DISABLED`를 판별한다. Supabase 미구성, `VITE_SUPABASE_DISABLED=true`, `VITE_COMMERCE_COUPONS_SOURCE=mock`은 기존 mock source/store 경로로 회귀한다.
+- Supabase 경로: DB enum-like 값은 대부분 ASCII camelCase(`customerDownload`, `autoIssue`, `amountDiscount`, `allProducts` 등)를 저장하고 UI 한글 라벨은 coupon-types 계층에서 매핑한다. 배열과 scope-ref는 JSONB로 보관한다.
+- 감사/사유 경계: Supabase 경로의 쿠폰/템플릿 저장·복제·일시중지·재개·삭제는 `CommerceCoupon`/`CommerceCouponTemplate` Target Type과 action `coupon_saved`/`coupon_duplicated`/`coupon_paused`/`coupon_resumed`/`coupon_deleted`/`coupon_template_saved`/`coupon_template_paused`/`coupon_template_resumed`/`coupon_template_deleted`를 사용한다. 7개 write RPC 모두 reason 필수이며 store `CouponAuditEvent(AL-CPN-)` 감사는 mock fallback 경로로 축소된다.
+- 유지 계약: `planTier` free-limit와 `validate*` 계열 검증은 현재 클라이언트/config 기준으로 유지한다.
+- 잔여 정책: 발급/사용 원장(`commerce_coupon_issues`, `commerce_coupon_redemptions`), scope-ref/대상 그룹/알림 정규화, `planTier` 영속화, `target_user_ids` v13 profiles 느슨참조 정합은 후속 전환 대상으로 추적한다.
+## 10.12 2026-06-17 Commerce 환불 Supabase 전환 메모
+
+- 대상 화면: `Commerce > 환불 관리`(`/commerce/refunds`).
+- 전환 상태: mock/Supabase 합성 조회에서 Supabase-backed workflow table 구조로 전환 완료. `commerce_refunds` 테이블과 admin RPC 2종, helper `next_commerce_refund_id()`는 `supabase/migrations-admin/20260617203000_commerce_refunds.sql`에 작성했고, 대응 down 스크립트를 둔다. 적용 이력은 `admin_schema_migrations`가 담당하며, 2026-06-17 dev DB 적용 완료했다.
+- 데이터소스 경계: `billing-service.ts`의 `fetchRefunds/approve/reject*Safe` 계약은 유지하고, `commerce-refunds-data-source.ts`가 `VITE_COMMERCE_REFUNDS_SOURCE=mock` 및 `VITE_SUPABASE_DISABLED`를 판별한다. Supabase 미구성, `VITE_SUPABASE_DISABLED=true`, `VITE_COMMERCE_REFUNDS_SOURCE=mock`은 기존 mock source/store 경로로 회귀한다.
+- Supabase read 경로: 환불 목록은 더 이상 v13 `payment_history(status='refunded')` 합성 결과가 아니라 `commerce_refunds`를 읽는다. 처리 대기/승인/거절 워크플로 SoT는 `commerce_refunds`이고, 결제 내역 payments read는 v13 `payment_history` 그대로 유지한다.
+- Supabase write 경로: 기존 Supabase 모드 승인/거절 write 차단(`assertMockRefundActionAllowed`)은 해제되고, 승인/거절은 `admin_approve_billing_refund(p_refund_id,p_reason)`, `admin_reject_billing_refund(p_refund_id,p_reason)` RPC를 사용한다. 두 RPC 모두 reason 필수이며 `pending` 상태만 처리한다.
+- 감사/사유 경계: 감사 로그는 `CommerceRefund` Target Type과 action `refund_approved`/`refund_rejected`를 사용한다. 승인 payload에는 `intent_only_v13_payment_history_pending=true`를 남겨 실제 v13 `payment_history.status` 환불 집행이 아직 미연동임을 표시한다.
+- 잔여 정책: 실제 결제 환불 집행 v13 연동, `payment_id`/`user_id` FK 없는 느슨참조 정합, `RF-NNNN` max+1 채번 동시성, payments `method` 컬럼 reconcile은 후속 과제로 추적한다.
+## 10.1.1 2026-06-17 System 메타데이터 그룹/항목 Supabase 전환
+
+- 전환 상태: `System > 메타데이터 관리`의 그룹/항목은 mock-only 단계에서 Supabase-backed hybrid source로 전환 완료.
+- 마이그레이션: `supabase/migrations-admin/20260617211000_system_metadata.sql` + down migration, `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
+- 테이블: `system_metadata_groups`(16컬럼, `group_id` PK `META-GRP-NNN`, JSONB `linked_admin_pages`/`linked_user_surfaces`/`schema_candidate_notes`) + `system_metadata_group_items`(12컬럼, `item_id` PK, `group_id` FK ON DELETE CASCADE, group-scoped code/label unique).
+- 데이터소스: `system-metadata-data-source.ts`는 `VITE_SYSTEM_METADATA_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`일 때 mock fallback을 사용한다.
+- 서비스 계약: `system-metadata-service.ts` Safe 7종 계약은 유지한다. Supabase 서비스가 groups + group_items를 조회해 기존 `SystemMetadataGroup.items[]` 중첩 반환 형태로 매핑한다.
+- write path: admin RPC 6종(`admin_save_metadata_group`, `admin_save_metadata_item`, `admin_toggle_metadata_group_status`, `admin_toggle_metadata_item_status`, `admin_delete_metadata_item`, `admin_reorder_metadata_items`)만 사용하며 모두 `reason` 필수다.
+- audit actions: `metadata_group_saved`, `metadata_item_saved`, `metadata_group_status_changed`, `metadata_item_status_changed`, `metadata_item_deleted`, `metadata_items_reordered`. 모든 감사 target은 `SystemMetadataGroup + groupId`다.
+- 비범위: `/system/metadata`에 임베드된 AssessmentMasterCatalog(`topik_writing_*`)는 이미 Supabase-backed이며 이번 System metadata groups/items 전환과 무관하다.
+- 남은 미확정: PK next-id max+1 동시성, `is_default` 단일성 정책, `admin_locations`/이력 정규화.
+
+## 10.13 2026-06-17 System 시스템 로그 Supabase 전환 메모
+
+- 대상 화면: `System > 시스템 로그`(`/system/logs`).
+- 전환 상태: mock-only에서 Supabase-backed read-only source 구조로 전환 완료. `system_logs` 테이블은 `supabase/migrations-admin/20260617213000_system_logs.sql`에 작성했고, 대응 down 스크립트는 `supabase/migrations-admin/down/`에 둔다. 적용 이력은 `admin_schema_migrations`가 담당하며, 2026-06-17 dev DB 적용 완료했다.
+- 데이터소스 경계: `system-logs-service.ts`의 `fetchSystemLogsSafe` 계약은 유지하고, `system-logs-data-source.ts`가 `VITE_SYSTEM_LOGS_SOURCE=mock`, `VITE_SUPABASE_DISABLED`, Supabase 설정 여부를 판별한다. Supabase 미구성, `VITE_SUPABASE_DISABLED=true`, `VITE_SYSTEM_LOGS_SOURCE=mock`은 기존 mock source로 회귀한다.
+- Supabase read 경로: `system_logs`를 `created_at desc`로 조회한다. 컬럼은 `id`, `level`, `message`, `component`, `trace_id`, `context`, `created_at`이며 level은 현재 `INFO`/`WARN`/`ERROR` 대문자 값을 저장한다.
+- write/감사 경계: admin write policy/RPC는 없다. 로그 적재는 backend/infra service-role 경로로 남아 있으며 소스/주체는 미정이다. 조회 전용 기술 로그라서 admin 감사 액션은 생성하지 않으며, `admin_audit_logs`와 구분한다.
+- 잔여 정책: 로그 적재 소스/주체, 보존기간·파티셔닝, `trace_id` 의미, level 코드값 장기 표준화 여부는 page-sync와 gap register에서 계속 추적한다.
+
+## 10.14 2026-06-18 System 감사 로그 Supabase 전환 메모
+
+- 대상 화면: `System > 감사 로그`(`/system/audit-logs`).
+- 전환 상태: mock/store audit 병합 source에서 Supabase-backed live read source 구조로 전환 완료. 읽기 RPC와 조회 인덱스는 `supabase/migrations-admin/20260618001000_admin_audit_logs_read.sql`에 작성했고, 대응 down 스크립트는 `supabase/migrations-admin/down/`에 둔다. 적용 이력은 `admin_schema_migrations`가 담당하며, 2026-06-18 dev DB 적용 완료했다.
+- 데이터소스 경계: `system-audit-logs-data-source.ts`가 `VITE_SYSTEM_AUDIT_LOGS_SOURCE=mock`, `VITE_SUPABASE_DISABLED`, Supabase 설정 여부를 판별한다. Supabase 미구성, `VITE_SUPABASE_DISABLED=true`, `VITE_SYSTEM_AUDIT_LOGS_SOURCE=mock`은 기존 mock source와 store audit 병합 경로로 회귀한다.
+- Supabase read 경로: `supabase-system-audit-logs-service.ts`가 `admin_list_audit_logs(p_target_type, p_target_id, p_keyword, p_start, p_end, p_limit, p_offset)`를 호출한다. Supabase 모드의 `fetchSystemAuditLogsSafe`는 `admin_audit_logs`를 단일 source로 사용하고, 모든 admin RPC가 적재한 감사 로그를 화면에서 실조회한다.
+- RPC 계약: `SECURITY DEFINER` + `private.is_admin` 가드, `profiles(admin_user_id -> id)` 조인으로 `display_name` actor 해석, 필터는 target type/id, keyword `ILIKE`, created_at 범위, 정렬은 `created_at desc`, 페이지네이션은 `limit/offset`이다.
+- DB 경계: 신규 테이블은 없고 `admin_audit_logs` 컬럼/RLS/쓰기 경로는 변경하지 않는다. 조회 인덱스만 `admin_audit_logs_target_lookup_idx`(`target_table`, `target_id`)와 `admin_audit_logs_created_at_desc_idx`(`created_at desc`) 2개를 추가했다.
+- 잔여 정책: `diff`/`payload` 민감정보 노출 범위는 미확정이므로 화면 노출은 보류한다.
+## 2026-06-18 Users 회원 상세 학습 현황 source 전환
+
+- 화면: `/users/:userId` `학습 현황` 탭.
+- safe facade: `fetchUserLearningOverviewSafe(userId, signal)`.
+- Supabase source: `get_admin_user_learning_overview(target_id uuid)`.
+- mock fallback: `getMockUserLearningOverview(userId)`.
+- fallback 조건: Supabase 미구성 또는 `VITE_SUPABASE_DISABLED=true`일 때 기존 mock 모드를 유지한다.
+- 전환 범위: 학습 현황 탭만 live read로 연결한다. 기존 `활동`/`결제` 탭 더미 데이터는 이번 범위에서 유지한다.
+- 보안/프라이버시: 답안 본문과 sentence feedback 본문은 source와 화면 모델에서 제외한다.

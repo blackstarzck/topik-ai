@@ -1,0 +1,5 @@
+diff --git a/logs/admin-doc-update-log.md b/logs/admin-doc-update-log.md
+--- a/logs/admin-doc-update-log.md
++++ b/logs/admin-doc-update-log.md
+@@ -15,0 +16,1 @@
++| 2026-06-18 | 감사 로그 diff/payload를 platform_admin 전용 노출로 게이팅 + org_admin→READ_ONLY 장기 확정 (오너 결정) | `docs/architecture/shared-supabase-schema-ownership.md`, `docs/specs/admin-action-log.md`, `docs/specs/admin-data-contract.md`, `docs/page-sync/system-permissions-page-sync.md`, `src/features/auth/model/app-role-mapping.ts`, `logs/admin-doc-update-log.md` | 오너가 ②감사 상세의 diff/payload를 platform_admin에게만 노출 ③org_admin 매핑을 READ_ONLY 장기 유지로 확정 ④placeholder 계속 보류로 결정했기 때문 | 읽기 RPC `admin_list_audit_logs`를 CREATE OR REPLACE하여 비-platform admin에게는 diff/payload를 NULL로 반환(payload 키워드 검색도 차단)하고, 감사 상세 모달은 platform_admin일 때만 diff/payload를 노출한다(dev DB 게이팅 검증). org_admin→READ_ONLY는 "임시"에서 "장기 확정"으로 문서·매핑 주석을 갱신했다. placeholder(콘텐츠·EPS·레벨테스트·이커머스·챗봇)는 기획 선결로 계속 보류. |

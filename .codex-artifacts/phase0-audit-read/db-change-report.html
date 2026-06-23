@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DB 변경 결과 보고서 — Phase 0: 감사 로그 화면 실연동</title>
+<style>
+  :root{--bg:#0f1115;--card:#161a21;--card2:#1c212b;--line:#2a2f3a;--fg:#e8ebf1;--mut:#9aa3b2;--acc:#6ea8fe;--ok:#41d18b;--warn:#f0b75b;--mono:"SFMono-Regular",Consolas,Menlo,monospace;}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--fg);font-family:"Segoe UI","Malgun Gothic",system-ui,sans-serif;line-height:1.7;font-size:15px}
+  .wrap{max-width:1000px;margin:0 auto;padding:36px 24px 80px}
+  h1{font-size:25px;margin:0 0 4px} h2{font-size:19px;margin:38px 0 10px;padding-bottom:8px;border-bottom:1px solid var(--line)} h3{font-size:15px;margin:22px 0 8px;color:var(--acc)}
+  .sub{color:var(--mut);margin:0 0 18px}
+  .meta{display:flex;flex-wrap:wrap;gap:9px;margin:18px 0 8px}
+  .chip{background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13px;color:var(--mut)} .chip b{color:var(--fg);font-weight:600}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:16px 0}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:15px 17px} .kpi .n{font-size:25px;font-weight:800} .kpi .l{color:var(--mut);font-size:13px} .kpi.ok .n{color:var(--ok)} .kpi.acc .n{color:var(--acc)}
+  .callout{border-left:3px solid var(--acc);background:var(--card);border-radius:0 12px 12px 0;padding:14px 18px;margin:14px 0}
+  .callout.ok{border-left-color:var(--ok)}
+  table{width:100%;border-collapse:collapse;margin:10px 0;background:var(--card);border:1px solid var(--line);border-radius:11px;overflow:hidden}
+  th,td{text-align:left;padding:10px 13px;border-bottom:1px solid var(--line);vertical-align:top;font-size:13.5px} th{background:var(--card2);color:var(--mut);font-weight:600;font-size:12.5px} tr:last-child td{border-bottom:none}
+  code{font-family:var(--mono);background:#0b0d11;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12.5px;color:#d6deea}
+  .tag{display:inline-block;border-radius:6px;padding:1px 9px;font-size:11.5px;font-weight:700} .t-ok{background:rgba(65,209,139,.14);color:var(--ok);border:1px solid rgba(65,209,139,.4)} .t-acc{background:rgba(110,168,254,.14);color:var(--acc);border:1px solid rgba(110,168,254,.4)} .t-none{background:rgba(154,163,178,.13);color:var(--mut);border:1px solid var(--line)} .t-warn{background:rgba(240,183,91,.13);color:var(--warn);border:1px solid rgba(240,183,91,.4)}
+  ul{margin:8px 0;padding-left:20px} li{margin:4px 0} .legend{font-size:12.5px;color:var(--mut);margin:4px 0 0} .ok-row td{color:var(--fg)} .dim{color:var(--mut)}
+  .foot{margin-top:42px;color:var(--mut);font-size:12.5px;border-top:1px solid var(--line);padding-top:15px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>DB 변경 결과 보고서 — Phase 0: 감사 로그 화면 실연동</h1>
+  <p class="sub"><code>/system/audit-logs</code> 가 그동안 모든 admin RPC가 적재한 <b>라이브 <code>admin_audit_logs</code></b> 를 실제로 읽도록 연결 (감사 추적 루프 완성)</p>
+
+  <div class="meta">
+    <span class="chip">날짜 <b>2026-06-18</b></span>
+    <span class="chip">브랜치 <b>feat/operation-notices-db</b></span>
+    <span class="chip">dev <b>talkpik-dev</b></span>
+    <span class="chip">구현 <b>Codex GPT-5.5</b></span>
+    <span class="chip">마이그레이션 <b>20260618001000_admin_audit_logs_read.sql</b></span>
+  </div>
+
+  <h2>1. 왜 했나 (쉽게)</h2>
+  <div class="card">
+    그동안 12개 도메인의 모든 조치(공지·FAQ·이벤트·정책·게시글/신고·포인트·쿠폰·환불·회원·메타데이터…)는 <code>admin_audit_logs</code>에 "누가·무엇을·왜" 기록해 왔습니다. 그런데 정작 <b>감사 로그 화면은 이 실제 기록을 읽지 않고</b>, 브라우저 메모리의 임시 mock 기록만 보여주고 있었습니다.<br/>
+    이번 작업으로 화면이 <b>실제 DB 감사 로그를 조회</b>하게 되어, 운영 흐름 "검색→상세→조치→<u>감사 로그 확인</u>"의 마지막 고리가 실제로 닫혔습니다.
+  </div>
+  <div class="callout ok">
+    <b>이 작업이 가능해진 이유:</b> 직전에 <code>admin_audit_logs</code> 소유권을 v13 → topik-ai(admin)로 정정했기 때문입니다. 덕분에 admin이 이 테이블에 <b>조회 인덱스·읽기 RPC를 추가</b>할 수 있게 됐습니다(쓰기·컬럼은 무변경).
+  </div>
+
+  <div class="grid">
+    <div class="kpi acc"><div class="n">+1</div><div class="l">읽기 RPC</div></div>
+    <div class="kpi acc"><div class="n">+2</div><div class="l">조회 인덱스</div></div>
+    <div class="kpi ok"><div class="n">0</div><div class="l">테이블/컬럼/쓰기 변경</div></div>
+    <div class="kpi ok"><div class="n">단일</div><div class="l">소스(라이브 감사)</div></div>
+  </div>
+
+  <h2>2. 추가된 DB 객체 (읽기 전용)</h2>
+  <table><thead><tr><th>객체</th><th>설명</th></tr></thead><tbody>
+    <tr><td>인덱스 ×2 <span class="tag t-acc">ADDED</span></td><td><code>admin_audit_logs(target_table, target_id)</code> · <code>admin_audit_logs(created_at desc)</code></td></tr>
+    <tr><td>RPC <code>admin_list_audit_logs</code> <span class="tag t-acc">ADDED</span></td><td>(p_target_type, p_target_id, p_keyword, p_start, p_end, p_limit=100, p_offset=0) — SECURITY DEFINER, <code>private.is_admin</code> 가드. profiles 조인으로 actor 표시명 해석 + 필터 + created_at desc + 페이지네이션 + total_count. 반환: log_id·target_type·target_id·action·actor·reason·diff·payload·created_at·total_count</td></tr>
+  </tbody></table>
+  <div class="callout">
+    <b>admin_audit_logs 자체는 무변경</b> — 컬럼 8개 그대로(<code>id, admin_user_id, action, target_table, target_id, diff, payload, created_at</code>), 쓰기 경로(admin RPC INSERT)·RLS 변경 없음. 인덱스와 읽기 RPC만 더했습니다.
+  </div>
+
+  <h2>3. 화면 연동</h2>
+  <ul>
+    <li><b>읽기 소스 전환</b>: <code>fetchSystemAuditLogsSafe</code>가 데이터소스 분기 — <b>supabase면 <code>admin_list_audit_logs</code> 라이브 단일 소스</b>, mock(또는 <code>VITE_SUPABASE_DISABLED</code>/<code>VITE_SYSTEM_AUDIT_LOGS_SOURCE=mock</code>)이면 기존 스토어 병합.</li>
+    <li><b>actor 표시명</b>: RPC가 <code>profiles.display_name</code> 우선 → 없으면 uuid → null이면 'system'.</li>
+    <li><b>역추적 딥링크</b>: 기존 <code>getTargetRoute</code>가 모든 도메인 Target Type을 원본 화면으로 연결(이미 구축됨).</li>
+    <li><b>diff/payload</b>: 민감정보 노출 범위 확정 전까지 화면 표시 보류(RPC는 반환하되 행 모델에는 미포함).</li>
+  </ul>
+
+  <h2>4. before / after 스냅샷</h2>
+  <table><thead><tr><th>구분</th><th>before</th><th>after</th><th>Δ</th></tr></thead><tbody>
+    <tr><td>테이블</td><td>61</td><td>61</td><td><span class="tag t-none">0</span></td></tr>
+    <tr><td>함수</td><td>136</td><td>137</td><td><span class="tag t-acc">+1</span> (admin_list_audit_logs)</td></tr>
+    <tr><td>정책</td><td>91</td><td>91</td><td><span class="tag t-none">0</span></td></tr>
+  </tbody></table>
+  <p class="legend">diff <code>--exclude-own</code> → 총 1건(함수 1 added). 컬럼/정책 0 변경 = admin_audit_logs 구조 무변경. (인덱스는 스냅샷 비포함이나 직접 쿼리로 확인.)</p>
+
+  <h2>5. 검증 결과</h2>
+  <table><thead><tr><th>게이트</th><th>결과</th><th>근거</th></tr></thead><tbody>
+    <tr class="ok-row"><td>마이그레이션 적용 / 무변경 게이트</td><td><span class="tag t-ok">PASS</span></td><td>함수 +1만, admin_audit_logs 컬럼 8 무변경</td></tr>
+    <tr class="ok-row"><td>RPC·인덱스·테이블 무변경</td><td><span class="tag t-ok">PASS</span></td><td>admin_list_audit_logs 7파라미터 확인, 인덱스 2 추가, 컬럼 8·row 1</td></tr>
+    <tr class="ok-row"><td>typecheck · lint</td><td><span class="tag t-ok">PASS</span></td><td>exit 0</td></tr>
+    <tr class="ok-row"><td>unit (supabase 매핑)</td><td><span class="tag t-ok">PASS</span></td><td>2 passed — 행→SystemAuditLogRow 매핑</td></tr>
+    <tr class="ok-row"><td>e2e (system-audit-logs, mock)</td><td><span class="tag t-ok">PASS</span></td><td>1 passed — mock 병합·target routing 회귀 없음</td></tr>
+    <tr><td>문서 동기화 (AGENTS.md §7)</td><td><span class="tag t-warn">진행 중</span></td><td id="docsync">Codex/GPT-5.5 패스 진행 중(doc-update-log는 동시 세션 점유로 제외)</td></tr>
+    <tr><td>harness:check</td><td><span class="tag t-warn">대기</span></td><td id="harness">문서 동기화 후 실행</td></tr>
+  </tbody></table>
+
+  <h2>6. 결정 · 미확정</h2>
+  <table><thead><tr><th>항목</th><th>상태</th></tr></thead><tbody>
+    <tr><td>읽기 경로</td><td>SECURITY DEFINER 읽기 RPC(필터·페이지네이션·actor 조인). 라이브 단일 소스(확정)</td></tr>
+    <tr><td>admin_audit_logs</td><td>구조·쓰기·RLS 무변경, 인덱스·읽기 RPC만 추가(확정)</td></tr>
+    <tr><td>diff/payload 화면 노출</td><td><span class="tag t-warn">미확정</span> 민감정보 노출 범위 확정 전까지 행 모델 미포함(RPC는 반환)</td></tr>
+    <tr><td>현 데이터</td><td>라이브 감사 row 1건(운영 사용 시 누적). 화면 길은 열림</td></tr>
+  </tbody></table>
+
+  <h2>7. 변경 파일</h2>
+  <h3>신규</h3>
+  <ul>
+    <li><code>supabase/migrations-admin/20260618001000_admin_audit_logs_read.sql</code> (+ down/)</li>
+    <li><code>src/features/system/api/system-audit-logs-data-source.ts</code> · <code>supabase-system-audit-logs-service.ts</code></li>
+    <li><code>tests/unit/system-audit-logs-supabase-service.test.ts</code></li>
+  </ul>
+  <h3>수정</h3>
+  <ul>
+    <li><code>src/features/system/api/system-audit-logs-service.ts</code> — 데이터소스 분기(supabase=라이브 단일 소스)</li>
+  </ul>
+  <p class="legend">마이그레이션 즉시 백업 <code>.codex-artifacts/phase0-audit-read/BACKUP_up.sql</code>. 동시 세션(알림 워커·Vercel·users)의 미커밋 변경은 본 커밋에서 제외.</p>
+
+  <div class="foot">오케스트레이션 Claude Code(Opus 4.8) · 구현 Codex GPT-5.5 · dev talkpik-dev · Phase 0(감사 로그 화면 실연동) — mock→DB 전환 프로그램의 감사 추적 루프 완성</div>
+</div>
+</body>
+</html>

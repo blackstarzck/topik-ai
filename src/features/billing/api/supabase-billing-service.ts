@@ -1,22 +1,10 @@
 import { supabaseClient } from '../../../shared/api/supabase-client';
-import type { PaymentRow, PaymentStatus, RefundRow } from '../model/types';
+import type { PaymentRow, PaymentStatus, RefundRow, RefundStatus } from '../model/types';
 
 /**
- * Phase D (payments) — READ-ONLY inventory from v13 billing tables.
- *
- * payment_history / subscriptions are admin-readable directly under RLS
- * (private.is_platform_admin), so no RPC is needed — the platform_admin session
- * selects them. v13 is the schema SoT; topik-ai reconciles TO it. There is NO
- * write path here (refund approve/reject is disabled when connected).
- *
- * Mappings are PROPOSED (R2) and several are genuine owner-decisions (ch3 §F3):
- *  - method: v13 payment_history has NO payment-method column -> '미확인'.
- *  - product: derived from the linked subscription's plan name, else '(미연동)'.
- *  - status: topik-ai has only 완료/취소/환불 (3) but v13 has paid/failed/refunded/
- *    pending (4); failed AND pending both collapse to 취소 (lossy — owner decision).
- *  - refund: v13 has NO refund entity; an approved refund == payment_history.status
- *    ='refunded'. We synthesize a read-only RefundRow (status 승인) from such rows;
- *    topik-ai's 처리 대기/거절 workflow states have no v13 source.
+ * Payments remain a read-only v13 payment_history integration. Refund workflow
+ * state is admin-owned in commerce_refunds; approving records intent only and
+ * does not write back to v13 payment_history.
  */
 
 type PaymentHistoryRow = {
@@ -32,6 +20,20 @@ type PaymentHistoryRow = {
   subscriptions?: { plan_key: string | null; subscription_plans?: { name: string | null } | null } | null;
 };
 
+type CommerceRefundRow = {
+  id: string;
+  payment_id: string;
+  user_id: string;
+  user_nickname: string;
+  requested_amount: number;
+  reason: string;
+  status: string;
+  requested_at: string;
+  processed_by: string | null;
+  processed_at: string | null;
+  review_reason: string | null;
+};
+
 const PAYMENT_STATUS_MAP: Record<string, PaymentStatus> = {
   paid: '완료',
   refunded: '환불',
@@ -39,12 +41,51 @@ const PAYMENT_STATUS_MAP: Record<string, PaymentStatus> = {
   pending: '취소'
 };
 
+const UI_REFUND_STATUS_BY_DB: Record<string, RefundStatus> = {
+  pending: '처리 대기',
+  approved: '승인',
+  rejected: '거절'
+};
+
 const PAYMENT_SELECT =
   'id, user_id, subscription_id, amount_cents, currency, status, paid_at, created_at, ' +
   'profiles(display_name, nickname), subscriptions(plan_key, subscription_plans(name))';
 
+const REFUND_COLUMNS = [
+  'id',
+  'payment_id',
+  'user_id',
+  'user_nickname',
+  'requested_amount',
+  'reason',
+  'status',
+  'requested_at',
+  'processed_by',
+  'processed_at',
+  'review_reason'
+].join(', ');
+
+function requireClient() {
+  if (!supabaseClient) {
+    throw new Error('Supabase client not configured');
+  }
+  return supabaseClient;
+}
+
+function requireReason(reason: string): string {
+  const trimmed = reason.trim();
+  if (!trimmed) {
+    throw new Error('사유/근거를 입력하세요. (RPC p_reason 필수)');
+  }
+  return trimmed;
+}
+
 function toDate(ts: string | null): string {
   return ts ? ts.slice(0, 10) : '';
+}
+
+function toDateTime(ts: string | null): string | undefined {
+  return ts ? ts.slice(0, 16).replace('T', ' ') : undefined;
 }
 
 function nicknameOf(row: PaymentHistoryRow): string {
@@ -68,11 +109,38 @@ function mapPaymentRow(row: PaymentHistoryRow): PaymentRow {
   };
 }
 
+function mapRefundRow(row: CommerceRefundRow): RefundRow {
+  return {
+    id: row.id,
+    paymentId: row.payment_id,
+    userId: row.user_id,
+    userNickname: row.user_nickname,
+    requestedAmount: row.requested_amount,
+    reason: row.reason,
+    status: UI_REFUND_STATUS_BY_DB[row.status] ?? '처리 대기',
+    requestedAt: toDateTime(row.requested_at) ?? '',
+    processedAt: toDateTime(row.processed_at),
+    processedBy: row.processed_by ?? undefined,
+    reviewReason: row.review_reason ?? undefined
+  };
+}
+
+async function loadRefund(refundId: string): Promise<RefundRow> {
+  const client = requireClient();
+  const { data, error } = await client
+    .from('commerce_refunds')
+    .select(REFUND_COLUMNS)
+    .eq('id', refundId)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error('환불 요청을 찾을 수 없습니다.');
+  return mapRefundRow(data as unknown as CommerceRefundRow);
+}
+
 export async function loadPaymentsFromSupabase(signal?: AbortSignal): Promise<PaymentRow[]> {
-  if (!supabaseClient) {
-    throw new Error('Supabase client not configured');
-  }
-  const { data, error } = await supabaseClient
+  const client = requireClient();
+  const { data, error } = await client
     .from('payment_history')
     .select(PAYMENT_SELECT)
     .order('paid_at', { ascending: false });
@@ -86,32 +154,44 @@ export async function loadPaymentsFromSupabase(signal?: AbortSignal): Promise<Pa
 }
 
 export async function loadRefundsFromSupabase(signal?: AbortSignal): Promise<RefundRow[]> {
-  if (!supabaseClient) {
-    throw new Error('Supabase client not configured');
-  }
-  // v13 has no refund entity: an approved refund is a payment with status='refunded'.
-  const { data, error } = await supabaseClient
-    .from('payment_history')
-    .select(PAYMENT_SELECT)
-    .eq('status', 'refunded')
-    .order('created_at', { ascending: false });
+  const client = requireClient();
+  const { data, error } = await client
+    .from('commerce_refunds')
+    .select(REFUND_COLUMNS)
+    .order('requested_at', { ascending: false });
   if (signal?.aborted) {
     throw new DOMException('Request aborted', 'AbortError');
   }
   if (error) {
     throw new Error(error.message);
   }
-  return ((data ?? []) as unknown as PaymentHistoryRow[]).map((row) => ({
-    id: row.id,
-    paymentId: row.id,
-    userId: row.user_id,
-    userNickname: nicknameOf(row),
-    requestedAmount: Math.round((row.amount_cents ?? 0) / 100),
-    reason: '(결제 환불)',
-    status: '승인',
-    requestedAt: toDate(row.created_at),
-    processedAt: toDate(row.created_at),
-    processedBy: '(시스템)',
-    reviewReason: undefined
-  }));
+  return ((data ?? []) as unknown as CommerceRefundRow[]).map(mapRefundRow);
+}
+
+export async function approveBillingRefundViaRpc(payload: {
+  refundId: string;
+  reason: string;
+}): Promise<RefundRow> {
+  const client = requireClient();
+  const { error } = await client.rpc('admin_approve_billing_refund', {
+    p_refund_id: payload.refundId,
+    p_reason: requireReason(payload.reason)
+  });
+
+  if (error) throw new Error(error.message);
+  return loadRefund(payload.refundId);
+}
+
+export async function rejectBillingRefundViaRpc(payload: {
+  refundId: string;
+  reason: string;
+}): Promise<RefundRow> {
+  const client = requireClient();
+  const { error } = await client.rpc('admin_reject_billing_refund', {
+    p_refund_id: payload.refundId,
+    p_reason: requireReason(payload.reason)
+  });
+
+  if (error) throw new Error(error.message);
+  return loadRefund(payload.refundId);
 }

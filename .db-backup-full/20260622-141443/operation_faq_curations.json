@@ -1,0 +1,41 @@
+[
+  {
+    "id": "FAQCUR-001",
+    "faq_id": "FAQ-001",
+    "surface": "help_center",
+    "curation_mode": "manual",
+    "display_rank": 1,
+    "exposure_status": "active",
+    "pinned_start_at": "2026-03-20",
+    "pinned_end_at": null,
+    "created_at": "2026-03-20 01:00:00+00",
+    "updated_at": "2026-03-20 01:00:00+00",
+    "updated_by": "admin_park"
+  },
+  {
+    "id": "FAQCUR-002",
+    "faq_id": "FAQ-002",
+    "surface": "home_top",
+    "curation_mode": "manual",
+    "display_rank": 2,
+    "exposure_status": "active",
+    "pinned_start_at": "2026-03-21",
+    "pinned_end_at": null,
+    "created_at": "2026-03-21 00:30:00+00",
+    "updated_at": "2026-03-21 00:30:00+00",
+    "updated_by": "admin_kim"
+  },
+  {
+    "id": "FAQCUR-003",
+    "faq_id": "FAQ-001",
+    "surface": "payment_help",
+    "curation_mode": "auto",
+    "display_rank": 1,
+    "exposure_status": "active",
+    "pinned_start_at": "2026-03-18",
+    "pinned_end_at": null,
+    "created_at": "2026-03-22 06:20:00+00",
+    "updated_at": "2026-03-22 06:20:00+00",
+    "updated_by": "admin_park"
+  }
+]

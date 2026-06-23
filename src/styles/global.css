@@ -1174,19 +1174,29 @@ body {
   min-width: 0;
 }
 
-.message-template-content-form .ant-form-item,
-.message-template-content-form .ant-form-item-row,
-.message-template-content-form .ant-form-item-control,
-.message-template-content-form .ant-form-item-control-input,
-.message-template-content-form .ant-form-item-control-input-content,
+/* 짧은 항목(사유/근거 등)은 자연 높이만 차지하고 남은 높이를 차지하지 않는다.
+   라벨↔입력 세로 스택은 Form layout="vertical"이 처리하므로 row 방향은 건드리지 않는다
+   (row를 강제로 flex-direction:column 하면 antd 세로 레이아웃의 라벨 flex:0 0 100% 가
+   높이로 해석되어 라벨이 입력칸을 덮는 문제가 발생한다). */
+.message-template-content-form > .ant-form-item {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+/* 본문 에디터 항목만 카드의 남은 높이를 채운다. */
+.message-template-content-form > .message-template-body-item,
+.message-template-content-form .message-template-body-item .ant-form-item-row,
+.message-template-content-form .message-template-body-item .ant-form-item-control,
+.message-template-content-form .message-template-body-item .ant-form-item-control-input,
+.message-template-content-form .message-template-body-item .ant-form-item-control-input-content,
 .message-template-content-form .message-template-html-editor {
   display: flex;
-  flex: 1;
+  flex: 1 1 0%;
   flex-direction: column;
-  height: 100%;
   min-height: 0;
   min-width: 0;
   width: 100%;
+  height: 100%;
 }
 
 .content-html-editor,
@@ -1690,6 +1700,25 @@ body {
 .assessment-detail-page__memo-footnote {
   display: block;
   font-size: 12px;
+}
+
+/* 통합 문항 테이블(assessment-bank-table): 체크(선택) 행 배경 강조 제거 — 오너
+   요청(2026-06-23). 선택은 체크박스로만 표시하고 행 배경은 일반 행과 동일하게 둔다
+   (정상 #fff, hover는 일반 행과 동일). 고정(상세) 열 셀이 스크롤 시 비치지 않도록
+   불투명 #fff로 둔다. antd CSS-in-JS 주입 순서와 무관하게 이기도록 클래스 2개
+   (래퍼)+td.ant-table-cell로 명시도를 antd 기본 규칙보다 높인다. 이 클래스 한정. */
+.assessment-bank-table.admin-data-table
+  .ant-table-tbody
+  > tr.ant-table-row-selected
+  > td.ant-table-cell {
+  background: #fff !important;
+}
+
+.assessment-bank-table.admin-data-table
+  .ant-table-tbody
+  > tr.ant-table-row-selected
+  > td.ant-table-cell.ant-table-cell-row-hover {
+  background: rgba(0, 0, 0, 0.04) !important;
 }
 
 @keyframes route-fade-in {

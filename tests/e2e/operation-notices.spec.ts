@@ -22,5 +22,5 @@ test('operation notices read seed through service and keep preview URL plus stat
 
   await noticeRow.locator('.ant-switch').click();
   await confirmVisibleAction(page, 'e2e operation notice source transition');
-  await expectNotificationAuditHref(page, 'Operation', 'NOTICE-001');
+  await expectNotificationAuditHref(page, 'OperationNotice', 'NOTICE-001');
 });

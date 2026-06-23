@@ -1,4 +1,4 @@
-export type AdminStatus = '활성' | '비활성';
+export type AdminStatus = '활성' | '비활성' | '탈퇴';
 
 export type RoleKey =
   | 'SUPER_ADMIN'
@@ -37,9 +37,9 @@ export type AdminPermissionAssignment = {
 
 export type PermissionAuditEvent = {
   id: string;
-  targetType: 'Admin';
+  targetType: 'Admin' | 'AdminAccount';
   targetId: string;
-  action: '권한 부여' | '권한 수정' | '권한 회수';
+  action: string;
   reason: string;
   changedBy: string;
   beforeRole: RoleKey;
@@ -76,6 +76,13 @@ export const permissionCatalog: PermissionDefinition[] = [
     name: '추천인 관리',
     module: '회원',
     scopeDescription: '추천인 정보와 보상 관련 조치를 수행합니다.',
+    risk: 'medium'
+  },
+  {
+    key: 'users.institution-codes.manage',
+    name: '기관 코드 관리',
+    module: '회원',
+    scopeDescription: '박람회/기관 유입 QR 코드를 등록·수정합니다.',
     risk: 'medium'
   },
   {
@@ -329,6 +336,7 @@ export const roleCatalog: RoleDefinition[] = [
       'users.read',
       'users.groups.manage',
       'users.referrals.manage',
+      'users.institution-codes.manage',
       'community.posts.hide',
       'community.posts.delete',
       'community.reports.resolve',

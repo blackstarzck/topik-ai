@@ -1,0 +1,242 @@
+[
+  {
+    "id": "f4c6e301-622a-4e9e-8967-4aba5653013e",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "document_id": "389a9be9-7eeb-4400-b914-2f35af053101",
+    "doc_type": "privacy",
+    "version": "placeholder-2026-06-10",
+    "source": "signup",
+    "accepted_at": "2026-06-21 11:15:05.121879+00",
+    "created_at": "2026-06-21 11:15:05.121879+00"
+  },
+  {
+    "id": "1d6575f8-5e0e-4881-8231-2b43aeb4db28",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "document_id": "df0894e1-c849-4375-8d5a-fdbd717b5148",
+    "doc_type": "terms",
+    "version": "placeholder-2026-06-10",
+    "source": "signup",
+    "accepted_at": "2026-06-21 11:15:05.121879+00",
+    "created_at": "2026-06-21 11:15:05.121879+00"
+  },
+  {
+    "id": "a45a5083-58aa-462f-8ece-bd46023d9de5",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "document_id": "fa66da73-7887-4443-8074-d78f9df7f2bf",
+    "doc_type": "privacy",
+    "version": "placeholder-2026-06-10",
+    "source": "signup",
+    "accepted_at": "2026-06-21 11:22:50.651082+00",
+    "created_at": "2026-06-21 11:22:50.651082+00"
+  },
+  {
+    "id": "815f9f7b-9ed8-4ab7-8e2e-6b5dd52d9a04",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "document_id": "db4fd85f-3ac2-43ac-a835-38a68a7db0a8",
+    "doc_type": "terms",
+    "version": "placeholder-2026-06-10",
+    "source": "signup",
+    "accepted_at": "2026-06-21 11:22:50.651082+00",
+    "created_at": "2026-06-21 11:22:50.651082+00"
+  },
+  {
+    "id": "eb1c7e19-c3e9-4e75-8f68-67fec33cb06e",
+    "user_id": "70fb911d-a14a-4035-8d0c-568dfb7f1ed1",
+    "document_id": "db7e9e8f-c350-4405-81c2-65e75cebdd33",
+    "doc_type": "privacy",
+    "version": "placeholder-2026-06-10",
+    "source": "signup",
+    "accepted_at": "2026-06-22 02:12:54.407222+00",
+    "created_at": "2026-06-22 02:12:54.407222+00"
+  },
+  {
+    "id": "72c8756e-7ea3-444d-90f4-74942b8f7e11",
+    "user_id": "70fb911d-a14a-4035-8d0c-568dfb7f1ed1",
+    "document_id": "075e882e-dfa8-4fa9-9565-61340912fea8",
+    "doc_type": "terms",
+    "version": "v2026.03",
+    "source": "signup",
+    "accepted_at": "2026-06-22 02:12:54.407222+00",
+    "created_at": "2026-06-22 02:12:54.407222+00"
+  },
+  {
+    "id": "0473a612-9dd3-45b9-bd5f-7474821f2ac0",
+    "user_id": "112a6b57-9564-4990-8bf3-6b536d622008",
+    "document_id": "075e882e-dfa8-4fa9-9565-61340912fea8",
+    "doc_type": "terms",
+    "version": "v2026.03",
+    "source": "signup",
+    "accepted_at": "2026-06-22 02:13:44.847952+00",
+    "created_at": "2026-06-22 02:13:44.847952+00"
+  },
+  {
+    "id": "c8725f23-c8ce-4a82-a6b7-5fc402fd7792",
+    "user_id": "70fb911d-a14a-4035-8d0c-568dfb7f1ed1",
+    "document_id": "389a9be9-7eeb-4400-b914-2f35af053101",
+    "doc_type": "privacy",
+    "version": "placeholder-2026-06-10",
+    "source": "signup",
+    "accepted_at": "2026-06-22 02:18:06.022167+00",
+    "created_at": "2026-06-22 02:18:06.022167+00"
+  },
+  {
+    "id": "86631e6c-8f58-456e-8ab9-023b3eea8cf8",
+    "user_id": "70fb911d-a14a-4035-8d0c-568dfb7f1ed1",
+    "document_id": "4620e71e-912f-4aff-b54b-cb1569cdf0e3",
+    "doc_type": "terms",
+    "version": "v2026.03",
+    "source": "signup",
+    "accepted_at": "2026-06-22 02:18:06.022167+00",
+    "created_at": "2026-06-22 02:18:06.022167+00"
+  },
+  {
+    "id": "f96b7c61-520f-4faf-8874-5ad7187d6dfb",
+    "user_id": "112a6b57-9564-4990-8bf3-6b536d622008",
+    "document_id": "db7e9e8f-c350-4405-81c2-65e75cebdd33",
+    "doc_type": "privacy",
+    "version": "placeholder-2026-06-10",
+    "source": "signup",
+    "accepted_at": "2026-06-19 08:53:49.390525+00",
+    "created_at": "2026-06-19 08:53:49.390525+00"
+  },
+  {
+    "id": "1020ea01-f371-472d-a9f0-0e7574f9a486",
+    "user_id": "112a6b57-9564-4990-8bf3-6b536d622008",
+    "document_id": "e04c6297-8453-4e70-9362-34c8fb290e04",
+    "doc_type": "terms",
+    "version": "placeholder-2026-06-10",
+    "source": "signup",
+    "accepted_at": "2026-06-19 08:53:49.390525+00",
+    "created_at": "2026-06-19 08:53:49.390525+00"
+  },
+  {
+    "id": "b03c6835-7608-47a5-b614-2078b0efbd29",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "document_id": "db7e9e8f-c350-4405-81c2-65e75cebdd33",
+    "doc_type": "privacy",
+    "version": "placeholder-2026-06-10",
+    "source": "signup",
+    "accepted_at": "2026-06-20 00:02:44.797239+00",
+    "created_at": "2026-06-20 00:02:44.797239+00"
+  },
+  {
+    "id": "b459fa54-d04f-4a1b-ad94-c60b2db141c5",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "document_id": "e04c6297-8453-4e70-9362-34c8fb290e04",
+    "doc_type": "terms",
+    "version": "placeholder-2026-06-10",
+    "source": "signup",
+    "accepted_at": "2026-06-20 00:02:44.797239+00",
+    "created_at": "2026-06-20 00:02:44.797239+00"
+  },
+  {
+    "id": "29c4b795-fce1-4c5c-857e-ffab27a81586",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "document_id": "db7e9e8f-c350-4405-81c2-65e75cebdd33",
+    "doc_type": "privacy",
+    "version": "placeholder-2026-06-10",
+    "source": "signup",
+    "accepted_at": "2026-06-20 12:39:22.519314+00",
+    "created_at": "2026-06-20 12:39:22.519314+00"
+  },
+  {
+    "id": "126dae22-165d-46f2-b350-e09dfecea96f",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "document_id": "e04c6297-8453-4e70-9362-34c8fb290e04",
+    "doc_type": "terms",
+    "version": "placeholder-2026-06-10",
+    "source": "signup",
+    "accepted_at": "2026-06-20 12:39:22.519314+00",
+    "created_at": "2026-06-20 12:39:22.519314+00"
+  },
+  {
+    "id": "fc44a411-d803-42a8-b268-9594cdf17bde",
+    "user_id": "438a5c75-6d9c-499f-b0f5-af3d3a5554f6",
+    "document_id": "db7e9e8f-c350-4405-81c2-65e75cebdd33",
+    "doc_type": "privacy",
+    "version": "placeholder-2026-06-10",
+    "source": "signup",
+    "accepted_at": "2026-06-22 02:31:21.679487+00",
+    "created_at": "2026-06-22 02:31:21.679487+00"
+  },
+  {
+    "id": "71c59c12-07c8-446d-8e0b-c20a6b8ae37d",
+    "user_id": "438a5c75-6d9c-499f-b0f5-af3d3a5554f6",
+    "document_id": "075e882e-dfa8-4fa9-9565-61340912fea8",
+    "doc_type": "terms",
+    "version": "v2026.03",
+    "source": "signup",
+    "accepted_at": "2026-06-22 02:31:21.679487+00",
+    "created_at": "2026-06-22 02:31:21.679487+00"
+  },
+  {
+    "id": "978b7629-fe15-48bc-83a0-9085d6982965",
+    "user_id": "f78e8a56-5649-4ec8-b319-e13e467bc94e",
+    "document_id": "db7e9e8f-c350-4405-81c2-65e75cebdd33",
+    "doc_type": "privacy",
+    "version": "placeholder-2026-06-10",
+    "source": "signup",
+    "accepted_at": "2026-06-22 02:31:35.204123+00",
+    "created_at": "2026-06-22 02:31:35.204123+00"
+  },
+  {
+    "id": "0d612fd8-58ed-4f5c-9696-5ee681d0e7a2",
+    "user_id": "f78e8a56-5649-4ec8-b319-e13e467bc94e",
+    "document_id": "075e882e-dfa8-4fa9-9565-61340912fea8",
+    "doc_type": "terms",
+    "version": "v2026.03",
+    "source": "signup",
+    "accepted_at": "2026-06-22 02:31:35.204123+00",
+    "created_at": "2026-06-22 02:31:35.204123+00"
+  },
+  {
+    "id": "f592d65f-3f45-4f27-9351-b59ddf72dbde",
+    "user_id": "47139ff2-2b82-4b17-ac7d-d13b3be5e3c1",
+    "document_id": "db7e9e8f-c350-4405-81c2-65e75cebdd33",
+    "doc_type": "privacy",
+    "version": "placeholder-2026-06-10",
+    "source": "signup",
+    "accepted_at": "2026-06-22 02:32:35.577058+00",
+    "created_at": "2026-06-22 02:32:35.577058+00"
+  },
+  {
+    "id": "aa53fb83-f8cf-4cad-99a7-5710391c5a2e",
+    "user_id": "47139ff2-2b82-4b17-ac7d-d13b3be5e3c1",
+    "document_id": "075e882e-dfa8-4fa9-9565-61340912fea8",
+    "doc_type": "terms",
+    "version": "v2026.03",
+    "source": "signup",
+    "accepted_at": "2026-06-22 02:32:35.577058+00",
+    "created_at": "2026-06-22 02:32:35.577058+00"
+  },
+  {
+    "id": "91d40fda-1be0-4cd6-999a-b34c6d2e9274",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "document_id": "075e882e-dfa8-4fa9-9565-61340912fea8",
+    "doc_type": "terms",
+    "version": "v2026.03",
+    "source": "signup",
+    "accepted_at": "2026-06-22 02:55:04.951327+00",
+    "created_at": "2026-06-22 02:55:04.951327+00"
+  },
+  {
+    "id": "beb7d0c7-b720-4d88-9b64-3d85ffe3c61a",
+    "user_id": "904ddcd0-2f6b-4a7c-8c1a-9e30390cf97f",
+    "document_id": "db7e9e8f-c350-4405-81c2-65e75cebdd33",
+    "doc_type": "privacy",
+    "version": "placeholder-2026-06-10",
+    "source": "signup",
+    "accepted_at": "2026-06-22 05:04:12.809451+00",
+    "created_at": "2026-06-22 05:04:12.809451+00"
+  },
+  {
+    "id": "38fe5fe9-f545-4ff1-978e-37495e9cd754",
+    "user_id": "904ddcd0-2f6b-4a7c-8c1a-9e30390cf97f",
+    "document_id": "075e882e-dfa8-4fa9-9565-61340912fea8",
+    "doc_type": "terms",
+    "version": "v2026.03",
+    "source": "signup",
+    "accepted_at": "2026-06-22 05:04:12.809451+00",
+    "created_at": "2026-06-22 05:04:12.809451+00"
+  }
+]

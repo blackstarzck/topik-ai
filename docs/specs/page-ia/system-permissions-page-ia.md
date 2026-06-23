@@ -72,9 +72,8 @@
 
 | 액션 | 성격 | 대상 식별 기준 | 확인/사유 필요 여부 | 성공 후 피드백 | 감사 로그 확인 경로 |
 | --- | --- | --- | --- | --- | --- |
-| 권한 수정 | 수정 | Admin + adminId | 사유 권장 | 권한 수정 완료 후 대상 식별 정보와 후속 확인 경로를 안내합니다. | /system/audit-logs?targetType=Admin&targetId={adminId} |
-| 권한 부여 | 수정 | Admin + adminId | 사유 권장 | 권한 부여 완료 후 대상 식별 정보와 후속 확인 경로를 안내합니다. | /system/audit-logs?targetType=Admin&targetId={adminId} |
-| 권한 회수 | 파괴적 | Admin + adminId | 확인 + 사유 필수 | 권한 회수 완료 후 대상 식별 정보와 후속 확인 경로를 안내합니다. | /system/audit-logs?targetType=Admin&targetId={adminId} |
+| 관리자 등급(app_role) 변경 | 파괴적 | AdminAccount + targetUserId | 확인 + 사유 필수 | 등급 변경 완료 후 대상 식별 정보, 다음 로그인 반영 안내, AdminAccount 감사 경로를 노출합니다. | /system/audit-logs?targetType=AdminAccount&targetId={targetUserId} |
+| 권한 카탈로그 조회(부여/회수 mock) | 조회/참고 | 해당 없음 | 불필요 | 카탈로그(37 permission/5 RoleKey)는 메뉴 게이팅용 참고이며 실권한을 변경하지 않습니다. | 감사 비대상 |
 
 ## 8. 상태값/정책/운영 규칙
 
@@ -117,11 +116,11 @@
 
 - 현재 코드베이스에서 재사용할 컴포넌트: PageTitle, SearchBar, AdminDataTable, ConfirmAction, AuditLogLink
 - 예상 feature 파일: src/features/system/pages/*
-- 권한 부여/수정/회수 Modal은 경고 Alert 다음에 `대상 관리자`, `역할`, `권한 목록`, `사유/근거`를 `Descriptions` 기반 입력 테이블로 편집하고, 선택 권한 범위 미리보기 카드는 별도 하단 블록으로 유지합니다.
+- 관리자 등급 변경 Modal은 잠금 방지 Alert 다음에 `대상 관리자`, `현재 app_role/RoleKey`를 `Descriptions`로 보여주고 `새 app_role`(Select)과 `사유/근거`(필수)를 입력받습니다. 37 permission/5 RoleKey 카탈로그는 부여/회수 컨트롤 없이 읽기 전용 참고 테이블로 유지합니다.
 - 목록 상태 메모: `상태` 컬럼은 `활성/비활성` 배지로 표시합니다.
 - 권한/로그 처리 메모: 파괴적 액션에는 확인 단계와 사유 입력, Target Type, Target ID, 감사 로그 확인 경로를 함께 둡니다.
 
 ## 14. 오픈 이슈
 
-- 권한 템플릿과 개별 permission 편집 우선순위 정책 미정
+- 개별 permission 편집은 비목표(카탈로그는 읽기 전용 참고). learner를 admin으로 승격하는 흐름은 이 화면 범위 밖이며 Users 디렉터리에서 처리합니다.
 

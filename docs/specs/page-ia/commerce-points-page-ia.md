@@ -305,3 +305,12 @@
   - `docs/specs/admin-action-log.md`
   - `docs/specs/admin-page-gap-register.md`
 - 정책이 미확정인 항목은 계속 `미확정`으로 표시하고, page-local 임시값을 최종 SoT처럼 굳히지 않는다.
+
+## 16. 2026-06-17 Supabase source 보강
+
+- Source: `commerce_point_policies`, `commerce_point_ledgers`, `commerce_point_expirations` Supabase-backed hybrid. `commerce-points-data-source.ts`는 `VITE_COMMERCE_POINTS_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`일 때 mock fallback을 사용한다.
+- Migration: `supabase/migrations-admin/20260617190000_commerce_points.sql`(+ down), `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
+- Table source: 정책 탭은 `commerce_point_policies`, 원장 탭은 `commerce_point_ledgers`, 소멸 예정 탭은 `commerce_point_expirations`를 기준 source로 삼는다. DB enum-like 값은 ASCII로 저장하고 UI 한글 라벨은 `point-types`/`point-schema` 매핑을 사용한다.
+- Actions/audit: 정책 저장/상태 변경은 `CommercePointPolicy` + `point_policy_saved`/`point_policy_status_changed`, 수동 조정은 `CommercePointLedger` + `point_manual_adjusted`, 소멸 보류/해제는 `CommercePointExpiration` + `point_expiration_held`/`point_expiration_released`로 감사 로그를 남긴다. 모든 write RPC는 reason 필수다.
+- Balance: 수동 조정 잔액은 서버 RPC가 사용자별 advisory lock과 최신 ledger `for update` 기준으로 계산한다. `balance_after`/`available_balance_after`는 CHECK `>= 0`이며 음수 잔액은 RPC에서도 차단한다.
+- Open: 음수 잔액/차감 우선순위/환불 복구 정책, 정책 저장 사유 UI 필드, max+1 채번 장기 대안, 자동 소멸 cron, `user_id` v13 profiles 느슨참조(FK 없음)는 미확정이다.

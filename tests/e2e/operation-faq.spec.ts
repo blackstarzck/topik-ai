@@ -24,3 +24,20 @@ test('operation FAQ seed opens from URL and toggles through service facade', asy
   await confirmVisibleAction(page, 'e2e operation faq source transition');
   await expectNotificationAuditHref(page, 'OperationFaq', 'FAQ-001');
 });
+
+test('operation FAQ curation seed opens from URL and uses curation audit target', async ({
+  page
+}) => {
+  await page.goto('/operation/faq?tab=curation&curationSelected=FAQCUR-001');
+
+  await expectQueryParam(page, 'curationSelected', 'FAQCUR-001');
+  await expectRowVisible(page, 'FAQCUR-001');
+  const drawer = page.locator('.ant-drawer-content-wrapper:visible').last();
+  await expect(drawer).toBeVisible();
+  await expect(drawer).toContainText('FAQCUR-001');
+  await expectAuditHref(drawer, 'OperationFaqCuration', 'FAQCUR-001');
+
+  await drawer.getByRole('button', { name: '노출 일시중지' }).click();
+  await confirmVisibleAction(page, 'e2e operation faq curation source transition');
+  await expectNotificationAuditHref(page, 'OperationFaqCuration', 'FAQCUR-001');
+});

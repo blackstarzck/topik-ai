@@ -9,7 +9,7 @@ status: "구현됨"
 primary_entity: "OperationPolicy"
 primary_table_candidate: "operation_policies, operation_policy_histories"
 owner_agent_scope: "shared"
-last_reviewed_at: "2026-06-01"
+last_reviewed_at: "2026-06-17"
 ---
 
 ## 1. 문서 목적
@@ -146,3 +146,10 @@ last_reviewed_at: "2026-06-01"
 | 항목 | 미확정 내용 | 필요한 결정 주체 | 관리자 페이지 영향 | 사용자 화면 영향 | 추적 문서 |
 | --- | --- | --- | --- | --- | --- |
 | 정책 관리 최종 계약 | 정책별 사용자 동의 재수집 조건과 실제 노출 위치는 사용자 화면과 계속 동기화해야 합니다. | 기획/백엔드/프론트 | 필터/액션/감사 로그 계약 변동 가능 | 회원가입 약관, 결제/환불 정책, 마이페이지 정책 링크, 고객센터 정책 문서에 운영상 추정으로 연결됩니다. | docs/specs/page-ia/operation-policies-page-ia.md |
+## 14. 2026-06-17 Supabase 전환 동기화
+
+- 데이터소스: `operation_policies`/`operation_policy_histories` Supabase-backed source를 기본으로 사용합니다. `VITE_OPERATION_POLICIES_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`이면 기존 mock source로 fallback합니다.
+- CRUD facade: `policies-service.ts` safe 메서드 7종(`fetchPoliciesSafe`, `fetchPolicySafe`, `fetchPolicyHistorySafe`, `savePolicySafe`, `togglePolicyStatusSafe`, `deletePolicySafe`, `publishPolicyHistoryVersionSafe`)을 유지합니다.
+- 감사: admin RPC는 `admin_audit_logs.target_table='OperationPolicy'`, `target_id=policyId`를 기록하고, 모든 조치마다 `operation_policy_histories`에 snapshot을 append합니다.
+- 버전/히스토리: 정책 헤드는 `current_version_id`로 최신 히스토리를 추적하고, 히스토리 ID는 `PH-NNNN`, `snapshot`은 시점 `OperationPolicy`입니다.
+- 미확정: `POL-NNN`/`PH-NNNN` max+1 동시성, `changed_by`/`updated_by` uuid 표시명, `current_version_id` 화면 모델, `requires_consent` B2C 동의 재수집 트리거.

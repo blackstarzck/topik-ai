@@ -85,18 +85,18 @@
 
 | 액션 | 성격 | 대상 식별 기준 | 확인/사유 필요 여부 | 성공 피드백 | 감사 로그 경로 |
 | --- | --- | --- | --- | --- | --- |
-| 공지 등록 | 수정 | `Operation + noticeId` | 사유 없음 | 저장 완료 notification과 감사 로그 링크 제공 | `/system/audit-logs?targetType=Operation&targetId={noticeId}` |
-| 공지 수정 | 수정 | `Operation + noticeId` | 사유 없음 | 수정 완료 notification과 감사 로그 링크 제공 | `/system/audit-logs?targetType=Operation&targetId={noticeId}` |
-| 미리보기 | 조회 | `Operation + noticeId` | 불필요 | HTML 본문 검수 | 해당 없음 |
-| 상태 스위치 on | 파괴적 성격 포함 조치 | `Operation + noticeId` | 확인 + 사유 필수 | 게시 완료 notification과 감사 로그 링크 제공 | `/system/audit-logs?targetType=Operation&targetId={noticeId}` |
-| 상태 스위치 off | 파괴적 성격 포함 조치 | `Operation + noticeId` | 확인 + 사유 필수 | 숨김 완료 notification과 감사 로그 링크 제공 | `/system/audit-logs?targetType=Operation&targetId={noticeId}` |
-| 삭제 아이콘 | 파괴적 조치 | `Operation + noticeId` | 확인 + 사유 필수 | 삭제 완료 notification과 감사 로그 링크 제공 | `/system/audit-logs?targetType=Operation&targetId={noticeId}` |
+| 공지 등록 | 수정 | `OperationNotice + noticeId` | 사유 없음 | 저장 완료 notification과 감사 로그 링크 제공 | `/system/audit-logs?targetType=OperationNotice&targetId={noticeId}` |
+| 공지 수정 | 수정 | `OperationNotice + noticeId` | 사유 없음 | 수정 완료 notification과 감사 로그 링크 제공 | `/system/audit-logs?targetType=OperationNotice&targetId={noticeId}` |
+| 미리보기 | 조회 | `OperationNotice + noticeId` | 불필요 | HTML 본문 검수 | 해당 없음 |
+| 상태 스위치 on | 파괴적 성격 포함 조치 | `OperationNotice + noticeId` | 확인 + 사유 필수 | 게시 완료 notification과 감사 로그 링크 제공 | `/system/audit-logs?targetType=OperationNotice&targetId={noticeId}` |
+| 상태 스위치 off | 파괴적 성격 포함 조치 | `OperationNotice + noticeId` | 확인 + 사유 필수 | 숨김 완료 notification과 감사 로그 링크 제공 | `/system/audit-logs?targetType=OperationNotice&targetId={noticeId}` |
+| 삭제 아이콘 | 파괴적 조치 | `OperationNotice + noticeId` | 확인 + 사유 필수 | 삭제 완료 notification과 감사 로그 링크 제공 | `/system/audit-logs?targetType=OperationNotice&targetId={noticeId}` |
 
 ## 8. 상태값과 운영 규칙
 
 | 항목 | 현재 상태 | 관리자 영향 | B2C 영향 |
 | --- | --- | --- | --- |
-| 공지 상태 | `게시`, `숨김` | 목록 상태 스위치로 전환 | `게시`만 사용자 노출 후보 |
+| 공지 상태 | UI 라벨 `게시`, `숨김` / DB 코드 `published`, `hidden` | 목록 상태 스위치로 전환 | `published`(`게시`)만 사용자 노출 후보 |
 | 신규 저장 정책 | 확정 | 신규 공지는 저장 시 `숨김` 상태로 보관 | 검수 전 노출 방지 |
 | 수정 진입 | 확정 | 목록 행 클릭 미리보기 Modal과 푸터 `공지 수정` 버튼으로 이동 | 직접 영향 없음 |
 | 삭제 진입 | 확정 | 더보기 드롭다운 없이 삭제 아이콘으로만 제공 | 삭제 시 노출 중단 |
@@ -120,6 +120,8 @@
 ## 11. 구현 메모
 
 - 사용 컴포넌트: `PageTitle`, `AdminListCard`, `AdminDataTable`, `HtmlPreviewModal`, `ConfirmAction`, `AuditLogLink`, TinyMCE HTML Editor
-- 관련 코드: `src/features/operation/pages/operation-notices-page.tsx`, `src/features/operation/pages/operation-notice-create-page.tsx`, `src/features/operation/api/notices-service.ts`
+- 관련 코드: `src/features/operation/pages/operation-notices-page.tsx`, `src/features/operation/pages/operation-notice-create-page.tsx`, `src/features/operation/api/notices-service.ts`, `src/features/operation/api/operation-notices-data-source.ts`, `src/features/operation/api/supabase-operation-notices-service.ts`
+- Supabase 첫 증분 자산: `supabase/migrations-admin/20260617120000_operation_notices.sql` / `supabase/migrations-admin/down/20260617120000_operation_notices.sql`
+- 데이터소스 전환: Supabase 설정이 없거나 `VITE_SUPABASE_DISABLED=true`이면 mock 경로를 유지하고, Supabase 설정 시 기본값은 `operation_notices` + admin RPC 경로입니다. 강제 mock 회귀는 `VITE_OPERATION_NOTICES_SOURCE=mock`을 사용합니다.
 - 미리보기 Modal 푸터의 `공지 수정` 버튼은 공지사항 페이지에서만 사용하는 page-level 액션 슬롯입니다.
 

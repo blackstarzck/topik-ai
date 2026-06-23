@@ -48,6 +48,12 @@
 | 상세 영역 | 세부 정보와 조치 근거 확인 | 상세 이동 또는 패널 | 조회/저장/상태 변경 | 감사 로그와 연결 | 직접 또는 간접 영향 |
 | 후속 링크 | 원본 화면과 감사 로그 이동 | Target Type, Target ID, 관련 링크 | 원본 화면 이동 | 후속 검수 동선 고정 | 직접 영향 없음 |
 
+### 데이터 source
+
+- Supabase 모드의 회원 목록 source는 `get_admin_users(search, sort, page, page_size)` RPC입니다.
+- read source는 v13 소유 `profiles`와 `auth.users` 조인, `writing_submissions` 제출 수/최근 활동 집계입니다. 신규 테이블은 없고 v13 `profiles` DDL은 변경하지 않습니다.
+- 정지/해제 source는 `admin_set_user_status(target_id, new_status)` RPC이며 `profiles.status`만 `active`/`blocked`로 토글하고 `deleted`는 차단합니다.
+
 ## 6. 데이터 블록 정의
 
 ### 상단 요약 데이터
@@ -74,9 +80,9 @@
 
 | 액션 | 성격 | 대상 식별 기준 | 확인/사유 필요 여부 | 성공 후 피드백 | 감사 로그 확인 경로 |
 | --- | --- | --- | --- | --- | --- |
-| 회원 상세 | 조회 | Users + userId | 불필요 | 회원 상세 결과 패널을 열거나 관련 화면으로 이동합니다. | 조회 액션이므로 별도 감사 로그는 필요하지 않거나 원본 화면 흐름을 사용합니다. |
-| 회원 정지/해제 | 파괴적 | Users + userId | 확인 + 사유 필수 | 회원 정지/해제 완료 후 대상 식별 정보와 후속 확인 경로를 안내합니다. | /system/audit-logs?targetType=Users&targetId={userId} |
-| 관리자 메모 | 수정 | Users + userId | 사유 권장 | 관리자 메모 저장 후 대상 식별 정보와 후속 확인 경로를 안내합니다. | /system/audit-logs?targetType=Users&targetId={userId} |
+| 회원 상세 | 조회 | User + userId | 불필요 | 회원 상세 결과 패널을 열거나 관련 화면으로 이동합니다. | 조회 액션이므로 별도 감사 로그는 필요하지 않거나 원본 화면 흐름을 사용합니다. |
+| 회원 정지/해제 | 파괴적 | User + userId | 확인 + 사유 필수 | 회원 정지/해제 완료 후 대상 식별 정보와 후속 확인 경로를 안내합니다. | /system/audit-logs?targetType=User&targetId={userId} |
+| 관리자 메모 | 수정 | User + userId | 사유 권장 | 관리자 메모 저장 후 대상 식별 정보와 후속 확인 경로를 안내합니다. | /system/audit-logs?targetType=User&targetId={userId} |
 
 ## 8. 상태값/정책/운영 규칙
 
@@ -120,6 +126,8 @@
 
 - 현재 코드베이스에서 재사용할 컴포넌트: PageTitle, SearchBar, AdminDataTable, ConfirmAction, AuditLogLink
 - 예상 feature 파일: src/features/users/pages/*
+- Supabase source 메모: `supabase-users-service.ts`는 `get_admin_users(search, sort, page, page_size)`와 `admin_set_user_status(target_id, new_status)`를 호출합니다. 인자명은 PostgREST 함수 매칭 키이므로 임의 변경하지 않습니다.
+- 감사 메모: 정지/해제는 `admin_audit_logs.target_table='User'`, action `user_status_changed`, `target_id=userId`로 기록합니다.
 - 목록 상태 메모: `구독 상태` 컬럼은 외부 구독 원천 데이터를 보여주는 정보용 컬럼이므로 스위치 조치 없이 텍스트 상태로 표시합니다.
 - 권한/로그 처리 메모: 파괴적 액션에는 확인 단계와 사유 입력, Target Type, Target ID, 감사 로그 확인 경로를 함께 둡니다.
 - 목록 재조회 메모: `page`, `pageSize` 변경 시 목록을 다시 조회하고, 공통 `AdminDataTable` loading 애니메이션으로 페이지 전환 상태를 노출합니다.
@@ -127,6 +135,7 @@
 ## 14. 오픈 이슈
 
 - 일괄 상태 변경과 내보내기 정책 미정
+- 서버 상태/기간/searchField 필터의 RPC 확장 여부는 미정입니다. 현재 실데이터 RPC 확정 인자는 `search`, `sort`, `page`, `page_size`입니다.
 ## 15. 사용자 표시 규칙
 
 - 목록 본문 테이블의 첫 번째 사용자 식별 컬럼은 raw ID나 `이름 (ID)` 조합 대신 `이름`만 파란 링크로 표시합니다.
@@ -134,4 +143,3 @@
 - `profiles.display_name` 또는 `profiles.nickname`이 `NULL`이면 이메일/ID/local-part를 임의 표시명으로 만들지 않고 해당 셀에 `-`를 표시합니다.
 - 회원 링크는 `Users > 회원 상세`로 이동하는 단일 동선으로 유지합니다.
 - 검색 조건은 이름과 ID를 모두 지원하되, 셀 표시 자체는 `이름` 단독 표기를 기본으로 합니다.
-

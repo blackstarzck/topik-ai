@@ -15,6 +15,7 @@ import {
   loadMockTopicMasterCatalog,
   removeMockQuestionTag,
   setMockServiceStatus,
+  setMockServiceStatusBulk,
   setMockTagMasterStatus
 } from './mock-question-bank-service';
 import {
@@ -28,12 +29,14 @@ import {
   loadTopikWritingTopicMasterCatalog,
   removeTopikWritingQuestionTag,
   setTopikWritingServiceStatus,
+  setTopikWritingServiceStatusBulk,
   setTopikWritingTagMasterStatus
 } from './topik-writing-question-bank-service';
 import type {
   AssessmentQuestionDetail,
   AssessmentQuestionSummary,
   AssessmentServiceStatus,
+  BulkServiceStatusResult,
   TopikWritingQuestionTagRow,
   TopikWritingTagMasterCatalogRow,
   TopikWritingTagMasterRow,
@@ -56,6 +59,12 @@ import type {
 
 type UpdateAssessmentQuestionServiceStatusPayload = {
   questionId: string;
+  nextStatus: AssessmentServiceStatus;
+  reason: string;
+};
+
+type BulkUpdateAssessmentQuestionServiceStatusPayload = {
+  questionIds: string[];
   nextStatus: AssessmentServiceStatus;
   reason: string;
 };
@@ -198,6 +207,35 @@ async function updateServiceStatus(
   return loadDetail(payload.questionId, signal);
 }
 
+/**
+ * 운영 조치 일괄 처리 — 선택 문항 N건의 노출 상태를 한 번에 변경한다(P1: 숨김
+ * 방향 노출 제외/내부 테스트부터). 사유 필수·문항별 격리·멱등·노출 게이트·감사는
+ * RPC가 책임지고, mock은 화면 수준에서 결과 shape만 재현한다(감사 미기록).
+ */
+async function updateServiceStatusBulk(
+  payload: BulkUpdateAssessmentQuestionServiceStatusPayload
+): Promise<BulkServiceStatusResult> {
+  if (!payload.reason.trim()) {
+    throw new Error('노출 상태 변경 사유를 입력해 주세요.');
+  }
+  if (payload.questionIds.length === 0) {
+    throw new Error('대상 문항을 선택해 주세요.');
+  }
+
+  if (questionBankDataSource === 'mock') {
+    return setMockServiceStatusBulk(payload.questionIds, payload.nextStatus);
+  }
+  if (questionBankDataSource === 'topik_writing') {
+    return setTopikWritingServiceStatusBulk(
+      payload.questionIds,
+      payload.nextStatus,
+      payload.reason
+    );
+  }
+  // legacy: 구 스키마에 물리 노출 상태가 없다 — 롤백 모드에서는 쓰기 불가.
+  throw new Error('legacy 롤백 모드에서는 노출 상태를 변경할 수 없습니다.');
+}
+
 async function assignQuestionTag(payload: AssignQuestionTagPayload): Promise<void> {
   // 사유 memo 필수(question_tags.memo — 결정 기록 D-7 개정: 운영 메모의 유일한 기록처).
   if (!payload.memo.trim()) {
@@ -315,6 +353,12 @@ export function updateAssessmentQuestionServiceStatusSafe(
   signal?: AbortSignal
 ) {
   return toSafeResult(() => updateServiceStatus(payload, signal));
+}
+
+export function updateAssessmentQuestionServiceStatusBulkSafe(
+  payload: BulkUpdateAssessmentQuestionServiceStatusPayload
+) {
+  return toSafeResult(() => updateServiceStatusBulk(payload));
 }
 
 export function assignQuestionTagSafe(payload: AssignQuestionTagPayload) {

@@ -394,7 +394,7 @@ export default function CommunityPostsPage(): JSX.Element {
                 reason,
                 policyCode
               })
-            : await deleteCommunityPostSafe(actionState.post.id);
+            : await deleteCommunityPostSafe(actionState.post.id, reason);
 
       if (!result.ok) {
         notificationApi.error({
@@ -424,10 +424,10 @@ export default function CommunityPostsPage(): JSX.Element {
           message: '\uAC8C\uC2DC\uAE00 \uACF5\uAC1C \uC644\uB8CC',
           description: (
             <Space direction="vertical">
-              <Text>\uB300\uC0C1 \uC720\uD615: {getTargetTypeLabel('Community')}</Text>
+              <Text>\uB300\uC0C1 \uC720\uD615: {getTargetTypeLabel('CommunityPost')}</Text>
               <Text>\uB300\uC0C1 ID: {actionState.post.id}</Text>
               <Text>\uC0AC\uC720/\uADFC\uAC70: {reason}</Text>
-              <AuditLogLink targetType="Community" targetId={actionState.post.id} />
+              <AuditLogLink targetType="CommunityPost" targetId={actionState.post.id} />
             </Space>
           )
         });
@@ -436,14 +436,14 @@ export default function CommunityPostsPage(): JSX.Element {
           message: '\uAC8C\uC2DC\uAE00 \uC228\uAE40 \uC644\uB8CC',
           description: (
             <Space direction="vertical">
-              <Text>\uB300\uC0C1 \uC720\uD615: {getTargetTypeLabel('Community')}</Text>
+              <Text>\uB300\uC0C1 \uC720\uD615: {getTargetTypeLabel('CommunityPost')}</Text>
               <Text>\uB300\uC0C1 ID: {actionState.post.id}</Text>
               <Text>
                 \uC815\uCC45 \uCF54\uB4DC:{' '}
                 {policyCode ? moderationPolicyCodeLabelMap[policyCode] : '-'}
               </Text>
               <Text>\uC0AC\uC720/\uADFC\uAC70: {reason}</Text>
-              <AuditLogLink targetType="Community" targetId={actionState.post.id} />
+              <AuditLogLink targetType="CommunityPost" targetId={actionState.post.id} />
             </Space>
           )
         });
@@ -452,14 +452,14 @@ export default function CommunityPostsPage(): JSX.Element {
           message: '\uAC8C\uC2DC\uAE00 \uC0AD\uC81C \uC644\uB8CC',
           description: (
             <Space direction="vertical">
-              <Text>\uB300\uC0C1 \uC720\uD615: {getTargetTypeLabel('Community')}</Text>
+              <Text>\uB300\uC0C1 \uC720\uD615: {getTargetTypeLabel('CommunityPost')}</Text>
               <Text>\uB300\uC0C1 ID: {actionState.post.id}</Text>
               <Text>
                 \uC815\uCC45 \uCF54\uB4DC:{' '}
                 {policyCode ? moderationPolicyCodeLabelMap[policyCode] : '-'}
               </Text>
               <Text>\uC0AC\uC720/\uADFC\uAC70: {reason}</Text>
-              <AuditLogLink targetType="Community" targetId={actionState.post.id} />
+              <AuditLogLink targetType="CommunityPost" targetId={actionState.post.id} />
             </Space>
           )
         });
@@ -506,13 +506,13 @@ export default function CommunityPostsPage(): JSX.Element {
       message: '\uB0B4\uBD80 \uBA54\uBAA8 \uB4F1\uB85D \uC644\uB8CC',
       description: (
         <Space direction="vertical">
-          <Text>\uB300\uC0C1 \uC720\uD615: {getTargetTypeLabel('Community')}</Text>
+          <Text>\uB300\uC0C1 \uC720\uD615: {getTargetTypeLabel('CommunityPost')}</Text>
           <Text>\uB300\uC0C1 ID: {selectedPost.id}</Text>
           <Text>\uBA54\uBAA8 \uC791\uC131\uC790: {authorName}</Text>
           <Text>\uBA54\uBAA8 \uC81C\uBAA9: {memoTitle}</Text>
           <Text>\uBA54\uBAA8 \uC720\uD615: {memoTypeLabelMap[memoType]}</Text>
           <Text>\uBA54\uBAA8 \uB0B4\uC6A9: {memoContent}</Text>
-          <AuditLogLink targetType="Community" targetId={selectedPost.id} />
+          <AuditLogLink targetType="CommunityPost" targetId={selectedPost.id} />
         </Space>
       )
     });
@@ -923,7 +923,7 @@ export default function CommunityPostsPage(): JSX.Element {
               ? '게시글 노출을 중단합니다. 정책 코드와 숨김 사유를 기록하세요.'
               : '게시글을 목록에서 제거합니다. 정책 코드와 삭제 사유를 기록하세요.'
           }
-          targetType="Community"
+          targetType="CommunityPost"
           targetId={actionState.post.id}
           confirmText={
             actionState.type === 'show'
@@ -958,7 +958,7 @@ export default function CommunityPostsPage(): JSX.Element {
         }
         footerStart={
           selectedPost ? (
-            <AuditLogLink targetType="Community" targetId={selectedPost.id} />
+            <AuditLogLink targetType="CommunityPost" targetId={selectedPost.id} />
           ) : null
         }
         footerEnd={
@@ -1036,7 +1036,7 @@ export default function CommunityPostsPage(): JSX.Element {
               {
                 key: 'target',
                 label: '대상',
-                children: `${getTargetTypeLabel('Community')} / ${selectedPost?.id ?? '-'}`
+                children: `${getTargetTypeLabel('CommunityPost')} / ${selectedPost?.id ?? '-'}`
               },
               {
                 key: 'author',

@@ -1,0 +1,44 @@
+[
+  {
+    "id": "RF-0001",
+    "payment_id": "PAY-1001",
+    "user_id": "U00001",
+    "user_nickname": "member_1",
+    "requested_amount": 29000,
+    "reason": "중복 결제",
+    "status": "pending",
+    "requested_at": "2026-03-04 01:23:00+00",
+    "processed_by": null,
+    "processed_at": null,
+    "review_reason": null,
+    "created_at": "2026-03-04 01:23:00+00"
+  },
+  {
+    "id": "RF-0002",
+    "payment_id": "PAY-1002",
+    "user_id": "U00008",
+    "user_nickname": "member_8",
+    "requested_amount": 49000,
+    "reason": "서비스 미이용",
+    "status": "approved",
+    "requested_at": "2026-03-01 23:12:00+00",
+    "processed_by": "admin_kim",
+    "processed_at": "2026-03-02 05:40:00+00",
+    "review_reason": "서비스 미이용 확인 후 승인",
+    "created_at": "2026-03-01 23:12:00+00"
+  },
+  {
+    "id": "RF-0003",
+    "payment_id": "PAY-1005",
+    "user_id": "U00024",
+    "user_nickname": "member_24",
+    "requested_amount": 79000,
+    "reason": "결제 후 상품 변경 요청",
+    "status": "rejected",
+    "requested_at": "2026-03-10 00:48:00+00",
+    "processed_by": "admin_park",
+    "processed_at": "2026-03-10 02:05:00+00",
+    "review_reason": "부분 환불 불가 상품",
+    "created_at": "2026-03-10 00:48:00+00"
+  }
+]

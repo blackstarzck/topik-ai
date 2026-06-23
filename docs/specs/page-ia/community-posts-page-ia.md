@@ -85,12 +85,12 @@
 
 | 액션 | 성격 | 대상 식별 기준 | 확인/사유 필요 여부 | 성공 후 피드백 | 감사 로그 확인 경로 |
 | --- | --- | --- | --- | --- | --- |
-| 게시글 상세 | 조회 | Community + postId | 불필요 | 게시글 상세 결과 패널을 열거나 관련 화면으로 이동합니다. | 조회 액션이므로 별도 감사 로그는 필요하지 않거나 원본 화면 흐름을 사용합니다. |
-| 게시글 원문 보기 | 조회 | Community + postId | `더보기` 또는 상세 Drawer의 `게시글 원문 보기 > 보러가기` 클릭 | B2C 게시글 원문 HTML을 이미지/서식 포함 그대로 Modal에서 확인합니다. `더보기`에서는 일반 액션 목록과 분리된 영역에 삭제 버튼을 둡니다. | 조회 액션이므로 별도 감사 로그는 필요하지 않거나 원본 화면 흐름을 사용합니다. |
-| 내부 메모 등록 | 운영 입력 | Community + postId | 메모 등록 버튼 클릭 후 `Descriptions` 기반 Modal에서 대상/작성자 read-only, 제목/유형/메모 내용 필수. 유형 Select는 `SPAM`, `욕설/혐오`, `성인/불법`, `광고/홍보`, `개인정보 노출`, `중복 게시`, `기타`를 사용합니다. | 메모 작성자, 제목, 유형, 대상 식별 정보, 후속 확인 경로를 안내합니다. | /system/audit-logs?targetType=Community&targetId={postId} |
-| 내부 메모 상세 | 조회 | Community + postId + memoId | 메모 히스토리 행 클릭 또는 `더보기 > 내부 메모` 클릭 | 메모 제목, 유형, 작성자, 작성일, 원문을 Modal에서 확인합니다. `더보기`에서는 최신 내부 메모를 바로 엽니다. | 조회 액션이므로 별도 감사 로그는 필요하지 않거나 원본 화면 흐름을 사용합니다. |
-| 게시글 상태 스위치 | 파괴적 | Community + postId | 정책 코드 선택 + 확인 + 사유 필수 | 게시/숨김 전환 완료 후 대상 식별 정보, 정책 코드, 후속 확인 경로를 안내합니다. | /system/audit-logs?targetType=Community&targetId={postId} |
-| 게시글 삭제 | 파괴적 | Community + postId | 정책 코드 선택 + 확인 + 사유 필수 | 게시글 삭제 완료 후 대상 식별 정보, 정책 코드, 후속 확인 경로를 안내합니다. | /system/audit-logs?targetType=Community&targetId={postId} |
+| 게시글 상세 | 조회 | CommunityPost + postId | 불필요 | 게시글 상세 결과 패널을 열거나 관련 화면으로 이동합니다. | 조회 액션이므로 별도 감사 로그는 필요하지 않거나 원본 화면 흐름을 사용합니다. |
+| 게시글 원문 보기 | 조회 | CommunityPost + postId | `더보기` 또는 상세 Drawer의 `게시글 원문 보기 > 보러가기` 클릭 | B2C 게시글 원문 HTML을 이미지/서식 포함 그대로 Modal에서 확인합니다. `더보기`에서는 일반 액션 목록과 분리된 영역에 삭제 버튼을 둡니다. | 조회 액션이므로 별도 감사 로그는 필요하지 않거나 원본 화면 흐름을 사용합니다. |
+| 내부 메모 등록 | 운영 입력 | CommunityPost + postId | 메모 등록 버튼 클릭 후 `Descriptions` 기반 Modal에서 대상/작성자 read-only, 제목/유형/메모 내용 필수. 유형 Select는 `SPAM`, `욕설/혐오`, `성인/불법`, `광고/홍보`, `개인정보 노출`, `중복 게시`, `기타`를 사용합니다. | 메모 작성자, 제목, 유형, 대상 식별 정보, 후속 확인 경로를 안내합니다. | /system/audit-logs?targetType=CommunityPost&targetId={postId} |
+| 내부 메모 상세 | 조회 | CommunityPost + postId + memoId | 메모 히스토리 행 클릭 또는 `더보기 > 내부 메모` 클릭 | 메모 제목, 유형, 작성자, 작성일, 원문을 Modal에서 확인합니다. `더보기`에서는 최신 내부 메모를 바로 엽니다. | 조회 액션이므로 별도 감사 로그는 필요하지 않거나 원본 화면 흐름을 사용합니다. |
+| 게시글 상태 스위치 | 파괴적 | CommunityPost + postId | 정책 코드 선택 + 확인 + 사유 필수 | 게시/숨김 전환 완료 후 대상 식별 정보, 정책 코드, 후속 확인 경로를 안내합니다. | /system/audit-logs?targetType=CommunityPost&targetId={postId} |
+| 게시글 삭제 | 파괴적 | CommunityPost + postId | 정책 코드 선택 + 확인 + 사유 필수 | 게시글 삭제 완료 후 대상 식별 정보, 정책 코드, 후속 확인 경로를 안내합니다. | /system/audit-logs?targetType=CommunityPost&targetId={postId} |
 
 ## 8. 상태값/정책/운영 규칙
 
@@ -150,4 +150,12 @@
 - `작성자` 컬럼은 raw 사용자 ID를 직접 노출하지 않고 `이름 (ID)` 형식의 파란 링크로 표시합니다.
 - 작성자 링크는 `Users > 회원 상세`로 이동하는 단일 동선으로 유지합니다.
 - 게시글 상세 Drawer와 게시글 원문 보기 Modal의 작성자 필드도 `이름 (ID)` 형식의 링크 스타일을 유지합니다.
+
+
+## 16. 2026-06-17 Supabase source 갱신
+
+- source는 `community_posts`/`community_post_admin_notes` Supabase-backed hybrid로 전환됐다. `VITE_COMMUNITY_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`이면 기존 mock fallback을 사용한다.
+- 게시글 조치 감사 Target Type은 `CommunityPost`이며 action은 `post_hidden`/`post_shown`/`post_deleted`/`post_memo_added`다. 감사 로그 경로는 `/system/audit-logs?targetType=CommunityPost&targetId={postId}`로 고정한다.
+- DB status는 ASCII `published`/`hidden`, UI 라벨은 `게시`/`숨김`이다. 게시글 숨김/삭제는 B2C 커뮤니티 목록/상세/프로필 작성글 비노출에 영향을 주는 것으로 운영상 추정한다.
+- 미확정은 `POST-NNN`/memo max+1 동시성, board/policy_code/memo type code table화다.
 

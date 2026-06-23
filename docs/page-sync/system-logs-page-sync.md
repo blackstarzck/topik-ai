@@ -9,7 +9,7 @@ status: "구현됨"
 primary_entity: "SystemLog"
 primary_table_candidate: "system_logs"
 owner_agent_scope: "shared"
-last_reviewed_at: "2026-06-01"
+last_reviewed_at: "2026-06-17"
 ---
 
 ## 1. 문서 목적
@@ -140,3 +140,12 @@ last_reviewed_at: "2026-06-01"
 | 항목 | 미확정 내용 | 필요한 결정 주체 | 관리자 페이지 영향 | 사용자 화면 영향 | 추적 문서 |
 | --- | --- | --- | --- | --- | --- |
 | 시스템 로그 최종 계약 | 로그 보존 기간, traceId 원본 링크, 알림 연계 정책은 인프라/API 확정 필요입니다. | 기획/백엔드/프론트 | 필터/액션/감사 로그 계약 변동 가능 | B2C 직접 노출 없음. 장애 분석용 내부 데이터입니다. | docs/specs/page-ia/system-logs-page-ia.md |
+
+## 14. 2026-06-17 Supabase source update
+
+- Source: `system_logs` Supabase-backed read-only table. `system-logs-data-source.ts` falls back to mock when `VITE_SYSTEM_LOGS_SOURCE=mock`, `VITE_SUPABASE_DISABLED=true`, or Supabase is not configured.
+- Service contract: `system-logs-service.ts` keeps `fetchSystemLogsSafe`; Supabase mode reads `system_logs` ordered by `created_at desc`.
+- Table contract: 7 columns `id`, `level`, `message`, `component`, `trace_id`, `context`, `created_at`; `level` values are uppercase `INFO`/`WARN`/`ERROR`.
+- Admin boundary: read-only. No admin write policy/RPC and no admin audit action. This is a technical log, distinct from `admin_audit_logs` and unrelated to v13 `notification_log`.
+- B2C: internal only, intended non-exposure.
+- Open items: ingest source/actor, retention/partitioning, `trace_id` semantics, and long-term level code standardization.

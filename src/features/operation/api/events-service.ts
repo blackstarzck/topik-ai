@@ -2,6 +2,15 @@ import { AppApiError } from '../../../shared/api/api-error';
 import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
 import { useOperationStore } from '../model/operation-store';
 import type { OperationEvent } from '../model/types';
+import { operationEventsDataSource } from './operation-events-data-source';
+import {
+  endOperationEvent,
+  loadOperationEvent,
+  loadOperationEvents,
+  publishOperationEvent,
+  saveOperationEvent,
+  scheduleOperationEvent
+} from './supabase-operation-events-service';
 
 export type SaveEventPayload = {
   id?: string;
@@ -33,11 +42,15 @@ export type SaveEventPayload = {
   canonicalUrl: string;
   indexingPolicy: OperationEvent['indexingPolicy'];
   adminMemo: string;
+  reason?: string;
 };
 
-type EventActionPayload = {
+export type EventActionPayload = {
   eventId: string;
+  reason?: string;
 };
+
+const isSupabaseSource = operationEventsDataSource === 'supabase';
 
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -74,6 +87,10 @@ function createEventNotFoundError(): AppApiError {
 }
 
 async function loadEvents(signal?: AbortSignal): Promise<OperationEvent[]> {
+  if (isSupabaseSource) {
+    return loadOperationEvents(signal);
+  }
+
   await sleep(220, signal);
   return useOperationStore.getState().events;
 }
@@ -82,6 +99,14 @@ async function loadEvent(
   eventId: string,
   signal?: AbortSignal
 ): Promise<OperationEvent> {
+  if (isSupabaseSource) {
+    const event = await loadOperationEvent(eventId, signal);
+    if (!event) {
+      throw createEventNotFoundError();
+    }
+    return event;
+  }
+
   await sleep(220, signal);
   const event = useOperationStore.getState().events.find((item) => item.id === eventId);
 
@@ -96,6 +121,10 @@ async function persistEvent(
   payload: SaveEventPayload,
   signal?: AbortSignal
 ): Promise<OperationEvent> {
+  if (isSupabaseSource) {
+    return saveOperationEvent(payload, signal);
+  }
+
   await sleep(260, signal);
 
   if (payload.id) {
@@ -113,6 +142,14 @@ async function scheduleEventPublish(
   payload: EventActionPayload,
   signal?: AbortSignal
 ): Promise<OperationEvent> {
+  if (isSupabaseSource) {
+    const updated = await scheduleOperationEvent(payload, signal);
+    if (!updated) {
+      throw createEventNotFoundError();
+    }
+    return updated;
+  }
+
   await sleep(220, signal);
   const updated = useOperationStore.getState().scheduleEventPublish(payload);
 
@@ -127,6 +164,14 @@ async function publishEvent(
   payload: EventActionPayload,
   signal?: AbortSignal
 ): Promise<OperationEvent> {
+  if (isSupabaseSource) {
+    const updated = await publishOperationEvent(payload, signal);
+    if (!updated) {
+      throw createEventNotFoundError();
+    }
+    return updated;
+  }
+
   await sleep(220, signal);
   const updated = useOperationStore.getState().publishEvent(payload);
 
@@ -141,6 +186,14 @@ async function finishEvent(
   payload: EventActionPayload,
   signal?: AbortSignal
 ): Promise<OperationEvent> {
+  if (isSupabaseSource) {
+    const updated = await endOperationEvent(payload, signal);
+    if (!updated) {
+      throw createEventNotFoundError();
+    }
+    return updated;
+  }
+
   await sleep(220, signal);
   const updated = useOperationStore.getState().endEvent(payload);
 

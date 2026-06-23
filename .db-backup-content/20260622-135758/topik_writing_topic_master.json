@@ -1,0 +1,767 @@
+[
+  {
+    "topic_id": 1,
+    "topic_main": "개인 신상",
+    "topic_detail": "이름",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 101,
+    "memo": null
+  },
+  {
+    "topic_id": 2,
+    "topic_main": "개인 신상",
+    "topic_detail": "전화번호",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 102,
+    "memo": null
+  },
+  {
+    "topic_id": 3,
+    "topic_main": "개인 신상",
+    "topic_detail": "가족",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 103,
+    "memo": null
+  },
+  {
+    "topic_id": 4,
+    "topic_main": "개인 신상",
+    "topic_detail": "국적",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 104,
+    "memo": null
+  },
+  {
+    "topic_id": 5,
+    "topic_main": "개인 신상",
+    "topic_detail": "고향",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 105,
+    "memo": null
+  },
+  {
+    "topic_id": 6,
+    "topic_main": "개인 신상",
+    "topic_detail": "성격",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 106,
+    "memo": null
+  },
+  {
+    "topic_id": 7,
+    "topic_main": "개인 신상",
+    "topic_detail": "외모",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 107,
+    "memo": null
+  },
+  {
+    "topic_id": 8,
+    "topic_main": "개인 신상",
+    "topic_detail": "연애",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 108,
+    "memo": null
+  },
+  {
+    "topic_id": 9,
+    "topic_main": "개인 신상",
+    "topic_detail": "결혼",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 109,
+    "memo": null
+  },
+  {
+    "topic_id": 10,
+    "topic_main": "개인 신상",
+    "topic_detail": "직업",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 110,
+    "memo": null
+  },
+  {
+    "topic_id": 11,
+    "topic_main": "개인 신상",
+    "topic_detail": "종교",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 111,
+    "memo": null
+  },
+  {
+    "topic_id": 12,
+    "topic_main": "주거와 환경",
+    "topic_detail": "장소",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 201,
+    "memo": null
+  },
+  {
+    "topic_id": 13,
+    "topic_main": "주거와 환경",
+    "topic_detail": "숙소",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 202,
+    "memo": null
+  },
+  {
+    "topic_id": 14,
+    "topic_main": "주거와 환경",
+    "topic_detail": "방",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 203,
+    "memo": null
+  },
+  {
+    "topic_id": 15,
+    "topic_main": "주거와 환경",
+    "topic_detail": "생활 편의 시설",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 204,
+    "memo": null
+  },
+  {
+    "topic_id": 16,
+    "topic_main": "주거와 환경",
+    "topic_detail": "가구ㆍ침구",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 205,
+    "memo": null
+  },
+  {
+    "topic_id": 17,
+    "topic_main": "주거와 환경",
+    "topic_detail": "주거비",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 206,
+    "memo": null
+  },
+  {
+    "topic_id": 18,
+    "topic_main": "주거와 환경",
+    "topic_detail": "지역",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 207,
+    "memo": null
+  },
+  {
+    "topic_id": 19,
+    "topic_main": "주거와 환경",
+    "topic_detail": "지리",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 208,
+    "memo": null
+  },
+  {
+    "topic_id": 20,
+    "topic_main": "주거와 환경",
+    "topic_detail": "동식물",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 209,
+    "memo": null
+  },
+  {
+    "topic_id": 21,
+    "topic_main": "일상생활",
+    "topic_detail": "가정생활",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 301,
+    "memo": null
+  },
+  {
+    "topic_id": 22,
+    "topic_main": "일상생활",
+    "topic_detail": "학교생활",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 302,
+    "memo": null
+  },
+  {
+    "topic_id": 23,
+    "topic_main": "쇼핑",
+    "topic_detail": "쇼핑 시설",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 401,
+    "memo": null
+  },
+  {
+    "topic_id": 24,
+    "topic_main": "쇼핑",
+    "topic_detail": "식품",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 402,
+    "memo": null
+  },
+  {
+    "topic_id": 25,
+    "topic_main": "쇼핑",
+    "topic_detail": "가격",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 403,
+    "memo": null
+  },
+  {
+    "topic_id": 26,
+    "topic_main": "쇼핑",
+    "topic_detail": "의복",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 404,
+    "memo": null
+  },
+  {
+    "topic_id": 27,
+    "topic_main": "쇼핑",
+    "topic_detail": "가정용품",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 405,
+    "memo": null
+  },
+  {
+    "topic_id": 28,
+    "topic_main": "식음료",
+    "topic_detail": "음식",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 501,
+    "memo": null
+  },
+  {
+    "topic_id": 29,
+    "topic_main": "식음료",
+    "topic_detail": "음료",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 502,
+    "memo": null
+  },
+  {
+    "topic_id": 30,
+    "topic_main": "식음료",
+    "topic_detail": "외식",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 503,
+    "memo": null
+  },
+  {
+    "topic_id": 31,
+    "topic_main": "식음료",
+    "topic_detail": "배달",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 504,
+    "memo": null
+  },
+  {
+    "topic_id": 32,
+    "topic_main": "공공 서비스",
+    "topic_detail": "우편",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 601,
+    "memo": null
+  },
+  {
+    "topic_id": 33,
+    "topic_main": "공공 서비스",
+    "topic_detail": "은행",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 602,
+    "memo": null
+  },
+  {
+    "topic_id": 34,
+    "topic_main": "공공 서비스",
+    "topic_detail": "병원",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 603,
+    "memo": null
+  },
+  {
+    "topic_id": 35,
+    "topic_main": "공공 서비스",
+    "topic_detail": "약국",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 604,
+    "memo": null
+  },
+  {
+    "topic_id": 36,
+    "topic_main": "공공 서비스",
+    "topic_detail": "경찰서",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 605,
+    "memo": null
+  },
+  {
+    "topic_id": 37,
+    "topic_main": "공공 서비스",
+    "topic_detail": "전화",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 606,
+    "memo": null
+  },
+  {
+    "topic_id": 38,
+    "topic_main": "여가와 오락",
+    "topic_detail": "휴일",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 701,
+    "memo": null
+  },
+  {
+    "topic_id": 39,
+    "topic_main": "여가와 오락",
+    "topic_detail": "취미ㆍ관심",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 702,
+    "memo": null
+  },
+  {
+    "topic_id": 40,
+    "topic_main": "여가와 오락",
+    "topic_detail": "영화ㆍ공연",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 703,
+    "memo": null
+  },
+  {
+    "topic_id": 41,
+    "topic_main": "여가와 오락",
+    "topic_detail": "전시회ㆍ박물관",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 704,
+    "memo": null
+  },
+  {
+    "topic_id": 42,
+    "topic_main": "여가와 오락",
+    "topic_detail": "라디오ㆍ텔레비전",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 705,
+    "memo": null
+  },
+  {
+    "topic_id": 43,
+    "topic_main": "여가와 오락",
+    "topic_detail": "독서",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 706,
+    "memo": null
+  },
+  {
+    "topic_id": 44,
+    "topic_main": "여가와 오락",
+    "topic_detail": "스포츠",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 707,
+    "memo": null
+  },
+  {
+    "topic_id": 45,
+    "topic_main": "일과 직업",
+    "topic_detail": "취업",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 801,
+    "memo": null
+  },
+  {
+    "topic_id": 46,
+    "topic_main": "일과 직업",
+    "topic_detail": "직장생활",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 802,
+    "memo": null
+  },
+  {
+    "topic_id": 47,
+    "topic_main": "일과 직업",
+    "topic_detail": "업무",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 803,
+    "memo": null
+  },
+  {
+    "topic_id": 48,
+    "topic_main": "대인관계",
+    "topic_detail": "친구ㆍ동료ㆍ선후배 관계",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 901,
+    "memo": null
+  },
+  {
+    "topic_id": 49,
+    "topic_main": "대인관계",
+    "topic_detail": "초대",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 902,
+    "memo": null
+  },
+  {
+    "topic_id": 50,
+    "topic_main": "대인관계",
+    "topic_detail": "방문",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 903,
+    "memo": null
+  },
+  {
+    "topic_id": 51,
+    "topic_main": "대인관계",
+    "topic_detail": "편지",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 904,
+    "memo": null
+  },
+  {
+    "topic_id": 52,
+    "topic_main": "대인관계",
+    "topic_detail": "모임",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 905,
+    "memo": null
+  },
+  {
+    "topic_id": 53,
+    "topic_main": "건강",
+    "topic_detail": "신체",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1001,
+    "memo": null
+  },
+  {
+    "topic_id": 54,
+    "topic_main": "건강",
+    "topic_detail": "질병",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1002,
+    "memo": null
+  },
+  {
+    "topic_id": 55,
+    "topic_main": "건강",
+    "topic_detail": "위생",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1003,
+    "memo": null
+  },
+  {
+    "topic_id": 56,
+    "topic_main": "건강",
+    "topic_detail": "치료",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1004,
+    "memo": null
+  },
+  {
+    "topic_id": 57,
+    "topic_main": "건강",
+    "topic_detail": "보험",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1005,
+    "memo": null
+  },
+  {
+    "topic_id": 58,
+    "topic_main": "기후",
+    "topic_detail": "날씨",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1101,
+    "memo": null
+  },
+  {
+    "topic_id": 59,
+    "topic_main": "기후",
+    "topic_detail": "계절",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1102,
+    "memo": null
+  },
+  {
+    "topic_id": 60,
+    "topic_main": "여행",
+    "topic_detail": "관광지",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1201,
+    "memo": null
+  },
+  {
+    "topic_id": 61,
+    "topic_main": "여행",
+    "topic_detail": "일정",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1202,
+    "memo": null
+  },
+  {
+    "topic_id": 62,
+    "topic_main": "여행",
+    "topic_detail": "짐",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1203,
+    "memo": null
+  },
+  {
+    "topic_id": 63,
+    "topic_main": "여행",
+    "topic_detail": "숙소",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1204,
+    "memo": null
+  },
+  {
+    "topic_id": 64,
+    "topic_main": "교통",
+    "topic_detail": "길",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1301,
+    "memo": null
+  },
+  {
+    "topic_id": 65,
+    "topic_main": "교통",
+    "topic_detail": "교통수단",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1302,
+    "memo": null
+  },
+  {
+    "topic_id": 66,
+    "topic_main": "교통",
+    "topic_detail": "위치",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1303,
+    "memo": null
+  },
+  {
+    "topic_id": 67,
+    "topic_main": "교통",
+    "topic_detail": "거리",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1304,
+    "memo": null
+  },
+  {
+    "topic_id": 68,
+    "topic_main": "교통",
+    "topic_detail": "운송",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1305,
+    "memo": null
+  },
+  {
+    "topic_id": 69,
+    "topic_main": "교통",
+    "topic_detail": "택배",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1306,
+    "memo": null
+  },
+  {
+    "topic_id": 70,
+    "topic_main": "교육",
+    "topic_detail": "진로",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1401,
+    "memo": null
+  },
+  {
+    "topic_id": 71,
+    "topic_main": "교육",
+    "topic_detail": "학교 교육",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1402,
+    "memo": null
+  },
+  {
+    "topic_id": 72,
+    "topic_main": "교육",
+    "topic_detail": "교과목",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1403,
+    "memo": null
+  },
+  {
+    "topic_id": 73,
+    "topic_main": "사회",
+    "topic_detail": "정치",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1501,
+    "memo": null
+  },
+  {
+    "topic_id": 74,
+    "topic_main": "사회",
+    "topic_detail": "경제",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1502,
+    "memo": null
+  },
+  {
+    "topic_id": 75,
+    "topic_main": "사회",
+    "topic_detail": "범죄",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1503,
+    "memo": null
+  },
+  {
+    "topic_id": 76,
+    "topic_main": "사회",
+    "topic_detail": "제도",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1504,
+    "memo": null
+  },
+  {
+    "topic_id": 77,
+    "topic_main": "사회",
+    "topic_detail": "여론",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1505,
+    "memo": null
+  },
+  {
+    "topic_id": 78,
+    "topic_main": "사회",
+    "topic_detail": "국제 관계",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1506,
+    "memo": null
+  },
+  {
+    "topic_id": 79,
+    "topic_main": "예술",
+    "topic_detail": "문학",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1601,
+    "memo": null
+  },
+  {
+    "topic_id": 80,
+    "topic_main": "예술",
+    "topic_detail": "음악",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1602,
+    "memo": null
+  },
+  {
+    "topic_id": 81,
+    "topic_main": "예술",
+    "topic_detail": "미술",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1603,
+    "memo": null
+  },
+  {
+    "topic_id": 82,
+    "topic_main": "전문 분야",
+    "topic_detail": "언어학",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1701,
+    "memo": null
+  },
+  {
+    "topic_id": 83,
+    "topic_main": "전문 분야",
+    "topic_detail": "과학",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1702,
+    "memo": null
+  },
+  {
+    "topic_id": 84,
+    "topic_main": "전문 분야",
+    "topic_detail": "심리학",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1703,
+    "memo": null
+  },
+  {
+    "topic_id": 85,
+    "topic_main": "전문 분야",
+    "topic_detail": "철학",
+    "source_name": "메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)",
+    "is_active": true,
+    "sort_order": 1704,
+    "memo": null
+  }
+]

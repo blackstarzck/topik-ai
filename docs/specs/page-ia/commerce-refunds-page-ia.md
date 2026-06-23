@@ -75,11 +75,11 @@
 
 | 액션 | 성격 | 대상 식별 기준 | 확인/사유 필요 여부 | 성공 후 피드백 | 감사 로그 확인 경로 |
 | --- | --- | --- | --- | --- | --- |
-| 환불 승인 | 파괴적 | Commerce + refundId | 확인 + 사유 필수 | 환불 승인 완료 후 대상 식별 정보와 후속 확인 경로를 안내합니다. | /system/audit-logs?targetType=Commerce&targetId={refundId} |
-| 환불 거절 | 파괴적 | Commerce + refundId | 확인 + 사유 필수 | 환불 거절 완료 후 대상 식별 정보와 후속 확인 경로를 안내합니다. | /system/audit-logs?targetType=Commerce&targetId={refundId} |
-| 결제 상세 이동 | 조회 | Commerce + refundId | 불필요 | 결제 상세 이동 결과 패널을 열거나 관련 화면으로 이동합니다. | 조회 액션이므로 별도 감사 로그는 필요하지 않거나 원본 화면 흐름을 사용합니다. |
-| 회원 상세 이동 | 조회 | Commerce + refundId | 불필요 | 회원 상세 이동 결과 패널을 열거나 관련 화면으로 이동합니다. | 조회 액션이므로 별도 감사 로그는 필요하지 않거나 원본 화면 흐름을 사용합니다. |
-| 상세 보기 | 조회 | Commerce + refundId | 불필요 | 상세 보기 결과 패널을 열거나 관련 화면으로 이동합니다. | 조회 액션이므로 별도 감사 로그는 필요하지 않거나 원본 화면 흐름을 사용합니다. |
+| 환불 승인 | 파괴적 | CommerceRefund + refundId | 확인 + 사유 필수 | 환불 승인 완료 후 대상 식별 정보와 후속 확인 경로를 안내합니다. | /system/audit-logs?targetType=CommerceRefund&targetId={refundId} |
+| 환불 거절 | 파괴적 | CommerceRefund + refundId | 확인 + 사유 필수 | 환불 거절 완료 후 대상 식별 정보와 후속 확인 경로를 안내합니다. | /system/audit-logs?targetType=CommerceRefund&targetId={refundId} |
+| 결제 상세 이동 | 조회 | CommerceRefund + refundId | 불필요 | 결제 상세 이동 결과 패널을 열거나 관련 화면으로 이동합니다. | 조회 액션이므로 별도 감사 로그는 필요하지 않거나 원본 화면 흐름을 사용합니다. |
+| 회원 상세 이동 | 조회 | CommerceRefund + refundId | 불필요 | 회원 상세 이동 결과 패널을 열거나 관련 화면으로 이동합니다. | 조회 액션이므로 별도 감사 로그는 필요하지 않거나 원본 화면 흐름을 사용합니다. |
+| 상세 보기 | 조회 | CommerceRefund + refundId | 불필요 | 상세 보기 결과 패널을 열거나 관련 화면으로 이동합니다. | 조회 액션이므로 별도 감사 로그는 필요하지 않거나 원본 화면 흐름을 사용합니다. |
 
 ## 8. 상태값/정책/운영 규칙
 
@@ -134,4 +134,14 @@
 - `회원` 컬럼은 raw ID 대신 `이름 (ID)` 형식의 파란 링크로 표시합니다.
 - 회원 링크는 `Users > 회원 상세`의 결제 탭으로 이동합니다.
 - 환불 상세 Modal의 회원 필드는 `이름 (ID)` 형식을 유지합니다.
+
+## 16. 2026-06-17 Supabase source 갱신
+
+- source: `commerce_refunds` Supabase-backed workflow table. 기존 Supabase 모드의 `payment_history(status='refunded')` 합성 조회는 중단하고, 환불 처리 대기/승인/거절 워크플로 SoT는 `commerce_refunds`로 고정합니다.
+- fallback: `VITE_COMMERCE_REFUNDS_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`이면 기존 mock 경로를 사용합니다. `billing-service.ts`의 `fetchRefunds/approve/reject*Safe` 계약은 유지합니다.
+- 상태값: DB ASCII `pending`/`approved`/`rejected`를 UI 라벨 `처리 대기`/`승인`/`거절`로 매핑합니다.
+- 조치: 승인/거절은 `admin_approve_billing_refund(p_refund_id,p_reason)`, `admin_reject_billing_refund(p_refund_id,p_reason)` RPC를 사용하며, reason은 필수이고 `pending` 상태만 처리합니다.
+- 감사: Target Type은 `CommerceRefund`, Target ID는 `refundId`, action은 `refund_approved`/`refund_rejected`, 감사 확인 경로는 `/system/audit-logs?targetType=CommerceRefund&targetId={refundId}`입니다.
+- v13 경계: `payment_id`와 `user_id`는 v13 `payment_history`/사용자 식별자 느슨참조이며 FK가 없습니다. 실제 결제 환불 집행 및 `payment_history.status` 갱신은 v13 소유라 아직 미연동이고, 승인 payload에 `intent_only_v13_payment_history_pending=true`를 기록합니다.
+- 미확정: 실제 결제 환불 집행 v13 연동, `payment_id` 느슨참조 정합, `RF-NNNN` max+1 채번 동시성, 결제 내역 `method` 컬럼 reconcile은 후속 과제로 추적합니다.
 

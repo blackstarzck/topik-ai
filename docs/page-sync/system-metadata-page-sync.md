@@ -142,3 +142,13 @@ last_reviewed_at: "2026-06-01"
 | 항목 | 미확정 내용 | 필요한 결정 주체 | 관리자 페이지 영향 | 사용자 화면 영향 | 추적 문서 |
 | --- | --- | --- | --- | --- | --- |
 | 메타데이터 관리 최종 계약 | 메타데이터 그룹별 실제 소비 API와 사용자 surface 확인 상태는 지속 갱신이 필요합니다. | 기획/백엔드/프론트 | 필터/액션/감사 로그 계약 변동 가능 | 직접 노출은 없지만 각 그룹이 참조하는 사용자 surface를 내부 추적합니다. | docs/specs/page-ia/system-metadata-page-ia.md |
+## 2026-06-17 Supabase 전환 동기화 보강
+
+- 데이터소스: System 메타데이터 그룹/항목은 Supabase-backed hybrid source다. `VITE_SYSTEM_METADATA_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`일 때만 mock fallback을 사용한다.
+- 테이블: `system_metadata_groups` + `system_metadata_group_items`. `system_metadata_group_items`가 표준 명칭이며 `system_metadata_items`는 사용하지 않는다.
+- CRUD: 그룹 save, 항목 save, 그룹 상태 변경, 항목 상태 변경, 항목 삭제, 항목 순서 변경을 admin RPC로 지원한다. 모든 write RPC는 reason 필수다.
+- 감사: Target Type은 `SystemMetadataGroup`, Target ID는 `groupId`다. 항목 조치도 그룹 단위로 기록하며 딥링크는 `/system/metadata?selected={groupId}`를 사용한다.
+- action strings: `metadata_group_saved`, `metadata_item_saved`, `metadata_group_status_changed`, `metadata_item_status_changed`, `metadata_item_deleted`, `metadata_items_reordered`.
+- B2C: 메타데이터 관리 화면 자체는 내부 운영 설정이다. 각 그룹의 `linked_user_surfaces`는 기존처럼 내부 전용/운영상 추정 상태로 추적하며 직접 사용자 노출 계약으로 승격하지 않는다.
+- 미확정: PK `META-GRP-NNN`/`META-ITEM-NNN` max+1 동시성, `is_default` 단일성 정책, `admin_locations`/history 정규화.
+- 비범위: 같은 `/system/metadata` 화면의 AssessmentMasterCatalog(`topik_writing_*`)는 이미 Supabase-backed인 별도 섹션이며 이번 그룹/항목 전환과 무관하다.

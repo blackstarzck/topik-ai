@@ -1,0 +1,211 @@
+[
+  {
+    "tag_code": "rec_use",
+    "tag_name_ko": "추천 사용",
+    "tag_group": "추천사용",
+    "description": "추천 엔진에서 사용할 수 있는 문제.",
+    "usage_rule": "검수 완료 + 노출 가능 문항 중 추천 후보로 쓸 문제에 부여한다.",
+    "example_question_id": null,
+    "is_active": true,
+    "created_at": "2026-06-10 04:42:44.040313+00",
+    "updated_at": null
+  },
+  {
+    "tag_code": "rec_exclude",
+    "tag_name_ko": "추천 제외",
+    "tag_group": "추천사용",
+    "description": "추천 엔진에서 제외하는 문제.",
+    "usage_rule": "품질·중복·운영 사유로 추천 후보에서 빼야 할 때 부여한다.",
+    "example_question_id": null,
+    "is_active": true,
+    "created_at": "2026-06-10 04:42:44.040313+00",
+    "updated_at": null
+  },
+  {
+    "tag_code": "rec_wrong_answer_only",
+    "tag_name_ko": "오답 추천만 사용",
+    "tag_group": "추천사용",
+    "description": "오답 후 추천 상황에서만 사용하는 문제.",
+    "usage_rule": "일반 추천에는 부적합하지만 오답 보강용으로 유효할 때 부여한다.",
+    "example_question_id": null,
+    "is_active": true,
+    "created_at": "2026-06-10 04:42:44.040313+00",
+    "updated_at": null
+  },
+  {
+    "tag_code": "representative_question",
+    "tag_name_ko": "대표 문제",
+    "tag_group": "대표문제",
+    "description": "해당 유형을 대표하는 좋은 문제.",
+    "usage_rule": "유형 첫 노출·예시 노출 우선순위가 필요한 문제에 부여한다.",
+    "example_question_id": null,
+    "is_active": true,
+    "created_at": "2026-06-10 04:42:44.040313+00",
+    "updated_at": null
+  },
+  {
+    "tag_code": "general_question",
+    "tag_name_ko": "일반 문제",
+    "tag_group": "대표문제",
+    "description": "대표 문제가 아닌 일반 문제.",
+    "usage_rule": "기본값 성격의 값으로, 명시적 구분이 필요할 때만 부여한다.",
+    "example_question_id": null,
+    "is_active": true,
+    "created_at": "2026-06-10 04:42:44.040313+00",
+    "updated_at": null
+  },
+  {
+    "tag_code": "rec_first_entry",
+    "tag_name_ko": "첫 진입용",
+    "tag_group": "추천목적",
+    "description": "처음 진입한 학습자에게 적합한 문제.",
+    "usage_rule": "난이도가 낮고 상황이 보편적인 문제에 부여한다.",
+    "example_question_id": null,
+    "is_active": true,
+    "created_at": "2026-06-10 04:42:44.040313+00",
+    "updated_at": null
+  },
+  {
+    "tag_code": "rec_wrong_answer_retry",
+    "tag_name_ko": "오답 후 추천",
+    "tag_group": "추천목적",
+    "description": "오답 이후 보강 추천에 적합한 문제.",
+    "usage_rule": "같은 기능을 다른 상황으로 연습시키고 싶을 때 부여한다.",
+    "example_question_id": null,
+    "is_active": true,
+    "created_at": "2026-06-10 04:42:44.040313+00",
+    "updated_at": null
+  },
+  {
+    "tag_code": "rec_review_use",
+    "tag_name_ko": "복습용",
+    "tag_group": "추천목적",
+    "description": "복습 추천에 적합한 문제.",
+    "usage_rule": "학습 후 일정 기간 뒤 재노출할 가치가 있는 문제에 부여한다.",
+    "example_question_id": null,
+    "is_active": true,
+    "created_at": "2026-06-10 04:42:44.040313+00",
+    "updated_at": null
+  },
+  {
+    "tag_code": "rec_advanced_use",
+    "tag_name_ko": "심화용",
+    "tag_group": "추천목적",
+    "description": "심화 단계 추천에 적합한 문제.",
+    "usage_rule": "난이도 상위 또는 복합 기능 문제에 부여한다.",
+    "example_question_id": null,
+    "is_active": true,
+    "created_at": "2026-06-10 04:42:44.040313+00",
+    "updated_at": null
+  },
+  {
+    "tag_code": "avoid_same_situation",
+    "tag_name_ko": "같은상황주의",
+    "tag_group": "반복방지",
+    "description": "비슷한 상황 문제의 연속 노출을 피해야 하는 문제.",
+    "usage_rule": "동일 시나리오(예: 상담 시간 변경)가 많은 풀에서 부여한다.",
+    "example_question_id": null,
+    "is_active": true,
+    "created_at": "2026-06-10 04:42:44.040313+00",
+    "updated_at": null
+  },
+  {
+    "tag_code": "avoid_same_answer",
+    "tag_name_ko": "같은정답주의",
+    "tag_group": "반복방지",
+    "description": "비슷한 정답 표현의 연속 노출을 피해야 하는 문제.",
+    "usage_rule": "대표 정답 표현이 겹치는 문제군에 부여한다.",
+    "example_question_id": null,
+    "is_active": true,
+    "created_at": "2026-06-10 04:42:44.040313+00",
+    "updated_at": null
+  },
+  {
+    "tag_code": "avoid_same_data_type",
+    "tag_name_ko": "같은자료형주의",
+    "tag_group": "반복방지",
+    "description": "같은 자료 유형의 연속 노출을 피해야 하는 문제.",
+    "usage_rule": "53번 등 자료 기반 문항에서 같은 차트 유형 연속 노출을 막을 때 부여한다.",
+    "example_question_id": null,
+    "is_active": true,
+    "created_at": "2026-06-10 04:42:44.040313+00",
+    "updated_at": null
+  },
+  {
+    "tag_code": "flow_same_function",
+    "tag_name_ko": "같은 기능 반복",
+    "tag_group": "학습흐름",
+    "description": "같은 기능을 반복 연습시키는 문제.",
+    "usage_rule": "직전 학습 기능을 반복 강화할 때 부여한다.",
+    "example_question_id": null,
+    "is_active": true,
+    "created_at": "2026-06-10 04:42:44.040313+00",
+    "updated_at": null
+  },
+  {
+    "tag_code": "flow_next_step",
+    "tag_name_ko": "다음 단계",
+    "tag_group": "학습흐름",
+    "description": "다음 단계 진행에 적합한 문제.",
+    "usage_rule": "학습 흐름상 한 단계 위 난이도/기능으로 넘어갈 때 부여한다.",
+    "example_question_id": null,
+    "is_active": true,
+    "created_at": "2026-06-10 04:42:44.040313+00",
+    "updated_at": null
+  },
+  {
+    "tag_code": "ops_needs_review",
+    "tag_name_ko": "검수 필요",
+    "tag_group": "운영주의",
+    "description": "내용 재검수가 필요한 문제.",
+    "usage_rule": "노출 제외 기준 ②: 이 태그가 활성인 문항의 available 전환은 사유 입력이 필수다. 해소 전 노출을 권하지 않는다.",
+    "example_question_id": null,
+    "is_active": true,
+    "created_at": "2026-06-10 04:42:44.040313+00",
+    "updated_at": null
+  },
+  {
+    "tag_code": "ops_expression_caution",
+    "tag_name_ko": "표현 주의",
+    "tag_group": "운영주의",
+    "description": "표현·어감에 주의가 필요한 문제.",
+    "usage_rule": "노출 제외 기준 ②: 이 태그가 활성인 문항의 available 전환은 사유 입력이 필수다.",
+    "example_question_id": null,
+    "is_active": true,
+    "created_at": "2026-06-10 04:42:44.040313+00",
+    "updated_at": null
+  },
+  {
+    "tag_code": "ops_difficulty_ambiguous",
+    "tag_name_ko": "난이도 애매",
+    "tag_group": "운영주의",
+    "description": "난이도 판정이 애매한 문제.",
+    "usage_rule": "난이도 재산정 대상. available 전환 시 사유를 남긴다.",
+    "example_question_id": null,
+    "is_active": true,
+    "created_at": "2026-06-10 04:42:44.040313+00",
+    "updated_at": null
+  },
+  {
+    "tag_code": "ops_operation_excluded",
+    "tag_name_ko": "운영 제외",
+    "tag_group": "운영주의",
+    "description": "운영상 영구 제외로 결정한 문제(E3).",
+    "usage_rule": "service_status=excluded와 함께 부여해 \"일시 제외\"와 \"운영 제외\"를 구분한다(D-6). 중복 과다 문항의 excluded 권고(노출 제외 기준 ③)에도 사용한다.",
+    "example_question_id": null,
+    "is_active": true,
+    "created_at": "2026-06-10 04:42:44.040313+00",
+    "updated_at": null
+  },
+  {
+    "tag_code": "flow_basic_check",
+    "tag_name_ko": "기초 확인",
+    "tag_group": "학습흐름",
+    "description": "기초 확인 단계에 적합한 문제.",
+    "usage_rule": "학습 흐름의 진입 단계 문제에 부여한다.",
+    "example_question_id": null,
+    "is_active": true,
+    "created_at": "2026-06-10 04:42:44.040313+00",
+    "updated_at": "2026-06-11 08:07:14.258828+00"
+  }
+]

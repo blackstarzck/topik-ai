@@ -199,3 +199,12 @@
 - 모크 그룹 store에 끼워 넣지 않고 별도 섹션으로 분리한 이유: 그룹 store는 편집 가능한 인메모리 SoT인 반면 주제/태그 마스터는 Supabase 실데이터라서, 같은 표에 합치면 그룹 편집 액션이 마스터에 거짓 동작하기 때문입니다.
 - P5-3(같은 날 후속 개방): 태그 마스터 활성/비활성 토글을 추가했습니다 — 신규 감사 계약 `Target Type = AssessmentTagMaster`, `Target ID = tagCode`, 액션 `tag_master_status_changed`(§8 액션 표·`docs/specs/admin-action-log.md` 동기화 완료). 가드는 RPC가 강제하는 platform_admin(이 페이지의 메뉴 권한 `system.metadata.manage`와 별개 — 화면은 토글을 노출하고 비권한 시도는 서버 거부를 실패 알림으로 표면화)이며, 사유는 화면(ConfirmAction)·RPC 양쪽에서 필수입니다.
 - 그 외 마스터 값 편집·주제 마스터 조치는 여전히 없습니다(`SystemMetadataGroup` 감사 계약과 무관).
+## 18. 2026-06-17 보강 메모 > System 메타데이터 그룹/항목 Supabase 전환
+
+- 운영 설정 카탈로그의 그룹/항목 source는 `system_metadata_groups` + `system_metadata_group_items` Supabase 테이블이다. mock fallback은 `VITE_SYSTEM_METADATA_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`에서만 사용한다.
+- 화면 모델은 기존 `SystemMetadataGroup.items[]` 중첩 구조를 유지한다. Supabase 서비스가 groups + group_items를 조회해 중첩 매핑한다.
+- 그룹/항목 write action은 RPC 6종으로 확정됐다: `admin_save_metadata_group`, `admin_save_metadata_item`, `admin_toggle_metadata_group_status`, `admin_toggle_metadata_item_status`, `admin_delete_metadata_item`, `admin_reorder_metadata_items`.
+- 감사 action은 `metadata_group_saved`, `metadata_item_saved`, `metadata_group_status_changed`, `metadata_item_status_changed`, `metadata_item_deleted`, `metadata_items_reordered`이며 모두 `SystemMetadataGroup + groupId` target을 사용한다.
+- 항목 조치도 그룹 단위 target을 유지한다. item-level Target Type 분리는 이번 전환에서 채택하지 않았다.
+- 미확정으로 남는 항목은 PK max+1 동시성, `is_default` 단일성 정책, `admin_locations`/이력 정규화다.
+- 이 보강은 운영 설정 카탈로그 그룹/항목에 한정한다. TOPIK 쓰기 마스터 카탈로그(AssessmentMasterCatalog, `topik_writing_*`)는 기존 Supabase 계약을 유지하며 이번 전환 범위가 아니다.

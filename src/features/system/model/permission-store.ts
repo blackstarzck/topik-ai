@@ -35,6 +35,13 @@ type PermissionStore = {
   audits: PermissionAuditEvent[];
   setCurrentAdminId: (adminId: string) => void;
   setSessionAdmin: (assignment: AdminPermissionAssignment | null) => void;
+  setAdminAppRole: (payload: {
+    adminId: string;
+    appRole: string;
+    role: RoleKey;
+    reason: string;
+    changedBy: string;
+  }) => PermissionAuditEvent | null;
   grantPermissions: (payload: GrantPermissionPayload) => PermissionAuditEvent | null;
   updatePermissions: (payload: UpdatePermissionPayload) => PermissionAuditEvent | null;
   revokePermissions: (payload: RevokePermissionPayload) => PermissionAuditEvent | null;
@@ -202,6 +209,49 @@ export const usePermissionStore = create<PermissionStore>((set, get) => ({
       const others = state.admins.filter((item) => item.adminId !== assignment.adminId);
       return { admins: [assignment, ...others], currentAdminId: assignment.adminId };
     }),
+  setAdminAppRole: (payload) => {
+    const target = get().admins.find((item) => item.adminId === payload.adminId);
+    if (!target) {
+      return null;
+    }
+
+    if (target.role === payload.role) {
+      return null;
+    }
+
+    const beforePermissions = normalizePermissionKeys(target.permissions);
+    const afterPermissions = normalizePermissionKeys(getRole(payload.role)?.defaultPermissions ?? []);
+    const audit: PermissionAuditEvent = {
+      id: `AL-PERM-${String(get().audits.length + 1).padStart(5, '0')}`,
+      targetType: 'AdminAccount',
+      targetId: payload.adminId,
+      action: '관리자 등급 변경',
+      reason: payload.reason.trim(),
+      changedBy: payload.changedBy,
+      beforeRole: target.role,
+      afterRole: payload.role,
+      beforePermissions,
+      afterPermissions,
+      createdAt: formatNow()
+    };
+
+    set((state) => ({
+      admins: state.admins.map((item) =>
+        item.adminId === payload.adminId
+          ? {
+              ...item,
+              role: payload.role,
+              permissions: afterPermissions,
+              updatedAt: audit.createdAt,
+              updatedBy: payload.changedBy
+            }
+          : item
+      ),
+      audits: [audit, ...state.audits]
+    }));
+
+    return audit;
+  },
   grantPermissions: (payload) => {
     const target = get().admins.find((item) => item.adminId === payload.adminId);
     if (!target) {

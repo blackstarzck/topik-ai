@@ -76,6 +76,12 @@ const menuConfig: MenuNode[] = [
         label: adminMenuLabels.usersReferrals,
         to: '/users/referrals',
         permissionKeys: ['users.referrals.manage']
+      },
+      {
+        key: '/users/institution-codes',
+        label: adminMenuLabels.usersInstitutionCodes,
+        to: '/users/institution-codes',
+        permissionKeys: ['users.institution-codes.manage']
       }
     ]
   },
@@ -218,12 +224,6 @@ const menuConfig: MenuNode[] = [
         key: '/assessment/question-bank',
         label: adminMenuLabels.assessmentQuestionBank,
         to: '/assessment/question-bank',
-        permissionKeys: ['assessment.question-bank.manage']
-      },
-      {
-        key: '/assessment/question-bank/manage',
-        label: adminMenuLabels.assessmentQuestionManage,
-        to: '/assessment/question-bank/manage',
         permissionKeys: ['assessment.question-bank.manage']
       },
       {
@@ -390,6 +390,9 @@ function resolveSelectedKey(pathname: string): string {
   if (pathname.startsWith('/users/referrals')) {
     return '/users/referrals';
   }
+  if (pathname.startsWith('/users/institution-codes')) {
+    return '/users/institution-codes';
+  }
   if (pathname === '/users' || pathname.startsWith('/users/')) {
     return '/users';
   }
@@ -447,9 +450,7 @@ function resolveSelectedKey(pathname: string): string {
   if (pathname.startsWith('/assessment/question-bank/eps-topik')) {
     return '/assessment/question-bank/eps-topik';
   }
-  if (pathname.startsWith('/assessment/question-bank/manage')) {
-    return '/assessment/question-bank/manage';
-  }
+  // 통합 후: /question-bank·/imported·/:questionId 모두 단일 "TOPIK 쓰기 문항" 메뉴를 활성화.
   if (pathname.startsWith('/assessment/question-bank')) {
     return '/assessment/question-bank';
   }
@@ -510,9 +511,6 @@ function resolveOpenKeys(selectedKey: string): string[] {
   }
   if (selectedKey.startsWith('/commerce')) {
     return ['/commerce'];
-  }
-  if (selectedKey.startsWith('/assessment/question-bank/')) {
-    return ['/assessment', '/assessment/question-bank'];
   }
   if (selectedKey.startsWith('/assessment')) {
     return ['/assessment'];

@@ -164,6 +164,15 @@ export function parseMessageTemplateMode(value: string | null): MessageTemplateM
   return value === 'manual' ? 'manual' : 'auto';
 }
 
+// 인앱/푸시 알림은 클릭 시 앱 내부 경로로 이동하므로 이동 경로(link_url)를
+// 설정할 수 있어야 한다. supabase 모드는 계약상 전 채널에서 노출(기존 동작 유지).
+// 메일은 본문 링크를 쓰므로 mock 모드에서는 노출하지 않는다.
+export function shouldShowNotificationLink(channel: MessageChannel): boolean {
+  return (
+    messageDataSource === 'supabase' || channel === 'in_app' || channel === 'push'
+  );
+}
+
 export function getMessageChannelMeta(channel: MessageChannel): MessageChannelMeta {
   if (channel === 'mail') {
     return {
@@ -209,7 +218,9 @@ export function createTemplateMetaDefaults(
     subject: '',
     targetGroupIds: groups.slice(0, 1).map((group) => group.id),
     status: mode === 'auto' ? '활성' : '초안',
-    triggerLabel: mode === 'auto' ? '이벤트 발생 직후' : undefined
+    triggerLabel: mode === 'auto' ? '이벤트 발생 직후' : undefined,
+    // 인앱/푸시는 mock 모드에서도 이동 경로 입력칸을 노출하므로 기본값을 둔다.
+    ...(shouldShowNotificationLink(channel) ? { linkUrl: '' } : {})
   };
 
   if (messageDataSource !== 'supabase') {
@@ -327,6 +338,7 @@ export function MessageTemplateFormFields({
     form
   );
   const isMarketingClass = watchedTemplateClass === 'marketing';
+  const showLinkUrl = shouldShowNotificationLink(channel);
 
   // marketing 전환 시 mandatory 강제 해제 — DB CHECK(marketing+mandatory 차단) 선반영.
   useEffect(() => {
@@ -373,13 +385,23 @@ export function MessageTemplateFormFields({
                   <MandatoryToggle disabled={isMarketingClass} />
                 </Form.Item>
               )
-            },
+            }
+          ] satisfies DescriptionsProps['items'])
+        : []),
+      // 알림 클릭 시 이동 경로(link_url) — 인앱/푸시는 모든 모드에서 노출.
+      ...(showLinkUrl
+        ? ([
             {
               key: 'linkUrl',
               label: '이동 경로',
+              span: 2,
               children: (
-                <Form.Item name="linkUrl" style={{ marginBottom: 0 }}>
-                  <Input placeholder="예: /dashboard (인앱 알림 클릭 이동 경로)" />
+                <Form.Item
+                  name="linkUrl"
+                  style={{ marginBottom: 0 }}
+                  extra="알림을 클릭하면 앱 내부의 이 경로로 이동합니다. 비워두면 앱 기본 화면으로 이동합니다."
+                >
+                  <Input placeholder="예: /dashboard, /notice/123, /community/posts/45" />
                 </Form.Item>
               )
             }
@@ -445,12 +467,8 @@ export function MessageTemplateFormFields({
         label: '요약',
         span: 2,
         children: (
-          <Form.Item
-            name="summary"
-            style={{ marginBottom: 0 }}
-            rules={[{ required: true, message: '운영 요약을 입력하세요.' }]}
-          >
-            <Input placeholder="운영자가 한눈에 파악할 수 있는 요약을 입력하세요." />
+          <Form.Item name="summary" style={{ marginBottom: 0 }}>
+            <Input placeholder="(선택) 운영자가 한눈에 파악할 수 있는 요약을 입력하세요." />
           </Form.Item>
         )
       },
@@ -476,10 +494,11 @@ export function MessageTemplateFormFields({
           <Form.Item
             name="targetGroupIds"
             style={{ marginBottom: 0 }}
-            rules={[{ required: true, message: '발송 그룹을 1개 이상 선택하세요.' }]}
+            extra="(선택) 비워두면 실제 발송 단계에서 그룹을 선택합니다."
           >
             <Select
               mode="multiple"
+              allowClear
               options={groups.map((group) => ({
                 label: `${group.name} (${group.memberCount.toLocaleString()}명)`,
                 value: group.id
@@ -568,9 +587,7 @@ export function MessageTemplateFormFields({
           'category',
           'status',
           'name',
-          'summary',
           'subject',
-          'targetGroupIds',
           ...(mode === 'auto' ? ['triggerLabel'] : []),
           ...(showBodyHtml ? ['bodyHtml'] : []),
           ...(showBodyHtml && showJsonBody ? ['bodyJson'] : []),
@@ -618,12 +635,8 @@ export function MessageTemplateFormFields({
         <Input placeholder={`${meta.title} 템플릿명을 입력하세요.`} />
       </Form.Item>
 
-      <Form.Item
-        label="요약"
-        name="summary"
-        rules={[{ required: true, message: '운영 요약을 입력하세요.' }]}
-      >
-        <Input placeholder="운영자가 한눈에 파악할 수 있는 요약을 입력하세요." />
+      <Form.Item label="요약" name="summary">
+        <Input placeholder="(선택) 운영자가 한눈에 파악할 수 있는 요약을 입력하세요." />
       </Form.Item>
 
       <Form.Item
@@ -637,10 +650,11 @@ export function MessageTemplateFormFields({
       <Form.Item
         label="발송 그룹"
         name="targetGroupIds"
-        rules={[{ required: true, message: '발송 그룹을 1개 이상 선택하세요.' }]}
+        extra="(선택) 비워두면 실제 발송 단계에서 그룹을 선택합니다."
       >
         <Select
           mode="multiple"
+          allowClear
           options={groups.map((group) => ({
             label: `${group.name} (${group.memberCount.toLocaleString()}명)`,
             value: group.id

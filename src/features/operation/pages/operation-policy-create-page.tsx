@@ -950,6 +950,7 @@ export default function OperationPolicyCreatePage(): JSX.Element {
 
     const result = await savePolicySafe({
       id: isEdit ? policyState.data?.id : undefined,
+      mode: editorMode,
       category: values.category,
       policyType: values.policyType,
       title: normalizeOptionalText(values.title),

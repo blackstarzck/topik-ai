@@ -1,0 +1,60 @@
+[
+  {
+    "id": "85e0a5f2-00a8-4877-b41a-ff1c1313487f",
+    "name": "알림 E2E 검증 그룹",
+    "description": "",
+    "definition_type": "static",
+    "builder_mode": "simple",
+    "channels": [
+      "email",
+      "push"
+    ],
+    "member_count": 2,
+    "rule_summary": "정적 대상 2명",
+    "filters": {},
+    "query_config": null,
+    "static_member_ids": [
+      "e6369b1d-e091-40d2-8a91-66328cf9f235",
+      "434e7936-f4ea-4c53-b774-0caf4a41397a"
+    ],
+    "status": "active",
+    "last_calculated_at": "2026-06-12 10:37:45.188975+00",
+    "updated_by": "5a16831a-bafd-454c-9abf-cdec388f885c",
+    "created_at": "2026-06-12 10:37:45.188975+00",
+    "updated_at": "2026-06-12 10:37:45.188975+00"
+  },
+  {
+    "id": "63b5a30d-4ac3-4f2d-9a7c-44a34d0b5be7",
+    "name": "전체 활성 사용자",
+    "description": "약관 변경 등 전체 공지 대상(활성 회원 전원, 발송 시 스냅샷).",
+    "definition_type": "static",
+    "builder_mode": "simple",
+    "channels": [
+      "in_app",
+      "email"
+    ],
+    "member_count": 12,
+    "rule_summary": "활성 회원 전체",
+    "filters": {},
+    "query_config": null,
+    "static_member_ids": [
+      "e9c4338a-87b6-4a40-bdba-e4d60c2262a1",
+      "438a5c75-6d9c-499f-b0f5-af3d3a5554f6",
+      "f78e8a56-5649-4ec8-b319-e13e467bc94e",
+      "47139ff2-2b82-4b17-ac7d-d13b3be5e3c1",
+      "70fb911d-a14a-4035-8d0c-568dfb7f1ed1",
+      "b6f93084-b14e-4f70-8b14-17d4b5303063",
+      "611240f6-7b4f-4604-8338-c9e3db2cd6b2",
+      "1af910db-dc7d-4d3d-9fd1-7bd422c763f2",
+      "904ddcd0-2f6b-4a7c-8c1a-9e30390cf97f",
+      "112a6b57-9564-4990-8bf3-6b536d622008",
+      "2b329e99-587b-4042-9a51-6da6fe4a5c7f",
+      "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1"
+    ],
+    "status": "active",
+    "last_calculated_at": "2026-06-22 05:12:47.025608+00",
+    "updated_by": "2b329e99-587b-4042-9a51-6da6fe4a5c7f",
+    "created_at": "2026-06-22 01:45:16.969679+00",
+    "updated_at": "2026-06-22 05:12:47.025608+00"
+  }
+]

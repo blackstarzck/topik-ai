@@ -1,0 +1,3349 @@
+[
+  {
+    "id": "6ec12e42-bb38-4a6a-9f6f-3942ff369a2f",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-20 14:13:29.669275+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "cc56c482-0845-4d44-a632-a8df3c2b531f",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-20 14:13:29.709646+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "30c967af-ddae-4d91-bf23-248fa4192656",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-20 14:17:56.722799+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "9799d4f5-997f-48d5-bd5e-ad21413a3f55",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-20 14:17:56.720814+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "3d678753-4781-4522-a388-79311d25f8ba",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 02:07:27.979316+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "4e9c0f34-66b8-440d-976a-a76c774de3b2",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 02:07:44.019416+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "99fbd164-1f34-4e14-af07-088551f04386",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 02:08:21.619001+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "42cf8e65-9377-4340-b934-5a0ee735f4f7",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-21 02:08:23.798748+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 45,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "d58c0b5b-e967-476b-a977-32f1c04976c0",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 02:25:50.107518+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "e99a5466-97f9-41e0-a400-fe57b4339967",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-21 02:25:52.459671+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 86,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "7cbf7e7f-e514-4a5c-a9f3-d55e4a6247c9",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 02:27:29.406624+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "3b410482-3966-4320-ba7c-a9777c1aeb40",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 02:33:06.041981+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "386505a6-82ca-485d-8beb-3cda5b48d4db",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 02:42:12.924058+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "727e0bca-006b-48c8-aa8e-4caf70895f12",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 11:44:16.765961+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 54
+    }
+  },
+  {
+    "id": "e1c7aa49-b9ac-4994-9b53-18063cc07429",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 11:44:16.765698+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 54
+    }
+  },
+  {
+    "id": "cd6e7a91-f5ff-4b37-8e85-b71bca491844",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 14:48:32.01705+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "736760b8-1749-4bdb-bd43-8479867fa6f5",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 14:59:54.099827+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 120,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "39963267-892f-43ed-8510-25020886b689",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 14:59:58.213813+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 120,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "01d2181f-6fd4-4552-9b9f-9f663de8294a",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:00:02.881376+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "6705daad-8053-44fb-9e56-7c31d3533fbc",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 15:00:03.298245+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 119,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "ed9863c5-061e-43f5-877b-d78b42cdcffb",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:00:07.032211+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "e39c092c-fbb1-4474-947c-c68cfc7ce5e6",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 15:00:07.483759+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 119,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "cd54be86-1d20-449e-bc29-5fa2ee86ed8b",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:03:34.482174+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "fdd54295-b881-415e-9447-9fb0434fb2b2",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:04:55.323147+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "188dd6cf-68ee-4dea-9fca-aaec81f0942b",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:05:23.605393+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "4e32c774-d538-4d7d-b132-59a4d60e480a",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 15:05:25.243933+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 120,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "493327a3-ed2c-414d-8a66-aa88005ed843",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:05:29.913894+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "fdbfc4e9-98f3-4003-90d9-7efd7e046a0e",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 15:05:31.478534+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 119,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "e053100a-532f-4002-ba01-b29b6da85585",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:12:54.066977+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "b5323635-e690-4615-9691-c6d0db8156af",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:12:54.06746+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "0772adda-6495-4ced-87d7-0c5ba38cb124",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-21 15:12:58.092788+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 26,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "3373de4f-ab6f-4581-b1ba-efed613bb83f",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:25:14.161581+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "1db0a1cd-1f06-479c-9118-494fdbc13613",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:27:14.346318+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "a4e1c6d9-dd4e-4617-9d6e-40260a4acf49",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-21 15:27:17.329579+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 24,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "227e9c31-7984-436d-95fd-805d26295636",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:29:00.927778+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "2af41452-e140-4d14-806b-490a3107402e",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:30:40.376836+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "75babac7-e09f-4918-a01d-4d64bceb1c7c",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-21 15:30:43.289622+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 24,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "c126a4c8-5e0c-40a3-bdab-1b629afe94f7",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:31:01.808077+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "59d38c22-11a5-46ab-ac8b-6948f53bdecb",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-21 15:31:04.672982+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 78,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "8ad20f01-cf6c-4310-a577-f58314d71edb",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:31:07.067242+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "6fd71269-0e31-446a-aedd-9051f2fdd0d6",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:32:44.271553+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "a9384a8a-86d0-4ec0-b4b6-53e93d4f8ab5",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:32:48.487642+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "d49558ad-e022-49fe-bec8-9fb4c0c2c53c",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 15:32:46.514797+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 120,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "e956db24-4430-4b36-8a28-2bd3518bc895",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 15:32:50.445725+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 120,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "bf54c27e-0fdc-4a2d-8432-97cbbfc99d8f",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:32:53.871582+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "0ae12067-558f-429f-b358-5236337e44f0",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:32:58.763664+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "f2c0a0d0-422d-41d9-be74-282d0279e9ac",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 15:32:56.46909+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 120,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "3deeff7f-10b1-4b43-a547-eb7e637e4285",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 15:32:59.488359+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 119,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "08fde4a7-bbd6-489b-a2eb-98abdfb5d349",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:03:41.699902+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "78c24c62-f46c-41a9-804e-fa36de2cb70e",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:03:39.342439+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 120,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "d300ffd3-dbec-4107-b44a-825ac0818491",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:03:42.592442+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 120,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "625f1f75-df72-456c-9401-ae0aa5762dd1",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:03:51.095255+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "3b8b4de9-7ee4-4952-b520-a1cfaa70c99f",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-21 16:03:53.996697+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 120,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "71c1f4df-935d-4e37-97b1-6009efbbc687",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:03:55.877966+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "7b45c003-f40c-4d77-b13f-1482a12ec420",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:03:53.774876+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 120,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "c7479517-af5a-4351-a05c-bd9e94067d93",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:03:56.710726+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 119,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "7ac7dd7a-8500-467d-bd4d-cb93136eed64",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:20:01.600281+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "3b0e9c50-2bac-4ef0-85ec-07f4bee2586f",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:30:13.978645+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "8a7d5257-d738-4b82-8dab-b00d62b8da7f",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:38:15.143561+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "5f2ac52d-aee4-4d40-8ee5-03531da6f8df",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-21 16:38:18.061248+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 27,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "3f6ab8e7-a449-4c40-bb57-54a76136168d",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:38:31.228003+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "d8ebee7f-072b-4a0e-a0b2-47535d396eb7",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:38:35.954513+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "f4db8221-c8a3-4a08-b6af-a7aacbf50f6e",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:38:33.83183+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 120,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "df8761f4-5044-4c80-8ed3-16e73b468bd3",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:38:36.859561+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 120,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "65558148-12a3-4804-942d-506b98a52586",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:38:40.821505+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "339fd1d0-a9f2-45b9-8374-52b53ab9455d",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 21:44:29.921914+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "e2db02b1-110c-4c1b-830e-3a5fd195364b",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 21:44:33.292994+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "d48004fe-47f7-4fa7-a745-e82eaf5f7a6a",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 15:20:51.13007+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 78,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "9d6f0e42-2d48-4d7c-b2cb-6f7b80f9ae48",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:51:00.930257+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "ac8c471e-ebdb-43a1-8e7d-a6c9f36f9d50",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-21 15:51:04.174504+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 27,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "c4dcbe01-0f1b-4ada-8474-8ce5de8eb8ed",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:52:01.372975+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "5cc81dec-7574-49f7-b19f-edf79b2337c3",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:56:58.777804+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "ce4af597-d9ce-4bf5-81c3-9106af16ca89",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:57:03.877873+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "ca87d54a-e837-4b2a-8f12-192182db560e",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-21 15:57:06.728442+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 27,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "92fee289-e2d2-40c7-a15a-589ed3bd354f",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:58:32.531015+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "16873726-f0a3-4b71-bcbf-ce6a56364452",
+    "user_id": "70fb911d-a14a-4035-8d0c-568dfb7f1ed1",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-22 02:14:10.572944+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "c0e4e5f4-e87e-4d96-b793-9b96f33ec5b9",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 02:58:08.967416+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "eb05396a-4cdb-4025-995d-8f9b1d483725",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 11:41:22.170929+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "d0c7a63d-dcca-4cd6-b033-bd476b2812c7",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 11:41:22.176769+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "3fbc4374-0902-4d8e-879c-7d3c3848bacb",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 11:41:28.675643+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "0fd2ed0b-8b6f-4523-9dea-8009dbf4da83",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 11:41:28.676687+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "836ce341-f970-4e80-9325-6a8660892c21",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 14:26:26.229384+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "98358789-590b-4a8d-b2fe-fbe4ecff6e4e",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 14:26:26.229398+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "d40874e9-f648-47af-8791-ffc0d0ab226e",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-21 14:26:32.295516+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 23,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "20140bd1-2cfa-4f4f-9319-d3453ae4f8e8",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 14:44:40.080485+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "9ede5629-63a1-4f28-bfb4-3f60848f9a7c",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 14:44:40.078577+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "7a017ed1-972c-493e-aa4e-2fd85260bd42",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 14:48:14.343201+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "2077a6bf-34fa-4a55-b192-76b41598878a",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 14:59:52.458246+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "9d86185f-7e3e-4711-b1af-412eee0b4f87",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 14:59:57.774583+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "1509cf9d-6ee2-41ee-b092-1732a9ff1844",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 14:44:51.055231+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 23,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "6032f5dd-e49d-4e10-9005-7dc2262eb704",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:17:33.650895+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "4b07e5ff-a073-400a-b70e-7f87fcd637b4",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-21 15:17:36.803556+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 78,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "1a1d1e15-b0af-4784-9765-17d04913cd93",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:17:39.240266+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "661b4dcd-8f16-48c0-9dc8-205de0779fdb",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:18:48.096748+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "4ae1d78b-7f3c-4dd3-a78d-f4618c04e817",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-21 15:18:51.005102+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 25,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "88585ffc-6498-446f-a8d0-aad444419e63",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:20:43.396967+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "f63de085-5a21-4f69-a150-38b0ce9de054",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-21 15:20:46.318413+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 78,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "7793cffb-fe1c-4d79-86d3-d74d333f199f",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:20:49.051506+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "e35ac5b8-24f1-47c3-b178-0ea4451d9039",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:21:52.106527+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "67cff0c9-d444-4ceb-8d06-d29f06f0695a",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-21 15:21:55.017216+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 23,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "200cb21a-00bf-4f5b-bfea-3fe779c7fec6",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:22:31.92199+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "f2d52941-eadf-4ba9-8a87-d83e88632f3f",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:23:38.214239+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "4dfaa306-61fb-40c3-8b47-3e023d09db60",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:25:04.976584+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "bfa60f44-080f-4e2b-8534-9a193d40e4c5",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 15:25:09.875134+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "a76985a7-00cd-48ab-8d8e-751e24f3a6db",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 15:12:58.573601+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 26,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "8798fa02-3aab-4a1c-9faf-d78b1864c082",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 15:17:36.572719+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 78,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "3cda5071-b6a7-46e0-8e12-e1454daa683d",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 15:17:40.697065+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 78,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "ef4d5513-9bbd-4017-a31a-130939980419",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 15:18:50.339828+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 25,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "b71a614f-fad4-43ab-82fb-c56c35c9d855",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 15:20:45.66537+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 78,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "6f0a75d3-b46a-40fd-a563-1672592e3f56",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-21 15:58:35.399913+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 21,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "7ec3ab19-9e21-4217-82d9-05f8e65c7f3c",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:00:24.496295+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "ffcb0c5c-c006-40e2-895a-bad07fe59ffe",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-21 16:00:27.407805+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 24,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "d5b28f2f-ec21-49ff-8178-8d7c8c31cbe9",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:00:29.130739+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "a135877c-66f8-4963-9273-dabf4dbfcc53",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:03:37.660876+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "81b632f9-c790-4bde-a890-e2a91433c1c2",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 15:25:16.732153+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 78,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "80b8426d-3d30-4ea8-a67b-4f9fa743d9af",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 15:27:16.998759+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 24,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "c90bb6bc-d03e-4f98-84e7-c2df20898a40",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 15:29:02.786369+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 24,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "58f82990-339e-4810-9ab1-792cb8f2a5d8",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 15:30:43.037245+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 24,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "81b77d4e-8903-4c12-9856-6c37e1d3f3e8",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-21 16:20:04.665471+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 32,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "667edab1-56ad-4973-9735-eeed3d50230c",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:20:06.866208+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "c9fed9e3-2ef6-4129-814e-90d59eac3be6",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-21 16:20:09.746797+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 28,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "c172f915-01d7-44a4-be7c-c058809a8db9",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:20:11.575762+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "ac2c9350-f4ab-48d4-9c15-7f6d995d50e5",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:22:00.972292+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "c0bd7b47-2745-4dce-b0c7-886d0e4c3c2b",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:22:06.173506+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "ea9110f2-278e-438c-bad3-1caaf29cd82d",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-21 16:22:08.313871+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 120,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "800b5642-7946-467c-acb4-c1052781d10f",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:22:03.760494+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 120,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "0ab8405b-038c-4106-a52e-e9b6f589d35f",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:22:07.878805+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 120,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "5841f206-49ac-4f3b-af20-44a7139787c2",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:22:12.036039+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "42085f8d-32c8-4878-8440-d1e4edc0281c",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:22:13.366032+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 120,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "65ca84b8-a60c-4c61-95f2-96c6cd2b254a",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:22:24.982372+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "1d6ded8f-faff-4184-9af5-60eb257f7b44",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:22:28.309381+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "b1116ee6-b13a-4b09-95d7-351c863cdea2",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:22:26.139673+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 120,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "2fb65489-322a-4a53-b6df-b2ea34e8cf84",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:22:30.006837+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 119,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "3bac2f24-28cf-4116-847c-922042f5d1a3",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:24:38.149325+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "5dfb896e-4f43-457f-891e-b7419e08b1ce",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-21 16:24:41.063147+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 30,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "28552c68-54eb-4409-a7de-4654adc65cb1",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:28:48.261786+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "ef6a1de8-9c40-44be-9165-42442a10d50f",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:29:04.551816+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "ac2c2d81-ef02-42a3-b5c7-b98982b03429",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:29:09.595191+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "c35df71a-37bb-4bdf-b329-b110edaf3a3e",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:29:07.268502+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 120,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "85079a30-2d33-42dc-9d2a-deef35ac16f0",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:29:10.384942+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 120,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "2794de3f-99b6-4de5-b623-32564a2a476c",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:29:17.825568+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "29d53e7f-e902-4992-8295-1a94580b5846",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:29:21.098015+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "223aa317-0d7c-4b31-a97f-76c78dbb001b",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:29:18.930212+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 120,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "8159f5a7-b328-4f5a-a50c-ece70be4a185",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:29:22.816328+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 119,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "d08e7beb-c78b-47be-aa2f-80cdccd38660",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:30:05.706766+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "cddcf1c1-eb79-4fbb-b1c1-6671a1610a6b",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-21 16:30:08.753473+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 32,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "8c388323-194d-456d-9377-611449dc1874",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:30:10.324945+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "e0ca8a49-6a3b-4ae0-8e96-2ff4e9fed2f8",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:20:04.500983+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 32,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "60d4c6de-54a1-4d34-9a8e-924a21fe540d",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:20:09.1068+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 28,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "376aafe4-16c9-46e8-8e34-ddf2ef8d0fce",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:38:41.959384+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 120,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "79d16c7b-c696-4b6d-9c3f-1cadb772f885",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:38:52.381067+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "78ef4b9a-b4f0-4f1f-8948-013205b84082",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:38:55.58897+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "2917b531-314c-4787-98fa-871e45e0756c",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-21 16:38:57.679351+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 119,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "2bd14070-8ab0-4f15-bcdd-4cd576e88403",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:38:53.428236+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 120,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "838e04dc-e25f-4fa6-8285-d5a756b86a8d",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:39:04.414183+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "7b3c3f92-7a5a-4a4d-8e52-4b92c309524d",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-21 16:39:06.625949+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 119,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "fee161b2-3bf8-4c87-8b3e-be5f0add0140",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:42:40.358418+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "9314f9a7-a5b9-4d8e-b136-6f253ec635dd",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:42:44.795341+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "8e7e2431-fdd4-46ab-95fb-bd426a24c091",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:42:42.715624+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 120,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "3c08af65-fc7d-4d20-b81b-8971979431fa",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:42:45.560709+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 120,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "bd6bf084-cc4a-4c93-8971-d0727bd1ec2f",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:42:49.101873+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "3fcd7efd-c57c-47ab-a838-7bd792848358",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:42:53.049119+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "ba3d0902-d02b-465b-be4f-b6122dcefc38",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:42:50.613155+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 120,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "3be0e6ea-c23a-4070-aa04-7db9aff8dab8",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:42:54.166625+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 119,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "02a39e3b-caf9-41b0-bd89-2e5fbb1c3cac",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:55:14.562576+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "fa67bed1-91e6-4163-8b17-286db2911912",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-21 16:55:17.54295+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 42,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "d25affd0-a723-4a86-872b-3c123603a001",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:55:31.996583+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "f0011941-3cd6-4922-acdc-ca1f3017d771",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:55:36.721294+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "7e1a66bd-cd59-4a1f-a568-7b8817650452",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:55:34.684608+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 120,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "b4cf4e3e-9562-4aa6-b350-aaaa86b3a54b",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:55:37.609127+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 120,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "c45ae252-7046-4545-a04a-febb0bd14e57",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:55:40.945512+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "91543e3f-2f99-4e35-b3b8-b257fdc6d012",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:55:44.727371+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "a6d673c2-1844-4864-bd59-da38523f0b2c",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:55:42.496308+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 120,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "c7eb9ce0-f06c-4921-9041-f27f4055e10a",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:55:45.518832+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 119,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "184cc05b-bea8-46c2-8d37-f3b4e01ef35c",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 16:56:49.186485+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "eadc34f8-3b76-4e18-81d4-15253dc6e394",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-21 16:56:52.029986+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 22,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "0ba5e20f-08b2-4983-97bf-2fe4c86d2800",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 21:44:04.15876+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "40886569-1a8b-47a1-9ed0-0c6ab4925075",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-21 21:44:07.163664+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 26,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "face1ff2-c278-47f7-aedb-89ef13cb46da",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 21:44:20.58501+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "641c385a-b9c8-4e6b-9d8a-b07618e20774",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 21:44:25.715428+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "6e5050b1-70c8-49a6-9622-868212eed46c",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 21:44:23.267655+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 120,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "9e1877e7-feef-4710-bb7a-b3d593e96975",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 21:44:26.457085+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 120,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "b1513d47-63b4-4703-b4f1-7e1f7b99305d",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:55:17.541252+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 42,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "5bfcfc63-38a4-4238-b0ed-8bb783b81f54",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:56:51.606631+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 22,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "6ba1f9b2-5970-4d31-aad2-c0735da4ad68",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 21:44:31.146469+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 120,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "55d93887-481f-438b-ae3f-54e50127b24e",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 21:44:34.066799+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 119,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "55397c48-437c-4488-b7c3-a8423553d82c",
+    "user_id": "70fb911d-a14a-4035-8d0c-568dfb7f1ed1",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-22 02:14:25.877379+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 0,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "ceb277f4-fa34-4ae4-9448-f89d7d0b870b",
+    "user_id": "70fb911d-a14a-4035-8d0c-568dfb7f1ed1",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-22 02:14:54.951118+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 12,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "10be9857-4bfc-4391-b73f-ecd660214226",
+    "user_id": "70fb911d-a14a-4035-8d0c-568dfb7f1ed1",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-22 02:14:59.021576+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 12,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "7712a299-891d-4d23-a837-f07efc4d40ef",
+    "user_id": "70fb911d-a14a-4035-8d0c-568dfb7f1ed1",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-22 02:15:23.890222+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 25,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "bbcafacb-e8bd-498f-856a-96ce6620f8ce",
+    "user_id": "112a6b57-9564-4990-8bf3-6b536d622008",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-22 02:22:05.475451+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "14fc1032-3592-4661-82ba-dc4d64b8bdc2",
+    "user_id": "f78e8a56-5649-4ec8-b319-e13e467bc94e",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-22 02:32:23.337478+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "02caa112-c172-4ef1-8148-148d2c2b7636",
+    "user_id": "f78e8a56-5649-4ec8-b319-e13e467bc94e",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-22 02:32:31.55353+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 17,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "c6eb24d0-713c-4903-a5ad-5d0c2133b3f1",
+    "user_id": "438a5c75-6d9c-499f-b0f5-af3d3a5554f6",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-22 02:32:33.166126+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "c5a65429-54b7-45f2-9885-7b4fa5339a0d",
+    "user_id": "112a6b57-9564-4990-8bf3-6b536d622008",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-22 02:33:03.287381+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "b3753ab5-7596-4781-8f48-21320f52ed35",
+    "user_id": "47139ff2-2b82-4b17-ac7d-d13b3be5e3c1",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-22 02:33:12.678457+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "829a6adc-8b54-4fde-b6a2-739af6ed0a36",
+    "user_id": "47139ff2-2b82-4b17-ac7d-d13b3be5e3c1",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-22 02:34:09.977011+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "7ffaef78-c134-482e-b474-5fcf9c969dcd",
+    "user_id": "112a6b57-9564-4990-8bf3-6b536d622008",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-22 02:36:26.199757+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "58541a73-ff79-4f34-b2f5-9581e5854ce7",
+    "user_id": "112a6b57-9564-4990-8bf3-6b536d622008",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-22 02:36:26.199653+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "fab84cdc-6335-4776-97a2-3c1c5b290bd6",
+    "user_id": "112a6b57-9564-4990-8bf3-6b536d622008",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-22 02:36:31.594853+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 28,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "3c7a7df2-8343-46c9-a062-318e300f6891",
+    "user_id": "47139ff2-2b82-4b17-ac7d-d13b3be5e3c1",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-22 02:36:47.454838+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 12,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "7423fea1-25ea-4209-9218-1dfc38b0239d",
+    "user_id": "112a6b57-9564-4990-8bf3-6b536d622008",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-22 02:53:14.403078+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "8b4fec27-f0ed-458c-a177-0bf07ae68c64",
+    "user_id": "112a6b57-9564-4990-8bf3-6b536d622008",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-22 02:53:14.403348+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "b68a8225-73eb-4cb5-8193-c628e37b81ca",
+    "user_id": "112a6b57-9564-4990-8bf3-6b536d622008",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-22 02:57:23.86271+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 27,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "9f9e5023-451c-499a-8ea4-c120fa951885",
+    "user_id": "112a6b57-9564-4990-8bf3-6b536d622008",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-22 04:03:26.353096+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "37ff1b18-e4c0-486b-bf6e-3b2bbb62d33d",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 15:21:54.204609+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 23,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "7a7954a4-ffab-4aec-8171-263ce0d2a00c",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 15:22:33.716787+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 24,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "b2a30b46-e2ac-419a-9775-91e09b2a6029",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 15:23:40.581687+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 24,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "ee5658c7-9a73-434b-8460-63721addf363",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 15:25:07.441394+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 24,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "45537e4f-4ada-466e-98b1-5f2e9cc96bcd",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 15:25:11.334985+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 78,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "e07449a9-29f7-4d42-bd7c-cf475a5b1306",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 15:31:04.487655+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 78,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "6119e090-5a81-4c10-a54c-34c771c61fbb",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 15:31:08.544885+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 78,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "c691ed2e-2d49-460f-9ac2-66c79684d6e5",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 15:51:04.174778+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 27,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "28b74d4c-1736-4a20-8b1f-9f0cf2372042",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 15:52:04.012149+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 23,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "daa9b1c5-16d8-4236-97c2-900e72dbe801",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 15:57:01.442026+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 23,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "d8f8dd7e-160f-416e-8517-82a60ff3a53d",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 15:57:06.4546+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 27,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "2b66a732-f335-4a20-885c-a2adf8275b6a",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 15:58:34.761293+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 21,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "bba5c424-6f0e-46ae-ba44-c168dd986cd0",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:00:27.167189+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 24,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "72cd10a3-ac35-4527-ad48-870accec3468",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:00:30.979785+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 25,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "e9d4f238-fe5f-4976-a7b9-ca31b12c8b26",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:20:13.224342+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 29,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "e7f34ab0-6f86-4e17-8069-7956c83c88cd",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:24:40.694928+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 30,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "b289e388-fb86-47f4-aafd-5fd55265c0ba",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:28:50.672414+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 30,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "7392b17c-236f-4db0-9ee6-3501a941e9a9",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 21:44:06.97911+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 26,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "be3c2ed2-63d3-4bda-9eec-d5927e335cbe",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:30:08.514608+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 32,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "cc9b6de7-f921-467d-9931-21fc433943e5",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:30:11.858117+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 28,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "2aaeb048-e98a-428e-8493-1d7544fac82d",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:30:15.8757+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 29,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "97815d96-caed-45c6-b622-564aa216648e",
+    "user_id": "b6f93084-b14e-4f70-8b14-17d4b5303063",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 16:38:17.684139+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 27,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "e6a273ad-b4c7-4025-9364-c1f48ef92c99",
+    "user_id": "70fb911d-a14a-4035-8d0c-568dfb7f1ed1",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-22 02:16:00.022081+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 25,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "4c476a9c-9eab-400f-880a-3d1ace7c7d0a",
+    "user_id": "f78e8a56-5649-4ec8-b319-e13e467bc94e",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-22 02:32:34.879117+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 17,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "64f2ee7e-c5ac-436b-8bde-1469b2e1f544",
+    "user_id": "112a6b57-9564-4990-8bf3-6b536d622008",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-22 02:36:33.922587+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 28,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "b2edafb0-4dce-470a-bc40-1d74d391a99a",
+    "user_id": "47139ff2-2b82-4b17-ac7d-d13b3be5e3c1",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-22 02:36:51.656209+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 12,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "a6f7dff0-d4ec-4b26-adee-4016272a07c9",
+    "user_id": "112a6b57-9564-4990-8bf3-6b536d622008",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-22 02:57:25.762479+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 27,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "f42ae611-1753-49f6-bdd5-fb3df0ae150b",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 22:11:49.537423+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "c51ee43d-db8f-411f-be79-ff9b79c7c5e5",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 22:11:49.537966+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "a55cc9d0-b330-4161-92b6-28e6d98fe27f",
+    "user_id": "112a6b57-9564-4990-8bf3-6b536d622008",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-22 02:23:00.374413+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "88a07096-c972-4ce6-9267-f8591656c821",
+    "user_id": "112a6b57-9564-4990-8bf3-6b536d622008",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-22 02:23:04.726192+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 19,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "21e99fb2-c795-4e7c-8920-c2bc35c1808e",
+    "user_id": "112a6b57-9564-4990-8bf3-6b536d622008",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-22 02:23:06.365954+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 19,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "238c8803-d007-4c23-a4e3-8ac93b6fc7ff",
+    "user_id": "70fb911d-a14a-4035-8d0c-568dfb7f1ed1",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-22 02:17:28.524982+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 53
+    }
+  },
+  {
+    "id": "37ea9b15-ab79-4269-8743-c845f0a9c655",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 22:11:29.850677+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 54
+    }
+  },
+  {
+    "id": "984417ef-40cd-4b72-8fff-a77730fbc88f",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 22:11:29.851616+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 54
+    }
+  },
+  {
+    "id": "ff089264-335a-4560-81b9-9974f15b44eb",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-21 14:48:32.025998+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  },
+  {
+    "id": "a7de5b7e-b603-4303-befa-d63a6629fe04",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-21 14:48:39.296562+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 7,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "ccd7152f-1ea3-4924-864b-b818835abdc4",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-21 14:48:41.56489+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 14,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "a8aac27f-5ddb-4249-b9c5-1c39f174c206",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-21 14:48:46.482905+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 15,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "7fd255a9-1ede-472e-824f-9b7d086abcd1",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "event_type": "draft_autosaved",
+    "occurred_at": "2026-06-21 14:48:50.421671+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 15,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "0d167007-a16e-45f9-8608-20c8a50ef178",
+    "user_id": "3cc08e8f-a5ba-419c-ab38-cf4dcf9a30b1",
+    "event_type": "submission_submitted",
+    "occurred_at": "2026-06-21 14:49:07.406798+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "char_count": 15,
+      "question_no": 51
+    }
+  },
+  {
+    "id": "300e4cf0-ee22-4c22-b4a4-66cc6fb7afed",
+    "user_id": "f78e8a56-5649-4ec8-b319-e13e467bc94e",
+    "event_type": "recommendation_clicked",
+    "occurred_at": "2026-06-22 02:33:32.863501+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "source": "next"
+    }
+  },
+  {
+    "id": "09df4da5-bf04-4a98-9933-04f5942bb866",
+    "user_id": "f78e8a56-5649-4ec8-b319-e13e467bc94e",
+    "event_type": "practice_started",
+    "occurred_at": "2026-06-22 02:33:33.948315+00",
+    "problem_id": null,
+    "submission_id": null,
+    "attempt_id": null,
+    "session_id": null,
+    "payload": {
+      "question_no": 51
+    }
+  }
+]

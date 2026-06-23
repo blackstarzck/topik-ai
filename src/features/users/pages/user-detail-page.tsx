@@ -3,23 +3,51 @@ import {
   Card,
   Descriptions,
   Empty,
+  Input,
+  Modal,
   notification,
+  Select,
   Space,
   Spin,
   Table,
   Tabs,
+  Tag,
   Typography
 } from 'antd';
 import type { TableColumnsType, TabsProps } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 
-import { fetchUserByIdSafe, setUserStatusSafe } from '../api/users-service';
-import type { UserStatus, UserSummary } from '../model/types';
+import {
+  addUserMemo,
+  deleteUserMemo,
+  fetchUserByIdSafe,
+  fetchUserLearningOverviewSafe,
+  getUserActivity,
+  getUserCommunityPosts,
+  getUserLegalConsents,
+  getUserMemos,
+  getUserPayments,
+  setUserStatusSafe,
+  type UserActivityEvent,
+  type UserAdminMemo,
+  type UserCommunityPost,
+  type UserLegalConsent,
+  type UserPaymentRecord
+} from '../api/users-service';
+import {
+  assignInstitutionCodeSafe,
+  clearInstitutionCodeSafe,
+  fetchInstitutionCodesSafe
+} from '../api/institution-codes-service';
+import type { UserLearningOverview, UserStatus, UserSummary } from '../model/types';
+import type { InstitutionCode } from '../model/institution-codes-types';
 import type { AsyncState } from '../../../shared/model/async-state';
 import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
+import { usePermissionStore } from '../../system/model/permission-store';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
+import { SocialProviderTags } from '../../../shared/ui/social-provider/social-provider-tags';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
 import {
@@ -32,21 +60,30 @@ import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-m
 
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
+import { formatNationality } from '../../../shared/model/country-name';
 
 const { Text } = Typography;
 
 const emptyProfileValue = '-';
 
-const detailPaymentStatusFilterValues = ['완료', '취소', '환불'] as const;
+const detailPaymentStatusFilterValues = ['완료', '환불', '실패', '대기'] as const;
 const detailCommunityBoardFilterValues = ['자유게시판', '후기', '질문'] as const;
 const detailCommunityStatusFilterValues = ['게시', '숨김'] as const;
 
+const learningWeaknessSourceLabels: Record<string, string> = {
+  domain: '영역',
+  tag: '태그',
+  writing_dimension: '작문 영역',
+  goal: '목표'
+};
+
 type UsersDetailTabKey =
   | 'profile'
+  | 'affiliation'
+  | 'learning'
   | 'activity'
   | 'payments'
   | 'community'
-  | 'logs'
   | 'admin-memo';
 
 type PendingAction = 'suspend' | 'unsuspend' | 'withdraw' | null;
@@ -70,10 +107,11 @@ function renderProfileValue(value: string): string {
 
 const allowedTabs: readonly UsersDetailTabKey[] = [
   'profile',
+  'affiliation',
+  'learning',
   'activity',
   'payments',
   'community',
-  'logs',
   'admin-memo'
 ];
 
@@ -106,6 +144,184 @@ function buildActionMeta(
   };
 }
 
+type NotificationApi = ReturnType<typeof notification.useNotification>[0];
+
+type AffiliationTabPanelProps = {
+  userId: string;
+  affiliationCode: string;
+  affiliationLabel: string;
+  canManage: boolean;
+  notificationApi: NotificationApi;
+  onChanged: () => void;
+};
+
+// 회원 상세 > 기관 소속 탭. 읽기(회원 구분/코드/행사) + 편집(배정·변경·해제) 자체 상태로 운영.
+// 변경은 platform_admin RPC(admin_assign/clear_institution_code)로 수행하고 onChanged 로 상위 재조회.
+function AffiliationTabPanel({
+  userId,
+  affiliationCode,
+  affiliationLabel,
+  canManage,
+  notificationApi,
+  onChanged
+}: AffiliationTabPanelProps): JSX.Element {
+  const [codes, setCodes] = useState<InstitutionCode[]>([]);
+  const [selectedCode, setSelectedCode] = useState<string>('');
+  const [reason, setReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [clearOpen, setClearOpen] = useState(false);
+
+  useEffect(() => {
+    if (!canManage) {
+      return;
+    }
+    const controller = new AbortController();
+    void fetchInstitutionCodesSafe(controller.signal).then((result) => {
+      if (!controller.signal.aborted && result.ok) {
+        setCodes(result.data);
+      }
+    });
+    return () => controller.abort();
+  }, [canManage]);
+
+  // 배정/변경 피커는 활성 코드만(종료 코드 신규 배정은 RPC가 차단).
+  const activeOptions = useMemo(
+    () =>
+      codes
+        .filter((code) => code.status === '활성')
+        .map((code) => ({ value: code.code, label: `${code.label} (${code.code})` })),
+    [codes]
+  );
+
+  const handleAssign = useCallback(async () => {
+    if (!selectedCode) {
+      notificationApi.warning({ message: '배정할 기관 코드를 선택하세요.' });
+      return;
+    }
+    if (!reason.trim()) {
+      notificationApi.warning({ message: '변경 사유를 입력하세요.' });
+      return;
+    }
+    setSubmitting(true);
+    const result = await assignInstitutionCodeSafe([userId], selectedCode, reason.trim());
+    setSubmitting(false);
+    if (!result.ok) {
+      notificationApi.error({ message: '기관 소속 변경 실패', description: result.error.message });
+      return;
+    }
+    notificationApi.success({
+      message: '기관 소속 변경 완료',
+      description:
+        result.data > 0
+          ? `${selectedCode} 로 설정되었습니다.`
+          : '이미 동일한 코드라 변경 사항이 없습니다.'
+    });
+    setSelectedCode('');
+    setReason('');
+    onChanged();
+  }, [notificationApi, onChanged, reason, selectedCode, userId]);
+
+  const handleClear = useCallback(
+    async (clearReason: string) => {
+      const result = await clearInstitutionCodeSafe([userId], clearReason);
+      if (!result.ok) {
+        notificationApi.error({ message: '기관 소속 해제 실패', description: result.error.message });
+        setClearOpen(false);
+        return;
+      }
+      notificationApi.success({ message: '기관 소속 해제 완료' });
+      setClearOpen(false);
+      onChanged();
+    },
+    [notificationApi, onChanged, userId]
+  );
+
+  return (
+    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+      <Descriptions
+        bordered
+        column={1}
+        items={[
+          {
+            key: 'memberKind',
+            label: '회원 구분',
+            children: affiliationCode ? (
+              <Tag color="blue">기관 회원</Tag>
+            ) : (
+              <Tag>일반 회원</Tag>
+            )
+          },
+          {
+            key: 'affiliationCode',
+            label: '유입 코드',
+            children: renderProfileValue(affiliationCode)
+          },
+          {
+            key: 'affiliationLabel',
+            label: '기관/행사',
+            children: renderProfileValue(affiliationLabel)
+          },
+          {
+            key: 'affiliationNote',
+            label: '안내',
+            children: (
+              <Text type="secondary">
+                박람회/기관 유입 QR로 가입 시 코드가 기록됩니다. 코드의 의미는 회원 관리 ▸ 기관 코드에서 관리합니다.
+              </Text>
+            )
+          }
+        ]}
+      />
+
+      {canManage ? (
+        <Card size="small" title="기관 소속 설정">
+          <Space direction="vertical" size={12} style={{ width: '100%' }}>
+            <Select
+              value={selectedCode || undefined}
+              onChange={setSelectedCode}
+              options={activeOptions}
+              placeholder="배정/변경할 활성 코드를 선택하세요."
+              showSearch
+              optionFilterProp="label"
+              style={{ width: '100%', maxWidth: 420 }}
+            />
+            <Input.TextArea
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              rows={2}
+              placeholder="감사 기록에 남길 변경 사유를 입력하세요."
+              style={{ maxWidth: 420 }}
+            />
+            <Space>
+              <Button type="primary" loading={submitting} onClick={() => void handleAssign()}>
+                {affiliationCode ? '소속 변경' : '소속 배정'}
+              </Button>
+              {affiliationCode ? (
+                <Button danger onClick={() => setClearOpen(true)}>
+                  소속 해제
+                </Button>
+              ) : null}
+            </Space>
+          </Space>
+        </Card>
+      ) : null}
+
+      {clearOpen ? (
+        <ConfirmAction
+          open
+          title="기관 소속 해제"
+          description={`${affiliationCode} 소속을 해제합니다. 사유를 기록하세요.`}
+          targetType="Users"
+          targetId={userId}
+          confirmText="해제 실행"
+          onCancel={() => setClearOpen(false)}
+          onConfirm={handleClear}
+        />
+      ) : null}
+    </Space>
+  );
+}
+
 export default function UserDetailPage(): JSX.Element {
   const { userId = '' } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -120,6 +336,36 @@ export default function UserDetailPage(): JSX.Element {
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [detailModalState, setDetailModalState] = useState<DetailModalState>(null);
   const [currentStatus, setCurrentStatus] = useState<UserStatus>('정상');
+  const [communityPosts, setCommunityPosts] = useState<UserCommunityPost[]>([]);
+  const [adminMemos, setAdminMemos] = useState<UserAdminMemo[]>([]);
+  const [userActivity, setUserActivity] = useState<UserActivityEvent[]>([]);
+  const [userPayments, setUserPayments] = useState<UserPaymentRecord[]>([]);
+  const [legalConsents, setLegalConsents] = useState<UserLegalConsent[]>([]);
+  const [memoModalOpen, setMemoModalOpen] = useState(false);
+  const [memoContent, setMemoContent] = useState('');
+  const [memoReason, setMemoReason] = useState('');
+  const [memoSubmitting, setMemoSubmitting] = useState(false);
+  const [memoToDelete, setMemoToDelete] = useState<UserAdminMemo | null>(null);
+  const [learningState, setLearningState] = useState<AsyncState<UserLearningOverview | null>>({
+    status: 'pending',
+    data: null,
+    errorMessage: null,
+    errorCode: null
+  });
+  // 기관 소속 변경 후 회원 정보를 재조회하기 위한 키.
+  const [userReloadKey, setUserReloadKey] = useState(0);
+
+  // 기관 코드 회원 배정/해제 권한(메뉴 게이팅과 동일 키). 미보유 시 편집 컨트롤 숨김.
+  const currentAdminId = usePermissionStore((state) => state.currentAdminId);
+  const admins = usePermissionStore((state) => state.admins);
+  const canManageInstitutionCodes = useMemo(() => {
+    const me = admins.find((item) => item.adminId === currentAdminId);
+    return me?.permissions.includes('users.institution-codes.manage') ?? false;
+  }, [admins, currentAdminId]);
+
+  const handleAffiliationChanged = useCallback(() => {
+    setUserReloadKey((prev) => prev + 1);
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -145,7 +391,7 @@ export default function UserDetailPage(): JSX.Element {
       }));
     });
     return () => controller.abort();
-  }, [userId]);
+  }, [userId, userReloadKey]);
 
   const user = userState.data ?? undefined;
 
@@ -155,6 +401,140 @@ export default function UserDetailPage(): JSX.Element {
     }
     setCurrentStatus(user.status);
   }, [user]);
+
+  // 학습 현황 탭: Supabase 모드는 실 DB(get_admin_user_learning_overview), 그 외 mock.
+  useEffect(() => {
+    const controller = new AbortController();
+    setLearningState((prev) => ({ ...prev, status: 'pending', errorMessage: null, errorCode: null }));
+    void fetchUserLearningOverviewSafe(userId, controller.signal).then((result) => {
+      if (controller.signal.aborted) {
+        return;
+      }
+      if (result.ok) {
+        setLearningState({
+          status: 'success',
+          data: result.data,
+          errorMessage: null,
+          errorCode: null
+        });
+        return;
+      }
+      setLearningState((prev) => ({
+        ...prev,
+        status: 'error',
+        errorMessage: result.error.message,
+        errorCode: result.error.code
+      }));
+    });
+    return () => controller.abort();
+  }, [userId]);
+
+  // 커뮤니티/메모 탭은 Supabase 모드에서 실 DB로 조회한다(미설정 시 mock 표시).
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      return;
+    }
+    const controller = new AbortController();
+    void getUserCommunityPosts(userId, controller.signal).then((result) => {
+      if (!controller.signal.aborted && result.ok) {
+        setCommunityPosts(result.data);
+      }
+    });
+    return () => controller.abort();
+  }, [userId]);
+
+  const reloadMemos = useCallback(() => {
+    if (!isSupabaseConfigured) {
+      return;
+    }
+    void getUserMemos(userId).then((result) => {
+      if (result.ok) {
+        setAdminMemos(result.data);
+      }
+    });
+  }, [userId]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      return;
+    }
+    const controller = new AbortController();
+    void getUserMemos(userId, controller.signal).then((result) => {
+      if (!controller.signal.aborted && result.ok) {
+        setAdminMemos(result.data);
+      }
+    });
+    return () => controller.abort();
+  }, [userId]);
+
+  // 활동(study_events)/결제(payment_history) 탭과 약관 동의 버전은 Supabase 모드에서 admin RPC로
+  // 조회한다(미설정 시 mock 표시). 접속 로그 목록 탭은 제거됨(프로필 '최근 로그인'만 노출).
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      return;
+    }
+    const controller = new AbortController();
+    void getUserActivity(userId, controller.signal).then((result) => {
+      if (!controller.signal.aborted && result.ok) {
+        setUserActivity(result.data);
+      }
+    });
+    void getUserPayments(userId, controller.signal).then((result) => {
+      if (!controller.signal.aborted && result.ok) {
+        setUserPayments(result.data);
+      }
+    });
+    void getUserLegalConsents(userId, controller.signal).then((result) => {
+      if (!controller.signal.aborted && result.ok) {
+        setLegalConsents(result.data);
+      }
+    });
+    return () => controller.abort();
+  }, [userId]);
+
+  const handleAddMemo = useCallback(async () => {
+    const content = memoContent.trim();
+    const reason = memoReason.trim();
+    if (!content || !reason) {
+      notificationApi.warning({ message: '메모 내용과 사유를 모두 입력하세요.' });
+      return;
+    }
+    setMemoSubmitting(true);
+    const result = await addUserMemo(userId, content, reason);
+    setMemoSubmitting(false);
+    if (!result.ok) {
+      notificationApi.error({ message: '메모 추가 실패', description: result.error.message });
+      return;
+    }
+    notificationApi.success({
+      message: '관리자 메모를 추가했습니다.',
+      description: <AuditLogLink targetType="User" targetId={userId} />
+    });
+    setMemoModalOpen(false);
+    setMemoContent('');
+    setMemoReason('');
+    reloadMemos();
+  }, [memoContent, memoReason, notificationApi, reloadMemos, userId]);
+
+  const handleDeleteMemo = useCallback(
+    async (reason: string) => {
+      if (!memoToDelete) {
+        return;
+      }
+      const result = await deleteUserMemo(memoToDelete.id, reason);
+      if (!result.ok) {
+        notificationApi.error({ message: '메모 삭제 실패', description: result.error.message });
+        return;
+      }
+      notificationApi.success({
+        message: '관리자 메모를 삭제했습니다.',
+        description: <AuditLogLink targetType="User" targetId={userId} />
+      });
+      setMemoToDelete(null);
+      reloadMemos();
+    },
+    [memoToDelete, notificationApi, reloadMemos, userId]
+  );
 
   const activeTab = useMemo<UsersDetailTabKey>(() => {
     const tab = searchParams.get('tab');
@@ -237,21 +617,19 @@ export default function UserDetailPage(): JSX.Element {
     [actionMeta, notificationApi, pendingAction, user]
   );
 
-  const activityRows = useMemo(
+  const activityRows = useMemo<UserActivityEvent[]>(
     () => [
       {
         id: `${userId}-A1`,
-        type: '로그인',
-        content: 'TOPIK 웹 로그인',
-        createdAt: '2026-03-03 09:12',
-        ip: '121.133.11.42'
+        type: '문제 제출',
+        reference: 'PR 3f9a1c2b',
+        createdAt: '2026-03-03 09:12'
       },
       {
         id: `${userId}-A2`,
-        type: '게시글',
-        content: '시험 학습 질문',
-        createdAt: '2026-03-03 12:40',
-        ip: '121.133.11.42'
+        type: '작문 제출',
+        reference: 'WS 7c2d4e10',
+        createdAt: '2026-03-03 12:40'
       }
     ],
     [userId]
@@ -301,26 +679,6 @@ export default function UserDetailPage(): JSX.Element {
     [userId]
   );
 
-  const logRows = useMemo(
-    () => [
-      {
-        id: `${userId}-L1`,
-        type: '로그인',
-        ip: '121.133.11.42',
-        device: 'Windows Chrome',
-        createdAt: '2026-03-03 09:12'
-      },
-      {
-        id: `${userId}-L2`,
-        type: 'API',
-        ip: '121.133.11.42',
-        device: 'Windows Chrome',
-        createdAt: '2026-03-03 09:15'
-      }
-    ],
-    [userId]
-  );
-
   const memoRows = useMemo(
     () => [
       {
@@ -339,36 +697,31 @@ export default function UserDetailPage(): JSX.Element {
     [userId]
   );
 
+  // Supabase 모드: 실 DB 조회 결과, 그 외(mock): 위 더미 행.
+  const communityDisplay = isSupabaseConfigured ? communityPosts : communityRows;
+  const memoDisplay = isSupabaseConfigured ? adminMemos : memoRows;
+  const activityDisplay = isSupabaseConfigured ? userActivity : activityRows;
+  const paymentDisplay = isSupabaseConfigured ? userPayments : paymentRows;
+
   const activityColumns = useMemo<TableColumnsType<(typeof activityRows)[number]>>(
     () => [
       {
-        title: '활동 ID',
-        dataIndex: 'id',
-        width: 160,
-        sorter: createTextSorter((record) => record.id)
-      },
-      {
         title: '활동 유형',
         dataIndex: 'type',
-        width: 120,
+        width: 160,
         sorter: createTextSorter((record) => record.type)
       },
       {
-        title: '콘텐츠',
-        dataIndex: 'content',
-        sorter: createTextSorter((record) => record.content)
+        title: '참조',
+        dataIndex: 'reference',
+        width: 160,
+        sorter: createTextSorter((record) => record.reference)
       },
       {
         title: '활동 시각',
         dataIndex: 'createdAt',
-        width: 180,
+        width: 200,
         sorter: createTextSorter((record) => record.createdAt)
-      },
-      {
-        title: 'IP',
-        dataIndex: 'ip',
-        width: 160,
-        sorter: createTextSorter((record) => record.ip)
       }
     ],
     []
@@ -415,7 +768,7 @@ export default function UserDetailPage(): JSX.Element {
         sorter: createTextSorter((record) => record.paidAt)
       },
       {
-        title: createStatusColumnTitle('상태', ['완료', '취소', '환불']),
+        title: createStatusColumnTitle('상태', ['완료', '환불', '실패', '대기']),
         dataIndex: 'status',
         width: 100,
         ...createDefinedColumnFilterProps(
@@ -488,42 +841,6 @@ export default function UserDetailPage(): JSX.Element {
     []
   );
 
-  const logsColumns = useMemo<TableColumnsType<(typeof logRows)[number]>>(
-    () => [
-      {
-        title: '로그 ID',
-        dataIndex: 'id',
-        width: 150,
-        sorter: createTextSorter((record) => record.id)
-      },
-      {
-        title: '로그 유형',
-        dataIndex: 'type',
-        width: 120,
-        sorter: createTextSorter((record) => record.type)
-      },
-      {
-        title: 'IP',
-        dataIndex: 'ip',
-        width: 160,
-        sorter: createTextSorter((record) => record.ip)
-      },
-      {
-        title: '기기',
-        dataIndex: 'device',
-        width: 170,
-        sorter: createTextSorter((record) => record.device)
-      },
-      {
-        title: '시각',
-        dataIndex: 'createdAt',
-        width: 190,
-        sorter: createTextSorter((record) => record.createdAt)
-      }
-    ],
-    []
-  );
-
   const memoColumns = useMemo<TableColumnsType<(typeof memoRows)[number]>>(
     () => [
       {
@@ -557,10 +874,213 @@ export default function UserDetailPage(): JSX.Element {
         dataIndex: 'createdAt',
         width: 130,
         sorter: createTextSorter((record) => record.createdAt)
+      },
+      ...(isSupabaseConfigured
+        ? [
+            {
+              title: '관리자 조치',
+              key: 'actions',
+              width: 110,
+              render: (_: unknown, record: UserAdminMemo) => (
+                <Button
+                  size="small"
+                  danger
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setMemoToDelete(record);
+                  }}
+                >
+                  삭제
+                </Button>
+              )
+            }
+          ]
+        : [])
+    ],
+    []
+  );
+
+  const learningDomainColumns = useMemo<
+    TableColumnsType<UserLearningOverview['domainAccuracy'][number]>
+  >(
+    () => [
+      {
+        title: '영역',
+        dataIndex: 'domain',
+        sorter: createTextSorter((record) => record.domain)
+      },
+      {
+        title: '시도 수',
+        dataIndex: 'attempts',
+        width: 110,
+        sorter: createNumberSorter((record) => record.attempts)
+      },
+      {
+        title: '정답률',
+        dataIndex: 'correctRate',
+        width: 120,
+        sorter: createNumberSorter((record) => record.correctRate ?? -1),
+        render: (value: number | null) => (value == null ? '-' : `${value}%`)
+      },
+      {
+        title: '평균 점수',
+        dataIndex: 'averageScore',
+        width: 120,
+        sorter: createNumberSorter((record) => record.averageScore ?? -1),
+        render: (value: number | null) => (value == null ? '-' : value)
       }
     ],
     []
   );
+
+  const learningWeaknessColumns = useMemo<
+    TableColumnsType<UserLearningOverview['weaknesses'][number]>
+  >(
+    () => [
+      {
+        title: '약점',
+        dataIndex: 'label',
+        sorter: createTextSorter((record) => record.label)
+      },
+      {
+        title: '출처',
+        dataIndex: 'source',
+        width: 120,
+        render: (value: string) => learningWeaknessSourceLabels[value] ?? value
+      },
+      {
+        title: '심각도',
+        dataIndex: 'severity',
+        width: 100,
+        sorter: createNumberSorter((record) => record.severity)
+      },
+      {
+        title: '근거 수',
+        dataIndex: 'evidenceCount',
+        width: 100,
+        sorter: createNumberSorter((record) => record.evidenceCount)
+      }
+    ],
+    []
+  );
+
+  const learningAttemptColumns = useMemo<
+    TableColumnsType<UserLearningOverview['recentAttempts'][number]>
+  >(
+    () => [
+      {
+        title: '문제',
+        dataIndex: 'title',
+        sorter: createTextSorter((record) => record.title)
+      },
+      {
+        title: '영역',
+        dataIndex: 'domain',
+        width: 90,
+        sorter: createTextSorter((record) => record.domain)
+      },
+      {
+        title: '문항',
+        dataIndex: 'questionNo',
+        width: 80,
+        render: (value: number | null) => (value == null ? '-' : value)
+      },
+      {
+        title: '레벨',
+        dataIndex: 'topikLevel',
+        width: 110
+      },
+      {
+        title: '난이도',
+        dataIndex: 'difficulty',
+        width: 90
+      },
+      {
+        title: '정오',
+        dataIndex: 'isCorrect',
+        width: 90,
+        render: (value: boolean | null) => (value == null ? '-' : value ? '정답' : '오답')
+      },
+      {
+        title: '점수',
+        dataIndex: 'score',
+        width: 80,
+        render: (value: number | null) => (value == null ? '-' : value)
+      },
+      {
+        title: '소요(초)',
+        dataIndex: 'timeSpentSeconds',
+        width: 100,
+        sorter: createNumberSorter((record) => record.timeSpentSeconds)
+      },
+      {
+        title: '제출일',
+        dataIndex: 'submittedAt',
+        width: 120,
+        sorter: createTextSorter((record) => record.submittedAt)
+      }
+    ],
+    []
+  );
+
+  const learningWritingColumns = useMemo<
+    TableColumnsType<UserLearningOverview['recentWriting'][number]>
+  >(
+    () => [
+      {
+        title: '제출 ID',
+        dataIndex: 'submissionId',
+        width: 160,
+        sorter: createTextSorter((record) => record.submissionId)
+      },
+      {
+        title: '문항',
+        dataIndex: 'questionNo',
+        width: 80
+      },
+      {
+        title: '채점 상태',
+        dataIndex: 'feedbackStatus',
+        width: 120
+      },
+      {
+        title: '점수',
+        dataIndex: 'scoreTotal',
+        width: 110,
+        render: (value: number | null, record) =>
+          value == null ? '-' : `${value}/${record.scoreMax ?? '-'}`
+      },
+      {
+        title: '약점 차원',
+        dataIndex: 'weaknessDimensions',
+        render: (value: string[]) => (value && value.length ? value.join(', ') : '-')
+      },
+      {
+        title: '제출일',
+        dataIndex: 'submittedAt',
+        width: 120,
+        sorter: createTextSorter((record) => record.submittedAt)
+      }
+    ],
+    []
+  );
+
+  // 온보딩 현황(학습 현황 탭 상단 카드). 가입/약관 단계는 프로필(UserSummary)에서, 학습 목표
+  // 단계는 학습 RPC의 onboarding 블록(learning_goals)에서 파생한다.
+  const onboardingSummary = useMemo(() => {
+    const ob = learningState.data?.onboarding;
+    if (!ob) {
+      return null;
+    }
+    const consentDone = user?.termsConsentStatus === '동의 완료';
+    const statusLabel = !consentDone
+      ? '약관 동의 대기'
+      : ob.hasGoal
+        ? '완료'
+        : '학습 목표 설정 대기';
+    const statusColor = statusLabel === '완료' ? 'green' : 'orange';
+    return { ob, statusLabel, statusColor };
+  }, [learningState.data, user]);
 
   const tabs = useMemo<NonNullable<TabsProps['items']>>(
     () => [
@@ -580,6 +1100,16 @@ export default function UserDetailPage(): JSX.Element {
                   },
                   { key: 'email', label: '이메일', children: user.email },
               { key: 'nickname', label: '닉네임', children: renderProfileValue(user.nickname) },
+              {
+                key: 'nationality',
+                label: '국적',
+                children: renderProfileValue(formatNationality(user.nationalityCode))
+              },
+              {
+                key: 'socialProviders',
+                label: '소셜 로그인',
+                children: <SocialProviderTags providers={user.socialProviders} />
+              },
               { key: 'joinedAt', label: '가입일', children: user.joinedAt },
               { key: 'lastLoginAt', label: '최근 로그인', children: user.lastLoginAt },
               {
@@ -587,15 +1117,231 @@ export default function UserDetailPage(): JSX.Element {
                 label: '회원 상태',
                 children: <StatusBadge status={currentStatus} />
               },
+              {
+                key: 'emailVerification',
+                label: '이메일 인증',
+                children: <StatusBadge status={user.emailVerificationStatus} />
+              },
               { key: 'tier', label: '회원 등급', children: user.tier },
               {
                 key: 'subscriptionStatus',
                 label: '구독 상태',
                 children: user.subscriptionStatus
+              },
+              {
+                key: 'termsConsentStatus',
+                label: '약관 동의',
+                children: <StatusBadge status={user.termsConsentStatus} />
+              },
+              {
+                key: 'termsConsentAt',
+                label: '약관 동의일',
+                children: renderProfileValue(user.termsConsentAt)
+              },
+              {
+                key: 'legalConsentVersions',
+                label: '동의한 약관 버전',
+                span: 2,
+                children:
+                  legalConsents.length > 0 ? (
+                    <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                      {legalConsents.map((consent) => (
+                        <span key={consent.docType}>
+                          <Typography.Text strong>{consent.docLabel}</Typography.Text>{' '}
+                          <Tag>{consent.version}</Tag>
+                          {consent.isCurrent ? (
+                            <Tag color="green">최신</Tag>
+                          ) : (
+                            <Tag color="orange">구버전(재동의 필요)</Tag>
+                          )}{' '}
+                          <Typography.Text type="secondary">
+                            {consent.acceptedAt} · {consent.source}
+                          </Typography.Text>
+                        </span>
+                      ))}
+                    </Space>
+                  ) : (
+                    <Typography.Text type="secondary">
+                      표시할 동의 버전 정보가 없습니다.
+                    </Typography.Text>
+                  )
               }
             ]}
           />
         ) : null
+      },
+      {
+        key: 'affiliation',
+        label: '기관 소속',
+        children: user ? (
+          <AffiliationTabPanel
+            userId={userId}
+            affiliationCode={user.affiliationCode}
+            affiliationLabel={user.affiliationLabel}
+            canManage={canManageInstitutionCodes}
+            notificationApi={notificationApi}
+            onChanged={handleAffiliationChanged}
+          />
+        ) : null
+      },
+      {
+        key: 'learning',
+        label: '학습 현황',
+        children:
+          learningState.status === 'pending' ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: 32 }}>
+              <Spin />
+            </div>
+          ) : learningState.status === 'error' ? (
+            <Empty
+              description={learningState.errorMessage ?? '학습 현황을 불러오지 못했습니다.'}
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+            />
+          ) : learningState.data ? (
+            <Space direction="vertical" size={16} style={{ width: '100%' }}>
+              {onboardingSummary ? (
+                <Descriptions bordered column={2} size="small" title="온보딩 현황">
+                  <Descriptions.Item label="온보딩 상태">
+                    <Tag color={onboardingSummary.statusColor}>
+                      {onboardingSummary.statusLabel}
+                    </Tag>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="가입일">{user?.joinedAt || '-'}</Descriptions.Item>
+                  <Descriptions.Item label="약관 동의">
+                    {user ? <StatusBadge status={user.termsConsentStatus} /> : '-'}
+                    {user?.termsConsentAt ? (
+                      <Typography.Text type="secondary"> · {user.termsConsentAt}</Typography.Text>
+                    ) : null}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="학습 목표">
+                    {onboardingSummary.ob.hasGoal ? (
+                      `${onboardingSummary.ob.topikLevel || '-'} · 목표 ${
+                        onboardingSummary.ob.targetGrade ?? '-'
+                      }급`
+                    ) : (
+                      <Tag color="orange">미설정</Tag>
+                    )}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="시험 예정일">
+                    {onboardingSummary.ob.examDate || '-'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="주간 목표">
+                    {onboardingSummary.ob.weeklyGoalMinutes == null
+                      ? '-'
+                      : `${onboardingSummary.ob.weeklyGoalMinutes}분`}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="관심·약점 영역" span={2}>
+                    {onboardingSummary.ob.weakAreas.length
+                      ? onboardingSummary.ob.weakAreas.join(', ')
+                      : '-'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="목표 설정일" span={2}>
+                    {onboardingSummary.ob.goalUpdatedAt || '-'}
+                  </Descriptions.Item>
+                </Descriptions>
+              ) : null}
+
+              <Descriptions bordered column={3} size="small" title="요약">
+                <Descriptions.Item label="총 풀이 수">
+                  {learningState.data.kpis.totalAttempts}
+                </Descriptions.Item>
+                <Descriptions.Item label="정답률">
+                  {learningState.data.kpis.correctRate == null
+                    ? '-'
+                    : `${learningState.data.kpis.correctRate}%`}
+                </Descriptions.Item>
+                <Descriptions.Item label="평균 점수">
+                  {learningState.data.kpis.averageScore == null
+                    ? '-'
+                    : learningState.data.kpis.averageScore}
+                </Descriptions.Item>
+                <Descriptions.Item label="누적 학습시간">
+                  {learningState.data.kpis.totalStudyMinutes}분
+                </Descriptions.Item>
+                <Descriptions.Item label="북마크">
+                  {learningState.data.kpis.bookmarkedCount}
+                </Descriptions.Item>
+                <Descriptions.Item label="작문 제출/채점">
+                  {learningState.data.kpis.writingSubmissionCount} /{' '}
+                  {learningState.data.kpis.writingFeedbackCount}
+                </Descriptions.Item>
+                <Descriptions.Item label="연속 학습일">
+                  {learningState.data.kpis.streakDays}일
+                </Descriptions.Item>
+                <Descriptions.Item label="주간 학습(실적/목표)">
+                  {learningState.data.kpis.weeklyStudiedMinutes}분 /{' '}
+                  {learningState.data.kpis.weeklyGoalMinutes == null
+                    ? '목표 미설정'
+                    : `${learningState.data.kpis.weeklyGoalMinutes}분`}
+                </Descriptions.Item>
+                <Descriptions.Item label="최근 활동일">
+                  {learningState.data.kpis.latestActivityAt || '-'}
+                </Descriptions.Item>
+              </Descriptions>
+
+              <div>
+                <Text strong>영역별 정답률</Text>
+                <Table
+                  rowKey="domain"
+                  showSorterTooltip={false}
+                  size="small"
+                  pagination={false}
+                  style={{ marginTop: 8 }}
+                  dataSource={learningState.data.domainAccuracy}
+                  columns={learningDomainColumns}
+                />
+              </div>
+
+              <div>
+                <Text strong>약점 영역</Text>
+                <Table
+                  rowKey="label"
+                  showSorterTooltip={false}
+                  size="small"
+                  pagination={false}
+                  style={{ marginTop: 8 }}
+                  dataSource={learningState.data.weaknesses}
+                  columns={learningWeaknessColumns}
+                />
+              </div>
+
+              <div>
+                <Text strong>최근 풀이 이력</Text>
+                <Table
+                  rowKey="id"
+                  showSorterTooltip={false}
+                  size="small"
+                  pagination={false}
+                  style={{ marginTop: 8 }}
+                  dataSource={learningState.data.recentAttempts}
+                  columns={learningAttemptColumns}
+                  onRow={(record) => ({
+                    onClick: () => openDetailModal('풀이 상세', record),
+                    style: { cursor: 'pointer' }
+                  })}
+                />
+              </div>
+
+              <div>
+                <Text strong>최근 작문 채점</Text>
+                <Table
+                  rowKey="submissionId"
+                  showSorterTooltip={false}
+                  size="small"
+                  pagination={false}
+                  style={{ marginTop: 8 }}
+                  dataSource={learningState.data.recentWriting}
+                  columns={learningWritingColumns}
+                  onRow={(record) => ({
+                    onClick: () => openDetailModal('작문 채점 상세', record),
+                    style: { cursor: 'pointer' }
+                  })}
+                />
+              </div>
+            </Space>
+          ) : (
+            <Empty description="학습 데이터가 없습니다." image={Empty.PRESENTED_IMAGE_SIMPLE} />
+          )
       },
       {
         key: 'activity',
@@ -606,10 +1352,10 @@ export default function UserDetailPage(): JSX.Element {
             showSorterTooltip={false}
             size="small"
             pagination={false}
-            dataSource={activityRows}
+            dataSource={activityDisplay}
             columns={activityColumns}
             onRow={(record) => ({
-              onClick: () => openDetailModal('활동 상세 (더미)', record),
+              onClick: () => openDetailModal('활동 상세', record),
               style: { cursor: 'pointer' }
             })}
           />
@@ -624,10 +1370,10 @@ export default function UserDetailPage(): JSX.Element {
             showSorterTooltip={false}
             size="small"
             pagination={false}
-            dataSource={paymentRows}
+            dataSource={paymentDisplay}
             columns={paymentColumns}
             onRow={(record) => ({
-              onClick: () => openDetailModal('결제 상세 (더미)', record),
+              onClick: () => openDetailModal('결제 상세', record),
               style: { cursor: 'pointer' }
             })}
           />
@@ -642,28 +1388,10 @@ export default function UserDetailPage(): JSX.Element {
             showSorterTooltip={false}
             size="small"
             pagination={false}
-            dataSource={communityRows}
+            dataSource={communityDisplay}
             columns={communityColumns}
             onRow={(record) => ({
-              onClick: () => openDetailModal('커뮤니티 상세 (더미)', record),
-              style: { cursor: 'pointer' }
-            })}
-          />
-        )
-      },
-      {
-        key: 'logs',
-        label: '로그',
-        children: (
-          <Table
-            rowKey="id"
-            showSorterTooltip={false}
-            size="small"
-            pagination={false}
-            dataSource={logRows}
-            columns={logsColumns}
-            onRow={(record) => ({
-              onClick: () => openDetailModal('로그 상세 (더미)', record),
+              onClick: () => openDetailModal('커뮤니티 상세', record),
               style: { cursor: 'pointer' }
             })}
           />
@@ -673,35 +1401,53 @@ export default function UserDetailPage(): JSX.Element {
         key: 'admin-memo',
         label: '관리자 메모',
         children: (
-          <Table
-            rowKey="id"
-            showSorterTooltip={false}
-            size="small"
-            pagination={false}
-            dataSource={memoRows}
-            columns={memoColumns}
-            onRow={(record) => ({
-              onClick: () => openDetailModal('관리자 메모 상세 (더미)', record),
-              style: { cursor: 'pointer' }
-            })}
-          />
+          <Space direction="vertical" size={12} style={{ width: '100%' }}>
+            {isSupabaseConfigured ? (
+              <div style={{ textAlign: 'right' }}>
+                <Button type="primary" size="small" onClick={() => setMemoModalOpen(true)}>
+                  메모 추가
+                </Button>
+              </div>
+            ) : null}
+            <Table
+              rowKey="id"
+              showSorterTooltip={false}
+              size="small"
+              pagination={false}
+              dataSource={memoDisplay}
+              columns={memoColumns}
+              onRow={(record) => ({
+                onClick: () => openDetailModal('관리자 메모 상세', record),
+                style: { cursor: 'pointer' }
+              })}
+            />
+          </Space>
         )
       }
     ],
     [
       activityColumns,
-      activityRows,
+      activityDisplay,
+      canManageInstitutionCodes,
       communityColumns,
-      communityRows,
+      communityDisplay,
       currentStatus,
-      logRows,
-      logsColumns,
+      handleAffiliationChanged,
+      learningAttemptColumns,
+      learningDomainColumns,
+      learningState,
+      learningWeaknessColumns,
+      learningWritingColumns,
+      legalConsents,
       memoColumns,
-      memoRows,
+      memoDisplay,
+      notificationApi,
+      onboardingSummary,
       paymentColumns,
-      paymentRows,
+      paymentDisplay,
       openDetailModal,
-      user
+      user,
+      userId
     ]
   );
 
@@ -783,12 +1529,49 @@ export default function UserDetailPage(): JSX.Element {
           onConfirm={handleConfirmAction}
         />
       ) : null}
+      {memoToDelete ? (
+        <ConfirmAction
+          open
+          title="관리자 메모 삭제"
+          description="이 관리자 메모를 삭제합니다. 삭제 내역은 감사 로그에 기록됩니다."
+          confirmText="삭제"
+          targetType="User"
+          targetId={userId}
+          onCancel={() => setMemoToDelete(null)}
+          onConfirm={handleDeleteMemo}
+        />
+      ) : null}
       <TableRowDetailModal
         open={Boolean(detailModalState)}
         title={detailModalState?.title ?? ''}
         record={detailModalState?.record ?? null}
         onClose={closeDetailModal}
       />
+
+      <Modal
+        open={memoModalOpen}
+        title="관리자 메모 추가"
+        okText="추가"
+        cancelText="취소"
+        confirmLoading={memoSubmitting}
+        onOk={() => void handleAddMemo()}
+        onCancel={() => setMemoModalOpen(false)}
+        destroyOnHidden
+      >
+        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          <Input.TextArea
+            rows={4}
+            value={memoContent}
+            onChange={(event) => setMemoContent(event.target.value)}
+            placeholder="메모 내용을 입력하세요."
+          />
+          <Input
+            value={memoReason}
+            onChange={(event) => setMemoReason(event.target.value)}
+            placeholder="사유/근거 (감사 로그에 기록됩니다)"
+          />
+        </Space>
+      </Modal>
     </div>
   );
 }

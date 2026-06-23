@@ -12,6 +12,28 @@ export type AssessmentQuestionNumber = '51' | '52' | '53' | '54';
 export type AssessmentServiceStatus = 'available' | 'excluded' | 'internal_test';
 
 /**
+ * 운영 조치 일괄 처리 결과 — `admin_bulk_set_writing_question_service_status`
+ * RPC 반환(jsonb)을 camelCase로 매핑한 모델. 변경/무변경/차단/실패를 분리해
+ * 부분 성공을 화면에 정직하게 보고한다(검수 게이트가 없는 노출 경로의 서버측
+ * 차단 결과 포함). batchId는 같은 일괄 작업의 감사 행을 묶는 추적 키다.
+ */
+export type BulkServiceStatusDetail = {
+  questionId: string;
+  kind: 'blocked' | 'failed';
+  message: string;
+};
+
+export type BulkServiceStatusResult = {
+  total: number;
+  changed: number;
+  unchanged: number;
+  blocked: number;
+  failed: number;
+  details: BulkServiceStatusDetail[];
+  batchId: string;
+};
+
+/**
  * 목록 행 — `topik_writing_question_recommendation_view`의 16컬럼과 1:1.
  * serviceStatus가 null이면 소스가 없는 legacy 행이다('미지정' 표시).
  */

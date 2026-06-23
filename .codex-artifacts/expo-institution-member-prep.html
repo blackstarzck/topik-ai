@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>박람회 기관 회원 — 준비 정리</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#ffffff; --ink:#1d2430; --muted:#5d6675; --line:#e6e9ef;
+    --now:#1f9d61; --now-bg:#e9f7f0; --now-line:#bfe6d3;
+    --later:#8a93a3; --later-bg:#f1f3f6; --later-line:#dfe3ea;
+    --open:#c9820a; --open-bg:#fdf4e3; --open-line:#f0dcae;
+    --accent:#2f6df0; --accent-bg:#eaf1ff;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic","Apple SD Gothic Neo",Roboto,sans-serif;
+    line-height:1.6; -webkit-text-size-adjust:100%;
+  }
+  .wrap{max-width:880px; margin:0 auto; padding:32px 20px 72px}
+  header.top{margin-bottom:8px}
+  .kicker{font-size:13px; font-weight:600; color:var(--accent); letter-spacing:.02em; margin:0 0 6px}
+  h1{font-size:27px; line-height:1.25; margin:0 0 10px; letter-spacing:-.01em}
+  .lead{font-size:16px; color:var(--muted); margin:0}
+  .meta{font-size:12.5px; color:var(--later); margin-top:10px}
+
+  .summary{
+    background:var(--accent-bg); border:1px solid #cfe0ff; border-radius:14px;
+    padding:18px 20px; margin:22px 0 8px; font-size:15.5px;
+  }
+  .summary b{color:var(--ink)}
+
+  section{margin-top:30px}
+  h2{font-size:19px; margin:0 0 4px; letter-spacing:-.01em; display:flex; align-items:center; gap:9px}
+  h2 .dot{width:11px;height:11px;border-radius:50%;flex:0 0 auto}
+  .sub{font-size:13.5px; color:var(--muted); margin:0 0 14px}
+
+  .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:6px 4px}
+  .row{display:flex; gap:13px; padding:13px 17px; border-top:1px solid var(--line); align-items:flex-start}
+  .row:first-child{border-top:none}
+  .row .ic{flex:0 0 auto; width:22px; height:22px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; margin-top:1px}
+  .row .body{min-width:0}
+  .row .t{font-weight:600; font-size:15px; margin:0}
+  .row .d{font-size:13.5px; color:var(--muted); margin:3px 0 0}
+
+  .ic.now{background:var(--now-bg); color:var(--now)}
+  .ic.later{background:var(--later-bg); color:var(--later)}
+  .ic.open{background:var(--open-bg); color:var(--open)}
+  .dot.now{background:var(--now)} .dot.later{background:var(--later)} .dot.open{background:var(--open)}
+
+  .pill{display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px; vertical-align:middle}
+  .pill.now{background:var(--now-bg); color:var(--now); border:1px solid var(--now-line)}
+  .pill.later{background:var(--later-bg); color:var(--later); border:1px solid var(--later-line)}
+  .pill.open{background:var(--open-bg); color:var(--open); border:1px solid var(--open-line)}
+
+  .callout{border-radius:13px; padding:15px 18px; font-size:14.5px}
+  .callout.fact{background:#f0f9f4; border:1px solid var(--now-line); margin-top:14px}
+  .callout.star{background:var(--open-bg); border:1px solid var(--open-line); margin-bottom:14px}
+  .callout .h{font-weight:700; margin:0 0 5px; display:flex; gap:7px; align-items:center}
+  .callout p{margin:6px 0 0; color:var(--muted)}
+  .callout p b{color:var(--ink)}
+
+  .where{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+  .where .box{background:var(--card); border:1px solid var(--line); border-radius:13px; padding:15px 17px}
+  .where .box h3{margin:0 0 4px; font-size:15px}
+  .where .box p{margin:0; font-size:13.5px; color:var(--muted)}
+  .where .box .tag{font-size:11.5px; font-weight:700; color:var(--accent); display:block; margin-bottom:6px}
+
+  ol.decide{counter-reset:d; list-style:none; padding:0; margin:0}
+  ol.decide li{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:13px 16px 13px 50px; position:relative; margin-bottom:10px}
+  ol.decide li::before{counter-increment:d; content:counter(d); position:absolute; left:15px; top:13px; width:23px; height:23px; background:var(--open-bg); color:var(--open); border:1px solid var(--open-line); border-radius:50%; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center}
+  ol.decide .q{font-weight:600; font-size:14.5px}
+  ol.decide .hint{font-size:13px; color:var(--muted); margin-top:3px}
+  ol.decide li.key{border-color:var(--open-line); background:var(--open-bg)}
+
+  .foot{margin-top:34px; padding-top:18px; border-top:1px solid var(--line); font-size:13px; color:var(--later)}
+  .legend{display:flex; flex-wrap:wrap; gap:14px; margin:18px 0 0; font-size:12.5px; color:var(--muted)}
+  .legend span{display:inline-flex; align-items:center; gap:6px}
+  .legend i{width:9px;height:9px;border-radius:50%}
+
+  @media (max-width:560px){
+    h1{font-size:23px}
+    .where{grid-template-columns:1fr}
+    .wrap{padding:24px 15px 56px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <p class="kicker">준비 정리 · 논의용</p>
+    <h1>박람회 QR 가입 — 기관 회원 어디까지 준비할까</h1>
+    <p class="lead">박람회에서 QR로 들어오는 손님을 <b>기관 회원</b>으로 받습니다. 지금 무엇을 만들고, 무엇을 미루고, 무엇을 팀이 정해야 하는지 한눈에 정리한 문서입니다.</p>
+    <p class="meta">상태: 초안 · "정할 것"은 아직 팀에서 합의 안 된 항목</p>
+  </header>
+
+  <div class="summary">
+    <b>한 줄 요약 —</b> 지금은 <b>"이 사람은 박람회로 들어온 기관 회원"이라는 표시만 남기는 것</b>까지 만들면 됩니다.
+    콘텐츠는 어차피 지금 다 열려 있어서 "전부 준다"에 손댈 게 없고, 권한을 조절하는 기능은 빼는 게 맞습니다.
+  </div>
+
+  <div class="legend">
+    <span><i style="background:var(--now)"></i> 지금 만들 것</span>
+    <span><i style="background:var(--later)"></i> 지금은 안 만들 것</span>
+    <span><i style="background:var(--open)"></i> 팀이 정할 것</span>
+  </div>
+
+  <!-- 상황 -->
+  <section>
+    <h2><span class="dot" style="background:var(--accent)"></span>지금 상황</h2>
+    <div class="card">
+      <div class="row"><div class="ic" style="background:var(--accent-bg);color:var(--accent)">1</div><div class="body"><p class="t">박람회에서 QR로 회원가입을 받는다</p></div></div>
+      <div class="row"><div class="ic" style="background:var(--accent-bg);color:var(--accent)">2</div><div class="body"><p class="t">이 손님들을 기관 회원으로 받고, 나중에 "누가 박람회에서 왔는지" 알아볼 수 있어야 한다</p></div></div>
+      <div class="row"><div class="ic" style="background:var(--accent-bg);color:var(--accent)">3</div><div class="body"><p class="t">기관 회원에게는 콘텐츠를 전부 열어준다. 단, 권한을 조절하는 기능은 지금 만들지 않는다</p></div></div>
+    </div>
+
+    <div class="callout fact">
+      <p class="h">✅ 코드에서 확인한 사실</p>
+      <p>지금 사용자 앱에는 요금제를 보여주는 화면은 있지만 <b>결제 기능이 아직 연결돼 있지 않습니다</b>(아무도 돈을 낼 수 없는 상태). 로그인한 회원이 "여긴 유료라 못 봐요"로 막히는 장치도 없습니다.
+      → <b>지금은 모든 회원이 콘텐츠를 다 보고 있는 상태</b>라, "전부 준다"를 위해 추가로 만들 게 사실상 없습니다.</p>
+    </div>
+  </section>
+
+  <!-- 지금 만들 것 -->
+  <section>
+    <h2><span class="dot now"></span>지금 만들 것 <span class="pill now">박람회 필수</span></h2>
+    <p class="sub">박람회 추적에 꼭 필요하고, 나중에 무슨 결정이 나도 그대로 쓸 수 있는 것들.</p>
+    <div class="card">
+      <div class="row"><div class="ic now">✓</div><div class="body"><p class="t">QR 주소 안에 "어느 박람회에서 왔는지" 담기</p><p class="d">QR을 찍어 들어온 가입 화면이 출처를 알고 있게 한다.</p></div></div>
+      <div class="row"><div class="ic now">✓</div><div class="body"><p class="t">가입 시 "기관 회원" 표시 + 그 박람회(기관)에 소속시키기</p><p class="d">가입이 끝나면 회원 정보에 신분과 소속이 함께 저장된다.</p></div></div>
+      <div class="row"><div class="ic now">⚠</div><div class="body"><p class="t">구글 계정 가입 시 표시가 사라지지 않게 처리 <span class="pill now">놓치기 쉬움</span></p><p class="d">구글로 가입하면 출처가 도중에 사라진다. 잠깐 따로 기억해뒀다가 가입 직후 붙여줘야 한다. (이메일 가입은 지금 이름 저장 방식 그대로라 문제없음)</p></div></div>
+      <div class="row"><div class="ic now">✓</div><div class="body"><p class="t">관리자 화면: "박람회로 들어온 회원 = 몇 명, 누구, 언제" 목록</p><p class="d">출처별로 가입자를 보고 셀 수 있는 읽기 전용 목록 하나.</p></div></div>
+      <div class="row"><div class="ic now">✓</div><div class="body"><p class="t">관리자 쪽에 "박람회(기관)"를 등록해두는 곳</p><p class="d">박람회 부스를 행사/기관 하나로 등록. QR 출처가 여기에 연결된다.</p></div></div>
+    </div>
+  </section>
+
+  <!-- 지금은 안 만들 것 -->
+  <section>
+    <h2><span class="dot later"></span>지금은 안 만들 것 <span class="pill later">결정 후로 미룸</span></h2>
+    <p class="sub">"기관 회원이 일반 회원과 뭐가 다른가"가 아직 안 정해졌고, 결제도 아직 안 붙어서, 지금 만들면 나중에 다시 뜯어고치게 된다.</p>
+    <div class="card">
+      <div class="row"><div class="ic later">—</div><div class="body"><p class="t">콘텐츠 접근 권한을 조절하는 기능</p><p class="d">"이 회원/이 기관은 여기까지만" 식으로 켜고 끄는 화면. 지금은 다 열려 있어 조절할 것 자체가 없음.</p></div></div>
+      <div class="row"><div class="ic later">—</div><div class="body"><p class="t">기관별 권한 차등 · 계약 · 요금 · 인원수 관리</p></div></div>
+      <div class="row"><div class="ic later">—</div><div class="body"><p class="t">기관 담당자가 자기 회원을 직접 관리하는 화면</p></div></div>
+      <div class="row"><div class="ic later">—</div><div class="body"><p class="t">기관이 명단을 한꺼번에 올려 가입 · 초대 링크 대량 발급</p></div></div>
+    </div>
+    <div class="callout fact" style="background:#fbfcfd;border-color:var(--line)">
+      <p class="h">🔮 미래에 딱 한 가지</p>
+      <p>나중에 <b>결제가 붙고 "유료 회원만 보는 콘텐츠"가 생기는 날</b>이 오면, 그때 <b>"기관 회원은 돈 안 내도 통과"</b>라는 규칙 한 줄만 추가하면 됩니다. 지금 "박람회 기관 회원" 표시를 남겨두는 이유가 바로 이것 — 그날 그 표시를 보고 통과시키면 끝나기 때문입니다.</p>
+    </div>
+  </section>
+
+  <!-- 어디에 만드나 -->
+  <section>
+    <h2><span class="dot" style="background:var(--accent)"></span>어디에 만드나</h2>
+    <p class="sub">가입은 사용자 앱에서 일어나고, 기관 정보는 관리자 쪽이 소유한다. 둘이 영역을 침범하지 않게 나눈다.</p>
+    <div class="where">
+      <div class="box">
+        <span class="tag">사용자 앱</span>
+        <h3>"어디서 왔다" 표시만 저장</h3>
+        <p>가입할 때 출처(어느 박람회) 표시를 회원에 남긴다. 그 표시의 의미는 따지지 않는다.</p>
+      </div>
+      <div class="box">
+        <span class="tag">관리자</span>
+        <h3>기관 정보 · 집계 소유</h3>
+        <p>박람회(기관) 목록을 관리하고, 출처별 가입자 리포트를 본다. 기관 관련 정보는 전부 여기에 둔다.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 박람회 전 체크리스트 -->
+  <section>
+    <h2><span class="dot now"></span>박람회 전 체크리스트</h2>
+    <p class="sub">추적이 새지 않게, 행사 전에 점검할 것들.</p>
+    <div class="card">
+      <div class="row"><div class="ic now">·</div><div class="body"><p class="t">구글 가입 누락 (위에서 짚은 함정)</p></div></div>
+      <div class="row"><div class="ic now">·</div><div class="body"><p class="t">인증 메일을 눌렀다 돌아오거나 화면을 새로고침해도 표시가 유지되게</p></div></div>
+      <div class="row"><div class="ic now">·</div><div class="body"><p class="t">QR을 부스별·날짜별로 다르게 만들어 어디가 반응 좋았는지 구분</p></div></div>
+      <div class="row"><div class="ic now">·</div><div class="body"><p class="t">스캔만 하고 나중에 가입하는 사람도 가능한 한 잡기</p></div></div>
+      <div class="row"><div class="ic now">·</div><div class="body"><p class="t">가입 동의 안내에 "어디서 왔는지 기록"이 포함돼도 되는지 확인</p></div></div>
+    </div>
+  </section>
+
+  <!-- 정할 것 -->
+  <section>
+    <h2><span class="dot open"></span>팀이 정해야 할 것</h2>
+    <p class="sub">아래가 정해져야 "기관 회원으로 가입"의 정확한 모양이 결정된다. 1번이 가장 먼저.</p>
+
+    <div class="callout star">
+      <p class="h">★ 가장 먼저: 박람회 손님이 "소속되는 기관"이 정확히 뭔가?</p>
+      <p><b>① 박람회 자체를 기관 하나로 본다</b> — 박람회로 들어온 사람 전부를 "2026 OO박람회" 소속으로 묶음. <b>(가장 단순 · 추천)</b><br>
+      <b>② 부스를 같이 운영하는 협력 기관에 소속</b> — 학교·학원 같은 실제 기관이 따로 있을 때.<br>
+      <b>③ 사실은 그냥 박람회에서 만난 개인들</b> — 특정 기관 소속이 아니라면 "기관 회원"보다 "박람회 출신 일반 회원"이 더 맞음.</p>
+    </div>
+
+    <ol class="decide">
+      <li class="key"><div class="q">박람회 손님이 소속되는 "기관"이 위 ①·②·③ 중 무엇인가?</div><div class="hint">이게 정해져야 나머지가 따라온다. 현재 추천은 ①.</div></li>
+      <li><div class="q">기관 회원과 일반 회원의 차이를 둘 것인가?</div><div class="hint">지금은 차이 없음(둘 다 전부 접근). 차이를 둘 거라면 무엇을?</div></li>
+      <li><div class="q">한 사람이 여러 기관에 속할 수 있나? 기관 안에서 역할(담당자/학생)이 나뉘나?</div></li>
+      <li><div class="q">가입은 개인이 직접 하나, 기관이 명단으로 올리나?</div></li>
+      <li><div class="q">박람회 표시는 한 번 쓰고 버리는 행사인가, 계속 쓰는 건가?</div></li>
+      <li><div class="q">추적은 가입한 숫자만 보면 되나, 그 뒤 활동·결제까지 봐야 하나?</div></li>
+    </ol>
+  </section>
+
+  <div class="foot">
+    이 문서는 코드 변경이 아니라 <b>논의·정렬용 정리</b>입니다. "지금 만들 것"은 기관 회원 모델이 어떻게 정해지든 그대로 쓸 수 있게 설계돼 있습니다.
+  </div>
+
+</div>
+</body>
+</html>

@@ -59,8 +59,10 @@
 - `docs/specs/admin-data-contract.md`
 - 현재 `Message`, `Operation`, `Commerce` 같은 범용 Target Type이 혼재한다.
 - 어떤 엔티티를 조치했는지 `Template`, `Group`, `Refund`, `Notice`, `Faq`, `Event` 단위까지 내려가지 않아 조치 추적성이 약하다.
+- 2026-06-17 갱신: `Operation > 공지사항`은 `OperationNotice + noticeId`로 세분화했고, 저장/상태 변경/삭제 RPC의 `target_table`도 `OperationNotice`로 고정했다.
+- 2026-06-17 갱신: `Operation > 이벤트`는 `OperationEvent + eventId`로 세분화했고, 저장/예약/게시/종료 RPC의 `target_table`도 `OperationEvent`로 고정했다.
 - 우선순위: `미확정 + 오구현`
-- 필요 조치: 엔티티별 Target Type 표준을 확정하고 감사 로그 목록과 각 페이지 조치 로그를 같은 기준으로 맞춰야 한다.
+- 필요 조치: 남은 엔티티별 Target Type 표준을 확정하고 감사 로그 목록과 각 페이지 조치 로그를 같은 기준으로 맞춰야 한다.
 
 ### 3.5 하드코딩된 관리자 Actor 사용
 
@@ -102,13 +104,14 @@
 - 대상 파일: `src/features/users/pages/users-page.tsx`
 - 현 상태
   - 초기 조회는 `fetchUsersSafe`를 사용한다.
-  - 정지/해제/메모 저장은 컴포넌트 로컬 상태만 수정한다.
+  - `Resolved`(2026-06-17): Supabase 모드의 회원 목록 P0 런타임 실패 원인이던 `get_admin_users`/`admin_set_user_status` RPC 부재를 해소했다. 마이그레이션 `supabase/migrations-admin/20260617210000_admin_users_directory.sql`(+ down)은 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했다.
+  - `get_admin_users(search, sort, page, page_size)`는 v13 `profiles`/`auth.users` 조인과 `writing_submissions` 집계를 반환하고, `admin_set_user_status(target_id, new_status)`는 `profiles.status`만 `active`/`blocked`로 토글한다. 신규 테이블은 없고 v13 `profiles` DDL은 변경하지 않는다.
 - 미확정/누락/오구현
-  - 조치 결과가 실제 SoT에 반영되지 않아 새로고침 시 유실될 수 있다.
+  - `Resolved`(2026-06-17): 정지/해제 조치 결과는 Supabase 모드에서 `admin_set_user_status` RPC를 통해 실제 `profiles.status`에 반영되고, `admin_audit_logs`에 `target_table='User'`, action `user_status_changed`로 기록된다.
   - 관리자 메모의 저장 주체와 감사 로그 영속 정책이 불명확하다.
   - 조치 사유가 어떤 code table 또는 자유 입력 규칙을 따르는지 확정되지 않았다.
 - 분류
-  - `오구현`: 조회 SoT와 조치 SoT 불일치
+  - `Resolved`: 회원 목록 Supabase read/write RPC 라이브 부재(P0 런타임 실패)
   - `미확정`: 메모/사유의 데이터 계약
 
 #### 4.2.2 강사 관리
@@ -253,24 +256,43 @@
 
 - 대상 파일: `src/features/operation/pages/operation-notices-page.tsx`
 - 현 상태
-  - 비교적 관리자 패턴이 잘 갖춰져 있고, 초기 seed/factory는 `src/features/operation/api/mock-operation.ts`, 조치 후 live state는 `operation-store.ts`, 조회/조치 facade는 `notices-service.ts`가 담당한다.
+  - 2026-06-17 기준 mock-only에서 Supabase-backed hybrid switch로 전환 완료했다.
+  - `operation-notices-data-source.ts`가 Supabase 설정과 `VITE_OPERATION_NOTICES_SOURCE`를 판별하고, Supabase 모드는 `operation_notices` + admin RPC 3종(`admin_save_operation_notice`, `admin_toggle_operation_notice_status`, `admin_delete_operation_notice`)을 사용한다.
+  - Supabase 미구성, `VITE_SUPABASE_DISABLED=true`, `VITE_OPERATION_NOTICES_SOURCE=mock`은 기존 mock source(`mock-operation.ts` + `operation-store.ts`)로 회귀한다.
+  - 마이그레이션 `supabase/migrations-admin/20260617120000_operation_notices.sql`(+ down)은 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했다.
+- 해소된 항목
+  - `Resolved`(2026-06-17): 공지사항 mock-only SoT. 조회/저장/상태 변경/삭제가 Supabase-backed 경로를 가지며 mock은 fallback으로 축소됐다.
+  - `Resolved`(2026-06-17): 공지 조치 감사 로그 미적재. admin RPC가 `admin_audit_logs`에 `target_table='OperationNotice'`, `target_id=noticeId`, action `notice_saved`/`notice_status_changed`/`notice_deleted`를 기록한다.
+  - `Resolved`(2026-06-17): 게시/숨김·삭제 reason 미전달. admin RPC 3종은 reason 필수이며 화면 확인 단계 또는 서비스 경계에서 사유를 전달한다.
 - 미확정/누락/오구현
-  - 공지의 게시 범위, 상단 고정, 노출 surface(B2C 앱/웹/센터)별 정책 세분화가 충분히 고정되지 않았다.
+  - 공지의 게시 범위, 상단 고정, 예약 게시, 노출 surface(B2C 앱/웹/센터)별 정책 세분화가 충분히 고정되지 않았다.
   - 에디터 콘텐츠 sanitize/preview 정책이 문서까지 완전히 닫히지 않았다.
+  - 자연키 `NOTICE-NNN`은 첫 증분에서 기존 mock/seed와 호환되도록 유지했으나, 동시 생성 race를 막는 장기 채번 방식(sequence/table 등)은 별도 확정이 필요하다.
+  - `updated_by`는 호출자 uuid 저장이며 관리자 표시명 매핑 정책이 미확정이다.
 - 분류
-  - `미확정`: 게시 정책 세분화
+  - `해소`: mock-only source 경계, 공지 감사 Target Type 세분화, reason 전달 경계
+  - `미확정`: 게시 정책 세분화, B2C surface, 채번/수정자 표시 정합
 
 #### 4.5.2 FAQ
 
 - 대상 파일: `src/features/operation/pages/operation-faq-page.tsx`
 - 현 상태
-  - 원문/노출/지표 3탭 구조가 존재한다.
-  - 초기 FAQ/큐레이션/지표 seed/factory는 `src/features/operation/api/mock-operation.ts`, 조치 후 live state는 `operation-store.ts`, 조회/조치 facade는 `faqs-service.ts`가 담당한다.
+  - 2026-06-17 기준 mock-only에서 Supabase-backed hybrid switch로 전환 완료했다.
+  - 원문/노출/지표 3탭 구조가 존재하며, Supabase 모드는 `operation_faqs`, `operation_faq_curations`, `operation_faq_metrics`를 조회한다.
+  - `operation-faqs-data-source.ts`가 Supabase 설정과 `VITE_OPERATION_FAQS_SOURCE`를 판별하고, Supabase 모드는 `operation_faqs`/`operation_faq_curations` + admin RPC 5종(`admin_save_operation_faq`, `admin_toggle_operation_faq_status`, `admin_delete_operation_faq`, `admin_save_operation_faq_curation`, `admin_delete_operation_faq_curation`)을 사용한다.
+  - Supabase 미구성, `VITE_SUPABASE_DISABLED=true`, `VITE_OPERATION_FAQS_SOURCE=mock`은 기존 mock source(`mock-operation.ts` + `operation-store.ts`)로 회귀한다.
+  - 마이그레이션 `supabase/migrations-admin/20260617123000_operation_faqs.sql`(+ down)은 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했다.
+- 해소된 항목
+  - `Resolved`(2026-06-17): FAQ mock-only SoT. FAQ 원문/노출/지표 조회와 원문/노출 조치가 Supabase-backed 경로를 가지며 mock은 fallback으로 축소됐다.
+  - `Resolved`(2026-06-17): FAQ 조치 감사 로그 미적재. admin RPC가 `admin_audit_logs`에 FAQ 원문 `target_table='OperationFaq'`, `target_id=faqId`, action `faq_saved`/`faq_status_changed`/`faq_deleted`; 큐레이션 `target_table='OperationFaqCuration'`, `target_id=curationId`, action `faq_curation_saved`/`faq_curation_deleted`를 기록한다.
+  - `Resolved`(2026-06-17): FAQ 원문/노출 reason 미전달. admin RPC 5종은 reason 필수이며 화면 확인 단계 또는 서비스 경계에서 사유를 전달한다.
 - 미확정/누락/오구현
-  - 지표 탭 데이터가 실제 FAQ 노출 결과를 반영하는지, 단순 mock snapshot인지 불명확하다.
-  - 대표 FAQ 5개 큐레이션 정책의 노출 우선순위/중복 허용/시간 조건이 아직 고정되지 않았다.
+  - 자연키 `FAQ-NNN`/`FAQCUR-NNN`은 기존 mock/seed와 호환되도록 유지했으나, 동시 생성 race를 막는 장기 채번 방식(sequence/table 등)은 별도 확정이 필요하다.
+  - `updated_by`는 호출자 uuid 저장이며 관리자 표시명 매핑 정책이 미확정이다.
+  - `operation_faq_metrics`는 현재 seed/read 전용이며 조회/검색/도움됨 실집계 파이프라인이 미확정이다.
 - 분류
-  - `미확정`: 큐레이션 정책, 지표 산식
+  - `해소`: mock-only source 경계, FAQ/FAQ Curation 감사 Target Type 세분화, reason 전달 경계
+  - `미확정`: 채번/수정자 표시 정합, metrics 실집계 파이프라인
 
 #### 4.5.3 이벤트
 
@@ -280,17 +302,27 @@
   - `src/features/operation/api/events-service.ts`
   - `src/features/operation/model/operation-store.ts`
 - 현 상태
+  - 2026-06-17 기준 mock-only에서 Supabase-backed hybrid switch로 전환 완료했다.
   - 목록/상세/등록 상세는 존재한다.
-  - 최근 배너 업로드/참조형 입력까지 mock 기준으로 정리되었다.
-  - 초기 이벤트 seed/factory는 `src/features/operation/api/mock-operation.ts`, 조치 후 live state는 `operation-store.ts`, 조회/조치 facade는 `events-service.ts`가 담당한다.
+  - `operation-events-data-source.ts`가 Supabase 설정과 `VITE_OPERATION_EVENTS_SOURCE`를 판별하고, Supabase 모드는 `operation_events` + admin RPC 4종(`admin_save_operation_event`, `admin_schedule_operation_event`, `admin_publish_operation_event`, `admin_end_operation_event`)을 사용한다.
+  - Supabase 미구성, `VITE_SUPABASE_DISABLED=true`, `VITE_OPERATION_EVENTS_SOURCE=mock`은 기존 mock source(`mock-operation.ts` + `operation-store.ts`)로 회귀한다.
+  - 마이그레이션 `supabase/migrations-admin/20260617152000_operation_events.sql`(+ down)은 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했다.
   - 이벤트 등록 상세의 메시지 그룹/템플릿 선택지는 Message store 직접 참조가 아니라 `messages-service.ts` option DTO를 통해 받는다.
+- 해소된 항목
+  - `Resolved`(2026-06-17): 이벤트 mock-only SoT. 조회/저장/예약/게시/종료가 Supabase-backed 경로를 가지며 mock은 fallback으로 축소됐다.
+  - `Resolved`(2026-06-17): 이벤트 조치 감사 로그 미적재. admin RPC가 `admin_audit_logs`에 `target_table='OperationEvent'`, `target_id=eventId`, action `event_saved`/`event_scheduled`/`event_published`/`event_ended`를 기록한다.
+  - `Resolved`(2026-06-17): 이벤트 조치 reason 미전달. admin RPC 4종은 reason 필수이며 화면 확인 단계 또는 서비스 경계에서 사유를 전달한다.
+  - `Resolved`(2026-06-17): 배너 파일 업로드 화면 state/data URL only. Supabase 모드는 `banner_images` jsonb 배열과 `banner_image_source_type`(`file`/`url`)을 저장하고 대표 배너 파생 필드를 보존한다.
 - 미확정/누락/오구현
-  - `rewardPolicyId`, 메시지 템플릿, 대상 그룹 참조는 입력 UI와 service DTO는 있으나 실제 API/DB 참조 계약이 연결되지 않았다.
+  - 자연키 `EVT-NNN`은 기존 mock/seed와 호환되도록 유지했으나, 동시 생성 race를 막는 장기 채번 방식(sequence/table 등)은 별도 확정이 필요하다.
+  - `updated_by`는 호출자 uuid 저장이며 관리자 표시명 매핑 정책이 미확정이다.
+  - `rewardPolicyId`, 메시지 템플릿, 대상 그룹 참조는 외부 FK 없이 denormalized snapshot으로 저장되며, 실제 정규화/FK 전환 시점이 미확정이다.
   - 참여 현황, 리워드 지급, 발송 템플릿의 후속 운영 플로우가 아직 닫히지 않았다.
-  - 배너 파일 업로드가 저장소/서버 업로드 없이 화면 state에만 존재한다.
+  - `participant_count` 집계 source와 갱신 주기가 미확정이다.
+  - 배너 이미지는 jsonb 배열로 영속되지만 asset 저장소/서버 업로드 정규화는 후속이다.
 - 분류
-  - `미확정`: 참조 대상 엔티티 소유권
-  - `누락`: 업로드 영속 경로, 참여/지급 후속 플로우
+  - `해소`: mock-only source 경계, 이벤트 감사 Target Type 세분화, reason 전달 경계, 배너 data URL only 저장 갭
+  - `미확정`: 채번/수정자 표시 정합, 참조 대상 정규화, 참여/지급/발송 후속 플로우, 참여자 수 집계 source
 
 #### 4.5.4 정책 관리
 
@@ -302,14 +334,23 @@
 - 현 상태
   - 목록/상세 Drawer/본문 미리보기/등록 상세/TinyMCE 본문 작성까지 구현되었다.
   - 법률 문서뿐 아니라 커뮤니티 게시글 제재, 추천인 보상, 포인트/쿠폰/이벤트/FAQ/챗봇/메시지/권한 변경 정책까지 `운영 영역`, `정책 추적 상태`, `연관 관리자 화면`, `추적 근거 문서` 기준으로 같은 카탈로그에서 추적한다.
-  - 초기 정책/히스토리 seed/factory는 `src/features/operation/api/mock-operation-policies.ts`, 조치 후 live state는 `policy-store.ts`, 조회/조치 facade는 `policies-service.ts`가 담당한다.
+  - 2026-06-17 기준 mock-only에서 Supabase-backed hybrid switch로 전환 완료했다.
+  - `operation_policies`/`operation_policy_histories`와 admin RPC 4종은 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했다.
+  - Supabase 미구성, `VITE_SUPABASE_DISABLED=true`, `VITE_OPERATION_POLICIES_SOURCE=mock`은 기존 mock source(`mock-operation-policies.ts` + `policy-store.ts`)로 회귀한다.
+  - `policies-service.ts` safe facade 7종은 유지하며, 저장/상태 변경/삭제/히스토리 버전 게시 RPC는 reason 필수로 `admin_audit_logs`와 `operation_policy_histories` snapshot을 함께 기록한다.
   - `docs/specs/admin-policy-source-map.md`를 기준으로 코드/문서 근거를 정책 관리 seed/UI와 함께 유지한다.
 - 미확정/누락/오구현
-  - 정책 버전별 diff 검수, 재동의 대상 추적, 문서 승인 체계는 아직 구현되지 않았다.
+  - `Resolved`(2026-06-17): 정책 관리 mock-only SoT. 조회/저장/상태 변경/삭제/히스토리 버전 게시가 Supabase-backed 경로를 가지며 mock은 fallback으로 축소됐다.
+  - `Resolved`(2026-06-17): 정책 조치 감사 로그 미적재. admin RPC가 `admin_audit_logs`에 `target_table='OperationPolicy'`, `target_id=policyId`, action `policy_saved`/`policy_status_changed`/`policy_deleted`/`policy_version_published`를 기록하고 histories snapshot을 append한다.
+  - `Resolved`(2026-06-17): actor 하드코딩. `CURRENT_ACTOR` 대신 RPC caller 기반 `changed_by`/`updated_by` 기록으로 정합했다.
+  - 버전 모델은 `current_version_id`를 도입했으나, 화면 모델의 장기 표현과 히스토리 헤드 정합은 계속 추적한다.
+  - `POL-NNN`/`PH-NNNN` max+1 채번 동시성, `changed_by`/`updated_by` uuid 표시명, `requires_consent` 기반 B2C 동의 재수집 트리거는 미확정이다.
+  - 정책 버전별 diff 검수, 재동의 대상 추적, 문서 승인 체계는 아직 완전히 닫히지 않았다.
   - TinyMCE 이미지/자산 업로드의 서버 영속 경로와 sanitize 정책이 아직 고정되지 않았다.
   - cross-page 정책 근거 매핑은 현재 문자열 배열과 MD SoT 조합으로 관리되며, 실데이터/API 단계에서 참조형 엔티티로 승격할지 여부는 아직 미확정이다.
 - 분류
-  - `미확정`: 버전/재동의/승인 정책, 근거 매핑의 엔티티화 범위
+  - `해소`: mock-only source 경계, 정책 감사 Target Type 세분화, actor 하드코딩
+  - `미확정`: 채번 동시성, uuid 표시명, current_version_id 장기 모델, 재동의/승인 정책, 근거 매핑의 엔티티화 범위
   - `누락`: 에디터 자산 영속 경로
 
 #### 4.5.5 챗봇
@@ -464,26 +505,33 @@
   - `src/features/system/pages/system-permissions-page.tsx`
   - `src/features/system/model/permission-store.ts`
 - 현 상태
-  - 전부 local zustand store 기반
-  - 권한 변경 actor 하드코딩
+  - `Resolved/Decision-recorded`(2026-06-17): RBAC SoT는 v13 `profiles.app_role`로 확정했다. `src/features/auth/model/auth-store.ts`가 세션의 `profiles.app_role`을 읽고, `src/features/auth/model/app-role-mapping.ts`가 4값 app_role을 5개 RoleKey/permission bundle로 파생한다.
+  - `permission-store.ts`의 권한 부여/수정/회수는 local Zustand store와 mock audit만 갱신하며, 실제 RLS/RPC 인가에는 반영되지 않는다.
+  - 권한 변경 actor 하드코딩은 잔존한다.
 - 미확정/누락/오구현
-  - 실제 RBAC 모델과 화면 권한 매트릭스가 문서/코드에 완전히 고정되지 않았다.
+  - `Resolved/Decision-recorded`(2026-06-17): 실제 RBAC 모델은 `profiles.app_role` + v13 RLS/RPC 헬퍼(`private.is_admin`/`is_content_admin`/`is_platform_admin`)로 고정한다. 화면 permission catalog 37개는 메뉴/표시 게이팅 전용이며 DB 인가 SoT가 아니다.
+  - 신규 RBAC 테이블(`system_roles`, `system_permissions`, `role_permissions`, `admin_permissions`)은 기각한다. admin repo의 v13 테이블 DDL 변경 금지 경계와 이중 인가/동기화 회귀 리스크 때문이다.
   - 권한 변경 승인 절차, 2인 승인 여부, 즉시 반영/세션 재검증 정책이 없다.
+  - 관리자 `app_role` 변경 주체/RPC/감사 payload 계약은 후속 오너 확인이 필요하다.
 - 분류
-  - `미확정`: 권한 정책
+  - `Resolved/Decision-recorded`: RBAC SoT 모순
+  - `미확정`: 권한 변경 승인/세션 재검증/app_role 변경 운영 정책
   - `오구현`: actor 하드코딩, mock-only SoT
 
 #### 4.10.2 감사 로그
 
 - 대상 파일: `src/features/system/pages/system-audit-logs-page.tsx`
 - 현 상태
-  - `system-audit-logs-service.ts`가 static audit seed(`api/mock-system-audit-logs.ts`)와 permission/coupon/metadata store audit 병합을 담당한다.
-  - 페이지는 static rows와 store audit merge 세부를 직접 소유하지 않는다.
+  - Resolved(2026-06-18): Supabase 모드는 `admin_list_audit_logs(p_target_type, p_target_id, p_keyword, p_start, p_end, p_limit=100, p_offset=0)` 읽기 RPC로 live `admin_audit_logs`를 단일 source로 조회한다.
+  - `system-audit-logs-data-source.ts`가 `VITE_SYSTEM_AUDIT_LOGS_SOURCE=mock`, `VITE_SUPABASE_DISABLED`, Supabase 설정 여부를 판별한다. mock 모드는 static audit seed(`api/mock-system-audit-logs.ts`)와 store audit 병합 fallback으로만 유지한다.
+  - 페이지는 Supabase RPC 또는 mock/store merge 세부를 직접 소유하지 않는다.
 - 미확정/누락/오구현
-  - 도메인별 감사 로그가 실제 API/DB 단일 SoT로 통합되지는 않았다.
-  - `Target Type`이 범용적이며, 상세 링크 매핑도 일부 엔티티만 처리한다.
+  - Resolved(2026-06-18): 감사 로그 화면 mock SoT·실 `admin_audit_logs` 미읽음 항목은 `20260618001000_admin_audit_logs_read.sql` dev DB 적용으로 해소됨. 모든 admin RPC가 적재한 감사 로그를 화면에서 실조회한다.
+  - `diff`/`payload` 민감정보 노출 범위는 아직 미확정이며 화면 미노출 보류 상태다.
+  - 상세 링크 매핑은 일부 엔티티만 처리한다.
 - 분류
-  - `미확정`: 감사 로그 API/DB 통합 SoT
+  - `Resolved`: 감사 로그 화면 mock SoT·실 `admin_audit_logs` 미읽음
+  - `미확정`: diff/payload 노출 범위
   - `미확정`: 엔티티별 링크 매핑
 
 #### 4.10.3 시스템 로그
@@ -512,11 +560,14 @@
   - 상세 Drawer `설정 구조`는 `설정 그룹 -> 운영 값 -> 추가` Tree와 드래그 정렬을 함께 지원함
   - `지금 운영 중인 값` 테이블도 행 드래그로 정렬 순서를 바꾸고, `item_reordered` 이력과 감사 로그를 남김
   - 운영 값 등록/수정 Modal은 현재 mock 데이터 기준으로 같은 설정 그룹 안의 코드/라벨 중복을 즉시 검사함
+  - 2026-06-17 기준 운영 설정 카탈로그 그룹/항목은 `system_metadata_groups` + `system_metadata_group_items` Supabase-backed source로 전환 완료. mock fallback은 `VITE_SYSTEM_METADATA_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`에 한정됨.
+  - 그룹/항목 조치 감사는 RPC action `metadata_group_saved`, `metadata_item_saved`, `metadata_group_status_changed`, `metadata_item_status_changed`, `metadata_item_deleted`, `metadata_items_reordered`로 `admin_audit_logs.target_table='SystemMetadataGroup'`, `target_id=groupId`에 적재됨.
 - 미확정/누락/오구현
-  - 실제 API/DB 테이블(`system_metadata_groups`, `system_metadata_group_items`, `system_metadata_group_histories`)과 승인 절차는 아직 문서 후보 단계다.
-  - 메타 항목 조치를 그룹 단위 `Target Type = SystemMetadataGroup`으로 묶을지, item-level Target Type을 분리할지는 미확정이다.
+  - Resolved(2026-06-17): 그룹/항목 mock-only source, DB 테이블 후보 상태, 감사 미적재/Target Type 미확정은 `20260617211000_system_metadata.sql` dev DB 적용으로 해소됨. 항목 조치도 그룹 단위 `Target Type = SystemMetadataGroup`으로 확정.
+  - 미확정: PK `META-GRP-NNN`/`META-ITEM-NNN` max+1 동시성, `is_default` 단일성 정책, `admin_locations`/이력 정규화.
 - 분류
-  - `미확정`: API/DB 계약, 승인 절차, item-level 감사 로그 세분화
+  - `Resolved`: mock-only source, 감사 미적재, item-level 감사 Target Type 미확정
+  - `미확정`: PK 동시성, 기본값 단일성 정책, 위치/이력 정규화
 
 ## 5. 우선 정리 권장 순서
 
@@ -537,6 +588,12 @@
 
 ## 7. 최근 해소 이력
 
+- 2026-06-18 | `System > 감사 로그` mock SoT·실 `admin_audit_logs` 미읽음 해소 | `admin_list_audit_logs(p_target_type, p_target_id, p_keyword, p_start, p_end, p_limit=100, p_offset=0)` 읽기 RPC와 조회 인덱스 2개(`admin_audit_logs_target_lookup_idx`, `admin_audit_logs_created_at_desc_idx`)를 `supabase/migrations-admin/20260618001000_admin_audit_logs_read.sql`(+ down)로 작성했고 `admin_schema_migrations` tracker 기준 2026-06-18 dev DB 적용 완료했다. 화면 service는 `system-audit-logs-data-source.ts`와 `supabase-system-audit-logs-service.ts`를 통해 Supabase 모드에서 live `admin_audit_logs` 단일 source를 읽고, `VITE_SYSTEM_AUDIT_LOGS_SOURCE=mock`이면 기존 mock/store audit 병합 fallback을 사용한다. 잔여 갭은 `diff`/`payload` 민감정보 노출 범위와 일부 엔티티 상세 링크 매핑이다.
+- 2026-06-17 | `System > 시스템 로그` mock-only source 테이블화 해소 | `system_logs` Supabase read-only table을 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했고, 화면 service는 `system-logs-data-source.ts`를 통한 Supabase-backed source와 mock fallback을 가진다. `system_logs`는 7컬럼(`id`, `level`, `message`, `component`, `trace_id`, `context`, `created_at`)이며 `level`은 `INFO`/`WARN`/`ERROR` 대문자 값을 사용한다. 조회 전용 기술 로그라 admin write·감사 액션은 없고, `admin_audit_logs` 및 v13 `notification_log`와 구분한다. 잔여 갭은 로그 적재 소스/주체, 보존기간·파티셔닝, `trace_id` 의미, level 코드값 장기 표준화다.
+- 2026-06-17 | `Users > 회원 목록` P0 결손 RPC 라이브 부재 해소 | `get_admin_users`/`admin_set_user_status` RPC 2종을 `supabase/migrations-admin/20260617210000_admin_users_directory.sql`(+ down)로 작성했고 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했다. 회원 목록은 Supabase 모드에서 v13 `profiles`/`auth.users` 조인과 `writing_submissions` 집계로 실데이터를 읽고, 정지/해제는 `profiles.status`를 `active`/`blocked`로 토글하며 `Target Type=User`, action `user_status_changed` 감사 로그를 남긴다. 신규 테이블은 없고 v13 `profiles` DDL은 변경하지 않는다. 잔여 갭은 관리자 메모 저장 주체, 사유 code/free-text 정책, 상태/기간/searchField 서버 필터 확장이다.
+- 2026-06-17 | `Operation > 공지사항` mock-only·감사 미적재·reason 미전달 해소 | `operation_notices` Supabase 테이블과 admin RPC 3종을 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했고, 화면 service는 Supabase-backed hybrid switch와 mock fallback을 가진다. 공지 조치는 `Target Type=OperationNotice`, `target_id=noticeId`, action `notice_saved`/`notice_status_changed`/`notice_deleted`, reason 필수 계약으로 감사 로그를 남긴다. 잔여 갭은 B2C 실제 surface, 상단 고정/예약 게시, HTML sanitize/preview, `NOTICE-NNN` 동시성, `updated_by` 표시명 정합이다.
+- 2026-06-17 | `Operation > FAQ` mock-only·감사 미적재·reason 미전달 해소 | `operation_faqs`/`operation_faq_curations`/`operation_faq_metrics` Supabase 테이블과 admin RPC 5종을 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했고, 화면 service는 Supabase-backed hybrid switch와 mock fallback을 가진다. FAQ 조치는 `Target Type=OperationFaq`/`OperationFaqCuration`, action `faq_saved`/`faq_status_changed`/`faq_deleted`/`faq_curation_saved`/`faq_curation_deleted`, reason 필수 계약으로 감사 로그를 남긴다. 잔여 갭은 `FAQ-NNN`/`FAQCUR-NNN` 동시성, `updated_by` 표시명 정합, metrics 실집계 파이프라인(seed only)이다.
+- 2026-06-17 | `Operation > 이벤트` mock-only·감사 미적재·reason 미전달·배너 data URL only 해소 | `operation_events` Supabase 테이블과 admin RPC 4종을 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했고, 화면 service는 Supabase-backed hybrid switch와 mock fallback을 가진다. 이벤트 조치는 `Target Type=OperationEvent`, `target_id=eventId`, action `event_saved`/`event_scheduled`/`event_published`/`event_ended`, reason 필수 계약으로 감사 로그를 남긴다. 잔여 갭은 `EVT-NNN` 동시성, `updated_by` 표시명 정합, 배너/보상/메시지 정규화, `participant_count` 집계 source다.
 - 2026-06-11 | 관리자 준비중 페이지 mock seed/source 경계 정리 | `Community`, `System`, `Message`, `Operation`, `Commerce`, `Billing`의 page-local seed/store seed 직접 참조를 `src/features/**/api/mock-*` seed/factory와 service safe facade로 분리했습니다. 조치 후 live state는 기존 feature store/service에 남기고, 잔여 갭은 실제 API/DB 계약, 권한/actor 정책, `Notification`/`Users 상세`/`Dashboard`/`Analytics` source 정리로 재분류했습니다.
 - 2026-06-09 | `Assessment > TOPIK 쓰기 문제은행` 검수/관리 단일 페이지 `tab` 토글 분리 | `src/features/assessment/pages/assessment-question-review-page.tsx`, `src/features/assessment/pages/assessment-question-manage-page.tsx`, `src/features/assessment/api/assessment-question-bank-service.ts`, `src/features/assessment/api/supabase-assessment-question-bank-service.ts`, `src/app/router/app-router.tsx`, `docs/specs/page-ia/assessment-question-bank-page-ia.md`, `docs/specs/page-ia/assessment-question-manage-page-ia.md`를 기준으로 `tab` 쿼리로 `검수 큐`/`문항 관리`를 토글하던 단일 페이지를 `Assessment > TOPIK 쓰기 문제 검수`(`/assessment/question-bank`)와 `Assessment > TOPIK 쓰기 문항 관리`(`/assessment/question-bank/manage`) 두 형제 라우트로 분리했습니다. `tab` 쿼리를 제거하고 각 라우트가 자체 URL 상태(공통 `questionNo`/`domain`/`questionType`/`difficulty`/`keyword`, 검수 전용 `reviewStatus`, 관리 전용 `operationStatus`)를 복원하게 정리했고, 두 페이지는 동일한 Supabase `problems`(question_no 51-54) 조회 결과를 공유 hook으로 함께 씁니다. 다만 문항 관리 운영 상태 조치는 v13 `lifecycle_status` 미적용으로 비활성(스캐폴딩) 상태로 신규 갭에 남겼습니다.
 - 2026-03-27 | `System > 메타데이터 관리` 관리 위치 계층 UX 보강 | `src/features/system/pages/system-metadata-page.tsx`, `src/features/system/model/system-metadata-store.ts`, `docs/specs/page-ia/system-metadata-page-ia.md`, `docs/specs/admin-page-tables.md`를 기준으로 목록의 `관리 위치`를 `route > 세부 위치` 형태로 읽히게 바꾸고, 상세 Drawer에는 Breadcrumb 기반 위치 카드와 `설정 그룹 -> 관리 위치 -> 운영 값 -> 사용자 영향` Tree를 추가했습니다. 메타데이터가 계층형 구조를 가진다는 점을 비개발자 운영자도 한눈에 이해할 수 있도록 위치 정보와 구조 정보를 같은 화면에서 검수하게 정리했습니다.
@@ -545,6 +602,7 @@
 - 2026-03-27 | `System > 메타데이터 관리` 첫 진입 운영자용 설명 레이어 보강 | `src/features/system/pages/system-metadata-page.tsx`, `docs/specs/page-ia/system-metadata-page-ia.md`, `docs/specs/admin-page-tables.md`를 기준으로 페이지 상단 3단계 사용 가이드, 섹션 caption, Tooltip 설명 아이콘, Modal 안내 Alert를 추가했습니다. 운영자가 이 페이지 목적과 사용 순서를 처음부터 이해하기 어렵던 문제를 설명 레이어로 보완했습니다.
 - 2026-03-27 | `System > 메타데이터 관리` 기능/사용처 중심 UX 재구성 | `src/features/system/pages/system-metadata-page.tsx`, `tests/e2e/system-metadata.spec.ts`, `docs/specs/page-ia/system-metadata-page-ia.md`, `docs/specs/admin-page-tables.md`를 기준으로 페이지 제목과 안내 문구를 `운영 설정 카탈로그` 관점으로 바꾸고, 목록 컬럼/상세 Drawer 섹션 순서를 `설정 -> 사용처 -> 운영 값 -> 영향 범위` 중심으로 재배치했습니다. 기존 메타데이터 레지스트리처럼 보이던 정보 구조를 운영자 업무 언어로 바꿔 비개발자도 페이지 역할을 바로 이해할 수 있게 정리했습니다.
 - 2026-03-27 | `System > 메타데이터 관리` 상세 Drawer/입력 Modal UI 일관성 복구 | `src/shared/ui/detail-drawer/detail-drawer.tsx`, `src/shared/ui/descriptions/admin-form-descriptions.tsx`, `src/features/system/pages/system-metadata-page.tsx`, `tests/e2e/system-metadata.spec.ts`를 기준으로 상세 Drawer 폭을 shared preset(기본 `760`)으로 되돌리고, Drawer 내부 테이블은 shared drawer table helper를 사용하도록 정리했습니다. 그룹/항목 Modal도 `Descriptions` 기반 shared 입력 wrapper로 치환해 page-local `Form.Item` 세로 나열 예외를 제거했고, e2e에는 Drawer 폭과 `Descriptions` 구조 검증을 추가했습니다.
+- 2026-06-17 | `Operation > 정책 관리` mock-only·감사 미적재·actor 하드코딩 해소 | `operation_policies`/`operation_policy_histories` Supabase 테이블과 admin RPC 4종을 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했고, 화면 service는 Supabase-backed hybrid switch와 mock fallback을 가진다. 정책 조치는 `Target Type=OperationPolicy`, `target_id=policyId`, action `policy_saved`/`policy_status_changed`/`policy_deleted`/`policy_version_published`, reason 필수 계약으로 감사 로그와 histories snapshot을 남긴다. 잔여 갭은 `POL-NNN`/`PH-NNNN` 동시성, uuid 표시명, `current_version_id` 장기 모델, `requires_consent` 동의 재수집 트리거다.
 - 2026-03-27 | `System > 메타데이터 관리` 신규 화면 추가 | `src/features/system/pages/system-metadata-page.tsx`, `src/features/system/api/system-metadata-service.ts`, `src/features/system/model/system-metadata-store.ts`, `src/features/system/pages/system-audit-logs-page.tsx`, `tests/e2e/system-metadata.spec.ts`를 기준으로 운영 메타데이터 그룹/항목을 self-service로 관리하는 시스템 페이지를 추가했습니다. `검색 -> 상세 -> 조치 -> 감사 로그 확인` 흐름과 URL 복원, ConfirmAction, 감사 로그 역추적을 모두 같은 계약으로 맞췄고, 남은 쟁점은 실제 API/DB 계약과 item-level Target Type 세분화입니다.
 - 2026-03-26 | `Commerce > 쿠폰 관리` 쿠폰 노출 설정 기능 제거 및 계약 정리 | `src/features/commerce/pages/commerce-coupons-page.tsx`, `src/features/commerce/pages/commerce-coupon-template-create-page.tsx`, `src/features/commerce/api/coupons-service.ts`, `src/features/commerce/model/coupon-store.ts`, `src/features/commerce/model/coupon-template-types.ts`, `src/features/commerce/model/coupon-template-form-schema.ts`, `src/features/system/pages/system-audit-logs-page.tsx`, `src/shared/model/target-type-label.ts`를 기준으로 `쿠폰 노출 설정` 버튼/모달/저장 로직/감사 로그 타깃 라벨/라우팅을 모두 제거했습니다. 이에 따라 쿠폰 관리의 현재 계약은 `쿠폰`과 `정기 쿠폰 템플릿` 2개 엔티티만 유지하며, 관련 문서도 같은 기준으로 동기화했습니다.
 - 2026-03-26 | `Operation > 정책 관리` 액션 역할 분리와 히스토리 버전 게시 정리 | `src/features/operation/pages/operation-policies-page.tsx`, `src/features/operation/pages/operation-policy-create-page.tsx`, `src/features/operation/api/policies-service.ts`, `src/features/operation/model/policy-store.ts`, `src/features/operation/model/policy-types.ts`, `tests/e2e/operation-policies.spec.ts`를 기준으로 Drawer 푸터 액션을 `내용 수정`/`새 버전 등록`/`게시-숨김`/`삭제`로 재정의하고, 히스토리 행 우측 액션에 `본문 보기`, `이 버전 게시`를 분리했습니다. `정책 수정`이 곧 새 버전 생성으로 오해되던 흐름을 해소하고, 히스토리 `변경 사유`와 게시 전환 조치가 감사 로그 계약과 함께 추적되도록 정리했습니다.
@@ -560,3 +618,93 @@
 - 2026-03-25 | 전역 입력형 `Descriptions` 행 높이 불일치 해소 | `src/styles/global.css`에서 `admin-form-descriptions`, `message-template-form-descriptions`의 bordered row `th/td` 기본 높이를 `56px`로 통일하고 `vertical-align: middle`을 적용해, 텍스트 셀과 `Select`/`Switch` 셀이 섞여 있어도 라벨 셀 높이가 들쭉날쭉하지 않도록 보정했습니다.
 
 - 2026-03-27 | `System > 메타데이터 관리` Tree 삭제 affordance/운영 값 수정 Modal 삭제 버튼 해소 | `src/features/system/pages/system-metadata-page.tsx`, `src/features/system/model/system-metadata-store.ts`, `src/features/system/api/system-metadata-service.ts`, `tests/e2e/system-metadata.spec.ts`를 기준으로 `설정 구조` Tree 노드 hover 삭제와 `운영 값 수정` Modal 삭제 버튼을 같은 ConfirmAction 흐름으로 연결했습니다. 삭제 후 `item_deleted` 이력, 감사 로그, Tree/테이블 갱신이 함께 반영되도록 정리했습니다.
+
+### 4.3.3 Community 게시글/신고 Supabase 전환 해소 기록 (2026-06-17)
+
+- 대상 파일
+  - `src/features/community/api/community-data-source.ts`
+  - `src/features/community/api/community-service.ts`
+  - `src/features/community/api/supabase-community-service.ts`
+  - `src/features/community/pages/community-posts-page.tsx`
+  - `src/features/community/pages/community-reports-page.tsx`
+  - `supabase/migrations-admin/20260617173000_community.sql`
+- 현 상태
+  - 2026-06-17 기준 Community 게시글/신고는 mock-only에서 Supabase-backed hybrid switch로 전환 완료했다.
+  - Supabase 모드는 `community_posts`, `community_post_admin_notes`, `community_reports`와 admin RPC 5종(`admin_hide_community_post`, `admin_show_community_post`, `admin_delete_community_post`, `admin_add_community_post_memo`, `admin_resolve_community_report`)을 사용한다.
+  - Supabase 미구성, `VITE_SUPABASE_DISABLED=true`, `VITE_COMMUNITY_SOURCE=mock`은 기존 mock source로 회귀한다.
+  - 마이그레이션 `supabase/migrations-admin/20260617173000_community.sql`(+ down)은 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했다.
+- 해소된 항목
+  - `Resolved`(2026-06-17): Community 게시글/신고 mock-only SoT. 조회/조치가 Supabase-backed 경로를 가지며 mock은 fallback으로 축소됐다.
+  - `Resolved`(2026-06-17): Community 조치 감사 로그 미적재/범용 Target Type. 게시글은 `Target Type=CommunityPost`, action `post_hidden`/`post_shown`/`post_deleted`/`post_memo_added`; 신고는 `Target Type=CommunityReport`, action `report_resolved`로 `admin_audit_logs`에 기록한다.
+  - `Resolved`(2026-06-17): 신고 조치 무동작 의미 버그. 이전 mock은 신고만 종결하고 게시글/사용자 조치를 하지 않았으나, `admin_resolve_community_report(..., 'hide_post', ...)`는 같은 트랜잭션에서 대상 게시글을 실제 `hidden` 처리한다. `suspend_user`는 v13 연동 전 intent-only payload(`user_suspend_integration=intent_only_v13_admin_set_user_status_pending`)로 기록한다.
+- 미확정/누락/오구현
+  - 사용자 정지 실제 연동은 v13 `admin_set_user_status` 연결 전까지 미확정이다.
+  - `POST-NNN`/`RP-NNN`/memo id max+1 채번은 동시성 리스크가 남아 있다.
+  - `board`, `last_moderation_policy_code`, memo `type`, 신고 `reason_code` code table화가 필요하다.
+- 분류
+  - `해소`: mock-only source 경계, 게시글/신고 감사 Target Type 세분화, 신고 `hide_post` 실제 게시글 숨김 처리
+  - `미확정`: 사용자 정지 연동, 채번 동시성, 코드 테이블화
+
+### 4.6.3 Commerce 포인트 Supabase 전환 해소 기록 (2026-06-17)
+
+- 대상 파일
+  - `src/features/commerce/api/commerce-points-data-source.ts`
+  - `src/features/commerce/api/points-service.ts`
+  - `supabase/migrations-admin/20260617190000_commerce_points.sql`
+- 현 상태
+  - 2026-06-17 기준 `Commerce > 포인트 관리`는 mock-only에서 Supabase-backed hybrid switch로 전환 완료했다.
+  - Supabase 모드는 `commerce_point_policies`, `commerce_point_ledgers`, `commerce_point_expirations`와 admin RPC 5종(`admin_save_commerce_point_policy`, `admin_update_commerce_point_policy_status`, `admin_create_manual_point_adjustment`, `admin_hold_commerce_point_expiration`, `admin_release_commerce_point_expiration`)을 사용한다.
+  - Supabase 미구성, `VITE_SUPABASE_DISABLED=true`, `VITE_COMMERCE_POINTS_SOURCE=mock`은 기존 mock source로 회귀한다.
+  - 마이그레이션 `supabase/migrations-admin/20260617190000_commerce_points.sql`(+ down)은 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했다.
+- 해소된 항목
+  - `Resolved`(2026-06-17): Commerce 포인트 mock-only SoT. 정책/원장/소멸 예정 조회와 주요 조치가 Supabase-backed 경로를 가지며 mock은 fallback으로 축소됐다.
+  - `Resolved`(2026-06-17): Commerce 포인트 조치 감사 로그 미적재/범용 Target Type. 정책은 `CommercePointPolicy` action `point_policy_saved`/`point_policy_status_changed`, 수동 조정은 `CommercePointLedger` action `point_manual_adjusted`, 소멸은 `CommercePointExpiration` action `point_expiration_held`/`point_expiration_released`로 `admin_audit_logs`에 기록한다.
+  - `Resolved`(2026-06-17): 클라이언트 잔액 계산. Supabase 경로의 수동 조정은 서버 RPC가 사용자별 advisory lock + 최신 ledger `for update`로 최신 `available_balance_after + p_amount`를 계산하며, `balance_after`/`available_balance_after` CHECK와 RPC 가드로 음수 잔액을 차단한다.
+- 미확정/누락/오구현
+  - 음수 잔액 허용 여부와 차감 우선순위/환불 복구 정책은 미확정이다. 현재 DB/RPC는 음수 잔액을 차단한다.
+  - 정책 저장 사유 입력 필드는 별도 UI로 고정되지 않았고, 서비스가 `note`를 `reason`으로 전달한다. 빈 값이면 RPC가 오류를 반환한다.
+  - `POL-NNNN`/`PL-NNNN` max+1 채번은 동시성 리스크가 남아 있다.
+  - 소멸 자동 처리 cron은 미구현/미확정이다.
+  - `user_id`는 v13 `profiles` 느슨참조이며 FK가 없어 표시명/삭제/탈퇴 정합 정책이 필요하다.
+- 분류
+  - `해소`: mock-only source 경계, 감사 Target Type 세분화, 클라이언트 잔액 계산 제거
+  - `미확정`: 음수 잔액 정책, reason UI, 채번 동시성, 소멸 cron, v13 profiles 느슨참조 정합
+
+### 4.6.4 Commerce 쿠폰 Supabase 전환 해소 기록 (2026-06-17)
+
+- `Resolved`: Commerce 쿠폰 mock-only SoT. 쿠폰 본체와 정기 쿠폰 템플릿 조회/저장/복제/상태 변경/삭제가 `commerce_coupons`/`commerce_coupon_subscription_templates` Supabase-backed 경로를 가지며 mock은 fallback으로 축소됐다.
+- `Resolved`: `CouponAuditEvent(AL-CPN-)` store만 감사 SoT였던 항목. Supabase 경로는 `admin_audit_logs`에 Target Type `CommerceCoupon`/`CommerceCouponTemplate`과 action `coupon_saved`/`coupon_duplicated`/`coupon_paused`/`coupon_resumed`/`coupon_deleted`/`coupon_template_saved`/`coupon_template_paused`/`coupon_template_resumed`/`coupon_template_deleted`로 기록한다.
+- `미확정`: 발급/사용 원장(`commerce_coupon_issues`, `commerce_coupon_redemptions`)은 아직 별도 테이블 계약으로 확정되지 않았다.
+- `미확정`: scope-ref, 대상 그룹, 알림 설정은 JSONB/문자열 snapshot 중심이며 정규화 후속 결정이 필요하다.
+- `미확정`: `planTier` free-limit는 현재 클라이언트/config 검증으로 유지되며 영속 정책은 후속이다.
+- `미확정`: `target_user_ids`는 v13 `profiles` 느슨참조이며 FK가 없어 표시명/삭제/탈퇴 정합 정책이 필요하다.
+### 4.6.5 Commerce 환불 Supabase 전환 해소 기록 (2026-06-17)
+
+- 대상 파일
+  - `src/features/billing/api/commerce-refunds-data-source.ts`
+  - `src/features/billing/api/billing-service.ts`
+  - `supabase/migrations-admin/20260617203000_commerce_refunds.sql`
+- 현 상태
+  - 2026-06-17 기준 `Commerce > 환불 관리`는 mock/Supabase 합성 조회에서 Supabase-backed workflow table로 전환 완료했다.
+  - Supabase 모드는 `commerce_refunds`와 admin RPC 2종(`admin_approve_billing_refund`, `admin_reject_billing_refund`)을 사용한다.
+  - Supabase 미구성, `VITE_SUPABASE_DISABLED=true`, `VITE_COMMERCE_REFUNDS_SOURCE=mock`은 기존 mock source로 회귀한다.
+  - 마이그레이션 `supabase/migrations-admin/20260617203000_commerce_refunds.sql`(+ down)은 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했다.
+- 해소된 항목
+  - `Resolved`(2026-06-17): Supabase 모드 환불 read가 v13 `payment_history(status='refunded')` 합성 결과에 의존하던 항목. 환불 처리 대기/승인/거절 워크플로 SoT는 `commerce_refunds`로 고정됐다.
+  - `Resolved`(2026-06-17): Supabase 모드 환불 승인/거절 write 차단. `assertMockRefundActionAllowed` 경계가 RPC 경로로 전환되어 승인/거절 조치를 수행한다.
+  - `Resolved`(2026-06-17): 환불 조치 감사 로그 Target Type `Commerce` 범용화. Supabase 경로는 `CommerceRefund` Target Type과 action `refund_approved`/`refund_rejected`로 `admin_audit_logs`에 기록한다.
+- 미확정/누락/오구현
+  - 실제 결제 환불 집행 및 v13 `payment_history.status` 갱신은 미연동이다. 현재 승인 RPC는 payload `intent_only_v13_payment_history_pending=true`로 의도만 기록한다.
+  - `payment_id`와 `user_id`는 v13 느슨참조이며 FK가 없어 삭제/탈퇴/결제 원본 정합 정책이 필요하다.
+  - `RF-NNNN` max+1 채번은 동시성 리스크가 남아 있다.
+  - payments `method` 컬럼 reconcile은 별도 과제로 남아 있다.
+- 분류
+  - `해소`: 환불 Supabase read SoT, Supabase write 차단, 환불 감사 Target Type 세분화
+  - `미확정`: 실제 결제 환불 집행 v13 연동, 느슨참조 정합, 채번 동시성, payments method reconcile
+### 2026-06-18 Users 회원 상세 학습 현황
+
+- `Resolved`: 회원 상세에 학습 현황(문제 풀이) 탭이 추가되어 `get_admin_user_learning_overview(target_id)` live RPC와 mock fallback을 모두 가진다.
+- `Resolved`: 학습 현황은 신규 테이블 없이 v13 학습 테이블 read-only 집계로 제공한다. v13 DDL/FK 변경 없음.
+- `Resolved`: 작문 답안 본문과 문장별 첨삭 본문은 admin 미노출로 결정했다.
+- `미확정`: 활동(`study_events`) 탭과 결제(`payment_history`) 탭의 실데이터화는 이번 범위에서 제외했다.
+- `미확정`: 작문 첨삭 전문 열람이 필요해질 경우 별도 권한, 감사 로그, PII 열람 정책 결정이 선행되어야 한다.

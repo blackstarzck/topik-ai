@@ -1,0 +1,22 @@
+[
+  {
+    "code": "EXPO2026-BOOTH-A",
+    "label": "2026 한국어교육 박람회 · A부스",
+    "kind": "박람회",
+    "status": "활성",
+    "note": "현장 QR 가입 · A부스",
+    "created_by": null,
+    "created_at": "2026-06-19 06:35:43.102833+00",
+    "updated_at": "2026-06-19 06:35:43.102833+00"
+  },
+  {
+    "code": "EXPO2026-BOOTH-B",
+    "label": "2026 한국어교육 박람회 · B부스",
+    "kind": "박람회",
+    "status": "활성",
+    "note": "현장 QR 가입 · B부스",
+    "created_by": null,
+    "created_at": "2026-06-19 06:35:43.102833+00",
+    "updated_at": "2026-06-19 06:35:43.102833+00"
+  }
+]

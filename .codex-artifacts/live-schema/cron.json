@@ -1,0 +1,1 @@
+[{"jobid":1,"schedule":"0 4 * * *","command":" select private.cleanup_unconfirmed_users(30) ","active":true,"jobname":"cleanup-unconfirmed-users"},{"jobid":2,"schedule":"*/10 * * * *","command":" select private.dispatch_notifications() ","active":true,"jobname":"dispatch_notifications"}]

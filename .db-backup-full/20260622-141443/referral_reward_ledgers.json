@@ -1,0 +1,98 @@
+[
+  {
+    "id": "RWD-0001-1",
+    "referral_id": "REF-0001",
+    "relation_id": "REL-0001-1",
+    "entry_type": "지급",
+    "reward_method_label": "정책 미확정",
+    "amount": 4000,
+    "status": "완료",
+    "acted_at": "2026-02-17 12:00",
+    "reason": "추천 확정 기준 가정값 반영",
+    "created_ts": "2026-06-18 23:44:05.132411+00"
+  },
+  {
+    "id": "RWD-0001-2",
+    "referral_id": "REF-0001",
+    "relation_id": "REL-0001-2",
+    "entry_type": "지급",
+    "reward_method_label": "정책 미확정",
+    "amount": 4000,
+    "status": "완료",
+    "acted_at": "2026-02-20 12:00",
+    "reason": "추천 확정 기준 가정값 반영",
+    "created_ts": "2026-06-18 23:44:05.132411+00"
+  },
+  {
+    "id": "RWD-0001-3",
+    "referral_id": "REF-0001",
+    "relation_id": "REL-0001-3",
+    "entry_type": "지급",
+    "reward_method_label": "정책 미확정",
+    "amount": 4000,
+    "status": "완료",
+    "acted_at": "2026-02-24 12:00",
+    "reason": "추천 확정 기준 가정값 반영",
+    "created_ts": "2026-06-18 23:44:05.132411+00"
+  },
+  {
+    "id": "RWD-0002-1",
+    "referral_id": "REF-0002",
+    "relation_id": "REL-0002-1",
+    "entry_type": "지급",
+    "reward_method_label": "정책 미확정",
+    "amount": 5000,
+    "status": "완료",
+    "acted_at": "2026-02-27 12:00",
+    "reason": "추천 확정 기준 가정값 반영",
+    "created_ts": "2026-06-18 23:44:05.132411+00"
+  },
+  {
+    "id": "RWD-0002-2",
+    "referral_id": "REF-0002",
+    "relation_id": "REL-0002-2",
+    "entry_type": "지급",
+    "reward_method_label": "정책 미확정",
+    "amount": 5000,
+    "status": "완료",
+    "acted_at": "2026-02-28 12:00",
+    "reason": "추천 확정 기준 가정값 반영",
+    "created_ts": "2026-06-18 23:44:05.132411+00"
+  },
+  {
+    "id": "RWD-0003-1",
+    "referral_id": "REF-0003",
+    "relation_id": "REL-0003-1",
+    "entry_type": "지급",
+    "reward_method_label": "정책 미확정",
+    "amount": 6000,
+    "status": "완료",
+    "acted_at": "2026-02-12 12:00",
+    "reason": "추천 확정 기준 가정값 반영",
+    "created_ts": "2026-06-18 23:44:05.132411+00"
+  },
+  {
+    "id": "RWD-0003-2",
+    "referral_id": "REF-0003",
+    "relation_id": "REL-0003-2",
+    "entry_type": "취소",
+    "reward_method_label": "정책 미확정",
+    "amount": -6000,
+    "status": "완료",
+    "acted_at": "2026-02-19 12:00",
+    "reason": "추천 확정 취소 가정값 반영",
+    "created_ts": "2026-06-18 23:44:05.132411+00"
+  },
+  {
+    "id": "ADJ-0003-1",
+    "referral_id": "REF-0003",
+    "relation_id": "",
+    "entry_type": "수동 보정",
+    "reward_method_label": "정책 미확정",
+    "amount": 1000,
+    "status": "완료",
+    "acted_at": "2026-03-10 14:00",
+    "reason": "운영 검토 후 수동 보정",
+    "created_ts": "2026-06-18 23:44:05.132411+00"
+  }
+]

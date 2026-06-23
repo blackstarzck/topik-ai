@@ -1,0 +1,71 @@
+[
+  {
+    "id": "REF-0001",
+    "code": "TOPIK-3200",
+    "referrer_user_id": "U00011",
+    "referrer_name": "김민준",
+    "referrer_email": "member11@topik.ai",
+    "created_at": "2026-03-01 10:00",
+    "expires_at": "2026-05-01",
+    "last_action_at": "2026-03-12 12:00",
+    "status": "활성",
+    "anomaly_status": "없음",
+    "admin_memo": "운영 모니터링 상태입니다. 정책 확정 전까지는 가정값 기준으로만 관리합니다.",
+    "policy_snapshot": {
+      "note": "추천 확정 시점, 보상 수단, 수동 보정 권한, 회수 규칙은 아직 확정되지 않았으며 운영 화면에서 가정값으로만 표시됩니다.",
+      "version": "정책 초안 v0",
+      "rewardMethod": "미확정",
+      "rollbackRule": "미확정",
+      "confirmationTiming": "미확정",
+      "manualAdjustmentAuthority": "미확정"
+    },
+    "created_ts": "2026-06-18 23:44:05.132411+00",
+    "updated_at": "2026-06-18 23:44:05.132411+00"
+  },
+  {
+    "id": "REF-0002",
+    "code": "TOPIK-3201",
+    "referrer_user_id": "U00012",
+    "referrer_name": "이서연",
+    "referrer_email": "member12@topik.ai",
+    "created_at": "2026-03-02 11:00",
+    "expires_at": "2026-05-05",
+    "last_action_at": "2026-03-13 09:30",
+    "status": "활성",
+    "anomaly_status": "검토 필요",
+    "admin_memo": "추천 확정 및 보상 지급 기준이 미확정이므로 이상치 검토 우선 대상입니다.",
+    "policy_snapshot": {
+      "note": "추천 확정 시점, 보상 수단, 수동 보정 권한, 회수 규칙은 아직 확정되지 않았으며 운영 화면에서 가정값으로만 표시됩니다.",
+      "version": "정책 초안 v0",
+      "rewardMethod": "미확정",
+      "rollbackRule": "미확정",
+      "confirmationTiming": "미확정",
+      "manualAdjustmentAuthority": "미확정"
+    },
+    "created_ts": "2026-06-18 23:44:05.132411+00",
+    "updated_at": "2026-06-18 23:44:05.132411+00"
+  },
+  {
+    "id": "REF-0003",
+    "code": "TOPIK-3202",
+    "referrer_user_id": "U00013",
+    "referrer_name": "박지후",
+    "referrer_email": "member13@topik.ai",
+    "created_at": "2026-03-03 09:00",
+    "expires_at": "2026-04-20",
+    "last_action_at": "2026-03-14 15:00",
+    "status": "비활성",
+    "anomaly_status": "검토 완료",
+    "admin_memo": "운영 검토를 마쳤으며 후속 정책 확정 시 보상 원장 재점검이 필요합니다.",
+    "policy_snapshot": {
+      "note": "추천 확정 시점, 보상 수단, 수동 보정 권한, 회수 규칙은 아직 확정되지 않았으며 운영 화면에서 가정값으로만 표시됩니다.",
+      "version": "정책 초안 v0",
+      "rewardMethod": "미확정",
+      "rollbackRule": "미확정",
+      "confirmationTiming": "미확정",
+      "manualAdjustmentAuthority": "미확정"
+    },
+    "created_ts": "2026-06-18 23:44:05.132411+00",
+    "updated_at": "2026-06-18 23:44:05.132411+00"
+  }
+]

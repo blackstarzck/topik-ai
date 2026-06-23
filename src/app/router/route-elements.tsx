@@ -16,6 +16,9 @@ const InstructorManagementPage = lazy(
 const UsersReferralsPage = lazy(
   () => import('../../features/users/pages/users-referrals-page')
 );
+const InstitutionCodesPage = lazy(
+  () => import('../../features/users/pages/institution-codes-page')
+);
 const UserDetailPage = lazy(
   () => import('../../features/users/pages/user-detail-page')
 );
@@ -82,14 +85,15 @@ const CommerceCouponCreatePage = lazy(
 const CommerceCouponTemplateCreatePage = lazy(
   () => import('../../features/commerce/pages/commerce-coupon-template-create-page')
 );
+// /assessment/question-bank = 조회+관리 통합 페이지(구 목록·관리 합침).
 const AssessmentQuestionBankPage = lazy(
-  () => import('../../features/assessment/pages/assessment-question-bank-page')
+  () => import('../../features/assessment/pages/assessment-question-manage-page')
 );
 const AssessmentQuestionDetailPage = lazy(
   () => import('../../features/assessment/pages/assessment-question-detail-page')
 );
-const AssessmentQuestionManagePage = lazy(
-  () => import('../../features/assessment/pages/assessment-question-manage-page')
+const AssessmentImportedTasksPage = lazy(
+  () => import('../../features/assessment/pages/assessment-imported-tasks-page')
 );
 const AnalyticsOverviewPage = lazy(
   () => import('../../features/analytics/pages/analytics-overview-page')
@@ -125,6 +129,8 @@ function renderPageRouteElement(route: PageRouteDefinition): JSX.Element {
       return <InstructorManagementPage />;
     case 'users-referrals':
       return <UsersReferralsPage />;
+    case 'institution-codes':
+      return <InstitutionCodesPage />;
     case 'community-posts':
       return <CommunityPostsPage />;
     case 'community-reports':
@@ -171,8 +177,8 @@ function renderPageRouteElement(route: PageRouteDefinition): JSX.Element {
       return <AssessmentQuestionBankPage />;
     case 'assessment-question-detail':
       return <AssessmentQuestionDetailPage />;
-    case 'assessment-question-manage':
-      return <AssessmentQuestionManagePage />;
+    case 'assessment-imported-tasks':
+      return <AssessmentImportedTasksPage />;
     case 'analytics-overview':
       return <AnalyticsOverviewPage />;
     case 'system-admins':

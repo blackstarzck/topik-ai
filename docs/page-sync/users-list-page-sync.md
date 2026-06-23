@@ -7,9 +7,9 @@ page_name: "회원 목록"
 route: "/users"
 status: "구현됨"
 primary_entity: "User"
-primary_table_candidate: "users"
+primary_table_candidate: "v13 profiles/auth.users + writing_submissions aggregate"
 owner_agent_scope: "shared"
-last_reviewed_at: "2026-06-01"
+last_reviewed_at: "2026-06-17"
 ---
 
 ## 1. 문서 목적
@@ -59,22 +59,22 @@ last_reviewed_at: "2026-06-01"
 
 | 엔티티 후보 | 테이블 후보 | CRUD | 관리자 UI 진입점 | 주요 필드 후보 | 감사 로그 Target | 사용자 화면 영향 | 미확정/차이 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| User | users | Create, Read, Update, Delete 후보 | 회원 목록 본문/상세/Modal | 회원 ID, 이메일, 닉네임, 가입일, 최근 접속, 회원 상태, 등급, 구독 상태, id, status, created_at, updated_at | User + userId | 운영상 추정 | 현재 프론트엔드/문서 기준 후보 |
+| User | v13 `profiles`/`auth.users` + `writing_submissions` 집계 | Read, 상태 Update | 회원 목록 본문/상태 조치 | 회원 ID, 이메일, 표시명, 닉네임, 가입일, 최근 접속, 회원 상태, 등급(`plan_label`), 제출 수, 최근 활동 | User + userId | 운영상 추정 | Supabase 모드 source는 `get_admin_users`; 정지/해제는 `admin_set_user_status`가 `profiles.status`만 토글 |
 
 ### CRUD 상세
 
 | CRUD | 지원 여부 | 화면 동작 | 저장/서비스 후보 | 성공 후 동기화 대상 | 실패 시 fail-safe |
 | --- | --- | --- | --- | --- | --- |
-| Create | `지원 또는 후보` | 회원 목록 등록/생성 후보 | service/store/API 후보 | 목록, 상세, 사용자 화면 후보 | error 표시, 재시도, 마지막 성공 상태 fallback |
-| Read | `지원` | 회원 목록 조회 | service/store/API 후보 | URL/필터/탭 복원 | empty/error 처리 |
-| Update | `지원 또는 후보` | 회원 목록 수정/상태 변경 후보 | service/store/API 후보 | 목록, 상세, 감사 로그 | 실패 시 재조회 또는 rollback |
-| Delete | `지원 또는 후보` | 회원 목록 삭제/숨김/중지 후보 | service/store/API 후보 | 목록, 상세, 감사 로그, 사용자 노출 | 확인 모달, 사유 필수, 실패 안내 |
+| Create | `미지원` | 회원 목록에서 생성하지 않음 | 없음 | 없음 | 해당 없음 |
+| Read | `지원` | 회원 목록 조회 | `get_admin_users(search, sort, page, page_size)` | URL/필터/탭 복원 | empty/error 처리 |
+| Update | `지원` | 회원 정지/해제 | `admin_set_user_status(target_id, new_status)` | 목록, 상세, 감사 로그 | 실패 시 재조회 또는 rollback |
+| Delete | `미지원` | 탈퇴/deleted 전환은 이 화면 조치 범위 밖 | 없음 | 없음 | `deleted`는 RPC에서 상태 변경 차단 |
 
 ## 6. 관리자 조치와 감사 로그 계약
 
 | 조치 | 파괴적 여부 | 확인 단계 | 사유/근거 입력 | Target Type | Target ID | 감사 로그 확인 경로 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 회원 목록 주요 조치 | 예 | 필수 | 필수 | User | 대상 ID | /system/audit-logs?targetType=User&targetId={targetId} |
+| 회원 정지/해제 | 예 | 필수 | 필수 | User | userId | /system/audit-logs?targetType=User&targetId={userId} |
 
 ## 7. 사용자 화면 동기화 포인트
 
@@ -106,6 +106,13 @@ last_reviewed_at: "2026-06-01"
 | 정상/정지/탈퇴 | 정상/정지/탈퇴 | page-specific enum candidate | 정상/정지/탈퇴 | 정확한 상태 세트는 IA와 데이터 계약 문서를 우선합니다. |
 | 구독 상태 | 구독 상태 | page-specific enum candidate | 구독 상태 | 정확한 상태 세트는 IA와 데이터 계약 문서를 우선합니다. |
 
+### 9.1 Supabase source 계약
+
+- 마이그레이션: `supabase/migrations-admin/20260617210000_admin_users_directory.sql`(+ down), tracker `admin_schema_migrations`, 2026-06-17 dev DB 적용 완료.
+- 신규 테이블 0건. `profiles`, `auth.users`, `writing_submissions`는 v13 소유이며, v13 `profiles` DDL은 변경하지 않는다.
+- read RPC: `get_admin_users(search text, sort text, page integer, page_size integer)`는 platform_admin 전용이다. PostgREST 매칭을 위해 인자명 `search`/`sort`/`page`/`page_size`는 프론트 JSON 키와 정확히 일치해야 한다.
+- write RPC: `admin_set_user_status(target_id uuid, new_status text)`는 platform_admin 전용이며 `active`/`blocked`만 허용하고 `deleted`는 차단한다. 감사 로그는 `target_table='User'`, action `user_status_changed`다.
+
 ## 10. URL/검색/복원 규칙
 
 - 기본 라우트: `/users`
@@ -128,7 +135,7 @@ last_reviewed_at: "2026-06-01"
 
 - Codex 확인 포인트:
   - `src/features/users/pages/users-page.tsx` 구현과 `docs/specs/page-ia/users-list-page-ia.md` 문서 일치 확인
-  - service/store/mock 경계와 감사 로그 Target 확인
+  - `supabase-users-service.ts`의 `get_admin_users`/`admin_set_user_status` 호출 인자명과 감사 로그 Target 확인
 - Claude 확인 포인트:
   - 마이페이지 계정 정보와 로그인 접근 가드에 운영상 추정으로 연결됩니다.
   - 정책 문구와 노출/비노출 기준 검토
@@ -141,4 +148,6 @@ last_reviewed_at: "2026-06-01"
 
 | 항목 | 미확정 내용 | 필요한 결정 주체 | 관리자 페이지 영향 | 사용자 화면 영향 | 추적 문서 |
 | --- | --- | --- | --- | --- | --- |
-| 회원 목록 최종 계약 | 상태 조치와 관리자 메모의 실제 영속 경계는 API 전환 시 재확인해야 합니다. | 기획/백엔드/프론트 | 필터/액션/감사 로그 계약 변동 가능 | 마이페이지 계정 정보와 로그인 접근 가드에 운영상 추정으로 연결됩니다. | docs/specs/page-ia/users-list-page-ia.md |
+| 서버 페이지네이션/정렬 확장 | `get_admin_users`는 `search`, `sort`, `page`, `page_size`를 받지만 상태/기간/검색필드별 서버 필터 확장은 아직 별도 확정이 필요합니다. | 기획/백엔드/프론트 | 필터/정렬 계약 변동 가능 | 직접 영향 낮음 | docs/specs/page-ia/users-list-page-ia.md |
+| 구독 상태 source | 회원 목록의 구독 상태 표시 원천은 `get_admin_users` 반환 컬럼 밖이므로 별도 결제/구독 SoT 확정이 필요합니다. | 기획/백엔드/프론트 | 컬럼 표시/필터 변동 가능 | 마이페이지 구독 상태 표시와 연결 가능 | docs/specs/admin-data-usage-map.md |
+| 관리자 메모 | 관리자 메모의 저장 주체와 감사 로그 영속 정책은 이번 RPC 핫픽스 범위 밖입니다. | 기획/백엔드/프론트 | 메모 조치/감사 로그 계약 변동 가능 | 직접 영향 없음 | docs/specs/page-ia/users-list-page-ia.md |

@@ -173,7 +173,7 @@ export default function OperationNoticesPage(): JSX.Element {
         state.operationNoticeSaved.mode === 'create' ? '공지 등록 완료' : '공지 수정 완료',
       description: (
         <Space direction="vertical">
-          <Text>대상 유형: {getTargetTypeLabel('Operation')}</Text>
+          <Text>대상 유형: {getTargetTypeLabel('OperationNotice')}</Text>
           <Text>대상 ID: {state.operationNoticeSaved.noticeId}</Text>
           <Text>
             사유/근거:{' '}
@@ -182,7 +182,7 @@ export default function OperationNoticesPage(): JSX.Element {
               : '공지 제목/본문 수정'}
           </Text>
           <AuditLogLink
-            targetType="Operation"
+            targetType="OperationNotice"
             targetId={state.operationNoticeSaved.noticeId}
           />
         </Space>
@@ -287,7 +287,7 @@ export default function OperationNoticesPage(): JSX.Element {
       }
 
       if (dangerState.type === 'delete') {
-        const result = await deleteNoticeSafe(dangerState.notice.id);
+        const result = await deleteNoticeSafe(dangerState.notice.id, reason);
         if (!result.ok) {
           notificationApi.error({
             message: '공지 삭제 실패',
@@ -316,10 +316,10 @@ export default function OperationNoticesPage(): JSX.Element {
           message: '공지 삭제 완료',
           description: (
             <Space direction="vertical">
-              <Text>대상 유형: {getTargetTypeLabel('Operation')}</Text>
+              <Text>대상 유형: {getTargetTypeLabel('OperationNotice')}</Text>
               <Text>대상 ID: {result.data.id}</Text>
               <Text>사유/근거: {reason}</Text>
-              <AuditLogLink targetType="Operation" targetId={result.data.id} />
+              <AuditLogLink targetType="OperationNotice" targetId={result.data.id} />
             </Space>
           )
         });
@@ -328,7 +328,8 @@ export default function OperationNoticesPage(): JSX.Element {
       if (dangerState.type === 'toggle') {
         const result = await toggleNoticeStatusSafe({
           noticeId: dangerState.notice.id,
-          nextStatus: dangerState.nextStatus
+          nextStatus: dangerState.nextStatus,
+          reason
         });
 
         if (!result.ok) {
@@ -358,10 +359,10 @@ export default function OperationNoticesPage(): JSX.Element {
           message: result.data.status === '게시' ? '공지 게시 완료' : '공지 숨김 완료',
           description: (
             <Space direction="vertical">
-              <Text>대상 유형: {getTargetTypeLabel('Operation')}</Text>
+              <Text>대상 유형: {getTargetTypeLabel('OperationNotice')}</Text>
               <Text>대상 ID: {result.data.id}</Text>
               <Text>사유/근거: {reason}</Text>
-              <AuditLogLink targetType="Operation" targetId={result.data.id} />
+              <AuditLogLink targetType="OperationNotice" targetId={result.data.id} />
             </Space>
           )
         });
@@ -629,7 +630,7 @@ export default function OperationNoticesPage(): JSX.Element {
                 ? '숨김 상태 공지를 다시 게시합니다. 게시 사유를 입력해주세요.'
                 : '공지 노출을 중단합니다. 숨김 사유를 입력해주세요.'
           }
-          targetType="Operation"
+          targetType="OperationNotice"
           targetId={dangerState.notice.id}
           confirmText={
             dangerState.type === 'delete'

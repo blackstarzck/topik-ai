@@ -1,0 +1,162 @@
+[
+  {
+    "name": "20260612170000_notification_admin_tables.sql",
+    "applied_at": "2026-06-12 09:04:14.393321+00"
+  },
+  {
+    "name": "20260612170100_notification_admin_rpcs.sql",
+    "applied_at": "2026-06-12 09:04:16.120024+00"
+  },
+  {
+    "name": "20260612170200_notification_seed.sql",
+    "applied_at": "2026-06-12 09:04:17.666288+00"
+  },
+  {
+    "name": "20260612170300_notification_template_link_url.sql",
+    "applied_at": "2026-06-12 09:09:22.176462+00"
+  },
+  {
+    "name": "20260612170400_attempts_template_key.sql",
+    "applied_at": "2026-06-12 09:20:40.699467+00"
+  },
+  {
+    "name": "20260612170500_template_save_rpc_link_url.sql",
+    "applied_at": "2026-06-12 10:31:29.768839+00"
+  },
+  {
+    "name": "20260612180000_cancel_dispatch_rpc.sql",
+    "applied_at": "2026-06-14 23:50:15.380196+00"
+  },
+  {
+    "name": "20260612180100_email_body_size_guard.sql",
+    "applied_at": "2026-06-14 23:58:38.847385+00"
+  },
+  {
+    "name": "20260617120000_operation_notices.sql",
+    "applied_at": "2026-06-17 05:01:29.622393+00"
+  },
+  {
+    "name": "20260617123000_operation_faqs.sql",
+    "applied_at": "2026-06-17 05:53:30.142165+00"
+  },
+  {
+    "name": "20260617152000_operation_events.sql",
+    "applied_at": "2026-06-17 06:55:08.574784+00"
+  },
+  {
+    "name": "20260617170000_operation_policies.sql",
+    "applied_at": "2026-06-17 07:55:29.347597+00"
+  },
+  {
+    "name": "20260617173000_community.sql",
+    "applied_at": "2026-06-17 08:31:58.527786+00"
+  },
+  {
+    "name": "20260617190000_commerce_points.sql",
+    "applied_at": "2026-06-17 09:00:13.754905+00"
+  },
+  {
+    "name": "20260617193000_commerce_coupons.sql",
+    "applied_at": "2026-06-17 09:44:12.972149+00"
+  },
+  {
+    "name": "20260617203000_commerce_refunds.sql",
+    "applied_at": "2026-06-17 10:22:51.001273+00"
+  },
+  {
+    "name": "20260617210000_admin_users_directory.sql",
+    "applied_at": "2026-06-17 10:44:52.343732+00"
+  },
+  {
+    "name": "20260617211000_system_metadata.sql",
+    "applied_at": "2026-06-17 10:52:05.66308+00"
+  },
+  {
+    "name": "20260617213000_system_logs.sql",
+    "applied_at": "2026-06-17 11:32:24.798849+00"
+  },
+  {
+    "name": "20260617220000_admin_users_consent.sql",
+    "applied_at": "2026-06-17 11:37:11.205902+00"
+  },
+  {
+    "name": "20260617230000_admin_users_nationality.sql",
+    "applied_at": "2026-06-17 12:04:09.278508+00"
+  },
+  {
+    "name": "20260618001000_admin_audit_logs_read.sql",
+    "applied_at": "2026-06-17 23:37:20.42717+00"
+  },
+  {
+    "name": "20260618093000_admin_set_app_role.sql",
+    "applied_at": "2026-06-18 00:45:12.756636+00"
+  },
+  {
+    "name": "20260618094000_admin_list_admin_app_roles.sql",
+    "applied_at": "2026-06-18 01:01:31.308123+00"
+  },
+  {
+    "name": "20260618095000_audit_logs_diff_payload_platform_only.sql",
+    "applied_at": "2026-06-18 01:47:14.708533+00"
+  },
+  {
+    "name": "20260618120000_admin_user_learning_overview.sql",
+    "applied_at": "2026-06-18 07:01:32.149261+00"
+  },
+  {
+    "name": "20260618123000_admin_list_admins.sql",
+    "applied_at": "2026-06-18 07:01:34.002001+00"
+  },
+  {
+    "name": "20260618124000_admin_user_community_posts.sql",
+    "applied_at": "2026-06-18 07:01:35.755945+00"
+  },
+  {
+    "name": "20260618125000_user_admin_memos.sql",
+    "applied_at": "2026-06-18 07:01:37.705939+00"
+  },
+  {
+    "name": "20260618130000_admin_users_social_providers.sql",
+    "applied_at": "2026-06-18 12:09:16.515576+00"
+  },
+  {
+    "name": "20260619100000_instructors.sql",
+    "applied_at": "2026-06-18 23:12:00.18292+00"
+  },
+  {
+    "name": "20260619110000_instructors_list_full.sql",
+    "applied_at": "2026-06-18 23:37:20.547519+00"
+  },
+  {
+    "name": "20260619120000_referrals.sql",
+    "applied_at": "2026-06-18 23:44:06.347373+00"
+  },
+  {
+    "name": "20260619130000_user_detail_tabs.sql",
+    "applied_at": "2026-06-18 23:55:50.496727+00"
+  },
+  {
+    "name": "20260619140000_institution_codes.sql",
+    "applied_at": "2026-06-19 06:35:43.909354+00"
+  },
+  {
+    "name": "20260619150000_admin_users_affiliation.sql",
+    "applied_at": "2026-06-19 06:35:45.772614+00"
+  },
+  {
+    "name": "20260622100000_auth_email_templates.sql",
+    "applied_at": "2026-06-22 00:49:16.012765+00"
+  },
+  {
+    "name": "20260622140000_operation_policies_en_content.sql",
+    "applied_at": "2026-06-22 01:16:53.470209+00"
+  },
+  {
+    "name": "20260622160000_user_legal_consents_read.sql",
+    "applied_at": "2026-06-22 01:31:13.824462+00"
+  },
+  {
+    "name": "20260622170000_legal_terms_change_notification.sql",
+    "applied_at": "2026-06-22 01:45:15.849912+00"
+  }
+]

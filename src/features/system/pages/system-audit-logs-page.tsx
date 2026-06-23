@@ -34,7 +34,9 @@ const detailLabelMap: Record<string, string> = {
   action: '조치',
   actor: '수행자',
   reason: '사유/근거',
-  createdAt: '시각'
+  createdAt: '시각',
+  diff: '변경 내용(diff)',
+  payload: '추가 정보(payload)'
 };
 
 function getTargetRoute(targetType: string, targetId: string): string | null {
@@ -50,17 +52,35 @@ function getTargetRoute(targetType: string, targetId: string): string | null {
   if (targetType === 'Community') {
     return '/community/posts';
   }
+  if (targetType === 'CommunityPost') {
+    return `/community/posts?selected=${targetId}`;
+  }
+  if (targetType === 'CommunityReport') {
+    return `/community/reports?searchField=id&keyword=${targetId}`;
+  }
   if (targetType === 'Billing' || targetType === 'Commerce') {
     if (targetId.startsWith('RF-')) {
       return `/commerce/refunds?keyword=${targetId}`;
     }
     return `/commerce/payments?keyword=${targetId}`;
   }
+  if (targetType === 'CommerceRefund') {
+    return `/commerce/refunds?keyword=${targetId}`;
+  }
   if (targetType === 'CommerceCoupon') {
     return `/commerce/coupons?selected=${targetId}`;
   }
   if (targetType === 'CommerceCouponTemplate') {
     return `/commerce/coupons?view=subscriptionTemplate&selected=${targetId}`;
+  }
+  if (targetType === 'CommercePointPolicy') {
+    return `/commerce/points?tab=policy&selected=${targetId}`;
+  }
+  if (targetType === 'CommercePointLedger') {
+    return `/commerce/points?tab=ledger&selected=${targetId}`;
+  }
+  if (targetType === 'CommercePointExpiration') {
+    return `/commerce/points?tab=expiration&selected=${targetId}`;
   }
   if (targetType === 'Notification' || targetType === 'Message') {
     if (targetId.startsWith('MAIL-')) {
@@ -85,6 +105,18 @@ function getTargetRoute(targetType: string, targetId: string): string | null {
       return `/operation/notices?preview=${targetId}`;
     }
     return '/operation/notices';
+  }
+  if (targetType === 'OperationNotice') {
+    return `/operation/notices?preview=${targetId}`;
+  }
+  if (targetType === 'OperationEvent') {
+    return `/operation/events?selected=${targetId}`;
+  }
+  if (targetType === 'OperationFaq') {
+    return `/operation/faq?selected=${targetId}`;
+  }
+  if (targetType === 'OperationFaqCuration') {
+    return `/operation/faq?tab=curation&curationSelected=${targetId}`;
   }
   if (targetType === 'OperationPolicy') {
     return `/operation/policies?selected=${targetId}`;
@@ -126,6 +158,9 @@ function getTargetRoute(targetType: string, targetId: string): string | null {
       return '/content/missions';
     }
     return '/content/library';
+  }
+  if (targetType === 'AdminAccount') {
+    return `/system/permissions?adminId=${targetId}`;
   }
   if (targetType === 'Admin' || targetType === 'System') {
     return `/system/admins?keyword=${targetId}`;
@@ -235,17 +270,25 @@ export default function SystemAuditLogsPage(): JSX.Element {
     });
   }, [commitParams, draftEndDate, draftStartDate, keyword, searchField]);
 
-  const selectedDetailRecord = useMemo(
-    () =>
-      selectedRow
-        ? {
-            ...selectedRow,
-            targetTypeLabel: getTargetTypeLabel(selectedRow.targetType),
-            targetIdDisplay: getAuditTargetDisplay(selectedRow)
-          }
-        : null,
-    [selectedRow]
-  );
+  const selectedDetailRecord = useMemo(() => {
+    if (!selectedRow) {
+      return null;
+    }
+    const record: Record<string, unknown> = {
+      ...selectedRow,
+      targetTypeLabel: getTargetTypeLabel(selectedRow.targetType),
+      targetIdDisplay: getAuditTargetDisplay(selectedRow)
+    };
+    // diff/payload are present only for platform_admin (server-gated). Omit the
+    // rows entirely for other admins so the modal does not surface empty fields.
+    if (record.diff == null) {
+      delete record.diff;
+    }
+    if (record.payload == null) {
+      delete record.payload;
+    }
+    return record;
+  }, [selectedRow]);
 
   const todayPrefix = new Date().toISOString().slice(0, 10);
   const todayCount = filteredRows.filter((row) => row.createdAt.startsWith(todayPrefix)).length;

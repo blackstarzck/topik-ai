@@ -56,6 +56,9 @@
 - 필터: 검색어, 가입 기간
 - 정렬: 가입일, 최근 접속, 회원 상태
 - 액션: 회원 상세, 회원 정지/해제, 관리자 메모
+- source: Supabase 모드는 `get_admin_users(search, sort, page, page_size)` RPC를 사용합니다. source 테이블은 v13 `profiles`/`auth.users` 조인과 `writing_submissions` 집계이며 신규 admin 테이블은 없습니다.
+- source 필드: `user_id`, `email`, `display_name`, `nickname`, `app_role`, `plan_label`, `status`, `submission_count`, `last_activity`, `last_sign_in_at`, `created_at`, `total_count`.
+- 상태 조치: 정지/해제는 `admin_set_user_status(target_id, new_status)` RPC를 사용합니다. `new_status`는 `active`/`blocked`만 허용하고 `deleted`는 차단하며, 감사 Target Type은 `User`입니다.
 - 레이아웃 메모: 요약 없는 목록 운영형 기준으로 `Card 내부 SearchBar -> Table` 순서를 유지합니다.
 - 상태 표현 메모: `구독 상태` 컬럼은 외부 구독 원천 데이터를 보여주는 정보용 컬럼이므로 스위치 조치 없이 텍스트 상태로 표시합니다.
 
@@ -168,6 +171,8 @@
 
 ## 9) 운영 > 공지사항
 
+- 현재 상태: 구현됨 (Supabase `operation_notices` + mock fallback data-source switch 기반)
+- 데이터소스: `notices-service.ts` safe facade는 `operation-notices-data-source.ts`에서 `VITE_SUPABASE_DISABLED`, Supabase 설정 여부, `VITE_OPERATION_NOTICES_SOURCE`를 판별해 mock과 Supabase를 분기합니다. Supabase 모드는 `supabase-operation-notices-service.ts`가 DB row와 화면 모델을 매핑합니다.
 - 테이블 컬럼: 공지 ID, 제목, 작성자, 작성일, 상태, 액션
 - 필터: `상태` 컬럼 필터(URL 동기화)
 - 정렬: 공지 ID, 제목, 작성자, 작성일, 상태(URL 동기화)
@@ -175,14 +180,16 @@
 - 레이아웃 메모: 별도 SearchBar 없이 `AdminListCard.toolbar` 오른쪽 정렬 툴바에 `총 공지 건수`와 `공지 등록` 버튼을 같은 줄로 두고, 건수는 버튼 왼쪽에 배치합니다. 목록은 `status`, `sortField`, `sortOrder`, `preview` 쿼리로 현재 검수 상태를 복원합니다.
 - 행 클릭: 저장된 공지 HTML 본문을 전용 미리보기 Modal에서 렌더링하고, `preview` 쿼리로 같은 대상을 다시 복원할 수 있습니다.
 - 미리보기 Modal: 푸터에 `공지 수정` 버튼과 `닫기` 버튼을 두고, `공지 수정`은 `/operation/notices/create/:noticeId` 등록 상세 페이지로 이동합니다.
-- 상태 컬럼: `Switch` 컴포넌트를 사용하며 on은 `게시`, off는 `숨김`입니다. 전환 시 확인 모달과 사유 입력을 거친 뒤 반영합니다.
+- 상태 컬럼: `Switch` 컴포넌트를 사용하며 on은 `게시`, off는 `숨김`입니다. DB 저장 코드는 `published`/`hidden`이고, 서비스 경계에서 한글 라벨로 매핑합니다. 전환 시 확인 모달과 사유 입력을 거친 뒤 admin RPC에 전달합니다.
 - 액션 컬럼: 더보기 드롭다운 없이 붉은색 쓰레기 아이콘 버튼만 두고, 클릭 시 삭제 확인 모달로 연결합니다.
 - 등록 상세 페이지: 상단 툴바의 `목록으로`, `저장` 버튼 아래에서 `공지 제목`을 `Descriptions` 기반 입력 테이블로 편집하고, 본문은 TinyMCE 에디터로 화면 높이를 채워 작성합니다. 신규 공지는 저장 시 `숨김` 상태로 보관되고, 목록에서 `게시` 조치를 해야 사용자 화면에 노출됩니다.
 - 네트워크 상태: 목록과 등록 상세는 `pending/success/empty/error`를 구분하고, 오류 시 `다시 시도`와 마지막 성공 상태 fallback을 제공합니다.
+- 감사 로그: 저장/수정/상태 변경/삭제는 `OperationNotice + noticeId` 계약을 사용하고, 확인 경로는 `/system/audit-logs?targetType=OperationNotice&targetId={noticeId}`입니다.
 
 ## 10) 운영 > FAQ
 
-- 현재 상태: 구현됨 (mock service/store/schema 기반)
+- 현재 상태: 구현됨 (Supabase `operation_faqs`/`operation_faq_curations`/`operation_faq_metrics` + mock fallback data-source switch 기반)
+- 데이터소스: `faqs-service.ts` safe facade는 `operation-faqs-data-source.ts`에서 `VITE_SUPABASE_DISABLED`, Supabase 설정 여부, `VITE_OPERATION_FAQS_SOURCE`를 판별해 mock과 Supabase를 분기합니다. Supabase 모드는 `supabase-operation-faqs-service.ts`가 DB row와 화면 모델을 매핑합니다.
 - 목표 화면 구조: `상단 요약 카드 4개(전체 FAQ/공개 FAQ/활성 노출/누적 조회수)` + `AdminListCard(toolbar=Tabs + SearchBar, body=탭별 Alert -> Table)` + 행 클릭 `FAQ 상세 Drawer` / `FAQ 노출 상세 Drawer`
 - 탭: `FAQ 마스터`, `노출 관리`, `지표 보기`
 - FAQ 마스터 컬럼: FAQ ID, 질문, 카테고리, 검색 키워드, 최종 수정일, 공개 상태, 액션
@@ -204,15 +211,19 @@
   - 지표 보기: `metricSearchField`, `metricKeyword`, `metricSortField`, `metricSortOrder`
 - FAQ 등록/수정 Modal: 질문, 카테고리, 검색 키워드, 답변, 공개 상태를 plain text 입력으로 편집합니다.
 - FAQ 노출 Modal: 연결 FAQ, 노출 위치, 노출 순서, 설정 방식, 노출 상태, 노출 기간을 편집합니다.
+- 상태/enum: FAQ 공개 상태 DB 저장 코드는 `published`/`hidden`이고 UI 라벨은 `공개`/`비공개`입니다. 카테고리는 DB 한글 코드 `계정`/`결제`/`커뮤니티`/`메시지`, 노출 위치/설정 방식/노출 상태는 ASCII `help_center`/`home_top`/`payment_help`/`onboarding`, `manual`/`auto`, `active`/`paused`를 사용합니다.
 - 상세 Drawer:
   - FAQ 상세 Drawer: `FAQ 정보`, `질문/답변`, `노출 관리 요약`, `지표 요약` 섹션과 `FAQ 수정`, `노출 추가`, `공개/비공개`, `FAQ 삭제`, `감사 로그 확인`
   - FAQ 노출 상세 Drawer: `노출 규칙`, `연결 FAQ`, `지표 참고` 섹션과 `노출 수정`, `노출 일시중지/재개`, `노출 삭제`, `감사 로그 확인`
-- 파괴적 액션 메모: FAQ 공개/비공개, FAQ 삭제, FAQ 노출 일시중지/재개, FAQ 노출 삭제는 모두 확인 모달과 사유 입력을 필수로 사용합니다.
+- 파괴적/조치 액션 메모: FAQ 원문 저장/상태 변경/삭제와 FAQ 노출 저장/삭제는 Supabase 모드에서 admin RPC 5종(`admin_save_operation_faq`, `admin_toggle_operation_faq_status`, `admin_delete_operation_faq`, `admin_save_operation_faq_curation`, `admin_delete_operation_faq_curation`)을 사용하며 모두 사유 입력이 필수입니다. `hidden` 전환 시 연결 active 노출은 `paused`로 강등됩니다.
 - 네트워크 상태: 세 탭 모두 `pending/success/empty/error`를 구분하고, 오류 시 `다시 시도`와 마지막 성공 상태 fallback을 제공합니다.
+- 지표 메모: `operation_faq_metrics`는 admin write RPC가 없는 seed/read 전용입니다. 실집계 파이프라인은 미확정입니다.
+- 감사 로그: FAQ 원문 저장/상태 변경/삭제는 `OperationFaq + faqId` 계약을 사용하고, 노출 저장/삭제는 `OperationFaqCuration + curationId` 계약을 사용합니다. 확인 경로는 각각 `/system/audit-logs?targetType=OperationFaq&targetId={faqId}`, `/system/audit-logs?targetType=OperationFaqCuration&targetId={curationId}`입니다.
 
 ## 11) 운영 > 이벤트
 
-- 현재 상태: 구현됨 (mock service/store 기반)
+- 현재 상태: 구현됨 (Supabase `operation_events` + mock fallback data-source switch 기반)
+- 데이터소스: `events-service.ts` safe facade는 `operation-events-data-source.ts`에서 `VITE_SUPABASE_DISABLED`, Supabase 설정 여부, `VITE_OPERATION_EVENTS_SOURCE`를 판별해 mock과 Supabase를 분기합니다. Supabase 모드는 `supabase-operation-events-service.ts`가 DB row와 화면 모델을 매핑합니다.
 - 목표 화면 구조: `상단 요약 카드 3개(노출/예약/숨김)` + `AdminListCard(toolbar=SearchBar + 총 건수 + 이벤트 등록 버튼, body=안내 문구 -> Table)` + 행 클릭 `DetailDrawer` + 등록/수정 상세 페이지
 - 요약 카드: 노출 이벤트 수, 예약 이벤트 수, 숨김 이벤트 수
 - 테이블 컬럼: 이벤트 ID, 이벤트명, 유형, 진행 기간, 노출 상태, 참여자 수, 보상 정책 요약, 최근 수정일, 최근 수정자, 액션
@@ -223,6 +234,8 @@
 - 행 클릭: `이벤트 상세 Drawer`를 열고, 푸터에서 `수정`, `게시 예약`, `종료`, `감사 로그 확인` 동선을 제공합니다.
 - 상세 Drawer: `기본 정보`, `이벤트 요약`, `이벤트 본문`, `노출 설정`, `참여 조건`, `보상 정책`, `메시지/쿠폰 연동`, `운영 메모/최근 변경 이력` 섹션으로 구성합니다.
 - 등록 상세 페이지: `기본 정보`, `이벤트 본문`, `노출 설정`, `참여 조건`, `보상 설정`, `배너/랜딩`, `노출/SEO 설정`, `관리자 메모` 섹션을 사용합니다. 카드 본문 좌측에는 `Steps(progressDot, vertical)`로 같은 순서의 섹션 내비게이션을 두고, 우측 본문에는 현재 선택된 step의 입력 패널만 노출합니다. `Steps` 클릭 시 해당 step으로 즉시 전환되며, 저장 시 다른 step의 검증 오류가 나면 첫 오류가 있는 step으로 자동 이동합니다. `이벤트 본문`은 TinyMCE 기반 HTML 편집기로 관리합니다. 공개 이벤트는 `slug`, `공유 제목`, `공유 설명`, `공유 이미지`, `canonical URL`, `index/noindex`를 선택적으로 override 할 수 있고, 기본값은 이벤트 메타에서 자동 생성합니다.
+- 상태/enum 메모: DB 저장 코드는 `visibility_status` `exposed`/`hidden`/`scheduled`, `progress_status` `ongoing`/`upcoming`/`ended`, `indexing_policy` `index`/`noindex`입니다. 화면 라벨은 `노출`/`숨김`/`예약`, `진행중`/`예정`/`종료`를 유지하고, `progress_status`는 읽기 시 기간 기준으로 파생합니다.
+- 감사 메모: 저장/게시 예약/즉시 게시/종료는 `OperationEvent + eventId` Target Type/ID를 사용하고, 감사 로그 링크는 `/system/audit-logs?targetType=OperationEvent&targetId={eventId}`입니다. admin RPC 4종(`admin_save_operation_event`, `admin_schedule_operation_event`, `admin_publish_operation_event`, `admin_end_operation_event`)은 모두 사유를 필수로 받습니다.
 - 파괴적 액션 메모: `종료`는 확인 모달과 사유 입력을 필수로 두고, 성공 피드백에 `Target Type`, `Target ID`, 감사 로그 링크를 함께 노출합니다.
 - 네트워크 상태: 목록과 등록 상세는 `pending/success/empty/error`를 구분하고, 오류 시 `다시 시도`와 마지막 성공 상태 fallback을 제공합니다.
 
@@ -234,6 +247,7 @@
 - 테이블 컬럼: 정책 ID, 운영 영역, 정책 유형, 문서명, 추적 상태, 버전, 시행일, 상태, 최근 수정, 수정자
 - 액션: 새 정책 등록, 본문 미리보기, 내용 수정, 새 버전 등록, 게시/숨김, 정책 삭제, 감사 로그 확인
 - 상세 Drawer: 기본 정보, 정책 요약, 운영 범위 및 추적 근거, 법령 및 근거, 관리자 메모, 정책 히스토리
+- source: `operation_policies`/`operation_policy_histories` Supabase-backed. `VITE_OPERATION_POLICIES_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`이면 mock fallback
 - 히스토리 메모: 버전, 상태, 변경 유형, 변경 시각, 수정자, 액션 컬럼을 사용하고, 행 확장 영역은 단일 Descriptions로 정리합니다. 히스토리 행 액션은 본문 보기, 이 버전 게시만 분리합니다.
 - 등록 상세 메모: 연관 관리자 화면, 연관 사용자 화면, 추적 근거 문서를 분리해 관리하고, 본문 작성은 TinyMCE 기반 편집을 유지합니다.
 
@@ -443,6 +457,9 @@
 
 ## 31) 시스템 > 감사 로그
 
+- source: `admin_list_audit_logs(p_target_type, p_target_id, p_keyword, p_start, p_end, p_limit=100, p_offset=0)` Supabase read RPC를 통해 live `admin_audit_logs`를 단일 source로 사용합니다. `VITE_SYSTEM_AUDIT_LOGS_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`이면 기존 mock/store audit 병합 fallback을 사용합니다.
+- source 필드: `log_id`, `target_type`, `target_id`, `action`, `actor`, `reason`, `diff`, `payload`, `created_at`, `total_count`. `diff`/`payload`는 민감정보 노출 범위 미확정으로 화면 미노출 보류입니다.
+- source 동작: actor는 `profiles(admin_user_id -> id)` 조인으로 `display_name`을 해석하고, 필터는 Target Type/ID, keyword `ILIKE`, created_at 범위, 정렬은 `created_at desc`, 페이지네이션은 `limit/offset`입니다.
 - 테이블 컬럼: 로그 ID, 대상 유형, 대상 ID, 조치, 수행자, 사유, 시각
 - 요약 카드: 현재 결과 수, 권한 변경 로그 수, 오늘 생성 로그 수
 - 필터: 검색어, 시각
@@ -452,11 +469,12 @@
 
 ## 32) 시스템 > 시스템 로그
 
+- source: `system_logs` Supabase-backed read-only table. `VITE_SYSTEM_LOGS_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`이면 mock fallback
 - 테이블 컬럼: 로그 ID, 레벨, 컴포넌트, 메시지, 발생 시각
 - 요약 카드: 오류 로그 수, 경고 로그 수, 영향 컴포넌트 수
 - 필터: 검색어, 발생 시각
 - 정렬: 발생 시각, 레벨
-- 액션: 상세 보기, 컴포넌트 기준 관련 운영 화면 이동, 감사 로그 이동
+- 액션: 상세 보기, 컴포넌트 기준 관련 운영 화면 이동. 조회 전용 기술 로그이므로 admin write·감사 액션은 없음
 - 레이아웃 메모: 요약 카드 아래 목록 본문은 `AdminListCard(toolbar=SearchBar, body=안내 문구 -> Table)` 순서를 사용합니다.
 
 ## 33) 알림 > 알림 발송
@@ -542,3 +560,40 @@
 - 액션: 태그 마스터 활성/비활성 토글 단일(P5-3) — `BinaryStatusSwitch` → `ConfirmAction`(사유 필수) → facade `updateTagMasterStatusSafe` → RPC `admin_update_tag_master_status`(platform_admin 가드 — 서버 강제) → notification(`감사 로그 확인` 링크, `AssessmentTagMaster + tagCode`) + 카탈로그 재조회. 마스터 값 편집·주제 마스터 조치는 없으며, 추천키/반복방지키 JSONB는 문항 상세에서 조회(D-10 비범위)
 - 상태 UX: 탭별 독립 AsyncState(pending/success/empty/error + 다시 시도). legacy 롤백 모드는 마스터 테이블이 없어 empty 안내(조치 불가 — facade 명시 오류), 모크 모드는 모크 배너를 표시합니다.
 - 요약 문구: 탭마다 `총 N건 · 활성 M건` 집계를 표시합니다.
+
+## 41) 2026-06-17 Community 게시글/신고 Supabase source 갱신
+
+- `Community > 게시글 관리`: source는 `community_posts`/`community_post_admin_notes` Supabase-backed hybrid다. 테이블 컬럼은 게시글 ID, 제목, 작성자, 게시판, 작성일, 신고 수, 상태를 유지하고 DB status `published`/`hidden`을 UI `게시`/`숨김`으로 매핑한다. 조치 action은 `post_hidden`/`post_shown`/`post_deleted`/`post_memo_added`, Target Type은 `CommunityPost`다.
+- `Community > 신고 관리`: source는 `community_reports` Supabase-backed hybrid다. 테이블 컬럼은 신고 ID, 대상 게시글, 대상 사용자, 신고자, 신고 사유, 신고일, 처리 상태를 유지하고 DB `process_status` `pending`/`resolved`를 UI `처리 대기`/`처리 완료`로 매핑한다. 신고 종결 action은 `report_resolved`, Target Type은 `CommunityReport`다.
+- `resolveCommunityReportSafe`는 `reportId + action + reason` 계약이며 action 값은 `hide_post`/`suspend_user`/`dismiss`다. `hide_post`는 대상 게시글을 실제 숨김 처리하고, `suspend_user`는 v13 사용자 정지 연동 전 intent-only payload만 남긴다.
+
+## 42) 2026-06-17 Commerce > 포인트 관리 Supabase source 갱신
+
+- `Commerce > 포인트 관리`는 `commerce_point_policies`/`commerce_point_ledgers`/`commerce_point_expirations` Supabase-backed hybrid source로 갱신됐다. mock fallback 조건은 `VITE_COMMERCE_POINTS_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`다.
+- 정책 탭 source: `commerce_point_policies` 19컬럼. 주요 컬럼은 `id`, `name`, `policy_type`, `category`, `amount`, `points`, `status`, `condition_summary`, `earn_debit_rule`, `expiration_rule`, `target_condition`, `trigger_source`, `duplication_rule`, `manual_adjustment_rule`, `note`, `updated_at`, `updated_by`다. DB status는 `draft`/`active`/`inactive`.
+- 원장 탭 source: `commerce_point_ledgers` 20컬럼. 주요 컬럼은 `id`, `user_id`, `user_name`, `entry_type`, `source_type`, `amount`, `balance_after`, `available_balance_after`, `status`, `expiration_at`, `source_id`, `policy_id`, `reason`, `approval_memo`, `occurred_at`, `created_by`다. `balance_after`/`available_balance_after`는 nonnegative CHECK를 가진다.
+- 소멸 예정 탭 source: `commerce_point_expirations` 17컬럼. 주요 컬럼은 `id`, `user_id`, `user_name`, `source_type`, `scheduled_amount`, `available_amount`, `expire_at`, `status`, `hold_reason`, `held_by`, `held_at`, `processed_at`, `related_ledger_id`, `policy_id`, `calculation_memo`다. `scheduled_amount`/`available_amount`는 nonnegative CHECK를 가진다.
+- Action contract: 정책 저장/상태 변경, 수동 조정, 소멸 보류/해제는 RPC 5종을 통해 수행하고, Target Type은 각각 `CommercePointPolicy`, `CommercePointLedger`, `CommercePointExpiration`이다.
+
+## 43) 2026-06-17 Commerce > 쿠폰 관리 Supabase source 갱신
+
+- `Commerce > 쿠폰 관리`는 `commerce_coupons`/`commerce_coupon_subscription_templates` Supabase-backed hybrid source로 갱신됐다. mock fallback 조건은 `VITE_COMMERCE_COUPONS_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`다.
+- 쿠폰 본체 source: `commerce_coupons` 53컬럼. 주요 목록/상세 필드는 `id`, `coupon_name`, `coupon_kind`, `coupon_status`, `issue_state`, `issue_target_type`, `benefit_type`, `benefit_value`, `min_order_amount`, `max_discount_amount`, `applicable_scope`, `validity_mode`, `valid_from`, `valid_until`, `issue_count`, `download_count`, `use_count`, `admin_memo`, `updated_at`, `updated_by`이며 적용 범위/대상/제외/알림은 JSONB를 매핑한다.
+- 정기 템플릿 source: `commerce_coupon_subscription_templates` 30컬럼. 주요 목록/상세 필드는 `id`, `template_name`, `issue_target_type`, `target_grade_ids`, `benefit_type`, `benefit_value`, `applicable_scope`, `excluded_product_mode`, `issue_schedule`, `usage_end_schedule`, `status`, `issued_coupon_count`, `last_issued_at`, `next_issued_at`, `admin_memo`, `updated_at`, `updated_by`다.
+- Action contract: 쿠폰 저장/복제/발행 일시중지/재개/삭제는 `CommerceCoupon` Target Type과 action `coupon_saved`/`coupon_duplicated`/`coupon_paused`/`coupon_resumed`/`coupon_deleted`를 사용한다. 템플릿 저장/상태 일시중지/재개/삭제는 `CommerceCouponTemplate` Target Type과 action `coupon_template_saved`/`coupon_template_paused`/`coupon_template_resumed`/`coupon_template_deleted`를 사용한다. 모든 write RPC는 reason 필수다.
+## 44) 2026-06-17 Commerce > 환불 관리 Supabase source 갱신
+
+- `Commerce > 환불 관리`는 `commerce_refunds` Supabase-backed workflow source로 갱신됐다. mock fallback 조건은 `VITE_COMMERCE_REFUNDS_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`다.
+- 기존 Supabase 모드에서 `payment_history(status='refunded')`를 합성해 환불 목록으로 쓰던 방식은 중단한다. 환불 처리 대기/승인/거절 워크플로 SoT는 `commerce_refunds`이며, `Commerce > 결제 내역`의 payments read source는 v13 `payment_history` 그대로 유지한다.
+- source 컬럼: `commerce_refunds` 12컬럼. `id`, `payment_id`, `user_id`, `user_nickname`, `requested_amount`, `reason`, `status`, `requested_at`, `processed_by`, `processed_at`, `review_reason`, `created_at`.
+- 상태값: DB ASCII `pending`/`approved`/`rejected`, UI 라벨 `처리 대기`/`승인`/`거절`.
+- 액션 계약: 환불 승인/거절은 `admin_approve_billing_refund(p_refund_id,p_reason)`, `admin_reject_billing_refund(p_refund_id,p_reason)` RPC를 사용한다. Target Type은 `CommerceRefund`, action은 `refund_approved`/`refund_rejected`, reason은 필수이며 `pending` 상태만 처리한다.
+- v13 경계: `payment_id`/`user_id`는 v13 느슨참조이며 FK가 없다. 실제 결제 환불 집행과 v13 `payment_history.status` 갱신은 미연동이고, 승인 payload는 `intent_only_v13_payment_history_pending=true`를 기록한다.
+## 45) 2026-06-17 시스템 > 메타데이터 관리 Supabase source 갱신
+
+- `System > 메타데이터 관리`의 운영 설정 카탈로그 그룹/항목 source는 `system_metadata_groups` + `system_metadata_group_items` Supabase 테이블로 전환 완료했다. mock fallback 조건은 `VITE_SYSTEM_METADATA_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`다.
+- 그룹 source: `system_metadata_groups` 16컬럼. 주요 목록/상세 필드는 `group_id`, `group_name`, `description`, `owner_role`, `item_code_prefix`, `manager_type`, `owner_module`, `status`, `sync_status`, `exposure_status`, `linked_admin_pages`, `linked_user_surfaces`, `schema_candidate_notes`, `updated_at`, `updated_by`.
+- 항목 source: `system_metadata_group_items` 12컬럼. 주요 상세/운영 값 필드는 `item_id`, `group_id`, `code`, `label`, `description`, `sort_order`, `status`, `exposure_status`, `is_default`, `updated_at`, `updated_by`.
+- 응답은 기존 화면 계약처럼 `SystemMetadataGroup.items[]` 중첩 구조로 매핑한다.
+- action/audit: `metadata_group_saved`, `metadata_item_saved`, `metadata_group_status_changed`, `metadata_item_status_changed`, `metadata_item_deleted`, `metadata_items_reordered`; Target Type은 `SystemMetadataGroup`, Target ID는 `groupId`.
+- AssessmentMasterCatalog(`topik_writing_*`)는 같은 화면의 별도 섹션이며 이 그룹/항목 source 갱신 범위가 아니다.

@@ -21,38 +21,57 @@ async function skipIfAuthRequired(page: Page): Promise<void> {
 
 const MOCK_BANNER = '모크 모드로 동작 중입니다.';
 
-test('TOPIK 쓰기 문항 목록은 모크 모드에서 조회 전용으로 렌더된다', async ({
+test('통합 문항 화면은 모크 모드에서 탭·조회·관리 컬럼을 렌더한다', async ({
   page
 }) => {
   await page.goto('/assessment/question-bank');
   await skipIfAuthRequired(page);
 
   await expect(
-    page.getByRole('heading', { name: 'TOPIK 쓰기 문항 목록' })
+    page.getByRole('heading', { name: 'TOPIK 쓰기 문항', exact: true })
   ).toBeVisible();
   await expect(page.getByText(MOCK_BANNER)).toBeVisible();
-  await expect(page.getByLabel('문항 검색어')).toBeVisible();
+  // 상단 툴바(검색) 제거 — 검색은 컬럼 헤더로 이동.
+  await expect(page.getByLabel('문항 검색어')).toHaveCount(0);
 
+  // route-backed 탭 2개(문항 / 가져온 문항)
+  await expect(page.getByRole('tab', { name: '문항', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('tab', { name: '가져온 문항(인박스)', exact: true })
+  ).toBeVisible();
+
+  // 컬럼: 주제 단일·난이도·TOPIK 급수 분리, 운영 조치 컬럼은 더보기로 이동.
   await expect(page.getByRole('columnheader', { name: '문항 번호' })).toBeVisible();
   await expect(page.getByRole('columnheader', { name: '문항 ID' })).toBeVisible();
-  await expect(
-    page.getByRole('columnheader', { name: '주제(종합/세부)' })
-  ).toBeVisible();
-  await expect(
-    page.getByRole('columnheader', { name: '상황 요약' })
-  ).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: '주제', exact: true })).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: '난이도' })).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: 'TOPIK 급수' })).toBeVisible();
   await expect(page.getByRole('columnheader', { name: /노출 상태/ })).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: '운영 조치' })).toHaveCount(0);
 
-  // 검수 표면 부재: 검수 컬럼·검수 카드가 렌더되지 않는다.
+  // 검수 표면 부재: 검수 컬럼·검수 라벨이 렌더되지 않는다.
   await expect(page.getByRole('columnheader', { name: /검수 상태/ })).toHaveCount(0);
   await expect(page.getByText('검수 완료', { exact: true })).toHaveCount(0);
 
   // antd measure-row 제외, 실데이터 행만 센다.
   await expect(page.locator('tbody tr.ant-table-row')).toHaveCount(4);
   await expect(page.getByText('topik-writing-51-9901')).toBeVisible();
+});
 
-  // 구 JSON mock ID 체계는 복구되지 않는다.
-  await expect(page.getByText('AQ-51001')).toHaveCount(0);
+test('탭으로 가져온 문항(인박스) 화면으로 전환한다', async ({ page }) => {
+  await page.goto('/assessment/question-bank');
+  await skipIfAuthRequired(page);
+
+  await page.getByRole('tab', { name: '가져온 문항(인박스)', exact: true }).click();
+
+  await expect(page).toHaveURL(/\/assessment\/question-bank\/imported$/);
+  await expect(
+    page.getByRole('heading', { name: '가져온 문항(인박스)', exact: true })
+  ).toBeVisible();
+  // 모크 모드에서는 가져오기 버튼이 비활성이다(실모드 전용).
+  await expect(
+    page.getByRole('button', { name: '외부에서 가져오기' })
+  ).toBeDisabled();
 });
 
 test('문항 상세는 번호별 실메타를 조회 전용으로 표시하고 잘못된 ID는 오류로 처리한다', async ({
@@ -83,14 +102,14 @@ test('문항 상세는 번호별 실메타를 조회 전용으로 표시하고 �
   await expect(page.getByRole('button', { name: '다시 시도' })).toBeVisible();
 });
 
-test('TOPIK 쓰기 문항 관리는 P4 관리 포인트(노출 조치·태그 편집)를 개방 상태로 렌더한다', async ({
+test('통합 문항 화면은 관리 포인트(노출 조치·태그 편집)를 개방 상태로 렌더한다', async ({
   page
 }) => {
-  await page.goto('/assessment/question-bank/manage');
+  await page.goto('/assessment/question-bank');
   await skipIfAuthRequired(page);
 
   await expect(
-    page.getByRole('heading', { name: 'TOPIK 쓰기 문항 관리' })
+    page.getByRole('heading', { name: 'TOPIK 쓰기 문항', exact: true })
   ).toBeVisible();
   // P4 개방: 준비 중 안내는 제거됐다.
   await expect(
@@ -98,20 +117,26 @@ test('TOPIK 쓰기 문항 관리는 P4 관리 포인트(노출 조치·태그 �
   ).toHaveCount(0);
   await expect(page.getByRole('columnheader', { name: /노출 상태/ })).toBeVisible();
   await expect(page.getByRole('columnheader', { name: /검수 상태/ })).toHaveCount(0);
-  await expect(page.getByLabel('문항 검색어')).toBeVisible();
+  // 상단 툴바(검색) 제거.
+  await expect(page.getByLabel('문항 검색어')).toHaveCount(0);
 
   const firstRow = page.locator('tbody tr.ant-table-row').first();
-  // 픽스처는 internal_test — 동일 상태 버튼만 비활성, 전환 버튼은 활성.
-  await expect(firstRow.getByRole('button', { name: '노출 가능' })).toBeEnabled();
-  await expect(firstRow.getByRole('button', { name: '노출 제외' })).toBeEnabled();
-  await expect(firstRow.getByRole('button', { name: '내부 테스트' })).toBeDisabled();
+  // 태그 편집은 직접 버튼, 운영 조치(노출 상태 전환)는 더보기 메뉴로 이동.
   await expect(firstRow.getByRole('button', { name: '태그 편집' })).toBeEnabled();
+  await firstRow.getByRole('button', { name: '더보기' }).click();
+  await expect(page.getByRole('menuitem', { name: '상세 보기' })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: '노출 가능' })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: '노출 제외' })).toBeVisible();
+  // 픽스처 internal_test — 동일 상태 조치는 비활성.
+  await expect(
+    page.getByRole('menuitem', { name: '내부 테스트' })
+  ).toHaveAttribute('aria-disabled', 'true');
 });
 
 test('노출 상태 전환은 사유 필수 확인 모달을 거쳐 화면 왕복(쓰기→재조회 반영)된다', async ({
   page
 }) => {
-  await page.goto('/assessment/question-bank/manage');
+  await page.goto('/assessment/question-bank');
   await skipIfAuthRequired(page);
 
   const targetRow = page
@@ -119,7 +144,9 @@ test('노출 상태 전환은 사유 필수 확인 모달을 거쳐 화면 왕�
     .filter({ hasText: 'topik-writing-51-9901' });
   await expect(targetRow.locator('.ant-tag')).toHaveText('내부 테스트');
 
-  await targetRow.getByRole('button', { name: '노출 제외' }).click();
+  // 운영 조치는 더보기 메뉴에서 실행.
+  await targetRow.getByRole('button', { name: '더보기' }).click();
+  await page.getByRole('menuitem', { name: '노출 제외' }).click();
 
   const modal = page.locator('.ant-modal-content').filter({ hasText: '노출 제외 전환' });
   await expect(modal).toBeVisible();
@@ -137,13 +164,103 @@ test('노출 상태 전환은 사유 필수 확인 모달을 거쳐 화면 왕�
   ).toBeVisible();
   // 재조회 반영: 모크 store가 변조돼 행 상태 태그가 바뀐다.
   await expect(targetRow.locator('.ant-tag')).toHaveText('노출 제외');
-  await expect(targetRow.getByRole('button', { name: '노출 제외' })).toBeDisabled();
+  // 이미 노출 제외 상태 → 더보기 메뉴의 노출 제외 조치는 비활성.
+  await targetRow.getByRole('button', { name: '더보기' }).click();
+  await expect(
+    page.getByRole('menuitem', { name: '노출 제외' })
+  ).toHaveAttribute('aria-disabled', 'true');
+});
+
+test('운영 조치 일괄 처리: 행 선택 → 일괄 바 → 노출 제외 왕복(모크)', async ({
+  page
+}) => {
+  await page.goto('/assessment/question-bank');
+  await skipIfAuthRequired(page);
+
+  // 선택 전에는 일괄 바가 없다.
+  await expect(page.getByTestId('bulk-action-bar')).toHaveCount(0);
+
+  // 헤더 전체 선택 체크박스로 픽스처 4건을 모두 선택.
+  await page.locator('thead .ant-checkbox-wrapper').first().click();
+
+  const bulkBar = page.getByTestId('bulk-action-bar');
+  await expect(bulkBar).toBeVisible();
+  await expect(bulkBar.getByText('선택 4건')).toBeVisible();
+  // 노출 가능/제외/내부 테스트 일괄 버튼이 모두 활성.
+  await expect(bulkBar.getByRole('button', { name: '노출 가능' })).toBeEnabled();
+
+  await bulkBar.getByRole('button', { name: '노출 제외', exact: true }).click();
+
+  const modal = page
+    .locator('.ant-modal-content')
+    .filter({ hasText: '노출 상태 일괄 전환' });
+  await expect(modal).toBeVisible();
+  await expect(modal.getByText('선택 4건')).toBeVisible();
+  // 사유 미입력 시 확인 비활성(사유 필수).
+  const confirm = modal.getByRole('button', { name: '노출 제외로 변경' });
+  await expect(confirm).toBeDisabled();
+  await modal
+    .getByPlaceholder('노출 제외 일괄 전환 사유를 입력해 주세요.')
+    .fill('e2e: 일괄 노출 제외 왕복 검증');
+  await confirm.click();
+
+  // 결과 알림(변경 4건) + 모크 store 왕복으로 행 상태 반영.
+  await expect(page.getByText('노출 제외로 4건을 변경했습니다.')).toBeVisible();
+  await expect(
+    page.locator('tbody tr.ant-table-row .ant-tag', { hasText: '노출 제외' })
+  ).toHaveCount(4);
+  // 변경 후 선택이 초기화돼 일괄 바가 사라진다.
+  await expect(page.getByTestId('bulk-action-bar')).toHaveCount(0);
+});
+
+test('운영 조치 일괄 처리: 노출 가능은 개수 확인 팝업으로 전환(모크)', async ({
+  page
+}) => {
+  await page.goto('/assessment/question-bank');
+  await skipIfAuthRequired(page);
+
+  await page.locator('thead .ant-checkbox-wrapper').first().click();
+
+  const bulkBar = page.getByTestId('bulk-action-bar');
+  await bulkBar.getByRole('button', { name: '노출 가능', exact: true }).click();
+
+  // 노출 가능은 사유 입력이 아니라 개수 확인 팝업이다.
+  const modal = page
+    .locator('.ant-modal-content')
+    .filter({ hasText: '문항 노출 확인' });
+  await expect(modal).toBeVisible();
+  await expect(modal.getByText(/총 4개/).first()).toBeVisible();
+  // 사유 입력란이 없다.
+  await expect(modal.getByPlaceholder(/사유/)).toHaveCount(0);
+  const confirm = modal.getByRole('button', { name: '노출하기' });
+  await expect(confirm).toBeEnabled();
+  await confirm.click();
+
+  await expect(page.getByText('노출 가능로 4건을 변경했습니다.')).toBeVisible();
+  await expect(
+    page.locator('tbody tr.ant-table-row .ant-tag', { hasText: '노출 가능' })
+  ).toHaveCount(4);
+});
+
+test('통합 테이블에서 상세 보기 버튼으로 문항 상세로 이동한다', async ({ page }) => {
+  await page.goto('/assessment/question-bank');
+  await skipIfAuthRequired(page);
+
+  const firstRow = page.locator('tbody tr.ant-table-row').first();
+  // 상세 보기는 더보기 메뉴 안에 있다.
+  await firstRow.getByRole('button', { name: '더보기' }).click();
+  await page.getByRole('menuitem', { name: '상세 보기' }).click();
+
+  await expect(page).toHaveURL(/\/assessment\/question-bank\/topik-writing-\d{2}-/);
+  await expect(
+    page.getByRole('heading', { name: /TOPIK \d{2}번 문항 상세/ })
+  ).toBeVisible();
 });
 
 test('태그 부여/제거는 사유 필수로 동작하고 POL-018 ② 가드가 available 전환 모달에 표시된다', async ({
   page
 }) => {
-  await page.goto('/assessment/question-bank/manage');
+  await page.goto('/assessment/question-bank');
   await skipIfAuthRequired(page);
 
   const targetRow = page
@@ -174,7 +291,8 @@ test('태그 부여/제거는 사유 필수로 동작하고 POL-018 ② 가드�
   await expect(targetRow.getByText('1개')).toBeVisible();
 
   // POL-018 ②: 운영주의 태그 활성 문항의 available 전환 모달에 가드 문구.
-  await targetRow.getByRole('button', { name: '노출 가능' }).click();
+  await targetRow.getByRole('button', { name: '더보기' }).click();
+  await page.getByRole('menuitem', { name: '노출 가능' }).click();
   const availableModal = page
     .locator('.ant-modal-content')
     .filter({ hasText: '노출 가능 전환' });

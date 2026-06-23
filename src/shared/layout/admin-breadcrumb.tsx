@@ -257,10 +257,10 @@ export function buildAdminBreadcrumbItems(
     ];
   }
 
-  if (pathname.startsWith('/assessment/question-bank/manage')) {
+  if (pathname.startsWith('/assessment/question-bank/imported')) {
     return [
       breadcrumbLinkItem(adminMenuLabels.assessment, '/assessment/question-bank'),
-      breadcrumbTextItem(adminMenuLabels.assessmentQuestionManage)
+      breadcrumbTextItem(adminMenuLabels.assessmentImportedTasks)
     ];
   }
 

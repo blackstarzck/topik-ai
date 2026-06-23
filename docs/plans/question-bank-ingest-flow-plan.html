@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>문항 은행 외부 API 적재 플로우 실행계획안</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --panel2:#1c2330; --line:#2a3340;
+    --ink:#e6edf3; --muted:#9aa7b4; --dim:#6e7d8c;
+    --accent:#4f9cf9; --good:#3fb950; --warn:#d29922; --bad:#f85149; --purple:#a371f7;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic","Apple SD Gothic Neo",sans-serif;
+    line-height:1.6;font-size:15px}
+  .wrap{max-width:980px;margin:0 auto;padding:40px 22px 80px}
+  h1{font-size:27px;line-height:1.3;margin:0 0 6px;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:14px;margin-bottom:28px}
+  h2{font-size:19px;margin:40px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--line);letter-spacing:-.01em}
+  h3{font-size:15px;margin:22px 0 8px;color:var(--ink)}
+  p{margin:8px 0}
+  code{background:#0b0f14;border:1px solid var(--line);border-radius:4px;padding:1px 6px;font-size:12.5px;
+    font-family:"SF Mono",Consolas,monospace;color:#b8c4d0}
+  .muted{color:var(--muted)}
+  .verdict{background:linear-gradient(135deg,#1c2330,#161b22);border:1px solid var(--line);
+    border-left:4px solid var(--accent);border-radius:10px;padding:18px 20px;margin:8px 0 4px}
+  .verdict .tag{display:inline-block;font-size:12px;font-weight:700;color:#0e1116;background:var(--warn);
+    padding:2px 9px;border-radius:20px;margin-bottom:8px}
+  .crit{background:#22171a;border:1px solid #4a2329;border-left:4px solid var(--bad);border-radius:10px;
+    padding:18px 20px;margin:16px 0}
+  .crit h3{margin-top:0;color:#ff9a92}
+  .triple{display:grid;grid-template-columns:1fr;gap:10px;margin:14px 0}
+  .triple .row{display:flex;gap:12px;align-items:flex-start;background:#0b0f14;border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .triple .n{flex:0 0 26px;height:26px;border-radius:50%;background:var(--bad);color:#fff;font-weight:700;
+    display:flex;align-items:center;justify-content:center;font-size:13px}
+  .eq{text-align:center;color:var(--bad);font-weight:700;font-size:14px;margin:4px 0}
+  .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:12px 0}
+  table{border-collapse:collapse;width:100%;min-width:560px;font-size:13.5px}
+  th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:var(--ink);font-weight:600;white-space:nowrap}
+  td .ok{color:var(--good)} td .no{color:var(--bad)} td .mid{color:var(--warn)}
+  .flow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);
+    border-radius:10px;padding:16px;margin:12px 0}
+  .flow .step{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 13px;font-size:13px;flex:1 1 auto;min-width:120px;text-align:center}
+  .flow .arr{color:var(--dim);font-weight:700}
+  .flow .step b{display:block;font-size:13.5px;margin-bottom:2px}
+  .flow .step span{color:var(--muted);font-size:11.5px}
+  ul{margin:8px 0;padding-left:20px} li{margin:5px 0}
+  .phase{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin:12px 0}
+  .phase .ph-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .phase .ph-name{font-weight:700;font-size:15px}
+  .pill{font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;white-space:nowrap}
+  .pill.hi{background:#3a1d1f;color:#ff9a92;border:1px solid #4a2329}
+  .pill.md{background:#3a2f17;color:#e7c66b;border:1px solid #4a3d1f}
+  .pill.lo{background:#16301d;color:#7ee08a;border:1px solid #224a2c}
+  .phase .goal{color:var(--muted);font-size:13px;margin:6px 0 8px}
+  .phase .dep{color:var(--dim);font-size:12px;margin-top:6px}
+  .qbox{counter-reset:q;list-style:none;padding:0}
+  .qbox li{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px 12px 44px;
+    position:relative;margin:9px 0}
+  .qbox li::before{counter-increment:q;content:counter(q);position:absolute;left:13px;top:12px;width:22px;height:22px;
+    border-radius:50%;background:var(--purple);color:#fff;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center}
+  .qbox li.decisive{border-color:#4a2329;background:#1d1517}
+  .rec{color:var(--good);font-size:12.5px;display:block;margin-top:5px}
+  .foot{margin-top:40px;padding-top:14px;border-top:1px solid var(--line);color:var(--dim);font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>TOPIK 쓰기 문항 은행 — 외부 API 적재 플로우 실행계획안</h1>
+  <div class="sub">대상: <code>/assessment/question-bank</code> · 소스: <code>GET /api/writing/tasks</code> · 멀티에이전트 적대 검증(5 렌즈 × 비평 + 종합, 11 에이전트) 종합</div>
+
+  <div class="verdict">
+    <span class="tag">부분적으로 논리적 · 현재 빌드에선 구조적 불가</span>
+    <p style="margin:4px 0 0">제안한 흐름의 <b>직관(가져오기 → 분류 → 관리 단계로 승격)</b>은 타당합니다. 그러나 4단계 중 2단계가 지금 시스템에서 실행 불가능하고, 1단계는 데이터 모순 위에 서 있습니다. <b>가장 중요한 교정 한 가지:</b> 목록 → 관리를 <b>행(row)의 물리적 "이동"으로 모델링하지 마세요.</b> 이동시킬 필드 자체가 없습니다(두 페이지가 동일 훅·동일 뷰를 읽고 전체 행을 표시 / <code>service_status</code>는 키가 될 수 없음 — 적재 기본값이자 "노출 해제" 타깃이라 핑퐁 발생). <b>하나의 인벤토리 + 상태 필터 탭(미관리/관리중)</b>으로 모델링하세요.</p>
+  </div>
+
+  <div class="crit">
+    <h3>⚠️ 결정적 모순 — 이 API로는 "사용자에게 노출"까지 갈 수 없다</h3>
+    <p style="margin-top:4px">사용자 제안 2단계("사용자가 볼 수 있는 상태로 된다")는 <b>이 API에서는 불가능</b>합니다. 코드/문서로 검증한 세 사실이 상호 배타적입니다:</p>
+    <div class="triple">
+      <div class="row"><div class="n">1</div><div><b>이 API(<code>/api/writing/tasks</code>, 학습자 렌더 형태)는 정답 키를 주지 않는다.</b> <span class="muted">응답에 <code>blanks</code>는 라벨(㉠/㉡)뿐 — <code>canonical_answer</code>·모범답안 필드 없음.</span></div></div>
+      <div class="row"><div class="n">2</div><div><b>§7 스키마는 모든 행에 <code>blank_1/2_canonical_answer</code>(정답 키)를 NOT NULL로 요구한다.</b> <span class="muted">정답 없이는 INSERT 자체가 거부됨.</span></div></div>
+      <div class="row"><div class="n">3</div><div><b>인바운드 모델 §0은 관리자의 콘텐츠 저작을 금지한다(검수 개념 삭제).</b> <span class="muted">관리자가 정답을 "직접 입력"하는 보강 화면 = 삭제한 검수 부활.</span></div></div>
+    </div>
+    <div class="eq">① 정답 없음  ×  ② 정답 필수  ×  ③ 저작 금지  →  동시 성립 불가</div>
+    <p style="margin-bottom:0"><b>즉:</b> 이 API로 가져와 <u>저장·내부 열람</u>까지는 가능하지만, <code>service_status='available'</code>(사용자 노출)에는 도달할 수 없습니다 — 오너가 셋 중 하나를 풀어야 함. <b>전제 조치:</b> 라이브 응답을 먼저 캡처해 <b>정답 키 포함 여부</b>를 확인(스웨거가 자체 모순). 포함돼 있으면 순수 자동매핑이 가능해져 모순이 해소됩니다.</p>
+  </div>
+
+  <h2>1 · 사용자 제안 4단계 vs 현실</h2>
+  <div class="scroll">
+  <table>
+    <tr><th>제안 단계</th><th>현재 빌드의 현실</th><th>판정</th></tr>
+    <tr><td>① API로 가져와 DB 저장</td><td>브라우저 키는 INSERT 불가(RLS는 SELECT 전용). 적재 RPC 없음. 서버 티어(service-role) 자체가 미존재.</td><td><span class="no">불가 — 서버 적재 경로 신설 필요</span></td></tr>
+    <tr><td>② 태그 붙여 사용자 노출 상태로</td><td>정답 키 부재 → §7 INSERT 불가 / 노출 불가(위 모순).</td><td><span class="no">이 소스로는 불가</span></td></tr>
+    <tr><td>③ question-bank에서 목록 표시 + 노출 설정</td><td>목록은 현재 <b>조회 전용</b>(쓰기 0). 노출/태그 쓰기는 <code>/manage</code>가 단일 소유(POL-018 가드 동거).</td><td><span class="mid">부분 — 노출 쓰기는 manage에 유지</span></td></tr>
+    <tr><td>④ 관리 포인트 설정된 문제는 manage로 "이동"</td><td>두 페이지가 동일 훅·동일 추천 뷰를 읽고 <b>전 행을 표시</b>. "관리됨" 플래그·이동 메커니즘 없음.</td><td><span class="no">이동 모델 폐기 → 상태 필터로</span></td></tr>
+  </table>
+  </div>
+
+  <h2>2 · 교정된 플로우</h2>
+  <p>핵심 원칙: <b>하나의 인벤토리 · 하나의 쓰기 표면 · 생애주기는 필터 탭.</b> 행은 어디서도 사라지지 않고, "이동"의 느낌은 <b>데이터 소멸이 아니라 화면 이동(네비게이션)</b>으로 전달합니다.</p>
+  <div class="flow">
+    <div class="step"><b>가져오기</b><span>목록의 모달 → 서버 적재(배치)</span></div>
+    <div class="arr">→</div>
+    <div class="step"><b>internal_test 저장</b><span>검증 통과 행만 §7, 나머지 보류</span></div>
+    <div class="arr">→</div>
+    <div class="step"><b>미관리 탭</b><span>감사 이력 없음 + 내부테스트</span></div>
+    <div class="arr">→</div>
+    <div class="step"><b>관리(태그·노출)</b><span>manage에서 RPC + 사유</span></div>
+    <div class="arr">→</div>
+    <div class="step"><b>관리중 탭</b><span>감사 이력 존재</span></div>
+  </div>
+  <ul>
+    <li><b>적재 위치:</b> 검증 통과 task만 §7 테이블에 <code>internal_test</code>로 INSERT → 기존 추천 뷰 목록에 즉시 표시(사용자 비노출). 정답 키·NOT NULL·topic FK 미충족 task는 <code>source_map.hold_reason</code>으로 <b>보류 행(§7 미적재)</b>. (동결된 4테이블 계약을 건드리지 않음.)</li>
+    <li><b>"관리중" 판정:</b> 새 컬럼 추가 대신 <code>admin_audit_logs</code> 존재로 파생 — 관리중 = 해당 문항 감사 행 존재 / 미관리 = 감사 행 없음 + <code>internal_test</code> / 봉인 레거시 = <code>service_status</code> null. DDL 0, 동결 계약 무변경, 되돌려도 핑퐁 없음("지금 결정됐나"가 아니라 "한 번이라도 손댔나"를 물음).</li>
+    <li><b>노출 쓰기는 manage 단일 유지:</b> POL-018 가드가 거기 있음. 목록에는 <b>가져오기 진입점만</b> 추가(유일한 쓰기 어포던스), 노출/태그 쓰기는 추가하지 않음.</li>
+  </ul>
+
+  <h2>3 · 핵심 결정사항</h2>
+  <div class="scroll">
+  <table>
+    <tr><th>결정</th><th>권고</th><th>근거(검증됨)</th></tr>
+    <tr><td>적재 타깃 A/B/C/D</td><td><b>D 먼저(라이브 캡처)</b> → A + source_map 보류 하이브리드. B(NOT NULL/FK 완화) 기각, C(보강 후 승격)는 §0 역행이라 보류</td><td>§7는 정답 키 NOT NULL + topic FK 필수, 학습자 API는 둘 다 미제공. B는 동결 4테이블 계약 위반, C의 보강 화면은 검수 부활</td></tr>
+    <tr><td>쓰기(적재) 위치</td><td>서버 전용 — Vercel 라우트 + 신규 SECURITY DEFINER <code>admin_ingest_topik_question</code> RPC. 브라우저는 트리거만</td><td>RLS는 모든 topik_writing 테이블에 SELECT 전용. RLS 완화는 RPC 단일 감사 보장 파괴</td></tr>
+    <tr><td>"관리중" 술어</td><td><code>admin_audit_logs</code> 존재로 파생. 성능 필요 시에만 추후 <code>triaged_at</code> 비정규화(백필)</td><td>관리됨 컬럼 부재. status≠internal_test·태그수·일방 플래그 후보 모두 결함(기본값 충돌·직교·되돌림 누락)</td></tr>
+    <tr><td>중복/보류 정책</td><td>멱등 = <code>source_map.published_task_id = task.id</code>. 검증 실패 → hold_reason 보류 행. 보류는 카운트+사유 리스트로만 노출(문항 행으로 렌더 X)</td><td>source_map이 정확히 이 용도로 설계됨(미연결). 보류 행은 문항 데이터가 없어 목록 뷰에 못 뜸</td></tr>
+    <tr><td>권한 게이트</td><td><code>content_admin</code> 유지(기존 모든 문항 RPC와 동일). platform_admin 분리는 오너가 명시 요청 시에만 + 별도 권한키</td><td>3개 기존 문항 RPC 전부 is_content_admin. 콘텐츠 적재는 content_admin 영역</td></tr>
+    <tr><td>배치 감사 의미</td><td>배치당 감사 1행(added N/skipped M/held K 구조화 요약) + task별 source_map 행. 기계 보류는 시스템 사유 기록</td><td><code>question_received</code>는 단건/예약. 기존 RPC는 1행+필수 사람 사유 — 200건 배치엔 부적합</td></tr>
+  </table>
+  </div>
+
+  <h2>4 · UX 개선점</h2>
+  <ul>
+    <li><b>가져오기 = 배치 모달 1개</b>(목록에서 실행): task_type(51/53/54) + topic + 건수(기본 ~50). 부제 "supply API에서 가져와 <b>내부 테스트</b>로 저장 — 사용자 비노출"로 라이브 안 됨을 명시.</li>
+    <li><b>적재 결과 패널:</b> "추가 N / 중복 건너뜀 M / 적재 보류 K" 각 펼침. 보류는 보류 리스트로, 중복은 기존 행으로 딥링크. (현재는 해피패스만 있어 "왜 안 떴는지" 표시처가 없음.)</li>
+    <li><b>일괄 노출 설정</b>으로 "N모달-N사유" 마찰 제거: manage에 체크박스 열(rowSelection — <b>신규 배선</b>) + "선택 노출 설정" 1회. 정상군은 공유 사유 1개, <b>운영주의 태그 항목은 개별 확인</b>으로 분기. 서버 RPC가 공유 사유를 문항당 감사 1행으로 팬아웃.</li>
+    <li><b>"관리로 이동" 느낌은 네비게이션으로:</b> 적재 후 CTA가 manage의 미관리 탭으로 이동. 행은 목록에서 사라지지 않아 재탐색 항상 가능.</li>
+    <li><b>생애주기 탭(미관리/관리중/봉인 레거시)</b>을 manage에 추가, 기존 요약카드+필터 패턴 재사용. manage 요약 카운트를 <b>탭 합 = 전체</b>가 되도록 정합화(현재 null service_status 레거시 행은 어떤 카드/탭에도 안 잡히는 사각지대).</li>
+    <li><b>얇은 행은 "메타데이터 보강 필요" 배지</b>로 1급 상태 표시(깨진 문항처럼 보이지 않게), service_status에 종속(보강 필요 = 항상 internal_test). task id 형식·난이도 1~10·52번 부재 등 불일치는 보류/보강 상태로 흡수하고 본 목록 컬럼을 깨뜨리지 않음.</li>
+  </ul>
+
+  <h2>5 · 실행 계획 (단계)</h2>
+
+  <div class="phase">
+    <div class="ph-head"><span class="ph-name">P-pre · 전제 게이트 (오너 + 정찰, 코드 0)</span><span class="pill hi">HIGH · 게이팅</span></div>
+    <div class="goal">기능을 빌드 가능 상태로: 모순 삼각 해소 + 실제 계약 캡처</div>
+    <ul>
+      <li>정답 키 모순에 대한 <b>오너 결정</b>(아래 ① 참조): 이 API = 메타/프리뷰 피드(영구 internal_test) vs §0 완화(보강 surface 재도입)</li>
+      <li><b>라이브 응답 캡처</b>(<code>/api/writing/tasks</code>, <code>/tasks/{task_type}</code>) — 특히 <b>정답 키 포함 여부</b> 확인. 스웨거 자체 모순이라 문서로 매핑 확정 금지</li>
+      <li>상류 base URL + eval-admin Bearer 자격증명을 env/Vercel 시크릿에 추가</li>
+      <li>캡처된 실제 형태 기준으로 적재 타깃 확정(권고: A + source_map 보류 하이브리드)</li>
+    </ul>
+    <div class="dep">선행: 없음 · ⚠️ dev DB 마이그레이션 장부가 2026-06-22 TRUNCATE됨 → available 전환 의존 전 <code>20260611190100</code>(검수 컬럼/POL-018 검수가드 제거) 적용 재확인</div>
+  </div>
+
+  <div class="phase">
+    <div class="ph-head"><span class="ph-name">P6-a · 적재 백엔드 (예약된 question_received)</span><span class="pill md">Medium-High</span></div>
+    <div class="goal">서버 전용·멱등·감사되는 적재 경로 — 검증 통과 행은 internal_test, 나머지는 보류</div>
+    <ul>
+      <li>Vercel 라우트 <code>api/writing-tasks/ingest.ts</code> (<code>api/auth-email/sync.ts</code> 패턴: 관리자 JWT 검증 → app_role/is_content_admin 게이트 → service-role 클라이언트)</li>
+      <li>신규 RPC <code>admin_ingest_topik_question(batch)</code>: source_map.published_task_id 멱등 / task_type→item_number / question_id 채번 / topic-FK 해소 + 난이도 클램프 / 통과 시 §7 INSERT(internal_test) 아니면 보류 행 / question_received(배치 감사 1행 + task별 source_map)</li>
+      <li>보류 리스트용 source_map SELECT RPC 신설</li>
+      <li>dev-DB 프로브: 멱등 재실행 / 검증실패 보류 / topic-FK 거부 / forbidden·unauth 가드</li>
+    </ul>
+    <div class="dep">선행: P-pre · RLS 완화로 브라우저 INSERT 절대 금지. 라이브에 정답 키 없으면 INSERT 분기가 거의 안 타고 대부분 보류 → 수용 가능한지 먼저 확인</div>
+  </div>
+
+  <div class="phase">
+    <div class="ph-head"><span class="ph-name">P6-b · 분류 술어 + 읽기 경로</span><span class="pill lo">Low-Medium</span></div>
+    <div class="goal">동결 계약 무변경으로 내구성 있는 미관리/관리중 분리</div>
+    <ul>
+      <li>감사-존재 술어를 읽기측 파생으로(신규 read RPC 또는 question_id별 <code>admin_audit_logs</code> 존재 LEFT JOIN)</li>
+      <li><code>AssessmentQuestionSummary</code>/프리젠터에 <code>lifecycleState</code> 필드 추가(DB 컬럼 없음)</li>
+      <li>manage 요약 카운트 정합화(null sentinel 명시 처리, 탭 합 = 전체)</li>
+    </ul>
+    <div class="dep">선행: P6-a · 행당 감사-존재 집계 비용은 admin 규모에서 수용 가능. 문제되면 추후 triaged_at 비정규화(명시적 계약 개정)</div>
+  </div>
+
+  <div class="phase">
+    <div class="ph-head"><span class="ph-name">P6-c · UI (가져오기 + 결과 + 탭)</span><span class="pill md">Medium</span></div>
+    <div class="goal">목록의 조회 전용 계약을 깨지 않는 적재·결과·분류 표면</div>
+    <ul>
+      <li>가져오기 모달 + 적재 결과 패널(목록 — 여기 추가되는 유일한 쓰기 어포던스, 노출/태그 쓰기는 전부 manage)</li>
+      <li>생애주기 탭(미관리/관리중/봉인 레거시)을 manage에(요약카드+필터 패턴 재사용)</li>
+      <li>적재 보류/중복 표면(카운트+사유 리스트, 중복 딥링크) · "메타데이터 보강 필요" 배지 · 적재 후 manage 미관리 탭 이동 CTA</li>
+    </ul>
+    <div class="dep">선행: P6-b · 일괄 노출이 목록으로 새지 않게 — POL-018이 사는 manage에 유지</div>
+  </div>
+
+  <div class="phase">
+    <div class="ph-head"><span class="ph-name">P6-d · 일괄 노출(감사 정합 유지)</span><span class="pill md">Medium</span></div>
+    <div class="goal">감사 추적·POL-018 약화 없이 N모달-N사유 마찰 제거</div>
+    <ul>
+      <li>manage에 rowSelection 배선(신규) · 배치 확인 모달(신규 — ConfirmAction은 단일 타깃) 공유 사유 1개 캡처</li>
+      <li>서버 RPC가 공유 사유를 문항당 감사 1행으로 팬아웃 · 항목별 POL-018 평가(정상 일괄 / 운영주의 강제 개별)</li>
+    </ul>
+    <div class="dep">선행: P6-c · POL-018은 현재 단일 토글 모달 내 항목별 계산 — 배치 컨텍스트 재구현은 신규 로직. 항목별 POL-018 없는 일괄 출시는 금지(정책 구멍)</div>
+  </div>
+
+  <h2>6 · 오너 결정 필요</h2>
+  <ol class="qbox">
+    <li class="decisive"><b>결정적:</b> 이 API(학습자 렌더)는 정답 키를 안 주는데 §7는 정답 NOT NULL, §0은 저작 금지 — 셋은 상호 배타. 택일: <b>(A)</b> 이 API = 메타/프리뷰 피드, 적재 행은 internal_test로만 존재하고 별도 파이프라인이 완전 행 공급(사용자 플로우는 "저장+내부 열람"까지만 정직). <b>(B)</b> §0 완화 — 범위 한정·감사되는 보강/저작 surface 재도입(= 새 이름의 검수 부활). <span class="rec">→ 결정 전 라이브 응답에서 정답 키 유무 확인. 있으면 순수 자동매핑으로 모순 해소.</span></li>
+    <li>목록/관리 구분을 <b>하나의 인벤토리 위 상태 필터</b>로 수용 가능? 아니면 행이 물리적으로 이동하는 2페이지를 반드시 원함? <span class="rec">→ 아키텍처는 필터를 강력 권고. 빌드 전 확정 필요.</span></li>
+    <li>일괄 노출에 <b>배치 공유 사유 1개</b>가 감사/POL-018상 수용 가능? 아니면 운영주의 항목은 항상 개별 사유? <span class="rec">→ 정상=공유 사유, 운영주의=강제 개별 사유 권고.</span></li>
+    <li>적재 권한은 <code>content_admin</code> 유지(권고) vs <code>platform_admin</code> 승격? 승격 시 별도 권한키? <span class="rec">→ content_admin 유지 권고(기존 모든 문항 RPC와 일치).</span></li>
+    <li><b>52번 커버리지:</b> 상류 task_type 경로는 task51|task53|task54로 문서화(task52 없음). 52번은 다른 소스인가, 아니면 이 소스에서 의도적으로 불완전한가? <span class="rec">→ 가져오기 UI가 4개 중 3개만 조용히 덮을지 결정.</span></li>
+    <li>배치 적재 중 <b>기계 주도 건너뜀/보류</b>에 시스템 기록 사유(사람 사유 없음)가 감사/source_map상 수용 가능? <span class="rec">→ 기존 문항 쓰기는 사람 사유 필수 — 배치는 예외 정책 필요.</span></li>
+  </ol>
+
+  <div class="foot">
+    생성: 멀티에이전트 적대 설계 패널(정보구조 · UX · 데이터적재 · 정합성감사 · 제품논리 5렌즈 + 각 비평 + 종합) ·
+    모든 사실 주장은 실제 마이그레이션/서비스/스웨거 스키마 대조 검증 · 본 문서는 구현 착수 전 합의용 계획안
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DB 변경 결과 보고서 — Operation/공지사항 mock→Supabase 전환</title>
+<style>
+  :root{
+    --bg:#0f1115; --card:#171a21; --card2:#1d212b; --line:#2a2f3a;
+    --fg:#e6e9ef; --mut:#9aa3b2; --acc:#6ea8fe; --ok:#41d18b; --warn:#f0b75b; --del:#ff7b7b;
+    --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:"Segoe UI","Malgun Gothic",system-ui,sans-serif;line-height:1.6;font-size:15px}
+  .wrap{max-width:1080px;margin:0 auto;padding:32px 24px 80px}
+  h1{font-size:26px;margin:0 0 4px}
+  h2{font-size:19px;margin:38px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+  h3{font-size:15px;margin:22px 0 8px;color:var(--acc)}
+  .sub{color:var(--mut);margin:0 0 18px}
+  .meta{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0 8px}
+  .chip{background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13px;color:var(--mut)}
+  .chip b{color:var(--fg);font-weight:600}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:14px 0}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .kpi .n{font-size:24px;font-weight:700}
+  .kpi .l{color:var(--mut);font-size:13px}
+  .kpi.ok .n{color:var(--ok)} .kpi.add .n{color:var(--acc)}
+  table{width:100%;border-collapse:collapse;margin:10px 0;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top;font-size:13.5px}
+  th{background:var(--card2);color:var(--mut);font-weight:600;font-size:12.5px;text-transform:uppercase;letter-spacing:.03em}
+  tr:last-child td{border-bottom:none}
+  code{font-family:var(--mono);background:#0b0d11;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12.5px;color:#d6deea}
+  pre{background:#0b0d11;border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow:auto;font-family:var(--mono);font-size:12.5px;color:#d6deea}
+  .tag{display:inline-block;border-radius:6px;padding:1px 8px;font-size:11.5px;font-weight:700;letter-spacing:.02em}
+  .t-add{background:rgba(110,168,254,.15);color:var(--acc);border:1px solid rgba(110,168,254,.4)}
+  .t-ok{background:rgba(65,209,139,.13);color:var(--ok);border:1px solid rgba(65,209,139,.4)}
+  .t-none{background:rgba(154,163,178,.13);color:var(--mut);border:1px solid var(--line)}
+  .t-warn{background:rgba(240,183,91,.13);color:var(--warn);border:1px solid rgba(240,183,91,.4)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:12px 0}
+  ul{margin:8px 0;padding-left:20px} li{margin:3px 0}
+  .muted{color:var(--mut)}
+  .foot{margin-top:40px;color:var(--mut);font-size:12.5px;border-top:1px solid var(--line);padding-top:14px}
+  .ok-row td{color:var(--fg)}
+  .legend{font-size:12.5px;color:var(--mut);margin:4px 0 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>DB 변경 결과 보고서</h1>
+  <p class="sub">Operation / 공지사항(<code>/operation/notices</code>) — mock 전용 → Supabase DB-backed 전환 (로드맵 증분 #1)</p>
+
+  <div class="meta">
+    <span class="chip">날짜 <b>2026-06-17</b></span>
+    <span class="chip">브랜치 <b>feat/operation-notices-db</b></span>
+    <span class="chip">dev 프로젝트 <b>fglggyfvzjdsbyckinqa (talkpik-dev)</b></span>
+    <span class="chip">네임스페이스 <b>migrations-admin / admin_schema_migrations</b></span>
+    <span class="chip">구현 엔진 <b>Codex GPT-5.5 (xhigh)</b></span>
+    <span class="chip">마이그레이션 <b>20260617120000_operation_notices.sql</b></span>
+  </div>
+
+  <h2>1. 요약</h2>
+  <div class="card">
+    공지사항 페이지를 메모리 mock(zustand store)에서 <b>Supabase 영속 + 감사 로그 적재</b> 경로로 전환했다.
+    신규 테이블 1개·admin RPC 3종·RLS 정책 1개·인덱스 2개를 <b>admin 운영 네임스페이스</b>에 추가하고 dev DB에 적용했다.
+    기존 v13/topik_writing/notification 객체는 <b>한 건도 변경되지 않았다</b>(무변경 게이트 통과).
+    조치(저장·게시/숨김·삭제)는 이제 <code>admin_audit_logs</code>에 <code>OperationNotice</code> 대상으로 사유와 함께 기록된다.
+  </div>
+
+  <div class="grid">
+    <div class="kpi add"><div class="n">+1</div><div class="l">테이블 (operation_notices)</div></div>
+    <div class="kpi add"><div class="n">+3</div><div class="l">admin RPC (save/toggle/delete)</div></div>
+    <div class="kpi add"><div class="n">+1</div><div class="l">RLS 정책 (admin select)</div></div>
+    <div class="kpi add"><div class="n">+2</div><div class="l">인덱스 (created / 부분)</div></div>
+    <div class="kpi ok"><div class="n">0</div><div class="l">기존 객체 변경</div></div>
+    <div class="kpi ok"><div class="n">2</div><div class="l">시드 행 적재</div></div>
+  </div>
+
+  <h2>2. 추가된 DB 객체</h2>
+
+  <h3>2.1 테이블 <code>public.operation_notices</code> <span class="tag t-add">ADDED</span></h3>
+  <table>
+    <thead><tr><th>컬럼</th><th>타입</th><th>제약 / 기본값</th><th>설명</th></tr></thead>
+    <tbody>
+      <tr><td><code>id</code></td><td>text</td><td>PRIMARY KEY</td><td>자연키 <code>NOTICE-NNN</code> (RPC가 max+1 서버 생성)</td></tr>
+      <tr><td><code>title</code></td><td>text</td><td>NOT NULL</td><td>공지 제목</td></tr>
+      <tr><td><code>body_html</code></td><td>text</td><td>NOT NULL, default ''</td><td>본문 HTML (TinyMCE)</td></tr>
+      <tr><td><code>status</code></td><td>text</td><td>NOT NULL, default 'hidden', CHECK in (published, hidden)</td><td>ASCII 저장 · UI 라벨 게시/숨김 매핑</td></tr>
+      <tr><td><code>author</code></td><td>text</td><td>NOT NULL</td><td>작성자</td></tr>
+      <tr><td><code>created_at</code></td><td>timestamptz</td><td>NOT NULL, default now()</td><td>생성 시각</td></tr>
+      <tr><td><code>updated_at</code></td><td>timestamptz</td><td>NOT NULL, default now()</td><td>수정 시각</td></tr>
+      <tr><td><code>updated_by</code></td><td>text</td><td>nullable</td><td>최종 수정자(현재 호출자 uuid 저장 — §6 미확정)</td></tr>
+    </tbody>
+  </table>
+  <p class="legend">제약 <code>operation_notices_status_check</code> · 인덱스 <code>operation_notices_created_desc</code>(created_at desc), <code>operation_notices_published_created</code>(부분: where status='published') · PK 인덱스 <code>operation_notices_pkey</code></p>
+
+  <h3>2.2 RLS <span class="tag t-add">ADDED</span></h3>
+  <ul>
+    <li><code>ENABLE</code> + <code>FORCE ROW LEVEL SECURITY</code></li>
+    <li>정책 <code>operation_notices_admin_select</code> — <b>SELECT, authenticated, <code>private.is_admin(auth.uid())</code></b></li>
+    <li>INSERT/UPDATE/DELETE 정책 <b>없음</b> → 쓰기는 SECURITY DEFINER RPC 단일 경로로만 허용</li>
+  </ul>
+
+  <h3>2.3 admin RPC 3종 <span class="tag t-add">ADDED</span></h3>
+  <table>
+    <thead><tr><th>함수</th><th>시그니처</th><th>감사 action</th><th>가드</th></tr></thead>
+    <tbody>
+      <tr><td><code>admin_save_operation_notice</code></td><td>(p_id text, p_notice jsonb, p_reason text) → text</td><td><code>notice_saved</code></td><td rowspan="3">unauthenticated → forbidden(<code>private.is_admin</code>) → reason 필수. SECURITY DEFINER, search_path 고정.</td></tr>
+      <tr><td><code>admin_toggle_operation_notice_status</code></td><td>(p_notice_id text, p_next_status text, p_reason text) → text</td><td><code>notice_status_changed</code></td></tr>
+      <tr><td><code>admin_delete_operation_notice</code></td><td>(p_notice_id text, p_reason text) → text</td><td><code>notice_deleted</code></td></tr>
+    </tbody>
+  </table>
+  <p class="legend">세 RPC 모두 <code>admin_audit_logs(admin_user_id, action, target_table='OperationNotice', target_id=noticeId, diff, payload)</code>에 사유(payload.reason)와 변경 diff를 기록한다. <code>revoke all from public</code> + <code>grant execute to authenticated</code>.</p>
+
+  <h3>2.4 시드 <span class="tag t-add">ADDED</span></h3>
+  <table>
+    <thead><tr><th>id</th><th>status</th><th>제목</th></tr></thead>
+    <tbody>
+      <tr><td><code>NOTICE-001</code></td><td>published</td><td>정기 점검 안내</td></tr>
+      <tr><td><code>NOTICE-002</code></td><td>hidden</td><td>환불 정책 변경</td></tr>
+    </tbody>
+  </table>
+  <p class="legend">기존 mock 2건을 <code>on conflict (id) do nothing</code> 멱등 시드로 이전.</p>
+
+  <h2>3. 수정/미변경 객체</h2>
+  <table>
+    <thead><tr><th>객체</th><th>상태</th><th>비고</th></tr></thead>
+    <tbody>
+      <tr><td><code>admin_audit_logs</code> (v13 소유)</td><td><span class="tag t-none">미변경 · 쓰기만</span></td><td>DDL/인덱스 추가 없음. 신규 RPC가 INSERT만 수행(소유권 매트릭스 준수).</td></tr>
+      <tr><td><code>topik_writing_*</code></td><td><span class="tag t-none">미변경</span></td><td>무변경 게이트 통과(<code>--exclude-own</code> diff).</td></tr>
+      <tr><td><code>notification_*</code> 및 기타 기존 객체</td><td><span class="tag t-none">미변경</span></td><td>added 외 changed/removed 0건.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>4. before / after 스키마 스냅샷</h2>
+  <table>
+    <thead><tr><th>구분</th><th>before</th><th>after</th><th>Δ</th></tr></thead>
+    <tbody>
+      <tr><td>테이블(public)</td><td>42</td><td>43</td><td><span class="tag t-add">+1</span></td></tr>
+      <tr><td>함수(public/private)</td><td>81</td><td>84</td><td><span class="tag t-add">+3</span></td></tr>
+      <tr><td>정책(policies)</td><td>72</td><td>73</td><td><span class="tag t-add">+1</span></td></tr>
+      <tr><td>뷰</td><td>1</td><td>1</td><td><span class="tag t-none">0</span></td></tr>
+    </tbody>
+  </table>
+  <p class="legend"><code>scripts/db/schema-snapshot.mjs --diff before.json after.json --exclude-own</code> → 총 차이 12건, <b>전부 added</b>(컬럼 8 + 함수 3 + 정책 1), changed/removed 0건.</p>
+
+  <h2>5. 검증 결과</h2>
+  <table>
+    <thead><tr><th>게이트</th><th>결과</th><th>근거</th></tr></thead>
+    <tbody>
+      <tr class="ok-row"><td>마이그레이션 적용</td><td><span class="tag t-ok">PASS</span></td><td><code>db:admin:migrate</code> → applied 1; status [applied] 20260617120000</td></tr>
+      <tr class="ok-row"><td>기존 객체 무변경</td><td><span class="tag t-ok">PASS</span></td><td>snapshot diff = additions only (12건)</td></tr>
+      <tr class="ok-row"><td>시드 / RLS / 제약 / 인덱스</td><td><span class="tag t-ok">PASS</span></td><td>2행 적재, RLS enable+force, status CHECK, 3 인덱스 확인</td></tr>
+      <tr class="ok-row"><td>typecheck (<code>tsc --noEmit</code>)</td><td><span class="tag t-ok">PASS</span></td><td>exit 0</td></tr>
+      <tr class="ok-row"><td>lint (eslint)</td><td><span class="tag t-ok">PASS</span></td><td>exit 0</td></tr>
+      <tr class="ok-row"><td>e2e (operation-notices, mock)</td><td><span class="tag t-ok">PASS</span></td><td>1 passed — OperationNotice 감사 href + 상태 액션 + preview URL</td></tr>
+      <tr class="ok-row"><td>문서 동기화 (AGENTS.md §7)</td><td><span class="tag t-ok">PASS</span></td><td id="docsync">11개 SoT 문서 갱신 — 적용 스키마와 정합 확인(소유권 매트릭스·data-contract·action-log·usage-map·data-source-transition·page-sync·page-ia·page-tables·gap-register·ia-change-log·doc-update-log)</td></tr>
+      <tr class="ok-row"><td>harness:check</td><td><span class="tag t-ok">PASS</span></td><td id="harness">mojibake clean · 크로스링크 115 docs · route-doc 55 routes/38 IA · lint · typecheck 전부 통과</td></tr>
+    </tbody>
+  </table>
+
+  <h2>6. 내린 결정 · 미확정</h2>
+  <table>
+    <thead><tr><th>항목</th><th>결정 / 상태</th></tr></thead>
+    <tbody>
+      <tr><td>status enum 저장 방식</td><td><b>ASCII(published/hidden) 저장 + UI 라벨(게시/숨김) 서비스 경계 매핑</b> — notification 도메인 관례 일치(확정)</td></tr>
+      <tr><td>v0.8 rule doc 충돌</td><td>커밋 스키마·결정기록 우선(확정). 본 도메인 영향 없음</td></tr>
+      <tr><td>PK 체계</td><td><span class="tag t-warn">미확정</span> 자연키 <code>NOTICE-NNN</code> 유지(서비스/시드 parity). RPC <code>max+1</code> 채번에 <b>동시성 리스크</b> — 향후 시퀀스/uuid 검토</td></tr>
+      <tr><td><code>updated_by</code> 값</td><td><span class="tag t-warn">미확정</span> 현재 호출자 uuid 저장. 표시명(admin_park 류) 정합은 actor 표시명 조인 과제와 함께 후속</td></tr>
+      <tr><td>B2C 노출</td><td>사용자 공지 목록/상세 — <b>운영상 추정</b>(usage-map 반영)</td></tr>
+      <tr><td>감사 로그 화면 표시</td><td>쓰기는 적재되나 <code>/system/audit-logs</code> 화면은 아직 mock — Phase 0 후속(별도 증분)</td></tr>
+    </tbody>
+  </table>
+
+  <h2>7. 변경 파일</h2>
+  <h3>신규</h3>
+  <ul>
+    <li><code>supabase/migrations-admin/20260617120000_operation_notices.sql</code> (+ <code>down/</code>)</li>
+    <li><code>src/features/operation/api/operation-notices-data-source.ts</code> — mock↔supabase 스위치</li>
+    <li><code>src/features/operation/api/supabase-operation-notices-service.ts</code> — RPC 호출 + 행↔모델·status 매핑</li>
+  </ul>
+  <h3>수정</h3>
+  <ul>
+    <li><code>src/features/operation/api/notices-service.ts</code> — 데이터소스 분기 + <code>reason</code> 스레딩(<code>*Safe</code> 계약 유지)</li>
+    <li><code>src/features/operation/pages/operation-notices-page.tsx</code> — 삭제/토글 사유→RPC 전달, Target Type <code>Operation</code>→<code>OperationNotice</code></li>
+    <li><code>src/shared/model/target-type-label.ts</code> — <code>OperationNotice: "공지"</code> 추가</li>
+    <li><code>tests/e2e/operation-notices.spec.ts</code> — 감사 href 단언 <code>OperationNotice</code></li>
+  </ul>
+  <h3>문서 동기화 (SoT, 11건)</h3>
+  <ul>
+    <li><code>docs/architecture/shared-supabase-schema-ownership.md</code> — operation_notices 소유권 행 + decision record</li>
+    <li><code>docs/specs/admin-data-contract.md</code> — operation_notices 엔티티/컬럼/enum 확정</li>
+    <li><code>docs/specs/admin-action-log.md</code> — OperationNotice Target Type + 3 action</li>
+    <li><code>docs/specs/admin-data-usage-map.md</code> — 공지 B2C 운영상 추정</li>
+    <li><code>docs/architecture/admin-data-source-transition.md</code> — 공지 mock→supabase 전환</li>
+    <li><code>docs/page-sync/operation-notices-page-sync.md</code> · <code>docs/specs/page-ia/operation-notices-page-ia.md</code> · <code>docs/specs/admin-page-tables.md</code> · <code>docs/specs/admin-page-gap-register.md</code> · <code>docs/specs/admin-page-ia-change-log.md</code> · <code>logs/admin-doc-update-log.md</code></li>
+  </ul>
+  <p class="legend">참고: Codex가 생성한 범위 외 제안 문서는 <code>.codex-artifacts/operation-notices/codex-writing-backend-proposal.md</code>로 이동(docs/ 밖, 본 증분에서 제외).</p>
+
+  <h2>8. 로드맵 맥락</h2>
+  <div class="card">
+    본 작업은 사용자 승인 <b>“로드맵 전체(다중 세션)”</b> 프로그램의 <b>증분 #1</b>이며, mock→DB 표준 파이프라인(테이블→인덱스→RLS→RPC→seed→서비스 스위치→감사→문서→검증)을 1회 완주해 패턴을 확립했다.
+    다음 증분(이후 세션, GPT-5.5 멀티 에이전트 병렬): <b>operation</b> 나머지(FAQ·이벤트·정책) → <b>community</b>(게시글·신고, 신고 조치 버그 동반) → <b>commerce</b>(포인트·쿠폰·환불, 서버측 잔액 계산) → <b>system</b>(메타데이터·로그) → <b>Phase 0</b> 감사 로그 화면 실연동(admin_audit_logs 읽기 경로, v13 소유권 협의 필요).
+  </div>
+
+  <div class="foot">
+    생성: Claude Code (Opus 4.8) 오케스트레이션 · 구현 Codex GPT-5.5 · dev 프로젝트 talkpik-dev(fglggyfvzjdsbyckinqa) · 보고서 경로 <code>.codex-artifacts/operation-notices/db-change-report.html</code>
+  </div>
+
+</div>
+</body>
+</html>

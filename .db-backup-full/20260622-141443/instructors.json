@@ -1,0 +1,104 @@
+[
+  {
+    "id": "INS-0001",
+    "real_name": "김도연",
+    "email": "instructor1@topik.ai",
+    "nickname": "teacher_1",
+    "organization": "본사 직속",
+    "country": "대한민국",
+    "status": "정상",
+    "activity_status": "활성",
+    "assignment_status": "안정",
+    "course_count": 2,
+    "student_count": 54,
+    "last_activity_at": "2026-03-10 10:00",
+    "last_action_at": "2026-03-05 12:00",
+    "message_group_id": "GRP-001",
+    "message_group_name": "강사 운영 공지",
+    "specialties": [
+      "쓰기 첨삭",
+      "말하기 코칭"
+    ],
+    "introduction": "본사 직속으로 TOPIK 학습자 온보딩과 과정 운영을 담당하는 강사입니다.",
+    "assigned_courses": [
+      {
+        "id": "CRS-001-1",
+        "level": "초급~중급",
+        "title": "TOPIK I 입문 집중반",
+        "status": "진행 중",
+        "studentCount": 24
+      }
+    ],
+    "recent_messages": [
+      {
+        "id": "MSG-001-1",
+        "title": "강사 운영 공지",
+        "sentAt": "2026-03-09 11:00",
+        "status": "발송 완료",
+        "channel": "메일"
+      }
+    ],
+    "created_at": "2026-06-18 23:11:59.253158+00",
+    "updated_at": "2026-06-18 23:11:59.253158+00"
+  },
+  {
+    "id": "INS-0002",
+    "real_name": "이하린",
+    "email": "instructor2@topik.ai",
+    "nickname": "teacher_2",
+    "organization": "파트너 기관",
+    "country": "베트남",
+    "status": "정상",
+    "activity_status": "주의",
+    "assignment_status": "주의",
+    "course_count": 1,
+    "student_count": 18,
+    "last_activity_at": "2026-02-24 10:00",
+    "last_action_at": "2026-03-01 12:00",
+    "message_group_id": "GRP-002",
+    "message_group_name": "TOPIK II 담당 강사",
+    "specialties": [
+      "입문반 운영",
+      "시험 대비"
+    ],
+    "introduction": "파트너 기관 소속으로 시험 대비 과정을 담당하는 강사입니다.",
+    "assigned_courses": [
+      {
+        "id": "CRS-002-1",
+        "level": "중급~고급",
+        "title": "TOPIK II 실전 문제풀이",
+        "status": "진행 중",
+        "studentCount": 18
+      }
+    ],
+    "recent_messages": [],
+    "created_at": "2026-06-18 23:11:59.253158+00",
+    "updated_at": "2026-06-18 23:11:59.253158+00"
+  },
+  {
+    "id": "INS-0003",
+    "real_name": "박선우",
+    "email": "instructor3@topik.ai",
+    "nickname": "teacher_3",
+    "organization": "본사 직속",
+    "country": "대한민국",
+    "status": "정지",
+    "activity_status": "휴면",
+    "assignment_status": "조정 필요",
+    "course_count": 0,
+    "student_count": 0,
+    "last_activity_at": "2026-01-20 10:00",
+    "last_action_at": "2026-02-10 12:00",
+    "message_group_id": "GRP-003",
+    "message_group_name": "휴면 강사 안내",
+    "specialties": [
+      "문법 클리닉",
+      "개별 피드백"
+    ],
+    "introduction": "휴면 상태로 재참여 안내가 필요한 강사입니다.",
+    "assigned_courses": [],
+    "recent_messages": [],
+    "created_at": "2026-06-18 23:11:59.253158+00",
+    "updated_at": "2026-06-18 23:11:59.253158+00"
+  }
+]

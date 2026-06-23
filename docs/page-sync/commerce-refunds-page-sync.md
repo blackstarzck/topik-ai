@@ -51,7 +51,7 @@ last_reviewed_at: "2026-06-01"
 | 기능/작업 | 설명 | 작업 성격 | 대상 데이터 | 결과 | 감사 로그 필요 여부 |
 | --- | --- | --- | --- | --- | --- |
 | 환불 관리 조회 | 환불 관리의 목록/상세 또는 예정 데이터 블록을 확인합니다. | 조회 | CommerceRefund | 현재 상태 확인 | 불필요 |
-| 환불 관리 관리 | 환불 ID, 결제 ID, 신청자, 사유, 처리 상태, 환불 금액에 대한 등록/수정/상태 변경 또는 예정 계약을 관리합니다. | 수정 | Refund + refundId | 데이터 반영 또는 후속 검증 | 필요 |
+| 환불 관리 관리 | 환불 ID, 결제 ID, 신청자, 사유, 처리 상태, 환불 금액에 대한 승인/거절 워크플로를 관리합니다. | 수정 | CommerceRefund + refundId | 데이터 반영 또는 후속 검증 | 필요 |
 
 ## 5. 관리 데이터베이스(CRUD)
 
@@ -59,7 +59,7 @@ last_reviewed_at: "2026-06-01"
 
 | 엔티티 후보 | 테이블 후보 | CRUD | 관리자 UI 진입점 | 주요 필드 후보 | 감사 로그 Target | 사용자 화면 영향 | 미확정/차이 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| CommerceRefund | commerce_refunds | Create, Read, Update, Delete 후보 | 환불 관리 본문/상세/Modal | 환불 ID, 결제 ID, 신청자, 사유, 처리 상태, 환불 금액, id, status, created_at, updated_at | Refund + refundId | 운영상 추정 | 현재 프론트엔드/문서 기준 후보 |
+| CommerceRefund | commerce_refunds | Read, Update(승인/거절) | 환불 관리 본문/상세/Modal | 환불 ID, 결제 ID, 신청자, 사유, 처리 상태, 환불 금액, id, status, created_at, updated_at | CommerceRefund + refundId | 운영상 추정 | 2026-06-17 Supabase workflow table 기준 |
 
 ### CRUD 상세
 
@@ -113,7 +113,7 @@ last_reviewed_at: "2026-06-01"
 - 선택 쿼리 파라미터: page, pageSize, keyword, status, tab, selected 등 페이지별 후보
 - 목록 복원 기준: 목록/필터/정렬/탭/상세 대상 복원
 - 상세 Drawer/Modal/하위 라우트 복원 여부: 행 클릭 Drawer/Modal 후보
-- 사용자 화면 동기화에 필요한 식별자: Refund + refundId
+- 사용자 화면 동기화에 필요한 식별자: CommerceRefund + refundId
 
 ## 11. 네트워크 상태와 fail-safe
 
@@ -142,3 +142,17 @@ last_reviewed_at: "2026-06-01"
 | 항목 | 미확정 내용 | 필요한 결정 주체 | 관리자 페이지 영향 | 사용자 화면 영향 | 추적 문서 |
 | --- | --- | --- | --- | --- | --- |
 | 환불 관리 최종 계약 | 환불 승인 권한, 결제 취소 API, 사용자 알림 발송 조건은 추가 확정이 필요합니다. | 기획/백엔드/프론트 | 필터/액션/감사 로그 계약 변동 가능 | 마이페이지 주문/결제 환불 상태에 운영상 추정으로 연결됩니다. | docs/specs/page-ia/commerce-refunds-page-ia.md |
+## 2026-06-17 Supabase 전환 동기화 기준
+
+> 이 섹션은 기존 본문에 남아 있는 깨진 인코딩/후보 표현보다 우선하는 현재 SoT입니다.
+
+- 관리자 페이지: `Commerce > 환불 관리`, route `/commerce/refunds`, primary entity `CommerceRefund`, primary table `commerce_refunds`.
+- 데이터소스: Supabase 모드 환불 목록은 기존 v13 `payment_history(status='refunded')` 합성 조회가 아니라 `commerce_refunds` workflow table을 읽습니다. mock fallback은 `VITE_COMMERCE_REFUNDS_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`입니다.
+- CRUD 범위: Read는 `commerce_refunds` 목록/상세 조회, Update는 승인/거절 워크플로만 지원합니다. Create/Delete는 현재 관리자 환불 관리 화면의 확정 CRUD가 아닙니다.
+- 테이블 필드: `id`, `payment_id`, `user_id`, `user_nickname`, `requested_amount`, `reason`, `status`, `requested_at`, `processed_by`, `processed_at`, `review_reason`, `created_at`.
+- 상태값: DB ASCII `pending`/`approved`/`rejected`, 관리자 UI 라벨 `처리 대기`/`승인`/`거절`.
+- 조치: `admin_approve_billing_refund(p_refund_id,p_reason)`과 `admin_reject_billing_refund(p_refund_id,p_reason)`을 사용합니다. reason은 필수이고 `pending` 상태만 처리합니다.
+- 감사 로그: Target Type `CommerceRefund`, Target ID `refundId`, action `refund_approved`/`refund_rejected`, 확인 경로 `/system/audit-logs?targetType=CommerceRefund&targetId={refundId}`.
+- B2C 동기화: 마이페이지 결제 내역/환불 상태 안내는 `운영상 추정`입니다. 실제 사용자 화면 저장소와 사용자 노출 문구는 아직 확정하지 않습니다.
+- v13 경계: `payment_id`와 `user_id`는 v13 느슨참조이며 FK가 없습니다. 실제 결제 환불 집행 및 v13 `payment_history.status` 갱신은 v13 소유라 미연동입니다. 승인 payload는 `intent_only_v13_payment_history_pending=true`를 기록합니다.
+- 미확정/차이: 실제 결제 환불 집행 v13 연동, `payment_id` 느슨참조 정합, `RF-NNNN` max+1 동시성, payments `method` 컬럼 reconcile은 후속 과제로 추적합니다.

@@ -455,3 +455,12 @@
 - 무료 플랜/Pro 플랜 차이는 현재 store 설정값으로만 시뮬레이션한다.
 - 실제 알림 발송, 다운로드 URL 외부 공개, 결제 단계 연동은 후속 구현 범위다.
 - 상품/카테고리/쇼핑 등급 참조 데이터는 현재 `coupon-template-form-schema.ts`의 code table candidate 수준이며, 실검색/실엔티티 연결은 후속 구현 범위다.
+
+## 17. 2026-06-17 Supabase source 갱신
+
+- source: `commerce_coupons`(쿠폰 본체 53컬럼)와 `commerce_coupon_subscription_templates`(정기 템플릿 30컬럼) Supabase-backed hybrid. 마이그레이션은 `supabase/migrations-admin/20260617193000_commerce_coupons.sql`(+ down), tracker는 `admin_schema_migrations`, dev DB 적용일은 2026-06-17이다.
+- 기존 §16의 mock `Zustand` store 기준은 fallback 설명으로 축소한다. `commerce-coupons-data-source.ts`가 `VITE_COMMERCE_COUPONS_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`일 때만 mock을 사용한다.
+- 쿠폰 본체 상태/종류/혜택/범위 enum은 DB ASCII camelCase를 저장하고 UI 한글 라벨에서 매핑한다. `target_group_ids`, `target_user_ids`, `applicable_scope_reference_ids`, `excluded_product_ids`, `policy_notes`, `issue_alert`, `expire_alert`는 JSONB 계약이다.
+- 정기 템플릿은 `issue_target_type='shoppingGrade'`, `status='active'/'paused'`, `issue_schedule`/`usage_end_schedule` JSONB를 사용한다.
+- 조치/감사: 쿠폰 Target Type `CommerceCoupon`, 템플릿 Target Type `CommerceCouponTemplate`. action은 `coupon_saved`/`coupon_duplicated`/`coupon_paused`/`coupon_resumed`/`coupon_deleted`/`coupon_template_saved`/`coupon_template_paused`/`coupon_template_resumed`/`coupon_template_deleted`이며 reason 필수다. 감사 딥링크는 `/commerce/coupons` 기준이다.
+- 잔여 미확정: 발급/사용 원장, scope-ref/대상 그룹/알림 정규화, `planTier` 영속화, `target_user_ids` v13 profiles 느슨참조 정합.

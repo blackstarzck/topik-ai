@@ -23,7 +23,13 @@ import type { ChangeEvent } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
-import { fetchReferralsSafe } from '../api/referrals-service';
+import {
+  adjustReferralRewardSafe,
+  fetchReferralsSafe,
+  isReferralsSupabase,
+  reviewReferralAnomalySafe,
+  setReferralStatusSafe
+} from '../api/referrals-service';
 import {
   defaultReferralQuery,
   useReferralsQueryStore
@@ -548,34 +554,60 @@ export default function UsersReferralsPage(): JSX.Element {
         'review-anomaly': '이상치 검토 완료 처리'
       } as const;
 
-      setReferralsState((prev) => {
-        const nextData = prev.data.map((item) => {
-          if (item.id !== actionState.referral.id) {
-            return item;
-          }
+      if (isReferralsSupabase) {
+        const result =
+          actionState.type === 'review-anomaly'
+            ? await reviewReferralAnomalySafe({
+                referralId: actionState.referral.id,
+                reason
+              })
+            : await setReferralStatusSafe({
+                referralId: actionState.referral.id,
+                nextStatus: actionState.type === 'deactivate' ? '비활성' : '활성',
+                reason
+              });
 
-          if (actionState.type === 'review-anomaly') {
+        if (!result.ok) {
+          notificationApi.error({
+            message: `${actionLabelMap[actionState.type]} 실패`,
+            description: result.error.message
+          });
+          setActionState(null);
+          return;
+        }
+
+        // DB 반영분을 다시 불러와 화면을 동기화한다.
+        setReloadKey((prev) => prev + 1);
+      } else {
+        setReferralsState((prev) => {
+          const nextData = prev.data.map((item) => {
+            if (item.id !== actionState.referral.id) {
+              return item;
+            }
+
+            if (actionState.type === 'review-anomaly') {
+              return {
+                ...item,
+                anomalyStatus: '검토 완료',
+                lastActionAt: formatCurrentDateTime(),
+                adminMemo: `${item.adminMemo}\n- ${formatCurrentDateTime()} 이상치 검토 완료: ${reason}`
+              };
+            }
+
             return {
               ...item,
-              anomalyStatus: '검토 완료',
-              lastActionAt: formatCurrentDateTime(),
-              adminMemo: `${item.adminMemo}\n- ${formatCurrentDateTime()} 이상치 검토 완료: ${reason}`
+              status: actionState.type === 'deactivate' ? '비활성' : '활성',
+              lastActionAt: formatCurrentDateTime()
             };
-          }
+          });
 
           return {
-            ...item,
-            status: actionState.type === 'deactivate' ? '비활성' : '활성',
-            lastActionAt: formatCurrentDateTime()
+            ...prev,
+            data: nextData,
+            status: nextData.length === 0 ? 'empty' : 'success'
           };
         });
-
-        return {
-          ...prev,
-          data: nextData,
-          status: nextData.length === 0 ? 'empty' : 'success'
-        };
-      });
+      }
 
       notificationApi.success({
         message: `${actionLabelMap[actionState.type]} 완료`,
@@ -603,40 +635,61 @@ export default function UsersReferralsPage(): JSX.Element {
     }
 
     const values = await adjustmentForm.validateFields();
-    const entryType = getAdjustmentEntryType(values.amount);
-    const adjustmentId = `ADJ-${Date.now()}`;
-    const nextEntry: ReferralRewardLedgerEntry = {
-      id: adjustmentId,
-      relationId: '',
-      entryType,
-      rewardMethodLabel: '정책 미확정',
-      amount: values.amount,
-      status: '완료',
-      actedAt: formatCurrentDateTime(),
-      reason: values.reason.trim()
-    };
+    const reason = values.reason.trim();
+    let adjustmentId = `ADJ-${Date.now()}`;
 
-    setReferralsState((prev) => {
-      const nextData = prev.data.map((item) => {
-        if (item.id !== adjustmentTarget.id) {
-          return item;
-        }
-
-        const rewardLedger = [nextEntry, ...item.rewardLedger];
-        return {
-          ...item,
-          rewardLedger,
-          totalRewardAmount: item.totalRewardAmount + values.amount,
-          lastActionAt: nextEntry.actedAt
-        };
+    if (isReferralsSupabase) {
+      const result = await adjustReferralRewardSafe({
+        referralId: adjustmentTarget.id,
+        amount: values.amount,
+        reason
       });
 
-      return {
-        ...prev,
-        data: nextData,
-        status: nextData.length === 0 ? 'empty' : 'success'
+      if (!result.ok) {
+        notificationApi.error({
+          message: '보상 수동 조정 실패',
+          description: result.error.message
+        });
+        return; // 모달 유지 — 사유/금액 수정 후 재시도
+      }
+
+      adjustmentId = result.data; // RPC가 생성한 원장 ID
+      setReloadKey((prev) => prev + 1);
+    } else {
+      const entryType = getAdjustmentEntryType(values.amount);
+      const nextEntry: ReferralRewardLedgerEntry = {
+        id: adjustmentId,
+        relationId: '',
+        entryType,
+        rewardMethodLabel: '정책 미확정',
+        amount: values.amount,
+        status: '완료',
+        actedAt: formatCurrentDateTime(),
+        reason
       };
-    });
+
+      setReferralsState((prev) => {
+        const nextData = prev.data.map((item) => {
+          if (item.id !== adjustmentTarget.id) {
+            return item;
+          }
+
+          const rewardLedger = [nextEntry, ...item.rewardLedger];
+          return {
+            ...item,
+            rewardLedger,
+            totalRewardAmount: item.totalRewardAmount + values.amount,
+            lastActionAt: nextEntry.actedAt
+          };
+        });
+
+        return {
+          ...prev,
+          data: nextData,
+          status: nextData.length === 0 ? 'empty' : 'success'
+        };
+      });
+    }
 
     notificationApi.success({
       message: '보상 수동 조정 완료',
