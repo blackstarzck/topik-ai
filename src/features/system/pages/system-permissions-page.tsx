@@ -29,6 +29,12 @@ import {
   fetchAdminAppRolesSafe,
   type AdminAppRoleRow
 } from '../api/system-permissions-service';
+import {
+  fetchAdminDetailSafe,
+  grantPermissionsSafe,
+  revokePermissionsSafe,
+  setAdminStatusSafe
+} from '../api/admin-accounts-service';
 import { systemPermissionsDataSource } from '../api/system-permissions-data-source';
 import { permissionCatalog, roleCatalog } from '../model/permission-types';
 import type { PermissionDefinition, RoleDefinition, RoleKey } from '../model/permission-types';
@@ -50,11 +56,6 @@ const appRoleOptions: Array<{ value: V13AppRole; label: string; description: str
     value: 'org_admin',
     label: '조직 관리자',
     description: '현재 임시 매핑상 READ_ONLY로 표시'
-  },
-  {
-    value: 'learner',
-    label: '학습자',
-    description: '관리자 콘솔 접근 불가'
   }
 ];
 
@@ -90,13 +91,13 @@ function getRoleLabel(roleKey: RoleKey | null): string {
 
 function getStatusLabel(status: string): string {
   if (status === 'active') {
-    return '정상';
+    return '활성';
   }
-  if (status === 'blocked') {
+  if (status === 'invited') {
+    return '초대됨';
+  }
+  if (status === 'suspended') {
     return '정지';
-  }
-  if (status === 'deleted') {
-    return '탈퇴';
   }
   return status;
 }
@@ -215,6 +216,137 @@ export default function SystemPermissionsPage(): JSX.Element {
     loadRows();
   }, [closeChangeModal, form, loadRows, modalState, notificationApi]);
 
+  // --- Per-admin permission grant/revoke ---------------------------------------
+  const [permState, setPermState] = useState<{ admin: AdminAppRoleRow } | null>(null);
+  const [permLoading, setPermLoading] = useState(false);
+  const [permSubmitting, setPermSubmitting] = useState(false);
+  const [permBaseline, setPermBaseline] = useState<string[]>([]);
+  const [permForm] = Form.useForm<{ permissionKeys: string[]; reason: string }>();
+
+  const permissionOptions = useMemo(
+    () => permissionCatalog.map((permission) => ({
+      label: `${permission.name} · ${permission.key}`,
+      value: permission.key
+    })),
+    []
+  );
+
+  const openPermModal = useCallback(
+    async (admin: AdminAppRoleRow) => {
+      setPermState({ admin });
+      permForm.resetFields();
+      setPermBaseline([]);
+      if (admin.appRole === 'platform_admin') {
+        return;
+      }
+      setPermLoading(true);
+      const result = await fetchAdminDetailSafe(admin.adminId);
+      if (!mountedRef.current) {
+        return;
+      }
+      setPermLoading(false);
+      const keys = result.ok && result.data ? result.data.permissionKeys : [];
+      setPermBaseline(keys);
+      permForm.setFieldsValue({ permissionKeys: keys, reason: '' });
+    },
+    [permForm]
+  );
+
+  const closePermModal = useCallback(() => {
+    setPermState(null);
+    permForm.resetFields();
+  }, [permForm]);
+
+  const handlePermSubmit = useCallback(async () => {
+    if (!permState) {
+      return;
+    }
+    const values = await permForm.validateFields();
+    const next = values.permissionKeys ?? [];
+    const reason = values.reason.trim();
+    const added = next.filter((key) => !permBaseline.includes(key));
+    const removed = permBaseline.filter((key) => !next.includes(key));
+    if (added.length === 0 && removed.length === 0) {
+      notificationApi.info({ message: '변경 사항이 없습니다.' });
+      return;
+    }
+
+    setPermSubmitting(true);
+    let failure: string | null = null;
+    if (added.length > 0) {
+      const result = await grantPermissionsSafe(permState.admin.adminId, added, reason);
+      if (!result.ok) {
+        failure = result.error.message;
+      }
+    }
+    if (!failure && removed.length > 0) {
+      const result = await revokePermissionsSafe(permState.admin.adminId, removed, reason);
+      if (!result.ok) {
+        failure = result.error.message;
+      }
+    }
+    setPermSubmitting(false);
+
+    if (failure) {
+      notificationApi.error({ message: '권한 변경 실패', description: failure });
+      loadRows();
+      return;
+    }
+    notificationApi.success({
+      message: '권한 변경 완료',
+      description: (
+        <Space direction="vertical">
+          <Text>부여 {added.length}건 · 회수 {removed.length}건</Text>
+          <AuditLogLink targetType="AdminAccount" targetId={permState.admin.adminId} />
+        </Space>
+      )
+    });
+    closePermModal();
+    loadRows();
+  }, [closePermModal, loadRows, notificationApi, permBaseline, permForm, permState]);
+
+  // --- Suspend / reactivate ----------------------------------------------------
+  const [statusState, setStatusState] = useState<{ admin: AdminAppRoleRow } | null>(null);
+  const [statusSubmitting, setStatusSubmitting] = useState(false);
+  const [statusForm] = Form.useForm<{ reason: string }>();
+
+  const statusNext = statusState?.admin.status === 'active' ? 'suspended' : 'active';
+
+  const openStatusModal = useCallback(
+    (admin: AdminAppRoleRow) => {
+      setStatusState({ admin });
+      statusForm.resetFields();
+    },
+    [statusForm]
+  );
+
+  const handleStatusSubmit = useCallback(async () => {
+    if (!statusState) {
+      return;
+    }
+    const values = await statusForm.validateFields();
+    setStatusSubmitting(true);
+    const result = await setAdminStatusSafe(
+      statusState.admin.adminId,
+      statusNext as 'active' | 'suspended',
+      values.reason.trim()
+    );
+    setStatusSubmitting(false);
+    if (!result.ok) {
+      notificationApi.error({ message: '상태 변경 실패', description: result.error.message });
+      return;
+    }
+    notificationApi.success({
+      message: statusNext === 'suspended' ? '관리자 정지 완료' : '관리자 복구 완료',
+      description: (
+        <AuditLogLink targetType="AdminAccount" targetId={statusState.admin.adminId} />
+      )
+    });
+    setStatusState(null);
+    statusForm.resetFields();
+    loadRows();
+  }, [loadRows, notificationApi, statusForm, statusNext, statusState]);
+
   const adminColumns = useMemo<TableColumnsType<AdminAppRoleRow>>(
     () => [
       {
@@ -269,20 +401,35 @@ export default function SystemPermissionsPage(): JSX.Element {
       {
         title: '조치',
         key: 'actions',
-        width: 130,
+        width: 280,
         onCell: () => ({ onClick: (event) => event.stopPropagation() }),
         render: (_, record) => (
-          <Button
-            size="small"
-            disabled={!isPlatformAdmin}
-            onClick={() => openChangeModal(record)}
-          >
-            등급 변경
-          </Button>
+          <Space size="small" wrap>
+            <Button size="small" disabled={!isPlatformAdmin} onClick={() => openChangeModal(record)}>
+              등급 변경
+            </Button>
+            <Button
+              size="small"
+              disabled={!isPlatformAdmin}
+              onClick={() => void openPermModal(record)}
+            >
+              권한 관리
+            </Button>
+            {record.status === 'active' || record.status === 'suspended' ? (
+              <Button
+                size="small"
+                danger={record.status === 'active'}
+                disabled={!isPlatformAdmin}
+                onClick={() => openStatusModal(record)}
+              >
+                {record.status === 'active' ? '정지' : '복구'}
+              </Button>
+            ) : null}
+          </Space>
         )
       }
     ],
-    [isPlatformAdmin, openChangeModal]
+    [isPlatformAdmin, openChangeModal, openPermModal, openStatusModal]
   );
 
   const roleColumns = useMemo<TableColumnsType<RoleDefinition>>(
@@ -367,14 +514,14 @@ export default function SystemPermissionsPage(): JSX.Element {
           <Alert
             type="info"
             showIcon
-            message="실제 관리자 권한 기준은 profiles.app_role입니다."
-            description="이 화면의 등급 변경은 profiles.app_role만 갱신합니다. 기존 세션 강제 만료나 토큰 폐기는 하지 않으며, 변경된 권한은 다음 로그인 때 반영됩니다."
+            message="관리자 권한은 admin_accounts(역할) + admin_permission_grants(세부 권한)에서 관리됩니다."
+            description="등급 변경은 admin_accounts.role을, 권한 관리는 관리자별 세부 권한 부여/회수를 갱신합니다. 슈퍼 관리자(platform_admin)는 모든 권한을 자동 보유합니다. 변경은 다음 로그인 때 반영되며 모든 조치는 감사 로그에 기록됩니다."
           />
           <Alert
             type="warning"
             showIcon
-            message="권한 카탈로그는 참고 전용입니다."
-            description="아래 37개 permission과 5개 RoleKey는 메뉴 게이팅과 운영자 이해를 위한 client bundle입니다. 개별 permission 부여/회수는 실권한 변경이 아닙니다."
+            message="아래 카탈로그(37 permission · 5 RoleKey)는 권한 키 참조와 메뉴 게이팅 기준입니다."
+            description="각 관리자의 실제 권한은 위 '권한 관리'에서 부여/회수하며, 서버측 admin_has_permission이 이를 강제합니다(단계적 적용)."
           />
           {systemPermissionsDataSource === 'mock' ? (
             <Alert
@@ -493,7 +640,7 @@ export default function SystemPermissionsPage(): JSX.Element {
           Permission 카탈로그(읽기 전용)
         </Title>
         <Paragraph type="secondary">
-          이 목록은 메뉴 노출과 화면 조치 가능 여부를 설명하는 참고 자료입니다. DB 인가 SoT가 아니며 이 화면에서 개별 권한을 부여하거나 회수하지 않습니다.
+          권한 키 목록입니다. 관리자별 실제 부여/회수는 위 관리자 목록의 ‘권한 관리’에서 수행하고, 결과는 감사 로그에 기록됩니다.
         </Paragraph>
         <AdminDataTable<PermissionDefinition>
           rowKey="key"
@@ -590,6 +737,148 @@ export default function SystemPermissionsPage(): JSX.Element {
                 ]}
               >
                 <Input.TextArea rows={4} placeholder="등급 변경 사유와 승인 근거를 입력하세요." />
+              </Form.Item>
+            </Form>
+          </Space>
+        ) : null}
+      </Modal>
+
+      <Modal
+        open={Boolean(permState)}
+        title="관리자 권한 관리"
+        okText="권한 적용"
+        cancelText="취소"
+        okButtonProps={{
+          loading: permSubmitting,
+          disabled: !isPlatformAdmin || permState?.admin.appRole === 'platform_admin'
+        }}
+        onCancel={closePermModal}
+        onOk={() => void handlePermSubmit()}
+        width={640}
+        destroyOnHidden
+      >
+        {permState ? (
+          <Space direction="vertical" size={12} style={{ width: '100%' }}>
+            <Descriptions
+              bordered
+              size="small"
+              column={1}
+              items={[
+                { key: 'admin', label: '관리자', children: permState.admin.displayName },
+                {
+                  key: 'email',
+                  label: '이메일',
+                  children: permState.admin.email || permState.admin.adminId
+                },
+                {
+                  key: 'role',
+                  label: 'app_role',
+                  children: `${appRoleLabelMap[permState.admin.appRole]} (${permState.admin.appRole})`
+                }
+              ]}
+            />
+            {permState.admin.appRole === 'platform_admin' ? (
+              <Alert
+                type="info"
+                showIcon
+                message="슈퍼 관리자는 모든 권한을 자동으로 보유합니다."
+                description="platform_admin은 개별 권한 부여/회수 대상이 아닙니다. 권한을 제한하려면 등급을 변경하세요."
+              />
+            ) : (
+              <Form form={permForm} layout="vertical">
+                <Form.Item
+                  label="부여 권한"
+                  name="permissionKeys"
+                  tooltip="현재 부여된 권한이 채워져 있습니다. 추가/제거 후 적용하면 변경분만 부여·회수됩니다."
+                >
+                  <Select
+                    mode="multiple"
+                    allowClear
+                    loading={permLoading}
+                    placeholder="권한 선택"
+                    options={permissionOptions}
+                    optionFilterProp="label"
+                    maxTagCount="responsive"
+                  />
+                </Form.Item>
+                <Form.Item
+                  label="사유/근거"
+                  name="reason"
+                  rules={[
+                    { required: true, message: '사유를 입력하세요.' },
+                    {
+                      validator: (_, value: string | undefined) =>
+                        value?.trim()
+                          ? Promise.resolve()
+                          : Promise.reject(new Error('공백만 입력할 수 없습니다.'))
+                    }
+                  ]}
+                >
+                  <Input.TextArea rows={3} placeholder="권한 부여/회수 사유를 입력하세요." />
+                </Form.Item>
+              </Form>
+            )}
+          </Space>
+        ) : null}
+      </Modal>
+
+      <Modal
+        open={Boolean(statusState)}
+        title={statusNext === 'suspended' ? '관리자 정지' : '관리자 복구'}
+        okText={statusNext === 'suspended' ? '정지' : '복구'}
+        cancelText="취소"
+        okButtonProps={{ danger: statusNext === 'suspended', loading: statusSubmitting, disabled: !isPlatformAdmin }}
+        onCancel={() => {
+          setStatusState(null);
+          statusForm.resetFields();
+        }}
+        onOk={() => void handleStatusSubmit()}
+        destroyOnHidden
+      >
+        {statusState ? (
+          <Space direction="vertical" size={12} style={{ width: '100%' }}>
+            <Descriptions
+              bordered
+              size="small"
+              column={1}
+              items={[
+                { key: 'admin', label: '관리자', children: statusState.admin.displayName },
+                {
+                  key: 'email',
+                  label: '이메일',
+                  children: statusState.admin.email || statusState.admin.adminId
+                },
+                {
+                  key: 'next',
+                  label: '변경',
+                  children:
+                    statusNext === 'suspended'
+                      ? '활성 → 정지 (로그인·권한 차단)'
+                      : '정지 → 활성 (접근 복구)'
+                }
+              ]}
+            />
+            <Alert
+              type="warning"
+              showIcon
+              message="잠금 방지"
+              description="자기 자신 정지와 마지막 활성 platform_admin 정지는 서버에서 차단됩니다."
+            />
+            <Form form={statusForm} layout="vertical">
+              <Form.Item
+                label="사유/근거"
+                name="reason"
+                rules={[
+                  { required: true, message: '사유를 입력하세요.' },
+                  {
+                    validator: (_, value: string | undefined) =>
+                      value?.trim()
+                        ? Promise.resolve()
+                        : Promise.reject(new Error('공백만 입력할 수 없습니다.'))
+                  }
+                ]}
+              >
+                <Input.TextArea rows={3} placeholder="상태 변경 사유를 입력하세요." />
               </Form.Item>
             </Form>
           </Space>

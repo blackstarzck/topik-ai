@@ -4,7 +4,7 @@
 
 - Swagger UI: https://api.dotoretopik.com/docs
 - OpenAPI JSON: https://api.dotoretopik.com/openapi.json
-- 생성 기준일: 2026-06-23
+- 생성 기준일: 2026-06-24
 
 ## 먼저 볼 문서
 

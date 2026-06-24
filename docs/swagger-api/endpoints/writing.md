@@ -57,7 +57,7 @@ text token; the stream ends with `data: [DONE]`.
 {
   "message": "이 문장이 자연스러운가요?",
   "essay_text": "환경 문제를 해결하기 위해서 우리는 노력해야 한다.",
-  "task_id": "task53",
+  "task_id": "Q53",
   "topic": "환경 보호",
   "lang": "ko",
   "conversation_history": []
@@ -209,7 +209,7 @@ newest-first. Filter by task type, evaluation status, or date range.
 문제 유형, 평가 상태, 날짜 범위로 필터링 가능합니다.
 
 **Filters / 필터:**
-- `task_type`: `task51` | `task53` | `task54`
+- `task_type`: `Q51` | `Q53` | `Q54`
 - `status`: `processing` | `graded` | `failed` | `draft`
 - `date_from` / `date_to`: `YYYY-MM-DD`
 
@@ -219,7 +219,7 @@ newest-first. Filter by task type, evaluation status, or date range.
   "submissions": [
     {
       "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
-      "task_type": "task53",
+      "task_type": "Q53",
       "content_preview": "현대 사회에서 스트레스를 관리하는 방법에는...",
       "total_score": 42.5,
       "status": "graded",
@@ -253,7 +253,7 @@ Responses:
   - Response content:
 |mediaType|schema|example|
 |---|---|---|
-|application/json|[WritingHistoryResponse](../schemas/writing.md#writinghistoryresponse)|{"submissions":[{"id":"f47ac10b-58cc-4372-a567-0e02b2c3d479","task_type":"task53","content_preview":"현대 사회에서 스트레스를 관리하는 방법에는...","total_score":42.5,"status":"graded","submitted_at":"2024-11-15T09:30:00"}],"total":1}|
+|application/json|[WritingHistoryResponse](../schemas/writing.md#writinghistoryresponse)|{"submissions":[{"id":"f47ac10b-58cc-4372-a567-0e02b2c3d479","task_type":"Q53","content_preview":"현대 사회에서 스트레스를 관리하는 방법에는...","total_score":42.5,"status":"graded","submitted_at":"2024-11-15T09:30:00"}],"total":1}|
 - `401` Missing or invalid JWT.
 - `422` Validation Error
   - Response content:
@@ -327,7 +327,7 @@ while the user is typing. Returns the draft ID and character count.
 **Request example / 요청 예시:**
 ```json
 {
-  "task_type": "task53",
+  "task_type": "Q53",
   "task_id": "abc123",
   "text": "현대 사회에서 스트레스를 관리하는 방법...",
   "time_spent": 120
@@ -380,29 +380,62 @@ Description:
 
 Submit writing for AI evaluation / 작문 AI 평가 제출
 
-**EN:** Enqueues a TOPIK II essay to the async evaluation pipeline and returns
-a `submission_id` immediately (HTTP 202). Poll
-`GET /api/evaluation/{submission_id}` until `status` is `graded`.
+Queues a TOPIK II answer and returns `202 {submission_id, status, message}`
+immediately. Poll `GET /api/evaluation/{submission_id}` until `status` is
+`graded`.
 
-Supported task types:
-- `Q51` — Fill-in-the-blank sentence completion (문장 완성)
-- `Q52` — Fill-in-the-blank paragraph completion (단락 완성)
-- `Q53` — Short informational essay ~200 chars (정보 에세이)
-- `Q54` — Argumentative essay ~700 chars (논증 에세이)
+**Common to every task type:**
+- Auth: `Authorization: Bearer <token>`. `user_id` comes from the JWT — don't send it.
+- `question_id` (from `GET /api/writing/tasks`): the backend loads that question's
+  passage, model answer, and rubric to grade against — you don't send the question
+  content. Omit it for ad-hoc grading by `task_type`.
+- `lang` (`ko`/`en`/`vi`): language of the feedback you get back.
+- Rate limit: 5 requests/minute.
 
-**KR:** TOPIK II 작문을 비동기 평가 파이프라인에 큐에 넣고 즉시 `submission_id`를
-반환합니다 (HTTP 202). `GET /api/evaluation/{submission_id}`를 폴링해
-`status`가 `graded`가 될 때까지 기다리세요.
+Pick the block for your `task_type`. A full example per type is in the request
+body **Examples** dropdown.
 
-**Rate limit / 속도 제한:** 5 requests/minute
+---
+**Q51 · 문장 완성 (sentence blank-fill)**
+- Send: `blanks` — `{"ㄱ": "...", "ㄴ": "..."}`, keyed by the labels in the passage.
+  (Legacy: a single `text` string is still accepted.)
+- Also send: `passage_context` — the passage with `( ㄱ )` `( ㄴ )` so the grader
+  sees where each blank sits. Filled from `question_id` if you omit it; a value you
+  send wins.
+- Limits: min 5 chars, each blank ≤ 300 chars.
+- Output: each blank scored 0–5 → **total 0–10** (ㄱ→blank_1, ㄴ→blank_2).
 
-**Request example / 요청 예시:**
+**Q52 · 단락 완성 (paragraph blank-fill)** — same shape as Q51 (`blanks` +
+`passage_context`), **total 0–10**.
+
+**Q53 · 정보 에세이 (~200–300자)**
+- Send: `text` (the whole answer). `blanks`/`passage_context` ignored.
+- Limits: min 20 chars.
+- Output: **total 0–30**.
+
+**Q54 · 논증 에세이 (~600–700자)**
+- Send: `text` (the whole answer). `blanks`/`passage_context` ignored.
+- Limits: min 100 chars.
+- Output: **total 0–50**.
+
+**Request example — Q53/Q54 (text) / 요청 예시:**
 ```json
 {
   "task_type": "Q53",
-  "task_id": "Q53",
+  "question_id": "topik-writing-53-0001",
   "text": "현대 사회에서 스트레스를 관리하는 방법에는 여러 가지가 있다. 첫째, 규칙적인 운동은...",
-  "user_id": "current"
+  "lang": "ko"
+}
+```
+
+**Request example — Q51/Q52 (blanks) / 요청 예시:**
+```json
+{
+  "task_type": "Q51",
+  "question_id": "topik-writing-51-0001",
+  "blanks": { "ㄱ": "잘 수 없습니다", "ㄴ": "알려 주시면" },
+  "passage_context": "저는 현재 기숙사를 이용하고 있는 외국인 유학생입니다. ... 잠을 ( ㄱ ). ... 방법을 ( ㄴ ) 감사하겠습니다.",
+  "lang": "ko"
 }
 ```
 

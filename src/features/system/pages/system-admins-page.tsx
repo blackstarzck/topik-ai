@@ -1,11 +1,16 @@
-import { Alert, Typography } from 'antd';
+import { Alert, Button, Form, Input, Modal, Select, Space, Typography, notification } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import { fetchSystemAdminsSafe } from '../api/system-admins-service';
-import { roleCatalog } from '../model/permission-types';
+import {
+  inviteAdminSafe,
+  type AdminAccountRole
+} from '../api/admin-accounts-service';
+import { permissionCatalog, roleCatalog } from '../model/permission-types';
 import type { AdminPermissionAssignment, RoleKey } from '../model/permission-types';
+import { mapAppRoleToRoleKey, permissionKeysForRole } from '../../auth/model/app-role-mapping';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
@@ -47,6 +52,24 @@ const detailLabelMap: Record<string, string> = {
   updatedBy: '수정 관리자'
 };
 
+const inviteRoleOptions: { label: string; value: AdminAccountRole }[] = [
+  { label: '슈퍼 관리자 (platform_admin)', value: 'platform_admin' },
+  { label: '콘텐츠 관리자 (content_admin)', value: 'content_admin' },
+  { label: '기관 관리자 (org_admin)', value: 'org_admin' }
+];
+
+const invitePermissionOptions = permissionCatalog.map((permission) => ({
+  label: `${permission.name} · ${permission.key}`,
+  value: permission.key
+}));
+
+function templatePermissionKeys(role: AdminAccountRole): string[] {
+  const roleKey = mapAppRoleToRoleKey(role);
+  return roleKey ? permissionKeysForRole(roleKey) : [];
+}
+
+type InviteFormValues = { email: string; role: AdminAccountRole; permissionKeys: string[] };
+
 export default function SystemAdminsPage(): JSX.Element {
   const [admins, setAdmins] = useState<AdminPermissionAssignment[]>([]);
   const [loadState, setLoadState] = useState<'pending' | 'success' | 'error'>('pending');
@@ -65,30 +88,82 @@ export default function SystemAdminsPage(): JSX.Element {
     handleDetailOpenChange
   } = useSearchBarDateDraft(startDate, endDate);
 
-  useEffect(() => {
-    const controller = new AbortController();
+  const [notificationApi, notificationContextHolder] = notification.useNotification();
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteSubmitting, setInviteSubmitting] = useState(false);
+  const [inviteForm] = Form.useForm<InviteFormValues>();
+  const inviteRole = Form.useWatch('role', inviteForm);
 
+  const loadAdmins = useCallback(async (signal?: AbortSignal) => {
     setLoadState('pending');
     setLoadErrorMessage('');
-    void fetchSystemAdminsSafe(controller.signal).then((result) => {
-      if (controller.signal.aborted) {
-        return;
-      }
+    const result = await fetchSystemAdminsSafe(signal);
+    if (signal?.aborted) {
+      return;
+    }
+    if (result.ok) {
+      setAdmins(result.data);
+      setLoadState('success');
+      return;
+    }
+    setLoadErrorMessage(result.error);
+    setLoadState('error');
+  }, []);
 
-      if (result.ok) {
-        setAdmins(result.data);
-        setLoadState('success');
-        return;
-      }
-
-      setLoadErrorMessage(result.error);
-      setLoadState('error');
-    });
-
+  useEffect(() => {
+    const controller = new AbortController();
+    void loadAdmins(controller.signal);
     return () => {
       controller.abort();
     };
-  }, []);
+  }, [loadAdmins]);
+
+  const handleInviteRoleChange = useCallback(
+    (role: AdminAccountRole) => {
+      inviteForm.setFieldValue(
+        'permissionKeys',
+        role === 'platform_admin' ? [] : templatePermissionKeys(role)
+      );
+    },
+    [inviteForm]
+  );
+
+  const handleInviteSubmit = useCallback(async () => {
+    let values: InviteFormValues;
+    try {
+      values = await inviteForm.validateFields();
+    } catch {
+      return;
+    }
+    const keys = values.role === 'platform_admin' ? [] : values.permissionKeys ?? [];
+    setInviteSubmitting(true);
+    const result = await inviteAdminSafe({
+      email: values.email.trim().toLowerCase(),
+      role: values.role,
+      permissionKeys: keys
+    });
+    setInviteSubmitting(false);
+    if (!result.ok) {
+      notificationApi.error({ message: '관리자 초대 실패', description: result.error.message });
+      return;
+    }
+    if (result.data.emailSent) {
+      notificationApi.success({
+        message: '관리자 초대 완료',
+        description: `${values.email} 주소로 초대 메일을 보냈습니다. 수락 후 첫 로그인 시 활성화됩니다.`
+      });
+    } else {
+      notificationApi.warning({
+        message: '관리자 계정 생성됨 (메일 미발송)',
+        description: `${values.email} 계정은 생성됐지만 초대 메일 발송에 실패했습니다${
+          result.data.warning ? ` (${result.data.warning})` : ''
+        }. SMTP 설정 확인 후 다시 초대하세요.`
+      });
+    }
+    setInviteOpen(false);
+    inviteForm.resetFields();
+    void loadAdmins();
+  }, [inviteForm, loadAdmins, notificationApi]);
 
   const filteredRows = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
@@ -244,7 +319,20 @@ export default function SystemAdminsPage(): JSX.Element {
 
   return (
     <div>
-      <PageTitle title="관리자 계정" />
+      {notificationContextHolder}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12
+        }}
+      >
+        <PageTitle title="관리자 계정" />
+        <Button type="primary" onClick={() => setInviteOpen(true)}>
+          관리자 초대
+        </Button>
+      </div>
       <ListSummaryCards items={summaryItems} />
 
       <AdminListCard
@@ -327,6 +415,83 @@ export default function SystemAdminsPage(): JSX.Element {
         labelMap={detailLabelMap}
         onClose={() => setSelectedRow(null)}
       />
+
+      <Modal
+        open={inviteOpen}
+        title="관리자 초대"
+        okText="초대 메일 보내기"
+        cancelText="취소"
+        confirmLoading={inviteSubmitting}
+        onOk={handleInviteSubmit}
+        onCancel={() => {
+          setInviteOpen(false);
+          inviteForm.resetFields();
+        }}
+        destroyOnHidden
+      >
+        <Paragraph type="secondary" style={{ marginTop: 0 }}>
+          입력한 이메일로 초대 메일이 발송됩니다. 초대받은 사람이 비밀번호를 설정하고
+          처음 로그인하면 관리자 계정이 활성화됩니다. 슈퍼 관리자는 모든 권한을 자동으로
+          가지므로 별도 권한 선택이 필요 없습니다.
+        </Paragraph>
+        <Form<InviteFormValues>
+          form={inviteForm}
+          layout="vertical"
+          initialValues={{ role: 'content_admin', permissionKeys: templatePermissionKeys('content_admin') }}
+        >
+          <Form.Item
+            name="email"
+            label="이메일"
+            rules={[
+              { required: true, message: '이메일을 입력하세요.' },
+              { type: 'email', message: '올바른 이메일 형식이 아닙니다.' }
+            ]}
+          >
+            <Input placeholder="admin@example.com" autoComplete="off" />
+          </Form.Item>
+          <Form.Item name="role" label="역할" rules={[{ required: true }]}>
+            <Select options={inviteRoleOptions} onChange={handleInviteRoleChange} />
+          </Form.Item>
+          <Form.Item
+            name="permissionKeys"
+            label="권한"
+            tooltip="역할을 고르면 기본 권한이 채워집니다. 필요에 맞게 추가/제거하세요."
+          >
+            <Select
+              mode="multiple"
+              allowClear
+              disabled={inviteRole === 'platform_admin'}
+              placeholder={
+                inviteRole === 'platform_admin' ? '슈퍼 관리자는 모든 권한 보유' : '권한 선택'
+              }
+              options={invitePermissionOptions}
+              maxTagCount="responsive"
+              optionFilterProp="label"
+            />
+          </Form.Item>
+          {inviteRole !== 'platform_admin' ? (
+            <Space size="small" wrap>
+              <Button
+                size="small"
+                onClick={() =>
+                  inviteForm.setFieldValue(
+                    'permissionKeys',
+                    templatePermissionKeys(inviteRole ?? 'content_admin')
+                  )
+                }
+              >
+                역할 기본 권한 적용
+              </Button>
+              <Button
+                size="small"
+                onClick={() => inviteForm.setFieldValue('permissionKeys', [])}
+              >
+                전체 해제
+              </Button>
+            </Space>
+          ) : null}
+        </Form>
+      </Modal>
     </div>
   );
 }

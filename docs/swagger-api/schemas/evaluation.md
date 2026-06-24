@@ -131,7 +131,9 @@ Type: `object`
 
 ## TraitScoreDetail
 
-Detailed trait score with sub-scores.
+Detailed trait score. `score` is the FINAL rubric score on this trait's
+own scale; `max_score` is its denominator (render `score/max_score` — e.g.
+언어 22/26 — not a fixed /10).
 Type: `object`
 
 |name|required|type|enum|default|example|description|
@@ -140,6 +142,7 @@ Type: `object`
 |trait_korean|yes|string|-|-|-|-|
 |weight|yes|number|-|-|-|-|
 |score|yes|integer|-|-|-|-|
+|max_score|no|integer|-|0|-|-|
 |feedback|yes|string|-|-|-|-|
 |strengths|no|array<string>|-|-|-|-|
 |improvements|no|array<string>|-|-|-|-|

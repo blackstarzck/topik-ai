@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('권한 관리 관리자 테이블의 더보기 컬럼은 우측 고정된다', async ({ page }) => {
+test('권한 관리 관리자 테이블의 조치 컬럼은 우측 고정된다', async ({ page }) => {
   await page.goto('/system/permissions');
 
   await expect(page.getByRole('heading', { name: '권한 관리' })).toBeVisible();
@@ -8,10 +8,10 @@ test('권한 관리 관리자 테이블의 더보기 컬럼은 우측 고정된�
   const adminTable = page.locator('.admin-data-table').first();
   await expect(adminTable).toBeVisible();
 
-  const actionHeader = adminTable.getByRole('columnheader', { name: '액션' });
+  const actionHeader = adminTable.getByRole('columnheader', { name: '조치' });
   await expect(actionHeader).toHaveClass(/ant-table-cell-fix-right/);
 
-  const firstActionCell = adminTable.getByRole('row').nth(1).getByRole('cell', { name: /더보기/ });
+  const firstActionCell = adminTable.getByRole('row').nth(1).getByRole('cell', { name: /등급 변경/ });
   await expect(firstActionCell).toHaveClass(/ant-table-cell-fix-right/);
-  await expect(firstActionCell.getByRole('button', { name: '더보기' })).toBeVisible();
+  await expect(firstActionCell.getByRole('button', { name: '등급 변경' })).toBeVisible();
 });

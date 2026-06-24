@@ -43,7 +43,7 @@ Schema example:
 ```json
 {
   "task_id": "abc123",
-  "task_type": "task53",
+  "task_type": "Q53",
   "text": "현대 사회에서 스트레스를 관리하는 방법...",
   "time_spent": 120
 }
@@ -51,7 +51,7 @@ Schema example:
 
 |name|required|type|enum|default|example|description|
 |---|---|---|---|---|---|---|
-|task_type|yes|string|-|-|["task53"]|Task type the draft belongs to / 초안이 속한 문제 유형 (task51 \| task53 \| task54)|
+|task_type|yes|string|-|-|["Q53"]|Task type the draft belongs to / 초안이 속한 문제 유형 (Q51 \| Q53 \| Q54)|
 |task_id|no|anyOf<string \| null>|-|-|["abc123"]|Optional specific task UUID; a random task of task_type is chosen if omitted / 문제 UUID (생략 시 무작위 선택)|
 |text|yes|string|-|-|["현대 사회에서 스트레스를 관리하는 방법..."]|Current draft essay text to persist / 저장할 작문 초안 텍스트|
 |time_spent|no|integer|-|0|[120]<br>{"default":0}|Seconds the user has spent on this draft so far / 초안에 소요한 시간(초)|
@@ -409,7 +409,7 @@ Type: `object`
 |name|required|type|enum|default|example|description|
 |---|---|---|---|---|---|---|
 |id|yes|string|-|-|["f47ac10b-58cc-4372-a567-0e02b2c3d479"]|Submission UUID / 제출 UUID|
-|task_type|yes|string|-|-|["task53"]|TOPIK II writing task type / 작문 문제 유형 (task51 \| task53 \| task54)|
+|task_type|yes|string|-|-|["Q53"]|TOPIK II writing task type / 작문 문제 유형 (Q51 \| Q53 \| Q54)|
 |content_preview|yes|string|-|-|["현대 사회에서 스트레스를 관리하는 방법에는..."]|Truncated preview of the submitted essay text / 제출한 작문 텍스트 미리보기|
 |total_score|no|anyOf<number \| null>|-|-|[42.5]|Total evaluation score; null while processing or for drafts / 총 평가 점수 (처리 중·초안은 null)|
 |status|yes|string|-|-|["graded"]|Evaluation status / 평가 상태 (processing \| graded \| failed \| draft)|
@@ -462,18 +462,47 @@ Type: `object`
 ## WritingSubmitRequest
 
 Request to submit a writing for evaluation.
+
+Q53/Q54 send the essay in `text`. Q51/Q52 (blank-fill) should send `blanks`
+— a per-blank answer dict keyed by the labels the student sees (ㄱ, ㄴ). `text`
+still works for Q51/Q52 as a fallback for older clients, but `blanks` is
+preferred: it lets the backend validate each blank and grade them precisely.
 Type: `object`
 
 Schema examples:
 ```json
 [
   {
-    "lang": "ko",
-    "passage_context": "",
-    "task_id": "task_5f9c2e10",
+    "task_type": "Q51",
+    "question_id": "topik-writing-51-0001",
+    "blanks": { "ㄱ": "잘 수 없습니다", "ㄴ": "알려 주시면" },
+    "passage_context": "저는 현재 기숙사를 이용하고 있는 외국인 유학생입니다. 지금 사용하고 있는 방은 도로와 가까워서 너무 시끄럽습니다. 특히 밤에는 자동차 소리 때문에 잠을 ( ㄱ ). 그래서 조용한 방으로 바꾸고 싶은데, 어떻게 해야 합니까? 방법을 ( ㄴ ) 감사하겠습니다.",
+    "lang": "ko"
+  },
+  {
+    "task_type": "Q52",
+    "question_id": "topik-writing-52-0001",
+    "blanks": { "ㄱ": "중요하기 때문이다", "ㄴ": "수면의 질을 높이려면" },
+    "passage_context": "사람들은 보통 피곤할 때 잠을 오래 자면 피로가 풀릴 것이라고 생각한다. ... 몸을 회복하는 데에는 수면 시간보다 수면의 질이 더 ( ㄱ ). 따라서 ( ㄴ ) 잠들기 전에 스마트폰 사용을 줄이고 매일 비슷한 시간에 잠자리에 드는 것이 좋다.",
+    "lang": "ko"
+  },
+  {
+    "task_type": "Q51",
+    "question_id": "topik-writing-51-0001",
+    "text": "ㄱ: 잘 수 없습니다\nㄴ: 알려 주시면",
+    "lang": "ko"
+  },
+  {
+    "task_type": "Q53",
+    "question_id": "topik-writing-53-0001",
+    "text": "중소벤처기업부 조사에 따르면 청년 창업 비율은 2024년 28%에서 2025년 36%, 2026년 45%로 꾸준히 상승하였다. ...",
+    "lang": "ko"
+  },
+  {
     "task_type": "Q54",
-    "text": "현대 사회에서 의사소통의 중요성은 점점 더 커지고 있다. 사람들은 다양한 매체를 통해 서로의 생각을 나누며 관계를 형성한다. 그러나 정보가 넘쳐나는 환경에서는 정확하고 진실한 소통이 더욱 어려워지기도 한다. 따라서 우리는 상대를 존중하는 태도로 경청하고 명확하게 표현하는 능력을 길러야 한다.",
-    "user_id": "user_a1b2c3d4"
+    "question_id": "topik-writing-54-0001",
+    "text": "디지털 시민성은 온라인 공간에서 다른 사람과 함께 살아가기 위한 기본 태도이다. ...",
+    "lang": "ko"
   }
 ]
 ```
@@ -481,8 +510,9 @@ Schema examples:
 |name|required|type|enum|default|example|description|
 |---|---|---|---|---|---|---|
 |user_id|no|anyOf<string \| null>|-|-|["user_a1b2c3d4"]|Authenticated user identifier; null for anonymous/guest submissions.|
-|task_id|no|anyOf<string \| null>|-|-|["task_5f9c2e10"]|Identifier of the writing task being answered; null for ad-hoc submissions.|
+|question_id|no|anyOf<string \| null>|-|-|["topik-writing-54-0001"]|Rich §7 question being answered, as returned by GET /api/writing/tasks (e.g. 'topik-writing-54-0001'). Scoring uses this exact question's prompt, model answer, and rubric. Null for an ad-hoc submission (a random question of task_type is used).|
 |task_type|yes|enum<"Q51" \| "Q52" \| "Q53" \| "Q54">|"Q51", "Q52", "Q53", "Q54"|-|["Q54"]|TOPIK II writing task type. One of: Q51, Q52 (short blank-fill), Q53 (~300-char paragraph), Q54 (600-700 char essay).|
-|text|yes|string|-|-|["현대 사회에서 의사소통의 중요성은 점점 더 커지고 있다. 사람들은 다양한 매체를 통해 서로의 생각을 나누며 관계를 형성한다. 그러나 정보가 넘쳐나는 환경에서는 정확하고 진실한 소통이 더욱 어려워지기도 한다. 따라서 우리는 상대를 존중하는 태도로 경청하고 명확하게 표현하는 능력을 길러야 한다."]|Student's writing content. Minimum length depends on task_type (Q51/Q52: 5, Q53: 20, Q54: 100 chars).|
+|text|no|string|-|-|["현대 사회에서 의사소통의 중요성은 점점 더 커지고 있다. 사람들은 다양한 매체를 통해 서로의 생각을 나누며 관계를 형성한다. 그러나 정보가 넘쳐나는 환경에서는 정확하고 진실한 소통이 더욱 어려워지기도 한다. 따라서 우리는 상대를 존중하는 태도로 경청하고 명확하게 표현하는 능력을 길러야 한다."]<br>{"default":""}|Student's writing content (Q53/Q54). For Q51/Q52 prefer `blanks`; `text` is accepted as a fallback. Minimum length depends on task_type (Q51/Q52: 5, Q53: 20, Q54: 100 chars).|
+|blanks|no|anyOf<object<string, string> \| null>|-|-|[{"ㄱ":"잘 수 없습니다","ㄴ":"알려 주시면"}]|Q51/Q52 only: the student's answer per blank, keyed by the blank label shown in the passage (ㄱ, ㄴ). Preferred over `text` for blank-fill tasks. Each answer is a short phrase/clause (max 300 chars), not an essay. Ignored for Q53/Q54.|
 |lang|no|string|-|ko|["ko"]<br>{"default":"ko"}|User interface language code. One of: ko, en, vi.|
-|passage_context|no|string|-|-|["다음을 읽고 ㉠과 ㉡에 들어갈 말을 각각 쓰십시오. ..."]<br>{"default":""}|Q51/Q52 only: original passage with ㉠/㉡ blanks. Sent from frontend if not stored in DB; empty otherwise.|
+|passage_context|no|string|-|-|["저는 현재 기숙사를 이용하고 있는 외국인 유학생입니다. ... 잠을 ( ㄱ ). ... 방법을 ( ㄴ ) 감사하겠습니다."]<br>{"default":""}|Q51/Q52 only: original passage with ( ㄱ ) / ( ㄴ ) blanks. Sent from frontend if not stored in DB; when a valid question_id is given the backend loads it from the question, but a non-empty value here wins.|

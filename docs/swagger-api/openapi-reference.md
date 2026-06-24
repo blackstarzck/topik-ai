@@ -4,7 +4,7 @@
 
 Source Swagger UI: https://api.dotoretopik.com/docs
 Source OpenAPI JSON: https://api.dotoretopik.com/openapi.json
-Generated: 2026-06-23
+Generated: 2026-06-24
 
 This file is intentionally short. The previous single-file reference was split so agents can open only the API group or schema group they need.
 
