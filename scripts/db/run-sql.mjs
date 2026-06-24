@@ -9,7 +9,21 @@
 // Auth: SUPABASE_ACCESS_TOKEN env var (sbp_...). PROJECT_REF defaults to the
 // v13 project; override with SUPABASE_PROJECT_REF.
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
+
+// Convenience: if SUPABASE_ACCESS_TOKEN is not already in the environment, read it
+// from .env.local in the current directory so this server-side tool works in any
+// shell (cmd / PowerShell / bash) without manual env injection. Never bundled into
+// the client; .env.local stays untracked.
+if (!process.env.SUPABASE_ACCESS_TOKEN && existsSync('.env.local')) {
+  for (const line of readFileSync('.env.local', 'utf8').split(/\r?\n/)) {
+    const match = /^\s*SUPABASE_ACCESS_TOKEN\s*=\s*(.+?)\s*$/.exec(line);
+    if (match) {
+      process.env.SUPABASE_ACCESS_TOKEN = match[1].replace(/^["']|["']$/g, '');
+      break;
+    }
+  }
+}
 
 const PROJECT_REF = process.env.SUPABASE_PROJECT_REF ?? 'fglggyfvzjdsbyckinqa';
 const TOKEN = process.env.SUPABASE_ACCESS_TOKEN;

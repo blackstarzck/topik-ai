@@ -31,7 +31,9 @@ function mapAdminStatus(status: string | null): AdminStatus {
   if (status === 'active') {
     return '활성';
   }
-  if (status === 'blocked') {
+  // admin_accounts statuses: invited (not yet accepted) and suspended both map to the
+  // inactive badge on the list; the permissions page shows the precise label.
+  if (status === 'invited' || status === 'suspended' || status === 'blocked') {
     return '비활성';
   }
   if (status === 'deleted') {

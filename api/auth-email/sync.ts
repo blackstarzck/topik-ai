@@ -70,17 +70,18 @@ async function syncAuthEmailTemplate(request: Request): Promise<Response> {
     return jsonResponse({ ok: false, error: 'invalid_session' }, { status: 401 });
   }
 
-  // 2) app_role 게이트 (content_admin/platform_admin — private.is_admin과 동일 집합)
-  const profileResult = await supabase
-    .from('profiles')
-    .select('app_role')
+  // 2) 관리자 게이트 — admin_accounts(content_admin/platform_admin, active).
+  //    관리자는 profiles row가 없으므로(물리 분리) admin_accounts로 검증한다.
+  const adminResult = await supabase
+    .from('admin_accounts')
+    .select('role, status')
     .eq('id', userId)
     .maybeSingle();
-  if (profileResult.error) {
+  if (adminResult.error) {
     return jsonResponse({ ok: false, error: 'role_check_failed' }, { status: 500 });
   }
-  const profile = profileResult.data as { app_role: string | null } | null;
-  if (!profile || !ADMIN_ROLES.has(String(profile.app_role ?? ''))) {
+  const admin = adminResult.data as { role: string | null; status: string | null } | null;
+  if (!admin || admin.status !== 'active' || !ADMIN_ROLES.has(String(admin.role ?? ''))) {
     return jsonResponse({ ok: false, error: 'forbidden' }, { status: 403 });
   }
 

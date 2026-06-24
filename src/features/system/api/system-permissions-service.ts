@@ -136,9 +136,12 @@ async function changeAdminAppRole(payload: ChangeAdminAppRolePayload): Promise<v
     throw new Error('Supabase client not configured');
   }
 
-  const { error } = await supabaseClient.rpc('admin_set_admin_app_role', {
-    p_target_user_id: payload.targetUserId,
-    p_new_app_role: payload.newAppRole,
+  // New model: write admin_accounts.role via admin_set_admin_role (the old
+  // admin_set_admin_app_role wrote profiles.app_role, which breaks once admins have
+  // no profiles row). Only the 3 admin roles are valid here (no 'learner').
+  const { error } = await supabaseClient.rpc('admin_set_admin_role', {
+    p_admin_id: payload.targetUserId,
+    p_new_role: payload.newAppRole,
     p_reason: payload.reason
   });
 

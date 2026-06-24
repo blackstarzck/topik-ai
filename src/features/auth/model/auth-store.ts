@@ -62,33 +62,41 @@ async function resolveSession(supaSession: Session | null, set: SetAuthState): P
   const userId = supaSession.user.id;
   const email = supaSession.user.email ?? null;
 
-  const { data: profile, error } = await supabaseClient
-    .from('profiles')
-    .select('app_role, display_name, nickname')
-    .eq('id', userId)
-    .single();
+  // Admin identity is physically separated from v13's profiles: admins have no
+  // profiles row. admin_get_self() reads public.admin_accounts (+ granted permission
+  // keys) and auto-accepts a pending invite. No row → caller is not an active admin.
+  const { data, error } = await supabaseClient.rpc('admin_get_self');
 
-  if (error || !profile) {
+  if (error) {
     applySessionToPermissionStore(null);
-    set({ status: 'unauthorized', session: null, error: '프로필 정보를 불러오지 못했습니다.' });
+    set({ status: 'unauthorized', session: null, error: '관리자 정보를 불러오지 못했습니다.' });
     return;
   }
 
-  const appRole = profile.app_role as V13AppRole;
-  const roleKey = mapAppRoleToRoleKey(appRole);
-  if (!roleKey) {
+  const row = (Array.isArray(data) ? data[0] : data) as
+    | { role: string; status: string; display_name: string | null; email: string | null; permission_keys: string[] | null }
+    | undefined;
+
+  const appRole = (row?.role ?? null) as V13AppRole | null;
+  const roleKey = appRole ? mapAppRoleToRoleKey(appRole) : null;
+  if (!row || !appRole || !roleKey) {
     applySessionToPermissionStore(null);
     set({ status: 'unauthorized', session: null });
     return;
   }
 
+  // platform_admin (super) holds every permission → expand to the full catalog;
+  // every other admin's effective permissions are exactly their DB grants.
+  const permissionKeys =
+    appRole === 'platform_admin' ? permissionKeysForRole('SUPER_ADMIN') : row.permission_keys ?? [];
+
   const session: AdminSession = {
     userId,
-    email,
-    displayName: profile.display_name ?? profile.nickname ?? email ?? userId,
+    email: row.email ?? email,
+    displayName: row.display_name ?? email ?? userId,
     appRole,
     roleKey,
-    permissionKeys: permissionKeysForRole(roleKey)
+    permissionKeys
   };
 
   applySessionToPermissionStore(session);
