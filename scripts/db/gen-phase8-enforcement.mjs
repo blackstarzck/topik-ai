@@ -58,6 +58,56 @@ const DOMAINS = {
       ['admin_delete_operation_policy', 'operation.policies.manage'],
       ['admin_publish_operation_policy_version', 'operation.policies.manage']
     ]
+  },
+  commerce: {
+    title: 'commerce (refunds/coupons/points)',
+    rpcs: [
+      ['admin_approve_billing_refund', 'commerce.refunds.approve'],
+      ['admin_reject_billing_refund', 'commerce.refunds.approve'],
+      ['admin_save_commerce_coupon', 'commerce.coupons.manage'],
+      ['admin_delete_commerce_coupon', 'commerce.coupons.manage'],
+      ['admin_duplicate_commerce_coupon', 'commerce.coupons.manage'],
+      ['admin_set_commerce_coupon_issue_state', 'commerce.coupons.manage'],
+      ['admin_save_commerce_coupon_template', 'commerce.coupons.manage'],
+      ['admin_delete_commerce_coupon_template', 'commerce.coupons.manage'],
+      ['admin_set_commerce_coupon_template_status', 'commerce.coupons.manage'],
+      ['admin_create_manual_point_adjustment', 'commerce.points.manage'],
+      ['admin_save_commerce_point_policy', 'commerce.points.manage'],
+      ['admin_update_commerce_point_policy_status', 'commerce.points.manage'],
+      ['admin_hold_commerce_point_expiration', 'commerce.points.manage'],
+      ['admin_release_commerce_point_expiration', 'commerce.points.manage']
+    ]
+  },
+  users: {
+    title: 'users (instructors/referrals/institution-codes)',
+    rpcs: [
+      ['admin_add_instructor_note', 'users.groups.manage'],
+      ['admin_delete_instructor_note', 'users.groups.manage'],
+      ['admin_set_instructor_status', 'users.groups.manage'],
+      ['admin_adjust_referral_reward', 'users.referrals.manage'],
+      ['admin_review_referral_anomaly', 'users.referrals.manage'],
+      ['admin_set_referral_status', 'users.referrals.manage'],
+      ['admin_create_institution_code', 'users.institution-codes.manage'],
+      ['admin_update_institution_code', 'users.institution-codes.manage']
+    ]
+  },
+  system_metadata: {
+    title: 'system metadata',
+    rpcs: [
+      ['admin_save_metadata_group', 'system.metadata.manage'],
+      ['admin_save_metadata_item', 'system.metadata.manage'],
+      ['admin_toggle_metadata_group_status', 'system.metadata.manage'],
+      ['admin_toggle_metadata_item_status', 'system.metadata.manage'],
+      ['admin_reorder_metadata_items', 'system.metadata.manage'],
+      ['admin_delete_metadata_item', 'system.metadata.manage']
+    ]
+  },
+  message_mail: {
+    title: 'message (auth email templates)',
+    rpcs: [
+      ['admin_save_auth_email_template', 'message.mail.manage'],
+      ['admin_mark_auth_email_synced', 'message.mail.manage']
+    ]
   }
 };
 
