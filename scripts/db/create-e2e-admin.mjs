@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-// D-12: 신규 스키마 연결 검증용 시드 admin 계정 생성 (talkpik-dev 전용).
-// Auth admin API(service role)로 사용자 생성 + profiles.app_role=content_admin 승격.
-// 자격증명은 환경변수로만 받는다(.env.local, 커밋 금지).
+// 신규 스키마 연결 검증용 시드 admin 계정 생성 (talkpik-dev 전용).
+// 관리자 계정 분리 이후: Auth admin API(service role)로 사용자 생성 + admin_accounts에
+// platform_admin 으로 upsert. 관리자 식별은 profiles.app_role 이 아니라 admin_accounts 에서
+// 이뤄진다(헬퍼 is_admin/is_platform_admin 가 admin_accounts 를 읽음). 자격증명은 환경변수로만.
 //
 // Usage:
 //   set E2E_ADMIN_EMAIL=...; set E2E_ADMIN_PASSWORD=...; set SUPABASE_SECRET_KEY=...
@@ -50,22 +51,29 @@ if (existing) {
   console.log(`auth user created: ${userId}`);
 }
 
-// 2. promote profile to content_admin (handle_new_user 트리거가 프로필을 만들 때까지 재시도)
+// 2. upsert admin_accounts (new model: admin identity lives here, not profiles.app_role).
+//    service role bypasses RLS. The handle_new_user-created profiles row (if any) is a
+//    harmless vestige on dev; physical removal of admins' profiles rows is a separate,
+//    backup-guarded production step (see scripts/db/phase7-delete-admin-profiles.mjs).
+const adminRow = {
+  id: userId,
+  email: EMAIL,
+  display_name: 'E2E Admin',
+  role: 'platform_admin',
+  status: 'active',
+};
 for (let attempt = 1; attempt <= 5; attempt += 1) {
-  const patchRes = await fetch(
-    `${URL_BASE}/rest/v1/profiles?id=eq.${userId}`,
-    {
-      method: 'PATCH',
-      headers: { ...headers, Prefer: 'return=representation' },
-      body: JSON.stringify({ app_role: 'content_admin', status: 'active' }),
-    },
-  );
-  const rows = await patchRes.json();
-  if (patchRes.ok && Array.isArray(rows) && rows.length > 0) {
-    console.log(`profile promoted: app_role=${rows[0].app_role}, status=${rows[0].status}`);
+  const upsertRes = await fetch(`${URL_BASE}/rest/v1/admin_accounts`, {
+    method: 'POST',
+    headers: { ...headers, Prefer: 'resolution=merge-duplicates,return=representation' },
+    body: JSON.stringify(adminRow),
+  });
+  const rows = await upsertRes.json();
+  if (upsertRes.ok && Array.isArray(rows) && rows.length > 0) {
+    console.log(`admin_accounts ensured: role=${rows[0].role}, status=${rows[0].status}`);
     process.exit(0);
   }
   await new Promise((r) => setTimeout(r, 1000));
 }
-console.error('profile row not found after retries — check handle_new_user trigger.');
+console.error('admin_accounts upsert failed after retries.');
 process.exit(1);
