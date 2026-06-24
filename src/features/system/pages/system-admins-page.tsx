@@ -144,13 +144,22 @@ export default function SystemAdminsPage(): JSX.Element {
     });
     setInviteSubmitting(false);
     if (!result.ok) {
-      notificationApi.error({ message: '관리자 초대 실패', description: result.error });
+      notificationApi.error({ message: '관리자 초대 실패', description: result.error.message });
       return;
     }
-    notificationApi.success({
-      message: '관리자 초대 완료',
-      description: `${values.email} 주소로 초대 메일을 보냈습니다. 수락 후 첫 로그인 시 활성화됩니다.`
-    });
+    if (result.data.emailSent) {
+      notificationApi.success({
+        message: '관리자 초대 완료',
+        description: `${values.email} 주소로 초대 메일을 보냈습니다. 수락 후 첫 로그인 시 활성화됩니다.`
+      });
+    } else {
+      notificationApi.warning({
+        message: '관리자 계정 생성됨 (메일 미발송)',
+        description: `${values.email} 계정은 생성됐지만 초대 메일 발송에 실패했습니다${
+          result.data.warning ? ` (${result.data.warning})` : ''
+        }. SMTP 설정 확인 후 다시 초대하세요.`
+      });
+    }
     setInviteOpen(false);
     inviteForm.resetFields();
     void loadAdmins();

@@ -141,7 +141,13 @@ export type InviteAdminPayload = {
   permissionKeys: string[];
 };
 
-async function inviteAdmin(payload: InviteAdminPayload): Promise<string> {
+export type InviteAdminResult = {
+  invitedUserId: string;
+  emailSent: boolean;
+  warning?: string;
+};
+
+async function inviteAdmin(payload: InviteAdminPayload): Promise<InviteAdminResult> {
   const client = requireClient();
   const { data: sessionData } = await client.auth.getSession();
   const token = sessionData.session?.access_token;
@@ -159,7 +165,13 @@ async function inviteAdmin(payload: InviteAdminPayload): Promise<string> {
     })
   });
 
-  let body: { ok?: boolean; invited_user_id?: string; error?: string } = {};
+  let body: {
+    ok?: boolean;
+    invited_user_id?: string;
+    error?: string;
+    email_sent?: boolean;
+    warning?: string;
+  } = {};
   try {
     body = (await response.json()) as typeof body;
   } catch {
@@ -168,7 +180,11 @@ async function inviteAdmin(payload: InviteAdminPayload): Promise<string> {
   if (!response.ok || !body.ok || !body.invited_user_id) {
     throw new Error(body.error ?? `초대에 실패했습니다 (HTTP ${response.status}).`);
   }
-  return body.invited_user_id;
+  return {
+    invitedUserId: body.invited_user_id,
+    emailSent: body.email_sent !== false,
+    warning: body.warning
+  };
 }
 
 // Safe wrappers (mirror the existing system-* service convention).

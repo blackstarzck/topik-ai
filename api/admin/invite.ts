@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import nodemailer from 'nodemailer';
 
 declare const process: {
   env: Record<string, string | undefined>;
@@ -9,20 +10,39 @@ declare const process: {
  * (관리자 계정 분리 계획 Phase 6)
  *
  * 흐름: 호출자 JWT 검증 → admin_accounts에서 active platform_admin 재확인 →
- *       auth.admin.inviteUserByEmail(account_type='admin' 메타) → handle_new_user가
- *       만든 임시 profiles row 삭제(관리자 물리 분리 유지) → admin_finalize_invite RPC로
- *       admin_accounts(status='invited') + 권한 그랜트 + 감사 기록.
+ *       auth.admin.generateLink(type=invite)로 사용자 생성 + 초대 링크 발급(메일 미발송) →
+ *       handle_new_user가 만든 임시 profiles row 삭제(관리자 물리 분리 유지) →
+ *       admin_finalize_invite RPC로 admin_accounts(status='invited')+권한 그랜트+감사 →
+ *       앱 SMTP(nodemailer, SMTP_* env)로 초대 메일 직접 발송.
  *
- * 보안: Service Role 키는 서버 전용. 브라우저는 자신의 access_token만 전달한다.
+ * 메일 경로: Supabase Auth 내장 메일(프로젝트 SMTP)이 아니라 앱 SMTP를 사용한다.
+ *       관리자 초대만 영향(v13 가입 인증메일 등 공유 auth 메일 설정은 건드리지 않음).
+ *
+ * 보안: Service Role 키·SMTP 자격증명은 서버 전용. 브라우저는 자신의 access_token만 전달.
  *       admin_finalize_invite는 service_role 전용(EXECUTE)이며 p_caller_id를
  *       다시 platform_admin으로 검증한다.
  */
 
 const ALLOWED_ROLES = new Set(['platform_admin', 'content_admin', 'org_admin']);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const ROLE_LABEL: Record<string, string> = {
+  platform_admin: '슈퍼 관리자',
+  content_admin: '콘텐츠 관리자',
+  org_admin: '기관 관리자'
+};
 
 function jsonResponse(body: unknown, init?: ResponseInit): Response {
   return Response.json(body, init);
+}
+
+function inviteEmailHtml(actionLink: string, role: string): string {
+  const label = ROLE_LABEL[role] ?? role;
+  return `<div style="font-family:Apple SD Gothic Neo,Malgun Gothic,sans-serif;line-height:1.6;color:#1f1f1f">
+  <h2 style="margin:0 0 12px">TOPIK 관리자 콘솔 초대</h2>
+  <p>${label} 권한으로 관리자 콘솔에 초대되었습니다. 아래 버튼을 눌러 비밀번호를 설정하고 로그인하면 계정이 활성화됩니다.</p>
+  <p style="margin:20px 0"><a href="${actionLink}" style="display:inline-block;padding:11px 20px;background:#1677ff;color:#fff;border-radius:6px;text-decoration:none">초대 수락 · 비밀번호 설정</a></p>
+  <p style="color:#888;font-size:12px">버튼이 열리지 않으면 다음 주소를 복사해 여세요:<br>${actionLink}</p>
+</div>`;
 }
 
 async function handleInvite(request: Request): Promise<Response> {
@@ -80,18 +100,20 @@ async function handleInvite(request: Request): Promise<Response> {
     return jsonResponse({ ok: false, error: 'invalid_role' }, { status: 400 });
   }
 
-  // 4) Supabase 초대 발송 (account_type='admin' → 학습자 가입과 구분).
-  const inviteOptions: { data: Record<string, unknown>; redirectTo?: string } = {
+  // 4) 초대 링크 생성 (메일 미발송) — 사용자 생성 + action_link 반환.
+  const linkOptions: { data: Record<string, unknown>; redirectTo?: string } = {
     data: { account_type: 'admin' }
   };
-  if (redirectTo) inviteOptions.redirectTo = redirectTo;
-  const { data: invited, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(
+  if (redirectTo) linkOptions.redirectTo = redirectTo;
+  const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+    type: 'invite',
     email,
-    inviteOptions
-  );
-  const invitedUserId = invited?.user?.id;
-  if (inviteError || !invitedUserId) {
-    const message = inviteError?.message ?? 'invite_failed';
+    options: linkOptions
+  });
+  const invitedUserId = linkData?.user?.id;
+  const actionLink = linkData?.properties?.action_link;
+  if (linkError || !invitedUserId || !actionLink) {
+    const message = linkError?.message ?? 'invite_link_failed';
     // 이미 가입된 이메일 등은 409로 구분.
     const status = /already|registered|exists/i.test(message) ? 409 : 502;
     return jsonResponse({ ok: false, error: message }, { status });
@@ -101,7 +123,6 @@ async function handleInvite(request: Request): Promise<Response> {
   //    (신규 계정이라 종속 학습자 데이터 없음 → cascade 안전. 감사 FK는 auth.users라 무관.)
   const { error: deleteError } = await supabase.from('profiles').delete().eq('id', invitedUserId);
   if (deleteError) {
-    // 분리 실패 시 인박스 오염 방지를 위해 알리되, 계정 자체는 생성됨.
     return jsonResponse(
       { ok: false, error: `profile_separation_failed: ${deleteError.message}`, invited_user_id: invitedUserId },
       { status: 500 }
@@ -124,7 +145,35 @@ async function handleInvite(request: Request): Promise<Response> {
     );
   }
 
-  return jsonResponse({ ok: true, invited_user_id: invitedUserId });
+  // 7) 초대 메일 발송 — 앱 SMTP(nodemailer). 계정은 이미 생성됐으므로, 메일 실패는
+  //    경고로만 반환(ok:true)하고 재발송 가능 상태로 둔다.
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+  if (!smtpHost || !smtpUser || !smtpPass) {
+    return jsonResponse({ ok: true, invited_user_id: invitedUserId, email_sent: false, warning: 'smtp_not_configured' });
+  }
+  const smtpPort = Number(process.env.SMTP_PORT ?? 465);
+  const fromAddress = process.env.SMTP_FROM ?? smtpUser;
+  const transporter = nodemailer.createTransport({
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpPort === 465,
+    auth: { user: smtpUser, pass: smtpPass }
+  });
+  try {
+    await transporter.sendMail({
+      from: fromAddress,
+      to: email,
+      subject: 'TOPIK 관리자 콘솔 초대',
+      html: inviteEmailHtml(actionLink, role)
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'email_send_error';
+    return jsonResponse({ ok: true, invited_user_id: invitedUserId, email_sent: false, warning: `email_send_failed: ${message}` });
+  }
+
+  return jsonResponse({ ok: true, invited_user_id: invitedUserId, email_sent: true });
 }
 
 export function POST(request: Request): Promise<Response> | Response {
