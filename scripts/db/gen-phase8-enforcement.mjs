@@ -108,12 +108,41 @@ const DOMAINS = {
       ['admin_save_auth_email_template', 'message.mail.manage'],
       ['admin_mark_auth_email_synced', 'message.mail.manage']
     ]
+  },
+  notifications: {
+    title: 'message (notification templates/dispatch/groups)',
+    rpcs: [
+      ['admin_save_notification_group', 'message.groups.manage'],
+      ['admin_delete_notification_group', 'message.groups.manage'],
+      // template/dispatch span mail/push/inapp at runtime → caller needs ANY channel-manage.
+      ['admin_save_notification_template', ['message.mail.manage', 'message.push.manage', 'message.inapp.manage']],
+      ['admin_set_notification_template_status', ['message.mail.manage', 'message.push.manage', 'message.inapp.manage']],
+      ['admin_delete_notification_template', ['message.mail.manage', 'message.push.manage', 'message.inapp.manage']],
+      ['admin_send_notification', ['message.mail.manage', 'message.push.manage', 'message.inapp.manage']],
+      ['admin_cancel_notification_dispatch', ['message.mail.manage', 'message.push.manage', 'message.inapp.manage']],
+      // terms-change notice is part of the policy workflow.
+      ['admin_send_terms_change_notification', 'operation.policies.manage']
+    ]
+  },
+  user_memos: {
+    title: 'user admin memos',
+    rpcs: [
+      // member memo is written from the member detail page (users.read gates that access);
+      // content_admin lacks users.read so it is correctly blocked.
+      ['admin_add_user_memo', 'users.read'],
+      ['admin_delete_user_memo', 'users.read']
+    ]
   }
 };
 
 const IS_ADMIN_LINE = "if not private.is_admin(caller_id) then raise exception 'forbidden: admin required'; end if;";
 
+// key may be a string (single permission) or an array (caller needs ANY one of them, OR).
 function guardFor(key) {
+  if (Array.isArray(key)) {
+    const checks = key.map((k) => `public.admin_has_permission(caller_id, '${k}')`).join(' or ');
+    return `\n  if not (${checks}) then raise exception 'forbidden: missing permission (${key.join('/')})'; end if;`;
+  }
   return `\n  if not public.admin_has_permission(caller_id, '${key}') then raise exception 'forbidden: missing permission ${key}'; end if;`;
 }
 
