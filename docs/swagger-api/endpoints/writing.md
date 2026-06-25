@@ -402,7 +402,7 @@ body **Examples** dropdown.
 - Also send: `passage_context` — the passage with `( ㄱ )` `( ㄴ )` so the grader
   sees where each blank sits. Filled from `question_id` if you omit it; a value you
   send wins.
-- Limits: min 5 chars, each blank ≤ 300 chars.
+- Limits: min 5 chars, each blank ≤ 300 chars; `passage_context` ≤ 3000 chars (legacy `text` fallback ≤ 5000 chars).
 - Output: each blank scored 0–5 → **total 0–10** (ㄱ→blank_1, ㄴ→blank_2).
 
 **Q52 · 단락 완성 (paragraph blank-fill)** — same shape as Q51 (`blanks` +
@@ -410,12 +410,12 @@ body **Examples** dropdown.
 
 **Q53 · 정보 에세이 (~200–300자)**
 - Send: `text` (the whole answer). `blanks`/`passage_context` ignored.
-- Limits: min 20 chars.
+- Limits: min 20 chars, max 5000 chars.
 - Output: **total 0–30**.
 
 **Q54 · 논증 에세이 (~600–700자)**
 - Send: `text` (the whole answer). `blanks`/`passage_context` ignored.
-- Limits: min 100 chars.
+- Limits: min 100 chars, max 5000 chars.
 - Output: **total 0–50**.
 
 **Request example — Q53/Q54 (text) / 요청 예시:**
