@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test';
 
+test.afterEach(async ({ context }) => {
+  await context.close();
+});
+
 test('shared AdminDataTable keeps header and body text left-aligned', async ({
   page
 }) => {

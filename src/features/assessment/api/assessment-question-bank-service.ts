@@ -60,8 +60,8 @@ import type {
  * + 태그 부여/제거 — 를 제공한다(P4 개방, 실행계획안 §8). 검수 쓰기·검수
  * 메모는 2026-06-11 검수 개념 삭제로 제거됐다. 모든 write는 RPC 경유
  * (admin_update_topik_question / admin_assign·remove_question_tag — D-8 감사
- * 계약)이며, 사유 입력이 필수다(서버 가드: '서비스_노출상태' 그룹 부여 차단,
- * 중복 활성 부여 차단 — D-6).
+ * 계약)이다. 태그 RPC의 서버 가드는 '서비스_노출상태' 그룹 부여 차단,
+ * 중복 활성 부여 차단을 담당한다(D-6).
  */
 
 type UpdateAssessmentQuestionServiceStatusPayload = {
@@ -79,12 +79,10 @@ type BulkUpdateAssessmentQuestionServiceStatusPayload = {
 type AssignQuestionTagPayload = {
   questionId: string;
   tagCode: string;
-  memo: string;
 };
 
 type RemoveQuestionTagPayload = {
   tagAssignmentId: number;
-  memo: string;
 };
 
 type SetWritingQuestionInstitutionsPayload = {
@@ -255,37 +253,24 @@ async function updateServiceStatusBulk(
 }
 
 async function assignQuestionTag(payload: AssignQuestionTagPayload): Promise<void> {
-  // 사유 memo 필수(question_tags.memo — 결정 기록 D-7 개정: 운영 메모의 유일한 기록처).
-  if (!payload.memo.trim()) {
-    throw new Error('태그 부여 사유를 입력해 주세요.');
-  }
-
   if (questionBankDataSource === 'mock') {
-    await assignMockQuestionTag(payload.questionId, payload.tagCode, payload.memo);
+    await assignMockQuestionTag(payload.questionId, payload.tagCode);
     return;
   }
   if (questionBankDataSource === 'topik_writing') {
-    await assignTopikWritingQuestionTag(
-      payload.questionId,
-      payload.tagCode,
-      payload.memo
-    );
+    await assignTopikWritingQuestionTag(payload.questionId, payload.tagCode);
     return;
   }
   throw new Error('legacy 롤백 모드에서는 태그를 편집할 수 없습니다.');
 }
 
 async function removeQuestionTag(payload: RemoveQuestionTagPayload): Promise<void> {
-  if (!payload.memo.trim()) {
-    throw new Error('태그 제거 사유를 입력해 주세요.');
-  }
-
   if (questionBankDataSource === 'mock') {
     await removeMockQuestionTag(payload.tagAssignmentId);
     return;
   }
   if (questionBankDataSource === 'topik_writing') {
-    await removeTopikWritingQuestionTag(payload.tagAssignmentId, payload.memo);
+    await removeTopikWritingQuestionTag(payload.tagAssignmentId);
     return;
   }
   throw new Error('legacy 롤백 모드에서는 태그를 편집할 수 없습니다.');

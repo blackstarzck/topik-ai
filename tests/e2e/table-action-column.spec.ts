@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test';
 
+test.afterEach(async ({ context }) => {
+  await context.close();
+});
+
 test('권한 관리 관리자 테이블의 조치 컬럼은 우측 고정된다', async ({ page }) => {
   await page.goto('/system/permissions');
 

@@ -409,7 +409,7 @@ export async function loadTopikWritingActiveQuestionTags(
   const client = requireClient();
   const { data, error } = await client
     .from('topik_writing_question_tags')
-    .select('tag_assignment_id, question_id, tag_code, tag_value, assigned_at, memo')
+    .select('tag_assignment_id, question_id, tag_code, tag_value, assigned_at')
     .eq('is_active', true);
   if (signal?.aborted) {
     throw new DOMException('Request aborted', 'AbortError');
@@ -424,15 +424,13 @@ export async function loadTopikWritingActiveQuestionTags(
       tag_code: string;
       tag_value: string | null;
       assigned_at: string;
-      memo: string | null;
     }[]
   ).map((row) => ({
     tagAssignmentId: row.tag_assignment_id,
     questionId: row.question_id,
     tagCode: row.tag_code,
     tagValue: row.tag_value,
-    assignedAt: toDateTime(row.assigned_at),
-    memo: row.memo ?? ''
+    assignedAt: toDateTime(row.assigned_at)
   }));
 }
 
@@ -520,13 +518,12 @@ export async function setTopikWritingServiceStatusBulk(
 // 태그 부여/제거 — admin_assign/remove_question_tag (P4 관리 포인트, D-8).
 // 사전 존재·활성, '서비스_노출상태' 그룹 차단(D-6), (question_id, item_number)
 // 합성 참조 검증, 중복 활성 부여 차단 가드는 전부 RPC에 내장돼 있다.
-// 감사: tag_assigned / tag_removed + 사유는 question_tags.memo·payload.tag_memo.
+// 감사: tag_assigned / tag_removed.
 // ---------------------------------------------------------------------------
 
 export async function assignTopikWritingQuestionTag(
   questionId: string,
-  tagCode: string,
-  memo: string
+  tagCode: string
 ): Promise<void> {
   const client = requireClient();
   const kind = itemNumberOfQuestionId(questionId);
@@ -536,8 +533,7 @@ export async function assignTopikWritingQuestionTag(
   const { error } = await client.rpc('admin_assign_question_tag', {
     p_question_id: questionId,
     p_item_number: Number(kind),
-    p_tag_code: tagCode,
-    p_memo: memo
+    p_tag_code: tagCode
   });
   if (error) {
     throw new Error(error.message);
@@ -545,13 +541,11 @@ export async function assignTopikWritingQuestionTag(
 }
 
 export async function removeTopikWritingQuestionTag(
-  tagAssignmentId: number,
-  memo: string
+  tagAssignmentId: number
 ): Promise<void> {
   const client = requireClient();
   const { error } = await client.rpc('admin_remove_question_tag', {
-    p_tag_assignment_id: tagAssignmentId,
-    p_memo: memo
+    p_tag_assignment_id: tagAssignmentId
   });
   if (error) {
     throw new Error(error.message);

@@ -33,7 +33,7 @@
   - 문서와 `AGENTS.md` 안의 `docs/**`, `logs/**` 참조가 실제 파일과 일치하는지 검사한다.
   - `docs/README.md`에 활성 문서가 모두 인덱싱되어 있는지 검사한다.
 - `scripts/check-route-doc-coverage.mjs`
-  - `src/app/router/app-router.tsx`의 실제 라우트와 `docs/specs/page-ia/*.md`의 라우트 문서화 상태를 교차검사한다.
+  - `src/app/router/routes.ts`의 라우트 메타데이터와 `docs/specs/page-ia/*.md`의 라우트 문서화 상태를 교차검사한다.
   - redirect alias는 허용하고, 실제 운영 라우트의 문서 누락만 차단한다.
 
 ### 3.3 검증 하네스

@@ -442,8 +442,7 @@ export async function setMockServiceStatusBulk(
 
 export async function assignMockQuestionTag(
   questionId: string,
-  tagCode: string,
-  memo: string
+  tagCode: string
 ): Promise<void> {
   if (!mockDetails.some((detail) => detail.questionId === questionId)) {
     throw new Error('문항 대상을 찾을 수 없습니다.');
@@ -464,8 +463,7 @@ export async function assignMockQuestionTag(
     questionId,
     tagCode,
     tagValue: null,
-    assignedAt: '2026-06-11 00:00',
-    memo
+    assignedAt: '2026-06-11 00:00'
   });
 }
 

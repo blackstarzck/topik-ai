@@ -6,6 +6,11 @@
 - 목적은 **별도로 개발 중인 사용자 화면과 관리자 관리 포인트를 동기화**하는 것이다. 운영자가 각 페이지에서 무엇을 다루는지, 그 데이터가 사용자 화면에 어떻게 이어지는지를 한 곳에서 추적한다.
 - **라우트 1개 = 문서 1개** 원칙. 현재 이 README를 포함해 38개 파일이 있고, 페이지 동기화 문서는 37개다.
 - 모든 페이지 문서는 [`docs/templates/admin-page-sync-template.md`](../templates/admin-page-sync-template.md)의 동일한 13개 섹션 틀을 따른다.
+- 템플릿: `docs/templates/admin-page-sync-template.md`
+- 기준 라우트: `src/app/router/routes.ts` (`app-router.tsx`는 shell composition)
+- 페이지 IA: `docs/specs/page-ia/*.md`
+- 데이터 계약: `docs/specs/admin-data-contract.md`
+- B2C 노출 맵: `docs/specs/admin-data-usage-map.md`
 
 ## 2. 한 문서가 답하는 것 (13개 섹션 구조)
 
@@ -64,6 +69,7 @@
 | [회원 상세](./users-detail-page-sync.md) | `/users/:userId` | 구현됨 |
 | [강사 관리](./users-instructor-management-page-sync.md) | `/users/groups` | 구현됨 |
 | [추천인 관리](./users-referrals-page-sync.md) | `/users/referrals` | 구현됨 |
+| [기관 코드](./users-institution-codes-page-sync.md) | `/users/institution-codes` | 구현됨 |
 
 ### Community
 

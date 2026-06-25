@@ -15,6 +15,7 @@
 - `알림-기능-개발-실행계획안.md` — 알림(Notification) 기능 개발 실행계획안 rev3(채널 4종·class 정책·발송 이력 3계층·검증 게이트 V-0~V-6)
 - `알림-기능-구현-페이즈-가이드.md` — 알림 기능 에이전트 실행용 작업 패키지 분해(WP0-1~WP4-3, 휴먼 결정 게이트 H-1~H-5)
 - `알림-기능-QA-시나리오.md` — 알림 기능 게이트별 상세 QA 시나리오(약 80건, 빈발 버그 매핑)
+- `api-inventory-backend-handoff.md` — v13 ↔ topik-ai 백엔드 API 인벤토리·핸드오프 참고 문서
 
 ### `docs/requests` (외부 발신 요청·발주 문서)
 - `upstream-writing-endpoints-request-2026-06-10.md` — TOPIK 쓰기 문항 공급(인바운드) API 계약 요청서(D-11 재정의 — 2026-06-11 재작성, 구 push 업로드 요청 폐기)
@@ -62,6 +63,7 @@
 - `system-metadata-page-sync.md`
 - `system-permissions-page-sync.md`
 - `users-detail-page-sync.md`
+- `users-institution-codes-page-sync.md`
 - `users-instructor-management-page-sync.md`
 - `users-list-page-sync.md`
 - `users-referrals-page-sync.md`
@@ -88,6 +90,7 @@
 ### `docs/runbooks`
 - `notification-worker-production-verification.md` — v13 transition email worker를 topik-ai production worker로 넘기기 전/후 SOT, Vercel readiness, smoke, cross-app state evidence를 기록하는 운영 검증 runbook
 - `notification-worker-production-evidence.example.md` — 실제 production evidence 파일 작성 시 secret 값을 남기지 않도록 돕는 redacted 예시 문서
+- `admin-account-separation-prod-cutover.md` — 관리자 계정 분리 production cutover 적용 순서·검증·롤백 runbook
 
 ### `docs/swagger-api`
 - 상류 `TalkPik AI Service` API(Swagger) 스냅샷을 그룹별로 분리한 참조 문서다. 구 단일 문서 `topik-ai-service-api-reference.md`를 대체한다(생성 기준일 2026-06-17, Swagger UI `https://api.dotoretopik.com/docs`).
@@ -96,8 +99,8 @@
 - `swagger-api/openapi-reference.md` — 전체 endpoint/schema 색인(72 paths·74 operations·118 schemas)
 - `swagger-api/auth-and-errors.md` — 인증 헤더(`Bearer`/`X-API-Key`)·응답/에러 코드
 - `swagger-api/writing-api-v13-screen-map.html` — v13 Writing 화면 연결 맵(HTML)
-- 엔드포인트: `swagger-api/endpoints/admin-campaign.md`, `swagger-api/endpoints/admin-eval.md`, `swagger-api/endpoints/eval-auth.md`, `swagger-api/endpoints/evaluation.md`, `swagger-api/endpoints/external-campaign.md`, `swagger-api/endpoints/listening.md`, `swagger-api/endpoints/reading.md`, `swagger-api/endpoints/writing.md`
-- 스키마: `swagger-api/schemas/index.md`, `swagger-api/schemas/common.md`, `swagger-api/schemas/admin-campaign.md`, `swagger-api/schemas/admin-eval.md`, `swagger-api/schemas/eval-auth.md`, `swagger-api/schemas/evaluation.md`, `swagger-api/schemas/external-campaign.md`, `swagger-api/schemas/listening.md`, `swagger-api/schemas/reading.md`, `swagger-api/schemas/writing.md`
+- 엔드포인트: `swagger-api/endpoints/admin-campaign.md`, `swagger-api/endpoints/admin-eval.md`, `swagger-api/endpoints/admin-users.md`, `swagger-api/endpoints/eval-auth.md`, `swagger-api/endpoints/evaluation.md`, `swagger-api/endpoints/external-campaign.md`, `swagger-api/endpoints/listening.md`, `swagger-api/endpoints/reading.md`, `swagger-api/endpoints/writing.md`
+- 스키마: `swagger-api/schemas/index.md`, `swagger-api/schemas/common.md`, `swagger-api/schemas/admin-campaign.md`, `swagger-api/schemas/admin-eval.md`, `swagger-api/schemas/admin-users.md`, `swagger-api/schemas/eval-auth.md`, `swagger-api/schemas/evaluation.md`, `swagger-api/schemas/external-campaign.md`, `swagger-api/schemas/listening.md`, `swagger-api/schemas/reading.md`, `swagger-api/schemas/writing.md`
 
 ### `docs/specs`
 - `admin-data-contract.md`
@@ -145,6 +148,7 @@
 - `page-ia/system-metadata-page-ia.md`
 - `page-ia/system-permissions-page-ia.md`
 - `page-ia/users-detail-page-ia.md`
+- `page-ia/users-institution-codes-page-ia.md` — 기관 코드 관리(`/users/institution-codes`): 유입 코드, 소속 회원, 기관별 문항 노출 모달
 - `page-ia/users-instructor-management-page-ia.md`
 - `page-ia/users-list-page-ia.md`
 - `page-ia/users-referrals-page-ia.md`
@@ -155,6 +159,7 @@
 
 ### `docs/plans`
 - `plans/assessment-ia-consolidation-plan.md` — 평가 메뉴 IA 통합 실행계획(쓰기 3페이지 → 메뉴 1 + route-backed 탭 2: 문항/가져온 문항) — 2026-06-23
+- `plans/auth-email-template-management-plan.md` — 인증메일(Supabase Auth) 템플릿 관리와 커스텀 도메인 연동 실행 계획
 
 ## 운영 문서
 - 실행 지침: `AGENTS.md`

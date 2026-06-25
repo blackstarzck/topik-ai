@@ -258,7 +258,7 @@ test('통합 테이블에서 상세 보기 버튼으로 문항 상세로 이동�
   ).toBeVisible();
 });
 
-test('태그 부여/제거는 사유 필수로 동작하고 POL-018 ② 가드가 available 전환 모달에 표시된다', async ({
+test('태그 부여/제거는 사유 없이 동작하고 POL-018 ② 가드가 available 전환 모달에 표시된다', async ({
   page
 }) => {
   await page.goto('/assessment/question-bank');
@@ -273,7 +273,7 @@ test('태그 부여/제거는 사유 필수로 동작하고 POL-018 ② 가드�
   await expect(tagModal).toBeVisible();
   await expect(tagModal.getByText('활성 태그가 없습니다.')).toBeVisible();
 
-  // 부여: 변경 + 사유 입력 전까지 적용(확인) 비활성.
+  // 부여: 변경 선택 전까지 적용(확인) 비활성, 선택 후 사유 입력 없이 실행 가능.
   const applyButton = tagModal.getByRole('button', { name: '확인' });
   await expect(applyButton).toBeDisabled();
 
@@ -281,10 +281,7 @@ test('태그 부여/제거는 사유 필수로 동작하고 POL-018 ② 가드�
   await tagModal.getByLabel('태그 검색').fill('표현 주의');
   await tagModal.getByTestId('tag-row-ops_expression_caution').click();
   await expect(tagModal.getByText('표현 주의 · 추가 예정')).toBeVisible();
-  await expect(applyButton).toBeDisabled();
-  await tagModal
-    .getByPlaceholder(/태그 부여 사유를 입력해 주세요/)
-    .fill('e2e: 운영주의 태그 부여(POL-018 ② 가드 검증)');
+  await expect(tagModal.getByPlaceholder(/태그 부여 사유/)).toHaveCount(0);
   await expect(applyButton).toBeEnabled();
   await applyButton.click();
 
@@ -305,7 +302,7 @@ test('태그 부여/제거는 사유 필수로 동작하고 POL-018 ② 가드�
   ).toBeVisible();
   await availableModal.getByRole('button', { name: '취소' }).click();
 
-  // 제거: 활성 태그를 체크 해제 → 제거 예정, 제거 사유 필수.
+  // 제거: 활성 태그를 체크 해제 → 제거 예정, 사유 입력 없이 실행 가능.
   await targetRow.getByRole('button', { name: '태그 편집' }).click();
   await expect(tagModal).toBeVisible();
   await expect(tagModal.getByText('표현 주의 · 활성')).toBeVisible();
@@ -313,10 +310,7 @@ test('태그 부여/제거는 사유 필수로 동작하고 POL-018 ② 가드�
   await tagModal.getByTestId('tag-row-ops_expression_caution').click();
   await expect(tagModal.getByText('표현 주의 · 제거 예정')).toBeVisible();
   const removeApply = tagModal.getByRole('button', { name: '확인' });
-  await expect(removeApply).toBeDisabled();
-  await tagModal
-    .getByPlaceholder(/태그 제거 사유를 입력해 주세요/)
-    .fill('e2e: 태그 제거 왕복 검증');
+  await expect(tagModal.getByPlaceholder(/태그 제거 사유/)).toHaveCount(0);
   await expect(removeApply).toBeEnabled();
   await removeApply.click();
 

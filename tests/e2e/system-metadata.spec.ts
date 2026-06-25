@@ -8,6 +8,10 @@ import {
   submitVisibleModal
 } from './harness/admin-flow-helpers';
 
+test.afterEach(async ({ context }) => {
+  await context.close();
+});
+
 test('metadata catalog create/detail/audit flow works', async ({ page }) => {
   const uniqueSuffix = Date.now().toString().slice(-6);
   const groupName = `e2e metadata group ${uniqueSuffix}`;

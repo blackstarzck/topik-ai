@@ -27,10 +27,8 @@ const { Text, Paragraph } = Typography;
  * 뒤 한 번에 적용한다. 우리 태그는 그룹→태그 2단계 플랫이므로 잡코리아의 3번째
  * 캐스케이드 칼럼은 상세 패널로 치환했다.
  *
- * 부여·제거 모두 사유 입력이 필수다(question_tags.memo — 운영 메모의 유일한
- * 기록처). 다건 일괄 시 사유는 변경 유형별 공통 1개(부여용/제거용)를 받는다.
  * 부여 옵션은 tag_master 활성 사전이며 '서비스_노출상태' 그룹은 facade·RPC
- * 양쪽에서 차단된다. 모든 write는 기존 RPC(admin_assign·remove_question_tag)
+ * 양쪽에서 차단된다. 모든 write는 RPC(admin_assign·remove_question_tag)
  * 경유로 admin_audit_logs에 tag_assigned/tag_removed가 남는다 — 성공/부분 실패
  * 요약 알림(감사 링크)은 부모가 띄운다.
  */
@@ -63,8 +61,6 @@ export function QuestionTagEditModal({
   const [focusedTagCode, setFocusedTagCode] = useState<string | null>(null);
   const [pendingAdd, setPendingAdd] = useState<Set<string>>(() => new Set());
   const [pendingRemove, setPendingRemove] = useState<Set<string>>(() => new Set());
-  const [assignReason, setAssignReason] = useState('');
-  const [removeReason, setRemoveReason] = useState('');
   const [query, setQuery] = useState('');
   const [applying, setApplying] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -119,20 +115,6 @@ export function QuestionTagEditModal({
       setSelectedGroup(groups[0]);
     }
   }, [groups, selectedGroup]);
-
-  // 사유는 해당 변경 집합이 비면 함께 비운다. 부분 실패로 실패분이 보류에 남으면
-  // 집합이 비지 않으므로 사유가 보존돼 재시도가 가능하다(사유 재입력 불필요).
-  useEffect(() => {
-    if (pendingAdd.size === 0) {
-      setAssignReason('');
-    }
-  }, [pendingAdd]);
-
-  useEffect(() => {
-    if (pendingRemove.size === 0) {
-      setRemoveReason('');
-    }
-  }, [pendingRemove]);
 
   const trimmedQuery = query.trim().toLowerCase();
 
@@ -221,8 +203,6 @@ export function QuestionTagEditModal({
   const handleReset = (): void => {
     setPendingAdd(new Set());
     setPendingRemove(new Set());
-    setAssignReason('');
-    setRemoveReason('');
     setFailures([]);
     setErrorMessage(null);
   };
@@ -241,14 +221,6 @@ export function QuestionTagEditModal({
     if (addCodes.length === 0 && removeRows.length === 0) {
       return;
     }
-    if (addCodes.length > 0 && assignReason.trim().length === 0) {
-      setErrorMessage('태그 부여 사유를 입력해 주세요.');
-      return;
-    }
-    if (removeRows.length > 0 && removeReason.trim().length === 0) {
-      setErrorMessage('태그 제거 사유를 입력해 주세요.');
-      return;
-    }
 
     setApplying(true);
 
@@ -262,8 +234,7 @@ export function QuestionTagEditModal({
       const label = getTagLabel(code);
       const result = await assignQuestionTagSafe({
         questionId,
-        tagCode: code,
-        memo: assignReason.trim()
+        tagCode: code
       });
       if (result.ok) {
         assigned.push(label);
@@ -276,8 +247,7 @@ export function QuestionTagEditModal({
     for (const row of removeRows) {
       const label = getTagLabel(row.tagCode);
       const result = await removeQuestionTagSafe({
-        tagAssignmentId: row.tagAssignmentId,
-        memo: removeReason.trim()
+        tagAssignmentId: row.tagAssignmentId
       });
       if (result.ok) {
         removed.push(label);
@@ -307,8 +277,6 @@ export function QuestionTagEditModal({
 
     setFailures(failed);
 
-    // 성공분은 위에서 보류 집합에서 비웠다 — 사유는 집합이 비면 effect가 정리하고,
-    // 실패분이 남으면 보존돼 재시도가 가능하다(사유 재입력 불필요).
     if (assigned.length > 0 || removed.length > 0) {
       onMutated({ assigned, removed, failed });
     }
@@ -318,10 +286,7 @@ export function QuestionTagEditModal({
     }
   };
 
-  const applyDisabled =
-    !hasChanges ||
-    (addCount > 0 && assignReason.trim().length === 0) ||
-    (removeCount > 0 && removeReason.trim().length === 0);
+  const applyDisabled = !hasChanges;
 
   return (
     <Modal
@@ -640,38 +605,6 @@ export function QuestionTagEditModal({
             )}
           </div>
         </div>
-
-        {addCount > 0 ? (
-          <div>
-            <Text strong>
-              부여 사유 <Text type="danger">*</Text>
-            </Text>
-            <Input.TextArea
-              rows={2}
-              value={assignReason}
-              placeholder="태그 부여 사유를 입력해 주세요. (필수 — question_tags.memo로 기록)"
-              aria-label="태그 부여 사유"
-              style={{ marginTop: 6 }}
-              onChange={(event) => setAssignReason(event.target.value)}
-            />
-          </div>
-        ) : null}
-
-        {removeCount > 0 ? (
-          <div>
-            <Text strong>
-              제거 사유 <Text type="danger">*</Text>
-            </Text>
-            <Input.TextArea
-              rows={2}
-              value={removeReason}
-              placeholder="태그 제거 사유를 입력해 주세요. (필수 — question_tags.memo로 기록)"
-              aria-label="태그 제거 사유"
-              style={{ marginTop: 6 }}
-              onChange={(event) => setRemoveReason(event.target.value)}
-            />
-          </div>
-        ) : null}
 
         <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
           <Button onClick={handleClose}>취소</Button>

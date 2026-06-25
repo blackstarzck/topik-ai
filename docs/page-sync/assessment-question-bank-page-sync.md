@@ -40,7 +40,7 @@ last_reviewed_at: "2026-06-11"
 
 - 문제 발원은 **외부(공급) API**(미개발 상태 — 공급 계약 요청 추진, D-11 재정의)입니다. 문제 본문+메타데이터(schema-rule §4·§7, §7.9·검수 필드 제외)가 **완성 상태로 공급**되며, admin은 문제를 저작·생성·분류·검수하지 않습니다.
 - 이 페이지는 수신·적재(외부 API → Supabase `topik_writing_51/52/53/54_questions` + `question_source_map`)된 문항을 **조회 전용**으로 확인하는 관리자 기점입니다.
-- 관리 포인트는 **태그**(schema-rule §2: tag_master 사전 기반 `question_tags` 부여/제거 + 사유 memo), 노출 통제는 **`service_status` 컬럼**(D-6 유지: available/excluded/internal_test, 기본 internal_test)이며, 둘 다 형제 라우트 `/assessment/question-bank/manage`가 담당합니다(P4 관리 포인트 개방 완료 — 2026-06-11).
+- 관리 포인트는 **태그**(schema-rule §2: tag_master 사전 기반 `question_tags` 부여/제거), 노출 통제는 **`service_status` 컬럼**(D-6 유지: available/excluded/internal_test, 기본 internal_test)이며, 둘 다 형제 라우트 `/assessment/question-bank/manage`가 담당합니다(P4 관리 포인트 개방 완료 — 2026-06-11).
 - v13 사용자 기능은 read-only로 소비합니다. 인터림(외부 API 미개발 동안): P2 백필 466행이 초기 코퍼스입니다.
 - 코드 현실: 현행 코드는 facade 스위치 기본 `topik_writing`으로 신규 4테이블 + 추천 뷰를 조회하고, 2depth 상세는 조회 전용입니다(재정의 P3 컷오버 + 검수 표면 제거 완료 — `202f905`). 롤백 경로는 env `VITE_QUESTION_BANK_SOURCE=legacy`(`problems` 읽기 전용 어댑터)입니다.
 
@@ -84,7 +84,7 @@ last_reviewed_at: "2026-06-11"
 | 조치 | 파괴적 여부 | 확인 단계 | 사유/근거 입력 | Target Type | Target ID | 감사 로그 확인 경로 |
 | --- | --- | --- | --- | --- | --- | --- |
 | 수신·적재(`question_received`, 후속 — 공급 연동 시 추가) | 아니요 | 시스템 기록 | 불필요(수신 메타 기록) | AssessmentQuestion | 대상 ID | /system/audit-logs?targetType=AssessmentQuestion&targetId={targetId} |
-| 태그 부여/제거(`tag_assigned`/`tag_removed`) — `/manage` 담당 | 아니요 | 필수 | 필수(`question_tags.memo`) | AssessmentQuestion | 대상 ID | /system/audit-logs?targetType=AssessmentQuestion&targetId={targetId} |
+| 태그 부여/제거(`tag_assigned`/`tag_removed`) — `/manage` 담당 | 아니요 | 시스템 기록 | 불필요 | AssessmentQuestion | 대상 ID | /system/audit-logs?targetType=AssessmentQuestion&targetId={targetId} |
 | 노출 상태 변경(`service_status_changed`) — `/manage` 담당 | 예 | 필수 | 필수 | AssessmentQuestion | 대상 ID | /system/audit-logs?targetType=AssessmentQuestion&targetId={targetId} |
 
 - 폐기: 검수 액션 4종과 `question_published`(push)는 2026-06-11 §0으로 폐기됐습니다. 검수 페이지 코드는 재정의 P3에서 제거 완료(`202f905` — 기존 감사 행은 "(구)" 역사 라벨로 표시)이고, DB측 RPC(`admin_update_topik_question`)의 검수 액션 경로도 마이그레이션 `0013`에서 제거 완료됐습니다(2026-06-11 적용 — RPC 원문 검수 참조 0건).
@@ -119,7 +119,7 @@ last_reviewed_at: "2026-06-11"
 | 구분 | 표준 값/용어 | 내부 코드 후보 | 사용자 노출 라벨 | 비고 |
 | --- | --- | --- | --- | --- |
 | 노출 상태(노출 가능/노출 제외/내부 테스트) | available/excluded/internal_test | service_status | 사용자 직접 노출 라벨 아님(노출 on/off 결과로만 반영) | D-6 확정 — 유일한 물리 노출 상태, 기본 internal_test |
-| 태그 그룹(추천목적/반복방지/학습흐름/운영주의/대표문제/추천사용) | tag_master 사전(schema-rule §2) | question_tags | 사용자 비노출(내부 관리 포인트) | 부여/제거는 `/manage`에서 활성(P4 개방 완료), 사유는 `question_tags.memo` 필수 |
+| 태그 그룹(추천목적/반복방지/학습흐름/운영주의/대표문제/추천사용) | tag_master 사전(schema-rule §2) | question_tags | 사용자 비노출(내부 관리 포인트) | 부여/제거는 `/manage`에서 활성(P4 개방 완료), 별도 메모 필드 없음 |
 | 문항 번호 51~54 | 문항 번호 51~54 | page-specific enum candidate | 문항 번호 51~54 | 정확한 상태 세트는 IA와 데이터 계약 문서를 우선합니다. |
 
 - 제거 완료: 구 검수 대기/검수 완료/수정 필요/보류 상태 세트는 검수 개념 삭제(2026-06-11 §0)에 따라 재정의 P3에서 제거 완료됐습니다(`202f905`). 품질·상태 표현은 태그로만 합니다.
