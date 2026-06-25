@@ -142,7 +142,8 @@ test('노출 상태 전환은 사유 필수 확인 모달을 거쳐 화면 왕�
   const targetRow = page
     .locator('tbody tr.ant-table-row')
     .filter({ hasText: 'topik-writing-51-9901' });
-  await expect(targetRow.locator('.ant-tag')).toHaveText('내부 테스트');
+  // 첫 태그 = 노출 상태 컬럼(기관 노출 컬럼이 뒤에 추가돼 행에 태그가 2개다).
+  await expect(targetRow.locator('.ant-tag').first()).toHaveText('내부 테스트');
 
   // 운영 조치는 더보기 메뉴에서 실행.
   await targetRow.getByRole('button', { name: '더보기' }).click();
@@ -162,8 +163,8 @@ test('노출 상태 전환은 사유 필수 확인 모달을 거쳐 화면 왕�
   await expect(
     page.getByRole('link', { name: '감사 로그 확인' }).first()
   ).toBeVisible();
-  // 재조회 반영: 모크 store가 변조돼 행 상태 태그가 바뀐다.
-  await expect(targetRow.locator('.ant-tag')).toHaveText('노출 제외');
+  // 재조회 반영: 모크 store가 변조돼 행 상태 태그가 바뀐다(첫 태그 = 노출 상태).
+  await expect(targetRow.locator('.ant-tag').first()).toHaveText('노출 제외');
   // 이미 노출 제외 상태 → 더보기 메뉴의 노출 제외 조치는 비활성.
   await targetRow.getByRole('button', { name: '더보기' }).click();
   await expect(
@@ -272,22 +273,24 @@ test('태그 부여/제거는 사유 필수로 동작하고 POL-018 ② 가드�
   await expect(tagModal).toBeVisible();
   await expect(tagModal.getByText('활성 태그가 없습니다.')).toBeVisible();
 
-  // 부여: 태그 + 사유 입력 전까지 비활성.
-  const assignButton = tagModal.getByRole('button', { name: '태그 부여' });
-  await expect(assignButton).toBeDisabled();
-  await tagModal.locator('.ant-select').click();
-  await page.locator('.ant-select-dropdown').getByText('표현 주의 (ops_expression_caution)').click();
-  await expect(assignButton).toBeDisabled();
+  // 부여: 변경 + 사유 입력 전까지 적용(확인) 비활성.
+  const applyButton = tagModal.getByRole('button', { name: '확인' });
+  await expect(applyButton).toBeDisabled();
+
+  // 검색으로 태그를 찾아 체크 → 추가 예정 칩.
+  await tagModal.getByLabel('태그 검색').fill('표현 주의');
+  await tagModal.getByTestId('tag-row-ops_expression_caution').click();
+  await expect(tagModal.getByText('표현 주의 · 추가 예정')).toBeVisible();
+  await expect(applyButton).toBeDisabled();
   await tagModal
     .getByPlaceholder(/태그 부여 사유를 입력해 주세요/)
     .fill('e2e: 운영주의 태그 부여(POL-018 ② 가드 검증)');
-  await assignButton.click();
+  await expect(applyButton).toBeEnabled();
+  await applyButton.click();
 
-  await expect(page.getByText("'표현 주의' 태그를 부여했습니다.")).toBeVisible();
-  await expect(tagModal.getByText('활성 태그가 없습니다.')).toHaveCount(0);
-  await tagModal.getByRole('button', { name: 'Close' }).click();
-
-  // 행 태그 수 반영.
+  // 적용 성공 시 모달이 닫히고 요약 알림 + 행 태그 수가 반영된다.
+  await expect(page.getByText(/태그를 변경했습니다 \(부여 1건\)/)).toBeVisible();
+  await expect(tagModal).toBeHidden();
   await expect(targetRow.getByText('1개')).toBeVisible();
 
   // POL-018 ②: 운영주의 태그 활성 문항의 available 전환 모달에 가드 문구.
@@ -302,23 +305,24 @@ test('태그 부여/제거는 사유 필수로 동작하고 POL-018 ② 가드�
   ).toBeVisible();
   await availableModal.getByRole('button', { name: '취소' }).click();
 
-  // 제거: ConfirmAction 사유 필수.
+  // 제거: 활성 태그를 체크 해제 → 제거 예정, 제거 사유 필수.
   await targetRow.getByRole('button', { name: '태그 편집' }).click();
-  await tagModal.getByRole('button', { name: '태그 제거: 표현 주의' }).click();
-  const removeModal = page
-    .locator('.ant-modal-content')
-    .filter({ hasText: '태그 제거' })
-    .filter({ hasText: '사유/근거' });
-  await expect(removeModal).toBeVisible();
-  const removeConfirm = removeModal.getByRole('button', { name: '태그 제거' });
-  await expect(removeConfirm).toBeDisabled();
-  await removeModal
-    .getByPlaceholder('태그 제거 사유를 입력해 주세요.')
+  await expect(tagModal).toBeVisible();
+  await expect(tagModal.getByText('표현 주의 · 활성')).toBeVisible();
+  await tagModal.getByLabel('태그 검색').fill('표현 주의');
+  await tagModal.getByTestId('tag-row-ops_expression_caution').click();
+  await expect(tagModal.getByText('표현 주의 · 제거 예정')).toBeVisible();
+  const removeApply = tagModal.getByRole('button', { name: '확인' });
+  await expect(removeApply).toBeDisabled();
+  await tagModal
+    .getByPlaceholder(/태그 제거 사유를 입력해 주세요/)
     .fill('e2e: 태그 제거 왕복 검증');
-  await removeConfirm.click();
+  await expect(removeApply).toBeEnabled();
+  await removeApply.click();
 
-  await expect(page.getByText("'표현 주의' 태그를 제거했습니다.")).toBeVisible();
-  await expect(tagModal.getByText('활성 태그가 없습니다.')).toBeVisible();
+  await expect(page.getByText(/태그를 변경했습니다 \(제거 1건\)/)).toBeVisible();
+  await expect(tagModal).toBeHidden();
+  await expect(targetRow.getByText('1개')).toHaveCount(0);
 });
 
 test('구 검수 상세 라우트는 더 이상 검수 화면을 렌더하지 않는다', async ({
@@ -430,4 +434,66 @@ test('AssessmentQuestion 감사 로그는 삭제된 문제은행 store audit으�
 
   await expect(page.getByRole('heading', { name: '감사 로그' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'AQ-53002' })).toHaveCount(0);
+});
+
+test('통합 문항 화면은 기관 노출 컬럼을 렌더하고 기본은 전체 공개다', async ({
+  page
+}) => {
+  await page.goto('/assessment/question-bank');
+  await skipIfAuthRequired(page);
+
+  await expect(
+    page.getByRole('columnheader', { name: '기관 노출' })
+  ).toBeVisible();
+  // 기본 매핑 0건 → 모든 행이 '전체 공개'.
+  await expect(
+    page.locator('tbody tr.ant-table-row .ant-tag', { hasText: '전체 공개' })
+  ).toHaveCount(4);
+  // 설정 진입은 행 더보기 메뉴의 항목이다(컬럼은 현황 표시 전용).
+  const firstRow = page.locator('tbody tr.ant-table-row').first();
+  await firstRow.getByRole('button', { name: '더보기' }).click();
+  await expect(
+    page.getByRole('menuitem', { name: '기관 노출 설정' })
+  ).toBeVisible();
+});
+
+test('기관 노출 설정: 단건 모달에서 기관 한정 지정 왕복(모크)', async ({
+  page
+}) => {
+  await page.goto('/assessment/question-bank');
+  await skipIfAuthRequired(page);
+
+  const targetRow = page
+    .locator('tbody tr.ant-table-row')
+    .filter({ hasText: 'topik-writing-51-9901' });
+  await expect(
+    targetRow.locator('.ant-tag', { hasText: '전체 공개' })
+  ).toBeVisible();
+  // 설정 진입은 더보기 메뉴 항목 '기관 노출 설정'.
+  await targetRow.getByRole('button', { name: '더보기' }).click();
+  await page.getByRole('menuitem', { name: '기관 노출 설정' }).click();
+
+  const modal = page
+    .locator('.ant-modal-content')
+    .filter({ hasText: '기관 노출 설정' });
+  await expect(modal).toBeVisible();
+  // 변경 전 적용(확인) 비활성.
+  const applyButton = modal.getByRole('button', { name: /확인/ });
+  await expect(applyButton).toBeDisabled();
+
+  // A부스 체크 → 추가 예정 칩 + 사유 필수.
+  await modal.getByTestId('institution-row-EXPO2026-BOOTH-A').click();
+  // 체크박스 선택만으로 반영(칩 트레이 제거) — 확인 버튼이 적용 대상 수를 표시.
+  await expect(applyButton).toHaveText(/기관 한정 1곳 적용/);
+  await expect(applyButton).toBeDisabled();
+  await modal
+    .getByLabel('기관 노출 변경 사유')
+    .fill('e2e: 기관 한정 지정 왕복 검증');
+  await expect(applyButton).toBeEnabled();
+  await applyButton.click();
+
+  // 알림 + 모달 닫힘 + 행 칩(기관 라벨) 반영.
+  await expect(page.getByText(/기관 노출을 변경했습니다/)).toBeVisible();
+  await expect(modal).toBeHidden();
+  await expect(targetRow.locator('.ant-tag', { hasText: 'A부스' })).toBeVisible();
 });

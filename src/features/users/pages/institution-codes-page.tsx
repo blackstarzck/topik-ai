@@ -39,6 +39,10 @@ import { usePermissionStore } from '../../system/model/permission-store';
 import type { AsyncState } from '../../../shared/model/async-state';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
+import {
+  InstitutionQuestionExposureModal,
+  type InstitutionQuestionMutationSummary
+} from '../ui/institution-question-exposure-modal';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
@@ -123,6 +127,10 @@ export default function InstitutionCodesPage(): JSX.Element {
   const [addForm] = Form.useForm<{ userIds: string[]; reason: string }>();
   const [addSubmitting, setAddSubmitting] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<InstitutionCodeMember | null>(null);
+
+  // 노출 문항 관리 모달(기관별 전용 노출 문항 추가/제거).
+  const [questionExposureTarget, setQuestionExposureTarget] =
+    useState<InstitutionCode | null>(null);
 
   // 회원 배정/해제 권한(메뉴 게이팅과 동일 키). 코드 생성/수정(is_admin)과 달리 회원 관리는
   // platform_admin RPC라, 권한 미보유자에겐 회원 관리 컨트롤을 숨긴다(다른 두 화면과 일관).
@@ -250,6 +258,10 @@ export default function InstitutionCodesPage(): JSX.Element {
     setMemberTarget(record);
   }, []);
 
+  const openQuestionExposure = useCallback((record: InstitutionCode) => {
+    setQuestionExposureTarget(record);
+  }, []);
+
   const closeMembers = useCallback(() => {
     setMemberTarget(null);
     setRemoveTarget(null);
@@ -341,6 +353,20 @@ export default function InstitutionCodesPage(): JSX.Element {
       setReloadKey((prev) => prev + 1);
     },
     [memberTarget, removeTarget, notificationApi]
+  );
+
+  const handleQuestionExposureMutated = useCallback(
+    (summary: InstitutionQuestionMutationSummary) => {
+      const modeLabel = summary.mode === 'add' ? '추가' : '해제';
+      const r = summary.result;
+      notificationApi.success({
+        message: `노출 문항 ${modeLabel} 완료`,
+        description: `변경 ${r.changed.toLocaleString()}건 · 변경 없음 ${r.unchanged.toLocaleString()}건${
+          r.failed > 0 ? ` · 실패 ${r.failed.toLocaleString()}건` : ''
+        }`
+      });
+    },
+    [notificationApi]
   );
 
   const handleCreateSubmit = useCallback(async () => {
@@ -522,12 +548,21 @@ export default function InstitutionCodesPage(): JSX.Element {
       {
         title: '액션',
         key: 'action',
-        width: 150,
+        width: 220,
         render: (_, record) => (
           <Space size={0}>
             {canManageMembers ? (
               <Button type="link" size="small" onClick={() => openMembers(record)}>
                 회원 관리
+              </Button>
+            ) : null}
+            {canManageMembers ? (
+              <Button
+                type="link"
+                size="small"
+                onClick={() => openQuestionExposure(record)}
+              >
+                노출 문항
               </Button>
             ) : null}
             <Button type="link" size="small" onClick={() => openEdit(record)}>
@@ -537,7 +572,7 @@ export default function InstitutionCodesPage(): JSX.Element {
         )
       }
     ],
-    [canManageMembers, openEdit, openMembers]
+    [canManageMembers, openEdit, openMembers, openQuestionExposure]
   );
 
   const memberColumns = useMemo<TableColumnsType<InstitutionCodeMember>>(
@@ -844,6 +879,17 @@ export default function InstitutionCodesPage(): JSX.Element {
           confirmText="해제 실행"
           onCancel={() => setRemoveTarget(null)}
           onConfirm={handleRemoveConfirm}
+        />
+      ) : null}
+
+      {questionExposureTarget ? (
+        <InstitutionQuestionExposureModal
+          open
+          institution={questionExposureTarget}
+          canManage={canManageMembers}
+          isSupabase={isInstitutionCodesSupabase}
+          onClose={() => setQuestionExposureTarget(null)}
+          onMutated={handleQuestionExposureMutated}
         />
       ) : null}
     </>

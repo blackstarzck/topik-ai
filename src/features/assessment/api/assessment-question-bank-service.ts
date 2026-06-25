@@ -6,28 +6,34 @@ import {
 } from './supabase-assessment-question-bank-service';
 import {
   assignMockQuestionTag,
+  clearMockQuestionInstitutions,
   loadMockActiveQuestionTags,
   loadMockDetail,
+  loadMockQuestionInstitutions,
   loadMockSummaries,
   loadMockTagMaster,
   loadMockTagMasterCatalog,
   loadMockTopicMaster,
   loadMockTopicMasterCatalog,
   removeMockQuestionTag,
+  setMockQuestionInstitutions,
   setMockServiceStatus,
   setMockServiceStatusBulk,
   setMockTagMasterStatus
 } from './mock-question-bank-service';
 import {
   assignTopikWritingQuestionTag,
+  clearTopikWritingQuestionInstitutions,
   loadTopikWritingActiveQuestionTags,
   loadTopikWritingDetail,
+  loadTopikWritingQuestionInstitutions,
   loadTopikWritingSummaries,
   loadTopikWritingTagMaster,
   loadTopikWritingTagMasterCatalog,
   loadTopikWritingTopicMaster,
   loadTopikWritingTopicMasterCatalog,
   removeTopikWritingQuestionTag,
+  setTopikWritingQuestionInstitutions,
   setTopikWritingServiceStatus,
   setTopikWritingServiceStatusBulk,
   setTopikWritingTagMasterStatus
@@ -41,7 +47,8 @@ import type {
   TopikWritingTagMasterCatalogRow,
   TopikWritingTagMasterRow,
   TopikWritingTopicMasterCatalogRow,
-  TopikWritingTopicMasterRow
+  TopikWritingTopicMasterRow,
+  WritingQuestionInstitutionRow
 } from '../model/assessment-question-bank-types';
 
 /**
@@ -78,6 +85,17 @@ type AssignQuestionTagPayload = {
 type RemoveQuestionTagPayload = {
   tagAssignmentId: number;
   memo: string;
+};
+
+type SetWritingQuestionInstitutionsPayload = {
+  questionIds: string[];
+  institutionCodes: string[];
+  reason: string;
+};
+
+type ClearWritingQuestionInstitutionsPayload = {
+  questionIds: string[];
+  reason: string;
 };
 
 type UpdateTagMasterStatusPayload = {
@@ -273,6 +291,70 @@ async function removeQuestionTag(payload: RemoveQuestionTagPayload): Promise<voi
   throw new Error('legacy 롤백 모드에서는 태그를 편집할 수 없습니다.');
 }
 
+/**
+ * 기관별 노출 매핑 — 문항 N건의 허용 기관 집합을 동기화(set)하거나 전부 제거(clear)
+ * 한다(공개 기본 + 기관 한정). 사유 필수·문항별 격리·멱등·감사는 RPC가 책임지고,
+ * mock은 결과 shape만 재현한다(감사 미기록). 단건/일괄 공용(questionIds 배열).
+ */
+async function loadQuestionInstitutions(
+  questionId?: string,
+  signal?: AbortSignal
+): Promise<WritingQuestionInstitutionRow[]> {
+  if (questionBankDataSource === 'mock') {
+    return loadMockQuestionInstitutions(questionId);
+  }
+  if (questionBankDataSource === 'topik_writing') {
+    return loadTopikWritingQuestionInstitutions(questionId, signal);
+  }
+  return [];
+}
+
+async function setQuestionInstitutions(
+  payload: SetWritingQuestionInstitutionsPayload
+): Promise<BulkServiceStatusResult> {
+  if (!payload.reason.trim()) {
+    throw new Error('기관 노출 변경 사유를 입력해 주세요.');
+  }
+  if (payload.questionIds.length === 0) {
+    throw new Error('대상 문항을 선택해 주세요.');
+  }
+
+  if (questionBankDataSource === 'mock') {
+    return setMockQuestionInstitutions(
+      payload.questionIds,
+      payload.institutionCodes,
+      payload.reason
+    );
+  }
+  if (questionBankDataSource === 'topik_writing') {
+    return setTopikWritingQuestionInstitutions(
+      payload.questionIds,
+      payload.institutionCodes,
+      payload.reason
+    );
+  }
+  throw new Error('legacy 롤백 모드에서는 기관 노출을 변경할 수 없습니다.');
+}
+
+async function clearQuestionInstitutions(
+  payload: ClearWritingQuestionInstitutionsPayload
+): Promise<BulkServiceStatusResult> {
+  if (!payload.reason.trim()) {
+    throw new Error('기관 노출 변경 사유를 입력해 주세요.');
+  }
+  if (payload.questionIds.length === 0) {
+    throw new Error('대상 문항을 선택해 주세요.');
+  }
+
+  if (questionBankDataSource === 'mock') {
+    return clearMockQuestionInstitutions(payload.questionIds);
+  }
+  if (questionBankDataSource === 'topik_writing') {
+    return clearTopikWritingQuestionInstitutions(payload.questionIds, payload.reason);
+  }
+  throw new Error('legacy 롤백 모드에서는 기관 노출을 변경할 수 없습니다.');
+}
+
 export function fetchAssessmentQuestionSummariesSafe(signal?: AbortSignal) {
   return toSafeResult(() =>
     withRetry(() => loadSummaries(signal), { maxRetries: 1 })
@@ -367,4 +449,25 @@ export function assignQuestionTagSafe(payload: AssignQuestionTagPayload) {
 
 export function removeQuestionTagSafe(payload: RemoveQuestionTagPayload) {
   return toSafeResult(() => removeQuestionTag(payload));
+}
+
+export function fetchWritingQuestionInstitutionsSafe(
+  questionId?: string,
+  signal?: AbortSignal
+) {
+  return toSafeResult(() =>
+    withRetry(() => loadQuestionInstitutions(questionId, signal), { maxRetries: 1 })
+  );
+}
+
+export function setWritingQuestionInstitutionsSafe(
+  payload: SetWritingQuestionInstitutionsPayload
+) {
+  return toSafeResult(() => setQuestionInstitutions(payload));
+}
+
+export function clearWritingQuestionInstitutionsSafe(
+  payload: ClearWritingQuestionInstitutionsPayload
+) {
+  return toSafeResult(() => clearQuestionInstitutions(payload));
 }

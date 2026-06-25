@@ -7,7 +7,8 @@ import type {
   TopikWritingTagMasterCatalogRow,
   TopikWritingTagMasterRow,
   TopikWritingTopicMasterCatalogRow,
-  TopikWritingTopicMasterRow
+  TopikWritingTopicMasterRow,
+  WritingQuestionInstitutionRow
 } from '../model/assessment-question-bank-types';
 
 /**
@@ -478,4 +479,117 @@ export async function removeMockQuestionTag(
     throw new Error(`tag assignment not found: ${tagAssignmentId}`);
   }
   mockQuestionTags.splice(index, 1);
+}
+
+// ---------------------------------------------------------------------------
+// 기관별 노출 매핑 모크 — set-semantics(전달 코드 집합 = 최종 허용 집합)·BulkResult
+// shape를 화면 수준에서 재현. 실DB·감사에는 쓰지 않으며 코드 활성 검증은 흉내 내지
+// 않는다(D-12 — 실검증은 dev DB 경로). 라벨은 code 그대로(화면은 codeOptions로 표시).
+// ---------------------------------------------------------------------------
+
+const mockQuestionInstitutions: WritingQuestionInstitutionRow[] = [];
+
+export async function loadMockQuestionInstitutions(
+  questionId?: string
+): Promise<WritingQuestionInstitutionRow[]> {
+  return mockQuestionInstitutions
+    .filter((row) => !questionId || row.questionId === questionId)
+    .map((row) => ({ ...row }));
+}
+
+export async function setMockQuestionInstitutions(
+  questionIds: string[],
+  institutionCodes: string[],
+  reason: string
+): Promise<BulkServiceStatusResult> {
+  const uniqueIds = Array.from(new Set(questionIds));
+  const targetCodes = Array.from(
+    new Set(institutionCodes.map((code) => code.trim()).filter(Boolean))
+  );
+  let changed = 0;
+  let unchanged = 0;
+  let failed = 0;
+  const details: BulkServiceStatusResult['details'] = [];
+
+  for (const questionId of uniqueIds) {
+    const detail = mockDetails.find((item) => item.questionId === questionId);
+    if (!detail) {
+      failed += 1;
+      if (details.length < 50) {
+        details.push({ questionId, kind: 'failed', message: '문항 대상을 찾을 수 없습니다.' });
+      }
+      continue;
+    }
+    const current = mockQuestionInstitutions
+      .filter((row) => row.questionId === questionId)
+      .map((row) => row.institutionCode);
+    const added = targetCodes.filter((code) => !current.includes(code));
+    const removed = current.filter((code) => !targetCodes.includes(code));
+    if (added.length === 0 && removed.length === 0) {
+      unchanged += 1;
+      continue;
+    }
+    for (const code of removed) {
+      const index = mockQuestionInstitutions.findIndex(
+        (row) => row.questionId === questionId && row.institutionCode === code
+      );
+      if (index >= 0) {
+        mockQuestionInstitutions.splice(index, 1);
+      }
+    }
+    for (const code of added) {
+      mockQuestionInstitutions.push({
+        questionId,
+        itemNumber: Number(detail.questionNumber),
+        institutionCode: code,
+        institutionLabel: code,
+        institutionStatus: '활성',
+        reason,
+        createdAt: '2026-06-25 00:00'
+      });
+    }
+    changed += 1;
+  }
+
+  return {
+    total: uniqueIds.length,
+    changed,
+    unchanged,
+    blocked: 0,
+    failed,
+    details,
+    batchId: 'mock-batch'
+  };
+}
+
+export async function clearMockQuestionInstitutions(
+  questionIds: string[]
+): Promise<BulkServiceStatusResult> {
+  const uniqueIds = Array.from(new Set(questionIds));
+  let changed = 0;
+  let unchanged = 0;
+
+  for (const questionId of uniqueIds) {
+    const before = mockQuestionInstitutions.length;
+    for (let index = mockQuestionInstitutions.length - 1; index >= 0; index -= 1) {
+      if (mockQuestionInstitutions[index].questionId === questionId) {
+        mockQuestionInstitutions.splice(index, 1);
+      }
+    }
+    if (mockQuestionInstitutions.length < before) {
+      changed += 1;
+    } else {
+      unchanged += 1;
+    }
+  }
+
+  return {
+    total: uniqueIds.length,
+    changed,
+    unchanged,
+    blocked: 0,
+    failed: 0,
+    details: [],
+    batchId: 'mock-batch'
+  };
 }

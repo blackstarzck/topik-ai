@@ -112,15 +112,22 @@ function renderTooltipTitle(items: readonly StatusGuideItem[]): JSX.Element {
   );
 }
 
-export function createStatusColumnTitle(
-  title: string,
-  statuses: readonly string[]
-): JSX.Element {
-  const items = statuses.map((status) => ({
-    label: status,
-    description: getStatusDescription(status)
-  }));
+// 컬럼 헤더 툴팁 본문: 단일 설명문(문자열) 또는 라벨/설명 항목 리스트를 모두 지원한다.
+export type ColumnInfoContent = string | readonly StatusGuideItem[];
 
+function renderInfoBody(content: ColumnInfoContent): JSX.Element {
+  if (typeof content === 'string') {
+    return <div style={{ ...tooltipDescriptionStyle, maxWidth: 280 }}>{content}</div>;
+  }
+
+  return renderTooltipTitle(content);
+}
+
+// 상태 enum이 아닌 일반 컬럼(숫자·계산값 등)에 설명 툴팁을 다는 범용 헬퍼.
+export function createInfoColumnTitle(
+  title: string,
+  content: ColumnInfoContent
+): JSX.Element {
   return (
     <span
       style={{
@@ -130,7 +137,7 @@ export function createStatusColumnTitle(
       }}
     >
       <span>{title}</span>
-      <Tooltip placement="topLeft" title={renderTooltipTitle(items)}>
+      <Tooltip placement="topLeft" title={renderInfoBody(content)}>
         <span
           aria-label={`${title} 안내`}
           onClick={stopHeaderInteraction}
@@ -155,4 +162,16 @@ export function createStatusColumnTitle(
       </Tooltip>
     </span>
   );
+}
+
+export function createStatusColumnTitle(
+  title: string,
+  statuses: readonly string[]
+): JSX.Element {
+  const items = statuses.map((status) => ({
+    label: status,
+    description: getStatusDescription(status)
+  }));
+
+  return createInfoColumnTitle(title, items);
 }

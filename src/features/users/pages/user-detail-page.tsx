@@ -49,7 +49,10 @@ import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
 import { SocialProviderTags } from '../../../shared/ui/social-provider/social-provider-tags';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
-import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
+import {
+  createInfoColumnTitle,
+  createStatusColumnTitle
+} from '../../../shared/ui/table/status-column-title';
 import {
   createDefinedColumnFilterProps,
   createNumberSorter,
@@ -76,6 +79,23 @@ const learningWeaknessSourceLabels: Record<string, string> = {
   writing_dimension: '작문 영역',
   goal: '목표'
 };
+
+// v13 온보딩(LearningGoalForm)의 weakAreas i18n과 동일한 약점 슬러그 → 한글 매핑.
+// 출처가 goal인 약점은 v13 약점 슬러그로 저장되므로 사용자 화면과 동일한 한글 라벨로 표시한다.
+// 매핑이 없는 값(태그/영역 등 다른 출처)은 원문을 그대로 노출한다.
+const learningWeaknessAreaLabels: Record<string, string> = {
+  vocabulary: '어휘',
+  grammar: '문법',
+  'reading-comprehension': '읽기 이해',
+  'listening-comprehension': '듣기 이해',
+  'essay-thesis': '논술 주제',
+  'essay-structure': '논술 구조',
+  'short-answer': '단답 작성',
+  'long-form-cohesion': '장문 결속'
+};
+
+const formatWeaknessLabel = (label: string): string =>
+  learningWeaknessAreaLabels[label] ?? label;
 
 type UsersDetailTabKey =
   | 'profile'
@@ -940,22 +960,46 @@ export default function UserDetailPage(): JSX.Element {
       {
         title: '약점',
         dataIndex: 'label',
-        sorter: createTextSorter((record) => record.label)
+        sorter: createTextSorter((record) => formatWeaknessLabel(record.label)),
+        render: (value: string) => formatWeaknessLabel(value)
       },
       {
-        title: '출처',
+        title: createInfoColumnTitle('출처', [
+          {
+            label: '영역',
+            description: '영역별 정답률이 70% 미만일 때 자동 추출한 약점입니다.'
+          },
+          {
+            label: '태그',
+            description: '오답 문제에 붙은 태그를 빈도순으로 추출한 약점입니다.'
+          },
+          {
+            label: '작문 영역',
+            description: '작문 피드백에서 약점으로 표시된 평가 차원입니다.'
+          },
+          {
+            label: '목표',
+            description: '회원이 온보딩에서 직접 선택한 관심·약점 영역입니다(실측 근거 아님).'
+          }
+        ]),
         dataIndex: 'source',
         width: 120,
         render: (value: string) => learningWeaknessSourceLabels[value] ?? value
       },
       {
-        title: '심각도',
+        title: createInfoColumnTitle(
+          '심각도',
+          '약점이 얼마나 심각한지를 나타내며 숫자가 클수록 심각합니다. 출처별 산정 기준이 다릅니다 — 영역: 정답률 50% 미만 3 / 50~70% 2, 태그: 항상 2, 작문 영역: 피드백상 약점 수준, 목표: 항상 1(자기신고).'
+        ),
         dataIndex: 'severity',
         width: 100,
         sorter: createNumberSorter((record) => record.severity)
       },
       {
-        title: '근거 수',
+        title: createInfoColumnTitle(
+          '근거 수',
+          '이 약점을 뒷받침하는 데이터 개수입니다. 출처별 의미가 다릅니다 — 영역: 풀이 시도 수, 태그: 해당 태그 오답 수, 작문 영역: 약점으로 잡힌 피드백 수, 목표: 자기신고라 항상 1.'
+        ),
         dataIndex: 'evidenceCount',
         width: 100,
         sorter: createNumberSorter((record) => record.evidenceCount)
@@ -1232,7 +1276,7 @@ export default function UserDetailPage(): JSX.Element {
                   </Descriptions.Item>
                   <Descriptions.Item label="관심·약점 영역" span={2}>
                     {onboardingSummary.ob.weakAreas.length
-                      ? onboardingSummary.ob.weakAreas.join(', ')
+                      ? onboardingSummary.ob.weakAreas.map(formatWeaknessLabel).join(', ')
                       : '-'}
                   </Descriptions.Item>
                   <Descriptions.Item label="목표 설정일" span={2}>

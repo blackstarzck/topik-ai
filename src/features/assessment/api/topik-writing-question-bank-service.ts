@@ -10,7 +10,8 @@ import type {
   TopikWritingTagMasterCatalogRow,
   TopikWritingTagMasterRow,
   TopikWritingTopicMasterCatalogRow,
-  TopikWritingTopicMasterRow
+  TopikWritingTopicMasterRow,
+  WritingQuestionInstitutionRow
 } from '../model/assessment-question-bank-types';
 
 /**
@@ -578,4 +579,78 @@ export async function setTopikWritingTagMasterStatus(
   if (error) {
     throw new Error(error.message);
   }
+}
+
+// ---------------------------------------------------------------------------
+// 기관별 노출 매핑 — admin_set/clear/list_writing_question_institutions.
+// 공개 기본 + 기관 한정: 매핑 행이 있는 문항은 해당 기관 회원에게만 노출된다.
+// set 은 set-semantics(전달 코드 집합 = 그 문항의 최종 허용 집합), 문항별 격리·멱등·
+// self-verify·감사(batch_id 묶음)는 RPC 내장. 결과 jsonb 는 mapBulkResult 재사용 매핑.
+// ---------------------------------------------------------------------------
+
+type QuestionInstitutionRpcRow = {
+  question_id: string;
+  item_number: number;
+  institution_code: string;
+  institution_label: string | null;
+  institution_status: string | null;
+  reason: string | null;
+  created_at: string | null;
+};
+
+export async function loadTopikWritingQuestionInstitutions(
+  questionId?: string,
+  signal?: AbortSignal
+): Promise<WritingQuestionInstitutionRow[]> {
+  const client = requireClient();
+  const { data, error } = await client.rpc('admin_list_writing_question_institutions', {
+    p_question_id: questionId ?? null
+  });
+  if (signal?.aborted) {
+    throw new DOMException('Request aborted', 'AbortError');
+  }
+  if (error) {
+    throw new Error(error.message);
+  }
+  return ((data ?? []) as QuestionInstitutionRpcRow[]).map((row) => ({
+    questionId: row.question_id,
+    itemNumber: row.item_number,
+    institutionCode: row.institution_code,
+    institutionLabel: row.institution_label ?? row.institution_code,
+    institutionStatus: row.institution_status ?? '',
+    reason: row.reason ?? '',
+    createdAt: toDateTime(row.created_at)
+  }));
+}
+
+export async function setTopikWritingQuestionInstitutions(
+  questionIds: string[],
+  institutionCodes: string[],
+  reason: string
+): Promise<BulkServiceStatusResult> {
+  const client = requireClient();
+  const { data, error } = await client.rpc('admin_set_writing_question_institutions', {
+    p_question_ids: questionIds,
+    p_institution_codes: institutionCodes,
+    p_reason: reason
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+  return mapBulkResult(data);
+}
+
+export async function clearTopikWritingQuestionInstitutions(
+  questionIds: string[],
+  reason: string
+): Promise<BulkServiceStatusResult> {
+  const client = requireClient();
+  const { data, error } = await client.rpc('admin_clear_writing_question_institutions', {
+    p_question_ids: questionIds,
+    p_reason: reason
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+  return mapBulkResult(data);
 }

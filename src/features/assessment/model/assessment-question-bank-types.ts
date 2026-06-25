@@ -208,3 +208,18 @@ export type AssessmentQuestionAuditEvent = {
   changedBy: string;
   createdAt: string;
 };
+
+/**
+ * 문항 × 기관 노출 매핑 행 — admin_list_writing_question_institutions RPC와 1:1.
+ * 매핑 행이 있는 문항은 해당 institutionCode 회원에게만 노출된다(공개 기본 + 기관 한정).
+ * set/clear 결과는 BulkServiceStatusResult를 재사용한다(노출 상태 일괄 처리와 동일 shape).
+ */
+export type WritingQuestionInstitutionRow = {
+  questionId: string;
+  itemNumber: number;
+  institutionCode: string;
+  institutionLabel: string;
+  institutionStatus: string;
+  reason: string;
+  createdAt: string;
+};

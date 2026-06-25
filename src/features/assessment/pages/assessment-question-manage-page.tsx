@@ -14,6 +14,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import {
+  clearWritingQuestionInstitutionsSafe,
+  setWritingQuestionInstitutionsSafe,
   updateAssessmentQuestionServiceStatusBulkSafe,
   updateAssessmentQuestionServiceStatusSafe
 } from '../api/assessment-question-bank-service';
@@ -22,11 +24,25 @@ import { useAssessmentQuestionFilters } from '../model/use-assessment-question-f
 import { useAssessmentQuestionList } from '../model/use-assessment-question-list';
 import {
   useQuestionBankTagMaster,
-  useQuestionBankTags
+  useQuestionBankTags,
+  useQuestionInstitutions
 } from '../model/use-question-bank-masters';
-import { QuestionTagEditModal } from '../ui/question-tag-edit-modal';
+import {
+  QuestionTagEditModal,
+  type QuestionTagMutationSummary
+} from '../ui/question-tag-edit-modal';
 import { AssessmentBankTabs } from '../ui/assessment-bank-tabs';
 import { BulkServiceStatusModal } from '../ui/bulk-service-status-modal';
+import {
+  BulkInstitutionExposureModal,
+  type BulkInstitutionExposureMode
+} from '../ui/bulk-institution-exposure-modal';
+import {
+  QuestionInstitutionEditModal,
+  type QuestionInstitutionMutationSummary
+} from '../ui/question-institution-edit-modal';
+import { fetchInstitutionCodesSafe } from '../../users/api/institution-codes-service';
+import type { InstitutionCode } from '../../users/model/institution-codes-types';
 import {
   REPEAT_AVOID_EXCESS_THRESHOLD,
   SERVICE_STATUS_LABELS,
@@ -50,7 +66,8 @@ import {
 import type {
   AssessmentQuestionNumber,
   AssessmentQuestionSummary,
-  AssessmentServiceStatus
+  AssessmentServiceStatus,
+  WritingQuestionInstitutionRow
 } from '../model/assessment-question-bank-types';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
@@ -75,6 +92,10 @@ const { Text } = Typography;
 const serviceStatusLabels = assessmentServiceStatuses.map(
   (status) => SERVICE_STATUS_LABELS[status]
 );
+
+// 미매핑(전체 공개) 문항의 안정적 빈 배열 — 단건 모달이 부모 재렌더마다 새 [] 리터럴로
+// 현재 매핑 참조를 갈아치워 미저장 선택을 초기화하지 않도록 모듈 상수로 고정한다.
+const EMPTY_INSTITUTION_ROWS: WritingQuestionInstitutionRow[] = [];
 
 type OperationActionState = {
   questionId: string;
@@ -138,12 +159,20 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
   const { tagsByQuestionId, tagCountByQuestionId, reload: reloadTags } =
     useQuestionBankTags();
   const { tagMasterRows } = useQuestionBankTagMaster();
+  const { institutionsByQuestionId, reload: reloadInstitutions } =
+    useQuestionInstitutions();
   const [actionState, setActionState] = useState<OperationActionState>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
   const [bulkStatus, setBulkStatus] = useState<AssessmentServiceStatus | null>(
     null
   );
   const [tagEditQuestionId, setTagEditQuestionId] = useState<string | null>(null);
+  const [institutionEditQuestionId, setInstitutionEditQuestionId] = useState<
+    string | null
+  >(null);
+  const [bulkInstitutionMode, setBulkInstitutionMode] =
+    useState<BulkInstitutionExposureMode | null>(null);
+  const [codeOptions, setCodeOptions] = useState<InstitutionCode[]>([]);
   const [notificationApi, notificationContextHolder] =
     notification.useNotification();
 
@@ -209,6 +238,18 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
     setSelectedRowKeys([]);
   }, [filterSignature]);
 
+  // 기관 노출 설정/일괄 모달의 코드 옵션 — 활성 기관 코드만 로드한다.
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetchInstitutionCodesSafe(controller.signal).then((result) => {
+      if (controller.signal.aborted || !result.ok) {
+        return;
+      }
+      setCodeOptions(result.data.filter((code) => code.status === '활성'));
+    });
+    return () => controller.abort();
+  }, []);
+
   const summaryItems = useMemo(() => {
     const countOf = (status: AssessmentServiceStatus) =>
       currentNumberQuestions.filter(
@@ -249,6 +290,14 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
     return byCode;
   }, [tagMasterRows]);
 
+  const institutionLabelByCode = useMemo(() => {
+    const byCode: Record<string, string> = {};
+    codeOptions.forEach((option) => {
+      byCode[option.code] = option.label;
+    });
+    return byCode;
+  }, [codeOptions]);
+
   // 노출(available) 일괄 전환 시 서버가 차단할 운영주의 태그 활성 건수 — 모달에서
   // "N건 자동 제외" 안내로 기대치를 맞춘다(실제 차단은 RPC가 강제).
   const bulkCautionCount = useMemo(
@@ -262,27 +311,41 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
   );
 
   const handleTagMutated = useCallback(
-    (action: 'tag_assigned' | 'tag_removed', tagLabel: string) => {
+    (summary: QuestionTagMutationSummary) => {
       if (!tagEditQuestionId) {
         return;
       }
 
       reloadTags();
+
+      const parts: string[] = [];
+      if (summary.assigned.length > 0) {
+        parts.push(`부여 ${summary.assigned.length}건`);
+      }
+      if (summary.removed.length > 0) {
+        parts.push(`제거 ${summary.removed.length}건`);
+      }
+      const changeSummary = parts.length > 0 ? parts.join(' · ') : '변경 없음';
+
+      const description = (
+        <Space direction="vertical" size={4}>
+          <Text>대상 유형: {getTargetTypeLabel('AssessmentQuestion')}</Text>
+          <Text>대상 ID: {tagEditQuestionId}</Text>
+          <AuditLogLink targetType="AssessmentQuestion" targetId={tagEditQuestionId} />
+        </Space>
+      );
+
+      if (summary.failed.length > 0) {
+        notificationApi.warning({
+          message: `태그 변경 일부 처리 (${changeSummary}, 실패 ${summary.failed.length}건)`,
+          description
+        });
+        return;
+      }
+
       notificationApi.success({
-        message:
-          action === 'tag_assigned'
-            ? `'${tagLabel}' 태그를 부여했습니다.`
-            : `'${tagLabel}' 태그를 제거했습니다.`,
-        description: (
-          <Space direction="vertical" size={4}>
-            <Text>대상 유형: {getTargetTypeLabel('AssessmentQuestion')}</Text>
-            <Text>대상 ID: {tagEditQuestionId}</Text>
-            <AuditLogLink
-              targetType="AssessmentQuestion"
-              targetId={tagEditQuestionId}
-            />
-          </Space>
-        )
+        message: `태그를 변경했습니다 (${changeSummary}).`,
+        description
       });
     },
     [notificationApi, reloadTags, tagEditQuestionId]
@@ -400,6 +463,116 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
     [bulkStatus, notificationApi, reload, selectedQuestions]
   );
 
+  const handleInstitutionMutated = useCallback(
+    (summary: QuestionInstitutionMutationSummary) => {
+      if (!institutionEditQuestionId) {
+        return;
+      }
+      reloadInstitutions();
+
+      const targetId = institutionEditQuestionId;
+      const parts: string[] = [];
+      if (summary.added.length > 0) {
+        parts.push(`추가 ${summary.added.length}곳`);
+      }
+      if (summary.removed.length > 0) {
+        parts.push(`제거 ${summary.removed.length}곳`);
+      }
+      const changeSummary = summary.clearedToPublic
+        ? '전체 공개로 변경'
+        : parts.length > 0
+          ? parts.join(' · ')
+          : '변경 없음';
+
+      notificationApi.success({
+        message: `기관 노출을 변경했습니다 (${changeSummary}).`,
+        description: (
+          <Space direction="vertical" size={4}>
+            <Text>대상 유형: {getTargetTypeLabel('AssessmentQuestion')}</Text>
+            <Text>대상 ID: {targetId}</Text>
+            <AuditLogLink targetType="AssessmentQuestion" targetId={targetId} />
+          </Space>
+        )
+      });
+    },
+    [institutionEditQuestionId, notificationApi, reloadInstitutions]
+  );
+
+  const handleBulkInstitutionConfirm = useCallback(
+    async ({
+      institutionCodes,
+      reason
+    }: {
+      institutionCodes: string[];
+      reason: string;
+    }) => {
+      if (!bulkInstitutionMode) {
+        return;
+      }
+      const targetIds = selectedQuestions.map((question) => question.questionId);
+      const result =
+        bulkInstitutionMode === 'set'
+          ? await setWritingQuestionInstitutionsSafe({
+              questionIds: targetIds,
+              institutionCodes,
+              reason
+            })
+          : await clearWritingQuestionInstitutionsSafe({
+              questionIds: targetIds,
+              reason
+            });
+
+      if (!result.ok) {
+        notificationApi.error({
+          message: '기관 노출을 일괄 변경하지 못했습니다.',
+          description: result.error.message
+        });
+        return;
+      }
+
+      const summary = result.data;
+      const modeLabel =
+        bulkInstitutionMode === 'set' ? '기관 한정 지정' : '전체 공개 전환';
+      setBulkInstitutionMode(null);
+      setSelectedRowKeys([]);
+      reloadInstitutions();
+
+      const description = (
+        <Space direction="vertical" size={4}>
+          <Text>
+            변경 {summary.changed.toLocaleString()}건 · 변경없음{' '}
+            {summary.unchanged.toLocaleString()}건
+            {summary.failed > 0
+              ? ` · 실패 ${summary.failed.toLocaleString()}건`
+              : ''}
+          </Text>
+          {summary.details.slice(0, 5).map((detail) => (
+            <Text key={`${detail.kind}-${detail.questionId}`} type="secondary">
+              [{detail.kind === 'blocked' ? '차단' : '실패'}] {detail.questionId}:{' '}
+              {detail.message}
+            </Text>
+          ))}
+          {summary.batchId && summary.batchId !== 'mock-batch' ? (
+            <Text type="secondary">batch: {summary.batchId}</Text>
+          ) : null}
+        </Space>
+      );
+
+      if (summary.failed > 0) {
+        notificationApi.warning({
+          message: '기관 노출을 일괄 변경했습니다(일부 실패).',
+          description
+        });
+      } else {
+        notificationApi.success({
+          message: `${modeLabel} — ${summary.changed.toLocaleString()}건을 변경했습니다.`,
+          description
+        });
+      }
+    },
+    [bulkInstitutionMode, notificationApi, reloadInstitutions, selectedQuestions]
+  );
+
   // 문항 상세 보기 진입 — 현재 검색/필터(searchParams)를 쿼리로 보존해 상세에서
   // 뒤로 돌아올 때 목록 상태가 복원되게 한다(구 목록 페이지 계약 계승).
   const openDetail = useCallback(
@@ -438,6 +611,11 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
         key: 'detail',
         label: '상세 보기',
         onClick: () => openDetail(record.questionId)
+      },
+      {
+        key: 'institution-exposure',
+        label: '기관 노출 설정',
+        onClick: () => setInstitutionEditQuestionId(record.questionId)
       },
       ...OPERATION_ACTIONS.map((action) => ({
         key: `status-${action.nextStatus}`,
@@ -600,6 +778,32 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
         }
       },
       {
+        // 현황 표시 전용 — 설정 진입은 행 더보기 메뉴의 '기관 노출 설정' 항목으로 이동했다.
+        title: '기관 노출',
+        key: 'institutions',
+        width: 200,
+        render: (_, record) => {
+          const rows = institutionsByQuestionId[record.questionId] ?? [];
+          if (rows.length === 0) {
+            return <Tag color="default">전체 공개</Tag>;
+          }
+          return (
+            <Space size={6} wrap>
+              {rows.slice(0, 2).map((row) => (
+                <Tag key={row.institutionCode} color="blue">
+                  {institutionLabelByCode[row.institutionCode] ??
+                    row.institutionLabel ??
+                    row.institutionCode}
+                </Tag>
+              ))}
+              {rows.length > 2 ? (
+                <Text type="secondary">+{rows.length - 2}</Text>
+              ) : null}
+            </Space>
+          );
+        }
+      },
+      {
         title: '최근 수정',
         key: 'updatedAt',
         width: 160,
@@ -618,6 +822,8 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
     ],
     [
       createRowActionItems,
+      institutionLabelByCode,
+      institutionsByQuestionId,
       openDetail,
       tagCountByQuestionId,
       targetLevelFilterOptions,
@@ -756,6 +962,13 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
               <Button size="small" onClick={() => setBulkStatus('internal_test')}>
                 내부 테스트
               </Button>
+              <Text type="secondary">기관 노출:</Text>
+              <Button size="small" onClick={() => setBulkInstitutionMode('set')}>
+                기관 한정 지정
+              </Button>
+              <Button size="small" onClick={() => setBulkInstitutionMode('clear')}>
+                전체 공개로
+              </Button>
               <Button
                 size="small"
                 type="text"
@@ -786,7 +999,7 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
                 pageSizeOptions: [10, 20, 50, 100],
                 showTotal: (total) => `총 ${total.toLocaleString()}건`
               }}
-              scroll={{ x: 1360 }}
+              scroll={{ x: 1580 }}
               tableLayout="fixed"
               columns={manageColumns}
               dataSource={filteredQuestions}
@@ -827,6 +1040,31 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
             tagMasterRows={tagMasterRows}
             onClose={() => setTagEditQuestionId(null)}
             onMutated={handleTagMutated}
+          />
+        ) : null}
+
+        {institutionEditQuestionId ? (
+          <QuestionInstitutionEditModal
+            open
+            questionId={institutionEditQuestionId}
+            activeInstitutions={
+              institutionsByQuestionId[institutionEditQuestionId] ??
+              EMPTY_INSTITUTION_ROWS
+            }
+            codeOptions={codeOptions}
+            onClose={() => setInstitutionEditQuestionId(null)}
+            onMutated={handleInstitutionMutated}
+          />
+        ) : null}
+
+        {bulkInstitutionMode ? (
+          <BulkInstitutionExposureModal
+            open
+            mode={bulkInstitutionMode}
+            selectedQuestions={selectedQuestions}
+            codeOptions={codeOptions}
+            onCancel={() => setBulkInstitutionMode(null)}
+            onConfirm={handleBulkInstitutionConfirm}
           />
         ) : null}
       </div>
