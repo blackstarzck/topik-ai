@@ -49,6 +49,8 @@ const ITEM_TYPE_LABEL: Record<number, string> = {
   54: '의견 서술'
 };
 const ITEM_NUMBERS = [51, 52, 53, 54];
+const TRANSFER_PANEL_HEIGHT = 'min(52vh, 460px)';
+const TRANSFER_TREE_HEIGHT = 440;
 
 function shortId(questionId: string): string {
   return questionId.replace('topik-writing-', '');
@@ -407,6 +409,7 @@ export function InstitutionQuestionExposureModal({
       title={`노출 문항 · ${code}`}
       onCancel={onClose}
       destroyOnHidden
+      styles={{ body: { maxHeight: 'calc(100vh - 160px)', overflowY: 'auto' } }}
       footer={
         <Space>
           <Button onClick={onClose}>닫기</Button>
@@ -426,19 +429,12 @@ export function InstitutionQuestionExposureModal({
       <Space direction="vertical" size={14} style={{ width: '100%' }}>
         <Text type="secondary">{institution.label}</Text>
 
-        <Alert
-          type="info"
-          showIcon
-          message="이 기관에 전용으로 노출할 문항을 지정합니다."
-          description="좌측에서 유형·주제를 체크하면 하위 문항이 일괄 선택됩니다. ›로 노출에 추가, 우측에서 ‹로 제거하세요. 지정하지 않은 문항은 전체 공개이며, 다른 기관 설정과 독립입니다."
-        />
-
         {errorMessage ? <Alert type="error" showIcon message={errorMessage} /> : null}
 
         {canManage ? (
           <div
             style={{
-              border: '0.5px solid var(--color-border-info, #91caff)',
+              border: '0.5px solid #d9d9d9',
               borderRadius: 8,
               padding: '12px 14px'
             }}
@@ -467,7 +463,7 @@ export function InstitutionQuestionExposureModal({
               </Button>
             </Space>
             <div style={{ marginTop: 6 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>
+              <Text type="secondary" style={{ fontSize: 14 }}>
                 불러온 항목은 아래 목록에 채워지며, 적용을 눌러야 저장됩니다.
               </Text>
             </div>
@@ -482,7 +478,8 @@ export function InstitutionQuestionExposureModal({
               border: '0.5px solid #d9d9d9',
               borderRadius: 8,
               display: 'flex',
-              flexDirection: 'column'
+              flexDirection: 'column',
+              height: TRANSFER_PANEL_HEIGHT
             }}
           >
             <div style={{ padding: '8px 12px', borderBottom: '0.5px solid #f0f0f0' }}>
@@ -498,7 +495,7 @@ export function InstitutionQuestionExposureModal({
                 onChange={(event) => setLeftSearch(event.target.value)}
               />
             </div>
-            <div style={{ padding: '6px 4px' }}>
+            <div style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: '6px 4px' }}>
               {leftTreeData.length === 0 ? (
                 <Empty
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -509,7 +506,7 @@ export function InstitutionQuestionExposureModal({
                   checkable={canManage}
                   selectable={false}
                   blockNode
-                  height={320}
+                  height={TRANSFER_TREE_HEIGHT}
                   treeData={leftTreeData}
                   checkedKeys={leftChecked}
                   onCheck={onLeftCheck}
@@ -559,7 +556,8 @@ export function InstitutionQuestionExposureModal({
               border: '0.5px solid #d9d9d9',
               borderRadius: 8,
               display: 'flex',
-              flexDirection: 'column'
+              flexDirection: 'column',
+              height: TRANSFER_PANEL_HEIGHT
             }}
           >
             <div style={{ padding: '8px 12px', borderBottom: '0.5px solid #f0f0f0' }}>
@@ -575,7 +573,17 @@ export function InstitutionQuestionExposureModal({
                 onChange={(event) => setRightSearch(event.target.value)}
               />
             </div>
-            <div style={{ maxHeight: 360, overflow: 'auto', padding: '4px 0' }}>
+            <div
+              style={{
+                flex: 1,
+                minHeight: 0,
+                overflow: 'auto',
+                padding: '4px 0',
+                ...(exposedQuestions.length === 0
+                  ? { display: 'flex', alignItems: 'center', justifyContent: 'center' }
+                  : {})
+              }}
+            >
               {exposedQuestions.length === 0 ? (
                 <Empty
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
