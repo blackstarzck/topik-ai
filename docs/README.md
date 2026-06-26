@@ -18,6 +18,7 @@
 - `api-inventory-backend-handoff.md` — v13 ↔ topik-ai 백엔드 API 인벤토리·핸드오프 참고 문서
 
 ### `docs/requests` (외부 발신 요청·발주 문서)
+- `v13-users-registration-lifecycle-handoff-2026-06-26.md` — v13 사용자 앱의 이메일 인증·필수 약관 동의·정상 진입 불변식 정합화 handoff(DB/RLS guard, auth completion route, dry-run/backfill, QA 기준)
 - `upstream-writing-endpoints-request-2026-06-10.md` — TOPIK 쓰기 문항 공급(인바운드) API 계약 요청서(D-11 재정의 — 2026-06-11 재작성, 구 push 업로드 요청 폐기)
 - `problems-read-only-freeze-notice-2026-06-11.md` — v13 `problems` read-only 동결 선언 공지 초안(§7.1-6 이행 — 오너 채널 발신용, 코드 0줄)
 - `content-team-order-2026-06-10.md` — [폐기] 콘텐츠팀 재분류 입력표 승인 발주서(인바운드 전환으로 트랙 소멸 — 미발신 종결, 역사 보존)
@@ -80,6 +81,7 @@
 ### `docs/architecture`
 - `admin-overview.md`
 - `admin-data-source-transition.md`
+- `users-registration-lifecycle-v13-handoff.md` — 이메일 미인증/약관 동의/회원 상태 불변식과 v13 원천 스키마·백필 요청 handoff(2026-06-26)
 - `shared-supabase-schema-ownership.md` — 공유 Supabase 스키마 소유권 매트릭스(객체별 owner/writer/reader/RLS/migration home — 2026-06-12 알림 기능 WP0-1)
 - `metadata-tag-schema-transition-decision-record.md` — 메타데이터·태그 스키마 전환 결정 기록(**§0 = 2026-06-11 인바운드 모델 전환 확정** + D-1~D-13 처분 + v13 경계 합의)
 - `d3-classification-ownership-decision-brief.md` — [폐기] D-3 분류 작성 주체 결정 브리프(인바운드 전환으로 목적 소멸 — 역사 보존)

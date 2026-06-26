@@ -9,7 +9,7 @@ status: "구현됨"
 primary_entity: "User"
 primary_table_candidate: "users, user_activities, user_payments, user_community_posts, user_access_logs, user_admin_memos"
 owner_agent_scope: "shared"
-last_reviewed_at: "2026-06-01"
+last_reviewed_at: "2026-06-26"
 ---
 
 ## 1. 문서 목적
@@ -38,7 +38,7 @@ last_reviewed_at: "2026-06-01"
 ### 목적
 
 - 회원 운영 맥락을 탭별로 검수하고 관련 원본 화면으로 연결합니다.
-- 프로필, 활동, 결제, 커뮤니티, 로그, 관리자 메모를 관리자 기준으로 추적합니다.
+- 프로필, 회원 상태, 이메일 인증, 약관 동의, 활동, 결제, 커뮤니티, 로그, 관리자 메모를 관리자 기준으로 추적합니다.
 - 마이페이지 프로필, 결제 내역, 커뮤니티 활동 화면에 운영상 추정으로 연결됩니다.
 
 ### 비목표
@@ -59,7 +59,7 @@ last_reviewed_at: "2026-06-01"
 
 | 엔티티 후보 | 테이블 후보 | CRUD | 관리자 UI 진입점 | 주요 필드 후보 | 감사 로그 Target | 사용자 화면 영향 | 미확정/차이 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| User | users, user_activities, user_payments, user_community_posts, user_access_logs, user_admin_memos | Create, Read, Update, Delete 후보 | 회원 상세 본문/상세/Modal | 프로필, 활동, 결제, 커뮤니티, 로그, 관리자 메모, id, status, created_at, updated_at | User + userId | 운영상 추정 | 현재 프론트엔드/문서 기준 후보 |
+| User | v13 `profiles`/`auth.users` + 상세 RPC/mock 폴백 | Read, 상태 Update | 회원 상세 본문/상세/Modal | 프로필, 회원 상태(파생), `profiles.status` 원천 운영 상태, 이메일 인증, 약관 동의, 활동, 결제, 커뮤니티, 로그, 관리자 메모, id, status, created_at, updated_at | User + userId | 운영상 추정 | `회원 상태`는 `profiles.status` + 이메일 인증 + 약관 동의 파생값, `이메일 인증`은 `auth.users.email_confirmed_at` 기준 |
 
 ### CRUD 상세
 
@@ -106,7 +106,9 @@ last_reviewed_at: "2026-06-01"
 | 구분 | 표준 값/용어 | 내부 코드 후보 | 사용자 노출 라벨 | 비고 |
 | --- | --- | --- | --- | --- |
 | 프로필/활동/결제/커뮤니티/로그/관리자 메모 | 프로필/활동/결제/커뮤니티/로그/관리자 메모 | page-specific enum candidate | 프로필/활동/결제/커뮤니티/로그/관리자 메모 | 정확한 상태 세트는 IA와 데이터 계약 문서를 우선합니다. |
-| 정상/정지/탈퇴 | 정상/정지/탈퇴 | page-specific enum candidate | 정상/정지/탈퇴 | 정확한 상태 세트는 IA와 데이터 계약 문서를 우선합니다. |
+| 회원 상태 | 인증 대기/약관 대기/정상/정지/탈퇴 | `profiles.status` + `auth.users.email_confirmed_at` + 필수 약관 동의 집계 | 인증 대기/약관 대기/정상/정지/탈퇴 | Admin 노출 파생 상태입니다. 이메일 미인증이면 `정상`으로 표시하지 않습니다. |
+| 약관 동의 | 동의 완료/일부 동의/미동의/동의 불가 | `consent_status`, `consent_accepted_at` | 동의 완료/일부 동의/미동의/동의 불가 | 이메일 미인증이면 `get_admin_users`가 `none/null`로 정규화하고 화면은 `동의 불가`로 표시합니다. |
+| 이메일 인증 | 인증 완료/미인증 | `auth.users.email_confirmed_at` | 인증 완료/미인증 | 학습 현황 온보딩 상태에서 미인증은 `이메일 인증 대기`로 우선 표시합니다. |
 
 ## 10. URL/검색/복원 규칙
 

@@ -7,6 +7,12 @@ export type TermsConsentStatus = '동의 완료' | '일부 동의' | '미동의'
 // '미인증' = 이메일 가입 후 확인메일을 누르지 않은 가입 미완료(중도이탈) 계정.
 // 소셜(google 등) 가입은 자동 인증되어 항상 '인증 완료'.
 export type EmailVerificationStatus = '인증 완료' | '미인증';
+export type RegistrationStatus =
+  | 'active'
+  | 'blocked'
+  | 'deleted'
+  | 'pending_email_verification'
+  | 'pending_required_consent';
 
 export type UserSummary = {
   id: string;
@@ -15,7 +21,12 @@ export type UserSummary = {
   nickname: string;
   joinedAt: string;
   lastLoginAt: string;
+  // v13 profiles.status 원천 운영 상태. 화면의 "회원 상태"는 이메일 인증과
+  // 필수 약관 동의까지 반영해 registration-status helper에서 파생한다.
   status: UserStatus;
+  // Admin RPC가 계산한 가입 생애주기 상태. profiles.status를 과확장하지 않고
+  // 이메일 인증/필수 약관 동의 여부를 별도 계약으로 내려준다.
+  registrationStatus?: RegistrationStatus;
   tier: UserTier;
   subscriptionStatus: SubscriptionStatus;
   // v13 가입 시 수집되는 국적 ISO 3166-1 alpha-2 코드 원본(미입력 시 빈 문자열).
@@ -25,11 +36,12 @@ export type UserSummary = {
   // 'email'(이메일·비밀번호 가입)을 제외한 provider 집계. 소셜 미연동 시 빈 배열.
   // 화면 표시(브랜드 라벨/색상 태그)는 shared/ui/social-provider 에서 처리.
   socialProviders: string[];
-  // 약관 동의(인증약관) 상태와 최종 동의일(YYYY-MM-DD, 미동의 시 빈 문자열).
+  // v13 원천 약관 동의 상태와 최종 동의일(YYYY-MM-DD, 미동의 시 빈 문자열).
+  // 이메일 미인증 계정에서는 화면 표시를 "동의 불가"로 파생한다.
   termsConsentStatus: TermsConsentStatus;
   termsConsentAt: string;
   // 이메일 인증(가입 완료) 여부. '미인증' = 가입 미완료(중도이탈) 계정으로 회원명/닉네임이
-  // 비어있을 수 있다. 회원 상태(정상/정지/탈퇴)와는 직교한다.
+  // 비어있을 수 있다. '미인증'이면 회원 상태는 "인증 대기"로 파생한다.
   emailVerificationStatus: EmailVerificationStatus;
   // 박람회/기관 유입 코드(v13 profiles.affiliation_code). 비어있으면 일반(유입경로 없음) 회원.
   // 코드 자체는 의미가 없고, 의미(기관/행사명)는 admin institution_codes 카탈로그가 소유한다.

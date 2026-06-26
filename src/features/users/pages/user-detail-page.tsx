@@ -40,7 +40,15 @@ import {
   clearInstitutionCodeSafe,
   fetchInstitutionCodesSafe
 } from '../api/institution-codes-service';
-import type { UserLearningOverview, UserStatus, UserSummary } from '../model/types';
+import type {
+  UserLearningOverview,
+  UserStatus,
+  UserSummary
+} from '../model/types';
+import {
+  getTermsConsentDisplayStatus,
+  getUserMembershipStatus
+} from '../model/registration-status';
 import type { InstitutionCode } from '../model/institution-codes-types';
 import type { AsyncState } from '../../../shared/model/async-state';
 import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
@@ -123,6 +131,32 @@ type DetailModalState = {
 function renderProfileValue(value: string): string {
   const trimmed = value.trim();
   return trimmed ? trimmed : emptyProfileValue;
+}
+
+function renderMembershipStatus(
+  status: UserStatus,
+  user: Pick<
+    UserSummary,
+    'emailVerificationStatus' | 'termsConsentStatus' | 'termsConsentAt' | 'registrationStatus'
+  >
+) {
+  const source = { ...user, status };
+  return <StatusBadge status={getUserMembershipStatus(source)} />;
+}
+
+function renderTermsConsentStatus(
+  user: Pick<UserSummary, 'emailVerificationStatus' | 'termsConsentStatus' | 'termsConsentAt'>
+) {
+  return <StatusBadge status={getTermsConsentDisplayStatus(user)} />;
+}
+
+function renderTermsConsentDate(
+  user: Pick<UserSummary, 'emailVerificationStatus' | 'termsConsentAt'>
+) {
+  if (user.emailVerificationStatus === '미인증') {
+    return emptyProfileValue;
+  }
+  return renderProfileValue(user.termsConsentAt);
 }
 
 const allowedTabs: readonly UsersDetailTabKey[] = [
@@ -1116,12 +1150,16 @@ export default function UserDetailPage(): JSX.Element {
     if (!ob) {
       return null;
     }
+    const verificationPending = user?.emailVerificationStatus === '미인증';
     const consentDone = user?.termsConsentStatus === '동의 완료';
-    const statusLabel = !consentDone
-      ? '약관 동의 대기'
-      : ob.hasGoal
-        ? '완료'
-        : '학습 목표 설정 대기';
+    let statusLabel = '학습 목표 설정 대기';
+    if (verificationPending) {
+      statusLabel = '이메일 인증 대기';
+    } else if (!consentDone) {
+      statusLabel = '약관 동의 대기';
+    } else if (ob.hasGoal) {
+      statusLabel = '완료';
+    }
     const statusColor = statusLabel === '완료' ? 'green' : 'orange';
     return { ob, statusLabel, statusColor };
   }, [learningState.data, user]);
@@ -1159,7 +1197,7 @@ export default function UserDetailPage(): JSX.Element {
               {
                 key: 'status',
                 label: '회원 상태',
-                children: <StatusBadge status={currentStatus} />
+                children: renderMembershipStatus(currentStatus, user)
               },
               {
                 key: 'emailVerification',
@@ -1175,12 +1213,12 @@ export default function UserDetailPage(): JSX.Element {
               {
                 key: 'termsConsentStatus',
                 label: '약관 동의',
-                children: <StatusBadge status={user.termsConsentStatus} />
+                children: renderTermsConsentStatus(user)
               },
               {
                 key: 'termsConsentAt',
                 label: '약관 동의일',
-                children: renderProfileValue(user.termsConsentAt)
+                children: renderTermsConsentDate(user)
               },
               {
                 key: 'legalConsentVersions',
@@ -1252,8 +1290,8 @@ export default function UserDetailPage(): JSX.Element {
                   </Descriptions.Item>
                   <Descriptions.Item label="가입일">{user?.joinedAt || '-'}</Descriptions.Item>
                   <Descriptions.Item label="약관 동의">
-                    {user ? <StatusBadge status={user.termsConsentStatus} /> : '-'}
-                    {user?.termsConsentAt ? (
+                    {user ? renderTermsConsentStatus(user) : '-'}
+                    {user?.termsConsentAt && user.emailVerificationStatus !== '미인증' ? (
                       <Typography.Text type="secondary"> · {user.termsConsentAt}</Typography.Text>
                     ) : null}
                   </Descriptions.Item>

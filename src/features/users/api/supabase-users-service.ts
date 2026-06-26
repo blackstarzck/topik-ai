@@ -2,6 +2,7 @@ import { supabaseClient } from '../../../shared/api/supabase-client';
 import type {
   UserLearningOverview,
   EmailVerificationStatus,
+  RegistrationStatus,
   SubscriptionStatus,
   TermsConsentStatus,
   UserStatus,
@@ -26,6 +27,7 @@ type AdminUserRow = {
   app_role: string;
   plan_label: string | null;
   status: string;
+  registration_status?: string | null;
   nationality_country_code: string | null;
   // 소셜 로그인 provider 배열(auth.identities, 'email' 제외). 없으면 빈 배열/NULL.
   social_providers: string[] | null;
@@ -162,7 +164,32 @@ const STATUS_MAP: Record<string, UserStatus> = {
 };
 
 function mapStatus(v13Status: string): UserStatus {
-  return STATUS_MAP[v13Status] ?? '정상';
+  const mapped = STATUS_MAP[v13Status];
+  if (!mapped) {
+    throw new Error(`Unknown v13 profiles.status: ${v13Status}`);
+  }
+  return mapped;
+}
+
+const REGISTRATION_STATUS_MAP: Record<string, RegistrationStatus> = {
+  active: 'active',
+  blocked: 'blocked',
+  deleted: 'deleted',
+  pending_email_verification: 'pending_email_verification',
+  pending_required_consent: 'pending_required_consent'
+};
+
+function mapRegistrationStatus(
+  registrationStatus: string | null | undefined
+): RegistrationStatus | undefined {
+  if (registrationStatus == null) {
+    return undefined;
+  }
+  const mapped = REGISTRATION_STATUS_MAP[registrationStatus];
+  if (!mapped) {
+    throw new Error(`Unknown v13 registration_status: ${registrationStatus}`);
+  }
+  return mapped;
 }
 
 // v13 consent_status (RPC: consented/partial/none) -> topik-ai TermsConsentStatus.
@@ -234,6 +261,7 @@ function mapRowToUserSummary(row: AdminUserRow): UserSummary {
   const subscriptionStatus: SubscriptionStatus = tier === '프리미엄' ? '구독' : '미구독';
   const displayName = nonEmpty(row.display_name);
   const nickname = nonEmpty(row.nickname);
+  const registrationStatus = mapRegistrationStatus(row.registration_status);
   return {
     id: row.user_id,
     realName: displayName ?? '',
@@ -244,6 +272,7 @@ function mapRowToUserSummary(row: AdminUserRow): UserSummary {
     joinedAt: toKstDateTimeString(row.created_at),
     lastLoginAt: toKstDateTimeString(row.last_sign_in_at),
     status: mapStatus(row.status),
+    ...(registrationStatus ? { registrationStatus } : {}),
     tier,
     // GAP: no subscription join in the RPC. PROPOSED heuristic from plan tier — NOT real
     // subscription state (would need a subscriptions join / additive RPC).

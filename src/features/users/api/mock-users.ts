@@ -72,7 +72,6 @@ function formatDateTime(dayOffset: number, minuteSeed: number): string {
 
 export const mockUsers: UserSummary[] = Array.from({ length: 420 }, (_, index) => {
   const id = `U${String(index + 1).padStart(5, '0')}`;
-  const status = statuses[index % statuses.length];
   const tier = tiers[index % tiers.length];
   const subscriptionStatus = subscriptions[(index + 1) % subscriptions.length];
   const joinedAt = formatDateTime(index % 365, index);
@@ -85,6 +84,9 @@ export const mockUsers: UserSummary[] = Array.from({ length: 420 }, (_, index) =
   const emailVerificationStatus: EmailVerificationStatus =
     index % 9 === 7 ? '미인증' : '인증 완료';
   const isUnverified = emailVerificationStatus === '미인증';
+  // v13 handoff 진단을 위해 원천 profiles.status가 active여도 이메일 미인증인 표본을 남긴다.
+  // 화면은 이 원천값을 그대로 "정상"으로 노출하지 않고 "인증 대기"로 파생 표시한다.
+  const status: UserStatus = isUnverified ? '정상' : statuses[index % statuses.length];
 
   return {
     id,
