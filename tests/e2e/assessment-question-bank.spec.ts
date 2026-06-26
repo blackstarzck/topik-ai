@@ -142,7 +142,7 @@ test('노출 상태 전환은 사유 필수 확인 모달을 거쳐 화면 왕�
   const targetRow = page
     .locator('tbody tr.ant-table-row')
     .filter({ hasText: 'topik-writing-51-9901' });
-  // 첫 태그 = 노출 상태 컬럼(기관 노출 컬럼이 뒤에 추가돼 행에 태그가 2개다).
+  // 첫 태그 = 노출 상태 컬럼.
   await expect(targetRow.locator('.ant-tag').first()).toHaveText('내부 테스트');
 
   // 운영 조치는 더보기 메뉴에서 실행.
@@ -430,64 +430,31 @@ test('AssessmentQuestion 감사 로그는 삭제된 문제은행 store audit으�
   await expect(page.getByRole('link', { name: 'AQ-53002' })).toHaveCount(0);
 });
 
-test('통합 문항 화면은 기관 노출 컬럼을 렌더하고 기본은 전체 공개다', async ({
+test('통합 문항 화면은 기관 컬럼과 설정/관리 진입점을 노출하지 않는다', async ({
   page
 }) => {
   await page.goto('/assessment/question-bank');
   await skipIfAuthRequired(page);
 
-  await expect(
-    page.getByRole('columnheader', { name: '기관 노출' })
-  ).toBeVisible();
-  // 기본 매핑 0건 → 모든 행이 '전체 공개'.
+  await expect(page.getByRole('columnheader', { name: /^기관$/ })).toHaveCount(0);
   await expect(
     page.locator('tbody tr.ant-table-row .ant-tag', { hasText: '전체 공개' })
-  ).toHaveCount(4);
-  // 설정 진입은 행 더보기 메뉴의 항목이다(컬럼은 현황 표시 전용).
-  const firstRow = page.locator('tbody tr.ant-table-row').first();
-  await firstRow.getByRole('button', { name: '더보기' }).click();
-  await expect(
-    page.getByRole('menuitem', { name: '기관 노출 설정' })
-  ).toBeVisible();
-});
-
-test('기관 노출 설정: 단건 모달에서 기관 한정 지정 왕복(모크)', async ({
-  page
-}) => {
-  await page.goto('/assessment/question-bank');
-  await skipIfAuthRequired(page);
+  ).toHaveCount(0);
 
   const targetRow = page
     .locator('tbody tr.ant-table-row')
     .filter({ hasText: 'topik-writing-51-9901' });
-  await expect(
-    targetRow.locator('.ant-tag', { hasText: '전체 공개' })
-  ).toBeVisible();
-  // 설정 진입은 더보기 메뉴 항목 '기관 노출 설정'.
   await targetRow.getByRole('button', { name: '더보기' }).click();
-  await page.getByRole('menuitem', { name: '기관 노출 설정' }).click();
+  await expect(
+    page.getByRole('menuitem', { name: '기관 노출 설정' })
+  ).toHaveCount(0);
+  await page.keyboard.press('Escape');
 
-  const modal = page
-    .locator('.ant-modal-content')
-    .filter({ hasText: '기관 노출 설정' });
-  await expect(modal).toBeVisible();
-  // 변경 전 적용(확인) 비활성.
-  const applyButton = modal.getByRole('button', { name: /확인/ });
-  await expect(applyButton).toBeDisabled();
-
-  // A부스 체크 → 추가 예정 칩 + 사유 필수.
-  await modal.getByTestId('institution-row-EXPO2026-BOOTH-A').click();
-  // 체크박스 선택만으로 반영(칩 트레이 제거) — 확인 버튼이 적용 대상 수를 표시.
-  await expect(applyButton).toHaveText(/기관 한정 1곳 적용/);
-  await expect(applyButton).toBeDisabled();
-  await modal
-    .getByLabel('기관 노출 변경 사유')
-    .fill('e2e: 기관 한정 지정 왕복 검증');
-  await expect(applyButton).toBeEnabled();
-  await applyButton.click();
-
-  // 알림 + 모달 닫힘 + 행 칩(기관 라벨) 반영.
-  await expect(page.getByText(/기관 노출을 변경했습니다/)).toBeVisible();
-  await expect(modal).toBeHidden();
-  await expect(targetRow.locator('.ant-tag', { hasText: 'A부스' })).toBeVisible();
+  await page.locator('thead .ant-checkbox-wrapper').first().click();
+  const bulkBar = page.getByTestId('bulk-action-bar');
+  await expect(bulkBar).toBeVisible();
+  await expect(bulkBar.getByText('기관 노출:')).toHaveCount(0);
+  await expect(bulkBar.getByRole('button', { name: '기관 한정 지정' })).toHaveCount(0);
+  await expect(bulkBar.getByRole('button', { name: '전체 공개로' })).toHaveCount(0);
+  await expect(page.locator('.ant-modal-content').filter({ hasText: '기관 노출 설정' })).toHaveCount(0);
 });

@@ -9,7 +9,7 @@ status: "구현됨"
 primary_entity: "AssessmentQuestion"
 primary_table_candidate: "topik_writing_51/52/53/54_questions"
 owner_agent_scope: "shared"
-last_reviewed_at: "2026-06-11"
+last_reviewed_at: "2026-06-26"
 ---
 
 ## 1. 문서 목적
@@ -41,6 +41,7 @@ last_reviewed_at: "2026-06-11"
 - 문제 발원은 **외부(공급) API**(미개발 상태 — 공급 계약 요청 추진, D-11 재정의)입니다. 문제 본문+메타데이터(schema-rule §4·§7, §7.9·검수 필드 제외)가 **완성 상태로 공급**되며, admin은 문제를 저작·생성·분류·검수하지 않습니다.
 - 이 페이지는 수신·적재(외부 API → Supabase `topik_writing_51/52/53/54_questions` + `question_source_map`)된 문항을 **조회 전용**으로 확인하는 관리자 기점입니다.
 - 관리 포인트는 **태그**(schema-rule §2: tag_master 사전 기반 `question_tags` 부여/제거), 노출 통제는 **`service_status` 컬럼**(D-6 유지: available/excluded/internal_test, 기본 internal_test)이며, 둘 다 형제 라우트 `/assessment/question-bank/manage`가 담당합니다(P4 관리 포인트 개방 완료 — 2026-06-11).
+- 2026-06-26 기준 기관 매핑은 이 페이지에서 노출하지 않습니다. 기관 컬럼과 기관 노출 설정/기관 한정 지정/전체 공개 전환 진입점은 제공하지 않으며, 기관 코드 기준 문항 노출 매핑 관리는 `Users > 기관 코드` 동기화 문서를 따릅니다.
 - v13 사용자 기능은 read-only로 소비합니다. 인터림(외부 API 미개발 동안): P2 백필 466행이 초기 코퍼스입니다.
 - 코드 현실: 현행 코드는 facade 스위치 기본 `topik_writing`으로 신규 4테이블 + 추천 뷰를 조회하고, 2depth 상세는 조회 전용입니다(재정의 P3 컷오버 + 검수 표면 제거 완료 — `202f905`). 롤백 경로는 env `VITE_QUESTION_BANK_SOURCE=legacy`(`problems` 읽기 전용 어댑터)입니다.
 
