@@ -437,8 +437,8 @@
 - Reason: worktree 변경을 main에 순차 병합한 뒤 `check-doc-crosslinks`가 `docs/README.md`에 누락된 기존 문서 5건을 차단했고, `check-route-doc-coverage`가 `/users/institution-codes` page-IA 누락을 차단해 merge commit 안에서 문서 인덱스와 기관 코드 route coverage를 현재 구현과 맞췄다.
 - Validation: `npm run harness:check` 재실행 대상.
 
-
 ## 2026-06-26 - Users 미인증 계정 상태 표시 정합화
+
 - Updated `docs/architecture/users-registration-lifecycle-v13-handoff.md`, `docs/specs/page-ia/users-list-page-ia.md`, `docs/specs/page-ia/users-detail-page-ia.md`, `docs/specs/admin-page-tables.md`, `docs/specs/admin-data-contract.md`, `docs/page-sync/users-list-page-sync.md`, `docs/page-sync/users-detail-page-sync.md`, `docs/specs/admin-page-ia-change-log.md`, and `logs/admin-doc-update-log.md`.
 - Reason: 이메일 인증 전 계정에서 `정상 + 동의 완료 + 미인증` 조합이 가입 완료처럼 읽히지 않도록 Admin 노출 `회원 상태`를 이메일 인증과 필수 약관 동의 기반 파생값으로 바꿨다.
 - Validation: `tests/e2e/users-verification-status.spec.ts`가 목록/상세/학습 현황 온보딩 표시 기준을 검증한다.
