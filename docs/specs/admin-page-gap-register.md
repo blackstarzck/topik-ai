@@ -106,13 +106,15 @@
   - 초기 조회는 `fetchUsersSafe`를 사용한다.
   - `Resolved`(2026-06-17): Supabase 모드의 회원 목록 P0 런타임 실패 원인이던 `get_admin_users`/`admin_set_user_status` RPC 부재를 해소했다. 마이그레이션 `supabase/migrations-admin/20260617210000_admin_users_directory.sql`(+ down)은 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했다.
   - `get_admin_users(search, sort, page, page_size)`는 v13 `profiles`/`auth.users` 조인과 `writing_submissions` 집계를 반환하고, `admin_set_user_status(target_id, new_status)`는 `profiles.status`만 `active`/`blocked`로 토글한다. 신규 테이블은 없고 v13 `profiles` DDL은 변경하지 않는다.
+  - `Resolved`(2026-06-26): Admin 노출 `회원 상태`는 `profiles.status` 원천값 단독이 아니라 `get_admin_users.registration_status` 기반 값으로 표시한다. 이메일 미인증은 `인증 대기`, 인증 후 약관 미동의는 `약관 대기`이며, 이메일 미인증 약관 집계는 RPC에서 `none/null`로 정규화한다.
 - 미확정/누락/오구현
   - `Resolved`(2026-06-17): 정지/해제 조치 결과는 Supabase 모드에서 `admin_set_user_status` RPC를 통해 실제 `profiles.status`에 반영되고, `admin_audit_logs`에 `target_table='User'`, action `user_status_changed`로 기록된다.
+  - `미확정`(v13 handoff): v13 사용자 앱의 가입 플로우는 이메일 미인증 `user_consents` 차단, 필수 약관 전 사용자 기능 활성화 차단, dry-run/backfill로 정리해야 한다.
   - 관리자 메모의 저장 주체와 감사 로그 영속 정책이 불명확하다.
   - 조치 사유가 어떤 code table 또는 자유 입력 규칙을 따르는지 확정되지 않았다.
 - 분류
   - `Resolved`: 회원 목록 Supabase read/write RPC 라이브 부재(P0 런타임 실패)
-  - `미확정`: 메모/사유의 데이터 계약
+  - `미확정`: 메모/사유의 데이터 계약, v13 가입 생애주기 원천 계약/백필
 
 #### 4.2.2 강사 관리
 
@@ -592,6 +594,7 @@
 - 2026-06-17 | `System > 시스템 로그` mock-only source 테이블화 해소 | `system_logs` Supabase read-only table을 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했고, 화면 service는 `system-logs-data-source.ts`를 통한 Supabase-backed source와 mock fallback을 가진다. `system_logs`는 7컬럼(`id`, `level`, `message`, `component`, `trace_id`, `context`, `created_at`)이며 `level`은 `INFO`/`WARN`/`ERROR` 대문자 값을 사용한다. 조회 전용 기술 로그라 admin write·감사 액션은 없고, `admin_audit_logs` 및 v13 `notification_log`와 구분한다. 잔여 갭은 로그 적재 소스/주체, 보존기간·파티셔닝, `trace_id` 의미, level 코드값 장기 표준화다.
 - 2026-06-17 | `Users > 회원 목록` P0 결손 RPC 라이브 부재 해소 | `get_admin_users`/`admin_set_user_status` RPC 2종을 `supabase/migrations-admin/20260617210000_admin_users_directory.sql`(+ down)로 작성했고 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했다. 회원 목록은 Supabase 모드에서 v13 `profiles`/`auth.users` 조인과 `writing_submissions` 집계로 실데이터를 읽고, 정지/해제는 `profiles.status`를 `active`/`blocked`로 토글하며 `Target Type=User`, action `user_status_changed` 감사 로그를 남긴다. 신규 테이블은 없고 v13 `profiles` DDL은 변경하지 않는다. 잔여 갭은 관리자 메모 저장 주체, 사유 code/free-text 정책, 상태/기간/searchField 서버 필터 확장이다.
 - 2026-06-26 | `Assessment > TOPIK 쓰기 문항` 기관 노출 전역 차단 정합화 | `/assessment/question-bank`와 `Users > 기관 코드`의 기관 문항 노출 매핑이 `service_status` 전역 차단 조건을 공통 적용하도록 정리했다. `excluded`/`internal_test` 문항의 신규 기관 추가는 RPC `blocked`로 처리하고, 기존 매핑은 보존하되 `현재 미노출`로 계산한다. 제거/전체 해제는 stale 매핑 정리를 위해 허용한다. v13 사용자 화면 predicate 적용은 `docs/requests/v13-institution-question-exposure-handoff-2026-06-26.md` 후속 범위다.
+- 2026-06-26 | `Users > 회원 목록/상세` 가입 생애주기 표시 정합화 | `정상 + 동의 완료 + 미인증` 조합을 정상 표시로 보지 않고, Admin 노출 `회원 상태`를 `registration_status` 기반 `인증 대기`/`약관 대기`/`정상`/`정지`/`탈퇴` 상태로 정리했다. 이메일 미인증 약관 표시는 `동의 불가`로 보정하고, RPC는 `consent_status='none'`, `consent_accepted_at=NULL`로 정규화한다. v13 사용자 앱 가입 플로우 가드는 `docs/architecture/users-registration-lifecycle-v13-handoff.md` 후속 범위다.
 - 2026-06-17 | `Operation > 공지사항` mock-only·감사 미적재·reason 미전달 해소 | `operation_notices` Supabase 테이블과 admin RPC 3종을 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했고, 화면 service는 Supabase-backed hybrid switch와 mock fallback을 가진다. 공지 조치는 `Target Type=OperationNotice`, `target_id=noticeId`, action `notice_saved`/`notice_status_changed`/`notice_deleted`, reason 필수 계약으로 감사 로그를 남긴다. 잔여 갭은 B2C 실제 surface, 상단 고정/예약 게시, HTML sanitize/preview, `NOTICE-NNN` 동시성, `updated_by` 표시명 정합이다.
 - 2026-06-17 | `Operation > FAQ` mock-only·감사 미적재·reason 미전달 해소 | `operation_faqs`/`operation_faq_curations`/`operation_faq_metrics` Supabase 테이블과 admin RPC 5종을 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했고, 화면 service는 Supabase-backed hybrid switch와 mock fallback을 가진다. FAQ 조치는 `Target Type=OperationFaq`/`OperationFaqCuration`, action `faq_saved`/`faq_status_changed`/`faq_deleted`/`faq_curation_saved`/`faq_curation_deleted`, reason 필수 계약으로 감사 로그를 남긴다. 잔여 갭은 `FAQ-NNN`/`FAQCUR-NNN` 동시성, `updated_by` 표시명 정합, metrics 실집계 파이프라인(seed only)이다.
 - 2026-06-17 | `Operation > 이벤트` mock-only·감사 미적재·reason 미전달·배너 data URL only 해소 | `operation_events` Supabase 테이블과 admin RPC 4종을 `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료했고, 화면 service는 Supabase-backed hybrid switch와 mock fallback을 가진다. 이벤트 조치는 `Target Type=OperationEvent`, `target_id=eventId`, action `event_saved`/`event_scheduled`/`event_published`/`event_ended`, reason 필수 계약으로 감사 로그를 남긴다. 잔여 갭은 `EVT-NNN` 동시성, `updated_by` 표시명 정합, 배너/보상/메시지 정규화, `participant_count` 집계 source다.

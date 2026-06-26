@@ -34,12 +34,15 @@ import {
 } from '../model/users-query-store';
 import type {
   EmailVerificationStatus,
-  TermsConsentStatus,
   UserStatus,
   UserSummary,
   UsersQuery,
   UsersSearchField
 } from '../model/types';
+import {
+  getTermsConsentDisplayStatus,
+  getUserMembershipStatus
+} from '../model/registration-status';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
@@ -75,8 +78,19 @@ const pageSizeOptions = ['20', '50', '100'];
 const emptyProfileValue = '-';
 const userTierFilterValues = ['일반', '프리미엄'] as const;
 const userSubscriptionStatusFilterValues = ['구독', '미구독'] as const;
-const userStatusFilterValues = ['정상', '정지', '탈퇴'] as const;
-const userConsentStatusFilterValues = ['동의 완료', '일부 동의', '미동의'] as const;
+const userMembershipStatusFilterValues = [
+  '인증 대기',
+  '약관 대기',
+  '정상',
+  '정지',
+  '탈퇴'
+] as const;
+const userConsentStatusFilterValues = [
+  '동의 완료',
+  '일부 동의',
+  '미동의',
+  '동의 불가'
+] as const;
 const userEmailVerificationFilterValues = ['인증 완료', '미인증'] as const;
 
 const searchFieldOptions: { label: string; value: UsersSearchField }[] = [
@@ -95,6 +109,14 @@ type ListActionState =
 function renderProfileValue(value: string): string {
   const trimmed = value.trim();
   return trimmed ? trimmed : emptyProfileValue;
+}
+
+function renderMembershipStatus(user: UserSummary) {
+  return <StatusBadge status={getUserMembershipStatus(user)} />;
+}
+
+function renderTermsConsentStatus(user: UserSummary) {
+  return <StatusBadge status={getTermsConsentDisplayStatus(user)} />;
 }
 
 function parsePositiveNumber(value: string | null, fallback: number): number {
@@ -606,23 +628,26 @@ export default function UsersPage(): JSX.Element {
         sorter: createTextSorter((record) => record.subscriptionStatus)
       },
       {
-        title: createStatusColumnTitle('회원 상태', ['정상', '정지', '탈퇴']),
+        title: createStatusColumnTitle('회원 상태', userMembershipStatusFilterValues),
         dataIndex: 'status',
-        width: 120,
-        ...createDefinedColumnFilterProps(userStatusFilterValues, (record) => record.status),
-        sorter: createTextSorter((record) => record.status),
-        render: (status: UserStatus) => <StatusBadge status={status} />
+        width: 150,
+        ...createDefinedColumnFilterProps(
+          userMembershipStatusFilterValues,
+          (record) => getUserMembershipStatus(record)
+        ),
+        sorter: createTextSorter((record) => getUserMembershipStatus(record)),
+        render: (_, record) => renderMembershipStatus(record)
       },
       {
-        title: createStatusColumnTitle('약관 동의', ['동의 완료', '일부 동의', '미동의']),
+        title: createStatusColumnTitle('약관 동의', userConsentStatusFilterValues),
         dataIndex: 'termsConsentStatus',
         width: 130,
         ...createDefinedColumnFilterProps(
           userConsentStatusFilterValues,
-          (record) => record.termsConsentStatus
+          (record) => getTermsConsentDisplayStatus(record)
         ),
-        sorter: createTextSorter((record) => record.termsConsentStatus),
-        render: (consentStatus: TermsConsentStatus) => <StatusBadge status={consentStatus} />
+        sorter: createTextSorter((record) => getTermsConsentDisplayStatus(record)),
+        render: (_, record) => renderTermsConsentStatus(record)
       },
       {
         title: createStatusColumnTitle('이메일 인증', ['인증 완료', '미인증']),

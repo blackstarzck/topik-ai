@@ -82,6 +82,7 @@
 ### `docs/architecture`
 - `admin-overview.md`
 - `admin-data-source-transition.md`
+- `users-registration-lifecycle-v13-handoff.md` — 이메일 미인증/약관 동의/회원 상태 불변식과 v13 원천 스키마·백필 요청 handoff(2026-06-26)
 - `shared-supabase-schema-ownership.md` — 공유 Supabase 스키마 소유권 매트릭스(객체별 owner/writer/reader/RLS/migration home — 2026-06-12 알림 기능 WP0-1)
 - `metadata-tag-schema-transition-decision-record.md` — 메타데이터·태그 스키마 전환 결정 기록(**§0 = 2026-06-11 인바운드 모델 전환 확정** + D-1~D-13 처분 + v13 경계 합의)
 - `d3-classification-ownership-decision-brief.md` — [폐기] D-3 분류 작성 주체 결정 브리프(인바운드 전환으로 목적 소멸 — 역사 보존)
