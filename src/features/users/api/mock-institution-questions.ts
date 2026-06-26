@@ -15,7 +15,7 @@ const mockExposableQuestions: Omit<InstitutionExposableQuestion, 'isExposed'>[] 
     topicMain: '교육',
     situationSummary: '[모크] 도서관 이용 시간 변경을 알리는 학교 공지문',
     questionTypeName: '빈칸 완성',
-    serviceStatus: 'internal_test'
+    serviceStatus: 'available'
   },
   {
     questionId: 'topik-writing-52-9901',
@@ -23,7 +23,7 @@ const mockExposableQuestions: Omit<InstitutionExposableQuestion, 'isExposed'>[] 
     topicMain: '건강',
     situationSummary: '[모크] 충분한 수면이 건강에 미치는 영향을 설명하는 글',
     questionTypeName: '연결 표현',
-    serviceStatus: 'internal_test'
+    serviceStatus: 'excluded'
   },
   {
     questionId: 'topik-writing-53-9901',
@@ -39,17 +39,31 @@ const mockExposableQuestions: Omit<InstitutionExposableQuestion, 'isExposed'>[] 
     topicMain: '사회',
     situationSummary: '[모크] 인공지능 시대의 교육 방향에 대한 의견 서술 과제',
     questionTypeName: '의견 서술',
-    serviceStatus: 'internal_test'
+    serviceStatus: 'available'
   }
 ];
 
 // code -> 노출 문항 id 집합 (모듈 메모리, add/remove 왕복 재현).
 const mockExposureByCode = new Map<string, Set<string>>();
-// 불러오기 데모용 시드: 다른 기관(BOOTH-B)에만 미리 노출 — 현재 기관(BOOTH-A) 0건 가정은 유지.
+mockExposureByCode.set('EXPO2026-BOOTH-A', new Set(['topik-writing-52-9901']));
+// 불러오기 데모용 시드: B부스에는 available 1건과 excluded 1건이 섞여 있다.
 mockExposureByCode.set(
   'EXPO2026-BOOTH-B',
   new Set(['topik-writing-51-9901', 'topik-writing-52-9901'])
 );
+
+const GLOBAL_EXPOSURE_BLOCKED_MESSAGE =
+  '전역 노출 상태가 노출 가능이 아니어서 기관 노출에 추가할 수 없습니다.';
+
+function findQuestion(
+  questionId: string
+): Omit<InstitutionExposableQuestion, 'isExposed'> | undefined {
+  return mockExposableQuestions.find((question) => question.questionId === questionId);
+}
+
+function isAvailable(questionId: string): boolean {
+  return findQuestion(questionId)?.serviceStatus === 'available';
+}
 
 function exposedSet(code: string): Set<string> {
   let set = mockExposureByCode.get(code);
@@ -78,14 +92,27 @@ export async function addMockInstitutionQuestions(
   const unique = Array.from(new Set(questionIds));
   let changed = 0;
   let unchanged = 0;
+  let blocked = 0;
   let failed = 0;
   const details: InstitutionQuestionMutationResult['details'] = [];
 
   for (const questionId of unique) {
-    if (!mockExposableQuestions.some((q) => q.questionId === questionId)) {
+    const question = findQuestion(questionId);
+    if (!question) {
       failed += 1;
       if (details.length < 50) {
-        details.push({ questionId, message: '문항 대상을 찾을 수 없습니다.' });
+        details.push({ questionId, kind: 'failed', message: '문항 대상을 찾을 수 없습니다.' });
+      }
+      continue;
+    }
+    if (!isAvailable(questionId)) {
+      blocked += 1;
+      if (details.length < 50) {
+        details.push({
+          questionId,
+          kind: 'blocked',
+          message: GLOBAL_EXPOSURE_BLOCKED_MESSAGE
+        });
       }
       continue;
     }
@@ -97,7 +124,15 @@ export async function addMockInstitutionQuestions(
     changed += 1;
   }
 
-  return { total: unique.length, changed, unchanged, failed, batchId: 'mock-batch', details };
+  return {
+    total: unique.length,
+    changed,
+    unchanged,
+    blocked,
+    failed,
+    batchId: 'mock-batch',
+    details
+  };
 }
 
 export async function removeMockInstitutionQuestions(
@@ -122,6 +157,7 @@ export async function removeMockInstitutionQuestions(
     total: unique.length,
     changed,
     unchanged,
+    blocked: 0,
     failed: 0,
     batchId: 'mock-batch',
     details: []

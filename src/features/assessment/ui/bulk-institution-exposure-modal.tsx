@@ -53,6 +53,9 @@ export function BulkInstitutionExposureModal({
 
   const isSet = mode === 'set';
   const total = selectedQuestions.length;
+  const unavailableCount = selectedQuestions.filter(
+    (question) => question.serviceStatus !== 'available'
+  ).length;
 
   const numberBreakdown = useMemo(
     () =>
@@ -114,10 +117,18 @@ export function BulkInstitutionExposureModal({
                 ))}
               </Text>
               {isSet ? (
-                <Text type="danger">
-                  선택 문항의 기존 기관 노출 설정은 아래에서 고른 기관 집합으로
-                  덮어쓰기됩니다(set). 지정한 기관 소속 회원에게만 노출됩니다.
-                </Text>
+                <Space direction="vertical" size={2}>
+                  <Text type="danger">
+                    선택 문항의 기존 기관 노출 설정은 아래에서 고른 기관 집합으로
+                    덮어쓰기됩니다(set). 지정한 기관 소속 회원에게만 노출됩니다.
+                  </Text>
+                  {unavailableCount > 0 ? (
+                    <Text type="danger">
+                      전역 노출 상태가 노출 가능이 아닌 문항{' '}
+                      {unavailableCount.toLocaleString()}건은 서버에서 차단됩니다.
+                    </Text>
+                  ) : null}
+                </Space>
               ) : (
                 <Text type="danger">
                   선택 문항의 기관 한정이 모두 해제되어 전체 학습자에게 공개됩니다.

@@ -49,6 +49,9 @@ function getTargetRoute(targetType: string, targetId: string): string | null {
   if (targetType === 'Referral') {
     return `/users/referrals?selected=${targetId}`;
   }
+  if (targetType === 'InstitutionCode') {
+    return `/users/institution-codes?selected=${targetId}`;
+  }
   if (targetType === 'Community') {
     return '/community/posts';
   }

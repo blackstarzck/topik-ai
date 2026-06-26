@@ -430,31 +430,91 @@ test('AssessmentQuestion 감사 로그는 삭제된 문제은행 store audit으�
   await expect(page.getByRole('link', { name: 'AQ-53002' })).toHaveCount(0);
 });
 
-test('통합 문항 화면은 기관 컬럼과 설정/관리 진입점을 노출하지 않는다', async ({
+test('통합 문항 화면은 기관 컬럼과 단건 설정 진입점을 노출한다', async ({
   page
 }) => {
   await page.goto('/assessment/question-bank');
   await skipIfAuthRequired(page);
 
-  await expect(page.getByRole('columnheader', { name: /^기관$/ })).toHaveCount(0);
-  await expect(
-    page.locator('tbody tr.ant-table-row .ant-tag', { hasText: '전체 공개' })
-  ).toHaveCount(0);
+  await expect(page.getByRole('columnheader', { name: '기관 노출' })).toBeVisible();
 
   const targetRow = page
     .locator('tbody tr.ant-table-row')
     .filter({ hasText: 'topik-writing-51-9901' });
+  const statusText = (await targetRow.locator('.ant-tag').first().textContent())?.trim();
+  if (statusText !== '노출 제외') {
+    await targetRow.getByRole('button', { name: '더보기' }).click();
+    await page.getByRole('menuitem', { name: '노출 제외' }).click();
+    const statusModal = page
+      .locator('.ant-modal-content')
+      .filter({ hasText: '노출 제외 전환' });
+    await statusModal
+      .getByPlaceholder('노출 제외 사유를 입력해 주세요.')
+      .fill('e2e: 기관 노출 비활성 상태 준비');
+    await statusModal.getByRole('button', { name: '노출 제외' }).click();
+    await expect(page.getByText('노출 제외로 변경했습니다.')).toBeVisible();
+  }
+  await expect(targetRow.locator('.ant-tag', { hasText: '현재 미노출' })).toBeVisible();
   await targetRow.getByRole('button', { name: '더보기' }).click();
   await expect(
     page.getByRole('menuitem', { name: '기관 노출 설정' })
-  ).toHaveCount(0);
-  await page.keyboard.press('Escape');
+  ).toBeVisible();
+  await page.getByRole('menuitem', { name: '기관 노출 설정' }).click();
+
+  const modal = page.locator('.ant-modal-content').filter({ hasText: '기관 노출 설정' });
+  await expect(modal).toBeVisible();
+  await expect(
+    modal.getByText('전역 노출 상태가 노출 가능이 아니어서 신규 기관 추가는 차단됩니다.')
+  ).toBeVisible();
+  await expect(modal.getByTestId('institution-row-EXPO2026-BOOTH-A')).toHaveAttribute(
+    'aria-disabled',
+    'true'
+  );
+});
+
+test('기관 노출 일괄 지정은 전역 비활성 문항을 blocked로 집계한다(모크)', async ({
+  page
+}) => {
+  await page.goto('/assessment/question-bank');
+  await skipIfAuthRequired(page);
 
   await page.locator('thead .ant-checkbox-wrapper').first().click();
   const bulkBar = page.getByTestId('bulk-action-bar');
   await expect(bulkBar).toBeVisible();
-  await expect(bulkBar.getByText('기관 노출:')).toHaveCount(0);
-  await expect(bulkBar.getByRole('button', { name: '기관 한정 지정' })).toHaveCount(0);
-  await expect(bulkBar.getByRole('button', { name: '전체 공개로' })).toHaveCount(0);
-  await expect(page.locator('.ant-modal-content').filter({ hasText: '기관 노출 설정' })).toHaveCount(0);
+
+  await bulkBar.getByRole('button', { name: '노출 제외', exact: true }).click();
+  const statusModal = page
+    .locator('.ant-modal-content')
+    .filter({ hasText: '노출 상태 일괄 전환' });
+  await statusModal
+    .getByPlaceholder('노출 제외 일괄 전환 사유를 입력해 주세요.')
+    .fill('e2e: 기관 노출 일괄 blocked 준비');
+  await statusModal.getByRole('button', { name: '노출 제외로 변경' }).click();
+  await expect(page.getByText(/노출 상태를 일괄 변경했습니다|노출 제외로/)).toBeVisible();
+
+  await page.locator('thead .ant-checkbox-wrapper').first().click();
+  await expect(bulkBar).toBeVisible();
+  await expect(bulkBar.getByText('기관 노출:')).toBeVisible();
+  await bulkBar.getByRole('button', { name: '기관 한정 지정' }).click();
+
+  const modal = page
+    .locator('.ant-modal-content')
+    .filter({ hasText: '기관 한정 일괄 지정' });
+  await expect(modal).toBeVisible();
+  await expect(
+    modal.getByText('전역 노출 상태가 노출 가능이 아닌 문항 4건은 서버에서 차단됩니다.')
+  ).toBeVisible();
+
+  await modal.locator('.ant-select-selector').click();
+  await page
+    .locator('.ant-select-item-option')
+    .filter({ hasText: 'EXPO2026-BOOTH-A' })
+    .click();
+  await modal
+    .getByPlaceholder('기관 한정 지정 사유를 입력해 주세요.')
+    .fill('e2e: 기관 노출 blocked 검증');
+  await modal.getByRole('button', { name: '기관 한정으로 지정' }).click();
+
+  await expect(page.getByText('기관 한정 지정을 일부 처리했습니다.')).toBeVisible();
+  await expect(page.getByText(/차단 4건/)).toBeVisible();
 });

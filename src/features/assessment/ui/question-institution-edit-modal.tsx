@@ -3,7 +3,12 @@ import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
 import { useEffect, useMemo, useState } from 'react';
 
 import { setWritingQuestionInstitutionsSafe } from '../api/assessment-question-bank-service';
-import type { WritingQuestionInstitutionRow } from '../model/assessment-question-bank-types';
+import { getServiceStatusLabel } from '../model/assessment-question-bank-schema';
+import type {
+  AssessmentServiceStatus,
+  BulkServiceStatusResult,
+  WritingQuestionInstitutionRow
+} from '../model/assessment-question-bank-types';
 import type { InstitutionCode } from '../../users/model/institution-codes-types';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 
@@ -24,11 +29,13 @@ export type QuestionInstitutionMutationSummary = {
   removed: string[];
   /** 변경 결과 전체 공개로 돌아갔는지(현재 매핑이 있었고 최종 집합이 비었음). */
   clearedToPublic: boolean;
+  result: BulkServiceStatusResult;
 };
 
 type QuestionInstitutionEditModalProps = {
   open: boolean;
   questionId: string;
+  questionServiceStatus: AssessmentServiceStatus | null;
   activeInstitutions: WritingQuestionInstitutionRow[];
   /** 활성 기관 코드 옵션(institution_codes status='활성'). */
   codeOptions: InstitutionCode[];
@@ -40,6 +47,7 @@ type QuestionInstitutionEditModalProps = {
 export function QuestionInstitutionEditModal({
   open,
   questionId,
+  questionServiceStatus,
   activeInstitutions,
   codeOptions,
   onClose,
@@ -59,6 +67,14 @@ export function QuestionInstitutionEditModal({
   useEffect(() => {
     setSelected(new Set(currentCodes));
   }, [currentCodes]);
+
+  useEffect(() => {
+    if (open) {
+      setReason('');
+      setQuery('');
+      setErrorMessage(null);
+    }
+  }, [open, questionId]);
 
   const codeByValue = useMemo(() => {
     const byCode: Record<string, InstitutionCode> = {};
@@ -103,12 +119,15 @@ export function QuestionInstitutionEditModal({
   );
   const hasChanges = added.length > 0 || removed.length > 0;
   const willBePublic = selected.size === 0;
+  const isGloballyAvailable = questionServiceStatus === 'available';
 
   const toggle = (code: string): void => {
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(code)) {
         next.delete(code);
+      } else if (!isGloballyAvailable) {
+        return next;
       } else {
         next.add(code);
       }
@@ -153,7 +172,8 @@ export function QuestionInstitutionEditModal({
     onMutated({
       added: added.map(getCodeLabel),
       removed: removed.map(getCodeLabel),
-      clearedToPublic: willBePublic && currentCodes.length > 0
+      clearedToPublic: willBePublic && currentCodes.length > 0,
+      result: result.data
     });
     onClose();
   };
@@ -190,14 +210,20 @@ export function QuestionInstitutionEditModal({
         </Space>
 
         <Alert
-          type="info"
+          type={isGloballyAvailable ? 'info' : 'warning'}
           showIcon
           message={
-            willBePublic
-              ? '선택한 기관이 없습니다 — 전체 공개(모든 학습자에게 노출)입니다.'
-              : `기관 한정 ${selected.size}곳 — 선택한 기관 소속 회원에게만 노출됩니다.`
+            !isGloballyAvailable
+              ? '전역 노출 상태가 노출 가능이 아니어서 신규 기관 추가는 차단됩니다.'
+              : willBePublic
+                ? '선택한 기관이 없습니다 — 전체 공개(모든 학습자에게 노출)입니다.'
+                : `기관 한정 ${selected.size}곳 — 선택한 기관 소속 회원에게만 노출됩니다.`
           }
-          description="기관을 선택하지 않으면 전체 공개입니다. 노출 통제(노출 상태)와 별개로 동작합니다."
+          description={
+            isGloballyAvailable
+              ? '기관을 선택하지 않으면 전체 공개입니다. 단, 실제 사용자 노출은 전역 노출 상태가 노출 가능일 때만 유효합니다.'
+              : `현재 상태: ${getServiceStatusLabel(questionServiceStatus)}. 기존 기관 매핑은 보존되지만 현재 사용자에게 노출되지 않으며, 이 모달에서는 제거만 가능합니다.`
+          }
         />
 
         {errorMessage ? (
@@ -226,12 +252,14 @@ export function QuestionInstitutionEditModal({
             ) : (
               visibleCodes.map((option) => {
                 const checked = selected.has(option.code);
+                const disabledByStatus = !checked && !isGloballyAvailable;
                 return (
                   <div
                     key={option.code}
                     role="checkbox"
                     tabIndex={0}
                     aria-checked={checked}
+                    aria-disabled={disabledByStatus}
                     aria-label={option.label}
                     data-testid={`institution-row-${option.code}`}
                     style={{
@@ -239,13 +267,20 @@ export function QuestionInstitutionEditModal({
                       alignItems: 'center',
                       gap: 10,
                       padding: '10px 14px',
-                      cursor: 'pointer'
+                      cursor: disabledByStatus ? 'not-allowed' : 'pointer',
+                      opacity: disabledByStatus ? 0.55 : 1
                     }}
-                    onClick={() => toggle(option.code)}
+                    onClick={() => {
+                      if (!disabledByStatus) {
+                        toggle(option.code);
+                      }
+                    }}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault();
-                        toggle(option.code);
+                        if (!disabledByStatus) {
+                          toggle(option.code);
+                        }
                       }
                     }}
                   >

@@ -2,6 +2,7 @@
   Users: "회원",
   User: "회원",
   Instructor: "강사",
+  InstitutionCode: "기관 코드",
   Referral: "추천인",
   Community: "커뮤니티",
   CommunityPost: "커뮤니티 게시글",

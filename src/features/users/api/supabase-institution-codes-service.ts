@@ -9,7 +9,7 @@ import type {
 /**
  * Users > 기관 코드 Supabase 어댑터.
  * admin_list_institution_codes / admin_create_institution_code /
- * admin_update_institution_code RPC를 호출하고 화면 모델(InstitutionCode)로 매핑한다.
+ * admin_update_institution_code / admin_delete_institution_code RPC를 호출하고 화면 모델(InstitutionCode)로 매핑한다.
  * 모든 RPC는 private.is_admin 가드 + (쓰기) admin_audit_logs 기록.
  */
 type InstitutionCodeRow = {
@@ -116,6 +116,24 @@ export async function updateInstitutionCodeViaRpc(
     p_kind: input.kind,
     p_status: input.status,
     p_note: input.note.trim() ? input.note.trim() : null,
+    p_reason: input.reason.trim()
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data as string | null) ?? input.code;
+}
+
+export async function deleteInstitutionCodeViaRpc(
+  input: { code: string; reason: string },
+  signal?: AbortSignal
+): Promise<string> {
+  const client = requireClient();
+  throwIfAborted(signal);
+
+  const { data, error } = await client.rpc('admin_delete_institution_code', {
+    p_code: input.code,
     p_reason: input.reason.trim()
   });
   if (error) {

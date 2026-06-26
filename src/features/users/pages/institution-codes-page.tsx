@@ -18,6 +18,7 @@ import {
   assignInstitutionCodeSafe,
   clearInstitutionCodeSafe,
   createInstitutionCodeSafe,
+  deleteInstitutionCodeSafe,
   fetchInstitutionCodeMembersSafe,
   fetchInstitutionCodesSafe,
   isInstitutionCodesSupabase,
@@ -48,6 +49,10 @@ import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
+import {
+  TableActionMenu,
+  type TableActionMenuItem
+} from '../../../shared/ui/table/table-action-menu';
 import {
   createDefinedColumnFilterProps,
   createNumberSorter,
@@ -109,6 +114,7 @@ export default function InstitutionCodesPage(): JSX.Element {
   const [reloadKey, setReloadKey] = useState(0);
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<InstitutionCode | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<InstitutionCode | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const [createForm] = Form.useForm<CreateFormValues>();
@@ -254,6 +260,10 @@ export default function InstitutionCodesPage(): JSX.Element {
     setEditTarget(record);
   }, []);
 
+  const openDelete = useCallback((record: InstitutionCode) => {
+    setDeleteTarget(record);
+  }, []);
+
   const openMembers = useCallback((record: InstitutionCode) => {
     setMemberTarget(record);
   }, []);
@@ -261,6 +271,49 @@ export default function InstitutionCodesPage(): JSX.Element {
   const openQuestionExposure = useCallback((record: InstitutionCode) => {
     setQuestionExposureTarget(record);
   }, []);
+
+  const buildCodeActionItems = useCallback(
+    (record: InstitutionCode): TableActionMenuItem[] => {
+      const items: TableActionMenuItem[] = [];
+
+      if (canManageMembers) {
+        items.push(
+          {
+            key: `members-${record.code}`,
+            label: '회원 관리',
+            onClick: () => openMembers(record)
+          },
+          {
+            key: `questions-${record.code}`,
+            label: '노출 문항',
+            onClick: () => openQuestionExposure(record)
+          }
+        );
+      }
+
+      items.push(
+        {
+          key: `edit-${record.code}`,
+          label: '수정',
+          onClick: () => openEdit(record)
+        },
+        {
+          key: `delete-${record.code}`,
+          label: '삭제',
+          danger: true,
+          disabled: record.memberCount > 0,
+          title:
+            record.memberCount > 0
+              ? '가입 회원이 있는 코드는 먼저 회원 소속을 해제해야 합니다.'
+              : undefined,
+          onClick: () => openDelete(record)
+        }
+      );
+
+      return items;
+    },
+    [canManageMembers, openDelete, openEdit, openMembers, openQuestionExposure]
+  );
 
   const closeMembers = useCallback(() => {
     setMemberTarget(null);
@@ -359,11 +412,29 @@ export default function InstitutionCodesPage(): JSX.Element {
     (summary: InstitutionQuestionMutationSummary) => {
       const modeLabel = summary.mode === 'add' ? '추가' : '해제';
       const r = summary.result;
-      notificationApi.success({
-        message: `노출 문항 ${modeLabel} 완료`,
-        description: `변경 ${r.changed.toLocaleString()}건 · 변경 없음 ${r.unchanged.toLocaleString()}건${
-          r.failed > 0 ? ` · 실패 ${r.failed.toLocaleString()}건` : ''
-        }`
+      const hasIssue = r.blocked > 0 || r.failed > 0;
+      const description = (
+        <Space direction="vertical" size={4}>
+          <Text>
+            변경 {r.changed.toLocaleString()}건 · 변경 없음{' '}
+            {r.unchanged.toLocaleString()}건
+            {r.blocked > 0 ? ` · 차단 ${r.blocked.toLocaleString()}건` : ''}
+            {r.failed > 0 ? ` · 실패 ${r.failed.toLocaleString()}건` : ''}
+          </Text>
+          {r.details.slice(0, 5).map((detail) => (
+            <Text key={`${detail.kind}-${detail.questionId}`} type="secondary">
+              [{detail.kind === 'blocked' ? '차단' : '실패'}] {detail.questionId}:{' '}
+              {detail.message}
+            </Text>
+          ))}
+        </Space>
+      );
+      const notify = hasIssue ? notificationApi.warning : notificationApi.success;
+      notify({
+        message: hasIssue
+          ? `노출 문항 ${modeLabel} 일부 처리`
+          : `노출 문항 ${modeLabel} 완료`,
+        description
       });
     },
     [notificationApi]
@@ -498,6 +569,53 @@ export default function InstitutionCodesPage(): JSX.Element {
     }
   }, [editForm, editTarget, notificationApi]);
 
+  const handleDeleteConfirm = useCallback(
+    async (reason: string) => {
+      if (!deleteTarget) {
+        return;
+      }
+
+      const code = deleteTarget.code;
+      const result = await deleteInstitutionCodeSafe({ code, reason });
+      if (!result.ok) {
+        notificationApi.error({
+          message: '기관 코드 삭제 실패',
+          description: result.error.message
+        });
+        return;
+      }
+
+      if (isInstitutionCodesSupabase) {
+        setReloadKey((prev) => prev + 1);
+      } else {
+        setCodesState((prev) => {
+          const data = prev.data.filter((item) => item.code !== code);
+          return {
+            ...prev,
+            data,
+            status: data.length === 0 ? 'empty' : 'success'
+          };
+        });
+      }
+
+      setEditTarget((prev) => (prev?.code === code ? null : prev));
+      setMemberTarget((prev) => (prev?.code === code ? null : prev));
+      setQuestionExposureTarget((prev) => (prev?.code === code ? null : prev));
+      setDeleteTarget(null);
+      notificationApi.success({
+        message: '기관 코드 삭제 완료',
+        description: (
+          <Space direction="vertical">
+            <Text>코드: {code}</Text>
+            <Text>사유/근거: {reason}</Text>
+            <AuditLogLink targetType="InstitutionCode" targetId={code} />
+          </Space>
+        )
+      });
+    },
+    [deleteTarget, notificationApi]
+  );
+
   const columns = useMemo<TableColumnsType<InstitutionCode>>(
     () => [
       {
@@ -548,31 +666,16 @@ export default function InstitutionCodesPage(): JSX.Element {
       {
         title: '액션',
         key: 'action',
-        width: 220,
-        render: (_, record) => (
-          <Space size={0}>
-            {canManageMembers ? (
-              <Button type="link" size="small" onClick={() => openMembers(record)}>
-                회원 관리
-              </Button>
-            ) : null}
-            {canManageMembers ? (
-              <Button
-                type="link"
-                size="small"
-                onClick={() => openQuestionExposure(record)}
-              >
-                노출 문항
-              </Button>
-            ) : null}
-            <Button type="link" size="small" onClick={() => openEdit(record)}>
-              수정
-            </Button>
-          </Space>
-        )
+        width: 120,
+        onCell: () => ({
+          onClick: (event) => {
+            event.stopPropagation();
+          }
+        }),
+        render: (_, record) => <TableActionMenu items={buildCodeActionItems(record)} />
       }
     ],
-    [canManageMembers, openEdit, openMembers, openQuestionExposure]
+    [buildCodeActionItems]
   );
 
   const memberColumns = useMemo<TableColumnsType<InstitutionCodeMember>>(
@@ -617,7 +720,7 @@ export default function InstitutionCodesPage(): JSX.Element {
         <Text type="secondary">활성 {summary.active.toLocaleString()}건</Text>
         <Text type="secondary">누적 가입 {summary.members.toLocaleString()}명</Text>
       </Space>
-      <Button type="primary" onClick={openCreate}>
+      <Button type="primary" size="large" onClick={openCreate}>
         코드 생성
       </Button>
     </div>
@@ -629,7 +732,7 @@ export default function InstitutionCodesPage(): JSX.Element {
       <PageTitle title="기관 코드" />
       <Paragraph type="secondary" style={{ marginBottom: 16 }}>
         박람회/기관 유입 QR에 싣는 코드를 등록·관리합니다. 회원이 이 코드를 달고 가입하면 기관 회원으로 추적됩니다.
-        {!isInstitutionCodesSupabase && ' (현재 mock 데이터 — 생성/수정은 화면에만 반영됩니다.)'}
+        {!isInstitutionCodesSupabase && ' (현재 mock 데이터 — 생성/수정/삭제는 화면에만 반영됩니다.)'}
       </Paragraph>
 
       <AdminListCard toolbar={toolbar}>
@@ -879,6 +982,20 @@ export default function InstitutionCodesPage(): JSX.Element {
           confirmText="해제 실행"
           onCancel={() => setRemoveTarget(null)}
           onConfirm={handleRemoveConfirm}
+        />
+      ) : null}
+
+      {deleteTarget ? (
+        <ConfirmAction
+          open
+          title="기관 코드 삭제"
+          description={`${deleteTarget.code} 코드를 삭제합니다. 가입 수가 1명 이상이면 서버에서 삭제를 차단하며, 삭제된 코드는 가입/QR 유입과 기관 전용 문항 노출 대상에서 더 이상 사용할 수 없습니다.`}
+          targetType="InstitutionCode"
+          targetId={deleteTarget.code}
+          confirmText="삭제 실행"
+          reasonPlaceholder="삭제 사유를 입력하세요."
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={handleDeleteConfirm}
         />
       ) : null}
 

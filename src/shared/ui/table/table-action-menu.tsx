@@ -9,6 +9,7 @@ export type TableActionMenuItem = {
   label: ReactNode;
   danger?: boolean;
   disabled?: boolean;
+  title?: string;
   onClick?: () => void;
 };
 
@@ -143,6 +144,7 @@ export function TableActionMenu({
         type={singleActionItem.danger ? 'text' : 'default'}
         danger={singleActionItem.danger}
         disabled={singleActionItem.disabled}
+        title={singleActionItem.title}
         onMouseDown={stopTriggerPropagation}
         onClick={(event) => {
           event.stopPropagation();
@@ -193,6 +195,7 @@ export function TableActionMenu({
                       type={isCriticalFooterAction(item) ? 'primary' : 'default'}
                       danger={isCriticalFooterAction(item)}
                       disabled={item.disabled}
+                      title={item.title}
                       className={
                         isCriticalFooterAction(item)
                           ? 'table-action-menu__footer-button table-action-menu__footer-button--critical'

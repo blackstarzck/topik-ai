@@ -102,6 +102,19 @@
     - 감사 로그 딥링크는 현재 `Referral + 추천 코드 ID` 기준으로 동작하며, 조정/검수 개별 ID 분리는 후속 정책 확정 시 재검토가 필요합니다.
 - 상태 표현 메모: `코드 상태` 컬럼은 `활성/비활성` 스위치로 조치하고, 기존 비활성화/재활성화 더보기 메뉴는 제거합니다.
 
+## 3-1) 회원 관리 > 기관 코드
+
+- 현재 상태: 구현됨 (mock/Supabase facade, `institution_codes` admin RPC 기반)
+- 상세 IA 문서: `docs/specs/page-ia/users-institution-codes-page-ia.md`
+- 구현 컬럼: 코드, 이름, 종류, 상태, 가입 수, 생성일, 액션
+- 구현 필터/정렬: 종류/상태 컬럼 필터, 코드/이름/가입 수/생성일 정렬
+- 구현 액션: `코드 생성`, 액션 셀 `더보기` 메뉴의 `회원 관리`, `노출 문항`, `수정`, 하단 분리 `삭제`
+- 레이아웃 메모: 별도 SearchBar 없이 `AdminListCard.toolbar` 오른쪽에 총 건수/활성 건수/누적 가입 수와 `코드 생성` 버튼을 같은 줄에 배치하며, `코드 생성` 버튼은 `large` 크기를 사용합니다.
+- 입력 모달: 생성/수정 모달은 `Descriptions` 기반 입력 테이블을 사용하고, 필수 필드 label에 빨간 `*`를 표시합니다. 수정은 사유 입력이 필수입니다.
+- 파괴적 액션: `삭제`는 shared `TableActionMenu` footer의 danger 버튼으로 최하단에 배치하고, footer 상단 구분선으로 일반 액션과 분리합니다. 클릭 후 `ConfirmAction`으로 확인 + 사유 입력을 요구합니다. 가입 수가 1명 이상인 코드는 삭제 전에 회원 관리 모달에서 소속 해제가 필요하며, 서버 RPC도 삭제를 차단합니다.
+- 데이터 source: Supabase 모드는 `admin_list_institution_codes`, `admin_create_institution_code`, `admin_update_institution_code`, `admin_delete_institution_code` RPC를 사용합니다. mock 모드는 `mock-institution-codes.ts` 시드를 읽고 생성/수정/삭제는 화면 상태에만 반영합니다.
+- 감사 로그: 생성/수정/삭제는 `InstitutionCode + code` 계약을 사용하고, 확인 경로는 `/system/audit-logs?targetType=InstitutionCode&targetId={code}`입니다.
+
 ## 4) 커뮤니티 > 게시글 관리
 
 - 테이블 컬럼: 게시글 ID, 제목, 작성자, 게시판, 작성일, 조회수, 신고 수, 상태
@@ -325,14 +338,14 @@
 
 ## 19) 평가 > TOPIK 쓰기 문항 목록 (구 TOPIK 쓰기 문제 검수)
 
-- 2026-06-11 재정의: 인바운드 전환(`docs/architecture/metadata-tag-schema-transition-decision-record.md` §0)으로 이 페이지는 `TOPIK 쓰기 문항 목록`(조회 전용)으로 재정의됐습니다. admin은 문제를 저작·생성·분류·검수하지 않으며(문제 본문+메타데이터는 외부(공급) API가 완성 상태로 공급 — 미개발 상태), 검수 표면(검수 축 요약 카드, 검수 상태 컬럼, 검수 메모, 2depth 검수 페이지)은 재정의 P3 코드 컷오버(커밋 `202f905`)에서 **전부 제거 완료**됐습니다. 컬럼/필터 축은 주제(topic_main/topic_detail)·노출 상태(`service_status`) 기준으로 재작성됐고, 태그 축은 P4 범위입니다.
+- 2026-06-11 재정의: 인바운드 전환(`docs/architecture/metadata-tag-schema-transition-decision-record.md` §0)으로 이 페이지는 `TOPIK 쓰기 문항 목록`으로 재정의됐습니다. admin은 문제를 저작·생성·분류·검수하지 않으며(문제 본문+메타데이터는 외부(공급) API가 완성 상태로 공급 — 미개발 상태), 검수 표면(검수 축 요약 카드, 검수 상태 컬럼, 검수 메모, 2depth 검수 페이지)은 재정의 P3 코드 컷오버(커밋 `202f905`)에서 **전부 제거 완료**됐습니다. 컬럼/필터 축은 주제(topic_main/topic_detail)·노출 상태(`service_status`) 기준으로 재작성됐고, 2026-06-23 이후 태그/노출/기관 노출 조치가 통합됐습니다.
 - 현재 상태: 구현됨 (facade 스위치 기본 `topik_writing` — 신규 4테이블 + 추천 뷰 조회, 롤백 env `VITE_QUESTION_BANK_SOURCE=legacy`. JSON fixture/store fallback 없음)
-- 라우트: `/assessment/question-bank` (조회 전용 문항 목록 — 재정의 P3 재작성 완료)
+- 라우트: `/assessment/question-bank` (조회+관리 통합 문항 목록 — 재정의 P3 재작성, 2026-06-23 통합)
 - 화면 구조: `PageTitle -> ListSummaryCards -> AdminListCard(toolbar=문제 번호 체크박스 그룹 -> SearchBar(summary), body=안내 Alert -> Table)` + 2depth 상세 페이지(조회 전용 — 구 검수 페이지를 재정의 P3에서 재작성 완료)
 - 문제 번호 체크박스 그룹: `51번`, `52번`, `53번`, `54번` 다중 선택, 기본 전체 선택
 - 상단 요약 카드: 전체 문항 + 번호별(`51`~`54`) 건수 — 카드 클릭은 번호 선택 토글 (구 검수 축 카드는 재정의 P3에서 제거 완료. 노출 상태·태그 축 카드 확장은 P4 후속 검토)
 - 필터: SearchBar `주제(종합/세부 — 17주제 2단 마스터 기반)`, `유형`, `난이도(1~6)`, `검색` (구 `도메인` 축과 `reviewStatus` 요약 카드 필터는 재정의 P3에서 제거 완료. 태그 필터는 P4 예약 `tag` 키)
-- 컬럼: 문항 번호, 문항 ID, 주제(종합/세부), 상황 요약(hover 툴팁), 유형/난이도, 노출 상태(`service_status` Tag), 최근 수정 (구 `검수 상태` 컬럼은 재정의 P3에서 제거 완료)
+- 컬럼: 문항 번호, 문항 ID, 주제, 난이도, TOPIK 급수, 노출 상태(`service_status` Tag), 태그, 기관 노출, 최근 수정, 더보기 (구 `검수 상태` 컬럼은 재정의 P3에서 제거 완료)
   - `상황 요약` 셀: 기본 목록에서는 1줄 말줄임으로 노출한다. hover/focus 시 툴팁에서 상황 요약 전문과 시나리오 유형을 확인하고, 하단 `상세 보기` 버튼(구 `검수하기` — 재정의 P3에서 개명 완료)으로 동일 2depth 상세 페이지에 진입할 수 있다. source는 신규 스키마 `situation_summary`/`scenario_type`이다.
   - `주제(종합/세부)` 셀은 `topic_main`/`topic_detail`을 2단으로 노출한다. `유형/난이도` 셀은 `question_type_name`과 급수·난이도(`target_level`/`difficulty_level`)를 노출한다.
 - 행 클릭/툴팁 `상세 보기`: `/assessment/question-bank/:questionId` 2depth 페이지로 이동 (재정의 P3에서 구 `…/review/:questionId` 개명 완료)
@@ -340,30 +353,31 @@
   - 번호별 전용 row: `51` 복원문·빈칸 ㄱ/ㄴ 메타·대표/허용 정답, `52` 복원문·완성 단위/허용답안 범위·연결/요구 표현 기능·단서 문장·대표 정답·채점 주의, `53` 자료 유형/주제·차트 제목/단위·비교/변화/해석 난이도·글자 수·글 구성·핵심 발견·자료 수치(`source_data`)·채점 중점, `54` 글쓰기 유형/쟁점·관점 요구/추론 패턴·문항 질문·글자 수·글 구성·근거 키워드·금지 요소·채점 중점.
   - Supabase source가 없는 표시값은 임의 생성하지 않고 화면에서 `-`, 빈 목록(empty state) sentinel로 표시한다.
 - 검수 메모 규칙: 제거 완료 — 구 2depth 검수 페이지의 검수 메모·검수 조치 표면은 재정의 P3에서 전부 제거됐습니다(`202f905`). 태그 부여/제거용 운영 메모 필드도 2026-06-12 계약에서 제거했습니다(`/manage` 담당, P4 개방 완료 — 2026-06-11).
-- 주요 액션: `상세 보기`(행 클릭/툴팁 버튼 — 조회 전용. 쓰기 액션 없음)
-- URL 복원 메모: `questionNo`(반복), `topicMain`, `topicDetail`, `questionType`, `difficulty`, `keyword` (구 `domain`·`reviewStatus` 축은 재정의 P3에서 제거 완료). `tab` 쿼리는 사용하지 않고 라우트 자체가 URL 상태를 보존합니다.
-- 분리 메모: `문항 관리`(관리 포인트: 태그 + 노출)는 형제 라우트 `/assessment/question-bank/manage`로 분리되어 #19-1로 별도 정의합니다. 두 페이지는 동일한 신규 스키마 조회 결과(facade 공유 hook)를 사용합니다.
+- 주요 액션: `상세 보기`, `노출 가능`, `노출 제외`, `내부 테스트`, `태그 편집`, `기관 노출 설정`, 일괄 `기관 한정 지정`/`기관 한정 해제`. 기관 신규 추가는 `service_status='available'` 문항만 허용하고, 기존 기관 매핑 제거는 문항 상태와 무관하게 허용합니다.
+- URL 복원 메모: `questionNo`(반복), `topicMain`, `topicDetail`, `questionType`, `difficulty`, `keyword`, `serviceStatus` (구 `domain`·`reviewStatus` 축은 재정의 P3에서 제거 완료). `tab` 쿼리는 사용하지 않고 라우트 자체가 URL 상태를 보존합니다.
+- 통합 메모: 구 `문항 관리` 형제 라우트 `/assessment/question-bank/manage`는 `/assessment/question-bank`로 redirect되는 역사 경로입니다. 현행 route element는 `src/features/assessment/pages/assessment-question-manage-page.tsx`입니다.
 - 전환 메모: 2026-06-11 인바운드 전환(결정 기록 §0)으로 재정의된 P3(조회 컷오버 + 검수 표면·컬럼 제거)의 코드 컷오버·표 재작성은 완료됐습니다(`202f905`). 검수 4컬럼 물리 제거 마이그레이션 `0013`도 2026-06-11 적용 완료(`docs/architecture/metadata-tag-schema-transition-decision-record.md` §0, 실행계획안 2026-06-11 개정 — §12.4 P3 = PASS).
 
 ## 19-1) 평가 > TOPIK 쓰기 문항 관리
 
 - 2026-06-11 재정의: 인바운드 전환(결정 기록 §0)으로 이 페이지는 admin의 **관리 포인트** 페이지로 재정의됐습니다 — ① 태그 부여/제거(schema-rule §2 tag_master 사전 기반 `question_tags`), ② 노출 통제(`service_status` 컬럼: available/excluded/internal_test, 기본 internal_test — D-6 유지). **P4 관리 포인트 개방(2026-06-11)으로 두 write 모두 활성입니다.**
-- 2026-06-26 갱신: `/assessment/question-bank`에서 기관 컬럼과 기관 노출 설정/기관 한정 지정/전체 공개 전환 진입점을 제거했습니다. 기관 코드 기준 문항 노출 매핑 관리는 `Users > 기관 코드` 소관입니다.
+- 2026-06-26 갱신: `/assessment/question-bank`에 기관 컬럼과 기관 노출 설정/기관 한정 지정/기관 한정 해제 진입점을 다시 제공했습니다. 같은 `topik_writing_question_institution_exposure` 매핑을 `Users > 기관 코드`에서도 기관 중심으로 관리합니다.
 - 현재 상태: 구현됨 (facade 스위치 기본 `topik_writing` — 신규 4테이블 + 추천 뷰 조회, 롤백 env `VITE_QUESTION_BANK_SOURCE=legacy`. JSON fixture/store fallback 없음)
-- 라우트: `/assessment/question-bank/manage`
+- 라우트: `/assessment/question-bank` (`/assessment/question-bank/manage`는 redirect되는 역사 경로)
 - 화면 구조: `PageTitle -> ListSummaryCards -> AdminListCard(toolbar=문제 번호 체크박스 그룹 -> SearchBar(summary), body=Table)` + 행별 `태그 편집` 모달/조치 ConfirmAction
 - 문제 번호 체크박스 그룹: `51번`, `52번`, `53번`, `54번` 다중 선택, 기본 전체 선택
 - 상단 요약 카드: 전체 문항 + `노출 가능`/`노출 제외`/`내부 테스트` 건수 (`service_status` 축 — 재정의 P3 재작성 완료, 카드 클릭 필터)
 - 필터: SearchBar `주제(종합/세부 — 17주제 2단)`, `유형`, `난이도(1~6)`, `검색` + `serviceStatus` 요약 카드 필터 (구 `도메인` 축·`operationStatus` 4값 union은 재정의 P3에서 제거 완료 — D-6. 태그 필터 `tag` 키는 예약 상태 — 후속 검토)
-- 컬럼: 문항 번호, 문항 ID, 주제, 난이도, TOPIK 급수, 노출 상태, 태그(활성 태그 수 + `태그 편집` 버튼), 최근 수정, 더보기 (구 `검수 상태`·`사용 현황` 컬럼은 재정의 P3에서 제거 완료)
+- 컬럼: 문항 번호, 문항 ID, 주제, 난이도, TOPIK 급수, 노출 상태, 태그(활성 태그 수 + `태그 편집` 버튼), 기관 노출, 최근 수정, 더보기 (구 `검수 상태`·`사용 현황` 컬럼은 재정의 P3에서 제거 완료)
   - `노출 상태` 셀: `service_status` 표시로 전환 완료(재정의 P3). legacy 롤백 소스 행은 물리 컬럼이 없어 `미지정` sentinel로 표시한다.
   - `운영 조치` 컬럼: `노출 가능`, `노출 제외`, `내부 테스트` 버튼 — P4 개방으로 활성(현재 노출 상태와 같은 전환 버튼만 disabled). 확인+사유(필수) -> RPC -> 감사 로그 흐름(`ConfirmAction` + `AuditLogLink`). `available` 전환 모달은 POL-018 ②(운영주의 태그 활성 경고)·③(반복방지 활성 과다 시 `excluded` 권고)을 표시한다. '운영 제외'는 `service_status='excluded'` + 운영주의 태그 값 '운영 제외'로 구분한다(D-6).
   - `태그 편집` 모달: tag_master 활성 사전 기반 부여 후보는 2열 선택 패널(좌측 그룹 목록, 우측 체크박스 목록, 하단 선택 chip/초기화)로 제공한다. `Descriptions` 입력 테이블은 밀도 문제로 이 모달에서 예외 제거하고, 대상 식별자는 모달 subtitle의 `questionId`로 축소하며, 활성 태그 목록+제거 버튼은 compact 섹션으로 둔다. 부여는 체크박스 선택 후 바로 가능하고, 제거는 사유 입력 없는 단순 확인 모달을 거친다. 이미 활성인 태그 비활성, 선택 그룹 태그 usage_rule 안내를 유지한다. '서비스_노출상태' 그룹은 facade 필터+RPC 가드로 차단(D-6).
+  - `기관 노출` 셀/모달: 매핑이 없으면 `전체 공개`, 매핑이 있으면 `기관 N곳`으로 표시한다. `service_status!='available'` 문항은 `현재 미노출` 태그를 함께 표시한다. 단건 모달과 일괄 지정은 신규 기관 추가 시 전역 노출 상태를 서버 RPC에서 검증하며, `excluded`/`internal_test` 문항은 `blocked` 결과로 안내한다. 제거/전체 해제는 stale 매핑 정리를 위해 상태와 무관하게 허용한다.
 - 행 클릭: 별도 동작 없음
-- write 경로: 신규 RPC 단일 경로 — `admin_update_topik_question`(service_status)/`admin_assign_question_tag`/`admin_remove_question_tag`. 직접 테이블 write는 RLS 전면 차단(쓰기 정책 0건 — P4-4 네거티브 검증). 구 "준비 중" 안내 Alert는 P4 개방으로 제거됨.
-- 주요 액션: `노출 가능`, `노출 제외`, `내부 테스트`(감사 `service_status_changed` — 사유 필수), `태그 부여`(`tag_assigned`), `태그 제거`(`tag_removed` — 사유 없음) — 모두 `AssessmentQuestion + questionId` 감사 기록. 기관 컬럼과 기관 노출 설정/기관 한정 지정/전체 공개 전환은 이 페이지에서 제공하지 않습니다.
+- write 경로: 신규 RPC 단일 경로 — `admin_update_topik_question`(service_status)/`admin_assign_question_tag`/`admin_remove_question_tag`/`admin_set_writing_question_institutions`/`admin_clear_writing_question_institutions`. 직접 테이블 write는 RLS 전면 차단(쓰기 정책 0건 — P4-4 네거티브 검증). 구 "준비 중" 안내 Alert는 P4 개방으로 제거됨.
+- 주요 액션: `노출 가능`, `노출 제외`, `내부 테스트`(감사 `service_status_changed` — 사유 필수), `태그 부여`(`tag_assigned`), `태그 제거`(`tag_removed` — 사유 없음), `기관 노출 설정`/`기관 한정 지정`/`기관 한정 해제`(`question_institutions_changed`/`question_institutions_cleared` — 사유 필수) — 모두 `AssessmentQuestion + questionId` 감사 기록.
 - URL 복원 메모: `questionNo`(반복), `topicMain`, `topicDetail`, `questionType`, `difficulty`, `keyword`, `serviceStatus`(구 `operationStatus` — 재정의 P3에서 교체 완료). `tab` 쿼리는 사용하지 않고 라우트 자체가 URL 상태를 보존합니다.
-- 분리 메모: 조회 전용 `문항 목록` 페이지는 형제 라우트 `/assessment/question-bank`(#19)로 분리되어 있으며, 두 페이지는 동일한 신규 스키마 조회 결과(facade 공유 hook — 재정의 P3 컷오버 완료)를 사용합니다.
+- 통합 메모: 조회와 관리 포인트는 `/assessment/question-bank` 단일 페이지(#19)로 통합되어 있으며, 이 #19-1 절은 구 문서 호환용 역사 항목입니다.
 - 전환 메모: 2026-06-11 인바운드 전환으로 POL-017은 "TOPIK 쓰기 문항 수신·관리 운영정책"(수신(외부 API, 미개발) → 적재 → 관리 포인트(태그) + 노출(`service_status`) → v13 read-only)으로 재정의됐고, `service_status` 정합은 D-6로 유지됩니다(검수 선행 기준 ①만 삭제). 재정의 P3의 `service_status` 축 표시 전환·표 재작성(`202f905`)과 P4 태그·노출 write 행 재작성(2026-06-11 관리 포인트 개방)은 완료됐습니다(`docs/architecture/metadata-tag-schema-transition-decision-record.md` §0, 실행계획안 2026-06-11 개정).
 
 ## 20) 평가 > EPS TOPIK
