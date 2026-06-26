@@ -27,11 +27,11 @@ last_reviewed_at: "2026-06-26"
 | 페이지명 | `TOPIK 쓰기 문항 목록` (2026-06-11 재정의, 구 `TOPIK 쓰기 문제은행`) |
 | 라우트 | `/assessment/question-bank`, `/assessment/question-bank/:questionId`(상세 — 재정의 P3에서 구 `…/review/:questionId` 개명 완료) |
 | 현재 상태 | `구현됨` (2depth 검수 페이지 표면은 재정의 P3에서 제거 완료 — `202f905`) |
-| 페이지 유형 | `목록 조회형 + 2depth 상세(조회 전용)` — 구 2depth 검수 페이지는 조회 전용 상세로 재작성 완료 |
-| 페이지 목적 한 줄 요약 | 외부(공급) API에서 수신·적재된 TOPIK 쓰기 문항(51~54)을 조회 전용으로 비교·확인하는 화면입니다. 관리 포인트(태그)와 노출 통제(`service_status`)는 형제 라우트 `/assessment/question-bank/manage`가 담당합니다. |
+| 페이지 유형 | `목록+관리 통합형 + 2depth 상세(조회 전용)` — 구 2depth 검수 페이지는 조회 전용 상세로 재작성 완료 |
+| 페이지 목적 한 줄 요약 | 외부(공급) API에서 수신·적재된 TOPIK 쓰기 문항(51~54)을 비교·확인하고, 태그·노출 상태·기관 노출 매핑을 같은 목록에서 조치하는 화면입니다. |
 | 주요 운영자 | `CONTENT_MANAGER, SUPER_ADMIN` |
-| 주요 권한 | `assessment.questions.manage` |
-| 코드 근거 | `src/features/assessment/pages/assessment-question-bank-page.tsx, src/features/assessment/pages/assessment-question-detail-page.tsx`(후자 = 조회 전용 상세 — 재정의 P3에서 구 검수 페이지를 개명·재작성 완료) |
+| 주요 권한 | `assessment.question-bank.manage` |
+| 코드 근거 | `src/features/assessment/pages/assessment-question-manage-page.tsx, src/features/assessment/pages/assessment-question-detail-page.tsx`(후자 = 조회 전용 상세 — 재정의 P3에서 구 검수 페이지를 개명·재작성 완료) |
 | 연관 SoT 문서 | `docs/specs/page-ia/assessment-question-bank-page-ia.md`, `docs/specs/admin-data-contract.md`, `docs/specs/admin-data-usage-map.md`, `docs/specs/admin-page-tables.md`, `docs/architecture/metadata-tag-schema-transition-decision-record.md` §0 |
 
 ## 3. 이 페이지의 목적
@@ -39,9 +39,9 @@ last_reviewed_at: "2026-06-26"
 ### 목적
 
 - 문제 발원은 **외부(공급) API**(미개발 상태 — 공급 계약 요청 추진, D-11 재정의)입니다. 문제 본문+메타데이터(schema-rule §4·§7, §7.9·검수 필드 제외)가 **완성 상태로 공급**되며, admin은 문제를 저작·생성·분류·검수하지 않습니다.
-- 이 페이지는 수신·적재(외부 API → Supabase `topik_writing_51/52/53/54_questions` + `question_source_map`)된 문항을 **조회 전용**으로 확인하는 관리자 기점입니다.
-- 관리 포인트는 **태그**(schema-rule §2: tag_master 사전 기반 `question_tags` 부여/제거), 노출 통제는 **`service_status` 컬럼**(D-6 유지: available/excluded/internal_test, 기본 internal_test)이며, 둘 다 형제 라우트 `/assessment/question-bank/manage`가 담당합니다(P4 관리 포인트 개방 완료 — 2026-06-11).
-- 2026-06-26 기준 기관 매핑은 이 페이지에서 노출하지 않습니다. 기관 컬럼과 기관 노출 설정/기관 한정 지정/전체 공개 전환 진입점은 제공하지 않으며, 기관 코드 기준 문항 노출 매핑 관리는 `Users > 기관 코드` 동기화 문서를 따릅니다.
+- 이 페이지는 수신·적재(외부 API → Supabase `topik_writing_51/52/53/54_questions` + `question_source_map`)된 문항을 확인하고, 목록 단위 관리 포인트를 처리하는 관리자 기점입니다. 2depth 상세는 조회 전용입니다.
+- 관리 포인트는 **태그**(schema-rule §2: tag_master 사전 기반 `question_tags` 부여/제거), 노출 통제는 **`service_status` 컬럼**(D-6 유지: available/excluded/internal_test, 기본 internal_test), 기관별 문항 매핑은 **`topik_writing_question_institution_exposure`**입니다. 2026-06-23 통합 이후 모두 `/assessment/question-bank`에서 처리합니다.
+- 2026-06-26 기준 기관 매핑은 이 페이지에도 노출합니다. 테이블 `기관 노출` 컬럼, 단건 `기관 노출 설정`, 일괄 `기관 한정 지정`/`기관 한정 해제`가 있으며, `Users > 기관 코드`는 기관 중심으로 같은 매핑을 관리합니다.
 - v13 사용자 기능은 read-only로 소비합니다. 인터림(외부 API 미개발 동안): P2 백필 466행이 초기 코퍼스입니다.
 - 코드 현실: 현행 코드는 facade 스위치 기본 `topik_writing`으로 신규 4테이블 + 추천 뷰를 조회하고, 2depth 상세는 조회 전용입니다(재정의 P3 컷오버 + 검수 표면 제거 완료 — `202f905`). 롤백 경로는 env `VITE_QUESTION_BANK_SOURCE=legacy`(`problems` 읽기 전용 어댑터)입니다.
 
@@ -57,7 +57,8 @@ last_reviewed_at: "2026-06-26"
 | --- | --- | --- | --- | --- | --- |
 | TOPIK 쓰기 문항 목록/상세 조회 | 수신·적재된 문항의 목록(뷰)과 상세(번호별 테이블)를 조회 전용으로 확인합니다. | 조회 | AssessmentQuestion | 현재 상태 확인 | 불필요 |
 | 수신·적재(후속) | 외부(공급) API → Supabase 적재. 외부 API 미개발 상태로, 공급 연동 시 감사 액션 `question_received`와 함께 추가됩니다. | 생성(수신) | AssessmentQuestion | 적재 + 감사 로그 | 필요 |
-| 태그 부여/제거·노출 상태 변경 | 이 페이지 비대상 — `/assessment/question-bank/manage`에서 수행합니다(P4 개방 완료 — 2026-06-11, RT-4 왕복 검증). | 수정 | AssessmentQuestion + questionId | 데이터 반영 | 필요(`/manage` 계약) |
+| 태그 부여/제거·노출 상태 변경 | 더보기 메뉴/일괄 조치에서 수행합니다(P4 개방 완료 — 2026-06-11, 2026-06-23 통합). | 수정 | AssessmentQuestion + questionId | 데이터 반영 | 필요 |
+| 기관 노출 설정/해제 | 문항 단건 또는 선택 문항 일괄로 기관 한정 매핑을 지정/해제합니다. `service_status!='available'` 문항의 신규 추가는 blocked로 안내합니다. | 수정 | AssessmentQuestion + questionId | 기관 매핑 반영 또는 차단 안내 | 필요 |
 
 - 제거 완료: 구 2depth 검수 페이지의 검수 메모 저장·검수 상태 변경 쓰기는 재정의 P3에서 제거 완료됐습니다(`202f905`). 현행 상세는 조회 전용입니다.
 
@@ -67,7 +68,8 @@ last_reviewed_at: "2026-06-26"
 
 | 엔티티 후보 | 테이블 후보 | CRUD | 관리자 UI 진입점 | 주요 필드 후보 | 감사 로그 Target | 사용자 화면 영향 | 미확정/차이 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| AssessmentQuestion | topik_writing_51/52/53/54_questions + topik_writing_question_source_map(+목록용 추천 뷰) | Create(수신 적재 — 후속), Read | TOPIK 쓰기 문항 목록/상세 | question_id, item_number, topic_main/topic_detail, scenario_type, situation_summary, service_status, 태그(question_tags 경유), auto_checks_passed(수신 정합 검사), content_team_memo(수신 메타데이터 — admin 쓰기 없음), created_at, updated_at | AssessmentQuestion + questionId | 노출 예정(v13 read-only 소비) | 재정의 P3 컷오버 완료(`202f905`): 현행 코드 source는 신규 4테이블 + 추천 뷰(facade 기본 `topik_writing`). 검수 컬럼(review_status 등)은 화면·코드에서 제거 완료, 물리 제거도 마이그레이션 `0013`으로 완료(2026-06-11 적용) |
+| AssessmentQuestion | topik_writing_51/52/53/54_questions + topik_writing_question_source_map(+목록용 추천 뷰) | Create(수신 적재 — 후속), Read, Update(관리 포인트) | TOPIK 쓰기 문항 목록/상세 | question_id, item_number, topic_main/topic_detail, scenario_type, situation_summary, service_status, 태그(question_tags 경유), auto_checks_passed(수신 정합 검사), content_team_memo(수신 메타데이터 — admin 쓰기 없음), created_at, updated_at | AssessmentQuestion + questionId | 노출 예정(v13 read-only 소비) | 재정의 P3 컷오버 완료(`202f905`): 현행 코드 source는 신규 4테이블 + 추천 뷰(facade 기본 `topik_writing`). 검수 컬럼(review_status 등)은 화면·코드에서 제거 완료, 물리 제거도 마이그레이션 `0013`으로 완료(2026-06-11 적용) |
+| InstitutionQuestionExposure | topik_writing_question_institution_exposure | Create, Read, Delete | 기관 노출 컬럼/설정 모달/일괄 지정·해제 | institution_code, question_id, reason, batch_id, service_status(조회 결합) | AssessmentQuestion + questionId / InstitutionCode + code | 기관 회원 전용 문항 노출 후보 | `service_status='available'`이 전역 선행 조건. `excluded`/`internal_test` 신규 매핑 추가는 blocked, 기존 매핑 제거는 허용 |
 
 ### CRUD 상세
 
@@ -75,18 +77,19 @@ last_reviewed_at: "2026-06-26"
 | --- | --- | --- | --- | --- | --- |
 | Create | `후속(수신 적재)` | 외부(공급) API 수신 → Supabase 적재. 외부 API 미개발 — 공급 계약 회신 게이트(D-11 재정의)에 종속하며, 화면에서 직접 문항을 생성하지 않음 | 수신 파이프라인(후속) + `question_source_map` idempotency(D-4) | 목록, 상세, 감사 로그(`question_received`) | 수신 정합 검사(auto_checks_passed) 실패분 적재 보류 |
 | Read | `지원` | 문항 목록(추천 뷰)/상세(번호별 테이블) 조회 | 신규 4테이블 + 추천 뷰(재정의 P3 컷오버 완료 — 롤백 시 legacy `problems` 읽기 전용 어댑터) | URL/필터 복원 | empty/error 처리, JSON fallback 없음 |
-| Update | `이 페이지 미지원` | 태그 부여/제거 + `service_status` 변경은 `/manage`에서 수행(P4 개방 완료 — 2026-06-11). 검수 상태 변경 쓰기는 화면·facade에서 제거 완료(재정의 P3 — `202f905`), DB측 RPC의 검수 화이트리스트도 마이그레이션 `0013`에서 제거 완료(2026-06-11 적용) | `admin_update_topik_question`(service_status)/`admin_assign_question_tag`/`admin_remove_question_tag` | 목록, 상세, 감사 로그 | 실패 시 재조회 또는 오류 안내 |
+| Update | `지원` | 태그 부여/제거, `service_status` 변경, 기관 노출 설정을 이 페이지에서 수행한다. 검수 상태 변경 쓰기는 화면·facade에서 제거 완료(재정의 P3 — `202f905`), DB측 RPC의 검수 화이트리스트도 마이그레이션 `0013`에서 제거 완료(2026-06-11 적용) | `admin_update_topik_question`(service_status)/`admin_assign_question_tag`/`admin_remove_question_tag`/`admin_set_writing_question_institutions`/`admin_clear_writing_question_institutions` | 목록, 상세, 감사 로그 | 실패 또는 blocked 안내 후 재조회 |
 | Delete | `미지원` | 물리 삭제 없음. 노출 제외는 `/manage`의 `service_status='excluded'` 전환으로 처리 | 없음 | 목록, 상세, 감사 로그, 사용자 노출 | 확인 모달, 사유 필수(`/manage` 계약) |
 
 ## 6. 관리자 조치와 감사 로그 계약
 
-감사 액션 사전은 D-8 개정(2026-06-11 §0)을 따릅니다: 유지 = `service_status_changed`/`tag_assigned`/`tag_removed`(`/manage` 담당), 추가(후속) = `question_received`(수신·적재 — 공급 연동 시 추가), 폐기 = 검수 4종(`review_completed`/`review_on_hold`/`review_revision_requested`/`review_memo_saved`)·`question_published`(push).
+감사 액션 사전은 D-8 개정(2026-06-11 §0)과 2026-06-26 기관 노출 정합화를 따릅니다: 유지 = `service_status_changed`/`tag_assigned`/`tag_removed`, 기관 매핑 = `question_institutions_changed`/`question_institutions_cleared`, 추가(후속) = `question_received`(수신·적재 — 공급 연동 시 추가), 폐기 = 검수 4종(`review_completed`/`review_on_hold`/`review_revision_requested`/`review_memo_saved`)·`question_published`(push).
 
 | 조치 | 파괴적 여부 | 확인 단계 | 사유/근거 입력 | Target Type | Target ID | 감사 로그 확인 경로 |
 | --- | --- | --- | --- | --- | --- | --- |
 | 수신·적재(`question_received`, 후속 — 공급 연동 시 추가) | 아니요 | 시스템 기록 | 불필요(수신 메타 기록) | AssessmentQuestion | 대상 ID | /system/audit-logs?targetType=AssessmentQuestion&targetId={targetId} |
-| 태그 부여/제거(`tag_assigned`/`tag_removed`) — `/manage` 담당 | 아니요 | 시스템 기록 | 불필요 | AssessmentQuestion | 대상 ID | /system/audit-logs?targetType=AssessmentQuestion&targetId={targetId} |
-| 노출 상태 변경(`service_status_changed`) — `/manage` 담당 | 예 | 필수 | 필수 | AssessmentQuestion | 대상 ID | /system/audit-logs?targetType=AssessmentQuestion&targetId={targetId} |
+| 태그 부여/제거(`tag_assigned`/`tag_removed`) | 아니요 | 시스템 기록 | 불필요 | AssessmentQuestion | 대상 ID | /system/audit-logs?targetType=AssessmentQuestion&targetId={targetId} |
+| 노출 상태 변경(`service_status_changed`) | 예 | 필수 | 필수 | AssessmentQuestion | 대상 ID | /system/audit-logs?targetType=AssessmentQuestion&targetId={targetId} |
+| 기관 노출 설정/해제(`question_institutions_changed`/`question_institutions_cleared`) | 아니요 | 모달 확인 | 필수 | AssessmentQuestion | 대상 ID | /system/audit-logs?targetType=AssessmentQuestion&targetId={targetId} |
 
 - 폐기: 검수 액션 4종과 `question_published`(push)는 2026-06-11 §0으로 폐기됐습니다. 검수 페이지 코드는 재정의 P3에서 제거 완료(`202f905` — 기존 감사 행은 "(구)" 역사 라벨로 표시)이고, DB측 RPC(`admin_update_topik_question`)의 검수 액션 경로도 마이그레이션 `0013`에서 제거 완료됐습니다(2026-06-11 적용 — RPC 원문 검수 참조 0건).
 
@@ -94,7 +97,7 @@ last_reviewed_at: "2026-06-26"
 
 | 사용자 화면 후보 | 영향 상태 | 관리자 데이터 | 사용자 화면에 반영되는 방식 | 동기화 필요 시점 | 비고 |
 | --- | --- | --- | --- | --- | --- |
-| TOPIK 쓰기 시험 화면, 문제 풀이 화면, 결과/해설 화면 | 노출 예정 | 문항 본문+메타데이터(신규 4테이블), `service_status`, 태그 | v13 사용자 기능이 read-only로 소비합니다. 노출 on/off는 `service_status`(available/excluded/internal_test, 기본 internal_test)로만 통제합니다(`/manage` — P4 개방 완료, 2026-06-11). 상류 push(업로드/배포) 경로는 2026-06-11 §0으로 폐기됐습니다. | `service_status` 변경 시 | 인터림: v13 사용자 기능은 현행 `problems`를 읽는 중 — 신규 4테이블 소비 경로 전환은 컷오버 후속(별도 결정) |
+| TOPIK 쓰기 시험 화면, 문제 풀이 화면, 결과/해설 화면 | 노출 예정 | 문항 본문+메타데이터(신규 4테이블), `service_status`, 태그, 기관 매핑 | v13 사용자 기능이 read-only로 소비합니다. 최종 노출 predicate 후보는 `service_status='available' AND (기관 매핑 없음 OR 사용자 affiliation_code 매핑 존재)`입니다. 상류 push(업로드/배포) 경로는 2026-06-11 §0으로 폐기됐습니다. | `service_status` 또는 기관 매핑 변경 시 | 인터림: v13 사용자 기능은 현행 `problems`를 읽는 중 — 신규 4테이블/기관 predicate 소비 경로 전환은 컷오버 후속(별도 결정) |
 
 ## 8. 이 페이지와 연관있는 페이지(예상)
 
@@ -102,7 +105,8 @@ last_reviewed_at: "2026-06-26"
 
 | 연관 관리자 페이지 | 관계 유형 | 연관 이유 | 이동/연동 방식 | 선행/후행 관계 | 확정 상태 |
 | --- | --- | --- | --- | --- | --- |
-| Assessment > TOPIK 쓰기 문항 관리(`/assessment/question-bank/manage`) | 필수 연동 | 관리 포인트(태그 부여/제거)와 노출 통제(`service_status`)는 `/manage`가 담당 | 형제 라우트 이동 | 후행 | 확정(2026-06-11 §0) |
+| Assessment > TOPIK 쓰기 문항(`/assessment/question-bank`) | 자기 참조 | 관리 포인트(태그 부여/제거), 노출 통제(`service_status`), 기관 노출 설정을 같은 통합 페이지가 담당 | 행 더보기/일괄 조치 | 현재 | 확정(2026-06-23 통합, 2026-06-26 기관 정합화) |
+| Users > 기관 코드 | 동등 | 같은 `topik_writing_question_institution_exposure` 매핑을 기관 중심으로 관리 | 기관 코드별 노출 문항 모달 | 동등 | 확정 |
 | Assessment > EPS TOPIK | 참고/후속 | TOPIK 쓰기 문항 데이터의 원본 확인 또는 후속 검증 | 식별자 또는 필터 기반 이동 | 선행 또는 후행 | 운영상 추정 |
 | Assessment > 레벨 테스트 | 참고/후속 | TOPIK 쓰기 문항 데이터의 원본 확인 또는 후속 검증 | 식별자 또는 필터 기반 이동 | 선행 또는 후행 | 운영상 추정 |
 | System > 감사 로그 | 필수 후행 | TOPIK 쓰기 문항 데이터의 원본 확인 또는 후속 검증 | 식별자 또는 필터 기반 이동 | 후행 | 확정 |
@@ -119,7 +123,8 @@ last_reviewed_at: "2026-06-26"
 
 | 구분 | 표준 값/용어 | 내부 코드 후보 | 사용자 노출 라벨 | 비고 |
 | --- | --- | --- | --- | --- |
-| 노출 상태(노출 가능/노출 제외/내부 테스트) | available/excluded/internal_test | service_status | 사용자 직접 노출 라벨 아님(노출 on/off 결과로만 반영) | D-6 확정 — 유일한 물리 노출 상태, 기본 internal_test |
+| 노출 상태(노출 가능/노출 제외/내부 테스트) | available/excluded/internal_test | service_status | 사용자 직접 노출 라벨 아님(노출 on/off 결과로만 반영) | D-6 확정 — 유일한 물리 노출 상태, 기본 internal_test. 기관 노출보다 우선하는 전역 차단 조건 |
+| 기관 노출 상태 | 전체 공개/기관 한정/현재 미노출 | topik_writing_question_institution_exposure + service_status | 사용자 직접 노출 라벨 아님(최종 필터 결과로 반영) | 매핑 없음=전체 공개, 매핑 있음=기관 한정. `service_status!='available'`이면 기존 매핑이 있어도 현재 미노출 |
 | 태그 그룹(추천목적/반복방지/학습흐름/운영주의/대표문제/추천사용) | tag_master 사전(schema-rule §2) | question_tags | 사용자 비노출(내부 관리 포인트) | 부여/제거는 `/manage`에서 활성(P4 개방 완료), 별도 메모 필드 없음 |
 | 문항 번호 51~54 | 문항 번호 51~54 | page-specific enum candidate | 문항 번호 51~54 | 정확한 상태 세트는 IA와 데이터 계약 문서를 우선합니다. |
 
@@ -129,7 +134,7 @@ last_reviewed_at: "2026-06-26"
 
 - 기본 라우트: `/assessment/question-bank`
 - 필수 쿼리/경로 파라미터: 없음
-- 선택 쿼리 파라미터: `questionNo`(반복), `topicMain`, `topicDetail`, `questionType`, `difficulty`, `keyword` (+ P4 예약 `tag`. 구 `reviewStatus`는 재정의 P3에서 제거 완료)
+- 선택 쿼리 파라미터: `questionNo`(반복), `topicMain`, `topicDetail`, `questionType`, `difficulty`, `keyword`, `serviceStatus` (+ P4 예약 `tag`. 구 `reviewStatus`는 재정의 P3에서 제거 완료)
 - 목록 복원 기준: 목록/필터/정렬/상세 대상 복원 (`tab` 쿼리는 제거됨)
 - 상세 Drawer/Modal/하위 라우트 복원 여부: `/assessment/question-bank/:questionId`(재정의 P3에서 구 `…/review/:questionId` 개명 완료 — 목록 쿼리를 보존해 진입/복귀)
 - 사용자 화면 동기화에 필요한 식별자: AssessmentQuestion + questionId
@@ -146,14 +151,14 @@ last_reviewed_at: "2026-06-26"
 ## 12. 에이전트 작업 메모
 
 - Codex 확인 포인트:
-  - `src/features/assessment/pages/assessment-question-bank-page.tsx, src/features/assessment/pages/assessment-question-detail-page.tsx` 구현과 `docs/specs/page-ia/assessment-question-bank-page-ia.md` 문서 일치 확인 — 구 검수 페이지·검수 쓰기 경로는 재정의 P3에서 제거 완료(`202f905`)
+  - `src/features/assessment/pages/assessment-question-manage-page.tsx, src/features/assessment/pages/assessment-question-detail-page.tsx` 구현과 `docs/specs/page-ia/assessment-question-bank-page-ia.md` 문서 일치 확인 — 구 검수 페이지·검수 쓰기 경로는 재정의 P3에서 제거 완료(`202f905`)
   - 신규 4테이블 + 추천 뷰 조회 경계(facade 기본 `topik_writing`, 롤백 env=legacy)와 감사 로그 Target 확인
 - Claude 확인 포인트:
   - 시험/문제 풀이 화면 데이터 원천에 노출 예정으로 연결됩니다(v13 read-only 소비).
-  - 정책 문구와 노출/비노출 기준(`service_status`) 검토
+  - 정책 문구와 노출/비노출 기준(`service_status` + 기관 매핑 predicate) 검토
 - 양쪽 동기화가 필요한 결정:
   - 외부 공급 API 계약(페이로드/식별자) 확정
-  - v13 사용자 기능의 신규 4테이블 소비 경로 전환 시점
+  - v13 사용자 기능의 신규 4테이블 소비 경로 및 기관 매핑 predicate 적용 시점
   - 감사 로그 Target Type 세분화
 
 ## 13. 미확정 항목
@@ -162,4 +167,5 @@ last_reviewed_at: "2026-06-26"
 | --- | --- | --- | --- | --- | --- |
 | 외부 공급(인바운드) API 계약 | 문제 발원인 외부(공급) API는 미개발 상태입니다. 공급 계약(페이로드 = schema-rule §4·§7(§7.9·검수 필드 제외), idempotency 식별자 포함)은 요청서(D-11 재정의) 회신 게이트에 종속하며, 수신 연동과 `question_received` 감사 결선 시점이 미확정입니다. 종전 "상류 배포(업로드) 엔드포인트" 미확정 행은 push 폐기(2026-06-11 §0)로 본 행으로 대체됐습니다. | 기획/외부 공급측/백엔드 | 수신 적재 경로/감사 로그 계약 추가 | 신규 문항 유입 시점 | docs/architecture/metadata-tag-schema-transition-decision-record.md §0, docs/requests/upstream-writing-endpoints-request-2026-06-10.md(인바운드 기준 재작성) |
 | service_status ↔ v13 노출 연동 | `service_status`(D-6 유지)가 유일한 물리 노출 상태입니다. 구판의 상류 노출 토글 엔드포인트·보상 정책(구 P6) 미확정은 push 폐기로 소멸했습니다. 남은 미확정은 v13 사용자 기능의 신규 4테이블 read-only 소비 경로 전환(현재는 `problems`를 읽음)입니다 — `/manage` write 개방(P4)은 2026-06-11 완료. | 기획/백엔드/프론트 | `/manage` 운영 조치 활성화/감사 로그 계약 | 사용자 노출 on/off | docs/specs/page-ia/assessment-question-manage-page-ia.md, docs/architecture/metadata-tag-schema-transition-decision-record.md |
+| 기관 매핑 ↔ v13 노출 연동 | admin/RPC 기준 predicate는 `service_status='available' AND (기관 매핑 없음 OR 사용자 affiliation_code 매핑 존재)`로 확정했습니다. v13 사용자 조회·추천·제출 guard 적용은 별도 handoff 후속입니다. | v13/백엔드/프론트 | `/assessment/question-bank`와 `Users > 기관 코드`의 매핑 조치 활성화/감사 로그 계약 | 기관 회원 전용 문항 노출 | docs/requests/v13-institution-question-exposure-handoff-2026-06-26.md |
 | 메타데이터·태그 스키마 전환(인바운드 재정의) | 2026-06-11 인바운드 전환(§0)으로 P3 이후 단계가 재정의됐습니다(검수 컷오버 → 조회 컷오버 + 검수 표면·컬럼 제거, push 트랙·P2-5 콘텐츠팀 게이트 폐기). 이 페이지는 재정의 P3에서 어댑터/타입/필터 축 전면 변경, 검수 표면 제거, 상세 라우트 개명, 본 문서 §5~§7 재검증이 수행됩니다. 세부 단계 정의는 실행계획안 2026-06-11 개정을 따릅니다. | admin(실행계획안 2026-06-11 개정 게이트) | 재정의 P3에서 어댑터/타입/필터 축 전면 변경(XL) + 검수 표면 제거 | 태그 기반 추천·노출 정책 신설 가능(후속) | docs/architecture/metadata-tag-schema-transition-decision-record.md §0, docs/메타데이터-태그-스키마-전환-실행계획안.md(2026-06-11 개정), docs/specs/admin-data-contract.md §12 |

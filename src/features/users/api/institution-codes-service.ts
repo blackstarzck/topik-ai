@@ -11,6 +11,7 @@ import {
   assignInstitutionCodeViaRpc,
   clearInstitutionCodeViaRpc,
   createInstitutionCodeViaRpc,
+  deleteInstitutionCodeViaRpc,
   loadInstitutionCodeMembersFromSupabase,
   loadInstitutionCodesFromSupabase,
   updateInstitutionCodeViaRpc
@@ -34,6 +35,11 @@ export type UpdateInstitutionCodePayload = {
   kind: InstitutionCodeKind;
   status: InstitutionCodeStatus;
   note: string;
+  reason: string;
+};
+
+export type DeleteInstitutionCodePayload = {
+  code: string;
   reason: string;
 };
 
@@ -97,6 +103,18 @@ async function persistUpdate(
   return payload.code;
 }
 
+async function persistDelete(
+  payload: DeleteInstitutionCodePayload,
+  signal?: AbortSignal
+): Promise<string> {
+  if (isSupabaseSource) {
+    return deleteInstitutionCodeViaRpc(payload, signal);
+  }
+
+  await sleep(200, signal);
+  return payload.code;
+}
+
 export function fetchInstitutionCodesSafe(signal?: AbortSignal) {
   return toSafeResult(() =>
     withRetry(() => loadInstitutionCodes(signal), { maxRetries: 1 })
@@ -115,6 +133,13 @@ export function updateInstitutionCodeSafe(
   signal?: AbortSignal
 ) {
   return toSafeResult(() => persistUpdate(payload, signal));
+}
+
+export function deleteInstitutionCodeSafe(
+  payload: DeleteInstitutionCodePayload,
+  signal?: AbortSignal
+) {
+  return toSafeResult(() => persistDelete(payload, signal));
 }
 
 /** 기관 코드 상세 > 소속 회원 목록. mock 경로는 빈 목록(정적 시드라 회원 없음). */

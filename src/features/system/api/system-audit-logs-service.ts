@@ -45,6 +45,21 @@ function getAuditActionLabel(action: string): string {
   if (action === 'tag_removed') {
     return '태그 제거';
   }
+  if (action === 'question_institutions_changed') {
+    return '기관 노출 설정 변경';
+  }
+  if (action === 'question_institutions_cleared') {
+    return '기관 노출 설정 해제';
+  }
+  if (action === 'institution_code_created') {
+    return '기관 코드 생성';
+  }
+  if (action === 'institution_code_updated') {
+    return '기관 코드 수정';
+  }
+  if (action === 'institution_code_deleted') {
+    return '기관 코드 삭제';
+  }
   if (action === 'question_received') {
     return '문항 수신';
   }

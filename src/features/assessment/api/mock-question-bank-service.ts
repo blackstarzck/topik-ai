@@ -409,6 +409,7 @@ export async function setMockServiceStatusBulk(
   const unique = Array.from(new Set(questionIds));
   let changed = 0;
   let unchanged = 0;
+  const blocked = 0;
   let failed = 0;
   const details: BulkServiceStatusResult['details'] = [];
 
@@ -433,7 +434,7 @@ export async function setMockServiceStatusBulk(
     total: unique.length,
     changed,
     unchanged,
-    blocked: 0,
+    blocked,
     failed,
     details,
     batchId: 'mock-batch'
@@ -486,6 +487,8 @@ export async function removeMockQuestionTag(
 // ---------------------------------------------------------------------------
 
 const mockQuestionInstitutions: WritingQuestionInstitutionRow[] = [];
+const GLOBAL_EXPOSURE_BLOCKED_MESSAGE =
+  '전역 노출 상태가 노출 가능이 아니어서 기관 노출에 추가할 수 없습니다.';
 
 export async function loadMockQuestionInstitutions(
   questionId?: string
@@ -506,6 +509,7 @@ export async function setMockQuestionInstitutions(
   );
   let changed = 0;
   let unchanged = 0;
+  let blocked = 0;
   let failed = 0;
   const details: BulkServiceStatusResult['details'] = [];
 
@@ -523,6 +527,17 @@ export async function setMockQuestionInstitutions(
       .map((row) => row.institutionCode);
     const added = targetCodes.filter((code) => !current.includes(code));
     const removed = current.filter((code) => !targetCodes.includes(code));
+    if (added.length > 0 && detail.serviceStatus !== 'available') {
+      blocked += 1;
+      if (details.length < 50) {
+        details.push({
+          questionId,
+          kind: 'blocked',
+          message: GLOBAL_EXPOSURE_BLOCKED_MESSAGE
+        });
+      }
+      continue;
+    }
     if (added.length === 0 && removed.length === 0) {
       unchanged += 1;
       continue;
@@ -553,7 +568,7 @@ export async function setMockQuestionInstitutions(
     total: uniqueIds.length,
     changed,
     unchanged,
-    blocked: 0,
+    blocked,
     failed,
     details,
     batchId: 'mock-batch'

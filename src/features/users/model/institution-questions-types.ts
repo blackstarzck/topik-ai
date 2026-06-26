@@ -25,9 +25,10 @@ export type InstitutionQuestionMutationResult = {
   total: number;
   changed: number;
   unchanged: number;
+  blocked: number;
   failed: number;
   batchId: string;
-  details: { questionId: string; message: string }[];
+  details: { questionId: string; kind: 'blocked' | 'failed'; message: string }[];
 };
 
 export type InstitutionQuestionMutationPayload = {

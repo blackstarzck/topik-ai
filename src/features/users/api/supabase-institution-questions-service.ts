@@ -34,12 +34,14 @@ function mapResult(data: unknown): InstitutionQuestionMutationResult {
     total: Number(row.total ?? 0),
     changed: Number(row.changed ?? 0),
     unchanged: Number(row.unchanged ?? 0),
+    blocked: Number(row.blocked ?? 0),
     failed: Number(row.failed ?? 0),
     batchId: typeof row.batch_id === 'string' ? row.batch_id : '',
     details: rawDetails.map((entry) => {
       const detail = (entry ?? {}) as Record<string, unknown>;
       return {
         questionId: typeof detail.question_id === 'string' ? detail.question_id : '',
+        kind: detail.kind === 'blocked' ? 'blocked' : 'failed',
         message: typeof detail.message === 'string' ? detail.message : ''
       };
     })

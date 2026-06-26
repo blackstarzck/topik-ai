@@ -11,6 +11,7 @@
 ## 반드시 기록해야 하는 액션
 
 - 회원 정지/해제/탈퇴
+- 기관 코드 생성/수정/삭제 및 기관 코드 회원 배정/소속 해제
 - 강사 정지/해제
 - 게시글 숨김/삭제
 - FAQ 공개/비공개/삭제
@@ -24,7 +25,7 @@
 - 포인트 정책 저장/활성화/중지
 - 포인트 수동 적립/차감/회수
 - 포인트 소멸 보류/해제/실행
-- TOPIK 쓰기 문항의 노출 상태(`service_status`) 변경, 태그 부여/제거, 수신·적재(`question_received` — 외부 공급 API 연동 시 추가)
+- TOPIK 쓰기 문항의 노출 상태(`service_status`) 변경, 태그 부여/제거, 기관 노출 설정/해제, 수신·적재(`question_received` — 외부 공급 API 연동 시 추가)
 - Assessment/Content 모듈의 주요 저장 액션
 - 관리자 등급(app_role) 변경
 
@@ -50,6 +51,11 @@
   - 액션 사전: `user_status_changed`(정지/해제). `active`는 해제/정상, `blocked`는 정지이며, `deleted` 상태 사용자는 RPC에서 변경을 차단합니다.
   - 기록 주체: `admin_set_user_status(target_id uuid, new_status text)` 단일 write 경로. platform_admin 전용이며 `profiles.status`만 토글하고 v13 `profiles` DDL은 변경하지 않습니다.
   - payload/diff 계약: `diff.status.from/to`를 기록하고 `payload.app_role`을 포함합니다. 화면 확인 단계의 사유는 성공 피드백과 감사 로그 확인 경로에 같은 `User + userId` 식별자를 사용해야 하며, reason 입력 UX가 별도로 확장되면 같은 Target Type/ID에 맞춰 저장 계약을 갱신해야 합니다.
+- 기관 코드 조치 로그는 `Target Type = InstitutionCode`(`admin_audit_logs.target_table='InstitutionCode'`), `Target ID = code`를 사용하며, `/users/institution-codes?selected={code}` 원본 화면과 `/system/audit-logs?targetType=InstitutionCode&targetId={code}` 후속 검증 경로로 역추적할 수 있어야 합니다.
+  - 액션 사전: `institution_code_created`(코드 생성), `institution_code_updated`(코드 수정), `institution_code_deleted`(코드 삭제).
+  - 기록 주체: `admin_create_institution_code(p_code,p_label,p_kind,p_note)`, `admin_update_institution_code(p_code,p_label,p_kind,p_status,p_note,p_reason)`, `admin_delete_institution_code(p_code,p_reason)` 단일 write 경로. 세 RPC 모두 admin 권한과 `users.institution-codes.manage` permission을 요구하며, 수정/삭제는 reason 필수입니다.
+  - 삭제 정책: `profiles.affiliation_code = code` 회원이 1명 이상이면 삭제를 차단하고, 회원이 없을 때만 `institution_codes` 행을 제거합니다. `topik_writing_question_institution_exposure` 테이블이 존재하면 해당 code 매핑은 같은 트랜잭션에서 삭제하고 `payload.deleted_exposure_count`에 기록합니다.
+  - payload/diff 계약: 생성은 `payload.note`, 수정은 `diff.label/kind/status`와 `payload.reason`, 삭제는 `diff.deleted.from=false/to=true`와 `payload.reason/label/kind/status/note/member_count/deleted_exposure_count`를 기록합니다. 성공 피드백은 `감사 로그 확인` 링크(`/system/audit-logs?targetType=InstitutionCode&targetId={code}`)를 노출합니다.
 - 관리자 등급(app_role) 변경 로그는 `Target Type = AdminAccount`(`admin_audit_logs.target_table='AdminAccount'`), `Target ID = targetUserId`를 사용하며, `/system/permissions?adminId={targetUserId}` 원본 화면과 `/system/audit-logs?targetType=AdminAccount&targetId={targetUserId}` 후속 검증 경로로 역추적할 수 있어야 합니다.
   - 액션 사전: `admin_role_changed`(관리자 `app_role` 변경). 허용 등급은 `platform_admin`/`content_admin`/`org_admin`/`learner`입니다.
   - 기록 주체: `admin_set_admin_app_role(p_target_user_id uuid, p_new_app_role text, p_reason text)` 단일 write 경로. platform_admin 전용, reason 필수, 자기/마지막 platform_admin 강등 차단, `profiles.app_role`만 갱신(다음 로그인 반영, 토큰 미폐기)하며 v13 `profiles` DDL/트리거는 변경하지 않습니다. 조회는 `admin_list_admin_app_roles`(platform_admin 전용, learner 제외).
@@ -83,9 +89,10 @@
 - 쿠폰 조치 로그는 `Target Type = CommerceCoupon`, `Target ID = couponId`를 사용합니다.
 - 정기 쿠폰 템플릿 조치 로그는 `Target Type = CommerceCouponTemplate`, `Target ID = templateId`를 사용합니다.
 - TOPIK 쓰기 문항 조치 로그는 `Target Type = AssessmentQuestion`, `Target ID = questionId`를 사용합니다.
-  - 액션 사전은 D-8 개정(2026-06-11 인바운드 전환 — `docs/architecture/metadata-tag-schema-transition-decision-record.md` §0)을 따릅니다: 유지 = `service_status_changed`/`tag_assigned`/`tag_removed`, 추가(후속) = `question_received`(외부 공급 API 수신·적재 — 외부 API 미개발, 공급 연동 시 추가), 폐기 = 검수 4종(`review_completed`/`review_on_hold`/`review_revision_requested`/`review_memo_saved`)·배포 `question_published`.
-- `노출 가능`/`노출 제외`/`내부 테스트`(`service_status_changed`) 전환 조치와 태그 부여/제거(`tag_assigned`/`tag_removed`)는 **P4 관리 포인트 개방(2026-06-11)으로 활성**이며, 시스템 감사 로그에서 문항 관리 화면 `/assessment/question-bank/manage` 기준으로 원본 화면을 역추적할 수 있어야 합니다(상세 라우트는 재정의 P3에서 `/assessment/question-bank/{questionId}`로 개명 완료 — `202f905`). 노출 상태 전환은 확인 + 사유 입력(필수)을 유지하고, 태그 부여/제거는 별도 사유 입력 없이 처리합니다.
+  - 액션 사전은 D-8 개정(2026-06-11 인바운드 전환 — `docs/architecture/metadata-tag-schema-transition-decision-record.md` §0)과 기관 노출 정합화(2026-06-26)를 따릅니다: 유지 = `service_status_changed`/`tag_assigned`/`tag_removed`, 기관 매핑 = `question_institutions_changed`/`question_institutions_cleared`, 추가(후속) = `question_received`(외부 공급 API 수신·적재 — 외부 API 미개발, 공급 연동 시 추가), 폐기 = 검수 4종(`review_completed`/`review_on_hold`/`review_revision_requested`/`review_memo_saved`)·배포 `question_published`.
+- `노출 가능`/`노출 제외`/`내부 테스트`(`service_status_changed`) 전환 조치와 태그 부여/제거(`tag_assigned`/`tag_removed`)는 **P4 관리 포인트 개방(2026-06-11)으로 활성**이며, 시스템 감사 로그에서 통합 문항 화면 `/assessment/question-bank` 기준으로 원본 화면을 역추적할 수 있어야 합니다(상세 라우트는 재정의 P3에서 `/assessment/question-bank/{questionId}`로 개명 완료 — `202f905`). 노출 상태 전환은 확인 + 사유 입력(필수)을 유지하고, 태그 부여/제거는 별도 사유 입력 없이 처리합니다.
   - **P4 write 계약(2026-06-11 결선, 태그 별도 입력 제거 2026-06-12)**: 노출 전환 사유는 `__note` 예약 키 → `admin_audit_logs.payload.note`에 저장합니다. 태그 부여/제거는 별도 메모 필드를 쓰지 않고 diff `{tag:{from,to}}`로만 현재 변경을 기록합니다. diff는 `{service_status:{from,to}}` / `{tag:{from,to}}` 형식입니다. 성공 피드백은 대상 식별 정보 + `감사 로그 확인` 링크(`/system/audit-logs?targetType=AssessmentQuestion&targetId={questionId}`)를 노출합니다. RT-4 왕복·RLS 차단 증적: `logs/metadata-tag-schema-transition-evidence.md` P4 절.
+  - **기관 노출 계약(2026-06-26)**: 문항 중심 RPC `admin_set_writing_question_institutions`/`admin_clear_writing_question_institutions`와 기관 중심 RPC `admin_add_institution_writing_questions`/`admin_remove_institution_writing_questions`는 action `question_institutions_changed` 또는 `question_institutions_cleared`를 남깁니다. `service_status!='available'` 문항에 기관 매핑을 새로 추가하려는 시도는 실제 매핑 insert/update 없이 `blocked` 결과와 `admin_audit_logs.payload.blocked=true`, `payload.blocked_reason='global_service_status'`, `payload.service_status`로 기록합니다. 기존 매핑 제거/전체 해제는 문항 상태와 무관하게 허용합니다.
   - 주의(기지 갭 — `docs/specs/admin-page-gap-register.md` §4.10.2): 감사 로그 화면은 현재 모크 store SoT라 실 `admin_audit_logs` 행이 화면에 표시되지 않습니다. 실데이터 역추적은 DB 단(`admin_audit_logs` 조회)으로 검증하며, 화면 실데이터 연동은 후속 범위입니다.
 - 폐기(화면 제거 완료): `검수 완료`/`보류`/`수정 필요` 조치와 `검수 메모 저장`(메모 본문을 `Reason`으로 사용) 계약은 2026-06-11 검수 개념 삭제로 폐기됐습니다. 구 2depth 검수 페이지는 재정의 P3에서 제거 완료됐고(`202f905` — 기존 감사 행은 "(구)" 역사 라벨로 표시), DB측 `admin_update_topik_question` RPC의 검수 액션 경로도 마이그레이션 `0013`에서 제거 완료됐습니다(2026-06-11 적용 — RPC 원문 검수 참조 0건). 태그 부여/제거용 운영 메모 계약도 2026-06-12에 제거했습니다.
 - 폐기: 운영정책 `POL-017` 구판의 `배포(API 업로드)` 후보 액션(`question_published`, `publishedTaskId` 근거 포함)은 상류 push 폐기(2026-06-11 §0)로 철회됐습니다. `POL-017`은 "TOPIK 쓰기 문항 수신·관리 운영정책"(수신(외부 API, 미개발) → 적재 → 관리 포인트(태그) + 노출(`service_status`) → v13 read-only)으로 재정의됐고, 수신·적재가 구현되면 `question_received` 액션이 같은 `Target Type = AssessmentQuestion`, `Target ID = questionId` 계약으로 기록돼야 합니다.

@@ -1,7 +1,6 @@
 import {
   Alert,
   Button,
-  Checkbox,
   Empty,
   Input,
   Modal,
@@ -32,10 +31,10 @@ import type { AsyncState } from '../../../shared/model/async-state';
 const { Text } = Typography;
 
 /**
- * 기관 중심 노출 문항 관리 — antd Tree(유형>주제>문항) + 노출 선택 목록의 Transfer형 모달.
+ * 기관 중심 노출 문항 관리 — 좌우 antd Tree(유형>주제>문항) 기반 Transfer형 모달.
  *
  * 좌측 트리에서 유형/주제를 체크하면 하위 문항이 일괄 체크되고(상위 indeterminate),
- * › 로 노출에 추가, 우측에서 골라 ‹ 로 제거한다. 선택 단일 소스는 노출 문항 id 집합
+ * › 로 노출에 추가, 우측 트리에서 유형/주제/문항을 골라 ‹ 로 제거한다. 선택 단일 소스는 노출 문항 id 집합
  * (exposed: Set<questionId>)이며, 적용 시 최초 매핑(initialExposed)과의 차집합으로
  * add/remove RPC를 호출한다(둘 다 institution_code=현재 기관, 다른 기관 매핑 보존).
  *
@@ -51,15 +50,58 @@ const ITEM_TYPE_LABEL: Record<number, string> = {
 const ITEM_NUMBERS = [51, 52, 53, 54];
 const TRANSFER_PANEL_HEIGHT = 'min(52vh, 460px)';
 const TRANSFER_TREE_HEIGHT = 440;
+const GLOBAL_EXPOSURE_BLOCKED_MESSAGE =
+  '전역 노출 상태가 노출 가능이 아니어서 기관 노출에 추가할 수 없습니다.';
+const SERVICE_STATUS_LABELS: Record<string, string> = {
+  available: '노출 가능',
+  excluded: '노출 제외',
+  internal_test: '내부 테스트'
+};
+
+type ExposureTreeNode = TreeDataNode & {
+  searchText?: string;
+  children?: ExposureTreeNode[];
+};
 
 function shortId(questionId: string): string {
   return questionId.replace('topik-writing-', '');
 }
 
+function isQuestionGloballyAvailable(question: InstitutionExposableQuestion): boolean {
+  return question.serviceStatus === 'available';
+}
+
+function getServiceStatusLabel(status: string): string {
+  return SERVICE_STATUS_LABELS[status] ?? status;
+}
+
+function renderQuestionTitle(
+  question: InstitutionExposableQuestion,
+  options: { disabled: boolean; inactive: boolean }
+): JSX.Element {
+  return (
+    <Space size={4} wrap>
+      <span>
+        {shortId(question.questionId)} · {question.situationSummary || '(요약 없음)'}
+      </span>
+      {options.inactive ? <Tag color="default">현재 미노출</Tag> : null}
+      {options.disabled ? <Tag color="warning">추가 불가</Tag> : null}
+      {!isQuestionGloballyAvailable(question) ? (
+        <Tag color="red">{getServiceStatusLabel(question.serviceStatus)}</Tag>
+      ) : null}
+    </Space>
+  );
+}
+
 function buildExposureTree(
   questions: InstitutionExposableQuestion[],
-  exposed: Set<string>
-): TreeDataNode[] {
+  options: {
+    disabledQuestionIds?: Set<string>;
+    inactiveQuestionIds?: Set<string>;
+  } = {}
+): ExposureTreeNode[] {
+  const disabledQuestionIds = options.disabledQuestionIds ?? new Set<string>();
+  const inactiveQuestionIds = options.inactiveQuestionIds ?? new Set<string>();
   const byType = new Map<number, Map<string, InstitutionExposableQuestion[]>>();
   questions.forEach((question) => {
     if (!byType.has(question.itemNumber)) {
@@ -76,27 +118,42 @@ function buildExposureTree(
     (topics.get(topic) as InstitutionExposableQuestion[]).push(question);
   });
 
-  const nodes: TreeDataNode[] = [];
+  const nodes: ExposureTreeNode[] = [];
   ITEM_NUMBERS.forEach((itemNumber) => {
     const topics = byType.get(itemNumber);
     if (!topics) {
       return;
     }
-    const topicNodes: TreeDataNode[] = [];
+    const topicNodes: ExposureTreeNode[] = [];
     [...topics.keys()]
       .sort((a, b) => a.localeCompare(b, 'ko'))
       .forEach((topic) => {
         const list = (topics.get(topic) as InstitutionExposableQuestion[])
           .slice()
           .sort((a, b) => a.questionId.localeCompare(b.questionId));
-        const leaves: TreeDataNode[] = list.map((question) => ({
-          key: question.questionId,
-          title: `${shortId(question.questionId)} · ${
-            question.situationSummary || '(요약 없음)'
-          }`,
-          isLeaf: true,
-          disabled: exposed.has(question.questionId)
-        }));
+        const leaves: ExposureTreeNode[] = list.map((question) => {
+          const disabled = disabledQuestionIds.has(question.questionId);
+          const inactive = inactiveQuestionIds.has(question.questionId);
+          const statusLabel = getServiceStatusLabel(question.serviceStatus);
+          return {
+            key: question.questionId,
+            title: renderQuestionTitle(question, { disabled, inactive }),
+            searchText: [
+              shortId(question.questionId),
+              question.questionId,
+              question.situationSummary,
+              question.topicMain,
+              question.questionTypeName,
+              statusLabel,
+              inactive ? '현재 미노출' : '',
+              disabled ? '추가 불가' : ''
+            ]
+              .filter(Boolean)
+              .join(' '),
+            isLeaf: true,
+            disabled
+          };
+        });
         topicNodes.push({
           key: `type:${itemNumber}/topic:${topic}`,
           title: `${topic} (${list.length})`,
@@ -114,16 +171,20 @@ function buildExposureTree(
   return nodes;
 }
 
-function filterTree(nodes: TreeDataNode[], term: string): TreeDataNode[] {
+function filterTree(nodes: ExposureTreeNode[], term: string): ExposureTreeNode[] {
   const lower = term.toLowerCase();
-  const result: TreeDataNode[] = [];
+  const result: ExposureTreeNode[] = [];
   nodes.forEach((typeNode) => {
-    const topicNodes: TreeDataNode[] = [];
+    const topicNodes: ExposureTreeNode[] = [];
     (typeNode.children ?? []).forEach((topicNode) => {
       const leaves = (topicNode.children ?? []).filter(
-        (leaf) =>
-          String(leaf.title).toLowerCase().includes(lower) ||
-          String(leaf.key).toLowerCase().includes(lower)
+        (leaf) => {
+          const searchText = leaf.searchText ?? String(leaf.title);
+          return (
+            searchText.toLowerCase().includes(lower) ||
+            String(leaf.key).toLowerCase().includes(lower)
+          );
+        }
       );
       if (leaves.length) {
         topicNodes.push({ ...topicNode, children: leaves });
@@ -143,6 +204,12 @@ function collectGroupKeys(nodes: TreeDataNode[]): Key[] {
     (typeNode.children ?? []).forEach((topicNode) => keys.push(topicNode.key));
   });
   return keys;
+}
+
+function pickQuestionKeys(keys: Key[]): string[] {
+  return keys
+    .filter((key) => typeof key === 'string' && !key.startsWith('type:'))
+    .map(String);
 }
 
 export type InstitutionQuestionMutationSummary = {
@@ -182,8 +249,10 @@ export function InstitutionQuestionExposureModal({
   const [rightChecked, setRightChecked] = useState<string[]>([]);
   const [leftSearch, setLeftSearch] = useState('');
   const [rightSearch, setRightSearch] = useState('');
-  const [expandedKeys, setExpandedKeys] = useState<Key[]>([]);
-  const [autoExpandParent, setAutoExpandParent] = useState(false);
+  const [leftExpandedKeys, setLeftExpandedKeys] = useState<Key[]>([]);
+  const [rightExpandedKeys, setRightExpandedKeys] = useState<Key[]>([]);
+  const [leftAutoExpandParent, setLeftAutoExpandParent] = useState(false);
+  const [rightAutoExpandParent, setRightAutoExpandParent] = useState(false);
   const [codeOptions, setCodeOptions] = useState<InstitutionCode[]>([]);
   const [sourceCode, setSourceCode] = useState<string | undefined>(undefined);
   const [loadMode, setLoadMode] = useState<'merge' | 'overwrite'>('merge');
@@ -191,6 +260,7 @@ export function InstitutionQuestionExposureModal({
   const [reason, setReason] = useState('');
   const [applying, setApplying] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -209,6 +279,7 @@ export function InstitutionQuestionExposureModal({
         setExposed(new Set(exposedIds));
         setLeftChecked([]);
         setRightChecked([]);
+        setWarningMessage(null);
         return;
       }
       setState((prev) => ({
@@ -244,46 +315,88 @@ export function InstitutionQuestionExposureModal({
       setSourceCode(undefined);
       setLoadMode('merge');
       setErrorMessage(null);
+      setWarningMessage(null);
     }
   }, [open, code]);
 
-  const fullTree = useMemo(
-    () => buildExposureTree(state.data, exposed),
+  const questionById = useMemo(
+    () => new Map(state.data.map((question) => [question.questionId, question])),
+    [state.data]
+  );
+  const inactiveQuestionIds = useMemo(
+    () =>
+      new Set(
+        state.data
+          .filter((question) => !isQuestionGloballyAvailable(question))
+          .map((question) => question.questionId)
+      ),
+    [state.data]
+  );
+  const isQuestionAddable = useCallback(
+    (questionId: string) => {
+      const question = questionById.get(questionId);
+      return question ? isQuestionGloballyAvailable(question) : false;
+    },
+    [questionById]
+  );
+  const availableQuestions = useMemo(
+    () => state.data.filter((question) => !exposed.has(question.questionId)),
     [state.data, exposed]
+  );
+  const fullTree = useMemo(
+    () =>
+      buildExposureTree(availableQuestions, {
+        disabledQuestionIds: inactiveQuestionIds,
+        inactiveQuestionIds
+      }),
+    [availableQuestions, inactiveQuestionIds]
   );
   const leftTreeData = useMemo(
     () => (leftSearch.trim() ? filterTree(fullTree, leftSearch.trim()) : fullTree),
     [fullTree, leftSearch]
   );
+  const exposedQuestions = useMemo(
+    () => state.data.filter((question) => exposed.has(question.questionId)),
+    [state.data, exposed]
+  );
+  const rightFullTree = useMemo(
+    () => buildExposureTree(exposedQuestions, { inactiveQuestionIds }),
+    [exposedQuestions, inactiveQuestionIds]
+  );
+  const rightTreeData = useMemo(
+    () =>
+      rightSearch.trim()
+        ? filterTree(rightFullTree, rightSearch.trim())
+        : rightFullTree,
+    [rightFullTree, rightSearch]
+  );
 
   useEffect(() => {
     if (leftSearch.trim()) {
-      setExpandedKeys(collectGroupKeys(leftTreeData));
-      setAutoExpandParent(true);
+      setLeftExpandedKeys(collectGroupKeys(leftTreeData));
+      setLeftAutoExpandParent(true);
     }
   }, [leftSearch, leftTreeData]);
 
-  const exposedQuestions = useMemo(() => {
-    const term = rightSearch.trim().toLowerCase();
-    return state.data
-      .filter((question) => exposed.has(question.questionId))
-      .filter(
-        (question) =>
-          !term ||
-          `${shortId(question.questionId)} ${question.situationSummary} ${question.topicMain}`
-            .toLowerCase()
-            .includes(term)
-      );
-  }, [state.data, exposed, rightSearch]);
+  useEffect(() => {
+    if (rightSearch.trim()) {
+      setRightExpandedKeys(collectGroupKeys(rightTreeData));
+      setRightAutoExpandParent(true);
+    }
+  }, [rightSearch, rightTreeData]);
 
   const onLeftCheck = useCallback(
     (checked: Key[] | { checked: Key[]; halfChecked: Key[] }) => {
       const keys = Array.isArray(checked) ? checked : checked.checked;
-      setLeftChecked(
-        keys
-          .filter((key) => typeof key === 'string' && !key.startsWith('type:'))
-          .map(String)
-      );
+      setLeftChecked(pickQuestionKeys(keys).filter(isQuestionAddable));
+    },
+    [isQuestionAddable]
+  );
+
+  const onRightCheck = useCallback(
+    (checked: Key[] | { checked: Key[]; halfChecked: Key[] }) => {
+      const keys = Array.isArray(checked) ? checked : checked.checked;
+      setRightChecked(pickQuestionKeys(keys));
     },
     []
   );
@@ -294,11 +407,11 @@ export function InstitutionQuestionExposureModal({
     }
     setExposed((prev) => {
       const next = new Set(prev);
-      leftChecked.forEach((id) => next.add(id));
+      leftChecked.filter(isQuestionAddable).forEach((id) => next.add(id));
       return next;
     });
     setLeftChecked([]);
-  }, [leftChecked]);
+  }, [isQuestionAddable, leftChecked]);
 
   const moveLeft = useCallback(() => {
     if (rightChecked.length === 0) {
@@ -312,14 +425,12 @@ export function InstitutionQuestionExposureModal({
     setRightChecked([]);
   }, [rightChecked]);
 
-  const toggleRight = useCallback((id: string, checked: boolean) => {
-    setRightChecked((prev) => (checked ? [...prev, id] : prev.filter((x) => x !== id)));
-  }, []);
-
   const handleLoadSource = useCallback(async () => {
     if (!sourceCode) {
       return;
     }
+    setErrorMessage(null);
+    setWarningMessage(null);
     setLoadingSource(true);
     const result = await fetchInstitutionQuestionsSafe(sourceCode);
     setLoadingSource(false);
@@ -328,15 +439,23 @@ export function InstitutionQuestionExposureModal({
       return;
     }
     const pool = new Set(state.data.map((question) => question.questionId));
-    const sourceIds = result.data
+    const sourceExposedIds = result.data
       .filter((question) => question.isExposed)
       .map((question) => question.questionId)
       .filter((id) => pool.has(id));
+    const sourceIds = sourceExposedIds.filter(isQuestionAddable);
+    const skipped = sourceExposedIds.length - sourceIds.length;
     setExposed((prev) =>
       loadMode === 'merge' ? new Set([...prev, ...sourceIds]) : new Set(sourceIds)
     );
+    setLeftChecked([]);
     setRightChecked([]);
-  }, [sourceCode, loadMode, state.data]);
+    if (skipped > 0) {
+      setWarningMessage(
+        `전역 노출 상태가 노출 가능이 아닌 문항 ${skipped.toLocaleString()}건은 불러오지 않았습니다.`
+      );
+    }
+  }, [isQuestionAddable, sourceCode, loadMode, state.data]);
 
   const added = useMemo(
     () => [...exposed].filter((id) => !initialExposed.has(id)),
@@ -347,9 +466,14 @@ export function InstitutionQuestionExposureModal({
     [exposed, initialExposed]
   );
   const hasChanges = added.length > 0 || removed.length > 0;
+  const addableCandidateCount = availableQuestions.filter(isQuestionGloballyAvailable).length;
+  const inactiveCandidateCount = availableQuestions.length - addableCandidateCount;
+  const effectiveExposedCount = exposedQuestions.filter(isQuestionGloballyAvailable).length;
+  const inactiveExposedCount = exposedQuestions.length - effectiveExposedCount;
 
   const handleApply = useCallback(async () => {
     setErrorMessage(null);
+    setWarningMessage(null);
     if (!hasChanges) {
       return;
     }
@@ -367,6 +491,11 @@ export function InstitutionQuestionExposureModal({
       });
       if (result.ok) {
         onMutated({ mode: 'add', result: result.data });
+        if (result.data.blocked > 0) {
+          setWarningMessage(
+            `${GLOBAL_EXPOSURE_BLOCKED_MESSAGE} 차단 ${result.data.blocked.toLocaleString()}건`
+          );
+        }
       } else {
         ok = false;
         setErrorMessage(result.error.message);
@@ -400,8 +529,6 @@ export function InstitutionQuestionExposureModal({
     [codeOptions, code]
   );
 
-  const totalCount = state.data.length;
-
   return (
     <Modal
       open={open}
@@ -430,6 +557,7 @@ export function InstitutionQuestionExposureModal({
         <Text type="secondary">{institution.label}</Text>
 
         {errorMessage ? <Alert type="error" showIcon message={errorMessage} /> : null}
+        {warningMessage ? <Alert type="warning" showIcon message={warningMessage} /> : null}
 
         {canManage ? (
           <div
@@ -472,6 +600,7 @@ export function InstitutionQuestionExposureModal({
 
         <div style={{ display: 'flex', alignItems: 'stretch', gap: 10 }}>
           <div
+            data-testid="institution-question-left-panel"
             style={{
               flex: 1,
               minWidth: 0,
@@ -484,7 +613,10 @@ export function InstitutionQuestionExposureModal({
           >
             <div style={{ padding: '8px 12px', borderBottom: '0.5px solid #f0f0f0' }}>
               <Text type="secondary" style={{ fontSize: 12 }}>
-                전체 문항 · {totalCount.toLocaleString()}
+                추가 후보 · {availableQuestions.length.toLocaleString()}건
+                {inactiveCandidateCount > 0
+                  ? ` (추가 가능 ${addableCandidateCount.toLocaleString()}건 · 비활성 ${inactiveCandidateCount.toLocaleString()}건)`
+                  : ''}
               </Text>
               <Input
                 size="small"
@@ -510,11 +642,11 @@ export function InstitutionQuestionExposureModal({
                   treeData={leftTreeData}
                   checkedKeys={leftChecked}
                   onCheck={onLeftCheck}
-                  expandedKeys={expandedKeys}
-                  autoExpandParent={autoExpandParent}
+                  expandedKeys={leftExpandedKeys}
+                  autoExpandParent={leftAutoExpandParent}
                   onExpand={(keys) => {
-                    setExpandedKeys(keys);
-                    setAutoExpandParent(false);
+                    setLeftExpandedKeys(keys);
+                    setLeftAutoExpandParent(false);
                   }}
                 />
               )}
@@ -550,6 +682,7 @@ export function InstitutionQuestionExposureModal({
           ) : null}
 
           <div
+            data-testid="institution-question-right-panel"
             style={{
               flex: 1,
               minWidth: 0,
@@ -562,7 +695,10 @@ export function InstitutionQuestionExposureModal({
           >
             <div style={{ padding: '8px 12px', borderBottom: '0.5px solid #f0f0f0' }}>
               <Text strong style={{ fontSize: 13 }}>
-                노출 선택 · {exposed.size.toLocaleString()}건
+                노출 선택 · 실제 노출 {effectiveExposedCount.toLocaleString()}건
+                {inactiveExposedCount > 0
+                  ? ` / 현재 미노출 ${inactiveExposedCount.toLocaleString()}건`
+                  : ''}
               </Text>
               <Input
                 size="small"
@@ -578,54 +714,37 @@ export function InstitutionQuestionExposureModal({
                 flex: 1,
                 minHeight: 0,
                 overflow: 'auto',
-                padding: '4px 0',
-                ...(exposedQuestions.length === 0
+                padding: '6px 4px',
+                ...(rightTreeData.length === 0
                   ? { display: 'flex', alignItems: 'center', justifyContent: 'center' }
                   : {})
               }}
             >
-              {exposedQuestions.length === 0 ? (
+              {rightTreeData.length === 0 ? (
                 <Empty
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description="노출로 선택된 문항이 없습니다."
+                  description={
+                    exposedQuestions.length === 0
+                      ? '노출로 선택된 문항이 없습니다.'
+                      : '검색 결과가 없습니다.'
+                  }
                 />
               ) : (
-                exposedQuestions.map((question) => (
-                  <div
-                    key={question.questionId}
-                    data-testid={`exposed-row-${question.questionId}`}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      padding: '6px 12px'
-                    }}
-                  >
-                    {canManage ? (
-                      <Checkbox
-                        checked={rightChecked.includes(question.questionId)}
-                        onChange={(event) =>
-                          toggleRight(question.questionId, event.target.checked)
-                        }
-                      />
-                    ) : null}
-                    <span
-                      style={{
-                        flex: 1,
-                        minWidth: 0,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        fontSize: 13
-                      }}
-                    >
-                      {shortId(question.questionId)} · {question.situationSummary || '(요약 없음)'}
-                    </span>
-                    <Tag style={{ marginInlineEnd: 0, flexShrink: 0 }}>
-                      {question.itemNumber} · {question.topicMain || '미지정'}
-                    </Tag>
-                  </div>
-                ))
+                <Tree
+                  checkable={canManage}
+                  selectable={false}
+                  blockNode
+                  height={TRANSFER_TREE_HEIGHT}
+                  treeData={rightTreeData}
+                  checkedKeys={rightChecked}
+                  onCheck={onRightCheck}
+                  expandedKeys={rightExpandedKeys}
+                  autoExpandParent={rightAutoExpandParent}
+                  onExpand={(keys) => {
+                    setRightExpandedKeys(keys);
+                    setRightAutoExpandParent(false);
+                  }}
+                />
               )}
             </div>
           </div>

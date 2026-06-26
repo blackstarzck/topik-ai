@@ -3,8 +3,8 @@
 ## 1. 문서 목적
 
 - `Assessment > TOPIK 쓰기 문항 목록`의 목록 조회 구조와 2depth 문항 상세 페이지 구조를 하나의 SoT로 고정한다.
-- 이 문서의 1차 대상은 문항 목록 페이지(`/assessment/question-bank`)와 2depth 문항 상세 페이지다. `문항 관리`(관리 포인트: 태그 + 노출 통제)는 별도 라우트/페이지로 분리되어 `docs/specs/page-ia/assessment-question-manage-page-ia.md`가 소유한다.
-- 2026-06-11 인바운드 모델 전환(`docs/architecture/metadata-tag-schema-transition-decision-record.md` §0)에 따라 이 페이지의 정체성은 **조회 전용**으로 재정의됐다. 문항 본문·메타데이터는 외부(공급) API가 **완성 상태로 공급**하며, admin은 문제를 저작·생성·분류·검수하지 않는다. 이 페이지는 수신·적재된 문항과 메타데이터를 열람하는 화면이다.
+- 이 문서의 1차 대상은 문항 목록+관리 통합 페이지(`/assessment/question-bank`)와 2depth 문항 상세 페이지다. 구 `문항 관리` 별도 라우트(`/assessment/question-bank/manage`) 문서는 역사 기록으로만 남고, 현재 관리 포인트(태그 + 노출 통제 + 기관 노출)는 이 페이지가 소유한다.
+- 2026-06-11 인바운드 모델 전환(`docs/architecture/metadata-tag-schema-transition-decision-record.md` §0)에 따라 2depth 상세는 **조회 전용**으로 재정의됐다. 문항 본문·메타데이터는 외부(공급) API가 **완성 상태로 공급**하며, admin은 문제를 저작·생성·분류·검수하지 않는다. 목록 페이지는 수신·적재된 문항 열람과 관리 포인트 조치를 함께 제공한다.
 - 운영 기본 흐름은 `검색 -> 상세 열람 -> 조치(노출/태그) -> 감사 로그 확인`이다. 2026-06-23 IA 통합으로 노출 통제(`service_status`)·태그 부여/제거 쓰기 액션이 이 페이지에 인라인으로 들어왔다(구 관리 페이지 흡수, 권한 `assessment.question-bank.manage` 동일).
 - `51~54번` 문제 유형 차이를 반영하면서도 검색 파라미터, URL 복원 계약을 일관되게 유지한다.
 
@@ -14,7 +14,7 @@
 
 > **2026-06-23 테이블 재설계(오너 요청)**: ① **노출 가능 일괄**은 사유 입력 대신 "총 N개 \| 51번 a \| 52번 b … 노출하시겠습니까?" 번호별 개수 확인 팝업(사유 자동 생성, 운영주의 자동 제외 안내). 숨김은 사유 유지. ② **컬럼 구성** — `문항 번호 · 문항 ID · 주제(종합 단일) · 난이도 · TOPIK 급수(targetLevel) · 노출 상태 · 태그 · 최근 수정 · 더보기`. 구 `주제(종합/세부)` 2줄·`유형/난이도` 합산 컬럼 폐기, 난이도·TOPIK 급수 분리. ③ **컬럼 헤더 필터**(antd 클라 필터): 문항 번호·주제·난이도·TOPIK 급수 + **문항 ID `filterDropdown` 검색**. 상단 툴바(문항번호 체크박스 + SearchBar)는 제거하고 필터를 헤더로 이동. ④ **상세 컬럼**: 헤더명 제거, 행 액션을 `shared/ui/table/TableActionMenu`(buttonLabel=`더보기`) 드롭다운으로 통합 — 메뉴 = 상세 보기 + 운영 조치(노출 가능/제외/내부 테스트, 현재 상태 비활성). 운영 조치 컬럼은 제거(단건 전환은 `setActionState`→`ConfirmAction` 경로 유지). ⑤ **선택 행 배경 강조 제거**(`.assessment-bank-table` 스코프 CSS, 고정 더보기 열 셀은 불투명 #fff). ⑥ 상세 진입은 `문항 ID` 링크 + 더보기 `상세 보기`가 현재 `searchParams` 보존 이동. **가져온 문항(인박스) 탭** 테이블도 동일하게 헤더 필터(문항 번호·주제·난이도) + 소스 ID 검색을 추가했다.
 
-> **2026-06-26 기관 표면 제거**: `/assessment/question-bank`에서는 기관 컬럼과 기관 노출 설정/기관 한정 지정/전체 공개 전환 진입점을 제공하지 않는다. 기관 코드 기준 문항 노출 매핑 관리는 `Users > 기관 코드` 소관으로 둔다.
+> **2026-06-26 기관 노출 정합화**: `/assessment/question-bank`는 문항 중심 기관 노출 설정을 다시 제공한다. 테이블에 `기관 노출` 컬럼을 표시하고, 더보기 메뉴의 `기관 노출 설정` 및 선택 행 일괄 바의 `기관 한정 지정`/`기관 한정 해제`로 `topik_writing_question_institution_exposure` 매핑을 관리한다. 단, `service_status`가 전역 최상위 노출 조건이므로 `available`이 아닌 문항(`excluded`, `internal_test`)은 새 기관 매핑 추가가 RPC에서 `blocked` 처리된다. 기존 매핑은 삭제하지 않고 `현재 미노출`으로 표시하며 제거/해제는 허용한다.
 
 > 현행 코드 주의(2026-06-11 갱신): 구현의 검수 표면(페이지 제목 `TOPIK 쓰기 문제 검수`, 검수 상태 축, 2depth 페이지의 검수 메모 카드·검수 액션)은 재정의 P3 코드 컷오버(커밋 `202f905`)에서 **전부 제거 완료**됐다. 검수 4컬럼 물리 제거 마이그레이션 `0013`도 2026-06-11 적용 완료됐다(DB 검수 잔존 0건 — 증적 로그 P3 재채점 절). 본 문서의 "(제거 완료 — 재정의 P3)" 표기는 이 컷오버를 가리킨다.
 
@@ -37,15 +37,15 @@
 ### 목표
 
 - 외부(공급) API로부터 수신·적재된 TOPIK 쓰기 `51~54번` 문항(Supabase `topik_writing_51/52/53/54_questions` + `question_source_map`)을 문제 번호 단위로 조회·열람한다. 외부 API가 미개발인 인터림 동안에는 P2 백필 466행(초기 코퍼스)이 조회 대상이다.
-- 표시 축은 **주제(`topic_main`/`topic_detail`)·난이도(1~6)·유형·노출 상태(`service_status`)·태그**다. 문항 품질·상태 표현은 태그로만 한다(태그 부여/제거는 문항 관리 페이지 책임).
+- 표시 축은 **주제(`topic_main`/`topic_detail`)·난이도(1~6)·유형·노출 상태(`service_status`)·태그·기관 노출 매핑**이다. 문항 품질·상태 표현은 태그로만 한다.
 - 2depth 문항 상세에서 공급된 메타데이터(`docs/metadata-tag-schema-rule.md` §4·§7, §7.9 제외)를 조회 전용으로 열람한다 — 51/52 빈칸 메타, 53 자료 수치, 54 문항 질문 등 번호별 전용 필드 포함.
-- 노출 상태·태그 조치가 필요한 문항을 식별해 문항 관리 페이지(`docs/specs/page-ia/assessment-question-manage-page-ia.md`)로 넘긴다.
+- 노출 상태·태그·기관 노출 조치가 필요한 문항을 이 페이지의 더보기 메뉴와 일괄 조치 바에서 바로 처리한다.
 
 ### 비목표
 
 - 검수하지 않는다. 검수 큐/검수 메모/검수 상태 변경은 2026-06-11 검수 개념 전면 삭제로 admin 표면에서 제거됐다(검수 표면은 재정의 P3에서 제거 완료 — `202f905`).
 - 이 화면에서 문항을 수동 생성·저작·분류하지 않는다(문항 본문·메타데이터는 외부에서 완성 상태로 공급).
-- 태그 부여/제거와 `service_status` 노출 통제는 이 화면 책임이 아니다(문항 관리 페이지 소관).
+- 태그 부여/제거, `service_status` 노출 통제, 문항 중심 기관 노출 설정은 통합된 이 화면의 관리 책임이다.
 - 상류 서비스로의 배포(API 업로드/push)는 폐기된 개념이며 이 화면을 포함한 admin 어디에도 존재하지 않는다(2026-06-11 §0 — 구 POL-017 push 모델 폐기).
 - EPS TOPIK, 레벨 테스트 세트 편성을 이 화면 책임으로 가져오지 않는다.
 - JSON 업로드, JSON fallback 조회, 배치 재생성, 대량 일괄 조치는 포함하지 않는다.
@@ -54,9 +54,9 @@
 
 - 시나리오 1: 운영자가 목록 페이지에서 문제 번호와 검색 조건(주제 종합/세부, 유형, 난이도, 검색어)으로 문항을 좁히고, `상황 요약` 1줄 셀 hover/focus 툴팁으로 상황 요약 전문과 시나리오 유형을 확인한 뒤 행 클릭 또는 툴팁 하단 `상세 보기` 버튼으로 2depth 문항 상세에 들어간다. (구 `검수하기` 라벨은 재정의 P3에서 `상세 보기`로 교체 완료)
 - 시나리오 2: 2depth 문항 상세에서 문항 번호에 맞는 메타데이터 row만 확인한다. `51/52`, `53`, `54`는 같은 공통 상단(문항 번호/ID/주제/보조 주제/유형·급수/시나리오 유형/상황 요약/학습 목표/문항 본문)과 공통 꼬리(모범답안, `auto_checks_passed`, 추천 키)를 공유하되, 번호별 전용 row를 조건부 노출한다.
-- 시나리오 3: 운영자가 상세에서 공급 메타데이터의 정합을 열람으로 확인하고, 태그 부여/제거나 노출 상태 전환이 필요하다고 판단하면 문항 관리 페이지(`/assessment/question-bank/manage`)에서 조치한다. 이 페이지에서는 어떤 상태도 변경하지 않는다.
+- 시나리오 3: 운영자가 목록에서 태그 부여/제거, 노출 상태 전환, 기관 노출 설정이 필요하다고 판단하면 더보기 메뉴 또는 선택 행 일괄 조치 바에서 처리한다. 2depth 상세는 공급 메타데이터와 현재 문항 상태를 조회 전용으로 확인하는 화면이다.
 - (제거 완료 — 재정의 P3, `202f905`) 구 2depth 페이지 우측의 `검수 메모` 카드와 `검수 완료`/`사용 보류`/`검수 필요` 액션, `content_team_memo` 쓰기 경로는 제거됐다. 현행 우측은 조회 전용 `문항 상태` 카드다: 노출 상태 Tag, 조회 전용 안내 문구, 콘텐츠팀 메모(수신 메타데이터 — 읽기 전용 표시), 감사 로그 링크.
-- 두 페이지(목록/관리)는 동일한 조회 결과(공유 hook)를 사용한다.
+- 목록+관리 통합 페이지와 2depth 상세는 동일한 조회 결과(공유 hook/facade)를 기준으로 동기화된다.
 
 ## 5. 화면 구조
 
@@ -68,7 +68,7 @@
 | 상단 요약 카드 | 조회 범위 파악 | 현행: `전체 문항` + 번호별(`51`~`54`) 건수 — 카드 클릭은 번호 선택 토글 (구 검수 상태(`reviewStatus`)별 건수 카드는 재정의 P3에서 제거 완료. 노출 상태·태그 축 카드 확장은 P4 태그 필터와 함께 후속 검토) | 카드 클릭 필터 |
 | 문제 번호 체크박스 그룹 | `51`, `52`, `53`, `54` 범위 전환 | 문제 번호 | 다중 선택 전환, 기본 전체 선택 |
 | SearchBar | 공통 목록형 검색 조건 적용 | 검색어, 상세 검색 팝오버(주제 종합/세부 · 유형 · 난이도) | 즉시 필터, 상세 검색 적용 |
-| 목록 테이블 | 수신 문항 비교·열람 | 문항 번호, 문항 ID, 주제, 난이도, TOPIK 급수, **노출 상태**(`service_status` Tag), 태그, 최근 수정 (구 검수 상태 컬럼은 재정의 P3에서 제거 완료) | 문항 ID/더보기로 상세 진입, 노출 상태/태그 조치. 기관 컬럼·설정·관리는 제공하지 않음 |
+| 목록 테이블 | 수신 문항 비교·열람 | 문항 번호, 문항 ID, 주제, 난이도, TOPIK 급수, **노출 상태**(`service_status` Tag), 태그, 기관 노출, 최근 수정 (구 검수 상태 컬럼은 재정의 P3에서 제거 완료) | 문항 ID/더보기로 상세 진입, 노출 상태/태그 조치, 기관 노출 설정 |
 
 ### 5.2 문항 상세 페이지 (라우트 `/assessment/question-bank/:questionId` — 재정의 P3에서 개명 완료)
 
@@ -95,6 +95,7 @@
 - `targetLevel` / `difficultyLevel`(1~6)
 - `situationSummary` / `scenarioType`
 - `serviceStatus`(노출 상태 — legacy 소스는 null이며 `미지정` 표시)
+- `institutionExposure`(기관 노출 매핑 수와 전역 노출 상태 기준 실제 미노출 여부)
 - `recommendationKeys`
 - `updatedAt`
 - (제거 완료 — 재정의 P3, `202f905`) `reviewStatus` / `reviewWorkflowStatus`는 화면 모델·목록 컬럼에서 제거됐다. 컬럼 물리 제거도 마이그레이션 `0013`으로 완료됐다(2026-06-11 적용).
@@ -109,7 +110,7 @@
   - `keyword`
   - `tag` — P4 태그 필터 자리 확보용 예약 키(현재 미사용)
 - 목록 페이지 전용 쿼리는 없다 (구 `reviewStatus` 쿼리는 검수 개념 삭제로 재정의 P3에서 제거 완료).
-- 노출 상태 쿼리(`serviceStatus`)는 문항 관리 페이지 전용이며 이 페이지에서는 사용하지 않는다(`docs/specs/page-ia/assessment-question-manage-page-ia.md`).
+- 노출 상태 쿼리(`serviceStatus`)는 이 통합 페이지에서 요약 카드 필터로 사용한다.
 - `tab` 쿼리 파라미터는 제거되었다. 각 라우트가 자체 URL 상태를 보존한다.
 
 ### 6.3 문항 상세 페이지 데이터
@@ -127,8 +128,9 @@
 
 ## 7. 액션 정의
 
-- 이 페이지(목록·상세)는 **조회 전용**이며 쓰기 액션을 정의하지 않는다.
-- 쓰기 액션(태그 부여/제거, 노출 상태 전환)은 문항 관리 페이지(`docs/specs/page-ia/assessment-question-manage-page-ia.md`)에서 정의하고, `AssessmentQuestion + questionId` 감사 로그 계약(`service_status_changed`/`tag_assigned`/`tag_removed`)을 따른다(`docs/specs/admin-action-log.md`).
+- 목록 화면의 쓰기 액션은 태그 부여/제거, 노출 상태 전환, 기관 노출 설정이다. 모두 `AssessmentQuestion + questionId` 감사 로그 계약을 따른다(`docs/specs/admin-action-log.md`).
+- 기관 노출 설정은 `question_institutions_changed`/`question_institutions_cleared` 감사 액션을 사용하며, 결과 shape는 `{total, changed, unchanged, blocked, failed, details, batch_id}`다.
+- `service_status !== 'available'` 문항은 기관 매핑 신규 추가가 blocked 처리된다. 기존 매핑 제거와 전체 해제는 stale 매핑 정리를 위해 허용한다.
 - 수신·적재 감사 액션 `question_received`는 외부 공급 API 연동 시 추가한다(수신 경로 미구현 — §12 오픈 이슈).
 - (제거 완료 — 재정의 P3, `202f905`) 구 상세 페이지의 검수 액션 3종(`검수 완료`/`사용 보류`/`검수 필요`)과 메모 저장은 제거됐다. 폐기된 검수 감사 액션 4종(`review_completed`/`review_on_hold`/`review_revision_requested`/`review_memo_saved`)은 기존 감사 행 표시용 "(구)" 역사 라벨로만 잔존한다(감사 로그 화면). RPC 측 검수 경로도 마이그레이션 `0013`에서 제거 완료됐다(2026-06-11 적용 — RPC 원문 검수 참조 0건).
 
@@ -136,8 +138,8 @@
 
 | 항목 | 계약 | 비고 |
 | --- | --- | --- |
-| 노출 상태(`service_status`) | `available`(노출 가능) / `excluded`(노출 제외) / `internal_test`(내부 테스트, 기본값) | 유일한 물리 노출 상태(D-6). 이 페이지는 표시만, 전환 조치는 문항 관리 페이지 책임. legacy 소스 행은 값이 없어 `미지정` 표시 |
-| 태그 | `tag_master` 사전 기반 `question_tags` 활성 태그 | 문항 품질·상태 표현은 태그로만 한다. 부여/제거는 관리 페이지 책임(P4 개방 완료 — 2026-06-11, manage IA §7.3) |
+| 노출 상태(`service_status`) | `available`(노출 가능) / `excluded`(노출 제외) / `internal_test`(내부 테스트, 기본값) | 유일한 물리 노출 상태(D-6). 이 통합 페이지에서 표시·전환한다. legacy 소스 행은 값이 없어 `미지정` 표시 |
+| 태그 | `tag_master` 사전 기반 `question_tags` 활성 태그 | 문항 품질·상태 표현은 태그로만 한다. 부여/제거는 이 통합 페이지 책임(P4 개방 완료 — 2026-06-11, 2026-06-23 통합) |
 | `auto_checks_passed` | 수신·적재 자동 정합 검사 표식 | 존치 — 검수 개념과 무관한 적재 검증값 |
 | `content_team_memo` | 수신 메타데이터 | admin 쓰기 없음. 구 검수 메모 쓰기 경로는 재정의 P3에서 제거 완료(상세 `문항 상태` 카드에 읽기 전용 표시) |
 | 번호별 메타데이터 표시 | `51/52`, `53`, `54`는 서로 다른 전용 row 집합을 사용 | 상세 `Descriptions` profile로 분기 |
@@ -150,8 +152,8 @@
 
 - 운영 흐름은 `수신(외부 공급 API — 미개발) -> 적재(Supabase 신규 스키마 + question_source_map) -> 관리 포인트(태그) + 노출 통제(service_status) -> v13 read-only 소비`로 고정한다.
 - **수신·적재**: 문항 본문+메타데이터는 외부(공급) API가 완성 상태로 공급하고 admin이 수신·적재한다. 외부 API는 미개발 상태로, 공급 계약은 요청 문서(`docs/requests/upstream-writing-endpoints-request-2026-06-10.md`, 2026-06-11 인바운드 기준 재작성 — D-11)로 추진한다. 인터림 동안 신규 공급은 없고 백필 466행(초기 코퍼스)만 존재한다.
-- **이 페이지의 위치**: 흐름 중 "적재된 문항의 열람" 단계다. 수신된 문항·메타데이터를 조회 전용으로 확인한다.
-- **관리 포인트 + 노출 통제**: 태그 부여/제거와 `service_status` 전환은 문항 관리 페이지(`/assessment/question-bank/manage`)가 담당한다(`docs/specs/page-ia/assessment-question-manage-page-ia.md`).
+- **이 페이지의 위치**: 흐름 중 "적재된 문항의 열람 + 관리 포인트 조치" 단계다. 수신된 문항·메타데이터는 조회하고, 태그/노출 상태/기관 노출은 목록에서 조치한다.
+- **관리 포인트 + 노출 통제**: 태그 부여/제거와 `service_status` 전환은 이 통합 페이지(`/assessment/question-bank`)가 담당한다. `/assessment/question-bank/manage`는 이 라우트로 redirect되는 역사 경로다.
 - **v13 소비**: v13 사용자 기능은 적재된 데이터를 read-only로 소비한다. 상류 서비스로의 배포(API 업로드/push) 단계는 존재하지 않는다 — 구 POL-017의 push 모델(`검수 -> 배포(업로드) -> 노출 통제`)과 구 §8.1 배포 정책은 2026-06-11 §0으로 폐기됐다.
 - 노출 제외 기준은 `POL-018`을 따른다(검수 결합 기준 ① 삭제, 운영주의 태그 활성 시 `available` 전환 사유 필수 ②, 반복 노출 회피 과다 시 `excluded` 권고 ③ — 관리 페이지 IA §7.4 참조).
 
@@ -166,7 +168,7 @@
   - `difficulty`
   - `keyword`
   - (구 `reviewStatus`는 검수 개념 삭제로 재정의 P3에서 제거 완료)
-- `tag`는 P4 태그 필터 예약 키이며, `serviceStatus`는 문항 관리 페이지 전용이므로 이 페이지에서 복원하지 않는다. `tab` 파라미터는 제거되었다.
+- `tag`는 P4 태그 필터 예약 키이며, `serviceStatus`는 이 페이지에서 복원한다. `tab` 파라미터는 제거되었다.
 - `questionNo`가 없으면 `51~54` 전체 선택으로 해석하고, 부분 선택일 때만 반복 파라미터를 남긴다.
 
 ### 문항 상세 페이지
@@ -185,11 +187,11 @@
 
 ## 11. 구현 메모
 
-- 문항 목록 페이지 파일
-  - `src/features/assessment/pages/assessment-question-bank-page.tsx`
+- 문항 목록+관리 통합 페이지 파일
+  - `src/features/assessment/pages/assessment-question-manage-page.tsx` (`/assessment/question-bank` route element)
 - 2depth 문항 상세 페이지 파일
   - `src/features/assessment/pages/assessment-question-detail-page.tsx` (구 `assessment-question-review-page.tsx` — 재정의 P3에서 조회 전용 상세로 개명·재작성 완료)
-- 문항 관리 페이지는 별도 라우트/파일로 분리되어 있다(`docs/specs/page-ia/assessment-question-manage-page-ia.md`).
+- 구 문항 관리 페이지(`/assessment/question-bank/manage`)는 현재 `/assessment/question-bank`로 redirect되는 역사 경로이며, 구 IA 문서는 supersede 상태로만 참조한다.
 - 모델/서비스
   - `src/features/assessment/model/assessment-question-bank-types.ts`
   - `src/features/assessment/model/assessment-question-bank-schema.ts`
