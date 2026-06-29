@@ -19,6 +19,7 @@ import type {
   AssessmentQuestionDetail
 } from '../model/assessment-question-bank-types';
 import type { AsyncState } from '../../../shared/model/async-state';
+import { SourceDataCharts } from '../ui/source-data-chart';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
@@ -127,20 +128,9 @@ function render53SourceData(content: AssessmentQuestionContent53): JSX.Element {
     return renderDescriptionParagraph('');
   }
 
-  return (
-    <pre
-      style={{
-        margin: 0,
-        maxHeight: 260,
-        overflow: 'auto',
-        fontSize: 12,
-        background: 'rgba(0, 0, 0, 0.03)',
-        padding: 8
-      }}
-    >
-      {JSON.stringify(content.sourceData, null, 2)}
-    </pre>
-  );
+  // 자료 수치(JSONB)를 차트로 시각화한다. 차트로 해석되지 않는 형태는 컴포넌트가
+  // 원본 JSON으로 폴백한다.
+  return <SourceDataCharts sourceData={content.sourceData} />;
 }
 
 function buildSharedDescriptionItems(
