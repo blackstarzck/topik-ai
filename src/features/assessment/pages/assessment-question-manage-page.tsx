@@ -14,18 +14,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import {
-  clearWritingQuestionInstitutionsSafe,
-  setWritingQuestionInstitutionsSafe,
   updateAssessmentQuestionServiceStatusBulkSafe,
   updateAssessmentQuestionServiceStatusSafe
 } from '../api/assessment-question-bank-service';
-import { fetchInstitutionCodesSafe } from '../../users/api/institution-codes-service';
 import { questionBankDataSource } from '../api/question-bank-data-source';
 import { useAssessmentQuestionFilters } from '../model/use-assessment-question-filters';
 import { useAssessmentQuestionList } from '../model/use-assessment-question-list';
 import {
   useQuestionBankTagMaster,
-  useQuestionInstitutions,
   useQuestionBankTags
 } from '../model/use-question-bank-masters';
 import {
@@ -34,14 +30,6 @@ import {
 } from '../ui/question-tag-edit-modal';
 import { AssessmentBankTabs } from '../ui/assessment-bank-tabs';
 import { BulkServiceStatusModal } from '../ui/bulk-service-status-modal';
-import {
-  BulkInstitutionExposureModal,
-  type BulkInstitutionExposureMode
-} from '../ui/bulk-institution-exposure-modal';
-import {
-  QuestionInstitutionEditModal,
-  type QuestionInstitutionMutationSummary
-} from '../ui/question-institution-edit-modal';
 import {
   REPEAT_AVOID_EXCESS_THRESHOLD,
   SERVICE_STATUS_LABELS,
@@ -65,10 +53,8 @@ import {
 import type {
   AssessmentQuestionNumber,
   AssessmentQuestionSummary,
-  AssessmentServiceStatus,
-  BulkServiceStatusResult
+  AssessmentServiceStatus
 } from '../model/assessment-question-bank-types';
-import type { InstitutionCode } from '../../users/model/institution-codes-types';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
@@ -148,48 +134,19 @@ const OPERATION_ACTIONS: { nextStatus: AssessmentServiceStatus; copy: OperationA
   }
 ];
 
-function renderBulkResultDescription(summary: BulkServiceStatusResult): JSX.Element {
-  return (
-    <Space direction="vertical" size={4}>
-      <Text>
-        변경 {summary.changed.toLocaleString()}건 · 변경없음{' '}
-        {summary.unchanged.toLocaleString()}건
-        {summary.blocked > 0 ? ` · 차단 ${summary.blocked.toLocaleString()}건` : ''}
-        {summary.failed > 0 ? ` · 실패 ${summary.failed.toLocaleString()}건` : ''}
-      </Text>
-      {summary.details.slice(0, 5).map((detail) => (
-        <Text key={`${detail.kind}-${detail.questionId}`} type="secondary">
-          [{detail.kind === 'blocked' ? '차단' : '실패'}] {detail.questionId}:{' '}
-          {detail.message}
-        </Text>
-      ))}
-      {summary.batchId && summary.batchId !== 'mock-batch' ? (
-        <Text type="secondary">batch: {summary.batchId}</Text>
-      ) : null}
-    </Space>
-  );
-}
-
 export default function AssessmentQuestionManagePage(): JSX.Element {
   const navigate = useNavigate();
   const filters = useAssessmentQuestionFilters();
   const { state, reload } = useAssessmentQuestionList();
   const { tagsByQuestionId, tagCountByQuestionId, reload: reloadTags } =
     useQuestionBankTags();
-  const { institutionsByQuestionId, reload: reloadInstitutions } =
-    useQuestionInstitutions();
   const { tagMasterRows } = useQuestionBankTagMaster();
   const [actionState, setActionState] = useState<OperationActionState>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
   const [bulkStatus, setBulkStatus] = useState<AssessmentServiceStatus | null>(
     null
   );
-  const [bulkInstitutionMode, setBulkInstitutionMode] =
-    useState<BulkInstitutionExposureMode | null>(null);
   const [tagEditQuestionId, setTagEditQuestionId] = useState<string | null>(null);
-  const [institutionEditQuestion, setInstitutionEditQuestion] =
-    useState<AssessmentQuestionSummary | null>(null);
-  const [institutionCodes, setInstitutionCodes] = useState<InstitutionCode[]>([]);
   const [notificationApi, notificationContextHolder] =
     notification.useNotification();
 
@@ -255,22 +212,6 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
     setSelectedRowKeys([]);
   }, [filterSignature]);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    void fetchInstitutionCodesSafe(controller.signal).then((result) => {
-      if (controller.signal.aborted) {
-        return;
-      }
-      if (result.ok) {
-        setInstitutionCodes(result.data);
-      }
-    });
-
-    return () => {
-      controller.abort();
-    };
-  }, []);
-
   const summaryItems = useMemo(() => {
     const countOf = (status: AssessmentServiceStatus) =>
       currentNumberQuestions.filter(
@@ -294,11 +235,6 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
       }))
     ];
   }, [commitParams, currentNumberQuestions, serviceStatusFilter]);
-
-  const activeInstitutionCodes = useMemo(
-    () => institutionCodes.filter((code) => code.status === '활성'),
-    [institutionCodes]
-  );
 
   const tagGroupByCode = useMemo(() => {
     const byCode: Record<string, string> = {};
@@ -481,113 +417,6 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
     [bulkStatus, notificationApi, reload, selectedQuestions]
   );
 
-  const handleQuestionInstitutionMutated = useCallback(
-    (summary: QuestionInstitutionMutationSummary) => {
-      if (!institutionEditQuestion) {
-        return;
-      }
-
-      reload();
-      reloadInstitutions();
-      const result = summary.result;
-      const hasIssue = result.blocked > 0 || result.failed > 0;
-      const changeParts: string[] = [];
-      if (summary.added.length > 0) {
-        changeParts.push(`추가 ${summary.added.length}곳`);
-      }
-      if (summary.removed.length > 0) {
-        changeParts.push(`해제 ${summary.removed.length}곳`);
-      }
-      if (summary.clearedToPublic) {
-        changeParts.push('전체 공개');
-      }
-      const changeText = changeParts.length > 0 ? changeParts.join(' · ') : '변경 없음';
-      const description = (
-        <Space direction="vertical" size={4}>
-          <Text>대상 유형: {getTargetTypeLabel('AssessmentQuestion')}</Text>
-          <Text>대상 ID: {institutionEditQuestion.questionId}</Text>
-          <Text>{changeText}</Text>
-          {renderBulkResultDescription(result)}
-          <AuditLogLink
-            targetType="AssessmentQuestion"
-            targetId={institutionEditQuestion.questionId}
-          />
-        </Space>
-      );
-
-      if (hasIssue) {
-        notificationApi.warning({
-          message: '기관 노출 설정을 일부 처리했습니다.',
-          description
-        });
-      } else {
-        notificationApi.success({
-          message: '기관 노출 설정을 변경했습니다.',
-          description
-        });
-      }
-    },
-    [institutionEditQuestion, notificationApi, reload, reloadInstitutions]
-  );
-
-  const handleBulkInstitutionConfirm = useCallback(
-    async (payload: { institutionCodes: string[]; reason: string }) => {
-      if (!bulkInstitutionMode) {
-        return;
-      }
-
-      const questionIds = selectedQuestions.map((question) => question.questionId);
-      const result =
-        bulkInstitutionMode === 'set'
-          ? await setWritingQuestionInstitutionsSafe({
-              questionIds,
-              institutionCodes: payload.institutionCodes,
-              reason: payload.reason
-            })
-          : await clearWritingQuestionInstitutionsSafe({
-              questionIds,
-              reason: payload.reason
-            });
-
-      if (!result.ok) {
-        notificationApi.error({
-          message: '기관 노출을 일괄 변경하지 못했습니다.',
-          description: result.error.message
-        });
-        return;
-      }
-
-      const summary = result.data;
-      const hasIssue = summary.blocked > 0 || summary.failed > 0;
-      setBulkInstitutionMode(null);
-      setSelectedRowKeys([]);
-      reload();
-      reloadInstitutions();
-
-      const modeLabel =
-        bulkInstitutionMode === 'set' ? '기관 한정 지정' : '기관 한정 해제';
-      const description = renderBulkResultDescription(summary);
-      if (hasIssue) {
-        notificationApi.warning({
-          message: `${modeLabel}을 일부 처리했습니다.`,
-          description
-        });
-      } else {
-        notificationApi.success({
-          message: `${modeLabel} 완료`,
-          description
-        });
-      }
-    },
-    [
-      bulkInstitutionMode,
-      notificationApi,
-      reload,
-      reloadInstitutions,
-      selectedQuestions
-    ]
-  );
-
   // 문항 상세 보기 진입 — 현재 검색/필터(searchParams)를 쿼리로 보존해 상세에서
   // 뒤로 돌아올 때 목록 상태가 복원되게 한다(구 목록 페이지 계약 계승).
   const openDetail = useCallback(
@@ -626,11 +455,6 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
         key: 'detail',
         label: '상세 보기',
         onClick: () => openDetail(record.questionId)
-      },
-      {
-        key: 'institutions',
-        label: '기관 노출 설정',
-        onClick: () => setInstitutionEditQuestion(record)
       },
       ...OPERATION_ACTIONS.map((action) => ({
         key: `status-${action.nextStatus}`,
@@ -793,25 +617,6 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
         }
       },
       {
-        title: '기관 노출',
-        key: 'institutions',
-        width: 150,
-        render: (_, record) => {
-          const institutions = institutionsByQuestionId[record.questionId] ?? [];
-          const isGloballyAvailable = record.serviceStatus === 'available';
-          return (
-            <Space size={4} wrap>
-              {institutions.length > 0 ? (
-                <Tag color="blue">기관 {institutions.length.toLocaleString()}곳</Tag>
-              ) : (
-                <Tag color={isGloballyAvailable ? 'green' : 'default'}>전체 공개</Tag>
-              )}
-              {!isGloballyAvailable ? <Tag color="default">현재 미노출</Tag> : null}
-            </Space>
-          );
-        }
-      },
-      {
         title: '최근 수정',
         key: 'updatedAt',
         width: 160,
@@ -830,7 +635,6 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
     ],
     [
       createRowActionItems,
-      institutionsByQuestionId,
       openDetail,
       tagCountByQuestionId,
       targetLevelFilterOptions,
@@ -969,19 +773,6 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
               <Button size="small" onClick={() => setBulkStatus('internal_test')}>
                 내부 테스트
               </Button>
-              <Text type="secondary">기관 노출:</Text>
-              <Button
-                size="small"
-                onClick={() => setBulkInstitutionMode('set')}
-              >
-                기관 한정 지정
-              </Button>
-              <Button
-                size="small"
-                onClick={() => setBulkInstitutionMode('clear')}
-              >
-                기관 한정 해제
-              </Button>
               <Button
                 size="small"
                 type="text"
@@ -1053,31 +844,6 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
             tagMasterRows={tagMasterRows}
             onClose={() => setTagEditQuestionId(null)}
             onMutated={handleTagMutated}
-          />
-        ) : null}
-
-        {institutionEditQuestion ? (
-          <QuestionInstitutionEditModal
-            open
-            questionId={institutionEditQuestion.questionId}
-            questionServiceStatus={institutionEditQuestion.serviceStatus}
-            activeInstitutions={
-              institutionsByQuestionId[institutionEditQuestion.questionId] ?? []
-            }
-            codeOptions={activeInstitutionCodes}
-            onClose={() => setInstitutionEditQuestion(null)}
-            onMutated={handleQuestionInstitutionMutated}
-          />
-        ) : null}
-
-        {bulkInstitutionMode ? (
-          <BulkInstitutionExposureModal
-            open
-            mode={bulkInstitutionMode}
-            selectedQuestions={selectedQuestions}
-            codeOptions={activeInstitutionCodes}
-            onCancel={() => setBulkInstitutionMode(null)}
-            onConfirm={handleBulkInstitutionConfirm}
           />
         ) : null}
 

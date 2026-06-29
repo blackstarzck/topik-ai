@@ -3,14 +3,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   fetchQuestionBankActiveTagsSafe,
   fetchQuestionBankTagMasterSafe,
-  fetchQuestionBankTopicMasterSafe,
-  fetchWritingQuestionInstitutionsSafe
+  fetchQuestionBankTopicMasterSafe
 } from '../api/assessment-question-bank-service';
 import type {
   TopikWritingQuestionTagRow,
   TopikWritingTagMasterRow,
-  TopikWritingTopicMasterRow,
-  WritingQuestionInstitutionRow
+  TopikWritingTopicMasterRow
 } from './assessment-question-bank-types';
 
 export type TopicAxisOption = {
@@ -155,49 +153,4 @@ export function useQuestionBankTagMaster(): UseQuestionBankTagMasterResult {
   }, []);
 
   return { tagMasterRows, status };
-}
-
-export type UseQuestionInstitutionsResult = {
-  institutionsByQuestionId: Record<string, WritingQuestionInstitutionRow[]>;
-  reload: () => void;
-};
-
-/**
- * 활성 기관 노출 매핑 일괄 조인(목록 1회) — manage 목록의 '기관 노출' 칩 + 설정
- * 모달의 현재 허용 기관 소스. write 후 reload로 재조회한다(useQuestionBankTags 대칭).
- */
-export function useQuestionInstitutions(): UseQuestionInstitutionsResult {
-  const [rows, setRows] = useState<WritingQuestionInstitutionRow[]>([]);
-  const [reloadKey, setReloadKey] = useState(0);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    void fetchWritingQuestionInstitutionsSafe(undefined, controller.signal).then(
-      (result) => {
-        if (controller.signal.aborted || !result.ok) {
-          return;
-        }
-        setRows(result.data);
-      }
-    );
-
-    return () => {
-      controller.abort();
-    };
-  }, [reloadKey]);
-
-  const reload = useCallback(() => {
-    setReloadKey((prev) => prev + 1);
-  }, []);
-
-  const institutionsByQuestionId = useMemo(() => {
-    const byQuestion: Record<string, WritingQuestionInstitutionRow[]> = {};
-    rows.forEach((row) => {
-      (byQuestion[row.questionId] ??= []).push(row);
-    });
-    return byQuestion;
-  }, [rows]);
-
-  return { institutionsByQuestionId, reload };
 }
