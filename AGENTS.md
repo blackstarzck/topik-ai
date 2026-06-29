@@ -196,3 +196,59 @@ DO NOT
 - React 최적화 판단의 상세 기준은 `docs/guidelines/react-optimization-rule.md`를 단일 원문으로 사용한다.
 - 성능/렌더링 관련 변경은 6.2 React 최적화 게이트를 통과해야 한다.
 - 상태관리 구현체는 `Zustand` 원칙을 유지하고, 서버 상태 라이브러리 관련 세부는 프로젝트 채택안에 맞춰 해석한다.
+
+## 11. Git 관리
+이 저장소의 버전 관리 규약을 한곳에 모은다. 마이그레이션 디렉터리 세부는 `supabase/README.md`를, 커밋 필요성 판단은 §9 커밋 정책을 단일 원문으로 본다(중복 최소 원칙).
+
+### 11.1 리모트 / 배포
+- `origin` → `github.com/blackstarzck/topik-ai.git` — **PR 대상**(PR #1~#3 머지처).
+- `keduall`·`collab` → `github.com/keduall/topik-admin.git`(동일 URL, 회사 저장소).
+- 기본·PR 브랜치는 `main`. PR은 `gh` CLI로 origin `main` 대상 생성.
+- **Vercel Git 연동은 commit author로 배포를 검증한다.** main에 push되는 배포 트리거/머지 커밋은 Vercel에 연결된 계정(`guestkeduall-design <guestkeduall@gmail.com>`)이 author여야 한다. 다른 author(예: `chanchan2@keduall.com`)는 팀 계정에 매핑되지 않아 배포가 평가되지 않는다.
+- 이미 push된 `main` 히스토리를 force-rewrite하지 않는다 — author 문제는 no-op 트리거 커밋으로 해소한다.
+
+### 11.2 브랜치 전략
+- **브랜치 생성은 사용자 동의가 필수다.** 작업이 `main`에서 시작되더라도 임의로 새 브랜치를 만들지 않는다. 새 브랜치가 필요하면 이름·목적을 제안하고 동의를 받은 뒤에만 생성한다(커밋/푸시 승인과 별개 게이트).
+- `main`: 기본·PR 대상·Vercel 배포 브랜치. **직접 커밋 지양** — 작업은 브랜치에서 하고 PR로 합친다.
+- `feat/*`: 기능 작업(`feat/operation-notices-db`, `feat/admin-account-separation` 등).
+- `codex/*`: 에이전트 작업(`codex/users-registration-lifecycle-admin` 등).
+- `docs/*`: 문서 전용 작업.
+
+### 11.3 워크트리(동시 세션) 주의 — 중요
+- 이 저장소는 **다중 git worktree**로 운영된다(`git worktree list`로 확인): 메인 워크스페이스 + `~/.codex/worktrees/<id>/topik-ai` 여러 개. 각 워크트리는 서로 다른 브랜치/커밋·자체 `.env.local`·자체 dev 서버를 가질 수 있다.
+- **실행 중인 dev 서버가 내 편집을 반영한다고 가정하지 않는다.** 어느 워크트리·포트에서 도는지, `process.cwd()`가 어디인지(서버측 env는 그 cwd의 `.env.local`에서 로딩됨) 먼저 확인한다. 동시 편집 중에는 탐색 Read 결과가 stale일 수 있다.
+- **다른 세션의 미커밋 변경을 함께 커밋하지 않는다.** 공유 파일을 동시 편집했다면 내 hunk만 스테이징한다:
+  - `.codex-artifacts/stage_mine.py`(git diff 훅 필터 → patch) 사용.
+  - 클린 체크아웃 기법: patch 생성 → 파일 백업 → `git checkout HEAD <file>` → `git apply --recount` → `git add` → 백업 복원. (`git apply --cached`는 동시 hunk가 new측 라인을 시프트시켜 실패할 수 있어, 일단 HEAD 클린 상태에 적용해야 한다.)
+  - 함정: Python subprocess가 git 출력을 cp949로 디코드해 한글이 깨질 수 있다 → `encoding='utf-8'` 강제.
+
+### 11.4 커밋 메시지 규약
+한 줄 제목 + 구조화 본문이 이 저장소의 표준이다.
+- **제목**: 간결한 명령형. conventional-commit 형식(`feat(scope): 요약`, `docs(scope): 요약`, `test(e2e): 요약`, `chore(env): 요약`)을 함께 사용한다. 무엇을 했는지보다 의도가 드러나게.
+- **본문(구조화 필드, 실제 사용 중)**:
+  - `Constraint:` 사용자 요청/구속 조건
+  - `Rejected:` 기각한 대안 + 사유(복수 가능)
+  - `Confidence:` high / medium / low
+  - `Scope-risk:` narrow / moderate / broad
+  - `Directive:` 향후 유지할 규칙·교훈
+  - `Tested:` 실행한 게이트(`harness:check`, `typecheck`, `lint`, `build`, e2e 스펙 등)
+  - `Not-tested:` 미검증 항목(예: 운영 DB 마이그레이션 미적용)
+  - `Co-authored-by:` 트레일러(Codex 작업분은 `OmX <omx@oh-my-codex.dev>`).
+
+### 11.5 커밋 / 푸시 정책 (게이트)
+- 커밋·푸시는 사용자가 요청하거나 필요성이 확인될 때만 한다. 필요하다고 판단되면 메시지·범위를 제안하고 진행 여부를 확인한다(§9 계승).
+- **커밋 전 게이트**:
+  - `npm run harness:check` (mojibake · doc-crosslinks · route-doc-coverage · message-history-boundary · lint · typecheck)
+  - 경계/마이그레이션 작업이면 `npm run harness:admin-boundary` (migration-boundary · client-source-secrets · notification-cross-app-state 등)
+  - 변경 영향 핵심 플로우 **e2e**(§6.1·§9 DoD)
+- **mojibake 검사 필수** — 특히 Codex가 `.sql`/`.tsx`를 편집한 직후. `npm run check:mojibake`는 fragment 한정이라 불완전하므로 lint + 수동 `?+한글` 스캔을 병행하고, 깨졌으면 UTF-8로 재작성한다. 한글이 많은 파일은 Codex보다 직접 작성이 안전하다.
+- **비밀/PII 커밋 금지** — `.env.local`·`.env.*.local`은 `.gitignore`로 보호된다. 단 DB 백업 덤프(`.db-backup-*`)는 자동 무시되지 않고 회원 PII를 포함하므로 push 전 반드시 확인한다.
+
+### 11.6 Supabase 마이그레이션 경계 (커밋·적용)
+원문: `supabase/README.md`. 하나의 공유 DB를 **도메인 기준** 두 네임스페이스로 분리한다.
+- `supabase/migrations/` → `topik_writing` 도메인. tracker `topik_writing_schema_migrations`, 러너 `npm run db:migrate`.
+- `supabase/migrations-admin/` → admin 운영 도메인. tracker `admin_schema_migrations`, 러너 `npm run db:admin:migrate`.
+- **경계 규칙**: 두 tracker를 섞지 않는다 · v13 소유 테이블 DDL 변경 금지 · 소유권은 앱이 아니라 도메인 기준. `npm run check:migration-boundary`가 게이트.
+- 각 마이그는 `down/`에 같은 파일명으로 롤백 SQL을 짝지어 둔다. 적용은 Management API(`SUPABASE_ACCESS_TOKEN`).
+- **dev DB와 운영 DB는 분리**된다. 작업은 dev DB(`fglggyfvzjdsbyckinqa`)에 적용·검증하고, 운영 DB 적용은 PR 머지 후 별도 후속 단계다 — 커밋·머지가 운영 DB에 자동 반영되지 않는다.
+- 신규 마이그를 **구버전 정의 위에 작성하지 않는다**(직전 컬럼/함수를 덮어쓸 위험). 최신 정의를 베이스로 작성하고, 신규 쓰기 파일은 boundary 게이트의 허용 목록에 등록한다.
