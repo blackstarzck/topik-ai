@@ -68,6 +68,7 @@ import {
   createTextSorter
 } from '../../../shared/ui/table/table-column-utils';
 import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
+import { DRAWER_TABLE_PAGINATION } from '../../../shared/ui/table/drawer-table';
 
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
@@ -1367,7 +1368,7 @@ export default function UserDetailPage(): JSX.Element {
                   rowKey="domain"
                   showSorterTooltip={false}
                   size="small"
-                  pagination={false}
+                  pagination={DRAWER_TABLE_PAGINATION}
                   style={{ marginTop: 8 }}
                   dataSource={learningState.data.domainAccuracy}
                   columns={learningDomainColumns}
@@ -1380,7 +1381,7 @@ export default function UserDetailPage(): JSX.Element {
                   rowKey="label"
                   showSorterTooltip={false}
                   size="small"
-                  pagination={false}
+                  pagination={DRAWER_TABLE_PAGINATION}
                   style={{ marginTop: 8 }}
                   dataSource={learningState.data.weaknesses}
                   columns={learningWeaknessColumns}
@@ -1393,7 +1394,7 @@ export default function UserDetailPage(): JSX.Element {
                   rowKey="id"
                   showSorterTooltip={false}
                   size="small"
-                  pagination={false}
+                  pagination={DRAWER_TABLE_PAGINATION}
                   style={{ marginTop: 8 }}
                   dataSource={learningState.data.recentAttempts}
                   columns={learningAttemptColumns}
@@ -1410,7 +1411,7 @@ export default function UserDetailPage(): JSX.Element {
                   rowKey="submissionId"
                   showSorterTooltip={false}
                   size="small"
-                  pagination={false}
+                  pagination={DRAWER_TABLE_PAGINATION}
                   style={{ marginTop: 8 }}
                   dataSource={learningState.data.recentWriting}
                   columns={learningWritingColumns}
