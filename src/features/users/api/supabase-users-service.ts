@@ -361,6 +361,31 @@ export async function loadUsersFromSupabase(
 }
 
 /**
+ * 회원 상세 단건 read — id 로 해당 회원만 직접 조회한다(get_admin_user).
+ * 반환 컬럼/파생 규칙이 get_admin_users 와 1:1 동일하므로 mapRowToUserSummary 를
+ * 그대로 재사용한다. 목록 RPC의 "상위 100명 창" 제약이 없어 전 회원을 조회할 수 있다.
+ */
+export async function loadUserByIdFromSupabase(
+  userId: string,
+  signal?: AbortSignal
+): Promise<UserSummary | null> {
+  if (!supabaseClient) {
+    throw new Error('Supabase client not configured');
+  }
+  const { data, error } = await supabaseClient.rpc('get_admin_user', {
+    target_user_id: userId
+  });
+  if (signal?.aborted) {
+    throw new DOMException('Request aborted', 'AbortError');
+  }
+  if (error) {
+    throw new Error(error.message);
+  }
+  const rows = (data ?? []) as AdminUserRow[];
+  return rows.length > 0 ? mapRowToUserSummary(rows[0]) : null;
+}
+
+/**
  * Phase B write seam — suspend/unsuspend via the audited RPC. withdraw (탈퇴) is NOT
  * supported: the server rejects 'deleted' and we hard-block it here too (D-F).
  */

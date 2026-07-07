@@ -10,6 +10,7 @@ import {
   getUserLegalConsentsFromSupabase,
   getUserMemosFromSupabase,
   getUserPaymentsFromSupabase,
+  loadUserByIdFromSupabase,
   loadUserLearningOverviewFromSupabase,
   loadUsersFromSupabase,
   setUserStatusViaRpc,
@@ -96,14 +97,27 @@ export function setUserStatusSafe(userId: string, nextStatus: UserStatus) {
   });
 }
 
-/** Detail read — single member. Real directory lookup when connected, else mock. */
+/**
+ * Detail read — single member. Supabase 모드에서는 id 로 그 회원만 직접 조회한다
+ * (get_admin_user). get_admin_user 미배포 등으로 실패하면 구 경로(목록 상위 100명
+ * 스캔)로 폴백해 회귀를 막는다. 미연결 시 mock.
+ */
 export function fetchUserByIdSafe(userId: string, signal?: AbortSignal) {
   return toSafeResult(async () => {
-    if (isSupabaseConfigured) {
+    if (!isSupabaseConfigured) {
+      return getMockUserById(userId) ?? null;
+    }
+    try {
+      return await loadUserByIdFromSupabase(userId, signal);
+    } catch (error) {
+      // 요청 취소는 그대로 전파(폴백 금지).
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw error;
+      }
+      // 폴백: 목록 상위 100명에서 find(단건 RPC가 아직 배포되지 않은 환경 대비).
       const users = await loadUsersFromSupabase(signal);
       return users.find((item) => item.id === userId) ?? null;
     }
-    return getMockUserById(userId) ?? null;
   });
 }
 
