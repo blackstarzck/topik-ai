@@ -12,10 +12,16 @@ import {
   Typography
 } from 'antd';
 import type { TableColumnsType } from 'antd';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { useCommerceStore } from '../../billing/model/commerce-store';
+import {
+  fetchAnalyticsOverviewSafe,
+  type AnalyticsOverview
+} from '../api/analytics-overview-service';
+import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
+import type { AsyncState } from '../../../shared/model/async-state';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
   createNumberSorter,
@@ -202,12 +208,269 @@ function getPeriodStart(period: PeriodKey): Date {
   return start;
 }
 
+const periodDaysMap: Record<PeriodKey, number> = { '7d': 7, '30d': 30, '90d': 90 };
+const periodLabelMap: Record<PeriodKey, string> = {
+  '7d': '최근 7일',
+  '30d': '최근 30일',
+  '90d': '최근 90일'
+};
+
+// 직전 동일기간 대비 상대 변화율(%). 이전 값 0이면 현재>0 → 100%로 간주.
+function relChange(current: number, previous: number): number {
+  if (previous === 0) {
+    return current > 0 ? 100 : 0;
+  }
+  return Math.round(((current - previous) / previous) * 100);
+}
+
+// 비율(%): 분모 0이면 emptyValue(처리율 계열=100, 활성률=0 — 기존 화면 관례).
+function rateOf(numerator: number, denominator: number, emptyValue: number): number {
+  if (denominator === 0) {
+    return emptyValue;
+  }
+  return Math.round((numerator / denominator) * 100);
+}
+
+type OverviewSummary = {
+  activeRate: number | null;
+  reportRate: number | null;
+  deliveryRate: number | null;
+  revenue: number | null;
+  alerts: string[];
+};
+
+// Supabase 모드 KPI/이상 징후 — 하드코딩 문구 대신 집계값으로 계산한다.
+function buildRealSummary(o: AnalyticsOverview, period: PeriodKey): OverviewSummary {
+  const reportRate = rateOf(o.reportsResolved, o.reportsTotal, 100);
+  const alerts: string[] = [];
+
+  if (o.refundsPendingNow > 0) {
+    alerts.push(
+      `환불 처리 대기 건이 ${o.refundsPendingNow}건 있어 커머스 운영 지표와 함께 확인해야 합니다.`
+    );
+  }
+
+  const deliveryDenominator = o.deliveriesSent + o.deliveriesFailed;
+  if (deliveryDenominator > 0 && o.deliveriesFailed > 0) {
+    const failRate = Math.round((o.deliveriesFailed / deliveryDenominator) * 1000) / 10;
+    const prevDenominator = o.deliveriesSentPrev + o.deliveriesFailedPrev;
+    const prevFailRate =
+      prevDenominator > 0
+        ? Math.round((o.deliveriesFailedPrev / prevDenominator) * 1000) / 10
+        : null;
+    alerts.push(
+      `메시지 실패율이 ${periodLabelMap[period]} 기준 ${failRate}%입니다${
+        prevFailRate !== null ? ` (직전 기간 ${prevFailRate}%)` : ''
+      }.`
+    );
+  }
+
+  if (o.reportsTotal > 0 && o.reportsTotalPrev > 0) {
+    const prevReportRate = rateOf(o.reportsResolvedPrev, o.reportsTotalPrev, 100);
+    if (reportRate < prevReportRate) {
+      alerts.push(
+        `신고 처리율이 직전 기간(${prevReportRate}%) 대비 ${prevReportRate - reportRate}%p 하락했습니다.`
+      );
+    }
+  }
+
+  return {
+    activeRate: rateOf(o.activeUsers, o.totalUsers, 0),
+    reportRate,
+    deliveryRate: rateOf(o.deliveriesSent, deliveryDenominator, 100),
+    revenue: o.revenueKrw,
+    alerts
+  };
+}
+
+// Supabase 모드 모듈별 핵심 지표. 기간별 지표 구성은 기존 화면 설계를 따르되,
+// 실소스가 없는 '가입 전환율'(90d)만 '신규 가입'으로 대체한다.
+// 추세: 개수/금액=직전 대비 상대 %, 비율=%p 차이.
+function buildRealModuleRows(o: AnalyticsOverview, period: PeriodKey): ModuleSummary[] {
+  const reportRate = rateOf(o.reportsResolved, o.reportsTotal, 100);
+  const reportRatePrev = rateOf(o.reportsResolvedPrev, o.reportsTotalPrev, 100);
+  const deliveryRateNow = rateOf(
+    o.deliveriesSent,
+    o.deliveriesSent + o.deliveriesFailed,
+    100
+  );
+  const deliveryRatePrev = rateOf(
+    o.deliveriesSentPrev,
+    o.deliveriesSentPrev + o.deliveriesFailedPrev,
+    100
+  );
+
+  if (period === '7d') {
+    return [
+      {
+        key: 'users',
+        module: '회원',
+        primaryMetric: '신규 가입',
+        value: `${o.newUsers.toLocaleString()}명`,
+        trend: relChange(o.newUsers, o.newUsersPrev),
+        route: '/users'
+      },
+      {
+        key: 'community',
+        module: '커뮤니티',
+        primaryMetric: '신고 처리율',
+        value: `${reportRate}%`,
+        trend: reportRate - reportRatePrev,
+        route: '/community/reports'
+      },
+      {
+        key: 'message',
+        module: '메시지',
+        primaryMetric: '도달률',
+        value: `${deliveryRateNow}%`,
+        trend: deliveryRateNow - deliveryRatePrev,
+        route: '/messages/history?channel=mail'
+      },
+      {
+        key: 'commerce',
+        module: '커머스',
+        primaryMetric: '매출',
+        value: `₩${o.revenueKrw.toLocaleString('ko-KR')}`,
+        trend: relChange(o.revenueKrw, o.revenueKrwPrev),
+        route: '/commerce/payments'
+      }
+    ];
+  }
+
+  if (period === '30d') {
+    const activeRate = rateOf(o.activeUsers, o.totalUsers, 0);
+    const activeRatePrev = rateOf(o.activeUsersPrev, o.totalUsers, 0);
+    const refundRate = rateOf(o.refundsHandled, o.refundsTotal, 100);
+    const refundRatePrev = rateOf(o.refundsHandledPrev, o.refundsTotalPrev, 100);
+    return [
+      {
+        key: 'users',
+        module: '회원',
+        primaryMetric: '활성 회원 비율',
+        value: `${activeRate}%`,
+        trend: activeRate - activeRatePrev,
+        route: '/users'
+      },
+      {
+        key: 'community',
+        module: '커뮤니티',
+        primaryMetric: '신고 누적 처리',
+        value: `${o.reportsResolved.toLocaleString()}건`,
+        trend: relChange(o.reportsResolved, o.reportsResolvedPrev),
+        route: '/community/reports'
+      },
+      {
+        key: 'message',
+        module: '메시지',
+        primaryMetric: '실패 건수',
+        value: `${o.deliveriesFailed.toLocaleString()}건`,
+        trend: relChange(o.deliveriesFailed, o.deliveriesFailedPrev),
+        route: '/messages/history?channel=push'
+      },
+      {
+        key: 'commerce',
+        module: '커머스',
+        primaryMetric: '환불 처리율',
+        value: `${refundRate}%`,
+        trend: refundRate - refundRatePrev,
+        route: '/commerce/refunds'
+      }
+    ];
+  }
+
+  return [
+    {
+      key: 'users',
+      module: '회원',
+      primaryMetric: '신규 가입',
+      value: `${o.newUsers.toLocaleString()}명`,
+      trend: relChange(o.newUsers, o.newUsersPrev),
+      route: '/users'
+    },
+    {
+      key: 'community',
+      module: '커뮤니티',
+      primaryMetric: '콘텐츠 생성량',
+      value: `${o.postsCreated.toLocaleString()}건`,
+      trend: relChange(o.postsCreated, o.postsCreatedPrev),
+      route: '/community/posts'
+    },
+    {
+      key: 'message',
+      module: '메시지',
+      primaryMetric: '누적 발송 수',
+      value: `${o.deliveriesSent.toLocaleString()}건`,
+      trend: relChange(o.deliveriesSent, o.deliveriesSentPrev),
+      route: '/messages/history?channel=mail'
+    },
+    {
+      key: 'commerce',
+      module: '커머스',
+      primaryMetric: '누적 매출',
+      value: `₩${o.revenueKrw.toLocaleString('ko-KR')}`,
+      trend: relChange(o.revenueKrw, o.revenueKrwPrev),
+      route: '/commerce/payments'
+    }
+  ];
+}
+
 export default function AnalyticsOverviewPage(): JSX.Element {
   const navigate = useNavigate();
   const payments = useCommerceStore((state) => state.payments);
   const refunds = useCommerceStore((state) => state.refunds);
   const [searchParams, setSearchParams] = useSearchParams();
   const activePeriod = parsePeriod(searchParams.get('period'));
+
+  // Supabase 모드 실데이터 집계(get_admin_analytics_overview). mock 모드는 data=null.
+  const [overviewState, setOverviewState] = useState<AsyncState<AnalyticsOverview | null>>({
+    status: 'pending',
+    data: null,
+    errorMessage: null,
+    errorCode: null
+  });
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setOverviewState((prev) => ({
+      ...prev,
+      status: 'pending',
+      errorMessage: null,
+      errorCode: null
+    }));
+    void fetchAnalyticsOverviewSafe(periodDaysMap[activePeriod], controller.signal).then(
+      (result) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        if (result.ok) {
+          setOverviewState({
+            status: 'success',
+            data: result.data,
+            errorMessage: null,
+            errorCode: null
+          });
+          return;
+        }
+        setOverviewState((prev) => ({
+          ...prev,
+          status: 'error',
+          errorMessage: result.error.message,
+          errorCode: result.error.code
+        }));
+      }
+    );
+    return () => controller.abort();
+  }, [activePeriod, reloadKey]);
+
+  const overview = overviewState.data;
+  const overviewLoading = isSupabaseConfigured && overviewState.status === 'pending';
+
+  const handleRetryOverview = useCallback(() => {
+    setReloadKey((prev) => prev + 1);
+  }, []);
+
+  // ----- mock 폴백 계산(Supabase 미설정 시에만 사용; 기존 로직 유지) -----
   const periodStart = getPeriodStart(activePeriod);
   const commerceRevenue = payments
     .filter(
@@ -222,7 +485,7 @@ export default function AnalyticsOverviewPage(): JSX.Element {
               100
         );
   const pendingRefundCount = refunds.filter((refund) => refund.status === '처리 대기').length;
-  const summary = {
+  const mockSummary: OverviewSummary = {
     ...summaryMap[activePeriod],
     revenue: commerceRevenue,
     alerts:
@@ -233,7 +496,7 @@ export default function AnalyticsOverviewPage(): JSX.Element {
           ]
         : summaryMap[activePeriod].alerts
   };
-  const moduleRows = moduleSummaryMap[activePeriod].map((row) => {
+  const mockModuleRows = moduleSummaryMap[activePeriod].map((row) => {
     if (row.key !== 'commerce') {
       return row;
     }
@@ -244,6 +507,18 @@ export default function AnalyticsOverviewPage(): JSX.Element {
 
     return { ...row, value: `₩${commerceRevenue.toLocaleString('ko-KR')}` };
   });
+
+  // ----- 표시 모델: 실데이터 > (Supabase 로딩/오류 시 '—') > mock -----
+  const summary: OverviewSummary = overview
+    ? buildRealSummary(overview, activePeriod)
+    : isSupabaseConfigured
+      ? { activeRate: null, reportRate: null, deliveryRate: null, revenue: null, alerts: [] }
+      : mockSummary;
+  const moduleRows: ModuleSummary[] = overview
+    ? buildRealModuleRows(overview, activePeriod)
+    : isSupabaseConfigured
+      ? []
+      : mockModuleRows;
 
   const commitPeriod = useCallback(
     (nextPeriod: string) => {
@@ -304,6 +579,23 @@ export default function AnalyticsOverviewPage(): JSX.Element {
     <div>
       <PageTitle title="분석" />
 
+      {isSupabaseConfigured && overviewState.status === 'error' ? (
+        <Alert
+          type="error"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message="분석 지표 조회에 실패했습니다."
+          description={
+            <Space direction="vertical" size={4}>
+              <Text>{overviewState.errorMessage ?? '일시적인 오류가 발생했습니다.'}</Text>
+              <Button size="small" onClick={handleRetryOverview}>
+                재시도
+              </Button>
+            </Space>
+          }
+        />
+      ) : null}
+
       <Card style={{ marginBottom: 16 }}>
         <Space
           style={{ width: '100%', justifyContent: 'space-between', alignItems: 'center' }}
@@ -326,25 +618,45 @@ export default function AnalyticsOverviewPage(): JSX.Element {
       <Row gutter={[16, 16]}>
         <Col xs={24} md={12} xl={6}>
           <Card>
-            <Statistic title="활성 사용자 비율" value={summary.activeRate} suffix="%" />
-            <Progress percent={summary.activeRate} showInfo={false} />
+            <Statistic
+              title="활성 사용자 비율"
+              value={summary.activeRate ?? '—'}
+              suffix={summary.activeRate !== null ? '%' : undefined}
+              loading={overviewLoading}
+            />
+            <Progress percent={summary.activeRate ?? 0} showInfo={false} />
           </Card>
         </Col>
         <Col xs={24} md={12} xl={6}>
           <Card>
-            <Statistic title="신고 처리율" value={summary.reportRate} suffix="%" />
-            <Progress percent={summary.reportRate} status="active" showInfo={false} />
+            <Statistic
+              title="신고 처리율"
+              value={summary.reportRate ?? '—'}
+              suffix={summary.reportRate !== null ? '%' : undefined}
+              loading={overviewLoading}
+            />
+            <Progress percent={summary.reportRate ?? 0} status="active" showInfo={false} />
           </Card>
         </Col>
         <Col xs={24} md={12} xl={6}>
           <Card>
-            <Statistic title="메시지 도달률" value={summary.deliveryRate} suffix="%" />
-            <Progress percent={summary.deliveryRate} showInfo={false} />
+            <Statistic
+              title="메시지 도달률"
+              value={summary.deliveryRate ?? '—'}
+              suffix={summary.deliveryRate !== null ? '%' : undefined}
+              loading={overviewLoading}
+            />
+            <Progress percent={summary.deliveryRate ?? 0} showInfo={false} />
           </Card>
         </Col>
         <Col xs={24} md={12} xl={6}>
           <Card>
-            <Statistic title="매출 합계" value={summary.revenue} prefix="₩" />
+            <Statistic
+              title="매출 합계"
+              value={summary.revenue ?? '—'}
+              prefix={summary.revenue !== null ? '₩' : undefined}
+              loading={overviewLoading}
+            />
             <Paragraph type="secondary" style={{ marginBottom: 0 }}>
               {activePeriod === '7d'
                 ? '최근 7일 확정 매출 기준'
@@ -373,12 +685,20 @@ export default function AnalyticsOverviewPage(): JSX.Element {
               pagination={false}
               columns={columns}
               dataSource={moduleRows}
+              loading={overviewLoading}
             />
           </Card>
         </Col>
         <Col xs={24} xl={8}>
           <Card title="이상 징후">
             <Space direction="vertical" size={12} style={{ width: '100%' }}>
+              {overview && summary.alerts.length === 0 ? (
+                <Alert
+                  showIcon
+                  type="success"
+                  message="주요 이상 징후가 감지되지 않았습니다."
+                />
+              ) : null}
               {summary.alerts.map((alert) => (
                 <Alert
                   key={alert}

@@ -17,10 +17,16 @@ import {
   TeamOutlined,
   WarningOutlined
 } from '@ant-design/icons';
-import { useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { useCommerceStore } from '../../billing/model/commerce-store';
+import {
+  fetchDashboardStatsSafe,
+  type DashboardStats
+} from '../api/dashboard-stats-service';
+import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
+import type { AsyncState } from '../../../shared/model/async-state';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 
 const { Paragraph, Text } = Typography;
@@ -28,10 +34,28 @@ const { Paragraph, Text } = Typography;
 type QueueItem = {
   key: string;
   title: string;
-  count: number;
+  // Supabase 모드 로딩/오류 시 '—' 표시를 위해 문자열 허용.
+  count: number | string;
   route: string;
   actionLabel: string;
 };
+
+// 직전 동일기간 대비 상대 변화율(%). 이전 값 0이면 현재>0 → 100%로 간주.
+function relChange(current: number, previous: number): number {
+  if (previous === 0) {
+    return current > 0 ? 100 : 0;
+  }
+  return Math.round(((current - previous) / previous) * 100);
+}
+
+// sent/(sent+failed) 도달률(%). 분모 0이면 null(발송 이력 없음).
+function deliveryRate(sent: number, failed: number): number | null {
+  const denominator = sent + failed;
+  if (denominator === 0) {
+    return null;
+  }
+  return Math.round((sent / denominator) * 100);
+}
 
 type AlertItem = {
   key: string;
@@ -44,36 +68,85 @@ type AlertItem = {
 export default function DashboardPage(): JSX.Element {
   const navigate = useNavigate();
   const refunds = useCommerceStore((state) => state.refunds);
+  // mock 모드 폴백용(스토어 기반). Supabase 모드는 RPC 집계값을 쓴다.
   const pendingRefundCount = refunds.filter((refund) => refund.status === '처리 대기').length;
+
+  // Supabase 모드 실데이터 집계(get_admin_dashboard_stats). mock 모드는 data=null.
+  const [statsState, setStatsState] = useState<AsyncState<DashboardStats | null>>({
+    status: 'pending',
+    data: null,
+    errorMessage: null,
+    errorCode: null
+  });
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setStatsState((prev) => ({ ...prev, status: 'pending', errorMessage: null, errorCode: null }));
+    void fetchDashboardStatsSafe(controller.signal).then((result) => {
+      if (controller.signal.aborted) {
+        return;
+      }
+      if (result.ok) {
+        setStatsState({ status: 'success', data: result.data, errorMessage: null, errorCode: null });
+        return;
+      }
+      setStatsState((prev) => ({
+        ...prev,
+        status: 'error',
+        errorMessage: result.error.message,
+        errorCode: result.error.code
+      }));
+    });
+    return () => controller.abort();
+  }, [reloadKey]);
+
+  const stats = statsState.data;
+  const statsLoading = isSupabaseConfigured && statsState.status === 'pending';
+
+  const handleRetryStats = useCallback(() => {
+    setReloadKey((prev) => prev + 1);
+  }, []);
+
+  // 실데이터가 있으면 그대로, Supabase 모드 로딩/오류면 '—', mock 모드면 목업 값.
+  const displayCount = useCallback(
+    (real: number | undefined, mock: number): number | string => {
+      if (real !== undefined) {
+        return real;
+      }
+      return isSupabaseConfigured ? '—' : mock;
+    },
+    []
+  );
 
   const summaryCards = useMemo(
     () => [
       {
         key: 'new-users',
         title: '오늘 신규 회원',
-        value: 124,
+        value: displayCount(stats?.newUsersToday, 124),
         suffix: '명'
       },
       {
         key: 'pending-reports',
         title: '처리 대기 신고',
-        value: 37,
+        value: displayCount(stats?.pendingReports, 37),
         suffix: '건'
       },
       {
         key: 'refund-queue',
         title: '환불 처리 대기',
-        value: pendingRefundCount,
+        value: displayCount(stats?.pendingRefunds, pendingRefundCount),
         suffix: '건'
       },
       {
         key: 'scheduled-messages',
         title: '예약 발송 대기',
-        value: 12,
+        value: displayCount(stats?.scheduledDispatches, 12),
         suffix: '건'
       }
     ],
-    [pendingRefundCount]
+    [displayCount, pendingRefundCount, stats]
   );
 
   const quickLinks = useMemo(
@@ -111,37 +184,93 @@ export default function DashboardPage(): JSX.Element {
       {
         key: 'queue-report',
         title: '신고 처리 대기',
-        count: 37,
+        count: displayCount(stats?.pendingReports, 37),
         route: '/community/reports',
         actionLabel: '신고 관리'
       },
       {
         key: 'queue-refund',
         title: '환불 승인 대기',
-        count: pendingRefundCount,
+        count: displayCount(stats?.pendingRefunds, pendingRefundCount),
         route: '/commerce/refunds?status=처리 대기',
         actionLabel: '환불 확인'
       },
       {
         key: 'queue-message',
-        title: '메시지 실패 검토',
-        count: 6,
+        title: '메시지 실패(최근 7일)',
+        count: displayCount(stats?.failedDeliveries7d, 6),
         route: '/messages/history?channel=mail&status=실패',
         actionLabel: '이력 보기'
       },
       {
+        // 권한 변경은 즉시 반영이라 "승인 대기" 개념이 없음 → 최근 변경 이력 건수로 대체.
         key: 'queue-admin',
-        title: '권한 변경 검토',
-        count: 3,
+        title: '최근 권한 변경(7일)',
+        count: displayCount(stats?.roleChanges7d, 3),
         route: '/system/permissions',
         actionLabel: '권한 관리'
       }
     ],
-    [pendingRefundCount]
+    [displayCount, pendingRefundCount, stats]
   );
 
-  const alertItems = useMemo<AlertItem[]>(
-    () => [
+  const alertItems = useMemo<AlertItem[]>(() => {
+    // Supabase 모드 실데이터 경고: 하드코딩 문구 대신 집계값으로 계산한다.
+    if (stats) {
+      const items: AlertItem[] = [];
+
+      items.push({
+        key: 'alert-refund',
+        severity: stats.pendingRefundsOver24h > 0 ? 'critical' : 'info',
+        title: '환불 처리 SLA',
+        description:
+          stats.pendingRefundsOver24h > 0
+            ? `24시간이 경과한 환불 대기 건이 ${stats.pendingRefundsOver24h}건 있습니다.`
+            : '현재 24시간 경과 환불 대기 건은 없습니다.',
+        route: '/commerce/refunds?status=처리 대기'
+      });
+
+      const reportDelta = relChange(stats.reportsNew7d, stats.reportsNewPrev7d);
+      items.push({
+        key: 'alert-report',
+        severity: stats.reportsNew7d > stats.reportsNewPrev7d ? 'warning' : 'info',
+        title: '신고 추이(최근 7일)',
+        description:
+          stats.reportsNew7d === 0 && stats.reportsNewPrev7d === 0
+            ? '최근 14일 신규 신고가 없습니다.'
+            : `최근 7일 신규 신고 ${stats.reportsNew7d}건, 직전 7일 대비 ${
+                reportDelta >= 0 ? '+' : ''
+              }${reportDelta}% 입니다.`,
+        route: '/community/reports'
+      });
+
+      const pushRate = deliveryRate(stats.pushSent7d, stats.pushFailed7d);
+      const pushRatePrev = deliveryRate(stats.pushSentPrev7d, stats.pushFailedPrev7d);
+      items.push({
+        key: 'alert-message',
+        severity:
+          pushRate !== null && pushRatePrev !== null && pushRate < pushRatePrev
+            ? 'warning'
+            : 'info',
+        title: '푸시 도달률(최근 7일)',
+        description:
+          pushRate === null
+            ? '최근 7일 푸시 발송 이력이 없습니다.'
+            : `최근 7일 푸시 도달률 ${pushRate}%${
+                pushRatePrev !== null
+                  ? `, 직전 7일 대비 ${pushRate - pushRatePrev >= 0 ? '+' : ''}${
+                      pushRate - pushRatePrev
+                    }%p`
+                  : ''
+              } 입니다.`,
+        route: '/messages/history?channel=push'
+      });
+
+      return items;
+    }
+
+    // mock 모드 폴백(기존 목업 유지).
+    return [
       {
         key: 'alert-refund',
         severity: 'critical',
@@ -166,9 +295,8 @@ export default function DashboardPage(): JSX.Element {
         description: '푸시 발송 도달률이 최근 3일 기준 4% 하락했습니다.',
         route: '/messages/history?channel=push'
       }
-    ],
-    [pendingRefundCount]
-  );
+    ];
+  }, [pendingRefundCount, stats]);
 
   const alertColorMap: Record<AlertItem['severity'], string> = {
     critical: 'volcano',
@@ -186,11 +314,33 @@ export default function DashboardPage(): JSX.Element {
     <div>
       <PageTitle title="대시보드" />
 
+      {isSupabaseConfigured && statsState.status === 'error' ? (
+        <Alert
+          type="error"
+          showIcon
+          style={{ marginBottom: 12 }}
+          message="대시보드 지표 조회에 실패했습니다."
+          description={
+            <Space direction="vertical" size={4}>
+              <Text>{statsState.errorMessage ?? '일시적인 오류가 발생했습니다.'}</Text>
+              <Button size="small" onClick={handleRetryStats}>
+                재시도
+              </Button>
+            </Space>
+          }
+        />
+      ) : null}
+
       <Row gutter={[16, 16]}>
         {summaryCards.map((card) => (
           <Col key={card.key} xs={24} md={12} xl={6}>
             <Card>
-              <Statistic title={card.title} value={card.value} suffix={card.suffix} />
+              <Statistic
+                title={card.title}
+                value={card.value}
+                suffix={typeof card.value === 'number' ? card.suffix : undefined}
+                loading={statsLoading}
+              />
             </Card>
           </Col>
         ))}
@@ -250,7 +400,11 @@ export default function DashboardPage(): JSX.Element {
                       )
                     }
                     title={item.title}
-                    description={`${item.count.toLocaleString()}건`}
+                    description={
+                      typeof item.count === 'number'
+                        ? `${item.count.toLocaleString()}건`
+                        : item.count
+                    }
                   />
                 </List.Item>
               )}
