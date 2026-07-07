@@ -21,6 +21,7 @@ import {
   clearInstitutionCodeSafe,
   fetchInstitutionCodesSafe
 } from '../api/institution-codes-service';
+import { kickNotificationEmailDispatch } from '../../../shared/api/notification-email-kick';
 import {
   AFFILIATION_FILTER_AFFILIATED,
   AFFILIATION_FILTER_ALL,
@@ -429,11 +430,16 @@ export default function UsersPage(): JSX.Element {
       return;
     }
 
+    if (bulkMode === 'assign' && result.data > 0) {
+      // 이메일이 cron 주기를 기다리지 않도록 워커 즉시 kick(실패해도 cron 이 수거).
+      void kickNotificationEmailDispatch();
+    }
+
     notificationApi.success({
       message: `${actionLabel} 완료`,
       description:
         bulkMode === 'assign'
-          ? `${result.data.toLocaleString()}명에게 초대 알림(인앱+이메일)을 보냈습니다. 수락 시 소속이 적용됩니다. (선택 ${ids.length}명, 이미 소속·대기 중 제외)`
+          ? `${result.data.toLocaleString()}명에게 초대를 보냈습니다. 인앱 알림은 즉시 전달되고 이메일 발송을 시작했습니다. 발송 결과는 메시지 ▸ 발송 이력에서 확인할 수 있습니다. (선택 ${ids.length}명, 이미 소속·대기 중 제외)`
           : `${result.data.toLocaleString()}명 처리되었습니다. (선택 ${ids.length}명, 변경 없음 제외)`
     });
     setBulkMode(null);

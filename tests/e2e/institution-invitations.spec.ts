@@ -27,10 +27,13 @@ test('기관코드 회원관리 모달: 초대 폼과 통합 로스터(소속+�
   const modal = page.locator('.ant-modal-content').filter({ hasText: '회원 관리 ·' });
   await expect(modal).toBeVisible();
 
-  // 배정 → 초대 전환: 라벨/버튼/안내문.
+  // 배정 → 초대 전환: 라벨/버튼/안내문(+발송 이력 확인 경로).
   await expect(modal.getByText('회원 초대', { exact: true })).toBeVisible();
   await expect(
     modal.getByText('초대 알림(인앱+이메일)이 발송되고, 회원이 수락해야 소속이 적용됩니다.')
+  ).toBeVisible();
+  await expect(
+    modal.getByText('발송 내역은 메시지 ▸ 발송 이력에서 확인할 수 있습니다.')
   ).toBeVisible();
   await expect(modal.getByRole('button', { name: '선택 회원 초대' })).toBeVisible();
 
@@ -68,7 +71,9 @@ test('회원상세 기관탭: 기관 초대 카드를 렌더한다', async ({ pa
 
   await expect(page.getByText('기관 초대', { exact: true }).first()).toBeVisible();
   await expect(
-    page.getByText('즉시 배정이 아니라 초대 알림(인앱+이메일)이 발송되고, 회원이 수락해야 소속이 적용됩니다.')
+    page.getByText(
+      '즉시 배정이 아니라 초대 알림(인앱+이메일)이 발송되고, 회원이 수락해야 소속이 적용됩니다. 발송 내역은 메시지 ▸ 발송 이력에서 확인할 수 있습니다.'
+    )
   ).toBeVisible();
   await expect(page.getByRole('button', { name: '기관 초대 보내기' })).toBeVisible();
   await expect(page.getByRole('button', { name: '소속 해제' })).toBeVisible();

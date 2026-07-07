@@ -54,10 +54,14 @@ export const INVITATION_STATUS_LABEL: Record<InstitutionInvitationStatus, string
   canceled: '취소'
 };
 
+/** 초대 이메일 발송 상태(notification_delivery_attempts.status 부분집합). null=attempt 없음. */
+export type InvitationEmailStatus = 'pending' | 'sent' | 'failed' | 'skipped' | null;
+
 /**
  * 기관 초대 행. admin_list_institution_invitations RPC와 1:1.
  * 관리자 '회원 추가/배정'은 즉시 배정이 아니라 pending 초대를 만들고,
  * 사용자가 v13 알림 모달에서 수락해야 profiles.affiliation_code 가 적용된다.
+ * emailStatus 는 초대 안내 이메일의 발송 상태(SMTP 실패·정체를 화면에 노출).
  */
 export type InstitutionInvitation = {
   invitationId: string;
@@ -72,6 +76,9 @@ export type InstitutionInvitation = {
   invitedByName: string;
   createdAt: string;
   respondedAt: string;
+  emailStatus: InvitationEmailStatus;
+  emailError: string;
+  emailSentAt: string;
 };
 
 /**

@@ -27,6 +27,8 @@ import {
   updateInstitutionCodeSafe
 } from '../api/institution-codes-service';
 import { fetchUsersSafe } from '../api/users-service';
+import { kickNotificationEmailDispatch } from '../../../shared/api/notification-email-kick';
+import { InvitationEmailStatusTag } from '../ui/invitation-email-status-tag';
 import {
   institutionCodeKinds,
   institutionCodeStatuses
@@ -463,9 +465,11 @@ export default function InstitutionCodesPage(): JSX.Element {
         description: '이미 소속이거나 대기 중 초대가 있어 새로 보낸 초대가 없습니다.'
       });
     } else {
+      // 이메일이 cron 주기를 기다리지 않도록 워커 즉시 kick(실패해도 cron 이 수거).
+      void kickNotificationEmailDispatch();
       notificationApi.success({
         message: '초대 발송 완료',
-        description: `${result.data.toLocaleString()}명에게 초대 알림(인앱+이메일)을 보냈습니다. 수락 시 소속이 적용됩니다. (이미 소속·대기 중 제외)`
+        description: `${result.data.toLocaleString()}명에게 초대를 보냈습니다. 인앱 알림은 즉시 전달되고 이메일 발송을 시작했습니다. 발송 결과는 메시지 ▸ 발송 이력에서 확인할 수 있습니다. (이미 소속·대기 중 제외)`
       });
     }
     addForm.resetFields();
@@ -826,10 +830,15 @@ export default function InstitutionCodesPage(): JSX.Element {
       {
         title: '상태',
         key: 'status',
-        width: 96,
+        width: 128,
         render: (_, record) =>
-          record.kind === 'invitation' ? (
-            <Tag color="gold">초대 대기</Tag>
+          record.kind === 'invitation' && record.invitation ? (
+            <Space direction="vertical" size={2}>
+              <Tag color="gold" style={{ marginInlineEnd: 0 }}>
+                초대 대기
+              </Tag>
+              <InvitationEmailStatusTag invitation={record.invitation} />
+            </Space>
           ) : (
             record.memberStatus
           )
@@ -1076,7 +1085,7 @@ export default function InstitutionCodesPage(): JSX.Element {
                   label="회원 초대"
                   name="userIds"
                   rules={[{ required: true, message: '초대할 회원을 선택하세요.' }]}
-                  extra="초대 알림(인앱+이메일)이 발송되고, 회원이 수락해야 소속이 적용됩니다."
+                  extra="초대 알림(인앱+이메일)이 발송되고, 회원이 수락해야 소속이 적용됩니다. 발송 내역은 메시지 ▸ 발송 이력에서 확인할 수 있습니다."
                 >
                   <Select
                     mode="multiple"

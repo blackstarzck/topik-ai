@@ -43,6 +43,8 @@ import {
   fetchInstitutionInvitationsSafe,
   inviteInstitutionMembersSafe
 } from '../api/institution-codes-service';
+import { kickNotificationEmailDispatch } from '../../../shared/api/notification-email-kick';
+import { InvitationEmailStatusTag } from '../ui/invitation-email-status-tag';
 import type {
   UserLearningOverview,
   UserStatus,
@@ -293,9 +295,12 @@ function AffiliationTabPanel({
       return;
     }
     if (result.data > 0) {
+      // 이메일이 cron 주기를 기다리지 않도록 워커 즉시 kick(실패해도 cron 이 수거).
+      void kickNotificationEmailDispatch();
       notificationApi.success({
         message: '기관 초대 발송 완료',
-        description: '초대 알림(인앱+이메일)을 보냈습니다. 회원이 수락하면 소속이 적용됩니다.'
+        description:
+          '초대를 보냈습니다. 인앱 알림은 즉시 전달되고 이메일 발송을 시작했습니다. 발송 결과는 메시지 ▸ 발송 이력에서 확인할 수 있습니다.'
       });
     } else {
       notificationApi.info({
@@ -398,6 +403,7 @@ function AffiliationTabPanel({
                     {invitation.codeLabel || invitation.code} ({invitation.code}) ·{' '}
                     {invitation.createdAt}
                   </Text>
+                  <InvitationEmailStatusTag invitation={invitation} />
                   <Button
                     type="link"
                     size="small"
@@ -419,7 +425,7 @@ function AffiliationTabPanel({
           <Space direction="vertical" size={12} style={{ width: '100%' }}>
             <Text type="secondary">
               즉시 배정이 아니라 초대 알림(인앱+이메일)이 발송되고, 회원이 수락해야 소속이
-              적용됩니다.
+              적용됩니다. 발송 내역은 메시지 ▸ 발송 이력에서 확인할 수 있습니다.
             </Text>
             <Select
               value={selectedCode || undefined}

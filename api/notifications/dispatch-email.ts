@@ -374,6 +374,35 @@ function isAuthorizedCronRequest(request: Request): boolean {
   return Boolean(cronSecret && provided === `Bearer ${cronSecret}`);
 }
 
+// 관리자 즉시 발송 kick — 초대 등 클릭 유발 트랜잭셔널 메일이 cron 주기(최대 15분)를
+// 기다리지 않도록, 활성 관리자 세션(Bearer JWT)이면 워커 실행을 허용한다.
+// 검증 패턴은 api/admin/invite.ts 와 동일(JWT → admin_accounts active 확인).
+// 실패해도 attempt 는 pending 그대로라 cron 이 수거한다(자가 복구).
+async function isAuthorizedAdminRequest(request: Request): Promise<boolean> {
+  const authHeader = request.headers.get('authorization') ?? '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  if (!token) return false;
+
+  const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY;
+  if (!supabaseUrl || !serviceRoleKey) return false;
+
+  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false }
+  });
+  const { data: userData, error: userError } = await supabase.auth.getUser(token);
+  const callerId = userData?.user?.id;
+  if (userError || !callerId) return false;
+
+  const { data: account, error: accountError } = await supabase
+    .from('admin_accounts')
+    .select('status')
+    .eq('id', callerId)
+    .maybeSingle();
+  if (accountError) return false;
+  return (account as { status: string | null } | null)?.status === 'active';
+}
+
 export function GET(request: Request): Promise<Response> | Response {
   if (!isAuthorizedCronRequest(request)) {
     return jsonResponse({ ok: false, error: 'unauthorized' }, { status: 401 });
@@ -382,8 +411,8 @@ export function GET(request: Request): Promise<Response> | Response {
   return dispatchPendingEmailAttempts();
 }
 
-export function POST(request: Request): Promise<Response> | Response {
-  if (!isAuthorizedManualWorkerRequest(request)) {
+export async function POST(request: Request): Promise<Response> {
+  if (!isAuthorizedManualWorkerRequest(request) && !(await isAuthorizedAdminRequest(request))) {
     return jsonResponse({ ok: false, error: 'unauthorized' }, { status: 401 });
   }
 

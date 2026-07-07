@@ -107,6 +107,11 @@ const ALLOWED_PROFILE_WRITE_FILES = new Map([
     // app.claim_affiliation_code GUC + RETURNING self-verify).
     'supabase/migrations-admin/20260707141000_institution_invitation_respond.sql',
     ['affiliation_code']
+  ],
+  [
+    // 위 respond RPC 재정의(이메일 하드닝) — 동일한 사용자 동의 경로의 affiliation_code 쓰기.
+    'supabase/migrations-admin/20260707150000_institution_invitation_email_hardening.sql',
+    ['affiliation_code']
   ]
 ]);
 

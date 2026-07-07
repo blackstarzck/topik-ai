@@ -236,6 +236,9 @@ type InstitutionInvitationRow = {
   invited_by_name: string | null;
   created_at: string | null;
   responded_at: string | null;
+  email_status: string | null;
+  email_error: string | null;
+  email_sent_at: string | null;
 };
 
 function mapInvitationRow(row: InstitutionInvitationRow): InstitutionInvitation {
@@ -251,7 +254,10 @@ function mapInvitationRow(row: InstitutionInvitationRow): InstitutionInvitation 
     reason: row.reason ?? '',
     invitedByName: row.invited_by_name ?? '',
     createdAt: row.created_at ? row.created_at.slice(0, 10) : '',
-    respondedAt: row.responded_at ? row.responded_at.slice(0, 10) : ''
+    respondedAt: row.responded_at ? row.responded_at.slice(0, 10) : '',
+    emailStatus: (row.email_status as InstitutionInvitation['emailStatus']) ?? null,
+    emailError: row.email_error ?? '',
+    emailSentAt: row.email_sent_at ? row.email_sent_at.slice(0, 10) : ''
   };
 }
 

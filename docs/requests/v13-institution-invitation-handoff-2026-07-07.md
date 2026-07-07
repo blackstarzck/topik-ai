@@ -102,6 +102,10 @@ public.respond_institution_invitation(p_invitation_id uuid, p_accept boolean) re
 (`institution_code_invitation_accepted`, actor=사용자) 기록. **트리거 우회는 RPC 내부에서
 처리**되므로 v13이 GUC를 만질 필요 없음.
 
+부수효과(모든 종결 — 수락/거부/코드비활성, 2026-07-07 하드닝): 아직 발송 전(pending)인
+초대 안내 이메일 attempt 는 `skipped(invitation_responded)` 로 회수된다 — 사용자가
+인앱에서 먼저 응답하면 stale 초대 메일이 뒤늦게 나가지 않는다. v13 쪽 처리 불필요(정보 공유).
+
 ## 3. v13 구현 범위
 
 ### 3.1 알림 클릭 분기 (`src/components/notifications/NotificationBell.tsx`)
@@ -141,6 +145,9 @@ v13이 더 나은 랜딩(예: 알림함 자동 오픈 쿼리)을 원하면 topik
 
 - 초대: pending 행 + dispatch(completed) + in_app attempt(sent) + `user_notifications`
   (payload에 invitation_id) + email attempt(pending) + 감사 로그.
+- 이메일 발송 시점(2026-07-07 하드닝): 관리자가 초대를 보내면 admin 앱이 워커를 **즉시
+  kick**(관리자 JWT 인증 POST)하여 수 초 내 발송되고, kick 실패 시에도 15분 cron 이
+  자동 수거한다. 발송 상태(pending/sent/failed)는 admin 초대 목록에 노출된다.
 - 이메일 실발송: SMTP 워커(`/api/notifications/dispatch-email`)로 실제 발송 확인
   (provider_message_id 기록, chanchan2@keduall.com 수신함에 실물 도착).
 - 멱등: 같은 (user, code) 재초대=0건, 기소속 스킵, 종료 코드 초대는 예외.
