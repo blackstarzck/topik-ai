@@ -154,7 +154,8 @@ function parseUsersQuery(searchParams: URLSearchParams): UsersQuery {
     searchField: parseSearchField(searchParams.get('searchField')),
     startDate: parseSearchDate(searchParams.get('startDate')),
     endDate: parseSearchDate(searchParams.get('endDate')),
-    keyword: searchParams.get('keyword') ?? ''
+    keyword: searchParams.get('keyword') ?? '',
+    affiliation: searchParams.get('affiliation') ?? ''
   };
 }
 
@@ -173,6 +174,9 @@ function buildUsersSearchParams(query: UsersQuery): URLSearchParams {
   }
   if (query.keyword.trim()) {
     params.set('keyword', query.keyword.trim());
+  }
+  if (query.affiliation.trim()) {
+    params.set('affiliation', query.affiliation.trim());
   }
   return params;
 }
@@ -232,10 +236,8 @@ export default function UsersPage(): JSX.Element {
     handleDetailOpenChange
   } = useSearchBarDateDraft(query.startDate, query.endDate);
 
-  // 서버사이드 "기관 소속" 필터 값('' | @affiliated | @general | 특정 코드).
-  const [affiliationFilter, setAffiliationFilter] = useState<string>(
-    AFFILIATION_FILTER_ALL
-  );
+  // 서버사이드 "기관 소속" 필터는 query.affiliation('' | @affiliated | @general | 특정 코드)로
+  // 관리한다 — 검색/상세검색과 동일하게 URL·스토어에 실려 상세 진입 후 뒤로가기에도 유지된다.
   // 기관 코드 카탈로그 — 필터 옵션 + 일괄 배정 모달 코드 피커용.
   const [institutionCodes, setInstitutionCodes] = useState<InstitutionCode[]>([]);
   // 다중 선택 + 일괄 배정/해제 모달.
@@ -269,7 +271,7 @@ export default function UsersPage(): JSX.Element {
       errorCode: null
     }));
 
-    void fetchUsersSafe(controller.signal, affiliationFilter).then((result) => {
+    void fetchUsersSafe(controller.signal, query.affiliation).then((result) => {
       if (controller.signal.aborted) {
         return;
       }
@@ -295,7 +297,7 @@ export default function UsersPage(): JSX.Element {
     return () => {
       controller.abort();
     };
-  }, [query.page, query.pageSize, reloadKey, affiliationFilter]);
+  }, [query.page, query.pageSize, reloadKey, query.affiliation]);
 
   // 기관 코드 카탈로그 로드(필터 옵션 + 일괄 배정 코드 피커). 실패해도 목록 기능엔 영향 없음.
   useEffect(() => {
@@ -362,8 +364,7 @@ export default function UsersPage(): JSX.Element {
 
   const handleAffiliationChange = useCallback(
     (value: string) => {
-      setAffiliationFilter(value);
-      commitQuery({ page: 1 });
+      commitQuery({ affiliation: value, page: 1 });
     },
     [commitQuery]
   );
@@ -807,7 +808,7 @@ export default function UsersPage(): JSX.Element {
               <Space size={8} align="center">
                 <Text type="secondary">기관 소속</Text>
                 <Select
-                  value={affiliationFilter}
+                  value={query.affiliation}
                   onChange={handleAffiliationChange}
                   options={affiliationFilterOptions}
                   style={{ width: 240 }}

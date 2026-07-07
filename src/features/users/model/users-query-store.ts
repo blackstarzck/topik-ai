@@ -10,7 +10,8 @@ export const defaultUsersQuery: UsersQuery = {
   searchField: 'all',
   startDate: '',
   endDate: '',
-  keyword: ''
+  keyword: '',
+  affiliation: ''
 };
 
 type UsersQueryStore = {

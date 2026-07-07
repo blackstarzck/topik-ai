@@ -141,6 +141,8 @@ export type UsersQuery = {
   startDate: string;
   endDate: string;
   keyword: string;
+  // 기관 소속 서버사이드 필터('' 전체 | @affiliated | @general | 특정 코드).
+  affiliation: string;
 };
 
 export type InstructorStatus = '정상' | '정지' | '탈퇴';
