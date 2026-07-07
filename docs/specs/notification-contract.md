@@ -47,8 +47,17 @@ opt-out 제외자는 delivery attempt `skipped` 또는 `opted_out`으로 집계�
 | `notice` | operational | `notice` | 관리자 발송 | in_app |
 | `event` | operational | `event` | 관리자 발송 | in_app |
 | `marketing` | marketing | `marketing` | 관리자 발송 | email |
+| `institution_invitation` | transactional (mandatory) | `notice` | 기관 초대 이벤트 (`admin_invite_institution_members`, 20260707140000) | in_app+email |
 
 `category`는 `user_notifications.category`에 저장되어 B-01 카드 구분 표시에 사용한다: `'study' | 'exam_schedule' | 'notice' | 'event' | 'marketing'`.
+
+> `institution_invitation` 특례: 카테고리는 `notice` 재사용(v13 CHECK 무변경), 구분은
+> `template_key` + `payload.kind='institution_invitation'`. 발송은 v13 디스패처가 아니라
+> topik-ai `admin_invite_institution_members` RPC가 inline으로 수행하며(payload에
+> `invitation_id` 필요 + transactional 강제 이메일), dispatch.dedupe_key는
+> `inst-invite:<uuid>`, attempt dedupe는 `user:institution_invitation[:email]:invitation_id`.
+> v13은 이 알림을 라우팅 대신 수락/거부 모달로 처리한다
+> (docs/requests/v13-institution-invitation-handoff-2026-07-07.md).
 
 ## 4. 상태 enum
 

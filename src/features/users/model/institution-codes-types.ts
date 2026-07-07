@@ -44,6 +44,36 @@ export type InstitutionCodeMember = {
   joinedAt: string;
 };
 
+export type InstitutionInvitationStatus = 'pending' | 'accepted' | 'declined' | 'canceled';
+
+/** 초대 상태 한글 표시. */
+export const INVITATION_STATUS_LABEL: Record<InstitutionInvitationStatus, string> = {
+  pending: '대기중',
+  accepted: '수락',
+  declined: '거절',
+  canceled: '취소'
+};
+
+/**
+ * 기관 초대 행. admin_list_institution_invitations RPC와 1:1.
+ * 관리자 '회원 추가/배정'은 즉시 배정이 아니라 pending 초대를 만들고,
+ * 사용자가 v13 알림 모달에서 수락해야 profiles.affiliation_code 가 적용된다.
+ */
+export type InstitutionInvitation = {
+  invitationId: string;
+  code: string;
+  codeLabel: string;
+  userId: string;
+  email: string;
+  realName: string;
+  nickname: string;
+  status: InstitutionInvitationStatus;
+  reason: string;
+  invitedByName: string;
+  createdAt: string;
+  respondedAt: string;
+};
+
 /**
  * 회원 목록 "기관 소속" 필터 센티넬. get_admin_users(affiliation) 서버 필터와 1:1.
  * '@' 는 institution_codes.code 정규식([A-Za-z0-9_-])에 들어갈 수 없어 코드 값과 충돌하지 않는다.

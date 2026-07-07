@@ -100,6 +100,13 @@ const ALLOWED_PROFILE_WRITE_FILES = new Map([
     // profiles.affiliation_code 만 platform_admin + reason + self-verify 로 쓴다.
     'supabase/migrations-admin/20260623110000_institution_code_membership.sql',
     ['affiliation_code']
+  ],
+  [
+    // Users > 기관 초대 수락 — respond_institution_invitation 이 초대받은 본인의
+    // 동의(수락) 경로로만 affiliation_code 를 쓴다(v13 공식 이스케이프 해치
+    // app.claim_affiliation_code GUC + RETURNING self-verify).
+    'supabase/migrations-admin/20260707141000_institution_invitation_respond.sql',
+    ['affiliation_code']
   ]
 ]);
 

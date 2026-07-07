@@ -3,7 +3,9 @@ import type {
   InstitutionCode,
   InstitutionCodeKind,
   InstitutionCodeMember,
-  InstitutionCodeStatus
+  InstitutionCodeStatus,
+  InstitutionInvitation,
+  InstitutionInvitationStatus
 } from '../model/institution-codes-types';
 
 /**
@@ -194,7 +196,11 @@ export async function loadInstitutionCodeMembersFromSupabase(
   return ((data as InstitutionCodeMemberRow[] | null) ?? []).map(mapMemberRow);
 }
 
-export async function assignInstitutionCodeViaRpc(
+/**
+ * 기관 초대 발송. 즉시 배정이 아니라 pending 초대 + 인앱/이메일 알림을 만든다.
+ * 동일 코드 기소속/기pending/탈퇴 회원은 서버가 스킵하며, 실제 초대된 수를 반환한다.
+ */
+export async function inviteInstitutionMembersViaRpc(
   userIds: string[],
   code: string,
   reason: string,
@@ -203,7 +209,7 @@ export async function assignInstitutionCodeViaRpc(
   const client = requireClient();
   throwIfAborted(signal);
 
-  const { data, error } = await client.rpc('admin_assign_institution_code', {
+  const { data, error } = await client.rpc('admin_invite_institution_members', {
     p_user_ids: userIds,
     p_code: code,
     p_reason: reason.trim()
@@ -213,6 +219,79 @@ export async function assignInstitutionCodeViaRpc(
   }
 
   return typeof data === 'number' ? data : Number(data ?? 0);
+}
+
+// admin_list_institution_invitations RPC 행.
+type InstitutionInvitationRow = {
+  invitation_id: string;
+  code: string;
+  code_label: string | null;
+  user_id: string;
+  email: string | null;
+  display_name: string | null;
+  nickname: string | null;
+  status: string;
+  reason: string | null;
+  invited_by: string | null;
+  invited_by_name: string | null;
+  created_at: string | null;
+  responded_at: string | null;
+};
+
+function mapInvitationRow(row: InstitutionInvitationRow): InstitutionInvitation {
+  return {
+    invitationId: row.invitation_id,
+    code: row.code,
+    codeLabel: row.code_label ?? '',
+    userId: row.user_id,
+    email: row.email ?? '',
+    realName: row.display_name?.trim() ? row.display_name.trim() : '',
+    nickname: row.nickname?.trim() ? row.nickname.trim() : '',
+    status: row.status as InstitutionInvitationStatus,
+    reason: row.reason ?? '',
+    invitedByName: row.invited_by_name ?? '',
+    createdAt: row.created_at ? row.created_at.slice(0, 10) : '',
+    respondedAt: row.responded_at ? row.responded_at.slice(0, 10) : ''
+  };
+}
+
+export async function loadInstitutionInvitationsFromSupabase(
+  filter: { code?: string; userId?: string; status?: InstitutionInvitationStatus },
+  signal?: AbortSignal
+): Promise<InstitutionInvitation[]> {
+  const client = requireClient();
+  throwIfAborted(signal);
+
+  const { data, error } = await client.rpc('admin_list_institution_invitations', {
+    p_code: filter.code?.trim() ? filter.code.trim() : null,
+    p_user_id: filter.userId ?? null,
+    p_status: filter.status ?? null
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+  throwIfAborted(signal);
+
+  return ((data as InstitutionInvitationRow[] | null) ?? []).map(mapInvitationRow);
+}
+
+export async function cancelInstitutionInvitationViaRpc(
+  invitationId: string,
+  reason: string,
+  signal?: AbortSignal
+): Promise<string> {
+  const client = requireClient();
+  throwIfAborted(signal);
+
+  const { data, error } = await client.rpc('admin_cancel_institution_invitation', {
+    p_invitation_id: invitationId,
+    p_reason: reason.trim()
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data as string | null) ?? invitationId;
 }
 
 export async function clearInstitutionCodeViaRpc(

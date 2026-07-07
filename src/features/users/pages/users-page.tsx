@@ -17,7 +17,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { fetchUsersSafe, setUserStatusSafe } from '../api/users-service';
 import {
-  assignInstitutionCodeSafe,
+  inviteInstitutionMembersSafe,
   clearInstitutionCodeSafe,
   fetchInstitutionCodesSafe
 } from '../api/institution-codes-service';
@@ -416,11 +416,11 @@ export default function UsersPage(): JSX.Element {
     }
     const result =
       bulkMode === 'assign'
-        ? await assignInstitutionCodeSafe(ids, values.code, values.reason)
+        ? await inviteInstitutionMembersSafe(ids, values.code, values.reason)
         : await clearInstitutionCodeSafe(ids, values.reason);
     setBulkSubmitting(false);
 
-    const actionLabel = bulkMode === 'assign' ? '기관 코드 배정' : '기관 소속 해제';
+    const actionLabel = bulkMode === 'assign' ? '기관 초대' : '기관 소속 해제';
     if (!result.ok) {
       notificationApi.error({
         message: `${actionLabel} 실패`,
@@ -431,7 +431,10 @@ export default function UsersPage(): JSX.Element {
 
     notificationApi.success({
       message: `${actionLabel} 완료`,
-      description: `${result.data.toLocaleString()}명 처리되었습니다. (선택 ${ids.length}명, 변경 없음 제외)`
+      description:
+        bulkMode === 'assign'
+          ? `${result.data.toLocaleString()}명에게 초대 알림(인앱+이메일)을 보냈습니다. 수락 시 소속이 적용됩니다. (선택 ${ids.length}명, 이미 소속·대기 중 제외)`
+          : `${result.data.toLocaleString()}명 처리되었습니다. (선택 ${ids.length}명, 변경 없음 제외)`
     });
     setBulkMode(null);
     setSelectedRowKeys([]);
@@ -748,7 +751,7 @@ export default function UsersPage(): JSX.Element {
     setReloadKey((prev) => prev + 1);
   }, []);
 
-  // 다중 선택은 기관 코드 배정 권한자에게만 노출(선택 후 일괄 배정/해제).
+  // 다중 선택은 기관 코드 관리 권한자에게만 노출(선택 후 일괄 초대/해제).
   const rowSelection = canManageInstitutionCodes
     ? {
         selectedRowKeys,
@@ -831,7 +834,7 @@ export default function UsersPage(): JSX.Element {
             action={
               <Space>
                 <Button size="small" type="primary" onClick={handleOpenBulkAssign}>
-                  기관 코드 지정
+                  기관 초대
                 </Button>
                 <Button size="small" onClick={handleOpenBulkClear}>
                   기관 소속 해제
@@ -919,8 +922,8 @@ export default function UsersPage(): JSX.Element {
 
       <Modal
         open={bulkMode !== null}
-        title={bulkMode === 'assign' ? '기관 코드 지정' : '기관 소속 해제'}
-        okText={bulkMode === 'assign' ? '배정' : '해제'}
+        title={bulkMode === 'assign' ? '기관 초대' : '기관 소속 해제'}
+        okText={bulkMode === 'assign' ? '초대 발송' : '해제'}
         cancelText="취소"
         confirmLoading={bulkSubmitting}
         onCancel={handleCloseBulk}
@@ -929,17 +932,16 @@ export default function UsersPage(): JSX.Element {
       >
         <Space direction="vertical" size={12} style={{ width: '100%' }}>
           <Text type="secondary">
-            선택한 회원 {selectedCount.toLocaleString()}명에게 적용됩니다.
             {bulkMode === 'assign'
-              ? ' 이미 같은 코드인 회원은 변경 없이 건너뜁니다.'
-              : ' 기관 소속이 없는 회원은 변경 없이 건너뜁니다.'}
+              ? `선택한 회원 ${selectedCount.toLocaleString()}명에게 초대 알림(인앱+이메일)을 보냅니다. 회원이 수락해야 소속이 적용되며, 이미 같은 코드 소속이거나 대기 중 초대가 있는 회원은 건너뜁니다.`
+              : `선택한 회원 ${selectedCount.toLocaleString()}명에게 적용됩니다. 기관 소속이 없는 회원은 변경 없이 건너뜁니다.`}
           </Text>
           <Form form={bulkForm} layout="vertical">
             {bulkMode === 'assign' ? (
               <Form.Item
                 label="기관 코드"
                 name="code"
-                rules={[{ required: true, message: '배정할 기관 코드를 선택하세요.' }]}
+                rules={[{ required: true, message: '초대할 기관 코드를 선택하세요.' }]}
               >
                 <Select
                   placeholder="활성 코드를 선택하세요."

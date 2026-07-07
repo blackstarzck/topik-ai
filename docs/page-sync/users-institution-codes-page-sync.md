@@ -34,7 +34,7 @@ last_reviewed_at: "2026-06-26"
 
 - 박람회/기관/캠페인 유입 코드를 등록하고 활성 상태를 관리합니다.
 - 사용하지 않는 코드를 삭제하되, 가입 회원이 남은 코드는 삭제 전에 소속 해제를 요구합니다.
-- 코드별 소속 회원을 배정/해제해 `profiles.affiliation_code`와 정합을 맞춥니다.
+- 코드별 소속 회원을 초대/해제해 `profiles.affiliation_code`와 정합을 맞춥니다. (2026-07-07 전환: 추가는 즉시 배정이 아니라 pending 초대 — 회원이 v13 알림 모달에서 수락해야 소속이 적용됩니다.)
 - 기관 코드별 TOPIK 쓰기 문항 노출을 추가/해제합니다.
 
 ## 4. 관리자 페이지에서 할 수 있는 것
@@ -44,7 +44,8 @@ last_reviewed_at: "2026-06-26"
 | 기관 코드 조회 | 코드, 이름, 유형, 상태, 회원 수를 확인합니다. | 조회 | InstitutionCode | 현재 상태 확인 | 불필요 |
 | 기관 코드 생성/수정 | 코드 메타데이터와 상태를 관리합니다. | 생성/수정 | InstitutionCode + code | 코드 목록 반영 | 필요 |
 | 기관 코드 삭제 | 가입 회원이 없는 기관 코드를 제거합니다. | 삭제/파괴적 | InstitutionCode + code | 코드 목록 제거, 기관 노출 문항 매핑 정리 | 필요 |
-| 회원 배정/해제 | 선택 회원의 기관 소속을 배정하거나 해제합니다. | 수정/파괴적 | Users + userId | 회원 affiliation 반영 | 필요 |
+| 회원 초대/해제 | 선택 회원에게 기관 초대(인앱+이메일 알림)를 보내거나 소속을 해제합니다. 초대 수락 시에만 affiliation이 적용됩니다. | 수정/파괴적 | Users + userId | 초대 생성(pending)·알림 발송 / 해제 시 affiliation 제거 | 필요 |
+| 초대 취소 | 대기 중(pending) 초대를 회수합니다. 미발송 초대 이메일은 skipped로 종결됩니다. | 수정 | Users + userId | 초대 canceled 전환 | 필요 |
 | 기관 노출 문항 추가/해제 | 기관 코드에 연결된 문항 노출 매핑을 변경합니다. | 수정 | InstitutionCode + questionId[] | 기관 문항 노출 반영 | 필요 |
 
 ## 5. 관리 데이터베이스(CRUD)
@@ -52,7 +53,8 @@ last_reviewed_at: "2026-06-26"
 | 엔티티 후보 | 테이블 후보 | CRUD | 관리자 UI 진입점 | 주요 필드 후보 | 감사 로그 Target | 사용자 화면 영향 | 미확정/차이 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | InstitutionCode | institution_codes | Create, Read, Update, Delete | 본문 목록/생성/수정 모달, 삭제 확인 모달 | code, label, kind, status, note, member_count | InstitutionCode + code | 가입/QR 유입 코드 유효성 | 삭제는 가입 회원 존재 시 차단, 기관 노출 문항 매핑은 함께 정리 |
-| UserInstitutionAffiliation | profiles.affiliation_code | Read, Update | 회원 관리 모달 | user_id, affiliation_code, status | Users + userId | 기관 회원 구분 | 사용자 직접 수정 여부는 비목표 |
+| UserInstitutionAffiliation | profiles.affiliation_code | Read, Update(해제/사용자 수락) | 회원 관리 모달 | user_id, affiliation_code, status | Users + userId | 기관 회원 구분 | 부여는 사용자 수락 RPC(`respond_institution_invitation`) 경유, 관리자 직접 쓰기는 해제만 |
+| InstitutionInvitation | institution_code_invitations | Create, Read, Update(취소) | 회원 관리 모달 통합 로스터(소속 회원과 한 테이블, '초대 대기' 태그 행) / 회원 상세 기관탭 배너 | invitation_id, code, user_id, status, reason, created_at | Users + userId | 초대 수명주기(pending→accepted/declined/canceled) | 알림 계약: `docs/specs/notification-contract.md` §3 `institution_invitation` |
 | InstitutionQuestionExposure | topik_writing_question_institution_exposure | Create, Read, Delete | 노출 문항 모달 | institution_code, question_id, is_exposed, service_status(조회 표시) | InstitutionCode + code / AssessmentQuestion + questionId | 기관 전용 문항 노출 | `service_status='available'`이 전역 선행 조건이며, `excluded`/`internal_test` 신규 추가는 blocked |
 
 ## 6. 관리자 조치와 감사 로그 계약
@@ -62,7 +64,8 @@ last_reviewed_at: "2026-06-26"
 | 코드 생성 | 아니오 | 필드 검증 | 선택/서버 기록 | InstitutionCode | code | `/system/audit-logs?targetType=InstitutionCode&targetId={code}` |
 | 코드 수정 | 아니오 | 필드 검증 | 필수 | InstitutionCode | code | `/system/audit-logs?targetType=InstitutionCode&targetId={code}` |
 | 코드 삭제 | 예 | 확인 모달 | 필수 | InstitutionCode | code | `/system/audit-logs?targetType=InstitutionCode&targetId={code}` |
-| 회원 배정 | 아니오 | 모달 확인 | 필수 | Users | userId | `/system/audit-logs?targetType=Users&targetId={userId}` |
+| 회원 초대 | 아니오 | 모달 확인 | 필수 | Users | userId | `/system/audit-logs?targetType=Users&targetId={userId}` |
+| 초대 취소 | 예 | 확인 모달 | 필수 | Users | userId | `/system/audit-logs?targetType=Users&targetId={userId}` |
 | 소속 해제 | 예 | 확인 모달 | 필수 | Users | userId | `/system/audit-logs?targetType=Users&targetId={userId}` |
 | 노출 문항 추가/해제 | 아니오 | 모달 확인 | 필수 | InstitutionCode | code | `/system/audit-logs?targetType=InstitutionCode&targetId={code}` |
 

@@ -2,18 +2,22 @@ import type {
   InstitutionCode,
   InstitutionCodeKind,
   InstitutionCodeMember,
-  InstitutionCodeStatus
+  InstitutionCodeStatus,
+  InstitutionInvitation,
+  InstitutionInvitationStatus
 } from '../model/institution-codes-types';
 import { mockInstitutionCodes } from './mock-institution-codes';
 import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
 import { institutionCodesDataSource } from './institution-codes-data-source';
 import {
-  assignInstitutionCodeViaRpc,
+  cancelInstitutionInvitationViaRpc,
   clearInstitutionCodeViaRpc,
   createInstitutionCodeViaRpc,
   deleteInstitutionCodeViaRpc,
+  inviteInstitutionMembersViaRpc,
   loadInstitutionCodeMembersFromSupabase,
   loadInstitutionCodesFromSupabase,
+  loadInstitutionInvitationsFromSupabase,
   updateInstitutionCodeViaRpc
 } from './supabase-institution-codes-service';
 
@@ -157,8 +161,11 @@ export function fetchInstitutionCodeMembersSafe(
   });
 }
 
-/** 회원 N명을 코드에 배정. 변경된 회원 수 반환. mock 경로는 요청 수를 그대로 성공 처리. */
-export function assignInstitutionCodeSafe(
+/**
+ * 회원 N명에게 기관 초대 발송(즉시 배정 아님 — 수락 시 소속 적용).
+ * 실제 초대된 수 반환(기소속/기pending/탈퇴는 서버 스킵). mock 경로는 요청 수를 그대로 성공 처리.
+ */
+export function inviteInstitutionMembersSafe(
   userIds: string[],
   code: string,
   reason: string,
@@ -166,10 +173,39 @@ export function assignInstitutionCodeSafe(
 ) {
   return toSafeResult<number>(async () => {
     if (isSupabaseSource) {
-      return assignInstitutionCodeViaRpc(userIds, code, reason, signal);
+      return inviteInstitutionMembersViaRpc(userIds, code, reason, signal);
     }
     await sleep(200, signal);
     return userIds.length;
+  });
+}
+
+/** 기관 초대 목록(코드/회원/상태 필터). mock 경로는 빈 목록(정적 시드라 초대 없음). */
+export function fetchInstitutionInvitationsSafe(
+  filter: { code?: string; userId?: string; status?: InstitutionInvitationStatus },
+  signal?: AbortSignal
+) {
+  return toSafeResult<InstitutionInvitation[]>(async () => {
+    if (isSupabaseSource) {
+      return loadInstitutionInvitationsFromSupabase(filter, signal);
+    }
+    await sleep(200, signal);
+    return [];
+  });
+}
+
+/** pending 기관 초대 취소. mock 경로는 no-op 성공 처리. */
+export function cancelInstitutionInvitationSafe(
+  invitationId: string,
+  reason: string,
+  signal?: AbortSignal
+) {
+  return toSafeResult<string>(async () => {
+    if (isSupabaseSource) {
+      return cancelInstitutionInvitationViaRpc(invitationId, reason, signal);
+    }
+    await sleep(200, signal);
+    return invitationId;
   });
 }
 

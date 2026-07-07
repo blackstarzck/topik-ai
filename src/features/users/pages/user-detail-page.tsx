@@ -1,4 +1,5 @@
 import {
+  Alert,
   Button,
   Card,
   Descriptions,
@@ -36,9 +37,11 @@ import {
   type UserPaymentRecord
 } from '../api/users-service';
 import {
-  assignInstitutionCodeSafe,
+  cancelInstitutionInvitationSafe,
   clearInstitutionCodeSafe,
-  fetchInstitutionCodesSafe
+  fetchInstitutionCodesSafe,
+  fetchInstitutionInvitationsSafe,
+  inviteInstitutionMembersSafe
 } from '../api/institution-codes-service';
 import type {
   UserLearningOverview,
@@ -49,7 +52,10 @@ import {
   getTermsConsentDisplayStatus,
   getUserMembershipStatus
 } from '../model/registration-status';
-import type { InstitutionCode } from '../model/institution-codes-types';
+import type {
+  InstitutionCode,
+  InstitutionInvitation
+} from '../model/institution-codes-types';
 import type { AsyncState } from '../../../shared/model/async-state';
 import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
 import { usePermissionStore } from '../../system/model/permission-store';
@@ -210,8 +216,9 @@ type AffiliationTabPanelProps = {
   onChanged: () => void;
 };
 
-// 회원 상세 > 기관 소속 탭. 읽기(회원 구분/코드/행사) + 편집(배정·변경·해제) 자체 상태로 운영.
-// 변경은 platform_admin RPC(admin_assign/clear_institution_code)로 수행하고 onChanged 로 상위 재조회.
+// 회원 상세 > 기관 소속 탭. 읽기(회원 구분/코드/행사) + 편집(초대·해제) 자체 상태로 운영.
+// 소속 부여는 즉시 배정이 아니라 초대(admin_invite_institution_members) — 회원이 v13 알림에서
+// 수락해야 적용된다. 해제는 기존 직접 RPC(admin_clear_institution_code) 유지, onChanged 로 상위 재조회.
 function AffiliationTabPanel({
   userId,
   affiliationCode,
@@ -225,6 +232,10 @@ function AffiliationTabPanel({
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
+  const [pendingInvitations, setPendingInvitations] = useState<InstitutionInvitation[]>([]);
+  const [invitationReload, setInvitationReload] = useState(0);
+  const [cancelInviteTarget, setCancelInviteTarget] =
+    useState<InstitutionInvitation | null>(null);
 
   useEffect(() => {
     if (!canManage) {
@@ -239,7 +250,24 @@ function AffiliationTabPanel({
     return () => controller.abort();
   }, [canManage]);
 
-  // 배정/변경 피커는 활성 코드만(종료 코드 신규 배정은 RPC가 차단).
+  // 이 회원의 대기 중(pending) 초대 — 초대 발송/취소 시 재조회.
+  useEffect(() => {
+    if (!canManage) {
+      return;
+    }
+    const controller = new AbortController();
+    void fetchInstitutionInvitationsSafe(
+      { userId, status: 'pending' },
+      controller.signal
+    ).then((result) => {
+      if (!controller.signal.aborted && result.ok) {
+        setPendingInvitations(result.data);
+      }
+    });
+    return () => controller.abort();
+  }, [canManage, userId, invitationReload]);
+
+  // 초대 피커는 활성 코드만(종료 코드 초대는 RPC가 차단).
   const activeOptions = useMemo(
     () =>
       codes
@@ -248,33 +276,62 @@ function AffiliationTabPanel({
     [codes]
   );
 
-  const handleAssign = useCallback(async () => {
+  const handleInvite = useCallback(async () => {
     if (!selectedCode) {
-      notificationApi.warning({ message: '배정할 기관 코드를 선택하세요.' });
+      notificationApi.warning({ message: '초대할 기관 코드를 선택하세요.' });
       return;
     }
     if (!reason.trim()) {
-      notificationApi.warning({ message: '변경 사유를 입력하세요.' });
+      notificationApi.warning({ message: '초대 사유를 입력하세요.' });
       return;
     }
     setSubmitting(true);
-    const result = await assignInstitutionCodeSafe([userId], selectedCode, reason.trim());
+    const result = await inviteInstitutionMembersSafe([userId], selectedCode, reason.trim());
     setSubmitting(false);
     if (!result.ok) {
-      notificationApi.error({ message: '기관 소속 변경 실패', description: result.error.message });
+      notificationApi.error({ message: '기관 초대 실패', description: result.error.message });
       return;
     }
-    notificationApi.success({
-      message: '기관 소속 변경 완료',
-      description:
-        result.data > 0
-          ? `${selectedCode} 로 설정되었습니다.`
-          : '이미 동일한 코드라 변경 사항이 없습니다.'
-    });
+    if (result.data > 0) {
+      notificationApi.success({
+        message: '기관 초대 발송 완료',
+        description: '초대 알림(인앱+이메일)을 보냈습니다. 회원이 수락하면 소속이 적용됩니다.'
+      });
+    } else {
+      notificationApi.info({
+        message: '초대를 보내지 않았습니다',
+        description: '이미 소속이거나 대기 중 초대가 있어 보내지 않았습니다.'
+      });
+    }
     setSelectedCode('');
     setReason('');
+    setInvitationReload((prev) => prev + 1);
     onChanged();
   }, [notificationApi, onChanged, reason, selectedCode, userId]);
+
+  const handleCancelInvitation = useCallback(
+    async (cancelReason: string) => {
+      if (!cancelInviteTarget) {
+        return;
+      }
+      const result = await cancelInstitutionInvitationSafe(
+        cancelInviteTarget.invitationId,
+        cancelReason
+      );
+      if (!result.ok) {
+        notificationApi.error({ message: '초대 취소 실패', description: result.error.message });
+        setCancelInviteTarget(null);
+        return;
+      }
+      notificationApi.success({
+        message: '초대 취소 완료',
+        description: `${cancelInviteTarget.code} 초대를 취소했습니다.`
+      });
+      setCancelInviteTarget(null);
+      setInvitationReload((prev) => prev + 1);
+    },
+    [cancelInviteTarget, notificationApi]
+  );
 
   const handleClear = useCallback(
     async (clearReason: string) => {
@@ -328,14 +385,47 @@ function AffiliationTabPanel({
         ]}
       />
 
+      {canManage && pendingInvitations.length > 0 ? (
+        <Alert
+          type="info"
+          showIcon
+          message="대기 중 초대"
+          description={
+            <Space direction="vertical" size={4}>
+              {pendingInvitations.map((invitation) => (
+                <Space key={invitation.invitationId} size={8} wrap>
+                  <Text>
+                    {invitation.codeLabel || invitation.code} ({invitation.code}) ·{' '}
+                    {invitation.createdAt}
+                  </Text>
+                  <Button
+                    type="link"
+                    size="small"
+                    danger
+                    onClick={() => setCancelInviteTarget(invitation)}
+                  >
+                    초대 취소
+                  </Button>
+                </Space>
+              ))}
+              <Text type="secondary">회원이 수락하면 소속이 적용됩니다.</Text>
+            </Space>
+          }
+        />
+      ) : null}
+
       {canManage ? (
-        <Card size="small" title="기관 소속 설정">
+        <Card size="small" title="기관 초대">
           <Space direction="vertical" size={12} style={{ width: '100%' }}>
+            <Text type="secondary">
+              즉시 배정이 아니라 초대 알림(인앱+이메일)이 발송되고, 회원이 수락해야 소속이
+              적용됩니다.
+            </Text>
             <Select
               value={selectedCode || undefined}
               onChange={setSelectedCode}
               options={activeOptions}
-              placeholder="배정/변경할 활성 코드를 선택하세요."
+              placeholder="초대할 활성 코드를 선택하세요."
               showSearch
               optionFilterProp="label"
               style={{ width: '100%', maxWidth: 420 }}
@@ -344,12 +434,12 @@ function AffiliationTabPanel({
               value={reason}
               onChange={(event) => setReason(event.target.value)}
               rows={2}
-              placeholder="감사 기록에 남길 변경 사유를 입력하세요."
+              placeholder="감사 기록에 남길 초대 사유를 입력하세요."
               style={{ maxWidth: 420 }}
             />
             <Space>
-              <Button type="primary" loading={submitting} onClick={() => void handleAssign()}>
-                {affiliationCode ? '소속 변경' : '소속 배정'}
+              <Button type="primary" loading={submitting} onClick={() => void handleInvite()}>
+                기관 초대 보내기
               </Button>
               {affiliationCode ? (
                 <Button danger onClick={() => setClearOpen(true)}>
@@ -371,6 +461,20 @@ function AffiliationTabPanel({
           confirmText="해제 실행"
           onCancel={() => setClearOpen(false)}
           onConfirm={handleClear}
+        />
+      ) : null}
+
+      {cancelInviteTarget ? (
+        <ConfirmAction
+          open
+          title="기관 초대 취소"
+          description={`${cancelInviteTarget.code} 초대를 취소합니다. 사유를 기록하세요.`}
+          targetType="Users"
+          targetId={userId}
+          confirmText="취소 실행"
+          reasonPlaceholder="초대 취소 사유를 입력하세요."
+          onCancel={() => setCancelInviteTarget(null)}
+          onConfirm={handleCancelInvitation}
         />
       ) : null}
     </Space>

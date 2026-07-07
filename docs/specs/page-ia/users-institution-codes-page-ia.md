@@ -25,7 +25,7 @@
 
 - 박람회/기관/캠페인 유입 코드를 생성하고 이름, 유형, 상태, 운영 메모를 관리합니다.
 - 불필요해진 기관 코드를 삭제하되, 가입 회원이 남아 있는 코드는 먼저 소속 해제를 요구합니다.
-- 코드별 소속 회원을 확인하고, 권한 보유자는 회원을 기관 코드에 배정하거나 소속을 해제합니다.
+- 코드별 소속 회원을 확인하고, 권한 보유자는 회원에게 기관 초대를 보내거나(수락 시 소속 적용, 2026-07-07 전환) 소속을 해제합니다.
 - 기관 코드별 TOPIK 쓰기 문항 노출 목록을 확인하고 기관 전용 노출 문항을 추가/해제합니다.
 - 변경성 조치는 사유와 함께 `InstitutionCode`, `Users`, 또는 문항 관련 감사 로그로 추적합니다.
 
@@ -44,7 +44,7 @@
 | 코드 테이블 | 기관 코드 목록 비교 | 코드, 이름, 유형, 상태, 회원 수, 생성일 | 더보기 메뉴(`회원 관리`, `노출 문항`, `수정`, 하단 분리 `삭제`) | `Users`, `Assessment` 후속 검증 | 코드 유효성, 기관별 문항 노출 |
 | 코드 생성/수정 모달 | 코드 메타데이터 관리 | code, label, kind, status, note, reason | 생성, 수정 | `System > 감사 로그` target=`InstitutionCode` | 가입/기관 유입 코드 상태 반영 |
 | 코드 삭제 확인 모달 | 기관 코드 제거 | code, reason | 삭제 | `System > 감사 로그` target=`InstitutionCode` | 가입/기관 유입 코드 사용 중지, 기관 문항 노출 매핑 정리 |
-| 회원 관리 모달 | 코드별 소속 회원 관리 | userId, 이름, 닉네임, 이메일, 회원 상태, 가입일 | 회원 추가, 소속 해제 | `Users > 회원 목록/상세` affiliation 필터와 정합 | 기관 회원 구분 |
+| 회원 관리 모달 | 코드별 소속 회원·대기 중 초대를 통합 로스터 한 테이블로 관리(초대 행은 '초대 대기' 태그) | userId, 이름, 이메일, 상태(회원 상태 또는 초대 대기), 가입·초대일 | 회원 초대(인앱+이메일 알림), 초대 취소, 소속 해제 | `Users > 회원 목록/상세` affiliation 필터와 정합 | 기관 회원 구분, 알림함 초대 카드 |
 | 노출 문항 모달 | 기관별 문항 노출 관리 | questionId, 문항 번호, 주제, 유형, serviceStatus, isExposed | 문항 추가, 문항 해제 | `Assessment > 문항`의 기관 노출 상태와 정합 | 기관 전용 TOPIK 쓰기 문항 노출 |
 
 ## 5. 데이터 블록 정의
@@ -62,7 +62,8 @@
 | 코드 생성 | 생성 | `InstitutionCode + code` | 필수 필드 검증 | notification + 감사 로그 링크 | `/system/audit-logs?targetType=InstitutionCode&targetId={code}` |
 | 코드 수정 | 수정 | `InstitutionCode + code` | 사유 필수 | notification + 감사 로그 링크 | `/system/audit-logs?targetType=InstitutionCode&targetId={code}` |
 | 코드 삭제 | 파괴적 | `InstitutionCode + code` | 확인 + 사유 필수, 가입 회원 존재 시 차단 | notification + 감사 로그 링크 | `/system/audit-logs?targetType=InstitutionCode&targetId={code}` |
-| 회원 배정 | 수정 | `Users + userId[]` | 사유 필수 | 변경 회원 수 표시 | `/system/audit-logs?targetType=Users&targetId={userId}` |
+| 회원 초대 | 수정 | `Users + userId[]` | 사유 필수 | 초대 발송 수 표시(기소속·기pending 스킵) | `/system/audit-logs?targetType=Users&targetId={userId}` |
+| 초대 취소 | 파괴적 | `Users + userId` | 확인 + 사유 필수 | 취소 대상 표시 | `/system/audit-logs?targetType=Users&targetId={userId}` |
 | 소속 해제 | 파괴적 | `Users + userId` | 확인 + 사유 필수 | 변경 대상 표시 | `/system/audit-logs?targetType=Users&targetId={userId}` |
 | 기관 노출 문항 추가 | 수정 | `InstitutionCode + code`, `AssessmentQuestion + questionId[]` | 사유 필수 | changed/unchanged/blocked/failed 집계 | `/system/audit-logs?targetType=InstitutionCode&targetId={code}` |
 | 기관 노출 문항 해제 | 수정 | `InstitutionCode + code`, `AssessmentQuestion + questionId[]` | 사유 필수 | changed/unchanged/failed 집계 | `/system/audit-logs?targetType=InstitutionCode&targetId={code}` |
@@ -76,11 +77,12 @@
 - `삭제`는 `더보기` 메뉴 최하단 footer 영역에 배치하며, 상단 구분선과 danger 강조 버튼으로 일반 액션과 분리합니다.
 - 코드 삭제는 사유 입력을 필수로 요구하며, `memberCount > 0`인 코드는 삭제 전에 회원 소속을 해제해야 합니다.
 - 코드 삭제 시 해당 코드의 기관 전용 문항 노출 매핑(`topik_writing_question_institution_exposure`)은 함께 정리합니다.
-- 회원 배정/해제와 기관 노출 문항 변경은 사유 입력을 요구합니다.
+- 회원 초대/취소/해제와 기관 노출 문항 변경은 사유 입력을 요구합니다.
+- 회원 초대는 즉시 배정이 아닙니다. pending 초대와 인앱+이메일 알림이 생성되고, 회원이 v13 알림 모달에서 수락해야 `profiles.affiliation_code`가 적용됩니다(거부 시 무변화). 계약: `docs/requests/v13-institution-invitation-handoff-2026-07-07.md`.
 - TOPIK 쓰기 문항의 `service_status`는 기관별 노출보다 우선하는 전역 차단 조건입니다. `available`이 아닌 문항(`excluded`, `internal_test`)은 기관 노출에 새로 추가할 수 없고 RPC는 `blocked`로 반환합니다.
 - 이미 기관에 매핑된 문항이 이후 `available`이 아니게 되면 매핑 row는 삭제하지 않고 보존하지만, 모달에서는 `현재 미노출`로 표시하며 제거는 허용합니다.
 - 다른 기관 설정 불러오기에서 `available`이 아닌 문항은 새로 추가하지 않고 건너뜁니다.
-- mock 모드에서는 생성/수정/삭제/회원 배정/노출 문항 변경이 화면 상태 또는 mock 응답에만 반영될 수 있습니다.
+- mock 모드에서는 생성/수정/삭제/회원 초대/노출 문항 변경이 화면 상태 또는 mock 응답에만 반영될 수 있습니다.
 
 ## 8. 다른 관리자 페이지 영향
 

@@ -15,12 +15,14 @@ import type { TableColumnsType } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
-  assignInstitutionCodeSafe,
+  cancelInstitutionInvitationSafe,
   clearInstitutionCodeSafe,
   createInstitutionCodeSafe,
   deleteInstitutionCodeSafe,
   fetchInstitutionCodeMembersSafe,
   fetchInstitutionCodesSafe,
+  fetchInstitutionInvitationsSafe,
+  inviteInstitutionMembersSafe,
   isInstitutionCodesSupabase,
   updateInstitutionCodeSafe
 } from '../api/institution-codes-service';
@@ -33,7 +35,8 @@ import type {
   InstitutionCode,
   InstitutionCodeKind,
   InstitutionCodeMember,
-  InstitutionCodeStatus
+  InstitutionCodeStatus,
+  InstitutionInvitation
 } from '../model/institution-codes-types';
 import type { UserSummary } from '../model/types';
 import { usePermissionStore } from '../../system/model/permission-store';
@@ -85,6 +88,20 @@ type EditFormValues = {
   reason: string;
 };
 
+// 회원 관리 모달 통합 로스터 행 — 대기 중 초대와 소속 회원을 한 테이블로 묶는다.
+type MemberRosterRow = {
+  key: string;
+  kind: 'invitation' | 'member';
+  name: string;
+  email: string;
+  /** member 행만: 회원 상태(정상/정지/탈퇴). invitation 행은 '초대 대기' 태그로 렌더. */
+  memberStatus: string;
+  /** member: 가입일, invitation: 초대일. */
+  date: string;
+  invitation?: InstitutionInvitation;
+  member?: InstitutionCodeMember;
+};
+
 function todayText(): string {
   const now = new Date();
   const yyyy = now.getFullYear();
@@ -133,6 +150,17 @@ export default function InstitutionCodesPage(): JSX.Element {
   const [addForm] = Form.useForm<{ userIds: string[]; reason: string }>();
   const [addSubmitting, setAddSubmitting] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<InstitutionCodeMember | null>(null);
+  // 대기 중(pending) 초대 목록 + 초대 취소 대상. memberReload 카운터를 함께 재사용한다.
+  const [invitationsState, setInvitationsState] = useState<
+    AsyncState<InstitutionInvitation[]>
+  >({
+    status: 'pending',
+    data: [],
+    errorMessage: null,
+    errorCode: null
+  });
+  const [cancelInviteTarget, setCancelInviteTarget] =
+    useState<InstitutionInvitation | null>(null);
 
   // 노출 문항 관리 모달(기관별 전용 노출 문항 추가/제거).
   const [questionExposureTarget, setQuestionExposureTarget] =
@@ -214,6 +242,50 @@ export default function InstitutionCodesPage(): JSX.Element {
         return;
       }
       setMembersState((prev) => ({
+        ...prev,
+        status: 'error',
+        errorMessage: result.error.message,
+        errorCode: result.error.code
+      }));
+    });
+
+    return () => {
+      controller.abort();
+    };
+  }, [memberTarget, memberReload]);
+
+  // 회원 관리 모달이 열린 코드의 대기 중(pending) 초대 목록 로드.
+  useEffect(() => {
+    if (!memberTarget) {
+      return;
+    }
+    const code = memberTarget.code;
+    const controller = new AbortController();
+
+    setInvitationsState((prev) => ({
+      ...prev,
+      status: 'pending',
+      errorMessage: null,
+      errorCode: null
+    }));
+
+    void fetchInstitutionInvitationsSafe(
+      { code, status: 'pending' },
+      controller.signal
+    ).then((result) => {
+      if (controller.signal.aborted) {
+        return;
+      }
+      if (result.ok) {
+        setInvitationsState({
+          status: result.data.length === 0 ? 'empty' : 'success',
+          data: result.data,
+          errorMessage: null,
+          errorCode: null
+        });
+        return;
+      }
+      setInvitationsState((prev) => ({
         ...prev,
         status: 'error',
         errorMessage: result.error.message,
@@ -318,6 +390,7 @@ export default function InstitutionCodesPage(): JSX.Element {
   const closeMembers = useCallback(() => {
     setMemberTarget(null);
     setRemoveTarget(null);
+    setCancelInviteTarget(null);
   }, []);
 
   // 회원 추가 모달이 열릴 때 이전 입력값 초기화(폼 마운트 후).
@@ -327,15 +400,22 @@ export default function InstitutionCodesPage(): JSX.Element {
     }
   }, [memberTarget, addForm]);
 
-  // 이미 이 코드 소속인 회원은 추가 피커에서 제외. 라벨에 현재 소속 코드를 함께 표기.
+  // 이미 이 코드 소속이거나 대기 중 초대가 있는 회원은 초대 피커에서 제외.
+  // 라벨에 현재 소속 코드를 함께 표기.
   const memberUserIdSet = useMemo(
     () => new Set(membersState.data.map((member) => member.userId)),
     [membersState.data]
   );
+  const pendingInviteUserIdSet = useMemo(
+    () => new Set(invitationsState.data.map((invitation) => invitation.userId)),
+    [invitationsState.data]
+  );
   const addUserOptions = useMemo(
     () =>
       allUsers
-        .filter((user) => !memberUserIdSet.has(user.id))
+        .filter(
+          (user) => !memberUserIdSet.has(user.id) && !pendingInviteUserIdSet.has(user.id)
+        )
         .map((user) => {
           const name = user.realName || user.nickname || '(이름 없음)';
           const current = user.affiliationCode ? ` · 현재: ${user.affiliationCode}` : '';
@@ -344,7 +424,7 @@ export default function InstitutionCodesPage(): JSX.Element {
             label: `${name} · ${user.email}${current}`
           };
         }),
-    [allUsers, memberUserIdSet]
+    [allUsers, memberUserIdSet, pendingInviteUserIdSet]
   );
 
   const handleAddMembers = useCallback(async () => {
@@ -365,7 +445,7 @@ export default function InstitutionCodesPage(): JSX.Element {
       return;
     }
 
-    const result = await assignInstitutionCodeSafe(
+    const result = await inviteInstitutionMembersSafe(
       values.userIds,
       memberTarget.code,
       values.reason
@@ -373,18 +453,49 @@ export default function InstitutionCodesPage(): JSX.Element {
     setAddSubmitting(false);
 
     if (!result.ok) {
-      notificationApi.error({ message: '회원 추가 실패', description: result.error.message });
+      notificationApi.error({ message: '초대 발송 실패', description: result.error.message });
       return;
     }
 
-    notificationApi.success({
-      message: '회원 추가 완료',
-      description: `${result.data.toLocaleString()}명이 ${memberTarget.code} 에 배정되었습니다. (변경 없음 제외)`
-    });
+    if (result.data === 0) {
+      notificationApi.info({
+        message: '초대 대상 없음',
+        description: '이미 소속이거나 대기 중 초대가 있어 새로 보낸 초대가 없습니다.'
+      });
+    } else {
+      notificationApi.success({
+        message: '초대 발송 완료',
+        description: `${result.data.toLocaleString()}명에게 초대 알림(인앱+이메일)을 보냈습니다. 수락 시 소속이 적용됩니다. (이미 소속·대기 중 제외)`
+      });
+    }
     addForm.resetFields();
     setMemberReload((prev) => prev + 1);
     setReloadKey((prev) => prev + 1);
   }, [addForm, addSubmitting, memberTarget, notificationApi]);
+
+  const handleCancelInvitationConfirm = useCallback(
+    async (reason: string) => {
+      if (!cancelInviteTarget) {
+        return;
+      }
+      const result = await cancelInstitutionInvitationSafe(
+        cancelInviteTarget.invitationId,
+        reason
+      );
+      if (!result.ok) {
+        notificationApi.error({ message: '초대 취소 실패', description: result.error.message });
+        setCancelInviteTarget(null);
+        return;
+      }
+      notificationApi.success({
+        message: '초대 취소 완료',
+        description: `${cancelInviteTarget.realName || cancelInviteTarget.email} 의 ${cancelInviteTarget.code} 초대를 취소했습니다.`
+      });
+      setCancelInviteTarget(null);
+      setMemberReload((prev) => prev + 1);
+    },
+    [cancelInviteTarget, notificationApi]
+  );
 
   const handleRemoveConfirm = useCallback(
     async (reason: string) => {
@@ -678,28 +789,83 @@ export default function InstitutionCodesPage(): JSX.Element {
     [buildCodeActionItems]
   );
 
-  const memberColumns = useMemo<TableColumnsType<InstitutionCodeMember>>(
+  // 소속 회원 + 대기 중 초대를 한 테이블로 합친 로스터(오너 결정 2026-07-07).
+  // 초대 행은 상태 태그('초대 대기')와 초대 취소 액션으로, 회원 행은 회원 상태와 제거 액션으로 구분한다.
+  const rosterRows = useMemo<MemberRosterRow[]>(
+    () => [
+      ...invitationsState.data.map((invitation) => ({
+        key: `invitation-${invitation.invitationId}`,
+        kind: 'invitation' as const,
+        name: invitation.realName || invitation.nickname || '(이름 없음)',
+        email: invitation.email,
+        memberStatus: '',
+        date: invitation.createdAt,
+        invitation
+      })),
+      ...membersState.data.map((member) => ({
+        key: `member-${member.userId}`,
+        kind: 'member' as const,
+        name: member.realName || member.nickname || '(이름 없음)',
+        email: member.email,
+        memberStatus: member.status,
+        date: member.joinedAt,
+        member
+      }))
+    ],
+    [invitationsState.data, membersState.data]
+  );
+
+  const rosterColumns = useMemo<TableColumnsType<MemberRosterRow>>(
     () => [
       {
         title: '회원',
-        key: 'member',
-        render: (_, record) => (
-          <Text>{record.realName || record.nickname || '(이름 없음)'}</Text>
-        )
+        dataIndex: 'name',
+        render: (_, record) => <Text>{record.name}</Text>
       },
       { title: '이메일', dataIndex: 'email' },
-      { title: '상태', dataIndex: 'status', width: 80 },
-      { title: '가입일', dataIndex: 'joinedAt', width: 120 },
+      {
+        title: '상태',
+        key: 'status',
+        width: 96,
+        render: (_, record) =>
+          record.kind === 'invitation' ? (
+            <Tag color="gold">초대 대기</Tag>
+          ) : (
+            record.memberStatus
+          )
+      },
+      { title: '가입·초대일', dataIndex: 'date', width: 120 },
       {
         title: '액션',
         key: 'action',
-        width: 80,
-        render: (_, record) =>
-          canManageMembers ? (
-            <Button type="link" size="small" danger onClick={() => setRemoveTarget(record)}>
-              제거
-            </Button>
-          ) : null
+        width: 96,
+        render: (_, record) => {
+          if (!canManageMembers) {
+            return null;
+          }
+          if (record.kind === 'invitation' && record.invitation) {
+            const invitation = record.invitation;
+            return (
+              <Button
+                type="link"
+                size="small"
+                danger
+                onClick={() => setCancelInviteTarget(invitation)}
+              >
+                초대 취소
+              </Button>
+            );
+          }
+          if (record.member) {
+            const member = record.member;
+            return (
+              <Button type="link" size="small" danger onClick={() => setRemoveTarget(member)}>
+                제거
+              </Button>
+            );
+          }
+          return null;
+        }
       }
     ],
     [canManageMembers]
@@ -907,9 +1073,10 @@ export default function InstitutionCodesPage(): JSX.Element {
             {canManageMembers ? (
               <Form form={addForm} layout="vertical">
                 <Form.Item
-                  label="회원 추가"
+                  label="회원 초대"
                   name="userIds"
-                  rules={[{ required: true, message: '추가할 회원을 선택하세요.' }]}
+                  rules={[{ required: true, message: '초대할 회원을 선택하세요.' }]}
+                  extra="초대 알림(인앱+이메일)이 발송되고, 회원이 수락해야 소속이 적용됩니다."
                 >
                   <Select
                     mode="multiple"
@@ -923,23 +1090,24 @@ export default function InstitutionCodesPage(): JSX.Element {
                 <Form.Item
                   label="사유/근거"
                   name="reason"
-                  rules={[{ required: true, message: '배정 사유를 입력하세요.' }]}
+                  rules={[{ required: true, message: '초대 사유를 입력하세요.' }]}
                 >
-                  <Input.TextArea rows={2} placeholder="감사 기록에 남길 사유를 입력하세요." />
+                  <Input.TextArea rows={2} placeholder="감사 기록에 남길 초대 사유를 입력하세요." />
                 </Form.Item>
                 <Button
                   type="primary"
                   loading={addSubmitting}
                   onClick={() => void handleAddMembers()}
                 >
-                  선택 회원 추가
+                  선택 회원 초대
                 </Button>
               </Form>
             ) : null}
 
             <div>
               <Text strong>
-                소속 회원 {membersState.data.length.toLocaleString()}명
+                소속 회원 {membersState.data.length.toLocaleString()}명 · 대기 중 초대{' '}
+                {invitationsState.data.length.toLocaleString()}건
               </Text>
               {membersState.status === 'error' ? (
                 <Alert
@@ -949,21 +1117,32 @@ export default function InstitutionCodesPage(): JSX.Element {
                   message={membersState.errorMessage ?? '회원 목록 조회에 실패했습니다.'}
                 />
               ) : null}
+              {invitationsState.status === 'error' ? (
+                <Alert
+                  type="error"
+                  showIcon
+                  style={{ marginTop: 8 }}
+                  message={invitationsState.errorMessage ?? '초대 목록 조회에 실패했습니다.'}
+                />
+              ) : null}
               <div style={{ marginTop: 8 }}>
-                <AdminDataTable<InstitutionCodeMember>
-                  rowKey="userId"
-                  columns={memberColumns}
-                  dataSource={membersState.data}
-                  loading={membersState.status === 'pending'}
+                <AdminDataTable<MemberRosterRow>
+                  rowKey="key"
+                  columns={rosterColumns}
+                  dataSource={rosterRows}
+                  loading={
+                    membersState.status === 'pending' ||
+                    invitationsState.status === 'pending'
+                  }
                   pagination={false}
-                  scroll={{ y: 280 }}
+                  scroll={{ y: 320 }}
                 />
               </div>
             </div>
 
             {!isInstitutionCodesSupabase ? (
               <Text type="secondary">
-                현재 mock 데이터 — 회원 추가/제거는 화면에만 반영되며 목록은 비어 있습니다.
+                현재 mock 데이터 — 초대/제거는 화면에만 반영되며 목록은 비어 있습니다.
               </Text>
             ) : null}
           </Space>
@@ -982,6 +1161,22 @@ export default function InstitutionCodesPage(): JSX.Element {
           confirmText="해제 실행"
           onCancel={() => setRemoveTarget(null)}
           onConfirm={handleRemoveConfirm}
+        />
+      ) : null}
+
+      {cancelInviteTarget ? (
+        <ConfirmAction
+          open
+          title="기관 초대 취소"
+          description={`${cancelInviteTarget.realName || cancelInviteTarget.email} 에게 보낸 ${
+            cancelInviteTarget.code
+          } 초대를 취소합니다. 사유를 기록하세요.`}
+          targetType="Users"
+          targetId={cancelInviteTarget.userId}
+          confirmText="취소 실행"
+          reasonPlaceholder="초대 취소 사유를 입력하세요."
+          onCancel={() => setCancelInviteTarget(null)}
+          onConfirm={handleCancelInvitationConfirm}
         />
       ) : null}
 

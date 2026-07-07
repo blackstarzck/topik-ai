@@ -25,7 +25,8 @@
 | `admin_set_user_status` RPC | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | platform_admin RPC | platform_admin | `profiles.status`만 `active`/`blocked`로 토글, `deleted` 차단. `protect_profile_columns` admin bypass 검증됨 |
 | `notification_settings` | v13 | 본인(user) | 본인 | owner all (`user_id = auth.uid()`) |
 | `notification_log` | v13 | (deprecated — 신규 쓰기 경로 없음) | 본인, platform_admin | owner select. **알림 기능 rev3부터 발송 이력 SoT 아님** (O-9) |
-| `user_notifications` | v13 | service role(파이프라인 insert), 본인(`read_at`만 update) | 본인 | owner select + read_at-only owner update |
+| `user_notifications` | v13 | service role(파이프라인 insert), 본인(`read_at`만 update), **예외: topik-ai `admin_invite_institution_members`의 inline insert(2026-07-07 결정 — 하단 기록)** | 본인 | owner select + read_at-only owner update |
+| `institution_code_invitations` | **topik-ai** (`supabase/migrations-admin/20260707140000`) | admin RPC(invite/cancel) + 본인 respond RPC — 직접 클라이언트 쓰기 없음 | 본인(owner select — v13 수락/거부 모달), admin | RLS enable+force, select만(`user_id=auth.uid() or is_admin`), INSERT/UPDATE/DELETE 정책 없음 + revoke |
 | 마케팅 수신 동의 저장소 (O-7 확정 시) | v13 | 본인 | 본인, 발송 파이프라인(service role) | owner |
 | `notification_templates` | **topik-ai** (`admin_schema_migrations`) | admin RPC | admin, 발송 파이프라인(service role) | admin 전용 |
 | `notification_groups` | **topik-ai** | admin RPC | admin, 발송 파이프라인 | admin 전용 |
@@ -197,3 +198,24 @@
 - Migration home: `supabase/migrations-admin/20260618120000_admin_user_learning_overview.sql` only creates/replaces a read RPC and its down pair. It creates no tables and changes no v13 DDL.
 - Access gate: `private.is_platform_admin(auth.uid())`, `SECURITY DEFINER`, fixed `search_path`.
 - Privacy decision: admin learning overview can show operational aggregates, scores, and weakness labels, but not answer body or sentence correction body.
+
+## 2026-07-07 기관 초대(동의 기반 소속 배정) 경계 기록
+
+- 기능: 관리자 '회원 추가/배정'을 즉시 배정에서 **pending 초대**로 전환. 사용자가 v13 알림
+  모달에서 수락해야 `profiles.affiliation_code` 적용. 마이그레이션
+  `20260707140000_institution_invitations.sql` + `20260707141000_institution_invitation_respond.sql`.
+- **`user_notifications` inline insert 예외**: v13 마이그 주석("파이프라인 전용 insert")과 달리
+  `admin_invite_institution_members`(SECURITY DEFINER, owner postgres)가 초대 인앱 알림 행을
+  직접 insert한다. 사유: (1) per-user payload(`invitation_id`)가 필요하나 v13 그룹 디스패처는
+  per-user payload를 전달할 수 없음, (2) transactional 강제 이메일 attempt를 함께 적재해야 함.
+  v13 DDL/RLS/트리거 변경 없음. 오너 승인: 2026-07-07 구현 계획 승인에 포함.
+- **`profiles.affiliation_code` 사용자 동의 쓰기**: `respond_institution_invitation`은 호출자가
+  비관리자(학습자)라 `protect_profile_columns`의 admin bypass가 적용되지 않는다. v13이 공식
+  제공하는 트랜잭션 GUC `app.claim_affiliation_code='1'`(v13 20260619140000, claim/accept 경로)을
+  세팅 후 UPDATE + RETURNING self-verify. v13이 플래그명을 바꾸면 조용한 실패 대신 42501로
+  즉시 실패한다. boundary allowlist: `check-migration-ownership-boundary.mjs`
+  `ALLOWED_PROFILE_WRITE_FILES`에 20260707141000(affiliation_code 한정) 등록.
+- v13 `accept_affiliation_invite(p_code,p_confirmed)`(QR 가입용, 기존 소속 있으면 전환 거부)는
+  변경하지 않고 공존한다. 초대 수락은 별도 RPC(`respond_institution_invitation`)이며 기존 타기관
+  소속을 **덮어쓴다**(관리자 '소속 변경' 유스케이스, prev_code 감사·반환).
+- v13 사용자 화면 계약: `docs/requests/v13-institution-invitation-handoff-2026-07-07.md`.
