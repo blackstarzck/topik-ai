@@ -712,3 +712,8 @@
 - `Resolved`: 작문 답안 본문과 문장별 첨삭 본문은 admin 미노출로 결정했다.
 - `미확정`: 활동(`study_events`) 탭과 결제(`payment_history`) 탭의 실데이터화는 이번 범위에서 제외했다.
 - `미확정`: 작문 첨삭 전문 열람이 필요해질 경우 별도 권한, 감사 로그, PII 열람 정책 결정이 선행되어야 한다.
+- `Resolved`(2026-07-08): PDF 내보내기 제한 정책의 "전량 비활성 → v13 내보내기 전면 500" 운영 리스크를 설정형 재설계로 해소했다. 정책은 항상 1행이며 admin 화면에서 무정책 상태를 만들 수 없다(`supabase/migrations-admin/20260708150000_pdf_quota_policy_settings.sql`).
+- `Resolved`(2026-07-08): PDF 내보내기 제한 PR8 리뷰 보완. 전체 초기화도 생성 시점에 `pdf_export_quota_reset_targets`로 대상 회원을 실체화하고 0명이면 거부한다. 정책/초기화/이력 시각은 KST 표시 문자열로 반환하며, 정책 변경 이력 row key는 감사 로그 id를 사용한다.
+- `Resolved`(2026-07-08): PDF 내보내기 제한 PR8 추가 보완. 정책 저장 자기치유/cleanup DML을 `subject_scope='user' and resource_scope='problem'`로 제한해 다른 scope 정책을 비활성화/삭제하지 않으며, 개인 초기화 대상 회원 검색은 `search_admin_pdf_quota_reset_users` 전용 RPC로 분리해 100명 창 제약과 platform_admin 게이트 재사용을 해소했다.
+- `미확정`: admin 화면 밖 경로(platform_admin 직접 테이블 쓰기)로 활성 정책이 0이 되면 v13은 여전히 fail-closed 500이다. v13 claim의 no-active-policy 폴백 하드닝은 v13 소유 후속 제안으로 남긴다.
+- `미확정`: 한도 0(의도적 중단) 시 v13 사용자 카피가 "횟수 소진 + resetAt"이라 중단 의도와 안 맞는다. v13 소유 문구 개선 후보.

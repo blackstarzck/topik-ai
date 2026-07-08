@@ -68,6 +68,10 @@
 - 등록 상세 서브패턴:
   - `Operation > 이벤트 등록 상세`, `Commerce > 쿠폰 등록 상세`처럼 단계형 등록 상세는 `PageTitle -> AdminListCard(toolbar actions) -> 좌측 Steps(progressDot, vertical) + 우측 현재 step 입력 패널` 구조를 공통 baseline으로 사용합니다.
   - 같은 패턴의 등록 상세는 shared `AdminEditorForm` shell을 사용하고, 도메인 안내 Alert나 placeholder note는 shell 바깥의 별도 hero로 빼지 않고 현재 step 섹션 내부에서만 노출합니다.
+- 단일 설정 서브패턴(2026-07-08):
+  - `Operation > PDF 내보내기 제한` 정책 탭처럼 "항상 1개인 운영 설정"은 좌측 목록 없이 `AdminListCard(toolbar: 현재 값 요약 + 저장 버튼 size="large") -> 상주 Form -> Divider -> 변경 이력 Table` 구조를 사용합니다.
+  - 활성/비활성 토글로 설정을 없앨 수 있는 구조는 만들지 않습니다(무설정 공백 방지). 파괴적 효과가 있는 저장(예: 주기 변경, 한도 0)은 `Modal.confirm` 2차 확인을 거칩니다.
+  - 폼은 데이터 로드 완료 후에만 렌더하고 대상이 바뀌면 key 리마운트해 `initialValues`가 항상 최신 값으로 적용되게 합니다.
 - 추천 컴포넌트:
   - `Form`, `Tabs`, `Segmented`, `Card`, `Alert`, `Drawer`, `Modal`, `Timeline`
 - 적합한 페이지:
@@ -75,6 +79,7 @@
   - 쿠폰 등록 상세
   - 챗봇 설정
   - 학습 미션
+  - PDF 내보내기 제한(정책 탭 — 단일 설정 서브패턴)
 
 ### 3) 카탈로그/자산 관리형
 

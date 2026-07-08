@@ -170,6 +170,14 @@ export const permissionCatalog: PermissionDefinition[] = [
     risk: 'high'
   },
   {
+    key: 'operation.pdf-quota.manage',
+    name: 'PDF 내보내기 제한 관리',
+    module: '운영',
+    scopeDescription:
+      'PDF 내보내기 쿼터 정책(한도/주기)과 개인·기관 코드·전체 초기화를 관리합니다.',
+    risk: 'high'
+  },
+  {
     key: 'operation.chatbot.manage',
     name: '챗봇 설정',
     module: '운영',
@@ -349,6 +357,7 @@ export const roleCatalog: RoleDefinition[] = [
       'operation.faq.manage',
       'operation.events.manage',
       'operation.policies.manage',
+      'operation.pdf-quota.manage',
       'operation.chatbot.manage',
       'commerce.payments.read',
       'commerce.refunds.approve',

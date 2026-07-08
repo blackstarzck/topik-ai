@@ -442,3 +442,21 @@
 - Updated `docs/architecture/users-registration-lifecycle-v13-handoff.md`, `docs/specs/page-ia/users-list-page-ia.md`, `docs/specs/page-ia/users-detail-page-ia.md`, `docs/specs/admin-page-tables.md`, `docs/specs/admin-data-contract.md`, `docs/page-sync/users-list-page-sync.md`, `docs/page-sync/users-detail-page-sync.md`, `docs/specs/admin-page-ia-change-log.md`, and `logs/admin-doc-update-log.md`.
 - Reason: 이메일 인증 전 계정에서 `정상 + 동의 완료 + 미인증` 조합이 가입 완료처럼 읽히지 않도록 Admin 노출 `회원 상태`를 이메일 인증과 필수 약관 동의 기반 파생값으로 바꿨다.
 - Validation: `tests/e2e/users-verification-status.spec.ts`가 목록/상세/학습 현황 온보딩 표시 기준을 검증한다.
+
+## 2026-07-08 PDF 내보내기 제한 정책 탭 설정형 재설계
+
+- Updated `docs/specs/page-ia/operation-pdf-quota-page-ia.md`, `docs/specs/admin-page-tables.md`, `docs/specs/admin-data-contract.md`, `docs/specs/admin-action-log.md`, `docs/specs/admin-data-usage-map.md`, `docs/page-sync/operation-pdf-quota-page-sync.md`, `docs/architecture/shared-supabase-schema-ownership.md`, `docs/architecture/admin-data-source-transition.md`, `docs/guidelines/admin-ux-ui-design.md`, `docs/specs/admin-page-gap-register.md`, `docs/specs/admin-page-ia-change-log.md`.
+- Reason: 활성/비활성 토글 기반 다중 정책 UX가 정책 교체 중 무정책 공백(전 사용자 PDF 내보내기 500)을 만들 수 있어, 단일 설정 폼 + 감사 로그 기반 변경 이력으로 재설계했다(오너 결정 2026-07-08: 한도 0 허용, 감사 로그 이력, 잔여 행 정리).
+- Validation: `tests/e2e/operation-pdf-quota.spec.ts` 3케이스(설정 저장+이력, 한도 0 중단 2차 확인, 초기화), `npm run harness:check`, `npm run check:migration-boundary`, `npm run build`.
+
+## 2026-07-08 PDF 내보내기 제한 PR8 리뷰 보완
+
+- Updated `docs/specs/page-ia/operation-pdf-quota-page-ia.md`, `docs/specs/admin-page-tables.md`, `docs/specs/admin-data-contract.md`, `docs/specs/admin-action-log.md`, `docs/specs/admin-data-usage-map.md`, `docs/page-sync/operation-pdf-quota-page-sync.md`, `docs/architecture/shared-supabase-schema-ownership.md`, `docs/architecture/admin-data-source-transition.md`, `docs/specs/admin-page-gap-register.md`, `docs/specs/admin-page-ia-change-log.md`.
+- Reason: v13 handoff 계약에 맞춰 전체 초기화도 concrete `pdf_export_quota_reset_targets` 행을 생성하도록 고정하고, PDF 쿼터 표시 시각(KST)과 정책 변경 이력 row key(`admin_audit_logs.id`) 계약을 문서화했다.
+- Validation: `npm run harness:check`, `npm run check:migration-boundary`, PowerShell `$env:VITE_SUPABASE_DISABLED='true'; npx playwright test tests/e2e/operation-pdf-quota.spec.ts`, `npm run build`. `npm run harness:admin-boundary`는 기존 `src/shared/api/notification-email-kick.ts` notification worker marker 검사에서 중단되어 별도 blocker로 남김.
+
+## 2026-07-08 PDF 내보내기 제한 PR8 추가 보완
+
+- Updated `docs/specs/page-ia/operation-pdf-quota-page-ia.md`, `docs/specs/admin-page-tables.md`, `docs/specs/admin-data-contract.md`, `docs/page-sync/operation-pdf-quota-page-sync.md`, `docs/architecture/shared-supabase-schema-ownership.md`, `docs/architecture/admin-data-source-transition.md`, `docs/specs/admin-page-gap-register.md`, `docs/specs/admin-page-ia-change-log.md`, `logs/admin-doc-update-log.md`.
+- Reason: PR8 후속 리뷰에서 지적된 정책 scope 경계 누락과 개인 초기화 대상 회원 검색 권한/페이지네이션 문제를 문서 SoT에 반영했다. 정책 자기치유/cleanup DML은 `user/problem` scope로 제한하고, 개인 초기화 대상 검색은 `operation.pdf-quota.manage` 권한의 `search_admin_pdf_quota_reset_users` RPC로 분리했다.
+- Validation: `npm run typecheck`, `npm run lint`, `npm run harness:check`, `npm run build`, `npm run check:migration-boundary -- --v13-root=C:\Users\admin\.codex\worktrees\13db\v13`, `node ./scripts/check-transfer-sot-checklist.mjs --v13-root=C:\Users\admin\.codex\worktrees\13db\v13`, PowerShell `$env:VITE_SUPABASE_DISABLED='true'; npx playwright test tests/e2e/operation-pdf-quota.spec.ts`(4/4). `npm run harness:admin-boundary -- --v13-root=...`는 npm script가 `--v13-root`를 내부 transfer checklist로 전달하지 못해 기본 v13 경로에서 실패했고, 개별 admin-boundary 구성 검사 중 `check:admin-verification-env`(E2E_ADMIN_EMAIL/PASSWORD 미설정), `check:client-source-secrets`(기존 `src/shared/api/notification-email-kick.ts` marker), `check:notification-cross-app-state`(SUPABASE_ACCESS_TOKEN 미설정)는 이번 변경 외 환경/기존 blocker로 실패했다.

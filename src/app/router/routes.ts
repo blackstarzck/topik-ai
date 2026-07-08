@@ -30,6 +30,7 @@ export type SimplePageRouteKey =
   | 'operation-event-create'
   | 'operation-policies'
   | 'operation-policy-create'
+  | 'operation-pdf-quota'
   | 'billing-payments'
   | 'billing-refunds'
   | 'commerce-coupons'
@@ -168,6 +169,7 @@ export const adminRouteDefinitions = [
     path: '/operation/policies/create/:policyId',
     page: 'operation-policy-create'
   },
+  { kind: 'page', path: '/operation/pdf-quota', page: 'operation-pdf-quota' },
   {
     kind: 'placeholder',
     path: '/operation/chatbot',
