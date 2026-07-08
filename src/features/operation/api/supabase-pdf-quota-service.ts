@@ -12,7 +12,9 @@ import {
   type PdfQuotaPolicyHistoryPage,
   type PdfQuotaReset,
   type PdfQuotaResetPage,
-  type PdfQuotaResetScope
+  type PdfQuotaResetScope,
+  type PdfQuotaResetUserOption,
+  type PdfQuotaResetUserOptionPage
 } from '../model/pdf-quota-types';
 
 type PdfQuotaPolicyRow = {
@@ -38,6 +40,15 @@ type PdfQuotaResetRow = {
   actor_name: string | null;
   target_count: number | null;
   created_at: string | null;
+  total_count: number | null;
+};
+
+type PdfQuotaResetUserOptionRow = {
+  user_id: string;
+  email: string | null;
+  display_name: string | null;
+  nickname: string | null;
+  status: string | null;
   total_count: number | null;
 };
 
@@ -156,6 +167,18 @@ function mapResetRow(row: PdfQuotaResetRow): PdfQuotaReset {
   };
 }
 
+function mapResetUserOptionRow(
+  row: PdfQuotaResetUserOptionRow
+): PdfQuotaResetUserOption {
+  return {
+    id: row.user_id,
+    email: row.email ?? '',
+    displayName: row.display_name ?? '',
+    nickname: row.nickname ?? '',
+    status: row.status ?? ''
+  };
+}
+
 export async function loadPdfQuotaPolicies(
   signal?: AbortSignal
 ): Promise<PdfQuotaPolicy[]> {
@@ -193,6 +216,32 @@ export async function loadPdfQuotaResets(
   const rows = (data ?? []) as PdfQuotaResetRow[];
   return {
     items: rows.map(mapResetRow),
+    totalCount: rows[0]?.total_count ?? 0
+  };
+}
+
+export async function loadPdfQuotaResetUserOptions(
+  input: { search?: string; page: number; pageSize: number },
+  signal?: AbortSignal
+): Promise<PdfQuotaResetUserOptionPage> {
+  const client = requireClient();
+  const search = input.search?.trim() ? input.search.trim() : null;
+  throwIfAborted(signal);
+
+  const { data, error } = await client.rpc('search_admin_pdf_quota_reset_users', {
+    p_search: search,
+    p_page: input.page,
+    p_page_size: input.pageSize
+  });
+
+  throwIfAborted(signal);
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const rows = (data ?? []) as PdfQuotaResetUserOptionRow[];
+  return {
+    items: rows.map(mapResetUserOptionRow),
     totalCount: rows[0]?.total_count ?? 0
   };
 }

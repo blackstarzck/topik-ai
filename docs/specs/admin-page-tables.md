@@ -270,8 +270,8 @@
 - 정책 탭(2026-07-08 재설계): 상주 설정 폼 — 한도 InputNumber(min 0, 0회=의도적 내보내기 중단), 주기 Select(일/주/월), 기준 시간대 Select, 사유 TextArea(필수) + 우측 상단 `정책 저장`(size="large"). 폼 하단 변경 이력 테이블: 변경 시각(KST), 처리자, 한도 from→to, 주기 from→to, 기준 시간대, 사유(감사 로그 id를 row key로 사용, 구형 감사 행은 결과값 fallback 표시)
 - 초기화 테이블 컬럼: 실행일, 범위(개인/기관 코드/전체), 대상 수, 문항(특정 UUID/전체 문항), 사유/근거, 처리자
 - 필터: 초기화 범위 Select(개인/기관 코드/전체)
-- 액션: 정책 저장(사유 필수, **주기 변경·한도 0은 2차 확인**), 초기화 실행(사유 필수, 전체 범위는 2차 확인), 감사 로그 확인
-- source: v13 소유 `pdf_export_quota_policies`/`pdf_export_quota_resets`/`pdf_export_quota_reset_targets`를 admin RPC 5종(`get_admin_pdf_quota_policies`, `get_admin_pdf_quota_policy_history`, `get_admin_pdf_quota_resets`, `admin_save_pdf_quota_policy`, `admin_create_pdf_quota_reset`)으로만 읽고 씁니다. `VITE_OPERATION_PDF_QUOTA_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`이면 mock fallback
+- 액션: 정책 저장(사유 필수, **주기 변경·한도 0은 2차 확인**), 초기화 실행(사유 필수, 개인 범위는 서버 검색/페이지네이션 대상 회원 선택, 전체 범위는 2차 확인), 감사 로그 확인
+- source: v13 소유 `pdf_export_quota_policies`/`pdf_export_quota_resets`/`pdf_export_quota_reset_targets`를 admin RPC 6종(`get_admin_pdf_quota_policies`, `get_admin_pdf_quota_policy_history`, `get_admin_pdf_quota_resets`, `search_admin_pdf_quota_reset_users`, `admin_save_pdf_quota_policy`, `admin_create_pdf_quota_reset`)으로만 읽고 씁니다. `VITE_OPERATION_PDF_QUOTA_SOURCE=mock` 또는 `VITE_SUPABASE_DISABLED=true`이면 mock fallback
 - 의미론 메모: 정책은 항상 1행이며 저장 RPC가 자기치유(활성 행 복구·중복 활성 일괄 비활성)합니다. 한도 0은 전 사용자 내보내기 중단(사용자에겐 429). 초기화는 실행한 주기 안에서만 유효(period-local, 선예약 불가)하며 user/group/global 모두 concrete `reset_targets` 행으로 실체화합니다. 기관 코드/전체 대상은 생성 시점 스냅샷(0명이면 거부), 주기 변경은 기존 사용량 카운트 제외(사실상 전원 초기화) 경고를 노출합니다. 초기화 이력은 수정/삭제 없이 보상 초기화로만 정정합니다.
 - 네트워크 상태: 두 탭 모두 `pending/success/empty/error`를 구분하고, 오류 시 `다시 시도`를 제공합니다. 정책 폼은 로드 완료 후 렌더(전부 비활성 드리프트면 "저장 시 자동 복구" 배너).
 

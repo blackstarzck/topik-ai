@@ -15,13 +15,14 @@ import {
   notification
 } from 'antd';
 import type { TableColumnsType } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type UIEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import {
   createPdfQuotaResetSafe,
   fetchPdfQuotaPoliciesSafe,
   fetchPdfQuotaPolicyHistorySafe,
+  fetchPdfQuotaResetUserOptionsSafe,
   fetchPdfQuotaResetsSafe,
   savePdfQuotaPolicySafe
 } from '../api/pdf-quota-service';
@@ -33,12 +34,11 @@ import {
   type PdfQuotaPolicy,
   type PdfQuotaPolicyHistoryEntry,
   type PdfQuotaReset,
-  type PdfQuotaResetScope
+  type PdfQuotaResetScope,
+  type PdfQuotaResetUserOption
 } from '../model/pdf-quota-types';
 import { fetchInstitutionCodesSafe } from '../../users/api/institution-codes-service';
-import { fetchUsersSafe } from '../../users/api/users-service';
 import type { InstitutionCode } from '../../users/model/institution-codes-types';
-import type { UserSummary } from '../../users/model/types';
 import type { AsyncState } from '../../../shared/model/async-state';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
@@ -50,6 +50,8 @@ const { Text } = Typography;
 
 const RESET_PAGE_SIZE = 20;
 const HISTORY_PAGE_SIZE = 10;
+const RESET_USER_OPTION_PAGE_SIZE = 20;
+const RESET_USER_SEARCH_DEBOUNCE_MS = 250;
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -97,6 +99,20 @@ function formatLimitLabel(limit: number | null): string {
 
 function formatUnitLabel(unit: PdfQuotaPeriodUnit | null): string {
   return unit ? pdfQuotaPeriodUnitLabels[unit] : '-';
+}
+
+function formatResetUserOptionLabel(user: PdfQuotaResetUserOption): string {
+  const primary = user.nickname || user.displayName || '-';
+  const secondary = user.email || user.id;
+  return `${primary} (${secondary})`;
+}
+
+function mergeResetUserOptions(
+  current: PdfQuotaResetUserOption[],
+  next: PdfQuotaResetUserOption[]
+): PdfQuotaResetUserOption[] {
+  const seen = new Set(current.map((user) => user.id));
+  return [...current, ...next.filter((user) => !seen.has(user.id))];
 }
 
 // 구형 감사 행(변경 키만 기록)은 from/to가 비어 있으므로 결과값으로 fallback한다.
@@ -161,13 +177,20 @@ export default function OperationPdfQuotaPage(): JSX.Element {
   const [resetSaving, setResetSaving] = useState(false);
   const [resetForm] = Form.useForm<ResetFormValues>();
   const resetScopeValue = Form.useWatch('scope', resetForm);
+  const activeResetScope = resetScopeValue ?? 'user';
 
-  const [userOptionsState, setUserOptionsState] = useState<AsyncState<UserSummary[]>>({
+  const [userOptionsState, setUserOptionsState] = useState<
+    AsyncState<PdfQuotaResetUserOption[]>
+  >({
     status: 'pending',
     data: [],
     errorMessage: null,
     errorCode: null
   });
+  const [userOptionTotal, setUserOptionTotal] = useState(0);
+  const [userOptionSearchInput, setUserOptionSearchInput] = useState('');
+  const [userOptionSearch, setUserOptionSearch] = useState('');
+  const [userOptionPage, setUserOptionPage] = useState(1);
   const [codeOptionsState, setCodeOptionsState] = useState<
     AsyncState<InstitutionCode[]>
   >({
@@ -319,20 +342,74 @@ export default function OperationPdfQuotaPage(): JSX.Element {
       return;
     }
 
+    setUserOptionsState({
+      status: 'pending',
+      data: [],
+      errorMessage: null,
+      errorCode: null
+    });
+    setUserOptionTotal(0);
+    setUserOptionSearchInput('');
+    setUserOptionSearch('');
+    setUserOptionPage(1);
+  }, [resetModalOpen]);
+
+  useEffect(() => {
+    if (!resetModalOpen) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setUserOptionPage(1);
+      setUserOptionSearch(userOptionSearchInput.trim());
+    }, RESET_USER_SEARCH_DEBOUNCE_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [resetModalOpen, userOptionSearchInput]);
+
+  useEffect(() => {
+    if (!resetModalOpen || activeResetScope !== 'user') {
+      return;
+    }
+
     const controller = new AbortController();
 
-    setUserOptionsState((prev) => ({ ...prev, status: 'pending' }));
-    void fetchUsersSafe(controller.signal).then((result) => {
+    setUserOptionsState((prev) => ({
+      ...prev,
+      data: userOptionPage === 1 ? [] : prev.data,
+      status: 'pending',
+      errorMessage: null,
+      errorCode: null
+    }));
+
+    void fetchPdfQuotaResetUserOptionsSafe(
+      {
+        search: userOptionSearch,
+        page: userOptionPage,
+        pageSize: RESET_USER_OPTION_PAGE_SIZE
+      },
+      controller.signal
+    ).then((result) => {
       if (controller.signal.aborted) {
         return;
       }
       if (result.ok) {
-        setUserOptionsState({
-          status: result.data.length === 0 ? 'empty' : 'success',
-          data: result.data,
-          errorMessage: null,
-          errorCode: null
+        setUserOptionsState((prev) => {
+          const nextData =
+            userOptionPage === 1
+              ? result.data.items
+              : mergeResetUserOptions(prev.data, result.data.items);
+
+          return {
+            status: nextData.length === 0 ? 'empty' : 'success',
+            data: nextData,
+            errorMessage: null,
+            errorCode: null
+          };
         });
+        setUserOptionTotal(result.data.totalCount);
         return;
       }
       setUserOptionsState((prev) => ({
@@ -342,6 +419,18 @@ export default function OperationPdfQuotaPage(): JSX.Element {
         errorCode: result.error.code
       }));
     });
+
+    return () => {
+      controller.abort();
+    };
+  }, [activeResetScope, resetModalOpen, userOptionPage, userOptionSearch]);
+
+  useEffect(() => {
+    if (!resetModalOpen || activeResetScope !== 'group') {
+      return;
+    }
+
+    const controller = new AbortController();
 
     setCodeOptionsState((prev) => ({ ...prev, status: 'pending' }));
     void fetchInstitutionCodesSafe(controller.signal).then((result) => {
@@ -368,7 +457,7 @@ export default function OperationPdfQuotaPage(): JSX.Element {
     return () => {
       controller.abort();
     };
-  }, [resetModalOpen]);
+  }, [activeResetScope, resetModalOpen]);
 
   const handleTabChange = useCallback(
     (nextTab: string) => {
@@ -496,6 +585,25 @@ export default function OperationPdfQuotaPage(): JSX.Element {
     setResetModalOpen(false);
     resetForm.resetFields();
   }, [resetForm]);
+
+  const handleUserOptionsPopupScroll = useCallback(
+    (event: UIEvent<HTMLDivElement>) => {
+      const target = event.currentTarget;
+      const reachedBottom =
+        target.scrollTop + target.offsetHeight >= target.scrollHeight - 24;
+
+      if (
+        !reachedBottom ||
+        userOptionsState.status === 'pending' ||
+        userOptionsState.data.length >= userOptionTotal
+      ) {
+        return;
+      }
+
+      setUserOptionPage((prev) => prev + 1);
+    },
+    [userOptionTotal, userOptionsState.data.length, userOptionsState.status]
+  );
 
   const executeReset = useCallback(
     async (values: ResetFormValues) => {
@@ -1077,7 +1185,7 @@ export default function OperationPdfQuotaPage(): JSX.Element {
                 ]}
               />
             </Form.Item>
-            {resetScopeValue === 'user' ? (
+            {activeResetScope === 'user' ? (
               <Form.Item
                 name="userId"
                 label="대상 회원"
@@ -1087,8 +1195,8 @@ export default function OperationPdfQuotaPage(): JSX.Element {
                   showSearch
                   placeholder={
                     userOptionsState.status === 'pending'
-                      ? '회원 목록을 불러오는 중...'
-                      : '이메일/닉네임으로 검색'
+                      ? '회원을 검색하는 중...'
+                      : '이메일/닉네임/회원 ID로 검색'
                   }
                   loading={userOptionsState.status === 'pending'}
                   notFoundContent={
@@ -1096,15 +1204,19 @@ export default function OperationPdfQuotaPage(): JSX.Element {
                       ? '회원 목록 조회에 실패했습니다.'
                       : '검색 결과가 없습니다.'
                   }
-                  optionFilterProp="label"
+                  filterOption={false}
+                  searchValue={userOptionSearchInput}
+                  onSearch={setUserOptionSearchInput}
+                  onChange={() => setUserOptionSearchInput('')}
+                  onPopupScroll={handleUserOptionsPopupScroll}
                   options={userOptionsState.data.map((user) => ({
                     value: user.id,
-                    label: `${user.nickname || user.realName || '-'} (${user.email})`
+                    label: formatResetUserOptionLabel(user)
                   }))}
                 />
               </Form.Item>
             ) : null}
-            {resetScopeValue === 'group' ? (
+            {activeResetScope === 'group' ? (
               <Form.Item
                 name="groupCode"
                 label="대상 기관 코드"
@@ -1131,7 +1243,7 @@ export default function OperationPdfQuotaPage(): JSX.Element {
                 />
               </Form.Item>
             ) : null}
-            {resetScopeValue === 'global' ? (
+            {activeResetScope === 'global' ? (
               <Alert
                 type="warning"
                 showIcon

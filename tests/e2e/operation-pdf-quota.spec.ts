@@ -4,7 +4,7 @@ import { expectNotificationAuditHref } from './source-flow-helpers';
 
 // Operation > PDF 내보내기 제한. mock 모드(VITE_SUPABASE_DISABLED=true) 기준으로
 // 단일 설정 폼 저장(사유 필수 + 이력 적재)과 한도 0(중단) 2차 확인,
-// 초기화 실행(개인/전체, 전체는 2차 확인) 흐름을 검증한다.
+// 초기화 실행(개인 서버 검색/전체, 전체는 2차 확인) 흐름을 검증한다.
 
 test('pdf quota policy settings form saves with reason and appends history', async ({
   page
@@ -96,4 +96,31 @@ test('pdf quota resets tab lists history and creates a global reset with second 
   });
   await expect(createdGlobalRow).toBeVisible();
   await expect(createdGlobalRow).toContainText('36명');
+});
+
+test('pdf quota user reset searches beyond first page and creates an individual reset', async ({
+  page
+}) => {
+  await page.goto('/operation/pdf-quota?tab=resets');
+
+  await page.getByRole('button', { name: '초기화 실행' }).click();
+  const modal = page.locator('.ant-modal:visible').last();
+
+  const userField = modal.locator('.ant-form-item', { hasText: '대상 회원' });
+  await userField.locator('.ant-select-selector').click();
+  await userField.locator('input').fill('member111');
+
+  const dropdown = page.locator('.ant-select-dropdown:not(.ant-select-dropdown-hidden)').last();
+  await expect(dropdown.getByText('member_111 (member111@topik.ai)')).toBeVisible();
+  await dropdown.getByText('member_111 (member111@topik.ai)').click();
+
+  await modal.getByLabel('사유/근거').fill('e2e pdf quota individual reset');
+  await modal.locator('.ant-modal-footer .ant-btn-primary').click();
+
+  await expectNotificationAuditHref(page, 'PdfQuotaReset', 'PDFQ-RESET-003');
+  const createdUserRow = page.locator('.ant-table-row', {
+    hasText: 'e2e pdf quota individual reset'
+  });
+  await expect(createdUserRow).toBeVisible();
+  await expect(createdUserRow).toContainText('1명');
 });

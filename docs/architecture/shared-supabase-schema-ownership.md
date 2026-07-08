@@ -239,7 +239,8 @@
 2026-07-08 정책 관리 "단일 설정 + 변경 이력" 전환 기록:
 - 근거: `supabase/migrations-admin/20260708150000_pdf_quota_policy_settings.sql` + down. 오너 결정 2026-07-08.
 - 배경: 구 `admin_save_pdf_quota_policy(uuid,...,boolean,...)`는 활성/비활성 토글 기반이라 정책 교체 중 무정책 공백(전 사용자 내보내기 500)이 생길 수 있었다. 구 시그니처는 명시적으로 drop.
-- 신 계약: `admin_save_pdf_quota_policy(p_limit_count,p_period_unit,p_period_timezone,p_reason,p_expected_updated_at)`는 항상 현재 정책 1행을 갱신/복구(자기치유 — advisory lock 직렬화, 활성 행 없으면 최신 행 복구, 0행이면 생성, 중복 활성은 일괄 비활성 후 `deactivated_ids` 감사 기록)한다. `limit_count = 0`은 의도적 내보내기 중단(v13은 429). 비활성화 단독 경로 없음.
+- 신 계약: `admin_save_pdf_quota_policy(p_limit_count,p_period_unit,p_period_timezone,p_reason,p_expected_updated_at)`는 항상 현재 `subject_scope='user' and resource_scope='problem'` 정책 1행을 갱신/복구(자기치유 — advisory lock 직렬화, 활성 행 없으면 최신 행 복구, 0행이면 생성, 같은 scope의 중복 활성만 일괄 비활성 후 `deactivated_ids` 감사 기록)한다. `limit_count = 0`은 의도적 내보내기 중단(v13은 429). 비활성화 단독 경로 없음.
 - 이력 read: `get_admin_pdf_quota_policy_history`가 `admin_audit_logs(pdf_quota_policy_saved)`에서 감사 id, KST 시각, 비민감 화이트리스트 필드만 `operation.pdf-quota.manage` 권한자에게 반환(2026-06-18 diff/payload 게이팅의 action 한정 범위 예외).
-- DML 정리: usages가 참조하지 않는 비활성 정책 행을 마이그레이션에서 삭제(FK NO ACTION 회피, down으로 복원 불가).
+- 개인 초기화 대상 검색: `search_admin_pdf_quota_reset_users(p_search,p_page,p_page_size)`는 `get_admin_users`의 platform_admin 게이트와 분리해 `operation.pdf-quota.manage` 권한자에게 최소 회원 필드와 서버 페이지네이션만 제공한다.
+- DML 정리: `subject_scope='user' and resource_scope='problem'` 범위에서 usages가 참조하지 않는 비활성 정책 행만 마이그레이션에서 삭제(FK NO ACTION 회피, down으로 복원 불가). 다른 policy scope는 비활성화/삭제하지 않는다.
 - v13 무변경: DDL·claim·commit/release 계약 그대로. platform_admin 직접 테이블 쓰기로 활성 행이 0이 되는 admin 화면 밖 경로는 여전히 fail-closed(500) — v13 claim 폴백 하드닝은 후속 제안.

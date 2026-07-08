@@ -8,13 +8,17 @@ import type {
   PdfQuotaPolicy,
   PdfQuotaPolicyHistoryPage,
   PdfQuotaResetPage,
-  PdfQuotaResetScope
+  PdfQuotaResetScope,
+  PdfQuotaResetUserOption,
+  PdfQuotaResetUserOptionPage
 } from '../model/pdf-quota-types';
+import { mockUsers } from '../../users/api/mock-users';
 import { operationPdfQuotaDataSource } from './pdf-quota-data-source';
 import {
   createPdfQuotaReset,
   loadPdfQuotaPolicies,
   loadPdfQuotaPolicyHistory,
+  loadPdfQuotaResetUserOptions,
   loadPdfQuotaResets,
   savePdfQuotaPolicy,
   type CreatePdfQuotaResetResult
@@ -93,6 +97,42 @@ async function loadResets(
   };
 }
 
+function mapMockUserToResetOption(
+  user: (typeof mockUsers)[number]
+): PdfQuotaResetUserOption {
+  return {
+    id: user.id,
+    email: user.email,
+    displayName: user.realName,
+    nickname: user.nickname,
+    status: user.status
+  };
+}
+
+async function loadResetUserOptions(
+  input: { search?: string; page: number; pageSize: number },
+  signal?: AbortSignal
+): Promise<PdfQuotaResetUserOptionPage> {
+  if (isSupabaseSource) {
+    return loadPdfQuotaResetUserOptions(input, signal);
+  }
+
+  await sleep(200, signal);
+  const keyword = input.search?.trim().toLowerCase() ?? '';
+  const filtered = keyword
+    ? mockUsers.filter((user) =>
+        [user.id, user.email, user.realName, user.nickname].some((value) =>
+          value.toLowerCase().includes(keyword)
+        )
+      )
+    : mockUsers;
+  const start = (input.page - 1) * input.pageSize;
+  return {
+    items: filtered.slice(start, start + input.pageSize).map(mapMockUserToResetOption),
+    totalCount: filtered.length
+  };
+}
+
 async function persistPolicy(
   payload: SavePdfQuotaPolicyPayload,
   signal?: AbortSignal
@@ -139,6 +179,15 @@ export function fetchPdfQuotaResetsSafe(
 ) {
   return toSafeResult(() =>
     withRetry(() => loadResets(input, signal), { maxRetries: 1 })
+  );
+}
+
+export function fetchPdfQuotaResetUserOptionsSafe(
+  input: { search?: string; page: number; pageSize: number },
+  signal?: AbortSignal
+) {
+  return toSafeResult(() =>
+    withRetry(() => loadResetUserOptions(input, signal), { maxRetries: 1 })
   );
 }
 

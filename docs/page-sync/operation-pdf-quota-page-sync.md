@@ -39,12 +39,12 @@ last_reviewed_at: "2026-07-07"
 
 ## 4. 데이터 계약 요약
 
-- 소유권: `pdf_export_quota_*` 4테이블 + claim/commit/release RPC는 **v13 소유**. topik-ai는 DDL 불변, admin RPC 5종만 추가(`supabase/migrations-admin/20260708100000_pdf_export_quota_admin.sql`, `20260708150000_pdf_quota_policy_settings.sql`).
+- 소유권: `pdf_export_quota_*` 4테이블 + claim/commit/release RPC는 **v13 소유**. topik-ai는 DDL 불변, admin RPC 6종만 추가(`supabase/migrations-admin/20260708100000_pdf_export_quota_admin.sql`, `20260708150000_pdf_quota_policy_settings.sql`).
 - 상세: `docs/architecture/shared-supabase-schema-ownership.md`의 "2026-07-07 PDF 내보내기 쿼터 소유권 기록".
 - 그룹 정의: `profiles.affiliation_code` 기반 기관 코드(2026-07-07 오너 결정). 그룹/전체 초기화 대상은 생성 시점에 `pdf_export_quota_reset_targets.user_id`로 실체화하는 스냅샷이다.
 
 ## 5. 미결/후속
 
 - 회원별 사용량 조회(used/remaining) 화면: P1 보류.
-- 개인 초기화 모달의 회원 검색은 `get_admin_users`(platform_admin 전용 read RPC)를 재사용한다. platform_admin이 아닌 운영 관리자는 회원 목록 조회가 거부될 수 있어, 필요 시 pdf-quota 권한 기준의 경량 회원 조회 RPC를 후속 검토한다.
+- 해소됨(2026-07-08 PR8 보완): 개인 초기화 모달의 회원 검색은 `get_admin_users`(platform_admin 전용 read RPC)를 재사용하지 않고, `operation.pdf-quota.manage` 권한 기준 `search_admin_pdf_quota_reset_users`로 서버 검색/페이지네이션한다.
 - prod 적용 게이트 별도.

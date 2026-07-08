@@ -1,10 +1,11 @@
 -- down: 정책 "단일 설정 + 변경 이력" 전환 되돌리기.
--- 신 시그니처와 history RPC를 제거하고, 20260708100000의 구
+-- 신 시그니처와 history/search RPC를 제거하고, 20260708100000의 구
 -- admin_save_pdf_quota_policy(uuid,...,boolean,...) 원문을 복원한다.
 -- 주의: up의 비활성 행 정리(DML)는 되돌릴 수 없다.
 
 drop function if exists public.admin_save_pdf_quota_policy(integer, text, text, text, timestamptz);
 drop function if exists public.get_admin_pdf_quota_policy_history(integer, integer);
+drop function if exists public.search_admin_pdf_quota_reset_users(text, integer, integer);
 
 create or replace function public.admin_save_pdf_quota_policy(
   p_policy_id uuid,

@@ -77,10 +77,11 @@
 | 정책 목록 | `get_admin_pdf_quota_policies()` | read RPC. RLS가 platform_admin 전용이라 direct select 대신 사용. created_at/updated_at_display는 KST 표시 문자열, updated_at은 동시 편집 검사 원본 timestamptz |
 | 정책 변경 이력 | `get_admin_pdf_quota_policy_history(p_page, p_page_size)` | admin_audit_logs(`pdf_quota_policy_saved`) 기반, 감사 id + KST 시각 + 비민감 화이트리스트 필드만 pdf-quota 권한자에게 반환(2026-06-18 게이팅의 범위 예외) |
 | 초기화 이력 | `get_admin_pdf_quota_resets(p_page, p_page_size, p_scope)` | KST 실행일 + target_count 집계 + 처리자(admin_audit_logs 기반) + total_count |
+| 개인 초기화 대상 검색 | `search_admin_pdf_quota_reset_users(p_search, p_page, p_page_size)` | `operation.pdf-quota.manage` 권한 기준의 경량 회원 검색 RPC. `get_admin_users`(platform_admin) 재사용 금지, 이메일/닉네임/회원 ID 서버 검색 + 페이지네이션 |
 | 정책 저장 | `admin_save_pdf_quota_policy(p_limit_count, p_period_unit, p_period_timezone, p_reason, p_expected_updated_at)` | 항상 현재 정책 1행 갱신/복구(자기치유, advisory lock 직렬화), 한도 0 허용, 낙관적 동시 편집 검사, 사유 필수. 구 시그니처(활성/비활성 토글)는 20260708150000에서 drop |
 | 초기화 생성 | `admin_create_pdf_quota_reset(p_scope, p_user_id, p_group_code, p_problem_id, p_reason)` | user/group/global 모두 `pdf_export_quota_reset_targets`에 concrete user_id를 실체화. group/global은 생성 시점 스냅샷이며 0명이면 raise, 반환 `{resetId, targetCount}` |
 
-- 테이블 소유권: `pdf_export_quota_*` 4테이블은 v13 소유(DDL 변경 금지). topik-ai는 위 admin RPC(`admin_schema_migrations`, `supabase/migrations-admin/20260708100000`)로만 읽고 쓴다.
+- 테이블 소유권: `pdf_export_quota_*` 4테이블은 v13 소유(DDL 변경 금지). topik-ai는 위 admin RPC(`admin_schema_migrations`, `supabase/migrations-admin/20260708100000`, `20260708150000`)로만 읽고 쓴다.
 - `pdf_export_quota_resets.created_by`는 v13 `profiles` FK라 admin 계정(프로필 없음)은 null로 저장되고, 처리자는 `admin_audit_logs`로 추적한다.
 
 ## 7. 상태/오류 처리
@@ -101,4 +102,5 @@
 - 2026-07-07 채택 권고: 단일 활성 정책, 사용량 조회 P1 보류, 그룹 리셋 생성 시점 스냅샷, prod 적용 범위 제외.
 - 2026-07-08 오너 결정: 정책 탭을 설정형(상주 폼 + 변경 이력)으로 재설계 — 다중 행/활성 토글 폐기(무정책 공백 제거). 한도 0 허용(의도적 중단, v13은 429로 동작), 이력은 감사 로그 기반 read RPC, usages 미참조 비활성 잔여 행은 마이그레이션에서 삭제.
 - 2026-07-08 PR8 보완: 전체 초기화도 생성 시점에 `pdf_export_quota_reset_targets`로 모든 대상 회원을 실체화한다. 정책/초기화/이력 표시 시각은 KST 문자열로 반환하고, 정책 변경 이력 row key는 감사 로그 id를 사용한다.
+- 2026-07-08 PR8 추가 보완: 정책 자기치유의 중복 활성 비활성화와 비활성 잔여 행 정리는 `subject_scope='user' and resource_scope='problem'` 범위로 제한한다. 개인 초기화 모달은 `search_admin_pdf_quota_reset_users` 전용 RPC로 대상 회원을 서버 검색/페이지네이션한다.
 - 2026-07-08 범위 제외(후속 후보): v13 claim의 no-active-policy 폴백 하드닝(현재 fail closed 500), 한도 0일 때 v13 사용자 카피(resetAt 안내가 의도적 중단과 안 맞음).

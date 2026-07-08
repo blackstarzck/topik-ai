@@ -70,3 +70,16 @@ export type PdfQuotaResetPage = {
   items: PdfQuotaReset[];
   totalCount: number;
 };
+
+export type PdfQuotaResetUserOption = {
+  id: string;
+  email: string;
+  displayName: string;
+  nickname: string;
+  status: string;
+};
+
+export type PdfQuotaResetUserOptionPage = {
+  items: PdfQuotaResetUserOption[];
+  totalCount: number;
+};

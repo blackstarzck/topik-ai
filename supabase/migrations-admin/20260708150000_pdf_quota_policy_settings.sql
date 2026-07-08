@@ -12,7 +12,8 @@
 --     diff/payload platform_admin 게이팅의 범위 예외: 쿼터 수치(한도/주기/시간대)는
 --     PII·정책 본문이 아니고 reason은 이미 전체 admin 공개라, 이 action에 한해
 --     화이트리스트 필드만 pdf-quota 권한자에게 반환한다.
---   * DML 정리: usages가 참조하지 않는 비활성 행만 삭제(FK NO ACTION 위반 방지).
+--   * DML 정리: user/problem 범위에서 usages가 참조하지 않는 비활성 행만 삭제
+--     (FK NO ACTION 위반 방지, 다른 scope 정책 경계 보호).
 -- down: supabase/migrations-admin/down/20260708150000_pdf_quota_policy_settings.sql
 
 drop function if exists public.admin_save_pdf_quota_policy(uuid, integer, text, text, boolean, text);
@@ -104,7 +105,9 @@ begin
     update public.pdf_export_quota_policies
        set is_active = false,
            updated_at = now()
-     where is_active and id <> v_id
+      where is_active and id <> v_id
+        and subject_scope = 'user'
+        and resource_scope = 'problem'
     returning id
   )
   select coalesce(array_agg(id), '{}') into v_deactivated from deactivated;
@@ -199,23 +202,100 @@ begin
 end;
 $function$;
 
+drop function if exists public.search_admin_pdf_quota_reset_users(text, integer, integer);
+
+create or replace function public.search_admin_pdf_quota_reset_users(
+  p_search text default null,
+  p_page integer default 1,
+  p_page_size integer default 20
+)
+returns table (
+  user_id uuid,
+  email text,
+  display_name text,
+  nickname text,
+  status text,
+  total_count bigint
+)
+language plpgsql
+stable
+security definer
+set search_path to 'pg_catalog', 'public'
+as $function$
+#variable_conflict use_column
+declare
+  caller_id uuid := auth.uid();
+  v_search text := nullif(btrim(coalesce(p_search, '')), '');
+  v_page integer := greatest(coalesce(p_page, 1), 1);
+  v_page_size integer := least(greatest(coalesce(p_page_size, 20), 1), 100);
+begin
+  if caller_id is null then raise exception 'unauthenticated'; end if;
+  if not private.is_admin(caller_id) then raise exception 'forbidden: admin required'; end if;
+  if not public.admin_has_permission(caller_id, 'operation.pdf-quota.manage') then
+    raise exception 'forbidden: missing permission operation.pdf-quota.manage';
+  end if;
+
+  return query
+    with base as (
+      select p.id as user_id,
+             u.email::text as email,
+             p.display_name as display_name,
+             p.nickname::text as nickname,
+             p.status as status
+        from public.profiles p
+        left join auth.users u on u.id = p.id
+       where v_search is null
+          or p.id::text ilike '%' || v_search || '%'
+          or p.display_name ilike '%' || v_search || '%'
+          or p.nickname::text ilike '%' || v_search || '%'
+          or u.email ilike '%' || v_search || '%'
+    ),
+    counted as (
+      select base.*, count(*) over () as total_count
+        from base
+    )
+    select counted.user_id,
+           counted.email,
+           counted.display_name,
+           counted.nickname,
+           counted.status,
+           counted.total_count
+      from counted
+     order by
+       case
+         when v_search is not null and lower(coalesce(counted.email, '')) = lower(v_search) then 0
+         when v_search is not null and lower(counted.user_id::text) = lower(v_search) then 0
+         else 1
+       end,
+       lower(coalesce(nullif(counted.display_name, ''), nullif(counted.nickname, ''), counted.email, counted.user_id::text)) asc,
+       counted.user_id asc
+     limit v_page_size offset (v_page - 1) * v_page_size;
+end;
+$function$;
+
 -- FK-safe 정리: usages가 참조하지 않는 비활성 행만 삭제한다.
 -- (pdf_export_quota_usages.policy_id FK는 ON DELETE 절이 없어 NO ACTION)
 delete from public.pdf_export_quota_policies p
  where not p.is_active
+   and p.subject_scope = 'user'
+   and p.resource_scope = 'problem'
    and not exists (
      select 1 from public.pdf_export_quota_usages u where u.policy_id = p.id
    );
 
 revoke all on function public.admin_save_pdf_quota_policy(integer, text, text, text, timestamptz) from public;
 revoke all on function public.get_admin_pdf_quota_policy_history(integer, integer) from public;
+revoke all on function public.search_admin_pdf_quota_reset_users(text, integer, integer) from public;
 
 grant execute on function public.admin_save_pdf_quota_policy(integer, text, text, text, timestamptz) to authenticated;
 grant execute on function public.get_admin_pdf_quota_policy_history(integer, integer) to authenticated;
+grant execute on function public.search_admin_pdf_quota_reset_users(text, integer, integer) to authenticated;
 
 comment on function public.admin_save_pdf_quota_policy(integer, text, text, text, timestamptz) is
   'Operation > PDF 내보내기 제한: 단일 정책 설정 저장. 항상 현재 정책 1행을 갱신/복구하며(자기치유), 한도 0은 의도적 내보내기 중단이다. p_expected_updated_at으로 동시 편집을 감지한다.';
 comment on function public.get_admin_pdf_quota_policy_history(integer, integer) is
   'Operation > PDF 내보내기 제한: 정책 변경 이력. admin_audit_logs(pdf_quota_policy_saved)에서 감사 id, KST 시각, 비민감 화이트리스트 필드만 pdf-quota 권한자에게 반환한다(2026-06-18 게이팅의 범위 예외).';
+comment on function public.search_admin_pdf_quota_reset_users(text, integer, integer) is
+  'Operation > PDF 내보내기 제한: 개인 초기화 대상 회원 검색. get_admin_users(platform_admin)와 분리해 operation.pdf-quota.manage 권한자에게 최소 필드와 서버 페이지네이션만 제공한다.';
 
 notify pgrst, 'reload schema';
