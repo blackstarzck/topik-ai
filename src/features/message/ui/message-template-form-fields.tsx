@@ -32,6 +32,8 @@ export type TemplateFormValues = {
   templateClass?: NotificationTemplateClass;
   mandatory?: boolean;
   linkUrl?: string;
+  /** 메일 전용: 본문 하단 자동 삽입 CTA 버튼 문구(빈 값=기본 '알림 확인하기'). */
+  ctaLabel?: string;
   reason?: string;
 };
 
@@ -100,7 +102,10 @@ const MESSAGE_TEMPLATE_VARIABLES: readonly MessageTemplateVariable[] = [
   { category: '발송', label: '발송 시각', token: '{{sent_at}}' },
   { category: '시스템', label: '서비스명', token: '{{service_name}}' },
   { category: '시스템', label: '앱 링크', token: '{{app_link}}' },
-  { category: '시스템', label: '고객센터 이메일', token: '{{support_email}}' }
+  { category: '시스템', label: '고객센터 이메일', token: '{{support_email}}' },
+  // 메일 전용: 본문에 이 변수가 있으면 발송 워커가 CTA 링크로 치환하고 하단 자동 버튼은 생략
+  // — 편집기에서 버튼을 직접 만들어 스타일까지 제어할 수 있다.
+  { category: '시스템', label: 'CTA 링크(메일 버튼 href)', token: '{{cta_url}}' }
 ] as const;
 
 const MESSAGE_TINYMCE_TOOLBAR =
@@ -234,6 +239,7 @@ export function createTemplateMetaDefaults(
     templateClass: 'operational',
     mandatory: false,
     linkUrl: '',
+    ...(channel === 'mail' ? { ctaLabel: '' } : {}),
     reason: ''
   };
 }
@@ -389,19 +395,44 @@ export function MessageTemplateFormFields({
           ] satisfies DescriptionsProps['items'])
         : []),
       // 알림 클릭 시 이동 경로(link_url) — 인앱/푸시는 모든 모드에서 노출.
+      // 메일은 이 경로가 본문 하단 CTA 버튼(발송 워커가 자동 삽입)의 링크가 된다.
       ...(showLinkUrl
         ? ([
             {
               key: 'linkUrl',
-              label: '이동 경로',
+              label: channel === 'mail' ? 'CTA 링크' : '이동 경로',
               span: 2,
               children: (
                 <Form.Item
                   name="linkUrl"
                   style={{ marginBottom: 0 }}
-                  extra="알림을 클릭하면 앱 내부의 이 경로로 이동합니다. 비워두면 앱 기본 화면으로 이동합니다."
+                  extra={
+                    channel === 'mail'
+                      ? '본문에 {{cta_url}} 변수가 있으면 그 위치에 이 링크가 치환되어 직접 만든 버튼을 쓸 수 있고, 없으면 본문 하단에 기본 CTA 버튼이 자동 삽입됩니다. 비워두면 자동 버튼이 붙지 않습니다.'
+                      : '알림을 클릭하면 앱 내부의 이 경로로 이동합니다. 비워두면 앱 기본 화면으로 이동합니다.'
+                  }
                 >
                   <Input placeholder="예: /dashboard, /notice/123, /community/posts/45" />
+                </Form.Item>
+              )
+            }
+          ] satisfies DescriptionsProps['items'])
+        : []),
+      // 메일 전용: 자동 삽입 CTA 버튼의 문구 — 편집 화면 본문에는 보이지 않고 발송 시 삽입되므로
+      // 여기서 관리한다(빈 값이면 기본 '알림 확인하기').
+      ...(showLinkUrl && channel === 'mail' && isSupabaseSource
+        ? ([
+            {
+              key: 'ctaLabel',
+              label: 'CTA 버튼 문구',
+              span: 2,
+              children: (
+                <Form.Item
+                  name="ctaLabel"
+                  style={{ marginBottom: 0 }}
+                  extra="자동 삽입 CTA 버튼의 문구입니다. 비워두면 '알림 확인하기'로 발송되며, 본문에 {{cta_url}} 변수를 사용해 버튼을 직접 만든 경우에는 사용되지 않습니다."
+                >
+                  <Input placeholder="알림 확인하기" maxLength={40} />
                 </Form.Item>
               )
             }

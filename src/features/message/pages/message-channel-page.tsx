@@ -341,6 +341,10 @@ export function MessageChannelPage({
         ...(shouldShowNotificationLink(channel)
           ? { linkUrl: template.linkUrl ?? '' }
           : {}),
+        // 메일 전용: 본문 하단 자동 삽입 CTA 버튼 문구.
+        ...(channel === 'mail' && isSupabaseSource
+          ? { ctaLabel: template.ctaLabel ?? '' }
+          : {}),
         ...(isSupabaseSource
           ? {
               templateKey: template.templateKey,
@@ -879,11 +883,28 @@ export function MessageChannelPage({
         ? [
             {
               key: 'linkUrl',
-              label: '이동 경로',
+              label: channel === 'mail' ? 'CTA 링크' : '이동 경로',
               children:
                 previewTemplate.linkUrl && previewTemplate.linkUrl.trim().length > 0
                   ? previewTemplate.linkUrl
-                  : '미설정 (앱 기본 화면)'
+                  : channel === 'mail'
+                    ? '미설정 (CTA 버튼 없음)'
+                    : '미설정 (앱 기본 화면)'
+            }
+          ]
+        : []),
+      // 메일: 발송 시 본문 하단에 자동 삽입되는 CTA 버튼 문구(편집 화면 본문에는 미노출).
+      ...(channel === 'mail' &&
+      previewTemplate.linkUrl &&
+      previewTemplate.linkUrl.trim().length > 0
+        ? [
+            {
+              key: 'ctaLabel',
+              label: 'CTA 버튼 문구',
+              children:
+                previewTemplate.ctaLabel && previewTemplate.ctaLabel.trim().length > 0
+                  ? previewTemplate.ctaLabel
+                  : '알림 확인하기 (기본값)'
             }
           ]
         : [])

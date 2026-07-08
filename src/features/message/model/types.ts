@@ -97,6 +97,8 @@ export type MessageTemplate = {
   templateClass?: NotificationTemplateClass;
   mandatory?: boolean;
   linkUrl?: string;
+  /** 메일 전용: 본문 하단 자동 삽입 CTA 버튼 문구. 빈 값=워커 기본(알림 확인하기). */
+  ctaLabel?: string;
 };
 
 export type MessageGroup = {
