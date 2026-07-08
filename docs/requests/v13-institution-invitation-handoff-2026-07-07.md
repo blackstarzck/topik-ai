@@ -37,6 +37,7 @@ admin 쪽(DB 계층 포함)은 전부 구현·dev DB 적용·검증 완료 상�
 | `reason` | text | 관리자 초대 사유(감사용 — 사용자 노출 비권장) |
 | `status` | text | `'pending' \| 'accepted' \| 'declined' \| 'canceled'` |
 | `responded_at` | timestamptz | 응답/취소 시각 |
+| `expires_at` | timestamptz | 만료 시각(기본 7일, 초대 시 1~365일 지정 — 2026-07-08 추가). 경과 시 접점에서 lazy 전환으로 `expired` |
 | `created_at` | timestamptz | 초대 시각 |
 
 RLS: **본인(`user_id = auth.uid()`) SELECT 허용** → v13 클라이언트가 자기 초대 행을 직접
@@ -55,13 +56,14 @@ INSERT/UPDATE/DELETE는 정책 없음 + revoke — 반드시 RPC 경유.
   "template_key": "institution_invitation",
   "category": "notice",                       // 기존 CHECK 재사용 — 신규 카테고리 아님
   "title": "기관 소속 초대가 도착했습니다",
-  "body": "{이름}님, {기관명} 기관 소속 초대가 도착했습니다. 수락하면 해당 기관 회원으로 등록됩니다.",
+  "body": "{이름}님, {기관명} 기관 소속 초대가 도착했습니다. 수락하면 해당 기관 회원으로 등록됩니다. 이 초대는 {만료일}까지 응답할 수 있습니다.",
   "link_url": null,                           // 의도적으로 null — 라우팅 대신 모달
   "payload": {
     "kind": "institution_invitation",
     "invitation_id": "<uuid>",                // respond RPC에 그대로 전달
     "code": "CAMPAIGN-01",
-    "code_label": "캠패인 유입 유저"
+    "code_label": "캠패인 유입 유저",
+    "expires_at": "2026-07-15T02:31:00.000+00:00"  // 모달 D-day 표시용(2026-07-08 추가)
   },
   "delivery_attempt_id": "<uuid>"
 }
@@ -84,6 +86,7 @@ public.respond_institution_invitation(p_invitation_id uuid, p_accept boolean) re
 | 수락 성공 | `{"status":"accepted","code":"...","code_label":"...","prev_code":"<기존 소속코드 또는 null>"}` |
 | 거부 성공 | `{"status":"declined","code":"...","code_label":"..."}` |
 | 수락했지만 코드가 삭제/종료됨 | `{"status":"canceled","error":"code_inactive","code":"...","code_label":"<라벨 또는 null>"}` |
+| 만료 경과 후 응답(수락/거부 모두) | `{"status":"expired","error":"invitation_expired","code":"...","code_label":"..."}` — 초대도 expired로 영속화 |
 
 예외(에러 message 문자열 — v13 모달 상태 매핑에 사용):
 
@@ -167,6 +170,8 @@ v13이 더 나은 랜딩(예: 알림함 자동 오픈 쿼리)을 원하면 topik
 | 이미 응답한 초대 알림 재클릭 | RPC 예외 `invitation already responded: *` | 처리 상태 안내 모달 |
 | 관리자가 초대 취소 | status=canceled, 알림 행은 그대로 남음 | 응답 시 "회수된 초대" 안내 |
 | 코드 삭제/종료 후 수락 | `{status:'canceled', error:'code_inactive'}` (초대도 canceled로 영속화) | "만료된 초대" 안내 |
+| 만료 경과 후 응답 | `{status:'expired', error:'invitation_expired'}` (초대도 expired 영속화) | "만료된 초대" 안내. 모달 오픈 시 payload.expires_at으로 D-day/만료 여부 선표시 권장 |
+| 만료된 초대 재초대 | 허용 — invite RPC가 만료 pending을 expired로 자동 전환 후 새 초대 발송 | 새 알림으로 정상 표시 |
 | 거절 후 재초대 | 허용(새 pending 행, 새 알림) | 새 알림으로 정상 표시 |
 | 서로 다른 코드 복수 pending | 허용, 각각 독립 응답. 수락은 **최종 승리**(단일 컬럼 덮어쓰기) | 모달 덮어쓰기 경고로 커버 |
 | 기존 타기관 소속자 수락 | 덮어쓰기(관리자 '소속 변경' 유스케이스), `prev_code` 반환·감사 | **모달 사전 경고 필수** |

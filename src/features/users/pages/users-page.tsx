@@ -5,6 +5,7 @@ import {
   Button,
   Form,
   Input,
+  InputNumber,
   Modal,
   notification,
   Select,
@@ -245,7 +246,11 @@ export default function UsersPage(): JSX.Element {
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
   const [bulkMode, setBulkMode] = useState<'assign' | 'clear' | null>(null);
   const [bulkSubmitting, setBulkSubmitting] = useState(false);
-  const [bulkForm] = Form.useForm<{ code: string; reason: string }>();
+  const [bulkForm] = Form.useForm<{
+    code: string;
+    reason: string;
+    expiresInDays: number;
+  }>();
 
   // 기관 코드 회원 배정/해제 권한(메뉴 게이팅과 동일 키). 미보유 시 일괄 액션 숨김.
   const currentAdminId = usePermissionStore((state) => state.currentAdminId);
@@ -408,7 +413,7 @@ export default function UsersPage(): JSX.Element {
 
     // submitting을 검증 await 전에 세워 더블 서밋 창을 닫는다.
     setBulkSubmitting(true);
-    let values: { code: string; reason: string };
+    let values: { code: string; reason: string; expiresInDays: number };
     try {
       values = await bulkForm.validateFields();
     } catch {
@@ -417,7 +422,12 @@ export default function UsersPage(): JSX.Element {
     }
     const result =
       bulkMode === 'assign'
-        ? await inviteInstitutionMembersSafe(ids, values.code, values.reason)
+        ? await inviteInstitutionMembersSafe(
+            ids,
+            values.code,
+            values.reason,
+            values.expiresInDays ?? 7
+          )
         : await clearInstitutionCodeSafe(ids, values.reason);
     setBulkSubmitting(false);
 
@@ -944,18 +954,29 @@ export default function UsersPage(): JSX.Element {
           </Text>
           <Form form={bulkForm} layout="vertical">
             {bulkMode === 'assign' ? (
-              <Form.Item
-                label="기관 코드"
-                name="code"
-                rules={[{ required: true, message: '초대할 기관 코드를 선택하세요.' }]}
-              >
-                <Select
-                  placeholder="활성 코드를 선택하세요."
-                  options={activeCodeOptions}
-                  showSearch
-                  optionFilterProp="label"
-                />
-              </Form.Item>
+              <>
+                <Form.Item
+                  label="기관 코드"
+                  name="code"
+                  rules={[{ required: true, message: '초대할 기관 코드를 선택하세요.' }]}
+                >
+                  <Select
+                    placeholder="활성 코드를 선택하세요."
+                    options={activeCodeOptions}
+                    showSearch
+                    optionFilterProp="label"
+                  />
+                </Form.Item>
+                <Form.Item
+                  label="만료 기간"
+                  name="expiresInDays"
+                  initialValue={7}
+                  rules={[{ required: true, message: '만료 기간을 입력하세요.' }]}
+                  extra="이 기간 안에 응답하지 않으면 초대가 만료됩니다."
+                >
+                  <InputNumber min={1} max={365} addonAfter="일" style={{ width: 140 }} />
+                </Form.Item>
+              </>
             ) : null}
             <Form.Item
               label="사유/근거"

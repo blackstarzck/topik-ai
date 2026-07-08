@@ -44,7 +44,7 @@ last_reviewed_at: "2026-06-26"
 | 기관 코드 조회 | 코드, 이름, 유형, 상태, 회원 수를 확인합니다. | 조회 | InstitutionCode | 현재 상태 확인 | 불필요 |
 | 기관 코드 생성/수정 | 코드 메타데이터와 상태를 관리합니다. | 생성/수정 | InstitutionCode + code | 코드 목록 반영 | 필요 |
 | 기관 코드 삭제 | 가입 회원이 없는 기관 코드를 제거합니다. | 삭제/파괴적 | InstitutionCode + code | 코드 목록 제거, 기관 노출 문항 매핑 정리 | 필요 |
-| 회원 초대/해제 | 선택 회원에게 기관 초대(인앱+이메일 알림)를 보내거나 소속을 해제합니다. 초대 수락 시에만 affiliation이 적용됩니다. 이메일은 초대 직후 워커 즉시 kick(관리자 JWT)으로 수 초 내 발송되며, kick 실패 시 15분 cron이 수거합니다. | 수정/파괴적 | Users + userId | 초대 생성(pending)·알림 발송 / 해제 시 affiliation 제거 | 필요 |
+| 회원 초대/해제 | 선택 회원에게 기관 초대(인앱+이메일 알림)를 보내거나 소속을 해제합니다. 초대 수락 시에만 affiliation이 적용되며, 만료 기간(기본 7일, 1~365일 지정)이 지나면 초대가 무효(expired)됩니다(lazy 전환 — cron 없음). 이메일은 초대 직후 워커 즉시 kick(관리자 JWT)으로 수 초 내 발송되며, kick 실패 시 15분 cron이 수거합니다. | 수정/파괴적 | Users + userId | 초대 생성(pending)·알림 발송 / 해제 시 affiliation 제거 | 필요 |
 | 초대 취소 | 대기 중(pending) 초대를 회수합니다. 미발송 초대 이메일은 skipped로 종결됩니다. | 수정 | Users + userId | 초대 canceled 전환 | 필요 |
 | 기관 노출 문항 추가/해제 | 기관 코드에 연결된 문항 노출 매핑을 변경합니다. | 수정 | InstitutionCode + questionId[] | 기관 문항 노출 반영 | 필요 |
 
@@ -54,7 +54,7 @@ last_reviewed_at: "2026-06-26"
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | InstitutionCode | institution_codes | Create, Read, Update, Delete | 본문 목록/생성/수정 모달, 삭제 확인 모달 | code, label, kind, status, note, member_count | InstitutionCode + code | 가입/QR 유입 코드 유효성 | 삭제는 가입 회원 존재 시 차단, 기관 노출 문항 매핑은 함께 정리 |
 | UserInstitutionAffiliation | profiles.affiliation_code | Read, Update(해제/사용자 수락) | 회원 관리 모달 | user_id, affiliation_code, status | Users + userId | 기관 회원 구분 | 부여는 사용자 수락 RPC(`respond_institution_invitation`) 경유, 관리자 직접 쓰기는 해제만 |
-| InstitutionInvitation | institution_code_invitations | Create, Read, Update(취소) | 회원 관리 모달 통합 로스터(소속 회원과 한 테이블, '초대 대기' 태그 행) / 회원 상세 기관탭 배너 | invitation_id, code, user_id, status, reason, created_at, email_status/email_error(초대 이메일 발송 상태 — 대기/발송됨/실패 태그) | Users + userId | 초대 수명주기(pending→accepted/declined/canceled) | 알림 계약: `docs/specs/notification-contract.md` §3 `institution_invitation`. 종결(응답/취소) 시 미발송 이메일 attempt는 skipped 회수 |
+| InstitutionInvitation | institution_code_invitations | Create, Read, Update(취소) | 회원 관리 모달 통합 로스터(소속 회원과 한 테이블, '초대 대기' 태그 행) / 회원 상세 기관탭 배너 | invitation_id, code, user_id, status, reason, created_at, expires_at(만료 — 태그 툴팁/배너 표시), email_status/email_error(초대 이메일 발송 상태 — 대기/발송됨/실패 태그) | Users + userId | 초대 수명주기(pending→accepted/declined/canceled/expired) | 알림 계약: `docs/specs/notification-contract.md` §3 `institution_invitation`. 종결(응답/취소) 시 미발송 이메일 attempt는 skipped 회수. 만료는 lazy 전환(respond/invite/list 접점) |
 | InstitutionQuestionExposure | topik_writing_question_institution_exposure | Create, Read, Delete | 노출 문항 모달 | institution_code, question_id, is_exposed, service_status(조회 표시) | InstitutionCode + code / AssessmentQuestion + questionId | 기관 전용 문항 노출 | `service_status='available'`이 전역 선행 조건이며, `excluded`/`internal_test` 신규 추가는 blocked |
 
 ## 6. 관리자 조치와 감사 로그 계약

@@ -4,10 +4,12 @@ import {
   Descriptions,
   Form,
   Input,
+  InputNumber,
   Modal,
   Select,
   Space,
   Tag,
+  Tooltip,
   Typography,
   notification
 } from 'antd';
@@ -149,7 +151,11 @@ export default function InstitutionCodesPage(): JSX.Element {
   });
   const [memberReload, setMemberReload] = useState(0);
   const [allUsers, setAllUsers] = useState<UserSummary[]>([]);
-  const [addForm] = Form.useForm<{ userIds: string[]; reason: string }>();
+  const [addForm] = Form.useForm<{
+    userIds: string[];
+    reason: string;
+    expiresInDays: number;
+  }>();
   const [addSubmitting, setAddSubmitting] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<InstitutionCodeMember | null>(null);
   // 대기 중(pending) 초대 목록 + 초대 취소 대상. memberReload 카운터를 함께 재사용한다.
@@ -435,7 +441,7 @@ export default function InstitutionCodesPage(): JSX.Element {
     }
     // submitting을 검증 await 전에 세워 더블 서밋 창을 닫는다.
     setAddSubmitting(true);
-    let values: { userIds: string[]; reason: string };
+    let values: { userIds: string[]; reason: string; expiresInDays: number };
     try {
       values = await addForm.validateFields();
     } catch {
@@ -450,7 +456,8 @@ export default function InstitutionCodesPage(): JSX.Element {
     const result = await inviteInstitutionMembersSafe(
       values.userIds,
       memberTarget.code,
-      values.reason
+      values.reason,
+      values.expiresInDays ?? 7
     );
     setAddSubmitting(false);
 
@@ -834,9 +841,17 @@ export default function InstitutionCodesPage(): JSX.Element {
         render: (_, record) =>
           record.kind === 'invitation' && record.invitation ? (
             <Space direction="vertical" size={2}>
-              <Tag color="gold" style={{ marginInlineEnd: 0 }}>
-                초대 대기
-              </Tag>
+              <Tooltip
+                title={
+                  record.invitation.expiresAt
+                    ? `만료일: ${record.invitation.expiresAt}`
+                    : undefined
+                }
+              >
+                <Tag color="gold" style={{ marginInlineEnd: 0 }}>
+                  초대 대기
+                </Tag>
+              </Tooltip>
               <InvitationEmailStatusTag invitation={record.invitation} />
             </Space>
           ) : (
@@ -1095,6 +1110,15 @@ export default function InstitutionCodesPage(): JSX.Element {
                     optionFilterProp="label"
                     maxTagCount="responsive"
                   />
+                </Form.Item>
+                <Form.Item
+                  label="만료 기간"
+                  name="expiresInDays"
+                  initialValue={7}
+                  rules={[{ required: true, message: '만료 기간을 입력하세요.' }]}
+                  extra="이 기간 안에 응답하지 않으면 초대가 만료됩니다."
+                >
+                  <InputNumber min={1} max={365} addonAfter="일" style={{ width: 140 }} />
                 </Form.Item>
                 <Form.Item
                   label="사유/근거"

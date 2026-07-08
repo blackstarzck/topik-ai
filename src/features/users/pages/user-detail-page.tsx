@@ -5,6 +5,7 @@ import {
   Descriptions,
   Empty,
   Input,
+  InputNumber,
   Modal,
   notification,
   Select,
@@ -232,6 +233,7 @@ function AffiliationTabPanel({
   const [codes, setCodes] = useState<InstitutionCode[]>([]);
   const [selectedCode, setSelectedCode] = useState<string>('');
   const [reason, setReason] = useState('');
+  const [expiresInDays, setExpiresInDays] = useState<number>(7);
   const [submitting, setSubmitting] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
   const [pendingInvitations, setPendingInvitations] = useState<InstitutionInvitation[]>([]);
@@ -288,7 +290,12 @@ function AffiliationTabPanel({
       return;
     }
     setSubmitting(true);
-    const result = await inviteInstitutionMembersSafe([userId], selectedCode, reason.trim());
+    const result = await inviteInstitutionMembersSafe(
+      [userId],
+      selectedCode,
+      reason.trim(),
+      expiresInDays
+    );
     setSubmitting(false);
     if (!result.ok) {
       notificationApi.error({ message: '기관 초대 실패', description: result.error.message });
@@ -312,7 +319,7 @@ function AffiliationTabPanel({
     setReason('');
     setInvitationReload((prev) => prev + 1);
     onChanged();
-  }, [notificationApi, onChanged, reason, selectedCode, userId]);
+  }, [expiresInDays, notificationApi, onChanged, reason, selectedCode, userId]);
 
   const handleCancelInvitation = useCallback(
     async (cancelReason: string) => {
@@ -402,6 +409,7 @@ function AffiliationTabPanel({
                   <Text>
                     {invitation.codeLabel || invitation.code} ({invitation.code}) ·{' '}
                     {invitation.createdAt}
+                    {invitation.expiresAt ? ` · 만료 ${invitation.expiresAt}` : ''}
                   </Text>
                   <InvitationEmailStatusTag invitation={invitation} />
                   <Button
@@ -436,6 +444,18 @@ function AffiliationTabPanel({
               optionFilterProp="label"
               style={{ width: '100%', maxWidth: 420 }}
             />
+            <Space size={8} align="center">
+              <Text type="secondary">만료 기간</Text>
+              <InputNumber
+                min={1}
+                max={365}
+                value={expiresInDays}
+                onChange={(value) => setExpiresInDays(value ?? 7)}
+                addonAfter="일"
+                style={{ width: 140 }}
+              />
+              <Text type="secondary">이 기간 안에 응답하지 않으면 초대가 만료됩니다.</Text>
+            </Space>
             <Input.TextArea
               value={reason}
               onChange={(event) => setReason(event.target.value)}
