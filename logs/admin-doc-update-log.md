@@ -442,3 +442,9 @@
 - Updated `docs/architecture/users-registration-lifecycle-v13-handoff.md`, `docs/specs/page-ia/users-list-page-ia.md`, `docs/specs/page-ia/users-detail-page-ia.md`, `docs/specs/admin-page-tables.md`, `docs/specs/admin-data-contract.md`, `docs/page-sync/users-list-page-sync.md`, `docs/page-sync/users-detail-page-sync.md`, `docs/specs/admin-page-ia-change-log.md`, and `logs/admin-doc-update-log.md`.
 - Reason: 이메일 인증 전 계정에서 `정상 + 동의 완료 + 미인증` 조합이 가입 완료처럼 읽히지 않도록 Admin 노출 `회원 상태`를 이메일 인증과 필수 약관 동의 기반 파생값으로 바꿨다.
 - Validation: `tests/e2e/users-verification-status.spec.ts`가 목록/상세/학습 현황 온보딩 표시 기준을 검증한다.
+
+## 2026-07-08 PDF 내보내기 제한 정책 탭 설정형 재설계
+
+- Updated `docs/specs/page-ia/operation-pdf-quota-page-ia.md`, `docs/specs/admin-page-tables.md`, `docs/specs/admin-data-contract.md`, `docs/specs/admin-action-log.md`, `docs/specs/admin-data-usage-map.md`, `docs/page-sync/operation-pdf-quota-page-sync.md`, `docs/architecture/shared-supabase-schema-ownership.md`, `docs/architecture/admin-data-source-transition.md`, `docs/guidelines/admin-ux-ui-design.md`, `docs/specs/admin-page-gap-register.md`, `docs/specs/admin-page-ia-change-log.md`.
+- Reason: 활성/비활성 토글 기반 다중 정책 UX가 정책 교체 중 무정책 공백(전 사용자 PDF 내보내기 500)을 만들 수 있어, 단일 설정 폼 + 감사 로그 기반 변경 이력으로 재설계했다(오너 결정 2026-07-08: 한도 0 허용, 감사 로그 이력, 잔여 행 정리).
+- Validation: `tests/e2e/operation-pdf-quota.spec.ts` 3케이스(설정 저장+이력, 한도 0 중단 2차 확인, 초기화), `npm run harness:check`, `npm run check:migration-boundary`, `npm run build`.

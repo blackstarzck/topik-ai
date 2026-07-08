@@ -96,6 +96,7 @@
 | [FAQ](./operation-faq-page-sync.md) | `/operation/faq` | 구현됨 |
 | [이벤트](./operation-events-page-sync.md) | `/operation/events` | 구현됨 |
 | [정책 관리](./operation-policies-page-sync.md) | `/operation/policies` | 구현됨 |
+| [PDF 내보내기 제한](./operation-pdf-quota-page-sync.md) | `/operation/pdf-quota` | 구현됨 |
 | [챗봇 설정](./operation-chatbot-page-sync.md) | `/operation/chatbot` | placeholder |
 
 ### Commerce

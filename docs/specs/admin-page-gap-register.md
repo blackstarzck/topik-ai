@@ -712,3 +712,6 @@
 - `Resolved`: 작문 답안 본문과 문장별 첨삭 본문은 admin 미노출로 결정했다.
 - `미확정`: 활동(`study_events`) 탭과 결제(`payment_history`) 탭의 실데이터화는 이번 범위에서 제외했다.
 - `미확정`: 작문 첨삭 전문 열람이 필요해질 경우 별도 권한, 감사 로그, PII 열람 정책 결정이 선행되어야 한다.
+- `Resolved`(2026-07-08): PDF 내보내기 제한 정책의 "전량 비활성 → v13 내보내기 전면 500" 운영 리스크를 설정형 재설계로 해소했다. 정책은 항상 1행이며 admin 화면에서 무정책 상태를 만들 수 없다(`supabase/migrations-admin/20260708150000_pdf_quota_policy_settings.sql`).
+- `미확정`: admin 화면 밖 경로(platform_admin 직접 테이블 쓰기)로 활성 정책이 0이 되면 v13은 여전히 fail-closed 500이다. v13 claim의 no-active-policy 폴백 하드닝은 v13 소유 후속 제안으로 남긴다.
+- `미확정`: 한도 0(의도적 중단) 시 v13 사용자 카피가 "횟수 소진 + resetAt"이라 중단 의도와 안 맞는다. v13 소유 문구 개선 후보.

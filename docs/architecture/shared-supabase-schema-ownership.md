@@ -219,3 +219,27 @@
   변경하지 않고 공존한다. 초대 수락은 별도 RPC(`respond_institution_invitation`)이며 기존 타기관
   소속을 **덮어쓴다**(관리자 '소속 변경' 유스케이스, prev_code 감사·반환).
 - v13 사용자 화면 계약: `docs/requests/v13-institution-invitation-handoff-2026-07-07.md`.
+
+## 2026-07-07 PDF 내보내기 쿼터 소유권 기록
+
+| 객체 | owner (migration home) | writer | reader | RLS 요약 |
+| --- | --- | --- | --- | --- |
+| `pdf_export_quota_policies` | **v13** (`supabase/migrations/20260707120000_pdf_export_quota.sql`, v13 CLI tracker) | topik-ai admin RPC(정책 저장 — Phase 3) | 사용자(활성 정책만), admin | RLS enable+force. select는 `is_active or is_platform_admin`, 쓰기 정책은 `is_platform_admin` ALL만 |
+| `pdf_export_quota_usages` | **v13** (동일 migration) | v13 RPC 단일 경로(claim/commit/release) — admin 직접 쓰기 없음 | 본인(reserved 제외), platform_admin | RLS enable+force. owner select(`status <> 'reserved'`) + platform_admin select. INSERT/UPDATE/DELETE 정책 없음 |
+| `pdf_export_quota_resets` | **v13** (동일 migration) | topik-ai admin RPC(리셋 생성 — Phase 3). 수정/삭제 금지, 보상 리셋만 | 본인 대상/global, platform_admin | RLS enable+force. 쓰기 정책은 `is_platform_admin` ALL만 |
+| `pdf_export_quota_reset_targets` | **v13** (동일 migration) | topik-ai admin RPC(그룹/개인 대상 실체화 — Phase 3) | 본인, platform_admin | RLS enable+force. 쓰기 정책은 `is_platform_admin` ALL만 |
+| `claim_pdf_export_quota(uuid, uuid[])` RPC | **v13** | v13 사용자 라우트(`/api/export/pdf`, `/api/export/pdf/print`) | — | SECURITY DEFINER, `authenticated` grant, `p_user_id = auth.uid()` 강제 |
+| `commit_pdf_export_quota` / `release_pdf_export_quota` RPC | **v13** | v13 서버(service role) 전용 | — | `authenticated`/`anon` revoke, `service_role` grant만. topik-ai에서 호출 금지 |
+
+- 근거: v13 `supabase/migrations/20260707120000_pdf_export_quota.sql` + 같은 이름의 down migration, v13 handoff 사본 `docs/requests/v13-pdf-export-quota-handoff-2026-07-07.md`.
+- 적용: 2026-07-07 dev DB(talkpik-dev) 적용 완료. 적용 수단은 topik-ai `scripts/db/run-sql.mjs`(Management API)이며, v13 CLI tracker 정합을 위해 `supabase_migrations.schema_migrations`에 `20260707120000` repair 행을 함께 삽입했다(v13에는 원격 적용 수단이 없어 topik-ai 러너를 사용 — 오너 승인 2026-07-07).
+- 소유권 경계: 쿼터 4테이블 + RPC 3종의 DDL은 **v13 소유**다. topik-ai는 DDL을 변경하지 않고, 관리(정책 저장, 리셋 생성)와 조회는 Phase 3의 topik-ai 소유 admin RPC(`admin_schema_migrations`)로만 수행한다. usages 원장에는 admin 쓰기 경로를 만들지 않는다.
+- 의미론 주의: 활성 정책 해석은 `priority asc, created_at desc limit 1`(낮은 priority 우선). 리셋은 생성된 주기 안에서만 유효(period-local)하며 다음 주기 선예약 불가. `period_unit` 변경 시 기존 usages의 주기 경계 불일치로 사실상 전체 카운트 리셋 효과가 난다.
+
+2026-07-08 정책 관리 "단일 설정 + 변경 이력" 전환 기록:
+- 근거: `supabase/migrations-admin/20260708150000_pdf_quota_policy_settings.sql` + down. 오너 결정 2026-07-08.
+- 배경: 구 `admin_save_pdf_quota_policy(uuid,...,boolean,...)`는 활성/비활성 토글 기반이라 정책 교체 중 무정책 공백(전 사용자 내보내기 500)이 생길 수 있었다. 구 시그니처는 명시적으로 drop.
+- 신 계약: `admin_save_pdf_quota_policy(p_limit_count,p_period_unit,p_period_timezone,p_reason,p_expected_updated_at)`는 항상 현재 정책 1행을 갱신/복구(자기치유 — advisory lock 직렬화, 활성 행 없으면 최신 행 복구, 0행이면 생성, 중복 활성은 일괄 비활성 후 `deactivated_ids` 감사 기록)한다. `limit_count = 0`은 의도적 내보내기 중단(v13은 429). 비활성화 단독 경로 없음.
+- 이력 read: `get_admin_pdf_quota_policy_history`가 `admin_audit_logs(pdf_quota_policy_saved)`에서 비민감 화이트리스트 필드만 `operation.pdf-quota.manage` 권한자에게 반환(2026-06-18 diff/payload 게이팅의 action 한정 범위 예외).
+- DML 정리: usages가 참조하지 않는 비활성 정책 행을 마이그레이션에서 삭제(FK NO ACTION 회피, down으로 복원 불가).
+- v13 무변경: DDL·claim·commit/release 계약 그대로. platform_admin 직접 테이블 쓰기로 활성 행이 0이 되는 admin 화면 밖 경로는 여전히 fail-closed(500) — v13 claim 폴백 하드닝은 후속 제안.

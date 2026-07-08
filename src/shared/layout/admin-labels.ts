@@ -21,6 +21,7 @@ export const adminMenuLabels = {
   operationFaq: 'FAQ',
   operationEvents: '이벤트',
   operationPolicies: '정책 관리',
+  operationPdfQuota: 'PDF 내보내기 제한',
   operationChatbot: '챗봇 설정',
   commerce: '커머스',
   commercePayments: '결제 내역',

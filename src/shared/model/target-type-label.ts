@@ -31,6 +31,8 @@
   Admin: "관리자",
   AdminAccount: "관리자 계정",
   SystemMetadataGroup: "메타 그룹",
+  PdfQuotaPolicy: "PDF 내보내기 정책",
+  PdfQuotaReset: "PDF 내보내기 초기화",
 };
 
 export function getTargetTypeLabel(targetType: string): string {

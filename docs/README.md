@@ -18,6 +18,8 @@
 - `api-inventory-backend-handoff.md` — v13 ↔ topik-ai 백엔드 API 인벤토리·핸드오프 참고 문서
 
 ### `docs/requests` (외부 발신 요청·발주 문서)
+- `v13-pdf-export-quota-handoff-2026-07-07.md` — v13 PDF 내보내기 쿼터 handoff 사본(원본은 v13 저장소 docs 폴더의 `handoff-pdf-export-quota-topik-ai.md`). DB 계약, admin 필수 기능, 보안 경계, 인수 테스트 기준
+- `v13-institution-invitation-handoff-2026-07-07.md` — v13 사용자 화면의 기관 초대 수락/거부 모달 계약 handoff(동의 기반 소속 배정 전환)
 - `v13-users-registration-lifecycle-handoff-2026-06-26.md` — v13 사용자 앱의 이메일 인증·필수 약관 동의·정상 진입 불변식 정합화 handoff(DB/RLS guard, auth completion route, dry-run/backfill, QA 기준)
 - `v13-institution-question-exposure-handoff-2026-06-26.md` — v13 사용자 화면에 기관별 TOPIK 쓰기 문항 노출 계약을 적용하기 위한 handoff(관리 SoT, v13 영향 파일, 공통 predicate, 검증 기준)
 - `upstream-writing-endpoints-request-2026-06-10.md` — TOPIK 쓰기 문항 공급(인바운드) API 계약 요청서(D-11 재정의 — 2026-06-11 재작성, 구 push 업로드 요청 폐기)
@@ -58,6 +60,7 @@
 - `operation-events-page-sync.md`
 - `operation-faq-page-sync.md`
 - `operation-notices-page-sync.md`
+- `operation-pdf-quota-page-sync.md` — PDF 내보내기 쿼터 정책/초기화 관리와 v13 내보내기 429 흐름의 동기화 기준
 - `operation-policies-page-sync.md`
 - `system-admins-page-sync.md`
 - `system-audit-logs-page-sync.md`
@@ -144,6 +147,7 @@
 - `page-ia/operation-events-page-ia.md`
 - `page-ia/operation-faq-page-ia.md`
 - `page-ia/operation-notices-page-ia.md`
+- `page-ia/operation-pdf-quota-page-ia.md` — PDF 내보내기 제한(쿼터 정책 + 개인/기관 코드/전체 초기화, v13 소유 테이블 admin RPC 관리)
 - `page-ia/operation-policies-page-ia.md`
 - `page-ia/system-admins-page-ia.md`
 - `page-ia/system-audit-logs-page-ia.md`
