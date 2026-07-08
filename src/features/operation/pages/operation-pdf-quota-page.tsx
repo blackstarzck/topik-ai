@@ -530,9 +530,7 @@ export default function OperationPdfQuotaPage(): JSX.Element {
             <Text>대상 ID: {result.data.resetId}</Text>
             <Text>
               범위: {pdfQuotaResetScopeLabels[values.scope]} · 대상{' '}
-              {values.scope === 'global'
-                ? '전체 회원'
-                : `${result.data.targetCount.toLocaleString()}명`}
+              {`${result.data.targetCount.toLocaleString()}명`}
             </Text>
             <Text>사유/근거: {values.reason}</Text>
             <AuditLogLink targetType="PdfQuotaReset" targetId={result.data.resetId} />
@@ -658,8 +656,7 @@ export default function OperationPdfQuotaPage(): JSX.Element {
         title: '대상 수',
         dataIndex: 'targetCount',
         width: 100,
-        render: (targetCount: number, record) =>
-          record.scope === 'global' ? '전체' : `${targetCount.toLocaleString()}명`
+        render: (targetCount: number) => `${targetCount.toLocaleString()}명`
       },
       {
         title: '문항',
@@ -966,9 +963,7 @@ export default function OperationPdfQuotaPage(): JSX.Element {
                 ) : null}
 
                 <AdminDataTable<PdfQuotaPolicyHistoryEntry>
-                  rowKey={(record) =>
-                    `${record.createdAt}:${record.reason}:${record.limitTo ?? ''}`
-                  }
+                  rowKey="id"
                   scroll={{ x: 980 }}
                   loading={historyState.status === 'pending' && historyState.data.length === 0}
                   columns={historyColumns}
@@ -1142,7 +1137,7 @@ export default function OperationPdfQuotaPage(): JSX.Element {
                 showIcon
                 style={{ marginBottom: 12 }}
                 message="모든 회원이 대상입니다."
-                description="전체 초기화는 대상 목록 없이 모든 회원에게 적용됩니다. 실행 시 한 번 더 확인합니다."
+                description="전체 초기화는 실행 시점의 회원 스냅샷을 대상 목록으로 확정합니다. 이후 가입자는 포함되지 않으며, 실행 시 한 번 더 확인합니다."
               />
             ) : null}
             <Form.Item

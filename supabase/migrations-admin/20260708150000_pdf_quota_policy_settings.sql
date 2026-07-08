@@ -136,12 +136,15 @@ begin
 end;
 $function$;
 
+drop function if exists public.get_admin_pdf_quota_policy_history(integer, integer);
+
 create or replace function public.get_admin_pdf_quota_policy_history(
   p_page integer default 1,
   p_page_size integer default 20
 )
 returns table (
-  created_at timestamptz,
+  id text,
+  created_at text,
   actor_name text,
   actor_email text,
   reason text,
@@ -173,7 +176,8 @@ begin
 
   -- 구형 감사 행(변경 키만 기록, 생성 이벤트 from=null)도 null-safe로 반환한다.
   return query
-    select a.created_at,
+    select a.id::text as id,
+           to_char(a.created_at at time zone 'Asia/Seoul', 'YYYY-MM-DD HH24:MI') as created_at,
            aa.display_name as actor_name,
            aa.email as actor_email,
            a.payload->>'reason' as reason,
@@ -212,6 +216,6 @@ grant execute on function public.get_admin_pdf_quota_policy_history(integer, int
 comment on function public.admin_save_pdf_quota_policy(integer, text, text, text, timestamptz) is
   'Operation > PDF 내보내기 제한: 단일 정책 설정 저장. 항상 현재 정책 1행을 갱신/복구하며(자기치유), 한도 0은 의도적 내보내기 중단이다. p_expected_updated_at으로 동시 편집을 감지한다.';
 comment on function public.get_admin_pdf_quota_policy_history(integer, integer) is
-  'Operation > PDF 내보내기 제한: 정책 변경 이력. admin_audit_logs(pdf_quota_policy_saved)에서 비민감 화이트리스트 필드만 pdf-quota 권한자에게 반환한다(2026-06-18 게이팅의 범위 예외).';
+  'Operation > PDF 내보내기 제한: 정책 변경 이력. admin_audit_logs(pdf_quota_policy_saved)에서 감사 id, KST 시각, 비민감 화이트리스트 필드만 pdf-quota 권한자에게 반환한다(2026-06-18 게이팅의 범위 예외).';
 
 notify pgrst, 'reload schema';

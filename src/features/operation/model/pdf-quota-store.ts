@@ -40,7 +40,22 @@ type PdfQuotaStore = {
 };
 
 function nowLabel(): string {
-  return new Date().toISOString().slice(0, 16).replace('T', ' ');
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  })
+    .formatToParts(new Date())
+    .reduce<Record<string, string>>((acc, part) => {
+      acc[part.type] = part.value;
+      return acc;
+    }, {});
+
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`;
 }
 
 export const usePdfQuotaStore = create<PdfQuotaStore>((set, get) => ({
@@ -77,6 +92,7 @@ export const usePdfQuotaStore = create<PdfQuotaStore>((set, get) => ({
     };
 
     const historyEntry: PdfQuotaPolicyHistoryEntry = {
+      id: `PDFQ-AUDIT-${String(policyHistory.length + 1).padStart(3, '0')}`,
       createdAt: nowLabel(),
       actorName: '운영 관리자',
       actorEmail: 'ops-admin@talkpik.dev',
@@ -108,7 +124,7 @@ export const usePdfQuotaStore = create<PdfQuotaStore>((set, get) => ({
       actorEmail: 'ops-admin@talkpik.dev',
       actorName: '운영 관리자',
       targetCount:
-        payload.scope === 'user' ? 1 : payload.scope === 'group' ? 12 : 0,
+        payload.scope === 'user' ? 1 : payload.scope === 'group' ? 12 : 36,
       createdAt: nowLabel()
     };
     set({ resets: [created, ...resets] });

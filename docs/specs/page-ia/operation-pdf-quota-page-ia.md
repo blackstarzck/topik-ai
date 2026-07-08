@@ -38,7 +38,7 @@
 - 시나리오 1: 운영자가 정책 탭에서 활성 정책(예: 3회/월)을 5회/주로 수정한다. 주기 변경 시 "기존 사용량이 카운트에서 제외되어 사실상 전원 초기화" 경고를 확인하고 사유를 입력한다.
 - 시나리오 2: 운영자가 초기화 탭에서 특정 회원 + 특정 문항의 이번 주기 사용량을 초기화한다(민원 대응).
 - 시나리오 3: 운영자가 기관 코드를 선택해 소속 회원 전체를 초기화한다. 대상 수는 실행 시점 스냅샷으로 확정된다.
-- 시나리오 4: 운영자가 전체 초기화를 실행한다. 2차 확인 모달을 거쳐야 하며 대상 행 없이 모든 회원에게 적용된다.
+- 시나리오 4: 운영자가 전체 초기화를 실행한다. 2차 확인 모달을 거쳐야 하며 모든 대상 회원이 실행 시점 스냅샷으로 확정된다.
 - 시나리오 5: 운영자가 초기화 이력에서 처리자·사유·대상 수를 검수하고 감사 로그 링크로 이동한다.
 
 ## 5. 화면 구조
@@ -52,12 +52,12 @@
 
 - 상주 폼: 한도 InputNumber(**min 0** — 0회는 의도적 '내보내기 중단'), 주기 Select(일/주/월), 기준 시간대 Select(주요 timezone 목록, 기본 Asia/Seoul), 사유 TextArea(필수).
 - 우측 상단: `정책 저장`(primary, size="large"). 폼은 정책 로드 완료 후에만 렌더하고 정책이 바뀌면 key 리마운트한다(antd initialValues 함정 회피, 저장 성공 시 사유 자동 초기화).
-- 툴바 요약: `현재 정책: n회/주기 · 시간대 · 마지막 변경 시각`(+ 한도 0이면 `내보내기 중단됨` Tag).
+- 툴바 요약: `현재 정책: n회/주기 · 시간대 · 마지막 변경 시각`(+ 한도 0이면 `내보내기 중단됨` Tag). 표시 시각은 RPC가 내려준 KST 문자열을 사용하고, 동시 편집 비교용 `updated_at` 원본 timestamptz와 분리한다.
 - 경고·확인:
   - 상시 '주기 변경 부작용' Alert + 주기 변경 감지 시 오류색 Alert.
   - 한도 0 입력 시 '전 사용자 내보내기 중단' 경고.
   - **주기 변경 또는 한도 0 저장은 2차 확인 모달**(파괴적 조치 확인 규칙).
-- 변경 이력 섹션(폼 하단): 변경 시각, 처리자, 한도 from→to, 주기 from→to, 기준 시간대, 사유. 감사 로그 기반 read RPC로 페이지네이션 조회. 구형 감사 행(변경 키만 기록)은 결과값 fallback(`N회 (결과값)`)으로 표시.
+- 변경 이력 섹션(폼 하단): 변경 시각(KST), 처리자, 한도 from→to, 주기 from→to, 기준 시간대, 사유. 감사 로그 기반 read RPC로 페이지네이션 조회하며 행 key는 `admin_audit_logs.id`를 사용한다. 구형 감사 행(변경 키만 기록)은 결과값 fallback(`N회 (결과값)`)으로 표시.
 - 단일 정책 불변식: RPC가 항상 "현재 정책 1행"을 갱신/복구(자기치유)하며 비활성화 단독 경로가 없다. 전부 비활성 드리프트 상태에서는 "저장하면 자동 복구됩니다" 배너를 노출.
 - 동시 편집: 저장 시 `p_expected_updated_at`으로 낙관적 검사. 불일치면 "다른 관리자가 변경했습니다" 안내 + 최신 값 리로드.
 
@@ -66,19 +66,19 @@
 - 테이블 컬럼: 실행일, 범위(개인/기관 코드/전체 Tag), 대상 수, 문항(특정 UUID 또는 전체 문항), 사유/근거, 처리자(admin 이름+이메일).
 - 툴바: 범위 필터 Select + 총 건수. 우측 상단 `초기화 실행`(primary, size="large").
 - 초기화 실행 모달: 범위 Radio(개인/기관 코드/전체), 개인=회원 Select(users-service 재사용), 기관 코드=기관 코드 Select(institution-codes-service 재사용), 문항 ID(선택, UUID 검증), 사유 TextArea(필수).
-  - 상시 고지: "이번 주기 사용량만 초기화, 다음 주기 영향 없음. 기관 코드 대상은 실행 시점 스냅샷."
-  - 전체 범위 선택 시 경고 Alert + 실행 시 2차 확인 모달(danger).
+  - 상시 고지: "이번 주기 사용량만 초기화, 다음 주기 영향 없음. 기관 코드/전체 대상은 실행 시점 스냅샷."
+  - 전체 범위 선택 시 "실행 시점 회원 스냅샷으로 대상 목록 확정" 경고 Alert + 실행 시 2차 확인 모달(danger).
 - 이력 행은 수정/삭제 불가. 잘못된 조치는 보상 초기화로만 정정한다.
 
 ## 6. 데이터/RPC 계약
 
 | 경로 | RPC | 비고 |
 | --- | --- | --- |
-| 정책 목록 | `get_admin_pdf_quota_policies()` | read RPC. RLS가 platform_admin 전용이라 direct select 대신 사용 |
-| 정책 변경 이력 | `get_admin_pdf_quota_policy_history(p_page, p_page_size)` | admin_audit_logs(`pdf_quota_policy_saved`) 기반, 비민감 화이트리스트 필드만 pdf-quota 권한자에게 반환(2026-06-18 게이팅의 범위 예외) |
-| 초기화 이력 | `get_admin_pdf_quota_resets(p_page, p_page_size, p_scope)` | target_count 집계 + 처리자(admin_audit_logs 기반) + total_count |
+| 정책 목록 | `get_admin_pdf_quota_policies()` | read RPC. RLS가 platform_admin 전용이라 direct select 대신 사용. created_at/updated_at_display는 KST 표시 문자열, updated_at은 동시 편집 검사 원본 timestamptz |
+| 정책 변경 이력 | `get_admin_pdf_quota_policy_history(p_page, p_page_size)` | admin_audit_logs(`pdf_quota_policy_saved`) 기반, 감사 id + KST 시각 + 비민감 화이트리스트 필드만 pdf-quota 권한자에게 반환(2026-06-18 게이팅의 범위 예외) |
+| 초기화 이력 | `get_admin_pdf_quota_resets(p_page, p_page_size, p_scope)` | KST 실행일 + target_count 집계 + 처리자(admin_audit_logs 기반) + total_count |
 | 정책 저장 | `admin_save_pdf_quota_policy(p_limit_count, p_period_unit, p_period_timezone, p_reason, p_expected_updated_at)` | 항상 현재 정책 1행 갱신/복구(자기치유, advisory lock 직렬화), 한도 0 허용, 낙관적 동시 편집 검사, 사유 필수. 구 시그니처(활성/비활성 토글)는 20260708150000에서 drop |
-| 초기화 생성 | `admin_create_pdf_quota_reset(p_scope, p_user_id, p_group_code, p_problem_id, p_reason)` | group은 `profiles.affiliation_code` 스냅샷 실체화(0명 raise), 반환 `{resetId, targetCount}` |
+| 초기화 생성 | `admin_create_pdf_quota_reset(p_scope, p_user_id, p_group_code, p_problem_id, p_reason)` | user/group/global 모두 `pdf_export_quota_reset_targets`에 concrete user_id를 실체화. group/global은 생성 시점 스냅샷이며 0명이면 raise, 반환 `{resetId, targetCount}` |
 
 - 테이블 소유권: `pdf_export_quota_*` 4테이블은 v13 소유(DDL 변경 금지). topik-ai는 위 admin RPC(`admin_schema_migrations`, `supabase/migrations-admin/20260708100000`)로만 읽고 쓴다.
 - `pdf_export_quota_resets.created_by`는 v13 `profiles` FK라 admin 계정(프로필 없음)은 null로 저장되고, 처리자는 `admin_audit_logs`로 추적한다.
@@ -100,4 +100,5 @@
 - 2026-07-07 오너 결정: 그룹 = 기관 코드(`profiles.affiliation_code`), 마이그레이션 적용은 topik-ai 러너, SOT 제안 수락.
 - 2026-07-07 채택 권고: 단일 활성 정책, 사용량 조회 P1 보류, 그룹 리셋 생성 시점 스냅샷, prod 적용 범위 제외.
 - 2026-07-08 오너 결정: 정책 탭을 설정형(상주 폼 + 변경 이력)으로 재설계 — 다중 행/활성 토글 폐기(무정책 공백 제거). 한도 0 허용(의도적 중단, v13은 429로 동작), 이력은 감사 로그 기반 read RPC, usages 미참조 비활성 잔여 행은 마이그레이션에서 삭제.
+- 2026-07-08 PR8 보완: 전체 초기화도 생성 시점에 `pdf_export_quota_reset_targets`로 모든 대상 회원을 실체화한다. 정책/초기화/이력 표시 시각은 KST 문자열로 반환하고, 정책 변경 이력 row key는 감사 로그 id를 사용한다.
 - 2026-07-08 범위 제외(후속 후보): v13 claim의 no-active-policy 폴백 하드닝(현재 fail closed 500), 한도 0일 때 v13 사용자 카피(resetAt 안내가 의도적 중단과 안 맞음).

@@ -91,7 +91,9 @@ test('pdf quota resets tab lists history and creates a global reset with second 
   await confirmModal.getByRole('button', { name: '전체 초기화 실행' }).click();
 
   await expectNotificationAuditHref(page, 'PdfQuotaReset', 'PDFQ-RESET-003');
-  await expect(
-    page.locator('.ant-table-row', { hasText: 'e2e pdf quota global reset' })
-  ).toBeVisible();
+  const createdGlobalRow = page.locator('.ant-table-row', {
+    hasText: 'e2e pdf quota global reset'
+  });
+  await expect(createdGlobalRow).toBeVisible();
+  await expect(createdGlobalRow).toContainText('36명');
 });

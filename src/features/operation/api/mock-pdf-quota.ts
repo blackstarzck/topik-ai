@@ -25,6 +25,7 @@ export const mockPdfQuotaPolicies: PdfQuotaPolicy[] = [
 // 기록돼 from/to가 비어 있는) 감사 행 — fallback 렌더링 경로를 유지 검증한다.
 export const mockPdfQuotaPolicyHistory: PdfQuotaPolicyHistoryEntry[] = [
   {
+    id: 'PDFQ-AUDIT-001',
     createdAt: '2026-07-07 12:00',
     actorName: '운영 관리자',
     actorEmail: 'ops-admin@talkpik.dev',
@@ -39,6 +40,7 @@ export const mockPdfQuotaPolicyHistory: PdfQuotaPolicyHistoryEntry[] = [
     resultPeriodUnit: 'month'
   },
   {
+    id: 'PDFQ-AUDIT-002',
     createdAt: '2026-07-06 18:00',
     actorName: '운영 관리자',
     actorEmail: 'ops-admin@talkpik.dev',

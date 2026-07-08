@@ -462,7 +462,7 @@ src/features/<feature>/
 
 - 화면: `/operation/pdf-quota` 정책 탭 변경 이력 테이블.
 - safe facade: `fetchPdfQuotaPolicyHistorySafe({page, pageSize}, signal)`.
-- Supabase source: `get_admin_pdf_quota_policy_history(p_page, p_page_size)` — `admin_audit_logs(pdf_quota_policy_saved)`의 비민감 화이트리스트 투영(별도 테이블 없음).
+- Supabase source: `get_admin_pdf_quota_policy_history(p_page, p_page_size)` — `admin_audit_logs(pdf_quota_policy_saved)`의 감사 id, KST 시각, 비민감 화이트리스트 투영(별도 테이블 없음).
 - mock fallback: `mockPdfQuotaPolicyHistory` + `usePdfQuotaStore.savePolicy`의 이력 append(구형 부분 기록 행 1건 포함 — fallback 렌더 경로 유지 검증).
 - fallback 조건: Supabase 미구성 또는 `VITE_SUPABASE_DISABLED=true` 또는 `VITE_OPERATION_PDF_QUOTA_SOURCE=mock`.
 - 전환 범위: 정책 저장은 신 시그니처 `admin_save_pdf_quota_policy(4+1인자)`로 교체(구 6인자 시그니처 drop). 초기화 탭 경로는 무변경.

@@ -24,6 +24,7 @@ export type PdfQuotaPolicy = {
 };
 
 export type PdfQuotaPolicyHistoryEntry = {
+  id: string;
   createdAt: string;
   actorName: string;
   actorEmail: string;

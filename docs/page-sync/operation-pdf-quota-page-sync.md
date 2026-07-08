@@ -39,9 +39,9 @@ last_reviewed_at: "2026-07-07"
 
 ## 4. 데이터 계약 요약
 
-- 소유권: `pdf_export_quota_*` 4테이블 + claim/commit/release RPC는 **v13 소유**. topik-ai는 DDL 불변, admin RPC 4종만 추가(`supabase/migrations-admin/20260708100000_pdf_export_quota_admin.sql`).
+- 소유권: `pdf_export_quota_*` 4테이블 + claim/commit/release RPC는 **v13 소유**. topik-ai는 DDL 불변, admin RPC 5종만 추가(`supabase/migrations-admin/20260708100000_pdf_export_quota_admin.sql`, `20260708150000_pdf_quota_policy_settings.sql`).
 - 상세: `docs/architecture/shared-supabase-schema-ownership.md`의 "2026-07-07 PDF 내보내기 쿼터 소유권 기록".
-- 그룹 정의: `profiles.affiliation_code` 기반 기관 코드(2026-07-07 오너 결정). 그룹 초기화 대상은 생성 시점 스냅샷.
+- 그룹 정의: `profiles.affiliation_code` 기반 기관 코드(2026-07-07 오너 결정). 그룹/전체 초기화 대상은 생성 시점에 `pdf_export_quota_reset_targets.user_id`로 실체화하는 스냅샷이다.
 
 ## 5. 미결/후속
 

@@ -164,12 +164,12 @@ export const adminRouteDefinitions = [
     path: '/operation/policies/create',
     page: 'operation-policy-create'
   },
-  { kind: 'page', path: '/operation/pdf-quota', page: 'operation-pdf-quota' },
   {
     kind: 'page',
     path: '/operation/policies/create/:policyId',
     page: 'operation-policy-create'
   },
+  { kind: 'page', path: '/operation/pdf-quota', page: 'operation-pdf-quota' },
   {
     kind: 'placeholder',
     path: '/operation/chatbot',

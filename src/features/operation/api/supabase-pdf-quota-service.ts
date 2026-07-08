@@ -26,6 +26,7 @@ type PdfQuotaPolicyRow = {
   is_active: boolean;
   created_at: string | null;
   updated_at: string | null;
+  updated_at_display: string | null;
 };
 
 type PdfQuotaResetRow = {
@@ -41,6 +42,7 @@ type PdfQuotaResetRow = {
 };
 
 type PdfQuotaPolicyHistoryRow = {
+  id: string | null;
   created_at: string | null;
   actor_name: string | null;
   actor_email: string | null;
@@ -77,8 +79,8 @@ function throwIfAborted(signal?: AbortSignal): void {
   }
 }
 
-function toDateTime(value: string | null | undefined): string {
-  return value ? value.slice(0, 16).replace('T', ' ') : '';
+function toDisplayDateTime(value: string | null | undefined): string {
+  return value ?? '';
 }
 
 function coerceValue<T extends string>(
@@ -103,8 +105,8 @@ function mapPolicyRow(row: PdfQuotaPolicyRow): PdfQuotaPolicy {
     limitCount: row.limit_count,
     priority: row.priority,
     isActive: row.is_active,
-    createdAt: toDateTime(row.created_at),
-    updatedAt: toDateTime(row.updated_at),
+    createdAt: toDisplayDateTime(row.created_at),
+    updatedAt: toDisplayDateTime(row.updated_at_display),
     updatedAtIso: row.updated_at
   };
 }
@@ -121,7 +123,8 @@ function mapPolicyHistoryRow(
   row: PdfQuotaPolicyHistoryRow
 ): PdfQuotaPolicyHistoryEntry {
   return {
-    createdAt: toDateTime(row.created_at),
+    id: row.id ?? `${row.created_at ?? ''}:${row.reason ?? ''}`,
+    createdAt: toDisplayDateTime(row.created_at),
     actorName: row.actor_name ?? '',
     actorEmail: row.actor_email ?? '',
     reason: row.reason ?? '',
@@ -149,7 +152,7 @@ function mapResetRow(row: PdfQuotaResetRow): PdfQuotaReset {
     actorEmail: row.actor_email ?? '',
     actorName: row.actor_name ?? '',
     targetCount: row.target_count ?? 0,
-    createdAt: toDateTime(row.created_at)
+    createdAt: toDisplayDateTime(row.created_at)
   };
 }
 

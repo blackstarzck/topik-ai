@@ -8,8 +8,11 @@
 --     (admin_accounts 물리 분리) profiles에 없는 호출자는 null로 저장하고
 --     실제 처리자는 admin_audit_logs로 추적한다.
 --   * 리셋 의미론: v13 claim RPC는 같은 주기(period-local) 안의 리셋만 인정한다.
---     다음 주기 선예약 불가. group 리셋 대상은 생성 시점 affiliation_code 스냅샷.
+--     다음 주기 선예약 불가. group/global 리셋 대상은 생성 시점 스냅샷으로
+--     pdf_export_quota_reset_targets에 concrete user_id를 실체화한다.
 -- down: supabase/migrations-admin/down/20260708100000_pdf_export_quota_admin.sql
+
+drop function if exists public.get_admin_pdf_quota_policies();
 
 create or replace function public.get_admin_pdf_quota_policies()
 returns table (
@@ -21,8 +24,9 @@ returns table (
   limit_count integer,
   priority integer,
   is_active boolean,
-  created_at timestamptz,
-  updated_at timestamptz
+  created_at text,
+  updated_at timestamptz,
+  updated_at_display text
 )
 language plpgsql
 stable
@@ -41,11 +45,15 @@ begin
   return query
     select p.id, p.subject_scope, p.resource_scope, p.period_unit,
            p.period_timezone, p.limit_count, p.priority, p.is_active,
-           p.created_at, p.updated_at
+           to_char(p.created_at at time zone 'Asia/Seoul', 'YYYY-MM-DD HH24:MI') as created_at,
+           p.updated_at,
+           to_char(p.updated_at at time zone 'Asia/Seoul', 'YYYY-MM-DD HH24:MI') as updated_at_display
       from public.pdf_export_quota_policies p
      order by p.is_active desc, p.priority asc, p.created_at desc;
 end;
 $function$;
+
+drop function if exists public.get_admin_pdf_quota_resets(integer, integer, text);
 
 create or replace function public.get_admin_pdf_quota_resets(
   p_page integer default 1,
@@ -60,7 +68,7 @@ returns table (
   actor_email text,
   actor_name text,
   target_count bigint,
-  created_at timestamptz,
+  created_at text,
   total_count bigint
 )
 language plpgsql
@@ -93,7 +101,7 @@ begin
            (select count(*)
               from public.pdf_export_quota_reset_targets t
              where t.reset_id = r.id) as target_count,
-           r.created_at,
+           to_char(r.created_at at time zone 'Asia/Seoul', 'YYYY-MM-DD HH24:MI') as created_at,
            count(*) over () as total_count
       from public.pdf_export_quota_resets r
       left join lateral (
@@ -311,6 +319,15 @@ begin
     if v_target_count = 0 then
       raise exception 'institution code % has no members to reset', v_group_code;
     end if;
+  elsif v_scope = 'global' then
+    insert into public.pdf_export_quota_reset_targets (reset_id, user_id)
+    select v_reset_id, pr.id
+      from public.profiles pr
+     where coalesce(pr.status, 'active') <> 'deleted';
+    get diagnostics v_target_count = row_count;
+    if v_target_count = 0 then
+      raise exception 'global reset has no members to reset';
+    end if;
   end if;
 
   insert into public.admin_audit_logs (admin_user_id, action, target_table, target_id, diff, payload)
@@ -352,4 +369,4 @@ comment on function public.get_admin_pdf_quota_resets(integer, integer, text) is
 comment on function public.admin_save_pdf_quota_policy(uuid, integer, text, text, boolean, text) is
   'Operation > PDF 내보내기 제한: 정책 저장. 단일 활성 정책(user+problem)을 강제하고 PdfQuotaPolicy 감사 로그를 남긴다.';
 comment on function public.admin_create_pdf_quota_reset(text, uuid, text, uuid, text) is
-  'Operation > PDF 내보내기 제한: 개인/기관 코드/전체 초기화 생성. group은 생성 시점 affiliation_code 스냅샷으로 대상을 실체화하며 PdfQuotaReset 감사 로그를 남긴다.';
+  'Operation > PDF 내보내기 제한: 개인/기관 코드/전체 초기화 생성. group/global은 생성 시점 스냅샷으로 대상을 실체화하며 PdfQuotaReset 감사 로그를 남긴다.';

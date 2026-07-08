@@ -448,3 +448,9 @@
 - Updated `docs/specs/page-ia/operation-pdf-quota-page-ia.md`, `docs/specs/admin-page-tables.md`, `docs/specs/admin-data-contract.md`, `docs/specs/admin-action-log.md`, `docs/specs/admin-data-usage-map.md`, `docs/page-sync/operation-pdf-quota-page-sync.md`, `docs/architecture/shared-supabase-schema-ownership.md`, `docs/architecture/admin-data-source-transition.md`, `docs/guidelines/admin-ux-ui-design.md`, `docs/specs/admin-page-gap-register.md`, `docs/specs/admin-page-ia-change-log.md`.
 - Reason: 활성/비활성 토글 기반 다중 정책 UX가 정책 교체 중 무정책 공백(전 사용자 PDF 내보내기 500)을 만들 수 있어, 단일 설정 폼 + 감사 로그 기반 변경 이력으로 재설계했다(오너 결정 2026-07-08: 한도 0 허용, 감사 로그 이력, 잔여 행 정리).
 - Validation: `tests/e2e/operation-pdf-quota.spec.ts` 3케이스(설정 저장+이력, 한도 0 중단 2차 확인, 초기화), `npm run harness:check`, `npm run check:migration-boundary`, `npm run build`.
+
+## 2026-07-08 PDF 내보내기 제한 PR8 리뷰 보완
+
+- Updated `docs/specs/page-ia/operation-pdf-quota-page-ia.md`, `docs/specs/admin-page-tables.md`, `docs/specs/admin-data-contract.md`, `docs/specs/admin-action-log.md`, `docs/specs/admin-data-usage-map.md`, `docs/page-sync/operation-pdf-quota-page-sync.md`, `docs/architecture/shared-supabase-schema-ownership.md`, `docs/architecture/admin-data-source-transition.md`, `docs/specs/admin-page-gap-register.md`, `docs/specs/admin-page-ia-change-log.md`.
+- Reason: v13 handoff 계약에 맞춰 전체 초기화도 concrete `pdf_export_quota_reset_targets` 행을 생성하도록 고정하고, PDF 쿼터 표시 시각(KST)과 정책 변경 이력 row key(`admin_audit_logs.id`) 계약을 문서화했다.
+- Validation: `npm run harness:check`, `npm run check:migration-boundary`, PowerShell `$env:VITE_SUPABASE_DISABLED='true'; npx playwright test tests/e2e/operation-pdf-quota.spec.ts`, `npm run build`. `npm run harness:admin-boundary`는 기존 `src/shared/api/notification-email-kick.ts` notification worker marker 검사에서 중단되어 별도 blocker로 남김.
