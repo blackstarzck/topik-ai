@@ -7,6 +7,7 @@
   UserSummary,
   UserTier
 } from '../model/types';
+import { maskPhone } from '../model/phone-mask';
 
 const statuses: UserStatus[] = ['정상', '정지', '탈퇴'];
 const tiers: UserTier[] = ['일반', '프리미엄'];
@@ -19,6 +20,7 @@ const consentStatuses: TermsConsentStatus[] = [
 ];
 // 국적 ISO alpha-2 코드 표본(빈 값 = 미입력). 다양한 국가 + 미입력 케이스 노출.
 const nationalityCodes: string[] = ['KR', 'US', 'VN', 'JP', 'CN', ''];
+const genderSamples: string[] = ['남성', '여성', '기타', ''];
 // 소셜 로그인 provider 표본. 빈 배열 = 이메일·비밀번호 가입(소셜 미연동, 화면에서 '-').
 // 단일/복수 연동 + 미연동을 고루 노출해 태그 렌더를 검증한다.
 const socialProvidersSamples: string[][] = [
@@ -40,6 +42,18 @@ const affiliationSamples: { code: string; label: string }[] = [
   { code: '', label: '' },
   { code: 'EXPO2026-BOOTH-B', label: '2026 한국어교육 박람회 · B부스' }
 ];
+// 전화번호 표본 생성기 — 약 1/3 미입력(''), 일부 국제(+84) 형식으로 실데이터 분포를 모사.
+// 마스킹값은 maskPhone(SQL private.mask_phone 미러)으로 파생해 실경로 표기와 일치시킨다.
+function mockPhone(index: number): string {
+  if (index % 3 === 2) {
+    return '';
+  }
+  if (index % 7 === 3) {
+    return `+84 9${String(10 + (index % 80)).padStart(2, '0')} ${String(100 + ((index * 37) % 900))} ${String(100 + ((index * 91) % 900))}`;
+  }
+  return `010-${String(1000 + ((index * 37) % 9000))}-${String(1000 + ((index * 91) % 9000))}`;
+}
+
 const familyNames = ['김', '이', '박', '최', '정', '강', '조', '윤', '장', '임'];
 const givenNames = [
   '민준',
@@ -84,6 +98,8 @@ export const mockUsers: UserSummary[] = Array.from({ length: 420 }, (_, index) =
   const emailVerificationStatus: EmailVerificationStatus =
     index % 9 === 7 ? '미인증' : '인증 완료';
   const isUnverified = emailVerificationStatus === '미인증';
+  // 가입 미완료(미인증) 계정은 프로필 미작성 → 전화번호도 빈 값으로 렌더(실데이터 모사).
+  const phone = isUnverified ? '' : mockPhone(index);
   // v13 handoff 진단을 위해 원천 profiles.status가 active여도 이메일 미인증인 표본을 남긴다.
   // 화면은 이 원천값을 그대로 "정상"으로 노출하지 않고 "인증 대기"로 파생 표시한다.
   const status: UserStatus = isUnverified ? '정상' : statuses[index % statuses.length];
@@ -93,6 +109,7 @@ export const mockUsers: UserSummary[] = Array.from({ length: 420 }, (_, index) =
     realName: isUnverified ? '' : realName,
     email: `member${index + 1}@topik.ai`,
     nickname: isUnverified ? '' : `member_${index + 1}`,
+    gender: isUnverified ? '' : genderSamples[index % genderSamples.length],
     joinedAt,
     lastLoginAt: isUnverified ? '' : lastLoginAt,
     status,
@@ -104,7 +121,9 @@ export const mockUsers: UserSummary[] = Array.from({ length: 420 }, (_, index) =
     termsConsentAt: termsConsentStatus === '미동의' ? '' : joinedAt.slice(0, 10),
     affiliationCode: affiliation.code,
     affiliationLabel: affiliation.label,
-    emailVerificationStatus
+    emailVerificationStatus,
+    phoneMasked: maskPhone(phone),
+    ...(phone ? { phone } : {})
   };
 });
 

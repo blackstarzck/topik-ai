@@ -52,14 +52,15 @@
 
 ## 1) 회원 관리 > 회원 목록
 
-- 테이블 컬럼: 회원명, 이메일, 닉네임, 국적, 소셜 로그인, 기관 소속, 가입일, 최근 접속, 등급, 구독 상태, 회원 상태, 약관 동의, 이메일 인증, 액션
+- 테이블 컬럼: 회원명, 이메일, 닉네임, 성별, 전화번호(마스킹), 국적, 소셜 로그인, 기관 소속, 가입일, 최근 접속, 등급, 구독 상태, 회원 상태, 약관 동의, 이메일 인증, 액션
 - 필터: 검색어, 가입 기간
 - 정렬: 가입일, 최근 접속, 회원 상태
-- 액션: 회원 상세, 회원 정지/해제, 관리자 메모
-- source: Supabase 모드는 `get_admin_users(search, sort, page, page_size)` RPC를 사용합니다. source 테이블은 v13 `profiles`/`auth.users` 조인과 `writing_submissions` 집계이며 신규 admin 테이블은 없습니다.
-- source 필드: `user_id`, `email`, `display_name`, `nickname`, `app_role`, `plan_label`, `status`, `registration_status`, `nationality_country_code`, `social_providers`, `affiliation_code`, `affiliation_label`, `submission_count`, `last_activity`, `last_sign_in_at`, `email_confirmed`, `created_at`, `consent_status`, `consent_accepted_at`, `total_count`.
+- 액션: 회원 상세, 회원 정지/해제, 관리자 메모, 회원 정보 내보내기
+- source: Supabase 모드는 `get_admin_users(search, sort, page, page_size, affiliation)` RPC를 사용합니다. source 테이블은 v13 `profiles`/`auth.users` 조인과 `writing_submissions` 집계이며 신규 admin 테이블은 없습니다.
+- source 필드: `user_id`, `email`, `display_name`, `nickname`, `gender`, `phone_masked`, `app_role`, `plan_label`, `status`, `registration_status`, `nationality_country_code`, `social_providers`, `affiliation_code`, `affiliation_label`, `submission_count`, `last_activity`, `last_sign_in_at`, `email_confirmed`, `created_at`, `consent_status`, `consent_accepted_at`, `total_count`.
 - 상태 조치: 정지/해제는 `admin_set_user_status(target_id, new_status)` RPC를 사용합니다. `new_status`는 `active`/`blocked`만 허용하고 `deleted`는 차단하며, 감사 Target Type은 `User`입니다.
-- 레이아웃 메모: 요약 없는 목록 운영형 기준으로 `Card 내부 SearchBar -> Table` 순서를 유지합니다.
+- 내보내기 조치: `admin_export_users(p_reason, p_include_full_phone, p_affiliation, p_scope, p_selected_user_ids, 목록 필터, p_selected_column_keys)` RPC를 사용합니다. 기본 범위는 현재 목록 조건이며, 선택 행이 있으면 선택 회원만 내보낼 수 있습니다. XLSX는 사용자 ID 필수 + 운영자 선택 컬럼으로 생성하고, 전화번호 컬럼을 제외하면 원문 포함은 비활성화합니다. 감사 payload에는 사유, 행수, scope, 원문 포함 여부, 선택 컬럼 key, 필터 적용 여부/개수 요약만 저장합니다. 감사 Target Type은 `User`, Target ID는 `batch:{uuid}`입니다.
+- 레이아웃 메모: 요약 없는 목록 운영형 기준으로 `Card 내부 SearchBar -> Table` 순서를 유지합니다. `회원 정보 내보내기`는 `SearchBar` 우측 액션 슬롯에 두고, 총 건수는 상단 요약 대신 테이블 하단 페이지네이션 줄의 좌측에 표시합니다.
 - 상태 표현 메모: `회원 상태` 컬럼은 `profiles.status` 원천 운영 상태와 이메일 인증/필수 약관 동의를 조합한 파생 표시입니다. 이메일 미인증 사용자는 `인증 대기`, 이메일 인증 후 필수 약관 미동의 사용자는 `약관 대기`로 표시하며, 미인증 사용자의 약관 동의 컬럼은 `동의 완료`가 아니라 `동의 불가`로 표시합니다. `구독 상태` 컬럼은 외부 구독 원천 데이터를 보여주는 정보용 컬럼이므로 스위치 조치 없이 텍스트 상태로 표시합니다.
 
 ## 2) 회원 관리 > 강사 관리

@@ -1,10 +1,12 @@
 import type { UserStatus, UserSummary } from '../model/types';
+import { userMatchesExportFilters } from '../model/user-export-filter';
 import { getMockUserById, getMockUserLearningOverview, mockUsers } from './mock-users';
 import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
 import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
 import {
   addUserMemoViaRpc,
   deleteUserMemoViaRpc,
+  exportUsersFromSupabase,
   getUserActivityFromSupabase,
   getUserCommunityPostsFromSupabase,
   getUserLegalConsentsFromSupabase,
@@ -14,9 +16,11 @@ import {
   loadUserLearningOverviewFromSupabase,
   loadUsersFromSupabase,
   setUserStatusViaRpc,
+  type ExportUsersOptions,
   type UserActivityEvent,
   type UserAdminMemo,
   type UserCommunityPost,
+  type UserExportRow,
   type UserLegalConsent,
   type UserPaymentRecord
 } from './supabase-users-service';
@@ -66,6 +70,20 @@ function filterMockUsersByAffiliation(
   return users.filter((user) => user.affiliationCode === value);
 }
 
+export function filterMockUsersForExport(
+  users: UserSummary[],
+  options: ExportUsersOptions
+): UserSummary[] {
+  const affiliation = options.filters.affiliation || options.affiliation;
+  const affiliationScopedUsers = filterMockUsersByAffiliation(users, affiliation);
+  if (options.scope === 'selected') {
+    return affiliationScopedUsers.filter((user) => options.selectedUserIds.includes(user.id));
+  }
+  return affiliationScopedUsers.filter((user) =>
+    userMatchesExportFilters(user, options.filters)
+  );
+}
+
 async function loadUsers(
   signal?: AbortSignal,
   affiliation?: string | null
@@ -82,6 +100,24 @@ export function fetchUsersSafe(signal?: AbortSignal, affiliation?: string | null
   return toSafeResult(() =>
     withRetry(() => loadUsers(signal, affiliation), { maxRetries: 1 })
   );
+}
+
+/**
+ * 회원 정보 내보내기 — Supabase 모드에서는 감사 기록을 남기는 admin_export_users 로
+ * 전 회원(기관 필터 반영)을 받아온다. mock 모드에서는 화면 플로우(다이얼로그→파일
+ * 생성→다운로드) 검증용으로 mock 목록에 동일 의미(필터·마스킹/원문 선택)를 적용한다.
+ */
+export function exportUsersSafe(options: ExportUsersOptions, signal?: AbortSignal) {
+  return toSafeResult<UserExportRow[]>(async () => {
+    if (isSupabaseConfigured) {
+      return exportUsersFromSupabase(options, signal);
+    }
+    await sleep(200, signal);
+    return filterMockUsersForExport(mockUsers, options).map((user) => ({
+      ...user,
+      exportPhone: options.includeFullPhone ? user.phone ?? '' : user.phoneMasked
+    }));
+  });
 }
 
 /**
@@ -207,9 +243,11 @@ export function deleteUserMemo(memoId: string, reason: string, signal?: AbortSig
 }
 
 export type {
+  ExportUsersOptions,
   UserActivityEvent,
   UserAdminMemo,
   UserCommunityPost,
+  UserExportRow,
   UserLegalConsent,
   UserPaymentRecord
 };

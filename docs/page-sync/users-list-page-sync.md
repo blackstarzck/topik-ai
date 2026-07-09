@@ -9,7 +9,7 @@ status: "구현됨"
 primary_entity: "User"
 primary_table_candidate: "v13 profiles/auth.users + writing_submissions aggregate"
 owner_agent_scope: "shared"
-last_reviewed_at: "2026-06-26"
+last_reviewed_at: "2026-07-09"
 ---
 
 ## 1. 문서 목적
@@ -27,7 +27,7 @@ last_reviewed_at: "2026-06-26"
 | 라우트 | `/users` |
 | 현재 상태 | `구현됨` |
 | 페이지 유형 | `목록 운영형` |
-| 페이지 목적 한 줄 요약 | 회원 기본 정보를 검색하고 상태 조치와 관리자 메모를 관리하는 Users 기본 목록입니다. |
+| 페이지 목적 한 줄 요약 | 회원 기본 정보를 검색하고 상태 조치, 관리자 메모, 사유 기반 회원 정보 내보내기를 관리하는 Users 기본 목록입니다. |
 | 주요 운영자 | `OPS_ADMIN, CS_MANAGER, SUPER_ADMIN` |
 | 주요 권한 | `users.read, users.manage` |
 | 코드 근거 | `src/features/users/pages/users-page.tsx` |
@@ -37,8 +37,8 @@ last_reviewed_at: "2026-06-26"
 
 ### 목적
 
-- 회원 검색, 상세 진입, 정지/해제, 관리자 메모를 관리합니다.
-- 회원 ID, 이메일, 닉네임, 가입일, 최근 접속, 회원 상태, 약관 동의, 이메일 인증, 등급, 구독 상태를 관리자 기준으로 추적합니다.
+- 회원 검색, 상세 진입, 정지/해제, 관리자 메모, 회원 정보 내보내기를 관리합니다.
+- 회원 ID, 이메일, 닉네임, 성별, 전화번호(마스킹), 가입일, 최근 접속, 회원 상태, 약관 동의, 이메일 인증, 등급, 구독 상태를 관리자 기준으로 추적합니다.
 - 마이페이지 계정 정보와 로그인 접근 가드에 운영상 추정으로 연결됩니다.
 
 ### 비목표
@@ -51,7 +51,8 @@ last_reviewed_at: "2026-06-26"
 | 기능/작업 | 설명 | 작업 성격 | 대상 데이터 | 결과 | 감사 로그 필요 여부 |
 | --- | --- | --- | --- | --- | --- |
 | 회원 목록 조회 | 회원 목록의 목록/상세 또는 예정 데이터 블록을 확인합니다. | 조회 | User | 현재 상태 확인 | 불필요 |
-| 회원 목록 관리 | 회원 ID, 이메일, 닉네임, 가입일, 최근 접속, 회원 상태, 약관 동의, 이메일 인증, 등급, 구독 상태에 대한 조회/상태 변경 또는 예정 계약을 관리합니다. | 수정 | User + userId | 데이터 반영 또는 후속 검증 | 필요 |
+| 회원 목록 관리 | 회원 ID, 이메일, 닉네임, 성별, 전화번호, 가입일, 최근 접속, 회원 상태, 약관 동의, 이메일 인증, 등급, 구독 상태에 대한 조회/상태 변경 또는 예정 계약을 관리합니다. | 수정 | User + userId | 데이터 반영 또는 후속 검증 | 필요 |
+| 회원 정보 내보내기 | 현재 목록 조건 또는 선택한 회원 기준으로 컬럼을 선택해 회원 정보 XLSX를 내려받습니다. | 개인정보 반출 | User + batch:{uuid} | 파일 다운로드 및 감사 로그 기록 | 필요 |
 
 ## 5. 관리 데이터베이스(CRUD)
 
@@ -59,15 +60,16 @@ last_reviewed_at: "2026-06-26"
 
 | 엔티티 후보 | 테이블 후보 | CRUD | 관리자 UI 진입점 | 주요 필드 후보 | 감사 로그 Target | 사용자 화면 영향 | 미확정/차이 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| User | v13 `profiles`/`auth.users` + `writing_submissions` 집계 | Read, 상태 Update | 회원 목록 본문/상태 조치 | 회원 ID, 이메일, 표시명, 닉네임, 가입일, 최근 접속, 회원 상태(파생), `profiles.status` 원천 운영 상태, 약관 동의, 이메일 인증, 등급(`plan_label`), 제출 수, 최근 활동 | User + userId | 운영상 추정 | Supabase 모드 source는 `get_admin_users`; 정지/해제는 `admin_set_user_status`가 `profiles.status`만 토글 |
+| User | v13 `profiles`/`auth.users` + `writing_submissions` 집계 | Read, 상태 Update, Export | 회원 목록 본문/상태 조치/내보내기 모달 | 회원 ID, 이메일, 표시명, 닉네임, 성별, 전화번호(목록 마스킹/내보내기 기본 마스킹), 가입일, 최근 접속, 회원 상태(파생), `profiles.status` 원천 운영 상태, 약관 동의, 이메일 인증, 등급(`plan_label`), 제출 수, 최근 활동 | User + userId, User + batch:{uuid} | 운영상 추정 | Supabase 모드 source는 `get_admin_users`; 정지/해제는 `admin_set_user_status`가 `profiles.status`만 토글; 내보내기는 `admin_export_users`가 현재 목록 조건/선택 행 scope와 선택 컬럼 key를 감사 로그에 남김 |
 
 ### CRUD 상세
 
 | CRUD | 지원 여부 | 화면 동작 | 저장/서비스 후보 | 성공 후 동기화 대상 | 실패 시 fail-safe |
 | --- | --- | --- | --- | --- | --- |
 | Create | `미지원` | 회원 목록에서 생성하지 않음 | 없음 | 없음 | 해당 없음 |
-| Read | `지원` | 회원 목록 조회 | `get_admin_users(search, sort, page, page_size)` | URL/필터/탭 복원 | empty/error 처리 |
+| Read | `지원` | 회원 목록 조회 | `get_admin_users(search, sort, page, page_size, affiliation)` | URL/필터/탭 복원 | empty/error 처리 |
 | Update | `지원` | 회원 정지/해제 | `admin_set_user_status(target_id, new_status)` | 목록, 상세, 감사 로그 | 실패 시 재조회 또는 rollback |
+| Export | `지원` | 회원 정보 내보내기 | `admin_export_users(p_reason, p_include_full_phone, p_affiliation, p_scope, p_selected_user_ids, 목록 필터, p_selected_column_keys)` | 감사 로그 | 실패 시 파일 다운로드 없이 오류 표시 |
 | Delete | `미지원` | 탈퇴/deleted 전환은 이 화면 조치 범위 밖 | 없음 | 없음 | `deleted`는 RPC에서 상태 변경 차단 |
 
 ## 6. 관리자 조치와 감사 로그 계약
@@ -75,12 +77,13 @@ last_reviewed_at: "2026-06-26"
 | 조치 | 파괴적 여부 | 확인 단계 | 사유/근거 입력 | Target Type | Target ID | 감사 로그 확인 경로 |
 | --- | --- | --- | --- | --- | --- | --- |
 | 회원 정지/해제 | 예 | 필수 | 필수 | User | userId | /system/audit-logs?targetType=User&targetId={userId} |
+| 회원 정보 내보내기 | 개인정보 반출 | 필수 | 필수 | User | batch:{uuid} | /system/audit-logs?targetType=User&targetId=batch:{uuid} |
 
 ## 7. 사용자 화면 동기화 포인트
 
 | 사용자 화면 후보 | 영향 상태 | 관리자 데이터 | 사용자 화면에 반영되는 방식 | 동기화 필요 시점 | 비고 |
 | --- | --- | --- | --- | --- | --- |
-| 마이페이지 > 계정 정보, 로그인/접근 가드 | 운영상 추정 | 회원 ID, 이메일, 닉네임, 가입일, 최근 접속, 회원 상태, 약관 동의, 이메일 인증, 등급, 구독 상태 | 마이페이지 계정 정보와 로그인 접근 가드에 운영상 추정으로 연결됩니다. | 관리자 변경 후 또는 원본 데이터 갱신 후 | 실제 사용자 화면 저장소 확인 전까지 추정은 추정으로 유지 |
+| 마이페이지 > 계정 정보, 로그인/접근 가드 | 운영상 추정 | 회원 ID, 이메일, 닉네임, 성별, 전화번호, 가입일, 최근 접속, 회원 상태, 약관 동의, 이메일 인증, 등급, 구독 상태 | 마이페이지 계정 정보와 로그인 접근 가드에 운영상 추정으로 연결됩니다. 내보내기 감사 로그는 B2C 화면에 노출하지 않습니다. | 관리자 변경 후 또는 원본 데이터 갱신 후 | 실제 사용자 화면 저장소 확인 전까지 추정은 추정으로 유지 |
 
 ## 8. 이 페이지와 연관있는 페이지(예상)
 
@@ -96,8 +99,8 @@ last_reviewed_at: "2026-06-26"
 
 | 연관 사용자 화면 후보 | 관계 유형 | 연관 이유 | 관리자 변경 후 예상 영향 | 확정 상태 |
 | --- | --- | --- | --- | --- |
-| 마이페이지 > 계정 정보 | 데이터 노출 후보 | 회원 ID, 이메일, 닉네임, 가입일, 최근 접속, 회원 상태, 약관 동의, 이메일 인증, 등급, 구독 상태 | 회원 목록 데이터 변경 시 표시/접근/알림이 달라질 수 있습니다. | 운영상 추정 |
-| 로그인/접근 가드 | 데이터 노출 후보 | 회원 ID, 이메일, 닉네임, 가입일, 최근 접속, 회원 상태, 약관 동의, 이메일 인증, 등급, 구독 상태 | 회원 목록 데이터 변경 시 표시/접근/알림이 달라질 수 있습니다. | 운영상 추정 |
+| 마이페이지 > 계정 정보 | 데이터 노출 후보 | 회원 ID, 이메일, 닉네임, 성별, 가입일, 최근 접속, 회원 상태, 약관 동의, 이메일 인증, 등급, 구독 상태 | 회원 목록 데이터 변경 시 표시/접근/알림이 달라질 수 있습니다. | 운영상 추정 |
+| 로그인/접근 가드 | 데이터 노출 후보 | 회원 ID, 이메일, 닉네임, 성별, 가입일, 최근 접속, 회원 상태, 약관 동의, 이메일 인증, 등급, 구독 상태 | 회원 목록 데이터 변경 시 표시/접근/알림이 달라질 수 있습니다. | 운영상 추정 |
 
 ## 9. 상태값/용어/키워드 정합성
 
@@ -112,14 +115,15 @@ last_reviewed_at: "2026-06-26"
 
 - 마이그레이션: `supabase/migrations-admin/20260617210000_admin_users_directory.sql`(+ down), tracker `admin_schema_migrations`, 2026-06-17 dev DB 적용 완료.
 - 신규 테이블 0건. `profiles`, `auth.users`, `writing_submissions`는 v13 소유이며, v13 `profiles` DDL은 변경하지 않는다.
-- read RPC: `get_admin_users(search text, sort text, page integer, page_size integer)`는 platform_admin 전용이다. PostgREST 매칭을 위해 인자명 `search`/`sort`/`page`/`page_size`는 프론트 JSON 키와 정확히 일치해야 한다.
+- read RPC: `get_admin_users(search text, sort text, page integer, page_size integer, affiliation text default null)`는 platform_admin 전용이다. PostgREST 매칭을 위해 인자명 `search`/`sort`/`page`/`page_size`/`affiliation`은 프론트 JSON 키와 정확히 일치해야 한다. 목록은 성별 `gender`와 전화번호 `phone_masked`를 반환한다.
 - write RPC: `admin_set_user_status(target_id uuid, new_status text)`는 platform_admin 전용이며 `active`/`blocked`만 허용하고 `deleted`는 차단한다. 감사 로그는 `target_table='User'`, action `user_status_changed`다.
+- export RPC: `admin_export_users(p_reason, p_include_full_phone, p_affiliation, p_scope, p_selected_user_ids, p_search, p_search_field, p_start_date, p_end_date, p_gender_filters, p_tier_filters, p_subscription_status_filters, p_membership_status_filters, p_terms_consent_status_filters, p_email_verification_status_filters, p_selected_column_keys)`는 platform_admin 전용이며 사유 필수, 감사 action `users_exported`, Target ID `batch:{uuid}`를 사용한다. 파일에는 사용자 ID 필수 + 선택 컬럼만 포함되며, 감사 payload에는 검색어 원문/성별 값/전화번호 값/파일 내용을 저장하지 않는다.
 
 ## 10. URL/검색/복원 규칙
 
 - 기본 라우트: `/users`
 - 필수 쿼리/경로 파라미터: 없음
-- 선택 쿼리 파라미터: page, pageSize, keyword, status, tab, selected 등 페이지별 후보
+- 선택 쿼리 파라미터: page, pageSize, searchField, keyword, startDate, endDate, affiliation, gender, tier, subscriptionStatus, membershipStatus, termsConsentStatus, emailVerificationStatus
 - 목록 복원 기준: 목록/필터/정렬/탭/상세 대상 복원
 - 상세 Drawer/Modal/하위 라우트 복원 여부: 행 클릭 Drawer/Modal 후보
 - 사용자 화면 동기화에 필요한 식별자: User + userId

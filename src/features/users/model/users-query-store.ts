@@ -11,7 +11,13 @@ export const defaultUsersQuery: UsersQuery = {
   startDate: '',
   endDate: '',
   keyword: '',
-  affiliation: ''
+  affiliation: '',
+  genderFilters: [],
+  tierFilters: [],
+  subscriptionStatusFilters: [],
+  membershipStatusFilters: [],
+  termsConsentStatusFilters: [],
+  emailVerificationStatusFilters: []
 };
 
 type UsersQueryStore = {

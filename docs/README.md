@@ -23,6 +23,7 @@
 - `v13-institution-invitation-handoff-2026-07-07.md` — 기관 회원 추가가 동의 기반 초대로 전환된 뒤 v13 알림함에서 수락/거부 모달과 `respond_institution_invitation` RPC를 구현하기 위한 handoff
 - `v13-users-registration-lifecycle-handoff-2026-06-26.md` — v13 사용자 앱의 이메일 인증·필수 약관 동의·정상 진입 불변식 정합화 handoff(DB/RLS guard, auth completion route, dry-run/backfill, QA 기준)
 - `v13-institution-question-exposure-handoff-2026-06-26.md` — v13 사용자 화면에 기관별 TOPIK 쓰기 문항 노출 계약을 적용하기 위한 handoff(관리 SoT, v13 영향 파일, 공통 predicate, 검증 기준)
+- `v13-institution-invitation-handoff-2026-07-07.md` — v13 기관 초대 수락/거절/만료/알림 처리 handoff
 - `upstream-writing-endpoints-request-2026-06-10.md` — TOPIK 쓰기 문항 공급(인바운드) API 계약 요청서(D-11 재정의 — 2026-06-11 재작성, 구 push 업로드 요청 폐기)
 - `problems-read-only-freeze-notice-2026-06-11.md` — v13 `problems` read-only 동결 선언 공지 초안(§7.1-6 이행 — 오너 채널 발신용, 코드 0줄)
 - `content-team-order-2026-06-10.md` — [폐기] 콘텐츠팀 재분류 입력표 승인 발주서(인바운드 전환으로 트랙 소멸 — 미발신 종결, 역사 보존)

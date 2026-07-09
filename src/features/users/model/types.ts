@@ -3,10 +3,13 @@ export type UserTier = '일반' | '프리미엄';
 export type SubscriptionStatus = '구독' | '미구독';
 // 회원가입(일반·SNS) 필수 약관 동의 상태. 현재 필수 문서 = 이용약관(terms) + 개인정보처리방침(privacy).
 export type TermsConsentStatus = '동의 완료' | '일부 동의' | '미동의';
+export type TermsConsentDisplayStatus = TermsConsentStatus | '동의 불가';
 // 이메일 인증(가입 완료) 여부. auth.users.email_confirmed_at 기준.
 // '미인증' = 이메일 가입 후 확인메일을 누르지 않은 가입 미완료(중도이탈) 계정.
 // 소셜(google 등) 가입은 자동 인증되어 항상 '인증 완료'.
 export type EmailVerificationStatus = '인증 완료' | '미인증';
+export type UserGenderFilter = '남성' | '여성' | '기타' | '미입력';
+export type UserMembershipStatus = '인증 대기' | '약관 대기' | UserStatus;
 export type RegistrationStatus =
   | 'active'
   | 'blocked'
@@ -19,6 +22,9 @@ export type UserSummary = {
   realName: string;
   email: string;
   nickname: string;
+  // v13 profiles.gender 원본을 관리자 표시 라벨(남성/여성/기타 등)로 정규화한 값.
+  // 미입력/비공개 값은 빈 문자열로 두고 UI에서 '-' 로 렌더한다.
+  gender: string;
   joinedAt: string;
   lastLoginAt: string;
   // v13 profiles.status 원천 운영 상태. 화면의 "회원 상태"는 이메일 인증과
@@ -48,6 +54,12 @@ export type UserSummary = {
   affiliationCode: string;
   // affiliationCode 를 institution_codes.label 로 해석한 표시명(없음/미등록 시 빈 문자열).
   affiliationLabel: string;
+  // 전화번호 마스킹값(예: 010-****-5678, 미입력 시 빈 문자열). 목록 등 대량 화면은
+  // 이 값만 사용한다 — 개인정보 안전성 확보조치 기준의 출력 항목 최소화(표시제한) 정책.
+  phoneMasked: string;
+  // 전화번호 원문(개인정보). 단건 상세 RPC(get_admin_user)만 내려주는 값으로, 목록
+  // RPC(get_admin_users)는 원문을 반환하지 않으므로 목록 행에서는 undefined 다.
+  phone?: string;
 };
 
 // 회원 상세 > 학습 현황 탭 모델. get_admin_user_learning_overview(writing 중심 재정의,
@@ -168,6 +180,12 @@ export type UsersQuery = {
   keyword: string;
   // 기관 소속 서버사이드 필터('' 전체 | @affiliated | @general | 특정 코드).
   affiliation: string;
+  genderFilters: UserGenderFilter[];
+  tierFilters: UserTier[];
+  subscriptionStatusFilters: SubscriptionStatus[];
+  membershipStatusFilters: UserMembershipStatus[];
+  termsConsentStatusFilters: TermsConsentDisplayStatus[];
+  emailVerificationStatusFilters: EmailVerificationStatus[];
 };
 
 export type InstructorStatus = '정상' | '정지' | '탈퇴';

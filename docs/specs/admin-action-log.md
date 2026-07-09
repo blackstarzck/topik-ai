@@ -11,6 +11,7 @@
 ## 반드시 기록해야 하는 액션
 
 - 회원 정지/해제/탈퇴
+- 회원 정보 내보내기(개인정보 반출)
 - 기관 코드 생성/수정/삭제 및 기관 코드 회원 배정/소속 해제
 - 강사 정지/해제
 - 게시글 숨김/삭제
@@ -51,6 +52,11 @@
   - 액션 사전: `user_status_changed`(정지/해제). `active`는 해제/정상, `blocked`는 정지이며, `deleted` 상태 사용자는 RPC에서 변경을 차단합니다.
   - 기록 주체: `admin_set_user_status(target_id uuid, new_status text)` 단일 write 경로. platform_admin 전용이며 `profiles.status`만 토글하고 v13 `profiles` DDL은 변경하지 않습니다.
   - payload/diff 계약: `diff.status.from/to`를 기록하고 `payload.app_role`을 포함합니다. 화면 확인 단계의 사유는 성공 피드백과 감사 로그 확인 경로에 같은 `User + userId` 식별자를 사용해야 하며, reason 입력 UX가 별도로 확장되면 같은 Target Type/ID에 맞춰 저장 계약을 갱신해야 합니다.
+- 회원 정보 내보내기 로그는 `Target Type = User`(`admin_audit_logs.target_table='User'`), `Target ID = batch:{uuid}`를 사용합니다. 원본 화면은 `/users`, 후속 검증 경로는 `/system/audit-logs?targetType=User&targetId=batch:{uuid}`입니다.
+  - 액션 사전: `users_exported`(회원 정보 XLSX 반출).
+  - 기록 주체: `admin_export_users(p_reason, p_include_full_phone, p_affiliation, p_scope, p_selected_user_ids, p_search, p_search_field, p_start_date, p_end_date, p_gender_filters, p_tier_filters, p_subscription_status_filters, p_membership_status_filters, p_terms_consent_status_filters, p_email_verification_status_filters, p_selected_column_keys)` 단일 export 경로. platform_admin 전용이며 `p_reason`은 필수입니다.
+  - payload 계약: `reason`, `row_count`, `scope`, `include_full_phone`, `selected_column_keys`, `selected_user_count`, `filter_applied`, `filter_summary`, `format='xlsx'`를 기록합니다. `filter_summary`는 검색어 원문, 성별 값, 전화번호 값, 파일 내용을 저장하지 않고 검색 적용 여부/검색 필드/가입일 범위/기관 범위/필터 개수만 남깁니다.
+  - 개인정보 정책: 성별과 전화번호는 운영자가 선택한 XLSX 컬럼에만 포함됩니다. 기본 전화번호는 마스킹 값(`phone_masked`)이며, 원문 전화번호 포함은 전화번호 컬럼 선택 + UI의 `users.export` 권한 게이트 + RPC의 platform_admin 가드를 모두 통과해야 합니다.
 - 기관 코드 조치 로그는 `Target Type = InstitutionCode`(`admin_audit_logs.target_table='InstitutionCode'`), `Target ID = code`를 사용하며, `/users/institution-codes?selected={code}` 원본 화면과 `/system/audit-logs?targetType=InstitutionCode&targetId={code}` 후속 검증 경로로 역추적할 수 있어야 합니다.
   - 액션 사전: `institution_code_created`(코드 생성), `institution_code_updated`(코드 수정), `institution_code_deleted`(코드 삭제).
   - 기록 주체: `admin_create_institution_code(p_code,p_label,p_kind,p_note)`, `admin_update_institution_code(p_code,p_label,p_kind,p_status,p_note,p_reason)`, `admin_delete_institution_code(p_code,p_reason)` 단일 write 경로. 세 RPC 모두 admin 권한과 `users.institution-codes.manage` permission을 요구하며, 수정/삭제는 reason 필수입니다.

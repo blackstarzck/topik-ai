@@ -9,6 +9,9 @@ import type {
   UserSummary,
   UserTier
 } from '../model/types';
+import type { ExportUsersOptions, UserExportRow } from '../model/user-export-types';
+
+export type { ExportUsersOptions, UserExportRow } from '../model/user-export-types';
 
 /**
  * Phase B (members) — read/write the v13 members directory via admin RPCs.
@@ -24,6 +27,7 @@ type AdminUserRow = {
   email: string | null;
   display_name: string | null;
   nickname?: string | null;
+  gender?: string | null;
   app_role: string;
   plan_label: string | null;
   status: string;
@@ -34,6 +38,10 @@ type AdminUserRow = {
   // 박람회/기관 유입 코드(profiles.affiliation_code) + institution_codes.label 조인 표시명.
   affiliation_code: string | null;
   affiliation_label: string | null;
+  // 전화번호 마스킹값(예: 010-****-5678). 목록 RPC 는 마스킹만 내려준다(표시제한).
+  phone_masked?: string | null;
+  // 전화번호 원문 — 단건 상세 RPC(get_admin_user)에서만 내려온다. 목록에는 없다.
+  phone?: string | null;
   submission_count: number;
   last_activity: string | null;
   last_sign_in_at: string | null;
@@ -257,12 +265,34 @@ function nonEmpty(value: string | null | undefined): string | null {
   return trimmed ? trimmed : null;
 }
 
+function mapUserGender(value: string | null | undefined): string {
+  const original = nonEmpty(value);
+  const normalized = original?.toLowerCase();
+  if (!normalized) {
+    return '';
+  }
+  if (['male', 'm', '남', '남성'].includes(normalized)) {
+    return '남성';
+  }
+  if (['female', 'f', '여', '여성'].includes(normalized)) {
+    return '여성';
+  }
+  if (['other', 'non_binary', 'non-binary', '기타'].includes(normalized)) {
+    return '기타';
+  }
+  if (['unknown', 'prefer_not_to_say', '미입력', '비공개'].includes(normalized)) {
+    return '';
+  }
+  return original;
+}
+
 function mapRowToUserSummary(row: AdminUserRow): UserSummary {
   const tier = mapTier(row.plan_label);
   const subscriptionStatus: SubscriptionStatus = tier === '프리미엄' ? '구독' : '미구독';
   const displayName = nonEmpty(row.display_name);
   const nickname = nonEmpty(row.nickname);
   const registrationStatus = mapRegistrationStatus(row.registration_status);
+  const phone = nonEmpty(row.phone);
   return {
     id: row.user_id,
     realName: displayName ?? '',
@@ -270,6 +300,7 @@ function mapRowToUserSummary(row: AdminUserRow): UserSummary {
     // Preserve profiles.nickname exactly. Null/empty values are rendered as an
     // empty-state marker in the UI, not replaced with display_name/email fallbacks.
     nickname: nickname ?? '',
+    gender: mapUserGender(row.gender),
     joinedAt: toKstDateTimeString(row.created_at),
     lastLoginAt: toKstDateTimeString(row.last_sign_in_at),
     status: mapStatus(row.status),
@@ -289,7 +320,10 @@ function mapRowToUserSummary(row: AdminUserRow): UserSummary {
     emailVerificationStatus: mapEmailVerification(row.email_confirmed),
     // 박람회/기관 유입 코드 + 표시명(institution_codes 조인). 없으면 빈 문자열.
     affiliationCode: nonEmpty(row.affiliation_code) ?? '',
-    affiliationLabel: nonEmpty(row.affiliation_label) ?? ''
+    affiliationLabel: nonEmpty(row.affiliation_label) ?? '',
+    // 전화번호 — 목록은 마스킹값만, 상세(get_admin_user)는 원문(phone)도 채워진다.
+    phoneMasked: nonEmpty(row.phone_masked) ?? '',
+    ...(phone ? { phone } : {})
   };
 }
 
@@ -384,6 +418,58 @@ export async function loadUserByIdFromSupabase(
   }
   const rows = (data ?? []) as AdminUserRow[];
   return rows.length > 0 ? mapRowToUserSummary(rows[0]) : null;
+}
+
+// 내보내기 RPC(admin_export_users) 행 — 목록 계약 + phone(원문 포함 선택 시에만 값, 기본 null).
+type AdminUserExportRpcRow = Omit<AdminUserRow, 'total_count'>;
+
+/**
+ * 회원 정보 내보내기 read — admin_export_users. 목록 RPC(get_admin_users)를 서버에서
+ * 페이지 루프로 재사용해 전 회원을 반환하며(100명 창 없음), 호출마다 사유·행수·원문
+ * 포함 여부가 admin_audit_logs 에 기록된다(개인정보 다운로드 사유 확인 의무).
+ */
+export async function exportUsersFromSupabase(
+  options: ExportUsersOptions,
+  signal?: AbortSignal
+): Promise<UserExportRow[]> {
+  if (!supabaseClient) {
+    throw new Error('Supabase client not configured');
+  }
+  const affiliation = options.filters.affiliation || options.affiliation || '';
+  const { data, error } = await supabaseClient.rpc('admin_export_users', {
+    p_reason: options.reason,
+    p_include_full_phone: options.includeFullPhone,
+    p_affiliation: affiliation.trim() ? affiliation.trim() : null,
+    p_scope: options.scope,
+    p_selected_user_ids: options.scope === 'selected' ? options.selectedUserIds : [],
+    p_search: options.filters.keyword || null,
+    p_search_field: options.filters.searchField,
+    p_start_date: options.filters.startDate || null,
+    p_end_date: options.filters.endDate || null,
+    p_gender_filters: options.filters.genders,
+    p_tier_filters: options.filters.tiers,
+    p_subscription_status_filters: options.filters.subscriptionStatuses,
+    p_membership_status_filters: options.filters.membershipStatuses,
+    p_terms_consent_status_filters: options.filters.termsConsentStatuses,
+    p_email_verification_status_filters: options.filters.emailVerificationStatuses,
+    p_selected_column_keys: options.columns
+  });
+  if (signal?.aborted) {
+    throw new DOMException('Request aborted', 'AbortError');
+  }
+  if (error) {
+    throw new Error(error.message);
+  }
+  const rows = (data ?? []) as AdminUserExportRpcRow[];
+  return rows.map((row) => {
+    const summary = mapRowToUserSummary({ ...row, total_count: 0 });
+    return {
+      ...summary,
+      exportPhone: options.includeFullPhone
+        ? nonEmpty(row.phone) ?? ''
+        : summary.phoneMasked
+    };
+  });
 }
 
 /**

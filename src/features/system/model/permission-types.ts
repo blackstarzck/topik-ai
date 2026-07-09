@@ -86,6 +86,16 @@ export const permissionCatalog: PermissionDefinition[] = [
     risk: 'medium'
   },
   {
+    // 개인정보 반출 작업 — 최소권한 원칙에 따라 SUPER_ADMIN(allPermissionKeys) 외
+    // 역할에는 기본 부여하지 않는다. 서버(admin_export_users)도 platform_admin 전용 +
+    // 사유 필수 + 감사 기록으로 이중 강제한다.
+    key: 'users.export',
+    name: '회원 정보 내보내기',
+    module: '회원',
+    scopeDescription: '회원 목록을 엑셀 파일로 내보냅니다(개인정보 반출, 사유·감사 기록).',
+    risk: 'high'
+  },
+  {
     key: 'community.posts.hide',
     name: '게시글 숨김',
     module: '커뮤니티',

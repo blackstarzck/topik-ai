@@ -1351,7 +1351,15 @@ export default function UserDetailPage(): JSX.Element {
                     children: renderProfileValue(user.realName)
                   },
                   { key: 'email', label: '이메일', children: user.email },
+              {
+                // 단건 상세는 업무상 원문(phone) 표시 — 목록은 마스킹만. 원문이 없으면
+                // (구버전 RPC 폴백 등) 마스킹값으로, 그것도 없으면 '-' 로 렌더한다.
+                key: 'phone',
+                label: '전화번호',
+                children: renderProfileValue(user.phone ?? user.phoneMasked)
+              },
               { key: 'nickname', label: '닉네임', children: renderProfileValue(user.nickname) },
+              { key: 'gender', label: '성별', children: renderProfileValue(user.gender) },
               {
                 key: 'nationality',
                 label: '국적',
