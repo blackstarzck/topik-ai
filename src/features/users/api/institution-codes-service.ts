@@ -162,18 +162,19 @@ export function fetchInstitutionCodeMembersSafe(
 }
 
 /**
- * 회원 N명에게 기관 초대 발송(즉시 배정 아님 — 수락 시 소속 적용).
- * 실제 초대된 수 반환(기소속/기pending/탈퇴는 서버 스킵). mock 경로는 요청 수를 그대로 성공 처리.
+ * 회원 N명에게 기관 초대 발송(즉시 배정 아님 — 수락 시 소속 적용, 만료 기본 7일).
+ * 실제 초대된 수 반환(기소속/유효 pending/탈퇴는 서버 스킵). mock 경로는 요청 수를 그대로 성공 처리.
  */
 export function inviteInstitutionMembersSafe(
   userIds: string[],
   code: string,
   reason: string,
+  expiresInDays: number = 7,
   signal?: AbortSignal
 ) {
   return toSafeResult<number>(async () => {
     if (isSupabaseSource) {
-      return inviteInstitutionMembersViaRpc(userIds, code, reason, signal);
+      return inviteInstitutionMembersViaRpc(userIds, code, reason, expiresInDays, signal);
     }
     await sleep(200, signal);
     return userIds.length;

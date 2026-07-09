@@ -44,14 +44,20 @@ export type InstitutionCodeMember = {
   joinedAt: string;
 };
 
-export type InstitutionInvitationStatus = 'pending' | 'accepted' | 'declined' | 'canceled';
+export type InstitutionInvitationStatus =
+  | 'pending'
+  | 'accepted'
+  | 'declined'
+  | 'canceled'
+  | 'expired';
 
 /** 초대 상태 한글 표시. */
 export const INVITATION_STATUS_LABEL: Record<InstitutionInvitationStatus, string> = {
   pending: '대기중',
   accepted: '수락',
   declined: '거절',
-  canceled: '취소'
+  canceled: '취소',
+  expired: '만료'
 };
 
 /** 초대 이메일 발송 상태(notification_delivery_attempts.status 부분집합). null=attempt 없음. */
@@ -79,6 +85,8 @@ export type InstitutionInvitation = {
   emailStatus: InvitationEmailStatus;
   emailError: string;
   emailSentAt: string;
+  /** 만료일(YYYY-MM-DD). 경과 시 서버가 유효 상태를 expired 로 계산한다. */
+  expiresAt: string;
 };
 
 /**

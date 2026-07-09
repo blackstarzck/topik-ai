@@ -198,12 +198,14 @@ export async function loadInstitutionCodeMembersFromSupabase(
 
 /**
  * 기관 초대 발송. 즉시 배정이 아니라 pending 초대 + 인앱/이메일 알림을 만든다.
- * 동일 코드 기소속/기pending/탈퇴 회원은 서버가 스킵하며, 실제 초대된 수를 반환한다.
+ * 동일 코드 기소속/유효 pending/탈퇴 회원은 서버가 스킵하며, 실제 초대된 수를 반환한다.
+ * 만료 기간은 기본 7일(1~365일 지정 가능) — 경과 시 초대가 무효(expired)된다.
  */
 export async function inviteInstitutionMembersViaRpc(
   userIds: string[],
   code: string,
   reason: string,
+  expiresInDays: number,
   signal?: AbortSignal
 ): Promise<number> {
   const client = requireClient();
@@ -212,7 +214,8 @@ export async function inviteInstitutionMembersViaRpc(
   const { data, error } = await client.rpc('admin_invite_institution_members', {
     p_user_ids: userIds,
     p_code: code,
-    p_reason: reason.trim()
+    p_reason: reason.trim(),
+    p_expires_in_days: expiresInDays
   });
   if (error) {
     throw new Error(error.message);
@@ -239,6 +242,7 @@ type InstitutionInvitationRow = {
   email_status: string | null;
   email_error: string | null;
   email_sent_at: string | null;
+  expires_at: string | null;
 };
 
 function mapInvitationRow(row: InstitutionInvitationRow): InstitutionInvitation {
@@ -257,7 +261,8 @@ function mapInvitationRow(row: InstitutionInvitationRow): InstitutionInvitation 
     respondedAt: row.responded_at ? row.responded_at.slice(0, 10) : '',
     emailStatus: (row.email_status as InstitutionInvitation['emailStatus']) ?? null,
     emailError: row.email_error ?? '',
-    emailSentAt: row.email_sent_at ? row.email_sent_at.slice(0, 10) : ''
+    emailSentAt: row.email_sent_at ? row.email_sent_at.slice(0, 10) : '',
+    expiresAt: row.expires_at ? row.expires_at.slice(0, 10) : ''
   };
 }
 

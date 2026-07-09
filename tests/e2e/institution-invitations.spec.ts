@@ -35,6 +35,11 @@ test('기관코드 회원관리 모달: 초대 폼과 통합 로스터(소속+�
   await expect(
     modal.getByText('발송 내역은 메시지 ▸ 발송 이력에서 확인할 수 있습니다.')
   ).toBeVisible();
+  // 만료 기간(기본 7일) 입력.
+  await expect(modal.getByText('만료 기간', { exact: true })).toBeVisible();
+  await expect(
+    modal.getByText('이 기간 안에 응답하지 않으면 초대가 만료됩니다.')
+  ).toBeVisible();
   await expect(modal.getByRole('button', { name: '선택 회원 초대' })).toBeVisible();
 
   // 통합 로스터 헤더(소속 회원 + 대기 중 초대를 한 테이블로 관리) + 상태 컬럼.
@@ -62,6 +67,7 @@ test('회원목록: 다중 선택 시 기관 초대 모달을 연다', async ({ 
   await expect(modal.getByText(/초대 알림\(인앱\+이메일\)을 보냅니다/)).toBeVisible();
   await expect(modal.getByRole('button', { name: '초대 발송' })).toBeVisible();
   await expect(modal.getByText('기관 코드', { exact: true })).toBeVisible();
+  await expect(modal.getByText('만료 기간', { exact: true })).toBeVisible();
 });
 
 test('회원상세 기관탭: 기관 초대 카드를 렌더한다', async ({ page }) => {
@@ -77,4 +83,5 @@ test('회원상세 기관탭: 기관 초대 카드를 렌더한다', async ({ pa
   ).toBeVisible();
   await expect(page.getByRole('button', { name: '기관 초대 보내기' })).toBeVisible();
   await expect(page.getByRole('button', { name: '소속 해제' })).toBeVisible();
+  await expect(page.getByText('만료 기간', { exact: true })).toBeVisible();
 });

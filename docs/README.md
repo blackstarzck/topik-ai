@@ -18,8 +18,9 @@
 - `api-inventory-backend-handoff.md` — v13 ↔ topik-ai 백엔드 API 인벤토리·핸드오프 참고 문서
 
 ### `docs/requests` (외부 발신 요청·발주 문서)
+- `v13-dashboard-kpi-writing-source-handoff-2026-07-09.md` — v13 대시보드/성장 KPI가 빈 `problem_attempts`를 읽어 오늘/누적 제출·연속 학습일이 항상 0인 문제를 쓰기 원천(`writing_submissions`+`study_events`)으로 재정의하는 handoff(참고 계산식·영향 파일·검증 기준)
 - `v13-pdf-export-quota-handoff-2026-07-07.md` — v13 PDF 내보내기 쿼터 handoff 사본(원본은 v13 저장소 docs 폴더의 `handoff-pdf-export-quota-topik-ai.md`). DB 계약, admin 필수 기능, 보안 경계, 인수 테스트 기준
-- `v13-institution-invitation-handoff-2026-07-07.md` — v13 사용자 화면의 기관 초대 수락/거부 모달 계약 handoff(동의 기반 소속 배정 전환)
+- `v13-institution-invitation-handoff-2026-07-07.md` — 기관 회원 추가가 동의 기반 초대로 전환된 뒤 v13 알림함에서 수락/거부 모달과 `respond_institution_invitation` RPC를 구현하기 위한 handoff
 - `v13-users-registration-lifecycle-handoff-2026-06-26.md` — v13 사용자 앱의 이메일 인증·필수 약관 동의·정상 진입 불변식 정합화 handoff(DB/RLS guard, auth completion route, dry-run/backfill, QA 기준)
 - `v13-institution-question-exposure-handoff-2026-06-26.md` — v13 사용자 화면에 기관별 TOPIK 쓰기 문항 노출 계약을 적용하기 위한 handoff(관리 SoT, v13 영향 파일, 공통 predicate, 검증 기준)
 - `upstream-writing-endpoints-request-2026-06-10.md` — TOPIK 쓰기 문항 공급(인바운드) API 계약 요청서(D-11 재정의 — 2026-06-11 재작성, 구 push 업로드 요청 폐기)
@@ -119,6 +120,7 @@
 - `admin-action-log.md`
 - `admin-data-usage-map.md`
 - `page-ia/analytics-overview-page-ia.md`
+- `page-ia/analytics-learning-page-ia.md` — 학습 분석(`/analytics/learning`): TOPIK 쓰기 전체 학습 집계(활성=학습 이벤트 기준, 원점+환산 병기, 소요시간 미수집 구분) — 2026-07-08 신설
 - `page-ia/assessment-level-tests-page-ia.md`
 - `page-ia/assessment-question-bank-eps-topik-page-ia.md`
 - `page-ia/assessment-question-bank-page-ia.md` — TOPIK 쓰기 문항 통합 페이지(조회 + 노출/태그 관리, route-backed 탭 문항/가져온 문항) — 2026-06-23 IA 통합
@@ -163,6 +165,8 @@
 ### `docs/checklists`
 - `admin-essential-checklist.md`
 - `codex-response-completion-checklist.md`
+- `users-learning-data-collection-report-and-plan.md` — v13 사용자 화면의 TOPIK 쓰기 학습 데이터 수집 가능성, 추가 수집 후보, topik-ai Admin read contract/page 준비 범위를 함께 정리한 조사 보고서 및 실행 계획안
+- `users-learning-overview-v13-alignment-checklist.md` — Admin `Users > 회원 상세 > 학습 현황` 요약 컨텐츠와 v13 사용자 화면의 실제 데이터 수집 경로를 대사하기 위한 체크리스트
 
 ### `docs/plans`
 - `plans/assessment-ia-consolidation-plan.md` — 평가 메뉴 IA 통합 실행계획(쓰기 3페이지 → 메뉴 1 + route-backed 탭 2: 문항/가져온 문항) — 2026-06-23
@@ -174,7 +178,7 @@
 - Supabase 마이그레이션 디렉터리/네임스페이스 안내(`docs/` 밖, 외부 참조): `supabase/README.md`
 
 ## 관리 규칙
-- 2026-06-18 기준 `Users > 회원 상세` 학습 현황 탭은 신규 문서 없이 기존 SoT(`admin-data-contract`, `users-detail-page-ia`, `users-detail-page-sync`, `admin-data-usage-map`, `shared-supabase-schema-ownership`, `admin-action-log`)에서 추적한다.
+- `Users > 회원 상세` 학습 현황 탭의 계약은 기존 SoT(`admin-data-contract`, `users-detail-page-ia`, `users-detail-page-sync`, `admin-data-usage-map`, `shared-supabase-schema-ownership`, `admin-action-log`)에서 추적하고, v13 사용자 화면의 실제 수집 경로 대사는 `docs/checklists/users-learning-overview-v13-alignment-checklist.md`로 수행한다. TOPIK 쓰기 학습 데이터 수집 항목과 v13/topik-ai 양 프로젝트 실행 경계는 `docs/checklists/users-learning-data-collection-report-and-plan.md`를 기준 참고 문서로 사용한다.
 - 상위 개요, 메뉴 구조, 라우팅, 역할, 페이지 상태는 `docs/architecture/admin-overview.md`를 우선 확인한다.
 - 하네스 구조와 기본 검증 명령은 `docs/harness/index.md`를 우선 확인한다.
 - `docs/**` 문서를 추가/삭제/이동하면 같은 작업에서 `docs/README.md`를 반드시 갱신한다.

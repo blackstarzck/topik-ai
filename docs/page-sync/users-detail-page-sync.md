@@ -115,6 +115,19 @@ last_reviewed_at: "2026-06-26"
 - 기본 라우트: `/users/:userId`
 - 필수 쿼리/경로 파라미터: :userId
 - 선택 쿼리 파라미터: page, pageSize, keyword, status, tab, selected 등 페이지별 후보
+
+## 2026-07-08 학습 현황 writing 중심 재정의 동기화 기준
+
+- 기준 원천 변경: TOPIK 쓰기 학습 현황은 `writing_submissions`·`writing_feedback`·
+  `feedback_dimension_scores`·`problems`·`study_events`·`learning_goals`·`writing_submission_metrics`
+  (v13 신규, 소요 시간)로 재정의. `problem_attempts`는 객관식 분리 블록 한정(전 회원 0 표시 불일치 해소).
+- v13↔admin 동일값 기준: 같은 사용자/기간에서 제출 수·피드백 상태·정규화 평균 점수(행별 `score_max`
+  기준)·소요 시간이 v13 화면과 admin 회원 상세에서 같은 계산식으로 재현되어야 한다. 점수는 원점수+
+  100점 환산 병기.
+- 0 vs 미수집: 소요 시간 계열은 metrics 행 부재 시 "미수집"으로 표기(2026-07-08 수집 시작 이전
+  제출과 0분을 구분). v13 화면도 동일 구분을 따라야 한다.
+- 잔여 정렬 항목: v13 `get_dashboard_kpi()`가 아직 `problem_attempts`를 집계(v13 repo 정렬 필요 —
+  gap register 2026-07-08 절 참조). 상세 계약은 `docs/specs/admin-data-contract.md` 2026-07-08 절이 SoT.
 - 목록 복원 기준: 목록/필터/정렬/탭/상세 대상 복원
 - 상세 Drawer/Modal/하위 라우트 복원 여부: 행 클릭 Drawer/Modal 후보
 - 사용자 화면 동기화에 필요한 식별자: User + userId

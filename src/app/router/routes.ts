@@ -41,6 +41,7 @@ export type SimplePageRouteKey =
   | 'assessment-question-detail'
   | 'assessment-imported-tasks'
   | 'analytics-overview'
+  | 'analytics-learning'
   | 'system-admins'
   | 'system-permissions'
   | 'system-metadata'
@@ -363,6 +364,7 @@ export const adminRouteDefinitions = [
   },
 
   { kind: 'page', path: '/analytics/overview', page: 'analytics-overview' },
+  { kind: 'page', path: '/analytics/learning', page: 'analytics-learning' },
 
   { kind: 'page', path: '/system/admins', page: 'system-admins' },
   { kind: 'page', path: '/system/permissions', page: 'system-permissions' },

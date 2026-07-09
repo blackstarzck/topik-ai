@@ -871,3 +871,63 @@
 - 반환 모델: `UserLearningOverview` (`kpis`, `domainAccuracy`, `weaknesses`, `recentAttempts`, `recentWriting`).
 - PII 제외: `selected_answer`, `problems.prompt`, `writing_submissions.answer_text`, `sentence_feedback.*text/comment`는 반환하지 않는다.
 - mock fallback: `getMockUserLearningOverview(userId)`가 `VITE_SUPABASE_DISABLED` 모드 렌더 안전성을 유지한다.
+
+## 2026-07-08 Users 학습 현황 writing 중심 재정의 + Analytics 학습 분석 데이터 계약
+
+학습 데이터 수집 계획(docs/checklists/users-learning-data-collection-report-and-plan.md) Phase 1~3 구현.
+오너 위임 결정(2026-07-08, 전 항목 기본 추천안): ① 소요 시간 = writing 전용 metrics 계약
+(`writing_submission_metrics`, v13 소유) ② 전체 학습 분석 = Analytics 하위 탭 ③ 점수 =
+원점수+100점 정규화 병기(행별 `score_max` 기준 — 51번에 10점/100점 만점 혼재 실측)
+④ 답안 원문 기본 제외 유지 ⑤ 활성 학습자 = 학습 이벤트(study_events) 기준(로그인 아님).
+
+### 배경(불일치 해소)
+
+- 기존 학습 현황 KPI(총 풀이 수·정답률·평균 점수·누적 학습시간·북마크·streak·주간 학습분)는
+  전부 `problem_attempts` 원천이었으나 v13 사용자 화면에 insert 경로가 없어(추천 dedup select만,
+  dev DB 0행) 모든 회원에게 0이 표시되고 있었다. TOPIK 쓰기 기준 원천을 writing 계열로 재정의한다.
+- `problem_attempts`는 객관식(읽기/듣기) attempt 원천으로 분리 유지하고, 화면에서는
+  `objectiveAttempts` 별도 라벨 블록("객관식 학습(별도 원천)")으로 표시한다.
+
+### v13 수집 계약 — `writing_submission_metrics` (v13 소유, 마이그 `20260708113000`)
+
+- 1 제출 = 1 불변 행(PK `submission_id`). insert-once(본인+본인 제출 검증 RLS), update/delete 정책 없음.
+- `elapsed_seconds` = 화면 타이머(마운트 누적, 0~86400), `active_seconds` = 최근 30초 내 타이핑이
+  있던 초 누적(항상 elapsed 이하), `started_at`/`submitted_at` 병행 보존.
+- 원문/초안/첨삭 텍스트 없음(숫자·id만 — study_events payload와 동일 PII 기조).
+- 행 부재 = "미수집"(수집 시작 이전 제출). 소비자는 0분으로 렌더하면 안 된다.
+- 계측: v13 4개 워크스페이스(51/52/53/54) 공용 훅 `useWritingTimeMetrics` + 제출 성공 콜백에서
+  `recordWritingSubmissionMetrics` fire-and-forget(중복 submission_id insert는 무해 실패).
+
+### RPC 재정의: `get_admin_user_learning_overview(target_id uuid)` (마이그 `20260708130000`)
+
+- 권한: 기존과 동일(platform_admin 전용, SECURITY DEFINER, read-only).
+- 읽기 source: `writing_submissions` ⋈ `writing_feedback` ⋈ `feedback_dimension_scores` ⋈ `problems`
+  ⋈ `study_events`(streak·열람) ⋈ `learning_goals` ⋈ `writing_submission_metrics` (+`problem_attempts`는
+  objective 블록 한정).
+- 반환 모델(`UserLearningOverview` 재정의): `kpis`(제출/피드백 상태/정규화 평균/열람률/재제출/streak
+  [학습 이벤트 기준]/주간 학습분[미수집 null]/metricsCount/평균 elapsed·active/최근 활동일),
+  `perQuestion`(51~54 generate_series — 원점 평균+대표 만점 mode+정규화+소요), `tagStats`(상위 12),
+  `weaknesses`(tag<70점·n≥2 / writing_dimension / goal), `recentWriting`(5건 — 문항 title 120자 절단,
+  열람 여부, 재제출 여부, 소요, 약점 차원; 원문 없음), `objectiveAttempts`, `onboarding`(기존 모양 유지).
+- 0 vs 미수집: 시간 계열은 `metricsCount=0`이면 null(미수집)로 반환하고 화면은 "미수집"으로 표기한다.
+
+### 신규 RPC: `get_admin_learning_analytics(period_days integer default 30)` (마이그 `20260708140000`)
+
+- 권한: `private.is_admin` (순수 집계, 개인 식별자 미반환 — 기존 `get_admin_analytics_overview`와 동일 표면).
+- `period_days`: 7/30/90 = 최근 N일, 0 = 전체. 직전 동일기간 비교값은 N>0에서만(전체는 null).
+- 반환: `summary`(활성 학습자[study_events distinct]·제출/제출자·완료/실패율·정규화 평균·열람률·
+  재제출·처리시간 평균+중앙값[고착 재동기화로 평균 부풀 수 있어 중앙값 병기]·elapsed 평균+중앙값·
+  metricsCount·차원 커버리지), `per_question`, `score_distribution`(환산 5구간), `weak_dimensions`
+  (표본 수 병기), `tag_stats`(상위 12).
+- 화면: `/analytics/learning` (Analytics 하위 탭, `analytics.read`), 서비스
+  `analytics-learning-service.ts`, mock 모드 결정적 목업.
+- 활성 사용자 정의 주의: 통계 개요의 "활성 사용자"는 로그인 기준(2026-07-07 오너 합의 유지),
+  학습 분석의 "학습 활성 사용자"는 학습 이벤트 기준 — 라벨로 구분해 공존한다.
+
+### 검증(2026-07-08, dev)
+
+- SQL 프로브: 제출 최다 사용자 개인 RPC 실값, 가드(비관리자 forbidden), payload에 `answer_text` 무포함.
+- 실브라우저 풀루프: 신규 학습자 계정으로 v13 실제 52번 제출 → `writing_submission_metrics` 행
+  (elapsed 7s/active 7s) 생성 → 개인/전체 RPC와 admin 화면(회원 상세 학습 탭·학습 분석)에서 동일 값 확인.
+- 기존 e2e 학생 계정은 외부 평가 API 409("Email already registered with another account")로 제출이
+  차단된 상태 — v13/admin 코드 결함 아님(외부 서비스 계정 레지스트리 충돌, 별도 해소 필요).

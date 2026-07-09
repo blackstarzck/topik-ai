@@ -292,11 +292,23 @@ const menuConfig: MenuNode[] = [
     ]
   },
   {
-    key: '/analytics/overview',
+    key: '/analytics',
     icon: <BarChartOutlined />,
     label: adminMenuLabels.analytics,
-    to: '/analytics/overview',
-    permissionKeys: ['analytics.read']
+    children: [
+      {
+        key: '/analytics/overview',
+        label: adminMenuLabels.analyticsOverview,
+        to: '/analytics/overview',
+        permissionKeys: ['analytics.read']
+      },
+      {
+        key: '/analytics/learning',
+        label: adminMenuLabels.analyticsLearning,
+        to: '/analytics/learning',
+        permissionKeys: ['analytics.read']
+      }
+    ]
   },
   {
     key: '/system',
@@ -483,6 +495,9 @@ function resolveSelectedKey(pathname: string): string {
   }
   if (pathname.startsWith('/content/library')) {
     return '/content/library';
+  }
+  if (pathname.startsWith('/analytics/learning')) {
+    return '/analytics/learning';
   }
   if (pathname.startsWith('/analytics')) {
     return '/analytics/overview';

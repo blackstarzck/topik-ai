@@ -717,3 +717,21 @@
 - `Resolved`(2026-07-08): PDF 내보내기 제한 PR8 추가 보완. 정책 저장 자기치유/cleanup DML을 `subject_scope='user' and resource_scope='problem'`로 제한해 다른 scope 정책을 비활성화/삭제하지 않으며, 개인 초기화 대상 회원 검색은 `search_admin_pdf_quota_reset_users` 전용 RPC로 분리해 100명 창 제약과 platform_admin 게이트 재사용을 해소했다.
 - `미확정`: admin 화면 밖 경로(platform_admin 직접 테이블 쓰기)로 활성 정책이 0이 되면 v13은 여전히 fail-closed 500이다. v13 claim의 no-active-policy 폴백 하드닝은 v13 소유 후속 제안으로 남긴다.
 - `미확정`: 한도 0(의도적 중단) 시 v13 사용자 카피가 "횟수 소진 + resetAt"이라 중단 의도와 안 맞는다. v13 소유 문구 개선 후보.
+
+### 2026-07-08 학습 데이터 수집(problem_attempts 불일치 해소 + 소요시간 수집)
+
+- `Resolved`: 학습 현황 KPI가 빈 `problem_attempts`(v13 사용자 화면 insert 경로 부재, dev 0행)를
+  집계해 전 회원 0으로 표시되던 gap을 writing 원천 재정의(마이그 `20260708130000`)로 해소.
+  `problem_attempts`는 `객관식 학습(별도 원천)` 분리 블록으로 라벨 유지.
+- `Resolved`: 쓰기 소요 시간 미수집 gap — v13 `writing_submission_metrics`(마이그 `20260708113000`)
+  + 워크스페이스 계측으로 수집 시작(2026-07-08). 이전 제출은 "미수집" 표기(0분 렌더 금지).
+- `Resolved`: 전체 사용자 학습 집계 부재 gap — `get_admin_learning_analytics` + `/analytics/learning`
+  탭 신설(활성 학습자 = 학습 이벤트 기준).
+- `미확정`: v13 자체 `get_dashboard_kpi()`(v13 마이그 20260521140000)도 `problem_attempts`를 집계해
+  사용자 대시보드 KPI가 0으로 표시됨 — v13 repo에서 writing 원천으로 정렬 필요(계획 Phase 1-4 항목).
+- `미확정`: 외부 평가 API가 e2e 학생 계정(blackstarzck@naver.com)의 모든 제출에 409
+  ("Email already registered with another account")를 반환 — 외부 서비스(dotoretopik) 계정
+  레지스트리 충돌로 v13/admin 결함 아님. 외부 운영자에게 해소 요청 필요(e2e core-writing-flow가
+  이 계정으로는 제출 단계에서 실패).
+- `미확정`: 차원 점수 커버리지 낮음(dev 기준 피드백 192건 중 24건만 차원 점수 보유) — 화면은 표본 수
+  병기로 완화, 외부 평가 API 차원 응답 안정화 후 재검토.

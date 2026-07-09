@@ -112,79 +112,156 @@ export function getMockUserById(userId: string): UserSummary | undefined {
   return mockUsers.find((item) => item.id === userId);
 }
 
+// writing 중심 재정의(20260708130000) 계약과 동일한 모양의 결정적 mock.
+// 소요 시간은 "수집됨"(51/52)과 "미수집"(53/54, elapsed null)을 함께 노출해
+// 화면의 미수집 라벨 경로가 mock/e2e에서도 렌더되게 한다.
 export function getMockUserLearningOverview(userId: string): UserLearningOverview {
   const seed = Math.max(1, Number.parseInt(userId.replace(/\D/g, ''), 10) || 1);
-  const attemptBase = 18 + (seed % 24);
-  const correctRate = 58 + (seed % 31);
   const latestDate = formatDate(430 + (seed % 20));
   const weeklyGoalMinutes = 150 + (seed % 4) * 30;
+  const subs51 = 6 + (seed % 6);
+  const subs52 = 3 + (seed % 4);
+  const subs53 = 1 + (seed % 3);
+  const subs54 = seed % 3;
+  const totalSubmissions = subs51 + subs52 + subs53 + subs54;
+  const feedbackFailed = seed % 3 === 0 ? 1 : 0;
+  const feedbackPending = seed % 4 === 0 ? 1 : 0;
+  const feedbackComplete = Math.max(0, totalSubmissions - feedbackFailed - feedbackPending);
+  const norm51 = 62 + (seed % 25);
+  const norm52 = 55 + (seed % 30);
 
   return {
     kpis: {
-      totalAttempts: attemptBase,
-      solvedProblems: Math.max(1, attemptBase - (seed % 5)),
-      correctRate,
-      averageScore: 62 + (seed % 25),
-      totalStudyMinutes: 240 + seed * 7,
-      bookmarkedCount: seed % 9,
-      writingSubmissionCount: 2 + (seed % 5),
-      writingFeedbackCount: 1 + (seed % 4),
+      totalSubmissions,
+      feedbackComplete,
+      feedbackPending,
+      feedbackFailed,
+      resubmissionCount: seed % 3,
+      avgScoreNormalized: 58 + (seed % 27),
+      feedbackViewedCount: Math.max(0, feedbackComplete - (seed % 4)),
+      feedbackViewRate:
+        feedbackComplete > 0
+          ? Math.round(
+              (Math.max(0, feedbackComplete - (seed % 4)) / feedbackComplete) * 1000
+            ) / 10
+          : null,
       streakDays: 1 + (seed % 12),
       weeklyGoalMinutes,
       weeklyStudiedMinutes: 40 + (seed % 6) * 25,
+      metricsCount: subs51 + subs52,
+      avgElapsedSeconds: 420 + (seed % 10) * 30,
+      avgActiveSeconds: 300 + (seed % 10) * 20,
       latestActivityAt: latestDate
     },
-    domainAccuracy: [
-      { domain: '읽기', attempts: 12 + (seed % 6), correctRate: correctRate - 4, averageScore: 68 },
-      { domain: '듣기', attempts: 9 + (seed % 5), correctRate: correctRate + 3, averageScore: 74 },
-      { domain: '쓰기', attempts: 3 + (seed % 4), correctRate: null, averageScore: 61 }
-    ],
-    weaknesses: [
-      { label: '문법 연결 표현', source: 'tag', severity: 3, evidenceCount: 5 + (seed % 3) },
-      { label: '중심 내용 파악', source: 'domain', severity: 2, evidenceCount: 4 + (seed % 2) },
-      { label: '쓰기 구성', source: 'writing_dimension', severity: 2, evidenceCount: 2 }
-    ],
-    recentAttempts: [
+    perQuestion: [
       {
-        id: `${userId}-AT1`,
-        problemId: 'PR-READ-041',
-        domain: '읽기',
-        questionNo: 41,
-        topikLevel: 'TOPIK II',
-        difficulty: '중',
-        title: '세부 내용 파악',
-        isCorrect: seed % 2 === 0,
-        score: seed % 2 === 0 ? 2 : 0,
-        status: 'submitted',
-        submittedAt: latestDate,
-        timeSpentSeconds: 164
+        questionNo: 51,
+        submissions: subs51,
+        feedbackComplete: subs51,
+        avgScoreRaw: Math.round(norm51) / 10,
+        scoreMax: 10,
+        avgScoreNormalized: norm51,
+        avgElapsedSeconds: 360 + (seed % 8) * 15,
+        metricsCount: subs51
       },
       {
-        id: `${userId}-AT2`,
-        problemId: 'PR-LISTEN-018',
-        domain: '듣기',
-        questionNo: 18,
-        topikLevel: 'TOPIK I',
-        difficulty: '하',
-        title: '대화 장소 추론',
-        isCorrect: true,
-        score: 2,
-        status: 'submitted',
-        submittedAt: formatDate(428 + (seed % 18)),
-        timeSpentSeconds: 92
+        questionNo: 52,
+        submissions: subs52,
+        feedbackComplete: Math.max(0, subs52 - feedbackFailed),
+        avgScoreRaw: Math.round(norm52) / 10,
+        scoreMax: 10,
+        avgScoreNormalized: norm52,
+        avgElapsedSeconds: 480 + (seed % 8) * 20,
+        metricsCount: subs52
+      },
+      {
+        questionNo: 53,
+        submissions: subs53,
+        feedbackComplete: Math.max(0, subs53 - feedbackPending),
+        avgScoreRaw: 16 + (seed % 9),
+        scoreMax: 30,
+        avgScoreNormalized: Math.round(((16 + (seed % 9)) / 30) * 1000) / 10,
+        avgElapsedSeconds: null,
+        metricsCount: 0
+      },
+      {
+        questionNo: 54,
+        submissions: subs54,
+        feedbackComplete: subs54,
+        avgScoreRaw: subs54 > 0 ? 28 + (seed % 12) : null,
+        scoreMax: subs54 > 0 ? 50 : null,
+        avgScoreNormalized:
+          subs54 > 0 ? Math.round(((28 + (seed % 12)) / 50) * 1000) / 10 : null,
+        avgElapsedSeconds: null,
+        metricsCount: 0
       }
+    ],
+    tagStats: [
+      {
+        tag: '문의',
+        submissions: 4 + (seed % 4),
+        feedbackComplete: 4 + (seed % 4),
+        avgScoreNormalized: 70 + (seed % 20)
+      },
+      {
+        tag: '주거와 환경',
+        submissions: 3 + (seed % 3),
+        feedbackComplete: 3 + (seed % 3),
+        avgScoreNormalized: 64 + (seed % 18)
+      },
+      {
+        tag: '건강',
+        submissions: 2 + (seed % 2),
+        feedbackComplete: 2 + (seed % 2),
+        avgScoreNormalized: 52 + (seed % 16)
+      }
+    ],
+    weaknesses: [
+      { label: 'structure', source: 'writing_dimension', severity: 3, evidenceCount: 3 + (seed % 3) },
+      { label: '건강', source: 'tag', severity: 2, evidenceCount: 2 + (seed % 2) },
+      { label: 'essay-structure', source: 'goal', severity: 1, evidenceCount: 1 }
     ],
     recentWriting: [
       {
         submissionId: `${userId}-WS1`,
+        questionNo: 51,
+        problemId: 'PR-WRITE-051',
+        problemTitle: '기숙사 방 변경 문의 이메일',
+        submittedAt: `${latestDate} 10:12`,
+        feedbackStatus: 'complete',
+        scoreTotal: 8,
+        scoreMax: 10,
+        scoreNormalized: 80,
+        isResubmission: false,
+        viewed: true,
+        elapsedSeconds: 412,
+        weaknessDimensions: ['structure']
+      },
+      {
+        submissionId: `${userId}-WS2`,
         questionNo: 54,
-        submittedAt: latestDate,
-        feedbackStatus: 'completed',
+        problemId: 'PR-WRITE-054',
+        problemTitle: '인공지능 시대의 education 방향',
+        submittedAt: `${formatDate(428 + (seed % 18))} 21:40`,
+        feedbackStatus: 'complete',
         scoreTotal: 32,
         scoreMax: 50,
-        weaknessDimensions: ['구성', '문법']
+        scoreNormalized: 64,
+        isResubmission: seed % 2 === 0,
+        viewed: false,
+        elapsedSeconds: null,
+        weaknessDimensions: ['content', 'structure']
       }
     ],
+    objectiveAttempts: {
+      totalAttempts: 0,
+      solvedProblems: 0,
+      correctRate: null,
+      averageScore: null,
+      totalStudyMinutes: 0,
+      bookmarkedCount: 0,
+      latestAttemptAt: ''
+    },
     onboarding: {
       hasGoal: true,
       topikLevel: 'TOPIK II',

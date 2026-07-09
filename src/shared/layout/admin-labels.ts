@@ -44,6 +44,8 @@ export const adminMenuLabels = {
   contentVocabularyMultipleChoice: '객관식 선택',
   contentMissions: '학습 미션',
   analytics: '통계',
+  analyticsOverview: '개요',
+  analyticsLearning: '학습 분석',
   system: '시스템',
   systemAdmins: '관리자 계정',
   systemPermissions: '권한 관리',

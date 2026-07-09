@@ -5,6 +5,7 @@ import {
   Descriptions,
   Empty,
   Input,
+  InputNumber,
   Modal,
   notification,
   Select,
@@ -81,6 +82,7 @@ import { DRAWER_TABLE_PAGINATION } from '../../../shared/ui/table/drawer-table';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 import { formatNationality } from '../../../shared/model/country-name';
+import { formatWritingDimension } from '../../../shared/model/writing-dimension-labels';
 
 const { Text } = Typography;
 
@@ -91,10 +93,26 @@ const detailCommunityBoardFilterValues = ['자유게시판', '후기', '질문']
 const detailCommunityStatusFilterValues = ['게시', '숨김'] as const;
 
 const learningWeaknessSourceLabels: Record<string, string> = {
-  domain: '영역',
   tag: '태그',
   writing_dimension: '작문 영역',
   goal: '목표'
+};
+
+const writingFeedbackStatusLabels: Record<string, string> = {
+  complete: '완료',
+  analyzing: '분석 중',
+  pending: '대기',
+  failed: '실패'
+};
+
+// 소요 시간(초) 표시. null = 미수집(소요시간 수집 계약 이전 제출)이며 0초와 구분한다.
+const formatElapsedSeconds = (value: number | null): string => {
+  if (value == null) {
+    return '미수집';
+  }
+  const minutes = Math.floor(value / 60);
+  const seconds = Math.round(value % 60);
+  return minutes > 0 ? `${minutes}분 ${seconds}초` : `${seconds}초`;
 };
 
 // v13 온보딩(LearningGoalForm)의 weakAreas i18n과 동일한 약점 슬러그 → 한글 매핑.
@@ -232,6 +250,7 @@ function AffiliationTabPanel({
   const [codes, setCodes] = useState<InstitutionCode[]>([]);
   const [selectedCode, setSelectedCode] = useState<string>('');
   const [reason, setReason] = useState('');
+  const [expiresInDays, setExpiresInDays] = useState<number>(7);
   const [submitting, setSubmitting] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
   const [pendingInvitations, setPendingInvitations] = useState<InstitutionInvitation[]>([]);
@@ -288,7 +307,12 @@ function AffiliationTabPanel({
       return;
     }
     setSubmitting(true);
-    const result = await inviteInstitutionMembersSafe([userId], selectedCode, reason.trim());
+    const result = await inviteInstitutionMembersSafe(
+      [userId],
+      selectedCode,
+      reason.trim(),
+      expiresInDays
+    );
     setSubmitting(false);
     if (!result.ok) {
       notificationApi.error({ message: '기관 초대 실패', description: result.error.message });
@@ -312,7 +336,7 @@ function AffiliationTabPanel({
     setReason('');
     setInvitationReload((prev) => prev + 1);
     onChanged();
-  }, [notificationApi, onChanged, reason, selectedCode, userId]);
+  }, [expiresInDays, notificationApi, onChanged, reason, selectedCode, userId]);
 
   const handleCancelInvitation = useCallback(
     async (cancelReason: string) => {
@@ -402,6 +426,7 @@ function AffiliationTabPanel({
                   <Text>
                     {invitation.codeLabel || invitation.code} ({invitation.code}) ·{' '}
                     {invitation.createdAt}
+                    {invitation.expiresAt ? ` · 만료 ${invitation.expiresAt}` : ''}
                   </Text>
                   <InvitationEmailStatusTag invitation={invitation} />
                   <Button
@@ -436,6 +461,18 @@ function AffiliationTabPanel({
               optionFilterProp="label"
               style={{ width: '100%', maxWidth: 420 }}
             />
+            <Space size={8} align="center">
+              <Text type="secondary">만료 기간</Text>
+              <InputNumber
+                min={1}
+                max={365}
+                value={expiresInDays}
+                onChange={(value) => setExpiresInDays(value ?? 7)}
+                addonAfter="일"
+                style={{ width: 140 }}
+              />
+              <Text type="secondary">이 기간 안에 응답하지 않으면 초대가 만료됩니다.</Text>
+            </Space>
             <Input.TextArea
               value={reason}
               onChange={(event) => setReason(event.target.value)}
@@ -1065,34 +1102,84 @@ export default function UserDetailPage(): JSX.Element {
     []
   );
 
-  const learningDomainColumns = useMemo<
-    TableColumnsType<UserLearningOverview['domainAccuracy'][number]>
+  const learningQuestionColumns = useMemo<
+    TableColumnsType<UserLearningOverview['perQuestion'][number]>
   >(
     () => [
       {
-        title: '영역',
-        dataIndex: 'domain',
-        sorter: createTextSorter((record) => record.domain)
+        title: '문항',
+        dataIndex: 'questionNo',
+        width: 90,
+        render: (value: number) => `${value}번`
       },
       {
-        title: '시도 수',
-        dataIndex: 'attempts',
+        title: '제출 수',
+        dataIndex: 'submissions',
+        width: 100,
+        sorter: createNumberSorter((record) => record.submissions)
+      },
+      {
+        title: '피드백 완료',
+        dataIndex: 'feedbackComplete',
         width: 110,
-        sorter: createNumberSorter((record) => record.attempts)
+        sorter: createNumberSorter((record) => record.feedbackComplete)
       },
       {
-        title: '정답률',
-        dataIndex: 'correctRate',
-        width: 120,
-        sorter: createNumberSorter((record) => record.correctRate ?? -1),
-        render: (value: number | null) => (value == null ? '-' : `${value}%`)
+        title: createInfoColumnTitle(
+          '평균 점수(원점)',
+          '완료된 피드백의 원점수 평균 / 대표 만점입니다. TOPIK 쓰기는 문항별 만점이 달라(51·52번 10점, 53번 30점, 54번 50점) 문항 간 비교는 100점 환산을 사용하세요.'
+        ),
+        dataIndex: 'avgScoreRaw',
+        width: 140,
+        sorter: createNumberSorter((record) => record.avgScoreRaw ?? -1),
+        render: (value: number | null, record) =>
+          value == null ? '-' : `${value} / ${record.scoreMax ?? '-'}`
       },
       {
-        title: '평균 점수',
-        dataIndex: 'averageScore',
-        width: 120,
-        sorter: createNumberSorter((record) => record.averageScore ?? -1),
-        render: (value: number | null) => (value == null ? '-' : value)
+        title: createInfoColumnTitle(
+          '평균 점수(환산)',
+          '점수를 100점 만점으로 정규화한 평균입니다(score_total / score_max × 100). 문항 간 비교 기준.'
+        ),
+        dataIndex: 'avgScoreNormalized',
+        width: 140,
+        sorter: createNumberSorter((record) => record.avgScoreNormalized ?? -1),
+        render: (value: number | null) => (value == null ? '-' : `${value}점`)
+      },
+      {
+        title: createInfoColumnTitle(
+          '평균 소요 시간',
+          '문제 화면 진입부터 제출까지의 평균 시간입니다. "미수집"은 소요 시간 수집(2026-07-08) 이전의 제출로 0분과 다릅니다.'
+        ),
+        dataIndex: 'avgElapsedSeconds',
+        width: 130,
+        render: (value: number | null, record) =>
+          record.metricsCount === 0 ? '미수집' : formatElapsedSeconds(value)
+      }
+    ],
+    []
+  );
+
+  const learningTagColumns = useMemo<
+    TableColumnsType<UserLearningOverview['tagStats'][number]>
+  >(
+    () => [
+      {
+        title: '태그',
+        dataIndex: 'tag',
+        sorter: createTextSorter((record) => record.tag)
+      },
+      {
+        title: '제출 수',
+        dataIndex: 'submissions',
+        width: 110,
+        sorter: createNumberSorter((record) => record.submissions)
+      },
+      {
+        title: '평균 점수(환산)',
+        dataIndex: 'avgScoreNormalized',
+        width: 140,
+        sorter: createNumberSorter((record) => record.avgScoreNormalized ?? -1),
+        render: (value: number | null) => (value == null ? '-' : `${value}점`)
       }
     ],
     []
@@ -1105,18 +1192,22 @@ export default function UserDetailPage(): JSX.Element {
       {
         title: '약점',
         dataIndex: 'label',
-        sorter: createTextSorter((record) => formatWeaknessLabel(record.label)),
-        render: (value: string) => formatWeaknessLabel(value)
+        sorter: createTextSorter((record) =>
+          record.source === 'writing_dimension'
+            ? formatWritingDimension(record.label)
+            : formatWeaknessLabel(record.label)
+        ),
+        render: (value: string, record) =>
+          record.source === 'writing_dimension'
+            ? formatWritingDimension(value)
+            : formatWeaknessLabel(value)
       },
       {
         title: createInfoColumnTitle('출처', [
           {
-            label: '영역',
-            description: '영역별 정답률이 70% 미만일 때 자동 추출한 약점입니다.'
-          },
-          {
             label: '태그',
-            description: '오답 문제에 붙은 태그를 빈도순으로 추출한 약점입니다.'
+            description:
+              '해당 태그 문항의 평균 점수(100점 환산)가 70점 미만이고 제출이 2건 이상일 때 추출한 약점입니다.'
           },
           {
             label: '작문 영역',
@@ -1134,7 +1225,7 @@ export default function UserDetailPage(): JSX.Element {
       {
         title: createInfoColumnTitle(
           '심각도',
-          '약점이 얼마나 심각한지를 나타내며 숫자가 클수록 심각합니다. 출처별 산정 기준이 다릅니다 — 영역: 정답률 50% 미만 3 / 50~70% 2, 태그: 항상 2, 작문 영역: 피드백상 약점 수준, 목표: 항상 1(자기신고).'
+          '약점이 얼마나 심각한지를 나타내며 숫자가 클수록 심각합니다. 출처별 산정 기준이 다릅니다 — 태그: 항상 2, 작문 영역: 피드백상 약점 수준(1~4), 목표: 항상 1(자기신고).'
         ),
         dataIndex: 'severity',
         width: 100,
@@ -1143,70 +1234,11 @@ export default function UserDetailPage(): JSX.Element {
       {
         title: createInfoColumnTitle(
           '근거 수',
-          '이 약점을 뒷받침하는 데이터 개수입니다. 출처별 의미가 다릅니다 — 영역: 풀이 시도 수, 태그: 해당 태그 오답 수, 작문 영역: 약점으로 잡힌 피드백 수, 목표: 자기신고라 항상 1.'
+          '이 약점을 뒷받침하는 데이터 개수입니다. 출처별 의미가 다릅니다 — 태그: 해당 태그 제출 수, 작문 영역: 약점으로 잡힌 피드백 수, 목표: 자기신고라 항상 1. 작문 영역은 차원 점수가 있는 제출에서만 계산되므로 표본이 작을 수 있습니다.'
         ),
         dataIndex: 'evidenceCount',
         width: 100,
         sorter: createNumberSorter((record) => record.evidenceCount)
-      }
-    ],
-    []
-  );
-
-  const learningAttemptColumns = useMemo<
-    TableColumnsType<UserLearningOverview['recentAttempts'][number]>
-  >(
-    () => [
-      {
-        title: '문제',
-        dataIndex: 'title',
-        sorter: createTextSorter((record) => record.title)
-      },
-      {
-        title: '영역',
-        dataIndex: 'domain',
-        width: 90,
-        sorter: createTextSorter((record) => record.domain)
-      },
-      {
-        title: '문항',
-        dataIndex: 'questionNo',
-        width: 80,
-        render: (value: number | null) => (value == null ? '-' : value)
-      },
-      {
-        title: '레벨',
-        dataIndex: 'topikLevel',
-        width: 110
-      },
-      {
-        title: '난이도',
-        dataIndex: 'difficulty',
-        width: 90
-      },
-      {
-        title: '정오',
-        dataIndex: 'isCorrect',
-        width: 90,
-        render: (value: boolean | null) => (value == null ? '-' : value ? '정답' : '오답')
-      },
-      {
-        title: '점수',
-        dataIndex: 'score',
-        width: 80,
-        render: (value: number | null) => (value == null ? '-' : value)
-      },
-      {
-        title: '소요(초)',
-        dataIndex: 'timeSpentSeconds',
-        width: 100,
-        sorter: createNumberSorter((record) => record.timeSpentSeconds)
-      },
-      {
-        title: '제출일',
-        dataIndex: 'submittedAt',
-        width: 120,
-        sorter: createTextSorter((record) => record.submittedAt)
       }
     ],
     []
@@ -1217,37 +1249,64 @@ export default function UserDetailPage(): JSX.Element {
   >(
     () => [
       {
-        title: '제출 ID',
-        dataIndex: 'submissionId',
-        width: 160,
-        sorter: createTextSorter((record) => record.submissionId)
-      },
-      {
         title: '문항',
         dataIndex: 'questionNo',
-        width: 80
+        width: 70,
+        render: (value: number) => `${value}번`
+      },
+      {
+        title: '문제',
+        dataIndex: 'problemTitle',
+        ellipsis: true,
+        sorter: createTextSorter((record) => record.problemTitle)
       },
       {
         title: '채점 상태',
         dataIndex: 'feedbackStatus',
-        width: 120
+        width: 100,
+        render: (value: string) => writingFeedbackStatusLabels[value] ?? value
       },
       {
-        title: '점수',
+        title: '점수(원점)',
         dataIndex: 'scoreTotal',
-        width: 110,
+        width: 100,
         render: (value: number | null, record) =>
           value == null ? '-' : `${value}/${record.scoreMax ?? '-'}`
       },
       {
+        title: '환산',
+        dataIndex: 'scoreNormalized',
+        width: 80,
+        sorter: createNumberSorter((record) => record.scoreNormalized ?? -1),
+        render: (value: number | null) => (value == null ? '-' : `${value}점`)
+      },
+      {
+        title: createInfoColumnTitle(
+          '열람',
+          '피드백 화면을 실제로 열어봤는지(study_events feedback_viewed 기준)입니다.'
+        ),
+        dataIndex: 'viewed',
+        width: 80,
+        render: (value: boolean) =>
+          value ? <Tag color="green">열람</Tag> : <Tag>미열람</Tag>
+      },
+      {
+        title: '소요 시간',
+        dataIndex: 'elapsedSeconds',
+        width: 110,
+        render: (value: number | null) => formatElapsedSeconds(value)
+      },
+      {
         title: '약점 차원',
         dataIndex: 'weaknessDimensions',
-        render: (value: string[]) => (value && value.length ? value.join(', ') : '-')
+        width: 140,
+        render: (value: string[]) =>
+          value && value.length ? value.map(formatWritingDimension).join(', ') : '-'
       },
       {
         title: '제출일',
         dataIndex: 'submittedAt',
-        width: 120,
+        width: 140,
         sorter: createTextSorter((record) => record.submittedAt)
       }
     ],
@@ -1434,35 +1493,41 @@ export default function UserDetailPage(): JSX.Element {
                 </Descriptions>
               ) : null}
 
-              <Descriptions bordered column={3} size="small" title="요약">
-                <Descriptions.Item label="총 풀이 수">
-                  {learningState.data.kpis.totalAttempts}
+              <Descriptions bordered column={3} size="small" title="TOPIK 쓰기 요약">
+                <Descriptions.Item label="총 제출 수">
+                  {learningState.data.kpis.totalSubmissions}
                 </Descriptions.Item>
-                <Descriptions.Item label="정답률">
-                  {learningState.data.kpis.correctRate == null
+                <Descriptions.Item label="피드백(완료/대기/실패)">
+                  {learningState.data.kpis.feedbackComplete} /{' '}
+                  {learningState.data.kpis.feedbackPending} /{' '}
+                  {learningState.data.kpis.feedbackFailed}
+                </Descriptions.Item>
+                <Descriptions.Item label="평균 점수(100점 환산)">
+                  {learningState.data.kpis.avgScoreNormalized == null
                     ? '-'
-                    : `${learningState.data.kpis.correctRate}%`}
+                    : `${learningState.data.kpis.avgScoreNormalized}점`}
                 </Descriptions.Item>
-                <Descriptions.Item label="평균 점수">
-                  {learningState.data.kpis.averageScore == null
+                <Descriptions.Item label="피드백 열람률">
+                  {learningState.data.kpis.feedbackViewRate == null
                     ? '-'
-                    : learningState.data.kpis.averageScore}
+                    : `${learningState.data.kpis.feedbackViewRate}% (${learningState.data.kpis.feedbackViewedCount}건)`}
                 </Descriptions.Item>
-                <Descriptions.Item label="누적 학습시간">
-                  {learningState.data.kpis.totalStudyMinutes}분
+                <Descriptions.Item label="재제출 수">
+                  {learningState.data.kpis.resubmissionCount}
                 </Descriptions.Item>
-                <Descriptions.Item label="북마크">
-                  {learningState.data.kpis.bookmarkedCount}
-                </Descriptions.Item>
-                <Descriptions.Item label="작문 제출/채점">
-                  {learningState.data.kpis.writingSubmissionCount} /{' '}
-                  {learningState.data.kpis.writingFeedbackCount}
-                </Descriptions.Item>
-                <Descriptions.Item label="연속 학습일">
+                <Descriptions.Item label="연속 학습일(학습 이벤트 기준)">
                   {learningState.data.kpis.streakDays}일
                 </Descriptions.Item>
+                <Descriptions.Item label="평균 소요 시간">
+                  {learningState.data.kpis.metricsCount === 0
+                    ? '미수집'
+                    : formatElapsedSeconds(learningState.data.kpis.avgElapsedSeconds)}
+                </Descriptions.Item>
                 <Descriptions.Item label="주간 학습(실적/목표)">
-                  {learningState.data.kpis.weeklyStudiedMinutes}분 /{' '}
+                  {learningState.data.kpis.weeklyStudiedMinutes == null
+                    ? '미수집'
+                    : `${learningState.data.kpis.weeklyStudiedMinutes}분`}{' '}
+                  /{' '}
                   {learningState.data.kpis.weeklyGoalMinutes == null
                     ? '목표 미설정'
                     : `${learningState.data.kpis.weeklyGoalMinutes}분`}
@@ -1473,45 +1538,41 @@ export default function UserDetailPage(): JSX.Element {
               </Descriptions>
 
               <div>
-                <Text strong>영역별 정답률</Text>
+                <Text strong>문항별 성과 (51~54번)</Text>
                 <Table
-                  rowKey="domain"
+                  rowKey="questionNo"
+                  showSorterTooltip={false}
+                  size="small"
+                  pagination={false}
+                  style={{ marginTop: 8 }}
+                  dataSource={learningState.data.perQuestion}
+                  columns={learningQuestionColumns}
+                />
+              </div>
+
+              <div>
+                <Text strong>태그별 성과</Text>
+                <Table
+                  rowKey="tag"
                   showSorterTooltip={false}
                   size="small"
                   pagination={DRAWER_TABLE_PAGINATION}
                   style={{ marginTop: 8 }}
-                  dataSource={learningState.data.domainAccuracy}
-                  columns={learningDomainColumns}
+                  dataSource={learningState.data.tagStats}
+                  columns={learningTagColumns}
                 />
               </div>
 
               <div>
                 <Text strong>약점 영역</Text>
                 <Table
-                  rowKey="label"
+                  rowKey={(record) => `${record.source}:${record.label}`}
                   showSorterTooltip={false}
                   size="small"
                   pagination={DRAWER_TABLE_PAGINATION}
                   style={{ marginTop: 8 }}
                   dataSource={learningState.data.weaknesses}
                   columns={learningWeaknessColumns}
-                />
-              </div>
-
-              <div>
-                <Text strong>최근 풀이 이력</Text>
-                <Table
-                  rowKey="id"
-                  showSorterTooltip={false}
-                  size="small"
-                  pagination={DRAWER_TABLE_PAGINATION}
-                  style={{ marginTop: 8 }}
-                  dataSource={learningState.data.recentAttempts}
-                  columns={learningAttemptColumns}
-                  onRow={(record) => ({
-                    onClick: () => openDetailModal('풀이 상세', record),
-                    style: { cursor: 'pointer' }
-                  })}
                 />
               </div>
 
@@ -1530,6 +1591,40 @@ export default function UserDetailPage(): JSX.Element {
                     style: { cursor: 'pointer' }
                   })}
                 />
+              </div>
+
+              <div>
+                <Descriptions
+                  bordered
+                  column={3}
+                  size="small"
+                  title="객관식 학습(별도 원천)"
+                >
+                  <Descriptions.Item label="총 풀이 수">
+                    {learningState.data.objectiveAttempts.totalAttempts}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="정답률">
+                    {learningState.data.objectiveAttempts.correctRate == null
+                      ? '-'
+                      : `${learningState.data.objectiveAttempts.correctRate}%`}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="평균 점수">
+                    {learningState.data.objectiveAttempts.averageScore ?? '-'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="누적 학습시간">
+                    {learningState.data.objectiveAttempts.totalStudyMinutes}분
+                  </Descriptions.Item>
+                  <Descriptions.Item label="북마크">
+                    {learningState.data.objectiveAttempts.bookmarkedCount}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="최근 풀이일">
+                    {learningState.data.objectiveAttempts.latestAttemptAt || '-'}
+                  </Descriptions.Item>
+                </Descriptions>
+                <Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
+                  객관식(읽기/듣기) 풀이 기록(problem_attempts) 원천입니다. 객관식 기능 도입
+                  전까지는 수집 전 상태로 0이 표시됩니다. TOPIK 쓰기 지표와 원천이 다릅니다.
+                </Text>
               </div>
             </Space>
           ) : (
@@ -1626,9 +1721,9 @@ export default function UserDetailPage(): JSX.Element {
       communityDisplay,
       currentStatus,
       handleAffiliationChanged,
-      learningAttemptColumns,
-      learningDomainColumns,
+      learningQuestionColumns,
       learningState,
+      learningTagColumns,
       learningWeaknessColumns,
       learningWritingColumns,
       legalConsents,
