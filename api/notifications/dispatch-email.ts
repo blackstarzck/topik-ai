@@ -44,6 +44,7 @@ type WorkerSchema = {
           subject: string | null;
           body_html: string | null;
           link_url: string | null;
+          cta_label: string | null;
         };
         Insert: never;
         Update: never;
@@ -83,6 +84,7 @@ type ResolvedContent = {
   subject: string | null;
   bodyHtml: string | null;
   linkUrl: string | null;
+  ctaLabel: string | null;
   templateClass: string | null;
   displayName: string | null;
 };
@@ -107,13 +109,29 @@ function siteBaseUrl(): string {
   ).replace(/\/+$/, '');
 }
 
-function appendCtaLink(html: string, linkUrl: string | null): string {
+function resolveCtaHref(linkUrl: string | null): string | null {
   const path = (linkUrl ?? '').trim();
-  if (!path) return html;
-  const href = /^https?:\/\//i.test(path)
+  if (!path) return null;
+  return /^https?:\/\//i.test(path)
     ? path
     : `${siteBaseUrl()}/${path.replace(/^\/+/, '')}`;
-  return `${html}\n<p><a href="${href}">알림 확인하기</a></p>`;
+}
+
+// CTA 삽입 규칙(관리자가 메시지 ▸ 메일 템플릿에서 관리):
+//   1) 본문에 {{cta_url}} 변수가 있으면 → CTA 링크로 치환하고 자동 버튼은 붙이지 않는다
+//      (관리자가 편집기에서 버튼을 직접 만들어 스타일까지 제어). 링크 미설정 시 서비스 홈으로 치환.
+//   2) 변수가 없고 CTA 링크가 있으면 → 본문 하단에 기본 앵커를 자동 삽입,
+//      문구는 template.cta_label(빈 값이면 '알림 확인하기').
+function applyCta(html: string, linkUrl: string | null, ctaLabel: string | null): string {
+  const href = resolveCtaHref(linkUrl);
+
+  if (html.includes('{{cta_url}}')) {
+    return html.split('{{cta_url}}').join(href ?? siteBaseUrl());
+  }
+
+  if (!href) return html;
+  const label = (ctaLabel ?? '').trim() || '알림 확인하기';
+  return `${html}\n<p><a href="${href}">${label}</a></p>`;
 }
 
 function appendUnsubscribeLink(html: string, token: string | null): string {
@@ -160,6 +178,7 @@ async function resolveContent(
   let subject: string | null = null;
   let bodyHtml: string | null = null;
   let linkUrl: string | null = null;
+  let ctaLabel: string | null = null;
   let templateClass: string | null = null;
   let resolved = false;
 
@@ -172,7 +191,7 @@ async function resolveContent(
   if (dispatch?.template_id) {
     const { data: template } = await supabase
       .from('notification_templates')
-      .select('subject, body_html, link_url, class')
+      .select('subject, body_html, link_url, cta_label, class')
       .eq('id', dispatch.template_id)
       .maybeSingle();
 
@@ -180,6 +199,7 @@ async function resolveContent(
       subject = template.subject;
       bodyHtml = template.body_html;
       linkUrl = template.link_url;
+      ctaLabel = template.cta_label;
       templateClass = template.class;
       resolved = true;
     }
@@ -188,7 +208,7 @@ async function resolveContent(
   if (!resolved) {
     const { data: byKey } = await supabase
       .from('notification_templates')
-      .select('subject, body_html, link_url, class')
+      .select('subject, body_html, link_url, cta_label, class')
       .eq('template_key', attempt.template_key)
       .eq('channel', 'email')
       .eq('status', 'active')
@@ -198,6 +218,7 @@ async function resolveContent(
     subject = byKey.subject;
     bodyHtml = byKey.body_html;
     linkUrl = byKey.link_url;
+    ctaLabel = byKey.cta_label;
     templateClass = byKey.class;
   }
 
@@ -211,6 +232,7 @@ async function resolveContent(
     subject,
     bodyHtml,
     linkUrl,
+    ctaLabel,
     templateClass,
     displayName: profile?.display_name ?? null
   };
@@ -314,9 +336,10 @@ async function dispatchPendingEmailAttempts(): Promise<Response> {
     }
 
     const subject = renderDisplayName(content.subject, content.displayName);
-    let html = appendCtaLink(
+    let html = applyCta(
       renderDisplayName(content.bodyHtml, content.displayName),
-      content.linkUrl
+      content.linkUrl,
+      content.ctaLabel
     );
 
     if (content.templateClass === 'marketing') {

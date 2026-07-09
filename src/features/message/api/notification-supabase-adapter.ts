@@ -185,6 +185,7 @@ type TemplateRow = {
   target_group_ids: unknown;
   status: string;
   link_url: string | null;
+  cta_label: string | null;
   last_sent_at: string | null;
   updated_by: string | null;
   created_at: string | null;
@@ -244,7 +245,7 @@ type AttemptRow = {
 const TEMPLATE_COLUMNS =
   'id, template_key, channel, class, mandatory, mode, category, name, summary, ' +
   'subject, body_html, body_json, variables, trigger_key, target_group_ids, ' +
-  'status, link_url, last_sent_at, updated_by, created_at, updated_at';
+  'status, link_url, cta_label, last_sent_at, updated_by, created_at, updated_at';
 
 const GROUP_COLUMNS =
   'id, name, description, definition_type, builder_mode, channels, member_count, ' +
@@ -359,7 +360,8 @@ function mapTemplateRow(row: TemplateRow): MessageTemplate {
     templateKey: row.template_key,
     templateClass: row.class as NotificationTemplateClass,
     mandatory: row.mandatory,
-    linkUrl: row.link_url ?? ''
+    linkUrl: row.link_url ?? '',
+    ctaLabel: row.cta_label ?? ''
   };
 }
 
@@ -558,7 +560,8 @@ export async function saveNotificationTemplate(
     trigger_key: payload.triggerLabel,
     target_group_ids: payload.targetGroupIds,
     status: DB_TEMPLATE_STATUS_BY_UI[payload.status],
-    link_url: payload.linkUrl ?? ''
+    link_url: payload.linkUrl ?? '',
+    cta_label: payload.ctaLabel ?? ''
   };
   if (bodyJson !== undefined) {
     template.body_json = bodyJson;
