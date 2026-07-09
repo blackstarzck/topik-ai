@@ -712,3 +712,21 @@
 - `Resolved`: 작문 답안 본문과 문장별 첨삭 본문은 admin 미노출로 결정했다.
 - `미확정`: 활동(`study_events`) 탭과 결제(`payment_history`) 탭의 실데이터화는 이번 범위에서 제외했다.
 - `미확정`: 작문 첨삭 전문 열람이 필요해질 경우 별도 권한, 감사 로그, PII 열람 정책 결정이 선행되어야 한다.
+
+### 2026-07-08 학습 데이터 수집(problem_attempts 불일치 해소 + 소요시간 수집)
+
+- `Resolved`: 학습 현황 KPI가 빈 `problem_attempts`(v13 사용자 화면 insert 경로 부재, dev 0행)를
+  집계해 전 회원 0으로 표시되던 gap을 writing 원천 재정의(마이그 `20260708130000`)로 해소.
+  `problem_attempts`는 `객관식 학습(별도 원천)` 분리 블록으로 라벨 유지.
+- `Resolved`: 쓰기 소요 시간 미수집 gap — v13 `writing_submission_metrics`(마이그 `20260708113000`)
+  + 워크스페이스 계측으로 수집 시작(2026-07-08). 이전 제출은 "미수집" 표기(0분 렌더 금지).
+- `Resolved`: 전체 사용자 학습 집계 부재 gap — `get_admin_learning_analytics` + `/analytics/learning`
+  탭 신설(활성 학습자 = 학습 이벤트 기준).
+- `미확정`: v13 자체 `get_dashboard_kpi()`(v13 마이그 20260521140000)도 `problem_attempts`를 집계해
+  사용자 대시보드 KPI가 0으로 표시됨 — v13 repo에서 writing 원천으로 정렬 필요(계획 Phase 1-4 항목).
+- `미확정`: 외부 평가 API가 e2e 학생 계정(blackstarzck@naver.com)의 모든 제출에 409
+  ("Email already registered with another account")를 반환 — 외부 서비스(dotoretopik) 계정
+  레지스트리 충돌로 v13/admin 결함 아님. 외부 운영자에게 해소 요청 필요(e2e core-writing-flow가
+  이 계정으로는 제출 단계에서 실패).
+- `미확정`: 차원 점수 커버리지 낮음(dev 기준 피드백 192건 중 24건만 차원 점수 보유) — 화면은 표본 수
+  병기로 완화, 외부 평가 API 차원 응답 안정화 후 재검토.

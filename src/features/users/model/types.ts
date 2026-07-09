@@ -50,22 +50,60 @@ export type UserSummary = {
   affiliationLabel: string;
 };
 
-// 회원 상세 > 학습 현황 탭 모델. get_admin_user_learning_overview(120000) RPC 및
-// mock(getMockUserLearningOverview)이 반환하는 집계 계약과 1:1 대응한다.
+// 회원 상세 > 학습 현황 탭 모델. get_admin_user_learning_overview(writing 중심 재정의,
+// 20260708130000) RPC 및 mock(getMockUserLearningOverview)이 반환하는 집계 계약과 1:1 대응한다.
+// 점수는 원점수+100점 정규화 병기, 소요 시간은 writing_submission_metrics 부재 시 null(미수집).
 export type UserLearningKpi = {
+  totalSubmissions: number;
+  feedbackComplete: number;
+  feedbackPending: number;
+  feedbackFailed: number;
+  resubmissionCount: number;
+  avgScoreNormalized: number | null;
+  feedbackViewedCount: number;
+  feedbackViewRate: number | null;
+  // 연속 학습일(KST, 오늘/어제 기준) — 학습 이벤트(study_events) 기준(로그인 아님).
+  streakDays: number;
+  weeklyGoalMinutes: number | null;
+  // 이번 주 학습 분(소요시간 metrics 합). null = 소요시간 미수집 사용자(0분과 구분).
+  weeklyStudiedMinutes: number | null;
+  // 소요시간이 수집된 제출 수. 0이면 시간 관련 항목은 전부 "미수집"으로 표시한다.
+  metricsCount: number;
+  avgElapsedSeconds: number | null;
+  avgActiveSeconds: number | null;
+  latestActivityAt: string;
+};
+
+// 51~54 문항별 성과 행.
+export type UserLearningQuestionStat = {
+  questionNo: number;
+  submissions: number;
+  feedbackComplete: number;
+  avgScoreRaw: number | null;
+  // 해당 문항 피드백의 대표 만점(최빈값). 행별 만점이 섞여 있을 수 있어 표시용.
+  scoreMax: number | null;
+  avgScoreNormalized: number | null;
+  avgElapsedSeconds: number | null;
+  metricsCount: number;
+};
+
+// 문항 태그별 성과 행(problems.tags 기준, 제출 수 상위).
+export type UserLearningTagStat = {
+  tag: string;
+  submissions: number;
+  feedbackComplete: number;
+  avgScoreNormalized: number | null;
+};
+
+// 객관식(problem_attempts) KPI 분리 블록. 객관식/읽기/듣기 도입 전까지는 수집 전 상태(전부 0).
+export type UserObjectiveAttemptStats = {
   totalAttempts: number;
   solvedProblems: number;
   correctRate: number | null;
   averageScore: number | null;
   totalStudyMinutes: number;
   bookmarkedCount: number;
-  writingSubmissionCount: number;
-  writingFeedbackCount: number;
-  // 연속 학습일(KST, 오늘/어제 기준), 주간 목표 학습 분(미설정 시 null), 이번 주 누적 학습 분.
-  streakDays: number;
-  weeklyGoalMinutes: number | null;
-  weeklyStudiedMinutes: number;
-  latestActivityAt: string;
+  latestAttemptAt: string;
 };
 
 // 회원 상세 > 학습 현황 탭의 온보딩 현황 카드. v13 learning_goals(온보딩 마지막 단계 산출물)에서
@@ -80,51 +118,38 @@ export type UserOnboarding = {
   goalUpdatedAt: string;
 };
 
-export type UserLearningDomainAccuracy = {
-  domain: string;
-  attempts: number;
-  correctRate: number | null;
-  averageScore: number | null;
-};
-
 export type UserLearningWeakness = {
   label: string;
-  source: 'domain' | 'tag' | 'writing_dimension' | 'goal';
+  source: 'tag' | 'writing_dimension' | 'goal';
   severity: number;
   evidenceCount: number;
-};
-
-export type UserLearningRecentAttempt = {
-  id: string;
-  problemId: string;
-  domain: string;
-  questionNo: number | null;
-  topikLevel: string;
-  difficulty: string;
-  title: string;
-  isCorrect: boolean | null;
-  score: number | null;
-  status: string;
-  submittedAt: string;
-  timeSpentSeconds: number;
 };
 
 export type UserLearningRecentWriting = {
   submissionId: string;
   questionNo: number;
+  problemId: string | null;
+  // 문항 제목(지문형은 SQL에서 120자 절단). 답안 원문(answer_text)은 계약상 포함하지 않는다.
+  problemTitle: string;
   submittedAt: string;
   feedbackStatus: string;
   scoreTotal: number | null;
   scoreMax: number | null;
+  scoreNormalized: number | null;
+  isResubmission: boolean;
+  viewed: boolean;
+  // null = 소요시간 미수집 제출(마이그레이션 이전 제출 등).
+  elapsedSeconds: number | null;
   weaknessDimensions: string[];
 };
 
 export type UserLearningOverview = {
   kpis: UserLearningKpi;
-  domainAccuracy: UserLearningDomainAccuracy[];
+  perQuestion: UserLearningQuestionStat[];
+  tagStats: UserLearningTagStat[];
   weaknesses: UserLearningWeakness[];
-  recentAttempts: UserLearningRecentAttempt[];
   recentWriting: UserLearningRecentWriting[];
+  objectiveAttempts: UserObjectiveAttemptStats;
   onboarding: UserOnboarding;
 };
 

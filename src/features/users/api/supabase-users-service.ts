@@ -53,10 +53,11 @@ type ProfileNicknameRow = {
 
 type AdminUserLearningOverviewRow = {
   kpis: UserLearningOverview['kpis'];
-  domain_accuracy: UserLearningOverview['domainAccuracy'];
+  per_question: UserLearningOverview['perQuestion'];
+  tag_stats: UserLearningOverview['tagStats'];
   weaknesses: UserLearningOverview['weaknesses'];
-  recent_attempts: UserLearningOverview['recentAttempts'];
   recent_writing: UserLearningOverview['recentWriting'];
+  objective_attempts: UserLearningOverview['objectiveAttempts'];
   onboarding: UserLearningOverview['onboarding'];
 };
 
@@ -427,23 +428,35 @@ export async function loadUserLearningOverviewFromSupabase(
   const row = (Array.isArray(data) ? data[0] : data) as AdminUserLearningOverviewRow | null;
   return {
     kpis: row?.kpis ?? {
+      totalSubmissions: 0,
+      feedbackComplete: 0,
+      feedbackPending: 0,
+      feedbackFailed: 0,
+      resubmissionCount: 0,
+      avgScoreNormalized: null,
+      feedbackViewedCount: 0,
+      feedbackViewRate: null,
+      streakDays: 0,
+      weeklyGoalMinutes: null,
+      weeklyStudiedMinutes: null,
+      metricsCount: 0,
+      avgElapsedSeconds: null,
+      avgActiveSeconds: null,
+      latestActivityAt: ''
+    },
+    perQuestion: row?.per_question ?? [],
+    tagStats: row?.tag_stats ?? [],
+    weaknesses: row?.weaknesses ?? [],
+    recentWriting: row?.recent_writing ?? [],
+    objectiveAttempts: row?.objective_attempts ?? {
       totalAttempts: 0,
       solvedProblems: 0,
       correctRate: null,
       averageScore: null,
       totalStudyMinutes: 0,
       bookmarkedCount: 0,
-      writingSubmissionCount: 0,
-      writingFeedbackCount: 0,
-      streakDays: 0,
-      weeklyGoalMinutes: null,
-      weeklyStudiedMinutes: 0,
-      latestActivityAt: ''
+      latestAttemptAt: ''
     },
-    domainAccuracy: row?.domain_accuracy ?? [],
-    weaknesses: row?.weaknesses ?? [],
-    recentAttempts: row?.recent_attempts ?? [],
-    recentWriting: row?.recent_writing ?? [],
     onboarding: row?.onboarding ?? {
       hasGoal: false,
       topikLevel: '',

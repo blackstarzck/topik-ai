@@ -98,6 +98,9 @@ const AssessmentImportedTasksPage = lazy(
 const AnalyticsOverviewPage = lazy(
   () => import('../../features/analytics/pages/analytics-overview-page')
 );
+const AnalyticsLearningPage = lazy(
+  () => import('../../features/analytics/pages/analytics-learning-page')
+);
 const SystemAdminsPage = lazy(
   () => import('../../features/system/pages/system-admins-page')
 );
@@ -181,6 +184,8 @@ function renderPageRouteElement(route: PageRouteDefinition): JSX.Element {
       return <AssessmentImportedTasksPage />;
     case 'analytics-overview':
       return <AnalyticsOverviewPage />;
+    case 'analytics-learning':
+      return <AnalyticsLearningPage />;
     case 'system-admins':
       return <SystemAdminsPage />;
     case 'system-permissions':

@@ -199,6 +199,20 @@
 - Access gate: `private.is_platform_admin(auth.uid())`, `SECURITY DEFINER`, fixed `search_path`.
 - Privacy decision: admin learning overview can show operational aggregates, scores, and weakness labels, but not answer body or sentence correction body.
 
+## 2026-07-08 학습 데이터 수집(writing 재정의 + 학습 분석) read 참조 추가
+
+| Object | Owner | Write path | Read path | Boundary |
+| --- | --- | --- | --- | --- |
+| `writing_submission_metrics` | v13 (신규, v13 마이그 `20260708113000`) | v13 학습자 브라우저 insert-once(RLS: 본인+본인 제출 검증) | topik-ai admin RPC `get_admin_user_learning_overview`, `get_admin_learning_analytics` | read-only aggregate. 숫자/id만 보유(원문 없음). topik-ai는 DDL 무변경. |
+| `study_events` | v13 | v13 학습 이벤트 로거 | 위 RPC 2종(streak·열람률·활성 학습자 집계) + 기존 활동 탭 RPC | read-only. payload 본문은 반환하지 않음(집계만). |
+
+- `get_admin_user_learning_overview`는 writing 중심으로 재정의(마이그 `20260708130000`) — 기존
+  read 참조 표의 테이블 경계는 그대로 유지되고, `problem_attempts`는 objective 분리 블록 한정으로 축소.
+- `get_admin_learning_analytics`(마이그 `20260708140000`)는 `private.is_admin` 순수 집계 RPC로
+  개인 식별자(user_id/email 등)를 반환하지 않는다.
+- v13 소유 신규 테이블(`writing_submission_metrics`)의 DDL/RLS는 v13 repo 마이그레이션이 SoT이며
+  topik-ai는 읽기 집계만 한다(도입 배경·오너 결정은 admin-data-contract 2026-07-08 절).
+
 ## 2026-07-07 기관 초대(동의 기반 소속 배정) 경계 기록
 
 - 기능: 관리자 '회원 추가/배정'을 즉시 배정에서 **pending 초대**로 전환. 사용자가 v13 알림

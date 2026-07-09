@@ -18,6 +18,7 @@
 - `api-inventory-backend-handoff.md` — v13 ↔ topik-ai 백엔드 API 인벤토리·핸드오프 참고 문서
 
 ### `docs/requests` (외부 발신 요청·발주 문서)
+- `v13-dashboard-kpi-writing-source-handoff-2026-07-09.md` — v13 대시보드/성장 KPI가 빈 `problem_attempts`를 읽어 오늘/누적 제출·연속 학습일이 항상 0인 문제를 쓰기 원천(`writing_submissions`+`study_events`)으로 재정의하는 handoff(참고 계산식·영향 파일·검증 기준)
 - `v13-institution-invitation-handoff-2026-07-07.md` — 기관 회원 추가가 동의 기반 초대로 전환된 뒤 v13 알림함에서 수락/거부 모달과 `respond_institution_invitation` RPC를 구현하기 위한 handoff
 - `v13-users-registration-lifecycle-handoff-2026-06-26.md` — v13 사용자 앱의 이메일 인증·필수 약관 동의·정상 진입 불변식 정합화 handoff(DB/RLS guard, auth completion route, dry-run/backfill, QA 기준)
 - `v13-institution-question-exposure-handoff-2026-06-26.md` — v13 사용자 화면에 기관별 TOPIK 쓰기 문항 노출 계약을 적용하기 위한 handoff(관리 SoT, v13 영향 파일, 공통 predicate, 검증 기준)
@@ -117,6 +118,7 @@
 - `admin-action-log.md`
 - `admin-data-usage-map.md`
 - `page-ia/analytics-overview-page-ia.md`
+- `page-ia/analytics-learning-page-ia.md` — 학습 분석(`/analytics/learning`): TOPIK 쓰기 전체 학습 집계(활성=학습 이벤트 기준, 원점+환산 병기, 소요시간 미수집 구분) — 2026-07-08 신설
 - `page-ia/assessment-level-tests-page-ia.md`
 - `page-ia/assessment-question-bank-eps-topik-page-ia.md`
 - `page-ia/assessment-question-bank-page-ia.md` — TOPIK 쓰기 문항 통합 페이지(조회 + 노출/태그 관리, route-backed 탭 문항/가져온 문항) — 2026-06-23 IA 통합

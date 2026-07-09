@@ -457,3 +457,14 @@ src/features/<feature>/
 - fallback 조건: Supabase 미구성 또는 `VITE_SUPABASE_DISABLED=true`일 때 기존 mock 모드를 유지한다.
 - 전환 범위: 학습 현황 탭만 live read로 연결한다. 기존 `활동`/`결제` 탭 더미 데이터는 이번 범위에서 유지한다.
 - 보안/프라이버시: 답안 본문과 sentence feedback 본문은 source와 화면 모델에서 제외한다.
+
+## 2026-07-08 학습 현황 writing 재정의 + Analytics 학습 분석 신설
+
+- 회원 상세 `학습 현황` 탭: 동일 RPC명(`get_admin_user_learning_overview`)을 writing 중심 반환
+  모양으로 재정의(마이그 `20260708130000`, down 파일로 직전 정의 복원 가능). 화면 모델
+  `UserLearningOverview`와 mock(`getMockUserLearningOverview`)을 같은 모양으로 갱신.
+- 신규 화면 `/analytics/learning`(학습 분석): safe facade `fetchLearningAnalyticsSafe(periodDays,
+  signal)` → `get_admin_learning_analytics(period_days)`(마이그 `20260708140000`), mock 모드는
+  페이지 내 결정적 목업. 기간 0=전체.
+- 신규 v13 수집 원천: `writing_submission_metrics`(v13 마이그 `20260708113000`) — admin은 읽기 집계만.
+- 적용 상태: dev DB 적용·검증 완료(실브라우저 풀루프 포함), 운영 DB 미적용(기존 미적용분과 동일 트랙).
