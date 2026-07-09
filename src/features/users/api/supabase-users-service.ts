@@ -370,15 +370,17 @@ export async function loadUsersFromSupabase(
   if (!supabaseClient) {
     throw new Error('Supabase client not configured');
   }
-  // Dev: a single page of up to 100 covers the dev dataset. Prod (>100 users) needs
-  // server-side pagination (follow-up — the page currently filters client-side).
+  // 한 페이지에 전 회원을 담아 클라이언트에서 필터/정렬한다. page_size=100 이면
+  // 로그인 이력이 없는 신규 가입자가 창(window) 밖으로 잘려 목록에서 누락되므로
+  // RPC 하드캡(500)까지 올린다(dev 총원 < 500). 반환 행은 users-query-store 기본값
+  // 'latest'(가입일 내림차순)로 클라이언트 정렬된다.
+  // 프로덕션 대규모(>500)는 서버사이드 페이지네이션이 별도 후속.
   // affiliation 은 서버사이드 기관 필터: null=전체 / @affiliated / @general / 특정 코드.
-  // 클라이언트 필터로는 page_size 캡(첫 페이지)만 걸러지므로 서버에서 적용한다.
   const { data, error } = await supabaseClient.rpc('get_admin_users', {
     search: null,
     sort: 'activity',
     page: 1,
-    page_size: 100,
+    page_size: 500,
     affiliation: affiliation && affiliation.trim() ? affiliation.trim() : null
   });
   if (signal?.aborted) {
