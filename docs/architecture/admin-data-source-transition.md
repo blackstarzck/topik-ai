@@ -468,3 +468,20 @@ src/features/<feature>/
   페이지 내 결정적 목업. 기간 0=전체.
 - 신규 v13 수집 원천: `writing_submission_metrics`(v13 마이그 `20260708113000`) — admin은 읽기 집계만.
 - 적용 상태: dev DB 적용·검증 완료(실브라우저 풀루프 포함), 운영 DB 미적용(기존 미적용분과 동일 트랙).
+
+## Operation > PDF 내보내기 제한 — 정책 변경 이력 (2026-07-08)
+
+- 화면: `/operation/pdf-quota` 정책 탭 변경 이력 테이블.
+- safe facade: `fetchPdfQuotaPolicyHistorySafe({page, pageSize}, signal)`.
+- Supabase source: `get_admin_pdf_quota_policy_history(p_page, p_page_size)` — `admin_audit_logs(pdf_quota_policy_saved)`의 감사 id, KST 시각, 비민감 화이트리스트 투영(별도 테이블 없음).
+- mock fallback: `mockPdfQuotaPolicyHistory` + `usePdfQuotaStore.savePolicy`의 이력 append(구형 부분 기록 행 1건 포함 — fallback 렌더 경로 유지 검증).
+- fallback 조건: Supabase 미구성 또는 `VITE_SUPABASE_DISABLED=true` 또는 `VITE_OPERATION_PDF_QUOTA_SOURCE=mock`.
+- 전환 범위: 정책 저장은 신 시그니처 `admin_save_pdf_quota_policy(4+1인자)`로 교체(구 6인자 시그니처 drop). 초기화 탭 경로는 무변경.
+
+## Operation > PDF 내보내기 제한 — 개인 초기화 대상 검색 (2026-07-08)
+
+- 화면: `/operation/pdf-quota?tab=resets` 초기화 실행 모달의 개인 범위 `대상 회원` Select.
+- safe facade: `fetchPdfQuotaResetUserOptionsSafe({search, page, pageSize}, signal)`.
+- Supabase source: `search_admin_pdf_quota_reset_users(p_search, p_page, p_page_size)` — `operation.pdf-quota.manage` 권한 기준, `profiles`/`auth.users` 최소 필드, 서버 검색/페이지네이션. `get_admin_users`의 platform_admin 게이트와 100명 창 제약을 재사용하지 않는다.
+- mock fallback: `mockUsers`에서 동일 search/page/pageSize 계약으로 필터링해 100명 초과 회원 선택 회귀를 e2e에서 검증한다.
+- fallback 조건: Supabase 미구성 또는 `VITE_SUPABASE_DISABLED=true` 또는 `VITE_OPERATION_PDF_QUOTA_SOURCE=mock`.

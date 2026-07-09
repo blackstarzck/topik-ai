@@ -171,6 +171,12 @@ const menuConfig: MenuNode[] = [
         permissionKeys: ['operation.policies.manage']
       },
       {
+        key: '/operation/pdf-quota',
+        label: adminMenuLabels.operationPdfQuota,
+        to: '/operation/pdf-quota',
+        permissionKeys: ['operation.pdf-quota.manage']
+      },
+      {
         key: '/operation/chatbot',
         label: adminMenuLabels.operationChatbot,
         to: '/operation/chatbot',
@@ -437,6 +443,9 @@ function resolveSelectedKey(pathname: string): string {
   }
   if (pathname.startsWith('/operation/policies')) {
     return '/operation/policies';
+  }
+  if (pathname.startsWith('/operation/pdf-quota')) {
+    return '/operation/pdf-quota';
   }
   if (pathname.startsWith('/operation/chatbot')) {
     return '/operation/chatbot';

@@ -67,6 +67,9 @@ const OperationEventCreatePage = lazy(
 const OperationPolicyCreatePage = lazy(
   () => import('../../features/operation/pages/operation-policy-create-page')
 );
+const OperationPdfQuotaPage = lazy(
+  () => import('../../features/operation/pages/operation-pdf-quota-page')
+);
 const BillingPaymentsPage = lazy(
   () => import('../../features/billing/pages/billing-payments-page')
 );
@@ -164,6 +167,8 @@ function renderPageRouteElement(route: PageRouteDefinition): JSX.Element {
       return <OperationPoliciesPage />;
     case 'operation-policy-create':
       return <OperationPolicyCreatePage />;
+    case 'operation-pdf-quota':
+      return <OperationPdfQuotaPage />;
     case 'billing-payments':
       return <BillingPaymentsPage />;
     case 'billing-refunds':

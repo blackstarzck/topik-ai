@@ -143,6 +143,11 @@ public.respond_institution_invitation(p_invitation_id uuid, p_accept boolean) re
 v13이 더 나은 랜딩(예: 알림함 자동 오픈 쿼리)을 원하면 topik-ai
 `notification_templates`의 `template_key='institution_invitation', channel='email'` 행
 `link_url`만 바꾸면 된다(연락 주면 admin쪽에서 수정).
+CTA 버튼 문구도 컬럼(`cta_label`, 2026-07-08 추가)으로 관리되며 admin
+**메시지 ▸ 메일** 템플릿 편집에서 링크와 함께 수정 가능하다(빈 값이면 기본 '알림 확인하기').
+버튼 스타일까지 제어하려면 본문에 `{{cta_url}}` 변수를 쓰면 된다(2026-07-08) — 워커가
+CTA 링크로 치환하고 하단 자동 버튼은 생략. 현재 dev 초대 템플릿은 이 방식의
+스타일 버튼(파란 배경, '초대 확인하고 응답하기')으로 설정되어 있다.
 
 ## 4. 검증된 동작 (2026-07-07 dev DB 프로브, 전부 PASS)
 
