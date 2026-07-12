@@ -1,66 +1,142 @@
 import { expect, test } from '@playwright/test';
 
-/**
- * Analytics > 학습 분석 탭(20260708140000, get_admin_learning_analytics) 검증.
- * mock 모드(VITE_SUPABASE_DISABLED)에서 페이지가 계약과 같은 모양의 목업을
- * 렌더하고, 기간 필터(7/30/90/전체)가 URL에 유지되는지 확인한다.
- */
-
-test('analytics learning page renders learning KPIs and tables', async ({ page }) => {
+test('학습 분석 기본 대시보드가 8개 KPI와 전체 분석 섹션을 표시한다', async ({ page }) => {
   await page.goto('/analytics/learning');
 
   await expect(page.getByRole('heading', { name: '학습 분석' })).toBeVisible();
-
-  // 활성 기준(학습 이벤트)과 점수 기준(100점 환산)이 라벨에 명시된다
-  await expect(page.getByText('학습 활성 사용자(학습 이벤트 기준)')).toBeVisible();
-  await expect(page.getByText('평균 점수(100점 환산)')).toBeVisible();
-  await expect(page.getByText('피드백 완료율')).toBeVisible();
-  await expect(page.getByText('피드백 열람률')).toBeVisible();
-  await expect(page.getByText('피드백 처리 시간(중앙값)')).toBeVisible();
-
-  // 소요 시간은 수집 전이므로 "미수집"으로 표시(0분 아님)
-  await expect(page.getByText('평균 소요 시간').first()).toBeVisible();
-  await expect(page.getByText('미수집').first()).toBeVisible();
-
-  // 문항별/분포/차원/태그 테이블
-  await expect(page.getByText('문항별 성과 (51~54번)')).toBeVisible();
-  for (const q of ['51번', '52번', '53번', '54번']) {
-    await expect(
-      page.getByRole('cell', { name: q, exact: true }).first()
-    ).toBeVisible();
+  await expect(page.getByText('문제 유형, 주제, 기간 기준으로')).toBeVisible();
+  for (const action of ['지표 사전', '분석 공유', 'CSV 내보내기']) {
+    await expect(page.getByRole('button', { name: action })).toBeVisible();
   }
-  await expect(page.getByText('점수 분포(100점 환산)')).toBeVisible();
-  await expect(page.getByRole('cell', { name: '80-100' })).toBeVisible();
-  await expect(page.getByText('취약 평가 차원')).toBeVisible();
-  await expect(page.getByRole('cell', { name: '내용', exact: true })).toBeVisible();
-  await expect(page.getByText('태그별 성과 (제출 수 상위 12개)')).toBeVisible();
+  await expect(page.getByRole('button', { name: /분석 조건/ })).toBeVisible();
+
+  for (const metric of [
+    '해당 조건 학습자',
+    '제출 수',
+    '피드백 완료율',
+    '평균 환산 점수',
+    '피드백 조회율',
+    '평균 풀이 시간',
+    '처리 시간 중앙값',
+    'PDF 내보내기 완료 수'
+  ]) {
+    await expect(page.getByText(metric, { exact: true }).first()).toBeVisible();
+  }
+
+  await expect(page.getByText('문제 유형별 비교')).toBeVisible();
+  for (const question of ['51번 빈칸 완성', '52번 문장 완성', '53번 자료 해석', '54번 논술']) {
+    await expect(page.getByRole('cell', { name: question, exact: true })).toBeVisible();
+  }
+  await expect(page.getByText('문제 유형별 점수 분포')).toBeVisible();
+  await expect(page.getByText('취약 평가 영역')).toBeVisible();
+  await expect(page.getByText('표준 7개 차원')).toBeVisible();
+  await expect(page.getByText('주제별 성과')).toBeVisible();
+  await expect(page.getByText('PDF 사용 분석')).toBeVisible();
+  await expect(page.getByText('51~54번 전체').first()).toBeVisible();
 });
 
-test('analytics learning period filter persists in the URL', async ({ page }) => {
-  await page.goto('/analytics/learning');
+test('URL 조건이 문제 유형·주제·세부 필터를 모든 분석 블록에 복원한다', async ({ page }) => {
+  await page.goto(
+    '/analytics/learning?period=custom&from=2026-07-01&to=2026-07-10&compare=1&question=53&topicMain=%EC%82%AC%ED%9A%8C&topicDetail=%EB%AC%B8%ED%99%94&d.dataType=%ED%91%9C'
+  );
 
-  // AntD Segmented의 radio input은 시각적으로 숨겨져 있어 라벨을 클릭한다.
-  await page.locator('.ant-segmented-item-label', { hasText: '최근 7일' }).click();
-  await expect.poll(() => new URL(page.url()).search).toContain('period=7d');
+  await expect(page.getByText('2026-07-01~2026-07-10').first()).toBeVisible();
+  await expect(page.getByText('53번', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('사회', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('문화', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('자료 유형: 표', { exact: true }).first()).toBeVisible();
 
-  await page.locator('.ant-segmented-item-label', { hasText: '전체' }).click();
-  await expect.poll(() => new URL(page.url()).search).toContain('period=all');
+  await expect(page.getByRole('cell', { name: '53번 자료 해석', exact: true })).toBeVisible();
+  await expect(page.getByRole('cell', { name: '51번 빈칸 완성', exact: true })).toHaveCount(0);
+  await expect(page.locator('.score-distribution-row')).toHaveCount(1);
+  await expect(page.locator('.weak-dimension-panel')).toHaveCount(1);
+  await expect(page.getByRole('cell', { name: '문화', exact: true })).toBeVisible();
+  await expect(page.locator('.pdf-question-list').getByText('53번', { exact: true })).toBeVisible();
+});
 
-  // 새로고침 후에도 기간 유지
+test('조건 Drawer는 draft를 적용 전까지 보존하고 다중 유형에서 세부 필터를 해제한다', async ({ page }) => {
+  await page.goto(
+    '/analytics/learning?period=custom&from=2026-07-01&to=2026-07-10&compare=1&question=53&d.dataType=%ED%91%9C'
+  );
+  const originalUrl = page.url();
+
+  await page.getByRole('button', { name: /분석 조건/ }).click();
+  await expect(page.locator('.ant-drawer-title').getByText('분석 조건', { exact: true })).toBeVisible();
+  await expect(page.getByText('자료 유형', { exact: true })).toBeVisible();
+  await expect(page.getByText('미적용 변경 있음')).toHaveCount(0);
+
+  await page.getByRole('checkbox', { name: '51번 빈칸 완성' }).check();
+  await expect(page.getByText('미적용 변경 있음')).toBeVisible();
+  await expect(page.getByText('문제 유형 1개 선택 시 사용')).toBeVisible();
+  expect(page.url()).toBe(originalUrl);
+
+  await page.getByRole('button', { name: '분석 적용' }).click();
+  await expect.poll(() => new URL(page.url()).searchParams.getAll('question')).toEqual(['51', '53']);
+  await expect.poll(() => new URL(page.url()).searchParams.getAll('d.dataType')).toEqual([]);
+  await expect(page.getByRole('cell', { name: '51번 빈칸 완성', exact: true })).toBeVisible();
+  await expect(page.getByRole('cell', { name: '53번 자료 해석', exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: /분석 조건/ }).click();
+  await page.getByRole('checkbox', { name: '54번 논술' }).check();
+  await page.getByRole('button', { name: '취소' }).click();
+  await page.getByRole('button', { name: /분석 조건/ }).click();
+  await expect(page.getByRole('checkbox', { name: '54번 논술' })).not.toBeChecked();
+});
+
+test('지표 사전, 표 대체 보기, 공유 URL, CSV 내보내기가 동작한다', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: async (text: string) => {
+          (window as Window & { __copiedAnalyticsUrl?: string }).__copiedAnalyticsUrl = text;
+        }
+      }
+    });
+  });
+  await page.goto('/analytics/learning?period=30d&compare=1&question=51&question=53');
+
+  await page.getByRole('button', { name: '평균 환산 점수 지표 설명' }).click();
+  await expect(page.getByRole('dialog', { name: '학습 분석 지표 사전' })).toBeVisible();
+  await expect(page.getByText('AVG(score ÷ score_max × 100)')).toBeVisible();
+  await page.getByRole('button', { name: '확인' }).click();
+
+  await page.locator('.analytics-panel').filter({ hasText: '문제 유형별 점수 분포' }).getByText('표', { exact: true }).click();
+  await expect(page.getByRole('table', { name: '문제 유형별 점수 분포 표' })).toBeVisible();
+
+  await page.getByRole('button', { name: '분석 공유' }).click();
+  await expect.poll(() => page.evaluate(() => (window as Window & { __copiedAnalyticsUrl?: string }).__copiedAnalyticsUrl)).toContain('question=51');
+  await expect.poll(() => page.evaluate(() => (window as Window & { __copiedAnalyticsUrl?: string }).__copiedAnalyticsUrl)).toContain('question=53');
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'CSV 내보내기' }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^learning-analytics_.*\.csv$/);
+});
+
+test('적용 조건 초기화가 기본 30일·51~54번·비교 사용으로 복원된다', async ({ page }) => {
+  await page.goto('/analytics/learning?period=all&compare=0&question=54');
+
+  await page.getByRole('button', { name: '조건 초기화' }).click();
+  await expect.poll(() => new URL(page.url()).searchParams.get('period')).toBe('30d');
+  await expect.poll(() => new URL(page.url()).searchParams.get('compare')).toBe('1');
+  await expect.poll(() => new URL(page.url()).searchParams.getAll('question')).toEqual([
+    '51',
+    '52',
+    '53',
+    '54'
+  ]);
   await page.reload();
-  await expect(page.getByRole('heading', { name: '학습 분석' })).toBeVisible();
-  await expect.poll(() => new URL(page.url()).search).toContain('period=all');
+  await expect(page.getByText('51~54번 전체').first()).toBeVisible();
 });
 
-test('analytics menu exposes overview and learning children', async ({ page }) => {
+test('Analytics 메뉴에서 학습 분석으로 이동한다', async ({ page }) => {
   await page.goto('/analytics/overview');
 
-  // 통계 서브메뉴(접힘 가능)를 열고 학습 분석으로 이동
   const learningMenuItem = page.getByRole('menuitem', { name: '학습 분석' });
   if (!(await learningMenuItem.isVisible())) {
     await page.getByRole('menuitem', { name: '통계' }).click();
   }
-  await expect(learningMenuItem).toBeVisible();
   await learningMenuItem.click();
   await expect.poll(() => new URL(page.url()).pathname).toBe('/analytics/learning');
   await expect(page.getByRole('heading', { name: '학습 분석' })).toBeVisible();

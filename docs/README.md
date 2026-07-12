@@ -34,8 +34,9 @@
 - `admin-page-sync-template.md`
 
 ### `docs/page-sync`
-- `README.md` — 폴더 목적·13개 섹션 구조·DB=후보 계약/SoT 관계·상태 표기 규칙·모듈별 문서 목록(구현됨27/placeholder10) 인덱스
+- `README.md` — 폴더 목적·13개 섹션 구조·DB=후보 계약/SoT 관계·상태 표기 규칙·모듈별 문서 목록(구현됨30/placeholder10) 인덱스
 - `analytics-overview-page-sync.md`
+- `analytics-learning-page-sync.md` — 학습 분석의 다차원 필터, read-only 집계, PDF 내보내기 귀속과 B2C 내부 전용 경계
 - `assessment-level-tests-page-sync.md`
 - `assessment-question-bank-eps-topik-page-sync.md`
 - `assessment-question-bank-page-sync.md`
@@ -121,7 +122,7 @@
 - `admin-action-log.md`
 - `admin-data-usage-map.md`
 - `page-ia/analytics-overview-page-ia.md`
-- `page-ia/analytics-learning-page-ia.md` — 학습 분석(`/analytics/learning`): TOPIK 쓰기 전체 학습 집계(활성=학습 이벤트 기준, 원점+환산 병기, 소요시간 미수집 구분) — 2026-07-08 신설
+- `page-ia/analytics-learning-page-ia.md` — 학습 분석(`/analytics/learning`): 기간·문제 유형·주제·세부 특성 통합 필터, KPI/분포/취약 차원/주제/PDF 내보내기 집계 계약
 - `page-ia/assessment-level-tests-page-ia.md`
 - `page-ia/assessment-question-bank-eps-topik-page-ia.md`
 - `page-ia/assessment-question-bank-page-ia.md` — TOPIK 쓰기 문항 통합 페이지(조회 + 노출/태그 관리, route-backed 탭 문항/가져온 문항) — 2026-06-23 IA 통합
