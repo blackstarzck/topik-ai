@@ -729,6 +729,9 @@
   + 워크스페이스 계측으로 수집 시작(2026-07-08). 이전 제출은 "미수집" 표기(0분 렌더 금지).
 - `Resolved`: 전체 사용자 학습 집계 부재 gap — `get_admin_learning_analytics` + `/analytics/learning`
   탭 신설(활성 학습자 = 학습 이벤트 기준).
+- `Resolved`(2026-07-10): 기간 프리셋만 가능하고 문제 유형 조건이 일부 표에만 적용되던 gap을 `get_admin_learning_analytics_filtered` + `get_admin_learning_analytics_filter_options`로 해소했다. 직접 날짜, 51~54번, `topic_main/topic_detail`, 단일 유형의 세부 특성이 KPI와 모든 분석 블록에 동일하게 적용되고 URL로 복원된다.
+- `Resolved`(2026-07-10): 구 `problems.tags` 기반 주제 집계를 신규 TOPIK 쓰기 메타데이터 `topic_main/topic_detail` 기준으로 전환했다.
+- `Resolved`(2026-07-10): `export_downloaded`를 실제 다운로드로 오인할 수 있던 gap을 `PDF 내보내기 완료 수` 라벨과 직접 귀속/혼합/미분류·귀속률 표시로 해소했다.
 - `미확정`: v13 자체 `get_dashboard_kpi()`(v13 마이그 20260521140000)도 `problem_attempts`를 집계해
   사용자 대시보드 KPI가 0으로 표시됨 — v13 repo에서 writing 원천으로 정렬 필요(계획 Phase 1-4 항목).
 - `미확정`: 외부 평가 API가 e2e 학생 계정(blackstarzck@naver.com)의 모든 제출에 409
@@ -737,3 +740,4 @@
   이 계정으로는 제출 단계에서 실패).
 - `미확정`: 차원 점수 커버리지 낮음(dev 기준 피드백 192건 중 24건만 차원 점수 보유) — 화면은 표본 수
   병기로 완화, 외부 평가 API 차원 응답 안정화 후 재검토.
+- `미확정`: 보고서·서재 선택 PDF 이벤트가 포함 문제 유형 정보를 충분히 남기지 않는 경우 `혼합`/`미분류`로 유지한다. 실제 파일 저장 완료 횟수가 필요하면 v13 텔레메트리의 별도 이벤트 계약이 선행되어야 한다.

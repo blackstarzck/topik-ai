@@ -3,74 +3,102 @@ import {
   isSupabaseConfigured,
   supabaseClient
 } from '../../../shared/api/supabase-client';
-
-/**
- * 학습 분석 집계 — get_admin_learning_analytics (is_admin, 20260708140000).
- * TOPIK 쓰기(51~54) 전체 사용자 학습 지표. 개인 식별자는 반환하지 않는다.
- *
- * 계약 요점(학습 데이터 수집 Phase 3):
- *   - 학습 활성 사용자 = 기간 내 study_events 1건 이상(로그인 기준 아님 —
- *     통계 개요의 "활성 사용자(로그인)"와 정의가 다르다).
- *   - 점수 = 원점수 + 100점 정규화 병기(행별 score_max 기준).
- *   - 소요 시간 = writing_submission_metrics. metricsCount=0 이면 "미수집"
- *     으로 표시하고 0분으로 렌더하지 않는다.
- *   - periodDays 0 = 전체 기간(직전 기간 비교값은 null).
- * Supabase 미설정(mock 모드)에서는 null 을 반환하고 페이지가 목업을 유지한다.
- */
+import {
+  addCalendarDays,
+  resolveLearningAnalyticsDateRange,
+  type LearningAnalyticsQuery,
+  type LearningDetailFilterKey,
+  type LearningQuestionNo
+} from '../model/analytics-learning-query';
 
 export type LearningAnalyticsSummary = {
-  periodDays: number;
+  periodDays: number | null;
   activeLearners: number;
   activeLearnersPrev: number | null;
   submitters: number;
   submissions: number;
   submissionsPrev: number | null;
   feedbackComplete: number;
-  feedbackPending: number;
-  feedbackFailed: number;
   completionRate: number | null;
-  failureRate: number | null;
-  resubmissions: number;
+  completionRatePrev: number | null;
   avgScoreNormalized: number | null;
   avgScoreNormalizedPrev: number | null;
   feedbackViewedCount: number;
   feedbackViewRate: number | null;
-  avgProcessingSeconds: number | null;
-  medianProcessingSeconds: number | null;
-  metricsCount: number;
+  feedbackViewRatePrev: number | null;
   avgElapsedSeconds: number | null;
-  medianElapsedSeconds: number | null;
+  avgElapsedSecondsPrev: number | null;
+  elapsedSamples: number;
+  medianProcessingSeconds: number | null;
+  medianProcessingSecondsPrev: number | null;
+  processingSamples: number;
+  resubmissions: number;
+  pdfExports: number;
+  pdfExportsPrev: number | null;
+  activeEventsTotal: number;
+  activeEventsAttributed: number;
+  activeEventAttributionRate: number | null;
   dimensionCoverageSubmissions: number;
 };
 
 export type LearningAnalyticsQuestionStat = {
-  questionNo: number;
+  questionNo: LearningQuestionNo;
+  activeLearners: number;
+  submitters: number;
   submissions: number;
-  feedbackComplete: number;
-  avgScoreRaw: number | null;
-  scoreMax: number | null;
+  completionRate: number | null;
   avgScoreNormalized: number | null;
+  feedbackViewRate: number | null;
   avgElapsedSeconds: number | null;
-  metricsCount: number;
+  elapsedSamples: number;
+  resubmissionRate: number | null;
+  pdfExports: number;
 };
 
 export type LearningAnalyticsScoreBucket = {
+  questionNo: LearningQuestionNo;
   bucket: number;
   label: string;
   count: number;
+  percentage: number;
 };
 
 export type LearningAnalyticsWeakDimension = {
+  questionNo: LearningQuestionNo;
   dimension: string;
-  weaknessOccurrences: number;
+  avgScoreNormalized: number | null;
   submissions: number;
+  weaknessOccurrences: number;
   maxSeverity: number;
 };
 
-export type LearningAnalyticsTagStat = {
-  tag: string;
+export type LearningAnalyticsTopicStat = {
+  topicMain: string;
+  topicDetail: string;
   submissions: number;
   avgScoreNormalized: number | null;
+  avgScoreNormalizedPrev: number | null;
+};
+
+export type LearningAnalyticsPdfUsage = {
+  totalExports: number;
+  attributableExports: number;
+  mixedExports: number;
+  unclassifiedExports: number;
+  attributionRate: number | null;
+  perQuestion: Array<{ questionNo: LearningQuestionNo; count: number }>;
+};
+
+export type LearningAnalyticsScope = {
+  startDate: string | null;
+  endDate: string | null;
+  compareStartDate: string | null;
+  compareEndDate: string | null;
+  comparePrevious: boolean;
+  questions: LearningQuestionNo[];
+  topicMain: string | null;
+  topicDetail: string | null;
+  detailFilters: Record<string, string[]>;
 };
 
 export type LearningAnalytics = {
@@ -78,7 +106,17 @@ export type LearningAnalytics = {
   perQuestion: LearningAnalyticsQuestionStat[];
   scoreDistribution: LearningAnalyticsScoreBucket[];
   weakDimensions: LearningAnalyticsWeakDimension[];
-  tagStats: LearningAnalyticsTagStat[];
+  topicStats: LearningAnalyticsTopicStat[];
+  pdfUsage: LearningAnalyticsPdfUsage;
+  scope: LearningAnalyticsScope;
+};
+
+export type LearningAnalyticsFilterOptions = {
+  topics: Array<{ topicMain: string; topicDetails: string[] }>;
+  detailFilters: Record<
+    `${LearningQuestionNo}`,
+    Partial<Record<LearningDetailFilterKey, string[]>>
+  >;
 };
 
 type LearningAnalyticsRow = {
@@ -86,17 +124,45 @@ type LearningAnalyticsRow = {
   per_question: LearningAnalyticsQuestionStat[];
   score_distribution: LearningAnalyticsScoreBucket[];
   weak_dimensions: LearningAnalyticsWeakDimension[];
-  tag_stats: LearningAnalyticsTagStat[];
+  topic_stats: LearningAnalyticsTopicStat[];
+  pdf_usage: LearningAnalyticsPdfUsage;
+  scope: LearningAnalyticsScope;
 };
 
-export function fetchLearningAnalyticsSafe(periodDays: number, signal?: AbortSignal) {
+type LearningAnalyticsFilterOptionsRow = {
+  options: LearningAnalyticsFilterOptions;
+};
+
+const emptyPdfUsage: LearningAnalyticsPdfUsage = {
+  totalExports: 0,
+  attributableExports: 0,
+  mixedExports: 0,
+  unclassifiedExports: 0,
+  attributionRate: null,
+  perQuestion: []
+};
+
+export function fetchLearningAnalyticsSafe(
+  query: LearningAnalyticsQuery,
+  signal?: AbortSignal
+) {
   return toSafeResult<LearningAnalytics | null>(async () => {
     if (!isSupabaseConfigured || !supabaseClient) {
       return null;
     }
-    const { data, error } = await supabaseClient.rpc('get_admin_learning_analytics', {
-      period_days: periodDays
-    });
+    const range = resolveLearningAnalyticsDateRange(query);
+    const { data, error } = await supabaseClient.rpc(
+      'get_admin_learning_analytics_filtered',
+      {
+        p_start_date: range.startDate,
+        p_end_date: range.endDate,
+        p_question_nos: query.questions,
+        p_topic_main: query.topicMain,
+        p_topic_detail: query.topicDetail,
+        p_detail_filters: query.detailFilters,
+        p_compare_previous: query.period !== 'all' && query.compare
+      }
+    );
     if (signal?.aborted) {
       throw new DOMException('Request aborted', 'AbortError');
     }
@@ -112,7 +178,342 @@ export function fetchLearningAnalyticsSafe(periodDays: number, signal?: AbortSig
       perQuestion: row.per_question ?? [],
       scoreDistribution: row.score_distribution ?? [],
       weakDimensions: row.weak_dimensions ?? [],
-      tagStats: row.tag_stats ?? []
+      topicStats: row.topic_stats ?? [],
+      pdfUsage: row.pdf_usage ?? emptyPdfUsage,
+      scope: row.scope
     };
   });
+}
+
+export function fetchLearningAnalyticsFilterOptionsSafe(signal?: AbortSignal) {
+  return toSafeResult<LearningAnalyticsFilterOptions | null>(async () => {
+    if (!isSupabaseConfigured || !supabaseClient) {
+      return null;
+    }
+    const { data, error } = await supabaseClient.rpc(
+      'get_admin_learning_analytics_filter_options'
+    );
+    if (signal?.aborted) {
+      throw new DOMException('Request aborted', 'AbortError');
+    }
+    if (error) {
+      throw new Error(error.message);
+    }
+    const row = ((data ?? []) as LearningAnalyticsFilterOptionsRow[])[0];
+    if (!row?.options) {
+      throw new Error('학습 분석 필터 옵션 응답이 비어 있습니다.');
+    }
+    return row.options;
+  });
+}
+
+export const mockLearningAnalyticsFilterOptions: LearningAnalyticsFilterOptions = {
+  topics: [
+    { topicMain: '교육', topicDetails: ['학교 교육', '평생 교육'] },
+    { topicMain: '사회', topicDetails: ['문화', '환경', '기술 변화'] },
+    { topicMain: '생활', topicDetails: ['건강', '주거', '소비'] }
+  ],
+  detailFilters: {
+    '51': {
+      blankRole: ['원인', '결과', '예시'],
+      blankFunction: ['연결', '강조', '전환'],
+      answerType: ['구', '절', '문장']
+    },
+    '52': {
+      connectionFunction: ['대조', '인과', '나열'],
+      answerScope: ['단일 답안', '복수 허용']
+    },
+    '53': {
+      dataType: ['그래프', '표', '도표'],
+      requiredStructure: ['도입', '자료 요약', '변화 설명']
+    },
+    '54': {
+      essayType: ['찬반', '원인·해결', '비교'],
+      stance: ['입장 필수', '균형 서술'],
+      requiredStructure: ['서론', '본론', '결론']
+    }
+  }
+};
+
+const questionBase: Record<
+  LearningQuestionNo,
+  Omit<LearningAnalyticsQuestionStat, 'questionNo'>
+> = {
+  51: {
+    activeLearners: 156,
+    submitters: 142,
+    submissions: 512,
+    completionRate: 89.3,
+    avgScoreNormalized: 73.2,
+    feedbackViewRate: 68.3,
+    avgElapsedSeconds: 1206,
+    elapsedSamples: 445,
+    resubmissionRate: 14.6,
+    pdfExports: 51
+  },
+  52: {
+    activeLearners: 146,
+    submitters: 131,
+    submissions: 468,
+    completionRate: 88.7,
+    avgScoreNormalized: 71.4,
+    feedbackViewRate: 66.1,
+    avgElapsedSeconds: 1288,
+    elapsedSamples: 401,
+    resubmissionRate: 15.1,
+    pdfExports: 43
+  },
+  53: {
+    activeLearners: 138,
+    submitters: 124,
+    submissions: 402,
+    completionRate: 86.1,
+    avgScoreNormalized: 69.8,
+    feedbackViewRate: 61.8,
+    avgElapsedSeconds: 1394,
+    elapsedSamples: 331,
+    resubmissionRate: 15.9,
+    pdfExports: 34
+  },
+  54: {
+    activeLearners: 121,
+    submitters: 109,
+    submissions: 318,
+    completionRate: 84.6,
+    avgScoreNormalized: 67.1,
+    feedbackViewRate: 59.4,
+    avgElapsedSeconds: 1882,
+    elapsedSamples: 248,
+    resubmissionRate: 17.3,
+    pdfExports: 28
+  }
+};
+
+const distributionPercentages: Record<LearningQuestionNo, number[]> = {
+  51: [12, 36, 33, 19],
+  52: [14, 38, 31, 17],
+  53: [18, 40, 30, 12],
+  54: [21, 39, 28, 12]
+};
+
+const dimensionSlugs = [
+  'content',
+  'structure',
+  'expression',
+  'grammar',
+  'vocab',
+  'topic_fit',
+  'language'
+];
+
+function getMockScale(query: LearningAnalyticsQuery, now: Date): number {
+  if (query.period === 'all') {
+    return 5.2;
+  }
+  if (query.period === '7d') {
+    return 0.35;
+  }
+  if (query.period === '90d') {
+    return 2.4;
+  }
+  if (query.period === 'custom') {
+    const range = resolveLearningAnalyticsDateRange(query, now);
+    if (range.startDate && range.endDate) {
+      const days =
+        Math.round(
+          (new Date(`${range.endDate}T00:00:00Z`).getTime() -
+            new Date(`${range.startDate}T00:00:00Z`).getTime()) /
+            86_400_000
+        ) + 1;
+      return Math.max(0.12, days / 30);
+    }
+  }
+  return 1;
+}
+
+function round(value: number, digits = 0): number {
+  const multiplier = 10 ** digits;
+  return Math.round(value * multiplier) / multiplier;
+}
+
+function weightedAverage(
+  rows: LearningAnalyticsQuestionStat[],
+  key: 'completionRate' | 'avgScoreNormalized' | 'feedbackViewRate' | 'avgElapsedSeconds'
+): number | null {
+  const valid = rows.filter((row) => row[key] != null && row.submissions > 0);
+  const total = valid.reduce((sum, row) => sum + row.submissions, 0);
+  if (total === 0) {
+    return null;
+  }
+  return round(
+    valid.reduce((sum, row) => sum + (row[key] ?? 0) * row.submissions, 0) / total,
+    1
+  );
+}
+
+export function createMockLearningAnalytics(
+  query: LearningAnalyticsQuery,
+  now = new Date()
+): LearningAnalytics {
+  const range = resolveLearningAnalyticsDateRange(query, now);
+  const topicScale = query.topicMain ? 0.42 : 1;
+  const detailScale = Object.keys(query.detailFilters).length > 0 ? 0.66 : 1;
+  const scale = getMockScale(query, now) * topicScale * detailScale;
+  const perQuestion = query.questions.map((questionNo) => {
+    const base = questionBase[questionNo];
+    return {
+      questionNo,
+      ...base,
+      activeLearners: Math.max(1, round(base.activeLearners * scale)),
+      submitters: Math.max(1, round(base.submitters * scale)),
+      submissions: Math.max(1, round(base.submissions * scale)),
+      elapsedSamples: Math.max(0, round(base.elapsedSamples * scale)),
+      pdfExports: Math.max(0, round(base.pdfExports * scale)),
+      avgScoreNormalized: round(
+        (base.avgScoreNormalized ?? 0) - (query.topicDetail ? 2.8 : 0),
+        1
+      )
+    };
+  });
+
+  const submissions = perQuestion.reduce((sum, row) => sum + row.submissions, 0);
+  const feedbackComplete = round(
+    perQuestion.reduce(
+      (sum, row) => sum + row.submissions * ((row.completionRate ?? 0) / 100),
+      0
+    )
+  );
+  const feedbackViewedCount = round(
+    perQuestion.reduce(
+      (sum, row) => sum + row.submissions * ((row.feedbackViewRate ?? 0) / 100),
+      0
+    )
+  );
+  const elapsedSamples = perQuestion.reduce((sum, row) => sum + row.elapsedSamples, 0);
+  const pdfExports = perQuestion.reduce((sum, row) => sum + row.pdfExports, 0);
+  const compareEnabled = query.period !== 'all' && query.compare;
+  const completionRate = weightedAverage(perQuestion, 'completionRate');
+  const avgScoreNormalized = weightedAverage(perQuestion, 'avgScoreNormalized');
+  const feedbackViewRate = weightedAverage(perQuestion, 'feedbackViewRate');
+  const avgElapsedSeconds = weightedAverage(perQuestion, 'avgElapsedSeconds');
+  const activeLearners = round(
+    perQuestion.reduce((sum, row) => sum + row.activeLearners, 0) * 0.72
+  );
+  const activeEventsAttributed = round(submissions * 1.18);
+  const activeEventsTotal = activeEventsAttributed + Math.max(2, round(scale * 17));
+  const processingSamples = feedbackComplete;
+  const totalPdfExports = pdfExports + Math.max(1, round(scale * 15));
+
+  const scoreDistribution = perQuestion.flatMap((row) =>
+    distributionPercentages[row.questionNo].map((percentage, index) => ({
+      questionNo: row.questionNo,
+      bucket: index + 1,
+      label: ['0-40', '41-60', '61-80', '81-100'][index],
+      count: round(row.submissions * (percentage / 100)),
+      percentage
+    }))
+  );
+  const weakDimensions = perQuestion.flatMap((row, rowIndex) =>
+    dimensionSlugs.map((dimension, index) => ({
+      questionNo: row.questionNo,
+      dimension,
+      avgScoreNormalized: Math.max(38, round(76 - rowIndex * 3 - index * 2.1, 1)),
+      submissions: Math.max(1, round(row.submissions * (0.7 - index * 0.045))),
+      weaknessOccurrences: Math.max(0, round(row.submissions * (0.18 + index * 0.018))),
+      maxSeverity: index % 3 === 0 ? 4 : 3
+    }))
+  );
+  const topics = [
+    ['교육', '학교 교육', 216, 76.8, 73.7],
+    ['교육', '평생 교육', 142, 71.2, 69.8],
+    ['사회', '문화', 128, 70.1, 70.9],
+    ['사회', '환경', 112, 68.4, 66.2],
+    ['생활', '건강', 96, 72.7, 71.1]
+  ] as const;
+  const topicStats = topics
+    .filter(([topicMain, topicDetail]) =>
+      (!query.topicMain || topicMain === query.topicMain) &&
+      (!query.topicDetail || topicDetail === query.topicDetail)
+    )
+    .map(([topicMain, topicDetail, count, score, previous]) => ({
+      topicMain,
+      topicDetail,
+      submissions: Math.max(1, round(count * scale)),
+      avgScoreNormalized: round(score - (query.questions.length === 1 ? 1.2 : 0), 1),
+      avgScoreNormalizedPrev: compareEnabled ? previous : null
+    }));
+
+  const periodDays =
+    range.startDate && range.endDate
+      ? Math.round(
+          (new Date(`${range.endDate}T00:00:00Z`).getTime() -
+            new Date(`${range.startDate}T00:00:00Z`).getTime()) /
+            86_400_000
+        ) + 1
+      : null;
+  const compareEndDate =
+    compareEnabled && range.startDate ? addCalendarDays(range.startDate, -1) : null;
+  const compareStartDate =
+    compareEndDate && periodDays ? addCalendarDays(compareEndDate, -(periodDays - 1)) : null;
+
+  return {
+    summary: {
+      periodDays,
+      activeLearners,
+      activeLearnersPrev: compareEnabled ? round(activeLearners / 1.079) : null,
+      submitters: perQuestion.reduce((sum, row) => sum + row.submitters, 0),
+      submissions,
+      submissionsPrev: compareEnabled ? round(submissions / 1.08) : null,
+      feedbackComplete,
+      completionRate,
+      completionRatePrev: compareEnabled && completionRate != null ? round(completionRate - 2.7, 1) : null,
+      avgScoreNormalized,
+      avgScoreNormalizedPrev:
+        compareEnabled && avgScoreNormalized != null ? round(avgScoreNormalized - 2.4, 1) : null,
+      feedbackViewedCount,
+      feedbackViewRate,
+      feedbackViewRatePrev:
+        compareEnabled && feedbackViewRate != null ? round(feedbackViewRate - 3.4, 1) : null,
+      avgElapsedSeconds,
+      avgElapsedSecondsPrev:
+        compareEnabled && avgElapsedSeconds != null ? round(avgElapsedSeconds + 66) : null,
+      elapsedSamples,
+      medianProcessingSeconds: 44,
+      medianProcessingSecondsPrev: compareEnabled ? 48 : null,
+      processingSamples,
+      resubmissions: round(submissions * 0.154),
+      pdfExports,
+      pdfExportsPrev: compareEnabled ? round(pdfExports / 1.136) : null,
+      activeEventsTotal,
+      activeEventsAttributed,
+      activeEventAttributionRate: round((activeEventsAttributed / activeEventsTotal) * 100, 1),
+      dimensionCoverageSubmissions: round(feedbackComplete * 0.82)
+    },
+    perQuestion,
+    scoreDistribution,
+    weakDimensions,
+    topicStats,
+    pdfUsage: {
+      totalExports: totalPdfExports,
+      attributableExports: pdfExports,
+      mixedExports: Math.max(0, round(scale * 6)),
+      unclassifiedExports: Math.max(0, totalPdfExports - pdfExports - round(scale * 6)),
+      attributionRate: round((pdfExports / totalPdfExports) * 100, 1),
+      perQuestion: perQuestion.map((row) => ({
+        questionNo: row.questionNo,
+        count: row.pdfExports
+      }))
+    },
+    scope: {
+      startDate: range.startDate,
+      endDate: range.endDate,
+      compareStartDate,
+      compareEndDate,
+      comparePrevious: compareEnabled,
+      questions: query.questions,
+      topicMain: query.topicMain,
+      topicDetail: query.topicDetail,
+      detailFilters: query.detailFilters as Record<string, string[]>
+    }
+  };
 }

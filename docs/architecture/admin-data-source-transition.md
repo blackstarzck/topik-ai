@@ -472,6 +472,14 @@ src/features/<feature>/
 - 신규 v13 수집 원천: `writing_submission_metrics`(v13 마이그 `20260708113000`) — admin은 읽기 집계만.
 - 적용 상태: dev DB 적용·검증 완료(실브라우저 풀루프 포함), 운영 DB 미적용(기존 미적용분과 동일 트랙).
 
+### 2026-07-10 Analytics 학습 분석 다차원 필터 확장
+
+- `/analytics/learning` facade는 `get_admin_learning_analytics_filtered(...)`와 `get_admin_learning_analytics_filter_options()`를 사용한다. 기존 `get_admin_learning_analytics(period_days)`는 호환성을 위해 유지한다.
+- 마이그레이션 `20260710120000_admin_learning_analytics_filtered.sql`은 2026-07-13 dev DB에 적용했다. 같은 이름의 down SQL로 RPC 2종과 tracker 행이 제거되는 것을 확인한 뒤 재적용했으며, 관리자 호출·비인증 거부·KST 날짜/문제 유형/주제/세부 조건/이전 기간·PII 미반환과 `security definer`/빈 `search_path`/실행 권한 경계를 검증했다. 운영 DB는 미적용이다.
+- live source는 writing 제출·피드백·평가 차원·계측·학습 이벤트와 `topik_writing_question_source_map`/`topik_writing_question_recommendation_view`의 신규 메타데이터를 read-only로 조합한다. 주제 필터는 `topic_main/topic_detail` 단일 기준이며 `problems.tags`를 사용하지 않는다.
+- safe facade와 결정적 mock은 같은 query/response 모양을 사용한다. 조건 재조회 실패 시 마지막 성공 결과를 유지하고, Supabase 비활성 환경에서만 mock fallback을 사용한다.
+- 기간·문제 유형·주제·세부 특성은 한 번 만든 filtered source에서 KPI, 유형 비교, 점수 분포, 취약 차원, 주제 성과, PDF 분석으로 파생한다. PDF는 `export_downloaded` 내보내기 완료 이벤트이며 직접 귀속/혼합/미분류를 분리한다.
+
 ## Operation > PDF 내보내기 제한 — 정책 변경 이력 (2026-07-08)
 
 - 화면: `/operation/pdf-quota` 정책 탭 변경 이력 테이블.

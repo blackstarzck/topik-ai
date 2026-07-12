@@ -927,7 +927,19 @@
 - 활성 사용자 정의 주의: 통계 개요의 "활성 사용자"는 로그인 기준(2026-07-07 오너 합의 유지),
   학습 분석의 "학습 활성 사용자"는 학습 이벤트 기준 — 라벨로 구분해 공존한다.
 
-### 검증(2026-07-08, dev)
+### 2026-07-10 필터 확장 RPC: `get_admin_learning_analytics_filtered(...)` + `get_admin_learning_analytics_filter_options()`
+
+- 기존 `get_admin_learning_analytics(period_days)`는 호환용으로 유지하고 `/analytics/learning`의 신규 facade는 두 확장 RPC를 사용한다.
+- 집계 입력은 KST 날짜 범위, 이전 동일 기간 비교 여부, 문제 유형 51~54 배열, `topic_main/topic_detail`, 유형별 세부 조건 JSON이다. 화면 기본값은 최근 30일·51~54 전체·이전 기간 비교다.
+- 문제 유형 배열과 같은 세부 필드 안의 값은 OR, 날짜·문제 유형·주제·서로 다른 세부 필드 사이는 AND다. `전체` 기간은 이전 기간 비교를 반환하지 않는다.
+- 제출 `problem_id`는 `topik_writing_question_source_map.legacy_problem_id`를 통해 신규 문항 메타데이터에 연결하고 `topik_writing_question_recommendation_view.topic_main/topic_detail`을 주제 SoT로 사용한다. 구 `problems.tags`는 주제 필터 SoT가 아니다.
+- 학습 활성 사용자는 `submission_id` 또는 `problem_id`로 현재 분석 범위에 귀속 가능한 `study_events`의 고유 사용자다. 귀속 불가능 이벤트는 임의 배분하지 않고 커버리지로 반환한다.
+- 반환 블록은 적용 범위 메타데이터, 8개 KPI와 이전 기간·표본·커버리지, 문제 유형별 비교, 4구간 점수 분포, 문제 유형별 표준 평가 차원, 주제별 성과, PDF 사용 분석이다. 개인 식별자·답안 원문·문장 첨삭 본문은 반환하지 않는다.
+- `PDF 내보내기 완료 수`는 `study_events.event_type='export_downloaded'` 건수이며 실제 파일 저장 완료를 의미하지 않는다. 단일 제출만 문제 유형/주제로 직접 귀속하고 확정할 수 없는 보고서·서재 선택은 `혼합` 또는 `미분류`로 보존한다.
+- 필터 옵션 RPC는 `topic_main → topic_detail`과 51~54번별 세부 특성의 distinct 옵션만 반환한다. 두 RPC 모두 `private.is_admin()` + `SECURITY DEFINER` read-only 계약을 따른다.
+- URL 복원 키는 `period`, `from`, `to`, `compare`, 반복 `question`, `topicMain`, `topicDetail`, 반복 `d.<field>`다. CSV 공개 열은 `section, question_type, topic_main, topic_detail, metric, category, value, unit, sample_count, coverage, period_start, period_end`로 고정한다.
+
+### 기존 계약 검증(2026-07-08, dev)
 
 - SQL 프로브: 제출 최다 사용자 개인 RPC 실값, 가드(비관리자 forbidden), payload에 `answer_text` 무포함.
 - 실브라우저 풀루프: 신규 학습자 계정으로 v13 실제 52번 제출 → `writing_submission_metrics` 행

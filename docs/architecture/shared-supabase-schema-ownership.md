@@ -213,6 +213,17 @@
 - v13 소유 신규 테이블(`writing_submission_metrics`)의 DDL/RLS는 v13 repo 마이그레이션이 SoT이며
   topik-ai는 읽기 집계만 한다(도입 배경·오너 결정은 admin-data-contract 2026-07-08 절).
 
+### 2026-07-10 학습 분석 필터 확장 read 경계
+
+| Object | Owner | Write path | Read path | Boundary |
+| --- | --- | --- | --- | --- |
+| `writing_submissions`, `writing_feedback`, `feedback_dimension_scores`, `writing_submission_metrics` | v13 | v13 writing flow | `get_admin_learning_analytics_filtered` | read-only aggregate. 답안·문장 첨삭 본문과 개인 식별자 미반환. |
+| `study_events` | v13 | v13 telemetry | `get_admin_learning_analytics_filtered` | 귀속 가능한 학습 이벤트와 `export_downloaded` 집계만 사용. payload 원문 미반환. |
+| `topik_writing_question_source_map`, `topik_writing_question_recommendation_view` 및 기반 `topik_writing_51/52/53/54_questions` | topik_writing domain (this repo) | topik_writing migration/ETL | `get_admin_learning_analytics_filtered`, `get_admin_learning_analytics_filter_options` | 문제 유형·주제·세부 특성 read-only 참조. 기존 v13 테이블 DDL 무변경. |
+
+- 두 신규 admin RPC의 migration home은 `supabase/migrations-admin/`와 같은 이름의 `down/` 파일이며 tracker는 `admin_schema_migrations`다.
+- `private.is_admin()` + `SECURITY DEFINER` read-only 경계를 사용하고, topik_writing 객체의 소유권이나 쓰기 경로를 admin Analytics로 이전하지 않는다.
+
 ## 2026-07-07 기관 초대(동의 기반 소속 배정) 경계 기록
 
 - 기능: 관리자 '회원 추가/배정'을 즉시 배정에서 **pending 초대**로 전환. 사용자가 v13 알림
