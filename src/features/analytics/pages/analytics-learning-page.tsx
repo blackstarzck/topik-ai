@@ -65,6 +65,7 @@ import {
   type LearningQuestionNo
 } from '../model/analytics-learning-query';
 import { createLearningAnalyticsCsv } from '../model/analytics-learning-csv';
+import { getLearningAnalyticsMetadataCoverageState } from '../model/analytics-learning-metadata-coverage';
 import { formatWritingDimension } from '../../../shared/model/writing-dimension-labels';
 import {
   DrawerFooter,
@@ -460,6 +461,13 @@ export default function AnalyticsLearningPage(): JSX.Element {
 
   const data = state.data;
   const summary = data?.summary;
+  const comparePrevious = data?.scope.comparePrevious ?? false;
+  const metadataCoverageState = useMemo(
+    () => getLearningAnalyticsMetadataCoverageState(summary, comparePrevious),
+    [comparePrevious, summary]
+  );
+  const metadataCoverageUnavailable = metadataCoverageState.unavailable;
+  const metadataCoverageWarnings = metadataCoverageState.warnings;
   const isInitialLoading = state.status === 'pending' && !data;
   const isRefreshing = state.status === 'pending' && Boolean(data);
   const conditionTags = useMemo(
@@ -729,6 +737,28 @@ export default function AnalyticsLearningPage(): JSX.Element {
       {isRefreshing ? (
         <Alert className="analytics-learning-alert" type="info" showIcon message="직전 결과를 유지한 채 새 조건으로 갱신하고 있습니다." />
       ) : null}
+      {metadataCoverageUnavailable ? (
+        <Alert
+          className="analytics-learning-alert"
+          data-testid="metadata-coverage-unavailable"
+          type="error"
+          showIcon
+          message="학습 데이터의 메타데이터 연결 상태를 확인할 수 없습니다."
+          description="통계 계약 또는 배포 상태를 확인한 뒤 다시 시도해 주세요. 기존 집계 값은 참고용으로만 사용해 주세요."
+          action={<Button icon={<ReloadOutlined />} onClick={() => setRetryKey((value) => value + 1)}>재시도</Button>}
+        />
+      ) : null}
+      {metadataCoverageWarnings.map((warning) => (
+        <Alert
+          key={warning.testId}
+          className="analytics-learning-alert"
+          data-testid={warning.testId}
+          type="warning"
+          showIcon
+          message={warning.message}
+          description={warning.description}
+        />
+      ))}
 
       <section aria-labelledby="learning-kpi-heading">
         <div className="analytics-section-heading">
@@ -954,6 +984,7 @@ export default function AnalyticsLearningPage(): JSX.Element {
             />
             <RangePicker
               aria-label="직접 분석 기간"
+              allowEmpty={[true, true]}
               format="YYYY-MM-DD"
               value={
                 draftQuery.from && draftQuery.to

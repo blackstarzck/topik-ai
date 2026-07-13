@@ -33,6 +33,8 @@ test('학습 분석 기본 대시보드가 8개 KPI와 전체 분석 섹션을 �
   await expect(page.getByText('주제별 성과')).toBeVisible();
   await expect(page.getByText('PDF 사용 분석')).toBeVisible();
   await expect(page.getByText('51~54번 전체').first()).toBeVisible();
+  await expect(page.locator('[data-testid^="metadata-coverage-warning-"]')).toHaveCount(0);
+  await expect(page.getByTestId('metadata-coverage-unavailable')).toHaveCount(0);
 });
 
 test('URL 조건이 문제 유형·주제·세부 필터를 모든 분석 블록에 복원한다', async ({ page }) => {

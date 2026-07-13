@@ -106,6 +106,14 @@ describe('analytics learning query contract', () => {
       topicDetail: '문화'
     });
     expect(data.pdfUsage.perQuestion.map((row) => row.questionNo)).toEqual([53]);
+    expect(data.summary.metadataMappedSubmissions).toBe(
+      data.summary.metadataEligibleSubmissions
+    );
+    expect(data.summary.metadataMappedEvents).toBe(
+      data.summary.metadataEligibleEvents
+    );
+    expect(data.summary.metadataCoverageRate).toBe(100);
+    expect(data.summary.metadataEventCoverageRate).toBe(100);
   });
 
   it('exports a UTF-8 BOM long-form CSV with escaped values and every section', () => {

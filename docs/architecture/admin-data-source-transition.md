@@ -480,6 +480,15 @@ src/features/<feature>/
 - safe facade와 결정적 mock은 같은 query/response 모양을 사용한다. 조건 재조회 실패 시 마지막 성공 결과를 유지하고, Supabase 비활성 환경에서만 mock fallback을 사용한다.
 - 기간·문제 유형·주제·세부 특성은 한 번 만든 filtered source에서 KPI, 유형 비교, 점수 분포, 취약 차원, 주제 성과, PDF 분석으로 파생한다. PDF는 `export_downloaded` 내보내기 완료 이벤트이며 직접 귀속/혼합/미분류를 분리한다.
 
+### 2026-07-13 Analytics 학습 분석 메타데이터 연결 복구
+
+- dev DB에는 최근 30일 `writing_submissions` 280건이 남아 있었지만, 환경 재시드 뒤 현재 `problems.id`와 역사 `topik_writing_question_source_map.legacy_problem_id`가 달라져 메타데이터 inner join 결과가 0건이었다. 학습 원천 삭제가 아니라 식별자 연결 회귀였다.
+- `20260713103000_admin_learning_analytics_unmapped_fallback.sql`은 기본 기간·문제 유형 통계를 보존하는 중간 fail-safe다. 최종 연결은 `20260713072205_topik_writing_problem_alias.sql`의 `topik_writing_problem_aliases`와 통합 뷰 `topik_writing_problem_question_map`을 사용한다. 기존 source map은 다시 묶거나 덮어쓰지 않는다.
+- `reconcile-learning-analytics-metadata.mjs`는 `md5(question_id)::uuid` 현재 문제를 문항 번호·정규화 prompt·answer key로 모두 일치시킨 경우에만 환경별 별칭을 적용한다. 기존 `held` 별칭은 재실행으로 자동 해제하지 않는다. dev에서 메타데이터 문항 700건 모두 exact match, hold 0건이었고 누락 source-map anchor 232건과 별칭 700건을 원자 적용했다.
+- `20260713120000_admin_learning_analytics_metadata_coverage.sql`은 통합 매핑을 사용하며, 기본 기간·문제 유형 집계는 항상 `problems.question_no`를 사용한다. 주제·세부 특성 결과와 mapped coverage는 문제 번호 일치, 대·세부 주제, 번호별 필수 메타데이터가 모두 완전한 연결만 사용하고 summary에 현재/직전 기간의 제출·이벤트 연결 대상/완료/비율과 문제 연결 수를 반환한다.
+- 배포 전 `npm run check:learning-analytics-metadata-coverage -- --project-ref <target> --expected-project-ref <target>`는 대상 project ref 일치와 metric 계약을 먼저 검증하고, 실제 참조 제출·이벤트·문제의 100% 연결, problem fan-out 0, 고아 별칭 0, hold 0, 필수 메타데이터 누락 0을 차단식으로 검사한다. dev 최종값은 제출 280/280, 이벤트 3333/3333, 문제 58/58이다.
+- 적용 후 관리자 화면에서 최근 30일 학습자 91명, 제출 280건, 51~54번 제출 217/39/11/13건을 확인했다. 빈 before-image의 별칭 700건·source-map anchor 232건 전체 rollback/reapply와 비어 있지 않은 before-image의 별칭 700건 복원을 각각 검증했다. 기간 5종, 51~54번, 주제 2단계, 세부 필드 10종, 필드 내 OR·필드 간 AND를 dev DB 독립 기준값과 대조했다. 운영 DB는 미적용이다.
+
 ## Operation > PDF 내보내기 제한 — 정책 변경 이력 (2026-07-08)
 
 - 화면: `/operation/pdf-quota` 정책 탭 변경 이력 테이블.

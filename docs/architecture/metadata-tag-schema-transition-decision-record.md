@@ -76,6 +76,13 @@
 - `topic_source` 고정 문구: `메신저 전달 항목(국제 통용 한국어 표준 교육과정 적용 연구 참고)`
 - `schema_version` 초기값: `1.0`
 
+### 1.2 2026-07-13 환경 재시드 problem 별칭 확장
+
+- D-4의 역사 `legacy_problem_id → question_id` source map은 불변 이력으로 유지합니다. 환경 재시드로 현재 `problems.id`가 달라져도 기존 행을 update/rebind하지 않습니다.
+- 현재 문제 연결은 별도 `topik_writing_problem_aliases` edge로 추가하고, 읽기는 `topik_writing_problem_question_map` 통합 뷰를 사용합니다. 별칭 edge는 자체 `mapping_status`와 `hold_reason`을 가져 역사 hold 사유를 상속하거나 지우지 않습니다.
+- 자동 연결은 동일 문항 번호, 정규화 prompt, answer key가 모두 일치하고 한 problem이 한 question에만 대응할 때만 허용합니다. 그 외 후보는 hold 후 수동 판정하며, 참조 데이터 coverage 100%와 fan-out/orphan 0을 배포 전 gate로 강제합니다.
+- 이 확장은 topik_writing 도메인의 additive 스키마/ETL이며 v13 소유 `problems`의 DDL·DML과 학습 제출 원천을 변경하지 않습니다.
+
 ## 2. v13 경계 합의 기록
 
 ### 2.1 합의 근거 (경계의 SoT)
@@ -85,7 +92,7 @@
 
 ### 2.2 네임스페이스·승인 경계
 
-- topik-ai가 소유하는 오브젝트: `topik_writing_*` 접두 테이블 8종 + `topik_writing_question_source_map` + 그에 속한 인덱스/RLS/시드, `admin_*` 접두 신규 RPC. 기존 v13 테이블(`problems` 포함)에는 **DDL 변경 0건** 원칙(P1-4 무변경 diff로 증명).
+- topik-ai가 소유하는 오브젝트: `topik_writing_*` 접두 도메인 테이블·뷰(`topik_writing_question_source_map`, 환경별 `topik_writing_problem_aliases`, 통합 읽기 뷰 `topik_writing_problem_question_map` 포함)와 그에 속한 인덱스/RLS/시드, `admin_*` 접두 신규 RPC. 기존 v13 테이블(`problems` 포함)에는 **DDL 변경 0건** 원칙(P1-4 무변경 diff로 증명).
 - 적용 절차: 마이그레이션 작성 → 오너 승인(v13 오너 = admin 오너 동일인 — 단일 승인으로 충족) → 프로덕션 적용 → §5.4 스모크/diff 게이트. 브랜치/스테이징 DB가 없으므로(실측) 스테이징 검증은 "신규 오브젝트만 추가하는 additive 마이그레이션 + down 스크립트 + 적용 직후 무변경 diff"로 대체한다.
 
 ### 2.3 `problems` 일몰(sunset) 조건과 전환기 SoT 우선순위
