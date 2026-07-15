@@ -42,7 +42,10 @@ test('URL 조건이 문제 유형·주제·세부 필터를 모든 분석 블록
   await expect(page.getByText('53번', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('사회', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('문화', { exact: true }).first()).toBeVisible();
-  await expect(page.getByText('자료 유형: 표', { exact: true }).first()).toBeVisible();
+
+  await page.getByRole('button', { name: /분석 조건/ }).click();
+  await expect(page.getByText('자료 유형: 표', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '취소' }).click();
 
   await expect(page.getByRole('cell', { name: '53번 자료 해석', exact: true })).toBeVisible();
   await expect(page.getByRole('cell', { name: '51번 빈칸 완성', exact: true })).toHaveCount(0);
@@ -111,10 +114,12 @@ test('지표 사전, 표 대체 보기, 공유 URL, CSV 내보내기가 동작�
   expect(download.suggestedFilename()).toMatch(/^learning-analytics_.*\.csv$/);
 });
 
-test('적용 조건 초기화가 기본 30일·51~54번·비교 사용으로 복원된다', async ({ page }) => {
+test('조건 Drawer 초기화 적용이 기본 30일·51~54번·비교 사용으로 복원된다', async ({ page }) => {
   await page.goto('/analytics/learning?period=all&compare=0&question=54');
 
-  await page.getByRole('button', { name: '조건 초기화' }).click();
+  await page.getByRole('button', { name: /분석 조건/ }).click();
+  await page.getByRole('button', { name: '초기화' }).click();
+  await page.getByRole('button', { name: '분석 적용' }).click();
   await expect.poll(() => new URL(page.url()).searchParams.get('period')).toBe('30d');
   await expect.poll(() => new URL(page.url()).searchParams.get('compare')).toBe('1');
   await expect.poll(() => new URL(page.url()).searchParams.getAll('question')).toEqual([

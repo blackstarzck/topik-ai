@@ -466,10 +466,6 @@ export default function AnalyticsLearningPage(): JSX.Element {
   const summary = data?.summary;
   const isInitialLoading = state.status === 'pending' && !data;
   const isRefreshing = state.status === 'pending' && Boolean(data);
-  const conditionTags = useMemo(
-    () => getAppliedConditionTags(appliedQuery),
-    [appliedQuery]
-  );
   const conditionCount = countLearningAnalyticsConditions(appliedQuery);
   const draftChanged = !areLearningAnalyticsQueriesEqual(draftQuery, appliedQuery);
   const draftRange = resolveLearningAnalyticsDateRange(draftQuery);
@@ -516,10 +512,6 @@ export default function AnalyticsLearningPage(): JSX.Element {
     applyQuery(draftQuery);
     setDrawerOpen(false);
   }, [applyQuery, draftQuery, message]);
-
-  const handleResetApplied = useCallback(() => {
-    applyQuery(defaultLearningAnalyticsQuery);
-  }, [applyQuery]);
 
   const handleShare = useCallback(async () => {
     const queryString = serializeLearningAnalyticsQuery(appliedQuery).toString();
@@ -580,6 +572,12 @@ export default function AnalyticsLearningPage(): JSX.Element {
     () => [
       { title: '대주제', dataIndex: 'topicMain', width: 84 },
       { title: '세부 주제', dataIndex: 'topicDetail', width: 112 },
+      {
+        title: '문제 유형',
+        dataIndex: 'questionNo',
+        width: 88,
+        render: (value: LearningQuestionNo) => `${value}번`
+      },
       {
         title: '평균 환산 점수',
         dataIndex: 'avgScoreNormalized',
@@ -704,22 +702,6 @@ export default function AnalyticsLearningPage(): JSX.Element {
         }
         meta={<span>데이터 갱신&nbsp; {formatRefreshTime(updatedAt)} KST</span>}
       />
-
-      <Card className="analytics-condition-bar" variant="outlined">
-        <div className="analytics-condition-bar__main">
-          <Text strong className="analytics-condition-bar__title">적용 중인 분석 조건</Text>
-          <div className="analytics-condition-tags" aria-label="적용 중인 분석 조건">
-            {conditionTags.map((tag) => (
-              <Tag key={tag}>{tag}</Tag>
-            ))}
-          </div>
-        </div>
-        <div className="analytics-condition-bar__actions">
-          <Button type="link" size="large" onClick={handleResetApplied}>조건 초기화</Button>
-          <Button size="large" icon={<FilterOutlined />} onClick={openConditionDrawer}>조건 변경</Button>
-        </div>
-        <Text className="analytics-condition-bar__helper">아래 모든 분석 섹션에 동일하게 적용됩니다.</Text>
-      </Card>
 
       {state.status === 'error' ? (
         <Alert
@@ -850,13 +832,13 @@ export default function AnalyticsLearningPage(): JSX.Element {
             >
               <Table
                 aria-label="주제별 성과"
-                rowKey={(row) => `${row.topicMain}-${row.topicDetail}`}
+                rowKey={(row) => `${row.topicMain}-${row.topicDetail}-${row.questionNo}`}
                 size="small"
                 columns={topicColumns}
                 dataSource={data.topicStats}
                 pagination={false}
                 locale={{ emptyText: '선택 조건에 해당하는 주제가 없습니다.' }}
-                scroll={{ x: 448 }}
+                scroll={{ x: 536 }}
               />
             </Card>
 

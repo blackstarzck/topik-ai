@@ -63,6 +63,7 @@ export type LearningAnalyticsScoreBucket = {
 };
 
 export type LearningAnalyticsTopicStat = {
+  questionNo: LearningQuestionNo;
   topicMain: string;
   topicDetail: string;
   submissions: number;
@@ -404,13 +405,19 @@ export function createMockLearningAnalytics(
       (!query.topicMain || topicMain === query.topicMain) &&
       (!query.topicDetail || topicDetail === query.topicDetail)
     )
-    .map(([topicMain, topicDetail, count, score, previous]) => ({
-      topicMain,
-      topicDetail,
-      submissions: Math.max(1, round(count * scale)),
-      avgScoreNormalized: round(score - (query.questions.length === 1 ? 1.2 : 0), 1),
-      avgScoreNormalizedPrev: compareEnabled ? previous : null
-    }));
+    .flatMap(([topicMain, topicDetail, count, score, previous]) =>
+      query.questions.map((questionNo, questionIndex) => ({
+        questionNo,
+        topicMain,
+        topicDetail,
+        submissions: Math.max(1, round((count * scale) / query.questions.length)),
+        avgScoreNormalized: round(
+          score - (query.questions.length === 1 ? 1.2 : 0) - questionIndex * 1.1,
+          1
+        ),
+        avgScoreNormalizedPrev: compareEnabled ? round(previous - questionIndex * 1.1, 1) : null
+      }))
+    );
 
   const periodDays =
     range.startDate && range.endDate
