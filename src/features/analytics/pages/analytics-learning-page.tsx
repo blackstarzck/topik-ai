@@ -765,7 +765,7 @@ export default function AnalyticsLearningPage(): JSX.Element {
 
       {data ? (
         <>
-          <div className="analytics-analysis-row analytics-analysis-row--top">
+          <div className="analytics-analysis-row">
             <Card
               className="analytics-panel"
               title={<div className="analytics-panel-title">문제 유형별 비교 <Tag color="blue">{appliedQuery.questions.length === 4 ? '51~54번' : appliedQuery.questions.map((question) => `${question}번`).join(' · ')}</Tag></div>}
@@ -842,7 +842,7 @@ export default function AnalyticsLearningPage(): JSX.Element {
             </Card>
           </div>
 
-          <div className="analytics-analysis-row analytics-analysis-row--bottom">
+          <div className="analytics-analysis-row">
             <Card
               className="analytics-panel"
               title={<div className="analytics-panel-title">주제별 성과</div>}

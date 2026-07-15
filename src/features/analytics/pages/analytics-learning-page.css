@@ -202,14 +202,7 @@
   display: grid;
   gap: 12px;
   margin-bottom: 12px;
-}
-
-.analytics-analysis-row--top {
-  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
-}
-
-.analytics-analysis-row--bottom {
-  grid-template-columns: minmax(0, 1.12fr) minmax(280px, 0.88fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .analytics-panel.ant-card,
@@ -595,8 +588,7 @@
 }
 
 @media (max-width: 1024px) {
-  .analytics-analysis-row--top,
-  .analytics-analysis-row--bottom {
+  .analytics-analysis-row {
     grid-template-columns: minmax(0, 1fr);
   }
 }
