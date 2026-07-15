@@ -1,6 +1,7 @@
+/* 타이포 기준(오너 지시 2026-07-14): 이 페이지 가시 텍스트는 14px 미만 금지.
+   antd 컴포넌트는 페이지 ConfigProvider(token.fontSize=16)로 베이스 16px·SM 14px. */
 .analytics-learning-page {
   --analytics-primary: #0958d9;
-  --analytics-border: #d7e0ec;
   --analytics-surface: #ffffff;
   --analytics-subtle: #f5f8fc;
   min-width: 0;
@@ -25,6 +26,11 @@
 
 .analytics-learning-page .page-title-description {
   max-width: 660px;
+  font-size: 14px;
+}
+
+.analytics-learning-page .page-title-meta {
+  font-size: 14px;
 }
 
 .analytics-learning-page .page-title-actions .ant-btn {
@@ -34,7 +40,6 @@
 
 .analytics-condition-bar.ant-card {
   margin-bottom: 14px;
-  border-color: var(--analytics-border);
   border-radius: 8px;
   box-shadow: none;
 }
@@ -58,7 +63,7 @@
 
 .analytics-condition-bar__title {
   margin-right: 6px;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .analytics-condition-tags .ant-tag {
@@ -66,7 +71,7 @@
   border-color: #d6e4ff;
   background: #f0f5ff;
   color: #1d4ed8;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .analytics-condition-bar__actions {
@@ -76,7 +81,7 @@
 .analytics-condition-bar__helper {
   grid-column: 1 / -1;
   color: rgba(0, 0, 0, 0.58);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .analytics-learning-alert {
@@ -109,7 +114,6 @@
 .analytics-kpi-card.ant-card {
   min-width: 0;
   min-height: 136px;
-  border-color: #ccd7e5;
   border-radius: 8px;
   box-shadow: none;
 }
@@ -123,7 +127,7 @@
 
 .analytics-kpi-category {
   color: #1668dc;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 650;
 }
 
@@ -133,7 +137,7 @@
   gap: 2px;
   min-height: 28px;
   margin-top: 1px;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .analytics-kpi-info.ant-btn {
@@ -163,12 +167,12 @@
 
 .analytics-kpi-unit {
   color: #111827;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .analytics-learning-trend {
   margin-left: auto;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -188,7 +192,7 @@
   margin-top: auto;
   overflow: hidden;
   color: rgba(0, 0, 0, 0.58);
-  font-size: 11px;
+  font-size: 14px;
   line-height: 1.4;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -205,21 +209,24 @@
 }
 
 .analytics-analysis-row--bottom {
-  grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.92fr) minmax(280px, 0.88fr);
+  grid-template-columns: minmax(0, 1.12fr) minmax(280px, 0.88fr);
 }
 
 .analytics-panel.ant-card,
 .analytics-empty-card.ant-card {
   min-width: 0;
-  border-color: #ccd7e5;
   border-radius: 8px;
   box-shadow: none;
+}
+
+/* 빈 상태 카드는 분석 행 밖에 단독 렌더링되어 행의 margin을 못 받는다 — 공통 섹션 gap 12px. */
+.analytics-empty-card.ant-card {
+  margin-bottom: 12px;
 }
 
 .analytics-panel .ant-card-head {
   min-height: 46px;
   padding: 0 12px;
-  border-bottom-color: #e6ebf2;
 }
 
 .analytics-panel .ant-card-head-title {
@@ -245,12 +252,14 @@
 
 .analytics-panel-title .ant-tag {
   margin: 0;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 500;
 }
 
-.analytics-panel .ant-table {
-  font-size: 11px;
+/* antd 기본 규칙(.ant-table-wrapper .ant-table)과 동점이면 주입 순서상 antd가 이기므로
+   클래스 2개로 명시도를 높인다. 밀도 높은 표는 최소 허용치 14px로 고정. */
+.analytics-panel.ant-card .ant-table {
+  font-size: 14px;
 }
 
 .analytics-panel .ant-table-thead > tr > th,
@@ -264,7 +273,7 @@
   margin-top: 8px;
   padding: 0 2px;
   color: rgba(0, 0, 0, 0.58);
-  font-size: 10px;
+  font-size: 14px;
   line-height: 1.45;
 }
 
@@ -280,7 +289,7 @@
   gap: 12px;
   margin-bottom: 16px;
   color: #475569;
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .score-distribution-legend span,
@@ -304,7 +313,7 @@
   align-items: center;
   gap: 10px;
   margin: 12px 0;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .score-distribution-bar {
@@ -323,53 +332,11 @@
   min-width: 0;
   overflow: hidden;
   color: #ffffff;
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
   border-right: 1px solid rgba(255, 255, 255, 0.7);
-}
-
-.weak-dimension-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.weak-dimension-panel {
-  min-width: 0;
-  padding: 10px;
-  border: 1px solid #e0e7f0;
-  border-radius: 6px;
-  background: #ffffff;
-}
-
-.weak-dimension-panel__heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
-  font-size: 12px;
-}
-
-.weak-dimension-item {
-  display: grid;
-  grid-template-columns: 68px minmax(0, 1fr) 28px;
-  align-items: center;
-  gap: 7px;
-  min-height: 22px;
-  font-size: 11px;
-}
-
-.weak-dimension-item .ant-progress {
-  margin: 0;
-  line-height: 1;
-}
-
-.weak-dimension-score {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
 }
 
 .pdf-usage-panel .ant-card-body {
@@ -389,14 +356,14 @@
   gap: 2px;
   min-width: 0;
   padding: 9px 8px;
-  border: 1px solid #e0e7f0;
+  border: 1px solid #f0f0f0;
   border-radius: 6px;
   background: #fbfdff;
 }
 
 .pdf-usage-stats .ant-typography {
   overflow: hidden;
-  font-size: 10px;
+  font-size: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -409,7 +376,7 @@
 
 .pdf-usage-stats small {
   margin-left: 2px;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 400;
 }
 
@@ -417,7 +384,7 @@
   display: grid;
   gap: 6px;
   padding: 0 2px;
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .pdf-question-list > div {
@@ -449,7 +416,6 @@
 }
 
 .analytics-condition-drawer-root .ant-drawer-footer {
-  border-top: 1px solid #e1e7ef;
   background: #ffffff;
 }
 
@@ -479,8 +445,8 @@
   flex-wrap: wrap;
   gap: 8px;
   padding: 10px 0;
-  border-bottom: 1px solid #e6ebf2;
-  font-size: 12px;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 14px;
 }
 
 .condition-section {
@@ -492,7 +458,7 @@
 
 .condition-section h5.ant-typography {
   margin: 0;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .analytics-condition-drawer__body .ant-divider {
@@ -506,6 +472,7 @@
 .analytics-condition-drawer__body .ant-segmented-item-label {
   min-height: 32px;
   padding-inline: 7px;
+  font-size: 14px;
   line-height: 32px;
   white-space: nowrap;
 }
@@ -524,14 +491,14 @@
 
 .condition-helper {
   display: block;
-  font-size: 11px;
+  font-size: 14px;
   line-height: 1.5;
 }
 
 .question-checkbox-group {
   display: grid;
   grid-template-columns: 1fr;
-  border: 1px solid #d8e0ea;
+  border: 1px solid #d9d9d9;
   border-radius: 6px;
   overflow: hidden;
 }
@@ -540,7 +507,7 @@
   min-height: 40px;
   margin: 0;
   padding: 8px 10px;
-  border-bottom: 1px solid #e5eaf1;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .question-checkbox-group .ant-checkbox-wrapper:last-child {
@@ -549,16 +516,16 @@
 
 .condition-field {
   display: grid;
-  grid-template-columns: 74px minmax(0, 1fr);
+  grid-template-columns: 88px minmax(0, 1fr);
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .condition-summary {
   margin-top: 14px;
   padding: 10px;
-  border: 1px solid #d8e0ea;
+  border: 1px solid #d9d9d9;
   border-radius: 7px;
   background: #f8fafc;
 }
@@ -574,7 +541,7 @@
 
 .metric-definition-card {
   padding: 14px;
-  border: 1px solid #dce3ec;
+  border: 1px solid #f0f0f0;
   border-radius: 8px;
   background: #ffffff;
   transition: border-color 160ms ease, background-color 160ms ease;
@@ -602,7 +569,7 @@
   display: grid;
   grid-template-columns: 80px minmax(0, 1fr);
   gap: 12px;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.5;
 }
 
@@ -625,23 +592,12 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .analytics-analysis-row--bottom {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .pdf-usage-panel {
-    grid-column: 1 / -1;
-  }
 }
 
 @media (max-width: 1024px) {
   .analytics-analysis-row--top,
   .analytics-analysis-row--bottom {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .pdf-usage-panel {
-    grid-column: auto;
   }
 }
 
@@ -654,8 +610,7 @@
     justify-content: flex-start;
   }
 
-  .analytics-kpi-grid,
-  .weak-dimension-grid {
+  .analytics-kpi-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 

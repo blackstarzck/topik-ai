@@ -1,5 +1,4 @@
 import type { LearningAnalytics } from '../api/analytics-learning-service';
-import { formatWritingDimension } from '../../../shared/model/writing-dimension-labels';
 
 type CsvValue = string | number | null | undefined;
 
@@ -80,9 +79,6 @@ export function createLearningAnalyticsCsv(data: LearningAnalytics): string {
   }
   for (const row of data.scoreDistribution) {
     addRow('점수 분포', row.questionNo, scope.topicMain, scope.topicDetail, '환산 점수 구간', row.label, row.count, '건', row.count, row.percentage);
-  }
-  for (const row of data.weakDimensions) {
-    addRow('취약 평가 영역', row.questionNo, scope.topicMain, scope.topicDetail, formatWritingDimension(row.dimension), row.dimension, row.avgScoreNormalized, '점', row.submissions, null);
   }
   for (const row of data.topicStats) {
     addRow('주제별 성과', null, row.topicMain, row.topicDetail, '평균 환산 점수', '주제', row.avgScoreNormalized, '점', row.submissions, null);

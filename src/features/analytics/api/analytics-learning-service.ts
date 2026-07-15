@@ -38,7 +38,6 @@ export type LearningAnalyticsSummary = {
   activeEventsTotal: number;
   activeEventsAttributed: number;
   activeEventAttributionRate: number | null;
-  dimensionCoverageSubmissions: number;
 };
 
 export type LearningAnalyticsQuestionStat = {
@@ -61,15 +60,6 @@ export type LearningAnalyticsScoreBucket = {
   label: string;
   count: number;
   percentage: number;
-};
-
-export type LearningAnalyticsWeakDimension = {
-  questionNo: LearningQuestionNo;
-  dimension: string;
-  avgScoreNormalized: number | null;
-  submissions: number;
-  weaknessOccurrences: number;
-  maxSeverity: number;
 };
 
 export type LearningAnalyticsTopicStat = {
@@ -105,7 +95,6 @@ export type LearningAnalytics = {
   summary: LearningAnalyticsSummary;
   perQuestion: LearningAnalyticsQuestionStat[];
   scoreDistribution: LearningAnalyticsScoreBucket[];
-  weakDimensions: LearningAnalyticsWeakDimension[];
   topicStats: LearningAnalyticsTopicStat[];
   pdfUsage: LearningAnalyticsPdfUsage;
   scope: LearningAnalyticsScope;
@@ -119,11 +108,12 @@ export type LearningAnalyticsFilterOptions = {
   >;
 };
 
+// RPC 응답의 weak_dimensions·summary.dimensionCoverageSubmissions는 취약 평가 영역 섹션
+// 제거(2026-07-15)로 화면에서 쓰지 않아 타입에서 뺐다. DB RPC는 계속 반환하며 여기서 무시된다.
 type LearningAnalyticsRow = {
   summary: LearningAnalyticsSummary;
   per_question: LearningAnalyticsQuestionStat[];
   score_distribution: LearningAnalyticsScoreBucket[];
-  weak_dimensions: LearningAnalyticsWeakDimension[];
   topic_stats: LearningAnalyticsTopicStat[];
   pdf_usage: LearningAnalyticsPdfUsage;
   scope: LearningAnalyticsScope;
@@ -177,7 +167,6 @@ export function fetchLearningAnalyticsSafe(
       summary: row.summary,
       perQuestion: row.per_question ?? [],
       scoreDistribution: row.score_distribution ?? [],
-      weakDimensions: row.weak_dimensions ?? [],
       topicStats: row.topic_stats ?? [],
       pdfUsage: row.pdf_usage ?? emptyPdfUsage,
       scope: row.scope
@@ -296,16 +285,6 @@ const distributionPercentages: Record<LearningQuestionNo, number[]> = {
   54: [21, 39, 28, 12]
 };
 
-const dimensionSlugs = [
-  'content',
-  'structure',
-  'expression',
-  'grammar',
-  'vocab',
-  'topic_fit',
-  'language'
-];
-
 function getMockScale(query: LearningAnalyticsQuery, now: Date): number {
   if (query.period === 'all') {
     return 5.2;
@@ -413,16 +392,6 @@ export function createMockLearningAnalytics(
       percentage
     }))
   );
-  const weakDimensions = perQuestion.flatMap((row, rowIndex) =>
-    dimensionSlugs.map((dimension, index) => ({
-      questionNo: row.questionNo,
-      dimension,
-      avgScoreNormalized: Math.max(38, round(76 - rowIndex * 3 - index * 2.1, 1)),
-      submissions: Math.max(1, round(row.submissions * (0.7 - index * 0.045))),
-      weaknessOccurrences: Math.max(0, round(row.submissions * (0.18 + index * 0.018))),
-      maxSeverity: index % 3 === 0 ? 4 : 3
-    }))
-  );
   const topics = [
     ['교육', '학교 교육', 216, 76.8, 73.7],
     ['교육', '평생 교육', 142, 71.2, 69.8],
@@ -486,12 +455,10 @@ export function createMockLearningAnalytics(
       pdfExportsPrev: compareEnabled ? round(pdfExports / 1.136) : null,
       activeEventsTotal,
       activeEventsAttributed,
-      activeEventAttributionRate: round((activeEventsAttributed / activeEventsTotal) * 100, 1),
-      dimensionCoverageSubmissions: round(feedbackComplete * 0.82)
+      activeEventAttributionRate: round((activeEventsAttributed / activeEventsTotal) * 100, 1)
     },
     perQuestion,
     scoreDistribution,
-    weakDimensions,
     topicStats,
     pdfUsage: {
       totalExports: totalPdfExports,

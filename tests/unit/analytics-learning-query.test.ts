@@ -97,9 +97,6 @@ describe('analytics learning query contract', () => {
     expect(new Set(data.scoreDistribution.map((row) => row.questionNo))).toEqual(
       new Set([53])
     );
-    expect(new Set(data.weakDimensions.map((row) => row.questionNo))).toEqual(
-      new Set([53])
-    );
     expect(data.topicStats).toHaveLength(1);
     expect(data.topicStats[0]).toMatchObject({
       topicMain: '사회',

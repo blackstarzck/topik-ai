@@ -28,8 +28,6 @@ test('학습 분석 기본 대시보드가 8개 KPI와 전체 분석 섹션을 �
     await expect(page.getByRole('cell', { name: question, exact: true })).toBeVisible();
   }
   await expect(page.getByText('문제 유형별 점수 분포')).toBeVisible();
-  await expect(page.getByText('취약 평가 영역')).toBeVisible();
-  await expect(page.getByText('표준 7개 차원')).toBeVisible();
   await expect(page.getByText('주제별 성과')).toBeVisible();
   await expect(page.getByText('PDF 사용 분석')).toBeVisible();
   await expect(page.getByText('51~54번 전체').first()).toBeVisible();
@@ -49,7 +47,6 @@ test('URL 조건이 문제 유형·주제·세부 필터를 모든 분석 블록
   await expect(page.getByRole('cell', { name: '53번 자료 해석', exact: true })).toBeVisible();
   await expect(page.getByRole('cell', { name: '51번 빈칸 완성', exact: true })).toHaveCount(0);
   await expect(page.locator('.score-distribution-row')).toHaveCount(1);
-  await expect(page.locator('.weak-dimension-panel')).toHaveCount(1);
   await expect(page.getByRole('cell', { name: '문화', exact: true })).toBeVisible();
   await expect(page.locator('.pdf-question-list').getByText('53번', { exact: true })).toBeVisible();
 });
@@ -98,7 +95,7 @@ test('지표 사전, 표 대체 보기, 공유 URL, CSV 내보내기가 동작�
 
   await page.getByRole('button', { name: '평균 환산 점수 지표 설명' }).click();
   await expect(page.getByRole('dialog', { name: '학습 분석 지표 사전' })).toBeVisible();
-  await expect(page.getByText('AVG(score ÷ score_max × 100)')).toBeVisible();
+  await expect(page.getByText('(받은 점수 ÷ 그 문제의 만점) × 100')).toBeVisible();
   await page.getByRole('button', { name: '확인' }).click();
 
   await page.locator('.analytics-panel').filter({ hasText: '문제 유형별 점수 분포' }).getByText('표', { exact: true }).click();

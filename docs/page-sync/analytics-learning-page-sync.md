@@ -9,7 +9,7 @@ status: "구현됨"
 primary_entity: "LearningAnalyticsAggregate"
 primary_table_candidate: "read-only aggregate RPC"
 owner_agent_scope: "shared"
-last_reviewed_at: "2026-07-10"
+last_reviewed_at: "2026-07-15"
 ---
 
 ## 1. 문서 목적
@@ -31,7 +31,8 @@ last_reviewed_at: "2026-07-10"
 
 ## 3. 목적과 비목표
 
-- 목적: 학습 규모, 피드백 품질, 점수·취약 차원·주제 성과와 PDF 내보내기 사용을 같은 조건으로 분석합니다.
+- 목적: 학습 규모, 피드백 품질, 점수·주제 성과와 PDF 내보내기 사용을 같은 조건으로 분석합니다.
+- 취약 평가 영역(평가 차원) 섹션은 2026-07-15 오너 지시로 제거했습니다. RPC의 `weak_dimensions`는 반환되지만 화면·CSV가 사용하지 않습니다.
 - 비목표: 개인 학습자 식별, 답안/첨삭 본문 열람, 학습 데이터 변경, 실제 파일 저장 완료 횟수 측정은 담당하지 않습니다.
 
 ## 4. 이 페이지에서 할 수 있는 것
@@ -47,7 +48,7 @@ last_reviewed_at: "2026-07-10"
 
 | 엔티티 | source | CRUD | 주요 데이터 | 사용자 화면 영향 | 차이 |
 | --- | --- | --- | --- | --- | --- |
-| LearningAnalyticsAggregate | `get_admin_learning_analytics_filtered(...)` | Read | 8 KPI, 유형·점수·차원·주제·PDF 집계 | 내부 전용 | 개인 식별자·민감 본문 미반환 |
+| LearningAnalyticsAggregate | `get_admin_learning_analytics_filtered(...)` | Read | 8 KPI, 유형·점수·주제·PDF 집계 | 내부 전용 | 개인 식별자·민감 본문 미반환 |
 | LearningAnalyticsFilterOptions | `get_admin_learning_analytics_filter_options()` | Read | 주제 계층, 유형별 세부 특성 | 내부 전용 | 신규 TOPIK 쓰기 메타데이터를 read-only 참조 |
 
 - Create/Update/Delete는 지원하지 않습니다. Read 실패 시 마지막 성공 결과와 재시도를 제공합니다.
@@ -102,4 +103,4 @@ last_reviewed_at: "2026-07-10"
 | 항목 | 내용 | 영향 |
 | --- | --- | --- |
 | PDF 혼합·미분류 | 보고서·서재 선택 이벤트에 포함 문제 유형 정보가 부족하면 귀속하지 않음 | 귀속률로 표시; 실제 저장 완료 이벤트는 v13 별도 계약 필요 |
-| 평가 차원·시간 커버리지 | 기존 데이터는 표본이 부족할 수 있음 | 표본·커버리지를 표시하고 임의 보정하지 않음 |
+| 시간 커버리지 | 기존 데이터는 표본이 부족할 수 있음 | 표본·커버리지를 표시하고 임의 보정하지 않음 |
