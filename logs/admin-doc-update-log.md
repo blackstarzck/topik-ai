@@ -545,3 +545,9 @@
 - Updated: `docs/specs/page-ia/analytics-learning-page-ia.md`, `docs/specs/admin-page-tables.md`, `docs/specs/admin-page-ia-change-log.md`, `logs/admin-doc-update-log.md`.
 - Reason: 첨부 화면의 파이 하단 6개 범례 카드를 제거하고, 문제 유형별 구성·주제 상세 표에서 행 종류마다 적용되던 배경색과 Ant Design 기본 hover 배경까지 없애 달라는 요청을 화면 계약에 반영해야 했다.
 - Validation: Analytics mock e2e 단독 재실행 9/9, 관련 단위 테스트 63/63, `npm run harness:check`, `npm run build`가 통과했다. E2E에서 범례 DOM 0개, 파이 접근성 설명 유지, 헤더·부모·자식·혼합 행 및 hover 셀의 계산된 배경색 `rgba(0, 0, 0, 0)`, 확장 동작·반응형 배치 회귀 없음을 확인했고 1440px 렌더링 이미지도 육안 점검했다. 최초 빌드·하네스와 병렬 실행한 E2E에서는 변경과 무관한 KPI 툴팁 1건이 10초 timeout으로 실패했으나, 부하를 분리한 즉시 재실행에서 9/9가 통과했다.
+
+## 2026-07-15 - Analytics 학습 분석 migration rollback 계약 보강
+
+- Updated: `docs/architecture/admin-data-source-transition.md`, `docs/specs/admin-data-contract.md`, `docs/specs/admin-page-gap-register.md`, `logs/admin-doc-update-log.md`.
+- Reason: PR 리뷰에서 `20260715130000` up/down이 실제 직전 `20260713120000`이 아닌 구 함수 정의를 기준으로 해 전체 rollback 시 metadata coverage가 유실되는 문제를 확인했다. 주제 CTE·응답 projection만 동적으로 변환하도록 up/down을 보강하고 `20260715173826` down도 coverage·문제별 주제 계약을 유지하도록 정렬했다.
+- Validation: Analytics 관련 단위 테스트 65/65(직전 함수 텍스트에 up 적용 후 down으로 원문이 완전히 복원되는 왕복 테스트 포함), `npm run check:migration-boundary`, `npm run check:mojibake`+수동 한글 스캔, `npm run harness:check`, `npm run build`, Analytics mock E2E 10/10이 통과했다. `harness:admin-boundary:local`은 작업과 무관한 v13 필수 SoT 문서 5개가 현재 저장소에 없어 첫 단계에서 중단됐다. 운영 DB는 미적용이다.
