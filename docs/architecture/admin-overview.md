@@ -130,6 +130,7 @@
 - 감사 로그 계약: `docs/specs/admin-action-log.md`
 - 관리 데이터 B2C 노출 추적: `docs/specs/admin-data-usage-map.md`
 - 정책 소스 추적: `docs/specs/admin-policy-source-map.md`
+- TOPIK 쓰기 문항 버전·사용자 노출 정책: `docs/architecture/writing-question-version-policy.md`
 - 미확정/누락/오구현 추적: `docs/specs/admin-page-gap-register.md`
 - 페이지별 상세 계약: `docs/specs/page-ia/*.md`
 - 머지 게이트와 증빙: `docs/checklists/admin-essential-checklist.md`

@@ -9,7 +9,7 @@ status: "구현됨"
 primary_entity: "AssessmentQuestion"
 primary_table_candidate: "topik_writing_51/52/53/54_questions"
 owner_agent_scope: "shared"
-last_reviewed_at: "2026-06-26"
+last_reviewed_at: "2026-07-15"
 ---
 
 ## 1. 문서 목적
@@ -98,6 +98,20 @@ last_reviewed_at: "2026-06-26"
 | 사용자 화면 후보 | 영향 상태 | 관리자 데이터 | 사용자 화면에 반영되는 방식 | 동기화 필요 시점 | 비고 |
 | --- | --- | --- | --- | --- | --- |
 | TOPIK 쓰기 시험 화면, 문제 풀이 화면, 결과/해설 화면 | 노출 예정 | 문항 본문+메타데이터(신규 4테이블), `service_status`, 태그, 기관 매핑 | v13 사용자 기능이 read-only로 소비합니다. 최종 노출 predicate 후보는 `service_status='available' AND (기관 매핑 없음 OR 사용자 affiliation_code 매핑 존재)`입니다. 상류 push(업로드/배포) 경로는 2026-06-11 §0으로 폐기됐습니다. | `service_status` 또는 기관 매핑 변경 시 | 인터림: v13 사용자 기능은 현행 `problems`를 읽는 중 — 신규 4테이블/기관 predicate 소비 경로 전환은 컷오버 후속(별도 결정) |
+
+### 문항 수정 시 상태별 버전 동기화
+
+정책 SoT는 `docs/architecture/writing-question-version-policy.md`입니다.
+
+| 사용자 상태 | 관리자 최신 버전 반영 | 과거 버전 유지 | 동기화 규칙 |
+| --- | --- | --- | --- |
+| 신규 풀이 | 즉시 | 아니요 | 현재 버전으로 시작 |
+| 북마크 | 열람 시 | 아니요 | 북마크는 `question_id` 관계만 유지하고 최신 문항 표시 |
+| 임시저장 | 재진입·제출 시 | 아니요 | 임시답안은 보존하되 최신 문항을 표시하고 호환성 검사 |
+| 제출 완료·채점·피드백·결과 | 반영하지 않음 | 예 | 제출 확정 시점의 import ID/hash/문항 스냅샷 유지 |
+| 다시 풀기 | 새 시도 시작 시 | 기존 제출만 유지 | 새 시도는 최신, 과거 제출은 당시 버전 유지 |
+
+사용자에게 일반 문항 수정 알림이나 버전 번호를 노출하지 않습니다. 최신 문항과 임시답안이 호환되지 않을 때만 제출을 중단하고 인라인 복구 경로를 제공합니다.
 
 ## 8. 이 페이지와 연관있는 페이지(예상)
 

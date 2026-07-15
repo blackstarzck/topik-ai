@@ -476,6 +476,7 @@
   - tag_master 활성/비활성 write: `해소` (P5-3 — 2026-06-11 개방, 신규 갭 ③ 종결 기록 참조)
   - 외부 공급 API 미개발(수신 경로): `미확정 + 누락` (공급 계약 확정 전 차단)
   - 검수 표면·컬럼 제거: `해소` (재정의 P3 코드 컷오버 `202f905` + 마이그레이션 `0013` 적용 — 신규 갭 ② 종결 기록 참조)
+  - 문항 버전·상태별 사용자 노출: `정책 확정 + 구현/검증 필요` — `docs/architecture/writing-question-version-policy.md` 기준. `topik_writing_question_import` 버전 보존과 v13 제출 스냅샷 기반은 확인됐으나, 현재 버전 포인터·관리자 이력 UI·`question_received` 버전 diff·북마크/활성 임시저장 최신화와 호환성 차단은 구현 또는 교차 저장소 검증이 필요하다.
 
 ### 4.8 Content
 

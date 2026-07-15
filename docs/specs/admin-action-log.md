@@ -124,6 +124,14 @@
 - 메타데이터 항목 조치도 현재는 그룹 단위 추적을 우선 적용하며, 시스템 감사 로그에서 `/system/metadata?selected={groupId}` 기준으로 원본 화면을 역추적할 수 있어야 합니다.
 - 메타데이터의 `운영 값 순서 변경(item_reordered)`도 같은 계약을 사용하며, 드래그 정렬 직후 감사 로그에서 해당 그룹 단위 이력을 확인할 수 있어야 합니다.
 
+## 2026-07-15 TOPIK 쓰기 문항 버전 수신·현재 전환 감사 계약
+
+- SoT: `docs/architecture/writing-question-version-policy.md`
+- `question_received`는 `Target Type = AssessmentQuestion`, `Target ID = question_id`를 유지합니다.
+- diff/payload 화이트리스트에는 이전·신규 import ID, 이전·신규 payload hash, 신규 버전 생성 여부, 현재 버전 전환 여부를 기록해야 합니다.
+- 동일 payload 재수신은 문항 내용 변경으로 기록하지 않습니다.
+- 사용자 제출 스냅샷 생성은 v13 사용자 제출 원장에서 추적하며 관리자 감사 액션으로 중복 기록하지 않습니다.
+
 ## 2026-06-11 개정 메모 > 인바운드 전환 — TOPIK 쓰기 액션 사전 개정
 
 - 2026-06-11 오너 결정(인바운드 수신 모델 — `docs/architecture/metadata-tag-schema-transition-decision-record.md` §0)으로 검수 개념이 admin에서 전면 삭제되고 상류 push(배포) 트랙이 폐기됐다.

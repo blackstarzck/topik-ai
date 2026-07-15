@@ -486,6 +486,12 @@
 - Reason: PR8 후속 리뷰에서 지적된 정책 scope 경계 누락과 개인 초기화 대상 회원 검색 권한/페이지네이션 문제를 문서 SoT에 반영했다. 정책 자기치유/cleanup DML은 `user/problem` scope로 제한하고, 개인 초기화 대상 검색은 `operation.pdf-quota.manage` 권한의 `search_admin_pdf_quota_reset_users` RPC로 분리했다.
 - Validation: `npm run typecheck`, `npm run lint`, `npm run harness:check`, `npm run build`, `npm run check:migration-boundary -- --v13-root=C:\Users\admin\.codex\worktrees\13db\v13`, `node ./scripts/check-transfer-sot-checklist.mjs --v13-root=C:\Users\admin\.codex\worktrees\13db\v13`, PowerShell `$env:VITE_SUPABASE_DISABLED='true'; npx playwright test tests/e2e/operation-pdf-quota.spec.ts`(4/4). `npm run harness:admin-boundary -- --v13-root=...`는 npm script가 `--v13-root`를 내부 transfer checklist로 전달하지 못해 기본 v13 경로에서 실패했고, 개별 admin-boundary 구성 검사 중 `check:admin-verification-env`(E2E_ADMIN_EMAIL/PASSWORD 미설정), `check:client-source-secrets`(기존 `src/shared/api/notification-email-kick.ts` marker), `check:notification-cross-app-state`(SUPABASE_ACCESS_TOKEN 미설정)는 이번 변경 외 환경/기존 blocker로 실패했다.
 
+## 2026-07-15 - TOPIK 쓰기 문항 버전·사용자 노출 운영정책 SoT 확정
+
+- Added `docs/architecture/writing-question-version-policy.md`; updated `docs/README.md`, `docs/architecture/admin-overview.md`, `docs/specs/admin-policy-source-map.md`, `docs/page-sync/assessment-question-bank-page-sync.md`, `docs/specs/admin-page-gap-register.md`, `docs/specs/admin-data-contract.md`, `docs/specs/admin-data-usage-map.md`, and `docs/specs/admin-action-log.md`.
+- Reason: 같은 `question_id`의 수정 이력은 관리자에게 보존하되, 북마크·임시저장은 최신 문항을 사용하고 제출 완료·채점·피드백·과거 결과는 제출 당시 버전과 스냅샷을 유지하는 `POL-017` 상태별 버전 정책을 단일 SoT로 고정하기 위해서다.
+- Validation: `npm.cmd run harness:check` 통과(mojibake, doc crosslinks 159건, route-doc coverage 58 routes/42 IA, message-history boundary, lint, typecheck). 코드·DB·v13 파일은 변경하지 않음.
+
 ## 2026-07-15 - Analytics 학습 분석 KPI 설명 툴팁 전환
 
 - Updated `docs/specs/page-ia/analytics-learning-page-ia.md`, `docs/specs/admin-page-tables.md`, `docs/page-sync/analytics-learning-page-sync.md`, `docs/specs/admin-page-ia-change-log.md`, and `logs/admin-doc-update-log.md`.
