@@ -103,6 +103,14 @@ describe('analytics learning query contract', () => {
       topicDetail: '문화'
     });
     expect(data.pdfUsage.perQuestion.map((row) => row.questionNo)).toEqual([53]);
+    expect(data.pdfUsage.perTopic).toEqual([
+      expect.objectContaining({
+        questionNo: 53,
+        topicMain: '사회',
+        topicDetail: '문화'
+      })
+    ]);
+    expect(data.pdfUsage.perTopic[0]?.count).toBe(data.pdfUsage.attributableExports);
     expect(data.summary.metadataMappedSubmissions).toBe(
       data.summary.metadataEligibleSubmissions
     );
@@ -147,6 +155,7 @@ describe('analytics learning query contract', () => {
     expect(csv).toContain(',제출자,문제 유형,');
     expect(csv).toContain(',평균 풀이 시간,문제 유형,');
     expect(csv).toContain('PDF 사용 분석');
+    expect(csv).toContain('문제 유형·주제 직접 귀속');
     expect(csv).toContain(',혼합,');
     expect(csv).toContain(',미분류,');
   });

@@ -61,12 +61,19 @@ type BaselineRow = {
     maxSeverity: number;
   }>;
   topic_stats: Array<{
+    questionNo: number;
     topicMain: string;
     topicDetail: string;
     submissions: number;
     avgScoreNormalizedPrev: number | null;
   }>;
   pdf_per_question: Array<{ questionNo: number; count: number }>;
+  pdf_per_topic: Array<{
+    questionNo: number;
+    topicMain: string | null;
+    topicDetail: string | null;
+    count: number;
+  }>;
 };
 
 type LiveRpcRow = {
@@ -106,7 +113,7 @@ async function runSql<T extends Record<string, unknown>>(sql: string): Promise<T
 const metadataCte = `resolved_problem_map as (
   select distinct on (pm.problem_id)
     pm.problem_id, pm.question_id, pm.item_number
-  from public.topik_writing_problem_question_map pm
+  from private.admin_writing_question_identity_map pm
   where pm.mapping_status = 'active' and pm.hold_reason is null
   order by pm.problem_id,
     case when pm.mapping_kind = 'legacy' then 0 else 1 end,
@@ -133,8 +140,8 @@ const metadataCte = `resolved_problem_map as (
       else '{}'::jsonb
     end detail_values
   from resolved_problem_map pm
-  join public.problems mapped_problem
-    on mapped_problem.id = pm.problem_id and mapped_problem.question_no = pm.item_number
+  join private.admin_writing_problem_identity_projection mapped_problem
+    on mapped_problem.problem_id = pm.problem_id and mapped_problem.item_number = pm.item_number
   join public.topik_writing_question_recommendation_view v
     on v.question_id = pm.question_id and v.item_number = pm.item_number
   left join public.topik_writing_51_questions q51
@@ -258,30 +265,32 @@ async function baselineAnalytics(
       where ${metadataPredicates.join('\n        and ')}
     ),
     current_subs as (
-      select ws.id, ws.user_id, problem.question_no, m.topic_main, m.topic_detail,
+      select ws.id, ws.user_id, problem.item_number as question_no, m.topic_main, m.topic_detail,
         case when ws.feedback_status = 'complete'
           and wf.score_total is not null and coalesce(wf.score_max, 0) > 0
           then round(wf.score_total::numeric / wf.score_max * 100, 1) end score_normalized
       from public.writing_submissions ws
-      join public.problems problem on problem.id = ws.problem_id
+      join private.admin_writing_problem_identity_projection problem
+        on problem.problem_id = ws.problem_id
       left join filtered_metadata m on m.problem_id = ws.problem_id
       left join public.writing_feedback wf
         on wf.submission_id = ws.id and wf.user_id = ws.user_id
-      where problem.question_no = any(${questionArray})
+      where problem.item_number = any(${questionArray})
         and ${currentDatePredicate}
         and ${hasMetadataFilter ? 'm.problem_id is not null' : 'true'}
     ),
     previous_subs as (
-      select ws.id, ws.user_id, problem.question_no, m.topic_main, m.topic_detail,
+      select ws.id, ws.user_id, problem.item_number as question_no, m.topic_main, m.topic_detail,
         case when ws.feedback_status = 'complete'
           and wf.score_total is not null and coalesce(wf.score_max, 0) > 0
           then round(wf.score_total::numeric / wf.score_max * 100, 1) end score_normalized
       from public.writing_submissions ws
-      join public.problems problem on problem.id = ws.problem_id
+      join private.admin_writing_problem_identity_projection problem
+        on problem.problem_id = ws.problem_id
       left join filtered_metadata m on m.problem_id = ws.problem_id
       left join public.writing_feedback wf
         on wf.submission_id = ws.id and wf.user_id = ws.user_id
-      where problem.question_no = any(${questionArray})
+      where problem.item_number = any(${questionArray})
         and ${previousDatePredicate}
         and ${hasMetadataFilter ? 'm.problem_id is not null' : 'true'}
     ),
@@ -294,16 +303,17 @@ async function baselineAnalytics(
       ) b(bucket, lower_bound, upper_bound)
     ),
     current_topics as (
-      select topic_main, topic_detail, count(*)::integer submissions
+      select question_no, topic_main, topic_detail, count(*)::integer submissions
       from current_subs
       where topic_main is not null and topic_detail is not null
-      group by topic_main, topic_detail
+      group by question_no, topic_main, topic_detail
     ),
     previous_topics as (
-      select topic_main, topic_detail, round(avg(score_normalized), 1) avg_score_normalized
+      select question_no, topic_main, topic_detail,
+        round(avg(score_normalized), 1) avg_score_normalized
       from previous_subs
       where topic_main is not null and topic_detail is not null
-      group by topic_main, topic_detail
+      group by question_no, topic_main, topic_detail
     ),
     pdf_events as (
       select se.id, se.occurred_at, se.payload->>'source_type' source_type,
@@ -314,18 +324,23 @@ async function baselineAnalytics(
       where se.event_type = 'export_downloaded'
     ),
     scoped_pdf as (
-      select pe.id, source_problem.question_no
+      select
+        pe.id,
+        source_problem.item_number as question_no,
+        all_meta.topic_main,
+        all_meta.topic_detail
       from pdf_events pe
       join public.writing_submissions source_submission
         on pe.source_type = 'submission' and source_submission.id = pe.source_id
-      join public.problems source_problem on source_problem.id = source_submission.problem_id
-      left join question_metadata all_meta on all_meta.problem_id = source_problem.id
-      left join filtered_metadata filtered_meta on filtered_meta.problem_id = source_problem.id
+      join private.admin_writing_problem_identity_projection source_problem
+        on source_problem.problem_id = source_submission.problem_id
+      left join question_metadata all_meta on all_meta.problem_id = source_problem.problem_id
+      left join filtered_metadata filtered_meta on filtered_meta.problem_id = source_problem.problem_id
       where ${pdfDatePredicate}
-        and coalesce(all_meta.problem_id, source_problem.id) is not null
+        and coalesce(all_meta.problem_id, source_problem.problem_id) is not null
         and ${hasMetadataFilter
           ? 'filtered_meta.problem_id is not null'
-          : `source_problem.question_no = any(${questionArray})`}
+          : `source_problem.item_number = any(${questionArray})`}
     )
     select
       (select count(*)::integer from current_subs) submission_count,
@@ -361,18 +376,31 @@ async function baselineAnalytics(
           group by s.question_no, fds.dimension
         ) d) weak_dimensions,
       (select coalesce(jsonb_agg(jsonb_build_object(
+        'questionNo', c.question_no,
         'topicMain', c.topic_main, 'topicDetail', c.topic_detail,
         'submissions', c.submissions,
         'avgScoreNormalizedPrev', ${filterCase.compare ? 'p.avg_score_normalized' : 'null'}
-      ) order by c.topic_main, c.topic_detail), '[]'::jsonb)
+      ) order by c.question_no, c.topic_main, c.topic_detail), '[]'::jsonb)
         from current_topics c
         left join previous_topics p
-          on p.topic_main = c.topic_main and p.topic_detail = c.topic_detail) topic_stats,
+          on p.question_no = c.question_no
+         and p.topic_main = c.topic_main and p.topic_detail = c.topic_detail) topic_stats,
       (select coalesce(jsonb_agg(jsonb_build_object(
         'questionNo', selected.question_no,
         'count', (select count(*) from scoped_pdf p where p.question_no = selected.question_no)
       ) order by selected.question_no), '[]'::jsonb)
-        from unnest(${questionArray}) selected(question_no)) pdf_per_question;`);
+        from unnest(${questionArray}) selected(question_no)) pdf_per_question,
+      (select coalesce(jsonb_agg(jsonb_build_object(
+        'questionNo', p.question_no,
+        'topicMain', p.topic_main,
+        'topicDetail', p.topic_detail,
+        'count', p.count
+      ) order by p.count desc, p.question_no, p.topic_main nulls last, p.topic_detail nulls last), '[]'::jsonb)
+        from (
+          select question_no, topic_main, topic_detail, count(*)::integer count
+          from scoped_pdf
+          group by question_no, topic_main, topic_detail
+        ) p) pdf_per_topic;`);
   const row = rows[0];
   if (!row) throw new Error(`baseline query returned no row for ${filterCase.label}`);
   return { row, range };
@@ -474,17 +502,28 @@ function expectRpcMatchesBaseline(
 
   expect(normalizeRows(
     rpc.topic_stats.map((row) => ({
+      questionNo: row.questionNo,
       topicMain: row.topicMain,
       topicDetail: row.topicDetail,
       submissions: row.submissions,
       avgScoreNormalizedPrev: row.avgScoreNormalizedPrev
     })),
-    ['topicMain', 'topicDetail']
-  )).toEqual(normalizeRows(baseline.topic_stats, ['topicMain', 'topicDetail']));
+    ['questionNo', 'topicMain', 'topicDetail']
+  )).toEqual(normalizeRows(
+    baseline.topic_stats,
+    ['questionNo', 'topicMain', 'topicDetail']
+  ));
 
   expect(normalizeRows(rpc.pdf_usage.perQuestion, ['questionNo'])).toEqual(
     normalizeRows(baseline.pdf_per_question, ['questionNo'])
   );
+  expect(normalizeRows(
+    rpc.pdf_usage.perTopic,
+    ['questionNo', 'topicMain', 'topicDetail']
+  )).toEqual(normalizeRows(
+    baseline.pdf_per_topic,
+    ['questionNo', 'topicMain', 'topicDetail']
+  ));
   expect(rpc.pdf_usage.attributableExports).toBe(
     baseline.pdf_per_question.reduce((sum, row) => sum + Number(row.count), 0)
   );
@@ -492,20 +531,24 @@ function expectRpcMatchesBaseline(
 
 async function expectAnalyticsPanelsRenderRpc(page: Page, rpc: LiveRpcRow): Promise<void> {
   await expect(
-    page.locator('.analytics-analysis-row--top .analytics-panel').first()
+    page.getByRole('table', { name: '문제 유형별 비교' })
       .locator('.ant-table-tbody .ant-table-row')
   ).toHaveCount(rpc.per_question.length);
   await expect(page.locator('.score-distribution-segment')).toHaveCount(
     rpc.score_distribution.length
   );
-  await expect(page.locator('.weak-dimension-item')).toHaveCount(rpc.weak_dimensions.length);
   await expect(
-    page.locator('.analytics-analysis-row--bottom .analytics-panel').nth(1)
+    page.getByRole('table', { name: '주제별 성과' })
       .locator('.ant-table-tbody .ant-table-row')
   ).toHaveCount(rpc.topic_stats.length);
-  await expect(page.locator('.pdf-question-list > div')).toHaveCount(
-    rpc.pdf_usage.perQuestion.length + 2
-  );
+  await expect(
+    page.locator('.pdf-hierarchy__table .ant-table-tbody tr[data-row-key^="pdf-question-"]')
+  ).toHaveCount(rpc.pdf_usage.perQuestion.length);
+  await expect(
+    page.locator('.pdf-hierarchy__table .ant-table-tbody tr[data-row-key^="pdf-topic-"]')
+  ).toHaveCount(rpc.pdf_usage.perTopic.length);
+  await expect(page.locator('.pdf-hierarchy__table tr[data-row-key="pdf-mixed"]')).toHaveCount(1);
+  await expect(page.locator('.pdf-hierarchy__table tr[data-row-key="pdf-unclassified"]')).toHaveCount(1);
 }
 
 async function optionValues(questionNo: LearningQuestionNo, key: string, limit = 1): Promise<string[]> {
@@ -528,7 +571,7 @@ async function optionValues(questionNo: LearningQuestionNo, key: string, limit =
     cross join lateral ${source.lateral} option(value)
     where option.value is not null and option.value <> ''
       and exists (
-        select 1 from public.topik_writing_problem_question_map pm
+        select 1 from private.admin_writing_question_identity_map pm
         join public.writing_submissions ws on ws.problem_id = pm.problem_id
         where pm.question_id = q.question_id
           and pm.item_number = ${questionNo}
@@ -548,6 +591,50 @@ test.beforeAll(() => {
   if (projectRef !== expectedProjectRef) {
     throw new Error(`live E2E project mismatch: requested ${projectRef}, expected ${expectedProjectRef}`);
   }
+});
+
+test('dev DB PDF 문제 유형·주제별 집계를 독립 SQL과 화면에서 검증한다', async ({ page }) => {
+  test.setTimeout(120_000);
+  await openLearningAnalytics(page);
+
+  const boundaryRows = await runSql<SqlDateBoundaries>(`select
+    (current_timestamp at time zone 'Asia/Seoul')::date::text kst_today,
+    ((current_timestamp at time zone 'Asia/Seoul')::date - 6)::text start_7d,
+    ((current_timestamp at time zone 'Asia/Seoul')::date - 29)::text start_30d,
+    ((current_timestamp at time zone 'Asia/Seoul')::date - 89)::text start_90d;`);
+  const boundaries = boundaryRows[0];
+  if (!boundaries) throw new Error('KST date boundary query returned no row.');
+
+  const filterCase: FilterCase = {
+    label: 'PDF 문제 유형·주제별 집계',
+    period: 'all',
+    compare: false,
+    questions: [51, 52, 53, 54]
+  };
+  const [rpc, baseline] = await Promise.all([
+    navigateAndReadRpc(page, buildUrl(filterCase)),
+    baselineAnalytics(filterCase, boundaries)
+  ]);
+
+  expect(normalizeRows(
+    rpc.pdf_usage.perTopic,
+    ['questionNo', 'topicMain', 'topicDetail']
+  )).toEqual(normalizeRows(
+    baseline.row.pdf_per_topic,
+    ['questionNo', 'topicMain', 'topicDetail']
+  ));
+  expect(rpc.pdf_usage.perTopic.reduce((sum, row) => sum + row.count, 0)).toBe(
+    rpc.pdf_usage.attributableExports
+  );
+  expect(rpc.pdf_usage.perTopic.map((row) => row.count)).toEqual(
+    [...rpc.pdf_usage.perTopic.map((row) => row.count)].sort((left, right) => right - left)
+  );
+  await expect(
+    page.locator('.pdf-hierarchy__table .ant-table-tbody tr[data-row-key^="pdf-topic-"]')
+  ).toHaveCount(rpc.pdf_usage.perTopic.length);
+  await expect(
+    page.getByRole('table', { name: 'PDF 내보내기 구성과 주제 상세' })
+  ).toBeVisible();
 });
 
 test('dev DB 독립 기준값으로 기간·문항·주제·문항별 세부 필터의 실제 조회를 검증한다', async ({ page }, testInfo) => {
@@ -612,7 +699,7 @@ test('dev DB 독립 기준값으로 기간·문항·주제·문항별 세부 필
 
   const topicRows = await runSql<{ topic_main: string; topic_detail: string }>(`select distinct v.topic_main, v.topic_detail
     from public.writing_submissions ws
-    join public.topik_writing_problem_question_map pm on pm.problem_id = ws.problem_id
+    join private.admin_writing_question_identity_map pm on pm.problem_id = ws.problem_id
     join public.topik_writing_question_recommendation_view v
       on v.question_id = pm.question_id and v.item_number = pm.item_number
     where pm.mapping_status = 'active' and pm.hold_reason is null

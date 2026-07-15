@@ -30,6 +30,7 @@ import type { TableColumnsType, ThemeConfig } from 'antd';
 import dayjs from 'dayjs';
 import type { ReactNode } from 'react';
 import {
+  memo,
   useCallback,
   useEffect,
   useMemo,
@@ -194,6 +195,12 @@ const periodOptions: Array<{ label: string; value: LearningAnalyticsPeriod }> = 
 ];
 
 const scoreColors = ['#2563eb', '#0ea5e9', '#8b5cf6', '#5b21b6'];
+const pdfQuestionColors: Record<LearningQuestionNo, string> = {
+  51: scoreColors[0],
+  52: scoreColors[1],
+  53: scoreColors[2],
+  54: scoreColors[3]
+};
 
 // 학습 분석 페이지 타이포 기준: antd 베이스 16px(파생 SM 14px). 가시 텍스트는 14px 미만 금지.
 const learningTypographyTheme: ThemeConfig = { token: { fontSize: 16 } };
@@ -355,6 +362,131 @@ function KpiCard({
       </div>
       <Text className="analytics-kpi-helper">{helper}</Text>
     </Card>
+  );
+}
+
+const TopicSubmissionBar = memo(function TopicSubmissionBar({
+  maxSubmissions,
+  row
+}: {
+  maxSubmissions: number;
+  row: LearningAnalyticsTopicStat;
+}): JSX.Element {
+  const normalizedSubmissions = maxSubmissions > 0
+    ? Math.min(100, Math.max(0, (row.submissions / maxSubmissions) * 100))
+    : 0;
+  const rowLabel = `${row.topicMain} · ${row.topicDetail} · ${row.questionNo}번`;
+  const submissionsLabel = `${formatNumber(row.submissions)}건`;
+
+  return (
+    <div
+      className="topic-submission-chart__row"
+      title={`${rowLabel}: 제출 ${submissionsLabel}`}
+    >
+      <span className="topic-submission-chart__label">{rowLabel}</span>
+      <svg
+        className="topic-submission-chart__graphic"
+        viewBox="0 0 100 18"
+        preserveAspectRatio="none"
+        role="img"
+        aria-label={`${rowLabel} 제출 수 ${submissionsLabel}`}
+      >
+        <rect className="topic-submission-chart__track" width="100" height="18" rx="2" />
+        <rect className="topic-submission-chart__bar" width={normalizedSubmissions} height="18" rx="2" />
+      </svg>
+      <span className="topic-submission-chart__value">{submissionsLabel}</span>
+    </div>
+  );
+});
+
+type PdfUsageSlice = {
+  label: string;
+  count: number;
+  color: string;
+};
+
+type PdfUsageHierarchyRow = {
+  key: string;
+  kind: 'question' | 'topic' | 'mixed' | 'unclassified';
+  label: string;
+  count: number;
+  color: string;
+  questionNo: LearningQuestionNo | null;
+  rank: number | null;
+  topicMain: string | null;
+  topicDetail: string | null;
+  children?: PdfUsageHierarchyRow[];
+};
+
+function PdfUsageCompositionPie({
+  slices,
+  total
+}: {
+  slices: PdfUsageSlice[];
+  total: number;
+}): JSX.Element {
+  const compositionLabel = slices
+    .map((slice) => {
+      const percentage = total > 0 ? (slice.count / total) * 100 : 0;
+      return `${slice.label} ${formatNumber(slice.count)}건 ${formatNumber(percentage, 1)}%`;
+    })
+    .join(', ');
+  let accumulatedPercentage = 0;
+  const gradientSegments = slices.flatMap((slice) => {
+    const percentage = total > 0 ? Math.max(0, (slice.count / total) * 100) : 0;
+    if (percentage === 0) {
+      return [];
+    }
+    const start = accumulatedPercentage;
+    accumulatedPercentage = Math.min(100, accumulatedPercentage + percentage);
+    return `${slice.color} ${start.toFixed(3)}% ${accumulatedPercentage.toFixed(3)}%`;
+  });
+  if (accumulatedPercentage < 100) {
+    gradientSegments.push(`#eef2f7 ${accumulatedPercentage.toFixed(3)}% 100%`);
+  }
+  const pieBackground = gradientSegments.length > 0
+    ? `conic-gradient(${gradientSegments.join(', ')})`
+    : '#eef2f7';
+
+  return (
+    <div className="pdf-composition-chart">
+      <div
+        className="pdf-composition-pie"
+        role="img"
+        aria-label={`PDF 내보내기 완료 전체 ${formatNumber(total)}건의 구성: ${compositionLabel}`}
+        style={{ background: pieBackground }}
+      />
+    </div>
+  );
+}
+
+function PdfUsageCountBar({
+  row,
+  total
+}: {
+  row: PdfUsageHierarchyRow;
+  total: number;
+}): JSX.Element {
+  const percentage = total > 0 ? Math.min(100, Math.max(0, (row.count / total) * 100)) : 0;
+  const context = row.kind === 'topic'
+    ? `${row.questionNo}번 ${row.topicMain ?? '주제 미연결'} ${row.topicDetail ?? ''}`.trim()
+    : row.label;
+
+  return (
+    <div className="pdf-hierarchy-count">
+      <div
+        className="pdf-hierarchy-count__track"
+        role="progressbar"
+        aria-label={`${context} PDF 내보내기 완료 ${formatNumber(row.count)}건, 전체의 ${formatNumber(percentage, 1)}%`}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Number(percentage.toFixed(1))}
+      >
+        <span style={{ width: `${percentage}%`, backgroundColor: row.color }} />
+      </div>
+      <strong>{formatNumber(row.count)}건</strong>
+      <small>{formatNumber(percentage, 1)}%</small>
+    </div>
   );
 }
 
@@ -557,6 +689,35 @@ export default function AnalyticsLearningPage(): JSX.Element {
     []
   );
 
+  const { maxTopicSubmissions, topicRows } = useMemo(() => {
+    const rows = [...(data?.topicStats ?? [])].sort((a, b) => {
+      const submissionsOrder = b.submissions - a.submissions;
+      if (submissionsOrder !== 0) {
+        return submissionsOrder;
+      }
+
+      const mainTopicOrder = a.topicMain.localeCompare(b.topicMain, 'ko-KR');
+      if (mainTopicOrder !== 0) {
+        return mainTopicOrder;
+      }
+
+      const detailTopicOrder = a.topicDetail.localeCompare(b.topicDetail, 'ko-KR');
+      if (detailTopicOrder !== 0) {
+        return detailTopicOrder;
+      }
+
+      return a.questionNo - b.questionNo;
+    });
+
+    return {
+      maxTopicSubmissions: rows.reduce(
+        (maximum, row) => Math.max(maximum, row.submissions),
+        0
+      ),
+      topicRows: rows
+    };
+  }, [data?.topicStats]);
+
   const topicColumns = useMemo<TableColumnsType<LearningAnalyticsTopicStat>>(
     () => [
       { title: '대주제', dataIndex: 'topicMain', width: 84 },
@@ -590,9 +751,152 @@ export default function AnalyticsLearningPage(): JSX.Element {
           const delta = row.avgScoreNormalized - row.avgScoreNormalizedPrev;
           return <span className={delta >= 0 ? 'is-positive' : 'is-negative'}>{delta >= 0 ? '+' : ''}{formatNumber(delta, 1)}</span>;
         }
+      },
+      {
+        title: (
+          <div className="topic-submission-chart__heading">
+            <span>제출 수</span>
+            <Text type="secondary">최대 제출 기준 · 제출 많은 순</Text>
+          </div>
+        ),
+        key: 'submissionChart',
+        width: 700,
+        render: (_, row) => (
+          <TopicSubmissionBar maxSubmissions={maxTopicSubmissions} row={row} />
+        )
       }
     ],
-    []
+    [maxTopicSubmissions]
+  );
+  const pdfUsageTotal = data?.pdfUsage.totalExports ?? 0;
+  const pdfHierarchyRows = useMemo<PdfUsageHierarchyRow[]>(() => {
+    if (!data) {
+      return [];
+    }
+
+    const questionRows = data.pdfUsage.perQuestion.map((question) => {
+      const color = pdfQuestionColors[question.questionNo];
+      const children = data.pdfUsage.perTopic
+        .filter((topic) => topic.questionNo === question.questionNo)
+        .map<PdfUsageHierarchyRow>((topic, rank) => ({
+          key: `pdf-topic-${topic.questionNo}-${topic.topicMain ?? 'unmapped'}-${topic.topicDetail ?? 'unmapped'}`,
+          kind: 'topic',
+          label: `${rank + 1}위`,
+          count: topic.count,
+          color,
+          questionNo: topic.questionNo,
+          rank: rank + 1,
+          topicMain: topic.topicMain,
+          topicDetail: topic.topicDetail
+        }));
+
+      return {
+        key: `pdf-question-${question.questionNo}`,
+        kind: 'question' as const,
+        label: `${question.questionNo}번`,
+        count: question.count,
+        color,
+        questionNo: question.questionNo,
+        rank: null,
+        topicMain: null,
+        topicDetail: null,
+        children: children.length > 0 ? children : undefined
+      };
+    });
+
+    return [
+      ...questionRows,
+      {
+        key: 'pdf-mixed',
+        kind: 'mixed',
+        label: '혼합',
+        count: data.pdfUsage.mixedExports,
+        color: '#d97706',
+        questionNo: null,
+        rank: null,
+        topicMain: null,
+        topicDetail: null
+      },
+      {
+        key: 'pdf-unclassified',
+        kind: 'unclassified',
+        label: '미분류',
+        count: data.pdfUsage.unclassifiedExports,
+        color: '#dc2626',
+        questionNo: null,
+        rank: null,
+        topicMain: null,
+        topicDetail: null
+      }
+    ];
+  }, [data]);
+  const pdfHierarchyColumns = useMemo<TableColumnsType<PdfUsageHierarchyRow>>(
+    () => [
+      {
+        title: '구성',
+        dataIndex: 'label',
+        width: 96,
+        render: (_value: string, row) => (
+          <span className={`pdf-hierarchy-label is-${row.kind}`}>
+            <i aria-hidden="true" style={{ backgroundColor: row.color }} />
+            {row.kind === 'topic'
+              ? <Text type="secondary">{row.label}</Text>
+              : <Text strong>{row.label}</Text>}
+          </span>
+        )
+      },
+      {
+        title: '대주제',
+        dataIndex: 'topicMain',
+        width: 128,
+        render: (value: string | null, row) => {
+          if (row.kind === 'mixed' || row.kind === 'unclassified') {
+            return <Text type="secondary">주제 분석 불가</Text>;
+          }
+          if (row.kind === 'question') {
+            if (row.children?.length) {
+              return <Text type="secondary">{formatNumber(row.children.length)}개 주제</Text>;
+            }
+            return <Text type="secondary">{row.count > 0 ? '주제 상세 없음' : '내보내기 없음'}</Text>;
+          }
+          return value ?? <Text type="secondary">주제 미연결</Text>;
+        }
+      },
+      {
+        title: '세부 주제',
+        dataIndex: 'topicDetail',
+        width: 140,
+        render: (value: string | null, row) => row.kind === 'topic'
+          ? (value ?? <Text type="secondary">-</Text>)
+          : <Text type="secondary">-</Text>
+      },
+      {
+        title: (
+          <div className="pdf-hierarchy-count__heading">
+            <span>내보내기 완료 수</span>
+            <Text type="secondary">전체 이벤트 기준</Text>
+          </div>
+        ),
+        dataIndex: 'count',
+        width: 280,
+        render: (_value: number, row) => <PdfUsageCountBar row={row} total={pdfUsageTotal} />
+      }
+    ],
+    [pdfUsageTotal]
+  );
+  const pdfSlices = useMemo<PdfUsageSlice[]>(
+    () => data
+      ? [
+          ...data.pdfUsage.perQuestion.map((row) => ({
+            label: `${row.questionNo}번`,
+            count: row.count,
+            color: pdfQuestionColors[row.questionNo]
+          })),
+          { label: '혼합', count: data.pdfUsage.mixedExports, color: '#d97706' },
+          { label: '미분류', count: data.pdfUsage.unclassifiedExports, color: '#dc2626' }
+        ]
+      : [],
+    [data]
   );
 
   const distributionRows = useMemo(
@@ -751,13 +1055,14 @@ export default function AnalyticsLearningPage(): JSX.Element {
 
       {data ? (
         <>
-          <div className="analytics-analysis-row">
+          <div className="analytics-analysis-row analytics-analysis-row--table-panels">
             <Card
-              className="analytics-panel"
+              className="analytics-panel question-comparison-panel"
               title={<div className="analytics-panel-title">문제 유형별 비교 <Tag color="blue">{appliedQuery.questions.length === 4 ? '51~54번' : appliedQuery.questions.map((question) => `${question}번`).join(' · ')}</Tag></div>}
             >
               <Table
                 aria-label="문제 유형별 비교"
+                className="analytics-fill-table"
                 rowKey="questionNo"
                 size="small"
                 columns={questionColumns}
@@ -769,7 +1074,7 @@ export default function AnalyticsLearningPage(): JSX.Element {
             </Card>
 
             <Card
-              className="analytics-panel"
+              className="analytics-panel score-distribution-panel"
               title={<div className="analytics-panel-title">문제 유형별 점수 분포 <Tag color="blue">100점 환산</Tag></div>}
               extra={
                 <Segmented
@@ -828,7 +1133,7 @@ export default function AnalyticsLearningPage(): JSX.Element {
             </Card>
           </div>
 
-          <div className="analytics-analysis-row">
+          <div className="analytics-analysis-row analytics-analysis-row--single">
             <Card
               className="analytics-panel"
               title={<div className="analytics-panel-title">주제별 성과</div>}
@@ -836,36 +1141,82 @@ export default function AnalyticsLearningPage(): JSX.Element {
             >
               <Table
                 aria-label="주제별 성과"
+                className="topic-performance-table"
                 rowKey={(row) => `${row.topicMain}-${row.topicDetail}-${row.questionNo}`}
                 size="small"
                 columns={topicColumns}
-                dataSource={data.topicStats}
+                dataSource={topicRows}
                 pagination={false}
                 locale={{ emptyText: '선택 조건에 해당하는 주제가 없습니다.' }}
-                scroll={{ x: 536 }}
+                scroll={{ x: 1236 }}
               />
             </Card>
+          </div>
 
+          <div className="analytics-analysis-row analytics-analysis-row--single">
             <Card
               className="analytics-panel pdf-usage-panel"
               title={<div className="analytics-panel-title">PDF 사용 분석 <Tag color="blue">내보내기 완료</Tag></div>}
             >
-              <div className="pdf-usage-stats">
-                <div><Text type="secondary">전체 이벤트</Text><strong>{formatNumber(data.pdfUsage.totalExports)}<small>건</small></strong></div>
-                <div><Text type="secondary">직접 귀속</Text><strong>{formatNumber(data.pdfUsage.attributableExports)}<small>건</small></strong></div>
-                <div><Text type="secondary">귀속률</Text><strong>{formatNumber(data.pdfUsage.attributionRate, 1)}<small>%</small></strong></div>
-              </div>
-              <div className="pdf-question-list">
-                {data.pdfUsage.perQuestion.map((row, index) => (
-                  <div key={row.questionNo}>
-                    <span><i style={{ backgroundColor: scoreColors[index % scoreColors.length] }} />{row.questionNo}번</span>
-                    <Text>{formatNumber(row.count)}건</Text>
+              <div className="pdf-usage-layout">
+                <section className="pdf-composition" aria-labelledby="pdf-composition-title">
+                  <div className="pdf-composition__heading">
+                    <Text strong id="pdf-composition-title">전체 구성 비율</Text>
+                    <Text type="secondary">전체 현황과 유형별 구성 비율을 확인합니다.</Text>
                   </div>
-                ))}
-                <div><span><i className="is-mixed" />혼합</span><Text>{formatNumber(data.pdfUsage.mixedExports)}건</Text></div>
-                <div><span><i className="is-unclassified" />미분류</span><Text>{formatNumber(data.pdfUsage.unclassifiedExports)}건</Text></div>
+                  <div className="pdf-usage-stats">
+                    <div>
+                      <Text type="secondary">전체 이벤트</Text>
+                      <strong>{formatNumber(data.pdfUsage.totalExports)}<small>건</small></strong>
+                      <small>내보내기 완료 전체</small>
+                    </div>
+                    <div>
+                      <Text type="secondary">직접 귀속</Text>
+                      <strong>{formatNumber(data.pdfUsage.attributableExports)}<small>건</small></strong>
+                      <small>귀속률 {formatNumber(data.pdfUsage.attributionRate, 1)}%</small>
+                    </div>
+                    <div>
+                      <Text type="secondary">혼합</Text>
+                      <strong>{formatNumber(data.pdfUsage.mixedExports)}<small>건</small></strong>
+                      <small>여러 문제 유형 포함</small>
+                    </div>
+                    <div>
+                      <Text type="secondary">미분류</Text>
+                      <strong>{formatNumber(data.pdfUsage.unclassifiedExports)}<small>건</small></strong>
+                      <small>유형 확인 불가</small>
+                    </div>
+                  </div>
+                  <PdfUsageCompositionPie
+                    slices={pdfSlices}
+                    total={data.pdfUsage.totalExports}
+                  />
+                </section>
+                <section className="pdf-hierarchy" aria-labelledby="pdf-hierarchy-title">
+                  <div className="pdf-hierarchy__heading">
+                    <Text strong id="pdf-hierarchy-title">문제 유형별 구성과 주제 상세</Text>
+                    <Text type="secondary">문제 유형을 펼치면 직접 귀속된 주제를 완료 수 많은 순으로 확인할 수 있습니다.</Text>
+                  </div>
+                  <Table
+                    aria-label="PDF 내보내기 구성과 주제 상세"
+                    className="pdf-hierarchy__table"
+                    rowKey="key"
+                    size="small"
+                    columns={pdfHierarchyColumns}
+                    dataSource={pdfHierarchyRows}
+                    pagination={false}
+                    expandable={{
+                      defaultExpandAllRows: true,
+                      expandRowByClick: false,
+                      indentSize: 18,
+                      rowExpandable: (row) => row.kind === 'question' && Boolean(row.children?.length)
+                    }}
+                    rowClassName={(row) => `pdf-hierarchy-row is-${row.kind}${row.count === 0 ? ' is-zero' : ''}`}
+                    locale={{ emptyText: 'PDF 내보내기 완료 데이터가 없습니다.' }}
+                    scroll={{ x: 700 }}
+                  />
+                </section>
               </div>
-              <Text className="analytics-panel-note">`export_downloaded` 완료 이벤트이며 실제 파일 저장 완료 수와는 다릅니다.</Text>
+              <Text className="analytics-panel-note">혼합·미분류는 특정 주제로 나누지 않습니다. `export_downloaded` 완료 이벤트이며 실제 파일 저장 완료 수와는 다릅니다.</Text>
             </Card>
           </div>
         </>

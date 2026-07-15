@@ -88,6 +88,13 @@ export type LearningAnalyticsTopicStat = {
   avgScoreNormalizedPrev: number | null;
 };
 
+export type LearningAnalyticsPdfTopicUsage = {
+  questionNo: LearningQuestionNo;
+  topicMain: string | null;
+  topicDetail: string | null;
+  count: number;
+};
+
 export type LearningAnalyticsPdfUsage = {
   totalExports: number;
   attributableExports: number;
@@ -95,6 +102,7 @@ export type LearningAnalyticsPdfUsage = {
   unclassifiedExports: number;
   attributionRate: number | null;
   perQuestion: Array<{ questionNo: LearningQuestionNo; count: number }>;
+  perTopic: LearningAnalyticsPdfTopicUsage[];
 };
 
 export type LearningAnalyticsScope = {
@@ -147,8 +155,23 @@ const emptyPdfUsage: LearningAnalyticsPdfUsage = {
   mixedExports: 0,
   unclassifiedExports: 0,
   attributionRate: null,
-  perQuestion: []
+  perQuestion: [],
+  perTopic: []
 };
+
+function normalizeLearningAnalyticsPdfUsage(
+  pdfUsage: LearningAnalyticsPdfUsage | null | undefined
+): LearningAnalyticsPdfUsage {
+  if (!pdfUsage) {
+    return emptyPdfUsage;
+  }
+
+  return {
+    ...pdfUsage,
+    perQuestion: pdfUsage.perQuestion ?? [],
+    perTopic: pdfUsage.perTopic ?? []
+  };
+}
 
 const metadataCoverageKeys = [
   'metadataEligibleSubmissions',
@@ -219,7 +242,7 @@ export function fetchLearningAnalyticsSafe(
       perQuestion: row.per_question ?? [],
       scoreDistribution: row.score_distribution ?? [],
       topicStats: row.topic_stats ?? [],
-      pdfUsage: row.pdf_usage ?? emptyPdfUsage,
+      pdfUsage: normalizeLearningAnalyticsPdfUsage(row.pdf_usage),
       scope: row.scope
     };
   });
@@ -504,6 +527,51 @@ export function createMockLearningAnalytics(
         avgScoreNormalizedPrev: compareEnabled ? round(previous - questionIndex * 1.1, 1) : null
       }))
     );
+  const pdfTopicUsage = perQuestion
+    .flatMap((question) => {
+      const questionTopics = topicStats.filter(
+        (topic) => topic.questionNo === question.questionNo
+      );
+      if (questionTopics.length === 0) {
+        return question.pdfExports > 0
+          ? [{
+              questionNo: question.questionNo,
+              topicMain: null,
+              topicDetail: null,
+              count: question.pdfExports
+            }]
+          : [];
+      }
+
+      const totalSubmissions = questionTopics.reduce(
+        (sum, topic) => sum + topic.submissions,
+        0
+      );
+      let allocated = 0;
+      return questionTopics.map((topic, index) => {
+        const remaining = Math.max(0, question.pdfExports - allocated);
+        const count = index === questionTopics.length - 1
+          ? remaining
+          : Math.min(
+              remaining,
+              round(question.pdfExports * (topic.submissions / totalSubmissions))
+            );
+        allocated += count;
+        return {
+          questionNo: question.questionNo,
+          topicMain: topic.topicMain,
+          topicDetail: topic.topicDetail,
+          count
+        };
+      });
+    })
+    .filter((row) => row.count > 0)
+    .sort((left, right) =>
+      right.count - left.count ||
+      left.questionNo - right.questionNo ||
+      (left.topicMain ?? '').localeCompare(right.topicMain ?? '', 'ko-KR') ||
+      (left.topicDetail ?? '').localeCompare(right.topicDetail ?? '', 'ko-KR')
+    );
 
   const periodDays =
     range.startDate && range.endDate
@@ -595,7 +663,8 @@ export function createMockLearningAnalytics(
       perQuestion: perQuestion.map((row) => ({
         questionNo: row.questionNo,
         count: row.pdfExports
-      }))
+      })),
+      perTopic: pdfTopicUsage
     },
     scope: {
       startDate: range.startDate,

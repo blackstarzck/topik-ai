@@ -2,7 +2,10 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests/live-e2e',
-  testMatch: 'analytics-learning-live.pw.ts',
+  testMatch: [
+    'analytics-learning-live.pw.ts',
+    'analytics-learning-metadata-contract-live.pw.ts'
+  ],
   timeout: 600_000,
   expect: {
     timeout: 15_000

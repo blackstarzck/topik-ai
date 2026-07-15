@@ -31,7 +31,7 @@ last_reviewed_at: "2026-07-15"
 
 ## 3. 목적과 비목표
 
-- 목적: 학습 규모, 피드백 품질, 점수·주제 성과와 PDF 내보내기 사용을 같은 조건으로 분석합니다.
+- 목적: 학습 규모, 피드백 품질, 점수·주제 성과와 PDF 내보내기 사용을 같은 조건으로 분석하며, 어떤 문제 유형·주제의 내보내기 완료가 많은지 비교합니다.
 - 취약 평가 영역(평가 차원) 섹션은 2026-07-15 오너 지시로 제거했습니다. RPC의 `weak_dimensions`는 반환되지만 화면·CSV가 사용하지 않습니다.
 - 비목표: 개인 학습자 식별, 답안/첨삭 본문 열람, 학습 데이터 변경, 실제 파일 저장 완료 횟수 측정은 담당하지 않습니다.
 
@@ -47,7 +47,7 @@ last_reviewed_at: "2026-07-15"
 
 | 엔티티 | source | CRUD | 주요 데이터 | 사용자 화면 영향 | 차이 |
 | --- | --- | --- | --- | --- | --- |
-| LearningAnalyticsAggregate | `get_admin_learning_analytics_filtered(...)` | Read | 8 KPI, 유형·점수·주제·PDF 집계 | 내부 전용 | 개인 식별자·민감 본문 미반환 |
+| LearningAnalyticsAggregate | `get_admin_learning_analytics_filtered(...)` | Read | 8 KPI, 유형·점수·주제·PDF 집계(`pdf_usage.perTopic`: 문제 유형×대주제×세부 주제별 직접 귀속 건수) | 내부 전용 | 개인 식별자·민감 본문 미반환, 혼합·미분류는 주제에 배분하지 않음 |
 | LearningAnalyticsFilterOptions | `get_admin_learning_analytics_filter_options()` | Read | 주제 계층, 유형별 세부 특성 | 내부 전용 | 신규 TOPIK 쓰기 메타데이터를 read-only 참조 |
 
 - Create/Update/Delete는 지원하지 않습니다. Read 실패 시 마지막 성공 결과와 재시도를 제공합니다.
