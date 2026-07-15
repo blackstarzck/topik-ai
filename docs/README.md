@@ -122,7 +122,7 @@
 - `admin-action-log.md`
 - `admin-data-usage-map.md`
 - `page-ia/analytics-overview-page-ia.md`
-- `page-ia/analytics-learning-page-ia.md` — 학습 분석(`/analytics/learning`): 기간·문제 유형·주제·세부 특성 통합 필터, KPI/분포/취약 차원/주제/PDF 내보내기 집계 계약
+- `page-ia/analytics-learning-page-ia.md` — 학습 분석(`/analytics/learning`): 기간·문제 유형·주제·세부 특성 통합 필터, KPI/분포/주제/PDF 내보내기 집계 계약
 - `page-ia/assessment-level-tests-page-ia.md`
 - `page-ia/assessment-question-bank-eps-topik-page-ia.md`
 - `page-ia/assessment-question-bank-page-ia.md` — TOPIK 쓰기 문항 통합 페이지(조회 + 노출/태그 관리, route-backed 탭 문항/가져온 문항) — 2026-06-23 IA 통합

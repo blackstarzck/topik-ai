@@ -4,7 +4,6 @@ import {
   FilterOutlined,
   InfoCircleOutlined,
   ReloadOutlined,
-  ShareAltOutlined,
   TableOutlined
 } from '@ant-design/icons';
 import {
@@ -13,31 +12,31 @@ import {
   Button,
   Card,
   Checkbox,
+  ConfigProvider,
   DatePicker,
   Divider,
   Drawer,
   Empty,
-  Modal,
-  Progress,
   Segmented,
   Select,
   Skeleton,
   Switch,
   Table,
   Tag,
+  Tooltip,
   Typography
 } from 'antd';
-import type { TableColumnsType } from 'antd';
+import type { TableColumnsType, ThemeConfig } from 'antd';
 import dayjs from 'dayjs';
 import type { ReactNode } from 'react';
 import {
+  memo,
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState
 } from 'react';
-import { useLocation, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 
 import {
   createMockLearningAnalytics,
@@ -66,7 +65,6 @@ import {
 } from '../model/analytics-learning-query';
 import { createLearningAnalyticsCsv } from '../model/analytics-learning-csv';
 import { getLearningAnalyticsMetadataCoverageState } from '../model/analytics-learning-metadata-coverage';
-import { formatWritingDimension } from '../../../shared/model/writing-dimension-labels';
 import {
   DrawerFooter,
   DrawerTitle,
@@ -99,78 +97,80 @@ type MetricDefinition = {
   caution: string;
 };
 
+// KPI 설명은 비개발 운영자 기준(오너, 2026-07-15): DB·SQL 용어와 '귀속/커버리지' 같은
+// 전문어를 쓰지 않는다. e2e가 평균 환산 점수 계산 방법 문구를 검증하므로 수정 시 스펙도 함께 갱신.
 const metricDefinitions: MetricDefinition[] = [
   {
     key: 'activeLearners',
     category: '규모',
     label: '해당 조건 학습자',
-    definition: '선택 조건에 귀속 가능한 학습 이벤트가 1건 이상인 고유 사용자입니다.',
-    formula: '귀속 가능한 study_events의 DISTINCT user_id',
-    inclusion: 'submission_id 또는 problem_id로 선택 문제 유형·주제에 연결되는 이벤트만 포함',
-    caution: '귀속 정보가 없는 이벤트는 임의 배분하지 않으며 커버리지에서 제외됩니다.'
+    definition: '선택한 기간·문제 유형·주제에서 학습 활동을 한 번이라도 남긴 사람 수입니다. 같은 사람이 여러 번 활동해도 1명으로 셉니다.',
+    formula: '조건에 연결되는 학습 활동이 있는 사람을 중복 없이 셉니다.',
+    inclusion: '어떤 문제에 대한 활동인지 확인할 수 있는 기록만 셉니다.',
+    caution: '어떤 문제에 대한 활동인지 알 수 없는 기록은 추측으로 나눠 넣지 않고 집계에서 뺍니다.'
   },
   {
     key: 'submissions',
     category: '규모',
     label: '제출 수',
-    definition: '선택 조건에 해당하는 TOPIK 쓰기 답안 제출 건수입니다.',
-    formula: 'COUNT(writing_submissions.id)',
-    inclusion: '51~54번 문제 유형·메타데이터·날짜 조건을 통과한 제출',
-    caution: '한 학습자의 재제출은 별도 제출 건으로 포함됩니다.'
+    definition: '선택한 조건에서 학습자가 TOPIK 쓰기 답안을 제출한 횟수입니다.',
+    formula: '조건에 맞는 답안 제출 건수를 모두 더합니다.',
+    inclusion: '51~54번 문제 중 선택한 기간·유형·주제 조건에 맞는 제출만 셉니다.',
+    caution: '같은 사람이 같은 문제를 다시 제출해도 각각 1건으로 셉니다.'
   },
   {
     key: 'completionRate',
     category: '성과',
     label: '피드백 완료율',
-    definition: '선택 조건의 전체 제출 중 피드백이 완료된 비율입니다.',
-    formula: '피드백 완료 제출 ÷ 전체 제출 × 100',
-    inclusion: '완료·대기·실패를 포함한 전체 제출을 분모로 사용',
-    caution: '직전 기간과의 변화는 상대 변화율이 아니라 %p로 표시합니다.'
+    definition: '제출된 답안 중 AI 피드백까지 완성된 비율입니다.',
+    formula: '피드백이 완성된 제출 ÷ 전체 제출 × 100',
+    inclusion: '아직 처리 중이거나 실패한 제출도 전체 제출(나누는 수)에 포함해 계산합니다.',
+    caution: '지난 기간과의 변화는 %p(퍼센트포인트) 차이로 표시합니다. 예: 80%에서 85%가 되면 +5.0%p입니다.'
   },
   {
     key: 'avgScore',
     category: '성과',
     label: '평균 환산 점수',
-    definition: '유효 점수가 있는 완료 제출을 행별 만점으로 100점 환산한 평균입니다.',
-    formula: 'AVG(score ÷ score_max × 100)',
-    inclusion: 'score와 score_max가 모두 유효한 완료 제출',
-    caution: '51·52·53·54번의 서로 다른 만점을 단순 원점수로 평균하지 않습니다.'
+    definition: '문제마다 만점이 달라서, 각 점수를 100점 만점 기준으로 바꾼 뒤 평균낸 값입니다.',
+    formula: '(받은 점수 ÷ 그 문제의 만점) × 100을 제출마다 구한 뒤 평균냅니다.',
+    inclusion: '점수와 만점이 모두 정상적으로 기록된 피드백 완료 제출만 사용합니다.',
+    caution: '51~54번은 만점이 서로 달라 원점수를 그대로 평균내면 왜곡되므로, 100점으로 바꾼 뒤 평균냅니다.'
   },
   {
     key: 'feedbackViewRate',
     category: '행동',
     label: '피드백 조회율',
-    definition: '완료된 피드백 중 학습자가 한 번 이상 조회한 비율입니다.',
-    formula: '조회된 완료 제출 ÷ 전체 완료 제출 × 100',
-    inclusion: 'feedback_viewed 이벤트로 제출에 귀속 가능한 조회',
-    caution: '동일 제출의 반복 조회는 조회 완료 1건으로 계산합니다.'
+    definition: '완성된 피드백 중 학습자가 실제로 한 번 이상 열어 본 비율입니다.',
+    formula: '열어 본 피드백 ÷ 완성된 피드백 전체 × 100',
+    inclusion: '어느 제출의 피드백을 봤는지 확인되는 조회 기록만 셉니다.',
+    caution: '같은 피드백을 여러 번 열어 봐도 1건으로 셉니다.'
   },
   {
     key: 'elapsedTime',
     category: '행동',
     label: '평균 풀이 시간',
-    definition: '풀이 시간이 계측된 제출의 평균 소요 시간입니다.',
-    formula: 'AVG(writing_submission_metrics.elapsed_seconds)',
-    inclusion: '유효한 시간 계측값이 있는 제출만 포함',
-    caution: '표본이 없으면 0초가 아니라 미수집으로 표시합니다.'
+    definition: '학습자가 문제를 푸는 데 걸린 시간의 평균입니다.',
+    formula: '풀이 시간이 기록된 제출들의 시간을 모두 더해 평균냅니다.',
+    inclusion: '풀이 시간이 정상적으로 기록된 제출만 사용합니다.',
+    caution: '기록된 제출이 하나도 없으면 0초가 아니라 미수집으로 표시합니다.'
   },
   {
     key: 'processingTime',
     category: '운영',
     label: '처리 시간 중앙값',
-    definition: '답안 제출부터 피드백 생성까지 걸린 시간의 중앙값입니다.',
-    formula: 'MEDIAN(feedback.created_at - submission.created_at)',
-    inclusion: '피드백 생성 시각이 있는 완료 제출',
-    caution: '재동기화·재처리 이상치의 영향을 줄이기 위해 중앙값을 대표값으로 사용합니다.'
+    definition: '답안 제출 후 AI 피드백이 완성될 때까지 걸린 시간의 중앙값입니다. 전체 건의 절반은 이보다 빠르고, 절반은 느립니다.',
+    formula: '제출부터 피드백 완성까지 걸린 시간을 짧은 순서로 늘어놓았을 때 한가운데 값을 씁니다.',
+    inclusion: '피드백이 언제 완성됐는지 기록된 완료 제출만 사용합니다.',
+    caution: '재처리 등으로 유난히 오래 걸린 소수 건이 값을 끌어올리지 않도록 평균 대신 중앙값을 씁니다.'
   },
   {
     key: 'pdfExports',
     category: '운영',
     label: 'PDF 내보내기 완료 수',
-    definition: '선택 기간의 export_downloaded 이벤트 완료 건수입니다.',
-    formula: 'COUNT(study_events WHERE event_type = export_downloaded)',
-    inclusion: '필터 사용 시 선택 범위로 직접 귀속 가능한 내보내기만 KPI에 포함',
-    caution: '브라우저의 실제 파일 저장 완료를 보장하는 다운로드 지표가 아닙니다.'
+    definition: '선택한 기간에 피드백 PDF 내보내기가 완료된 횟수입니다.',
+    formula: 'PDF 내보내기 완료 기록을 모두 더합니다.',
+    inclusion: '문제 유형·주제 필터를 쓰면, 어떤 문제의 PDF인지 확인되는 건만 이 지표에 넣습니다.',
+    caution: '앱에서 내보내기가 완료된 횟수라서, 파일이 기기에 실제로 저장됐는지까지 보장하지는 않습니다.'
   }
 ];
 
@@ -195,6 +195,15 @@ const periodOptions: Array<{ label: string; value: LearningAnalyticsPeriod }> = 
 ];
 
 const scoreColors = ['#2563eb', '#0ea5e9', '#8b5cf6', '#5b21b6'];
+const pdfQuestionColors: Record<LearningQuestionNo, string> = {
+  51: scoreColors[0],
+  52: scoreColors[1],
+  53: scoreColors[2],
+  54: scoreColors[3]
+};
+
+// 학습 분석 페이지 타이포 기준: antd 베이스 16px(파생 SM 14px). 가시 텍스트는 14px 미만 금지.
+const learningTypographyTheme: ThemeConfig = { token: { fontSize: 16 } };
 
 function formatNumber(value: number | null | undefined, digits = 0): string {
   if (value == null) {
@@ -286,8 +295,36 @@ type KpiCardProps = {
   trend?: ReactNode;
   helper: ReactNode;
   loading: boolean;
-  onOpenDefinition: (key: KpiKey) => void;
 };
+
+function MetricDefinitionTooltip({ definition }: { definition: MetricDefinition }): JSX.Element {
+  return (
+    <div className="analytics-kpi-tooltip-content">
+      <header className="analytics-kpi-tooltip-content__header">
+        <span className="analytics-kpi-tooltip-content__eyebrow">{definition.category} 지표</span>
+        <strong className="analytics-kpi-tooltip-content__title">{definition.label}</strong>
+      </header>
+      <div className="analytics-kpi-tooltip-content__summary">
+        <span>지표 정의</span>
+        <p>{definition.definition}</p>
+      </div>
+      <dl className="analytics-kpi-tooltip-content__details">
+        <div>
+          <dt>계산 방법</dt>
+          <dd>{definition.formula}</dd>
+        </div>
+        <div>
+          <dt>포함 조건</dt>
+          <dd>{definition.inclusion}</dd>
+        </div>
+        <div className="analytics-kpi-tooltip-content__caution">
+          <dt>주의사항</dt>
+          <dd>{definition.caution}</dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
 
 function KpiCard({
   definition,
@@ -295,23 +332,28 @@ function KpiCard({
   unit,
   trend,
   helper,
-  loading,
-  onOpenDefinition
+  loading
 }: KpiCardProps): JSX.Element {
   return (
     <Card className="analytics-kpi-card" loading={loading} variant="outlined">
       <Text className="analytics-kpi-category">{definition.category}</Text>
       <div className="analytics-kpi-title-row">
         <Text strong>{definition.label}</Text>
-        <Button
-          type="text"
-          size="small"
-          shape="circle"
-          className="analytics-kpi-info"
-          aria-label={`${definition.label} 지표 설명`}
-          icon={<InfoCircleOutlined />}
-          onClick={() => onOpenDefinition(definition.key)}
-        />
+        <Tooltip
+          title={<MetricDefinitionTooltip definition={definition} />}
+          trigger={['hover', 'focus', 'click']}
+          placement="top"
+          rootClassName="analytics-kpi-tooltip"
+        >
+          <Button
+            type="text"
+            size="small"
+            shape="circle"
+            className="analytics-kpi-info"
+            aria-label={`${definition.label} 지표 설명`}
+            icon={<InfoCircleOutlined />}
+          />
+        </Tooltip>
       </div>
       <div className="analytics-kpi-value-row">
         <span className="analytics-kpi-value">{value}</span>
@@ -323,16 +365,129 @@ function KpiCard({
   );
 }
 
-function copyTextFallback(text: string): boolean {
-  const textarea = document.createElement('textarea');
-  textarea.value = text;
-  textarea.style.position = 'fixed';
-  textarea.style.opacity = '0';
-  document.body.appendChild(textarea);
-  textarea.select();
-  const copied = document.execCommand('copy');
-  textarea.remove();
-  return copied;
+const TopicSubmissionBar = memo(function TopicSubmissionBar({
+  maxSubmissions,
+  row
+}: {
+  maxSubmissions: number;
+  row: LearningAnalyticsTopicStat;
+}): JSX.Element {
+  const normalizedSubmissions = maxSubmissions > 0
+    ? Math.min(100, Math.max(0, (row.submissions / maxSubmissions) * 100))
+    : 0;
+  const rowLabel = `${row.topicMain} · ${row.topicDetail} · ${row.questionNo}번`;
+  const submissionsLabel = `${formatNumber(row.submissions)}건`;
+
+  return (
+    <div
+      className="topic-submission-chart__row"
+      title={`${rowLabel}: 제출 ${submissionsLabel}`}
+    >
+      <span className="topic-submission-chart__label">{rowLabel}</span>
+      <svg
+        className="topic-submission-chart__graphic"
+        viewBox="0 0 100 18"
+        preserveAspectRatio="none"
+        role="img"
+        aria-label={`${rowLabel} 제출 수 ${submissionsLabel}`}
+      >
+        <rect className="topic-submission-chart__track" width="100" height="18" rx="2" />
+        <rect className="topic-submission-chart__bar" width={normalizedSubmissions} height="18" rx="2" />
+      </svg>
+      <span className="topic-submission-chart__value">{submissionsLabel}</span>
+    </div>
+  );
+});
+
+type PdfUsageSlice = {
+  label: string;
+  count: number;
+  color: string;
+};
+
+type PdfUsageHierarchyRow = {
+  key: string;
+  kind: 'question' | 'topic' | 'mixed' | 'unclassified';
+  label: string;
+  count: number;
+  color: string;
+  questionNo: LearningQuestionNo | null;
+  rank: number | null;
+  topicMain: string | null;
+  topicDetail: string | null;
+  children?: PdfUsageHierarchyRow[];
+};
+
+function PdfUsageCompositionPie({
+  slices,
+  total
+}: {
+  slices: PdfUsageSlice[];
+  total: number;
+}): JSX.Element {
+  const compositionLabel = slices
+    .map((slice) => {
+      const percentage = total > 0 ? (slice.count / total) * 100 : 0;
+      return `${slice.label} ${formatNumber(slice.count)}건 ${formatNumber(percentage, 1)}%`;
+    })
+    .join(', ');
+  let accumulatedPercentage = 0;
+  const gradientSegments = slices.flatMap((slice) => {
+    const percentage = total > 0 ? Math.max(0, (slice.count / total) * 100) : 0;
+    if (percentage === 0) {
+      return [];
+    }
+    const start = accumulatedPercentage;
+    accumulatedPercentage = Math.min(100, accumulatedPercentage + percentage);
+    return `${slice.color} ${start.toFixed(3)}% ${accumulatedPercentage.toFixed(3)}%`;
+  });
+  if (accumulatedPercentage < 100) {
+    gradientSegments.push(`#eef2f7 ${accumulatedPercentage.toFixed(3)}% 100%`);
+  }
+  const pieBackground = gradientSegments.length > 0
+    ? `conic-gradient(${gradientSegments.join(', ')})`
+    : '#eef2f7';
+
+  return (
+    <div className="pdf-composition-chart">
+      <div
+        className="pdf-composition-pie"
+        role="img"
+        aria-label={`PDF 내보내기 완료 전체 ${formatNumber(total)}건의 구성: ${compositionLabel}`}
+        style={{ background: pieBackground }}
+      />
+    </div>
+  );
+}
+
+function PdfUsageCountBar({
+  row,
+  total
+}: {
+  row: PdfUsageHierarchyRow;
+  total: number;
+}): JSX.Element {
+  const percentage = total > 0 ? Math.min(100, Math.max(0, (row.count / total) * 100)) : 0;
+  const context = row.kind === 'topic'
+    ? `${row.questionNo}번 ${row.topicMain ?? '주제 미연결'} ${row.topicDetail ?? ''}`.trim()
+    : row.label;
+
+  return (
+    <div className="pdf-hierarchy-count">
+      <div
+        className="pdf-hierarchy-count__track"
+        role="progressbar"
+        aria-label={`${context} PDF 내보내기 완료 ${formatNumber(row.count)}건, 전체의 ${formatNumber(percentage, 1)}%`}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Number(percentage.toFixed(1))}
+      >
+        <span style={{ width: `${percentage}%`, backgroundColor: row.color }} />
+      </div>
+      <strong>{formatNumber(row.count)}건</strong>
+      <small>{formatNumber(percentage, 1)}%</small>
+    </div>
+  );
 }
 
 function getAppliedConditionTags(query: LearningAnalyticsQuery): string[] {
@@ -369,7 +524,6 @@ function getQuestionShortLabel(questionNo: LearningQuestionNo): string {
 
 export default function AnalyticsLearningPage(): JSX.Element {
   const { message } = App.useApp();
-  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const searchKey = searchParams.toString();
   const appliedQuery = useMemo(
@@ -382,8 +536,6 @@ export default function AnalyticsLearningPage(): JSX.Element {
   );
   const [draftQuery, setDraftQuery] = useState<LearningAnalyticsQuery>(appliedQuery);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [dictionaryOpen, setDictionaryOpen] = useState(false);
-  const [selectedMetric, setSelectedMetric] = useState<KpiKey>('activeLearners');
   const [chartMode, setChartMode] = useState<'chart' | 'table'>('chart');
   const [retryKey, setRetryKey] = useState(0);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
@@ -395,8 +547,6 @@ export default function AnalyticsLearningPage(): JSX.Element {
     data: LearningAnalytics | null;
     errorMessage: string | null;
   }>({ status: 'pending', data: null, errorMessage: null });
-  const dictionaryRefs = useRef<Partial<Record<KpiKey, HTMLDivElement | null>>>({});
-
   useEffect(() => {
     const controller = new AbortController();
     void fetchLearningAnalyticsFilterOptionsSafe(controller.signal).then((result) => {
@@ -446,19 +596,6 @@ export default function AnalyticsLearningPage(): JSX.Element {
     }
   }, [appliedQueryKey, appliedQuery, drawerOpen]);
 
-  useEffect(() => {
-    if (!dictionaryOpen) {
-      return;
-    }
-    const frame = window.requestAnimationFrame(() => {
-      dictionaryRefs.current[selectedMetric]?.scrollIntoView({
-        block: 'nearest',
-        behavior: 'smooth'
-      });
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [dictionaryOpen, selectedMetric]);
-
   const data = state.data;
   const summary = data?.summary;
   const comparePrevious = data?.scope.comparePrevious ?? false;
@@ -470,10 +607,6 @@ export default function AnalyticsLearningPage(): JSX.Element {
   const metadataCoverageWarnings = metadataCoverageState.warnings;
   const isInitialLoading = state.status === 'pending' && !data;
   const isRefreshing = state.status === 'pending' && Boolean(data);
-  const conditionTags = useMemo(
-    () => getAppliedConditionTags(appliedQuery),
-    [appliedQuery]
-  );
   const conditionCount = countLearningAnalyticsConditions(appliedQuery);
   const draftChanged = !areLearningAnalyticsQueriesEqual(draftQuery, appliedQuery);
   const draftRange = resolveLearningAnalyticsDateRange(draftQuery);
@@ -482,11 +615,6 @@ export default function AnalyticsLearningPage(): JSX.Element {
   const selectedTopic = filterOptions.topics.find(
     (topic) => topic.topicMain === draftQuery.topicMain
   );
-
-  const openDictionary = useCallback((key: KpiKey) => {
-    setSelectedMetric(key);
-    setDictionaryOpen(true);
-  }, []);
 
   const openConditionDrawer = useCallback(() => {
     setDraftQuery(appliedQuery);
@@ -520,25 +648,6 @@ export default function AnalyticsLearningPage(): JSX.Element {
     applyQuery(draftQuery);
     setDrawerOpen(false);
   }, [applyQuery, draftQuery, message]);
-
-  const handleResetApplied = useCallback(() => {
-    applyQuery(defaultLearningAnalyticsQuery);
-  }, [applyQuery]);
-
-  const handleShare = useCallback(async () => {
-    const queryString = serializeLearningAnalyticsQuery(appliedQuery).toString();
-    const url = `${window.location.origin}${location.pathname}?${queryString}`;
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(url);
-      } else if (!copyTextFallback(url)) {
-        throw new Error('clipboard unavailable');
-      }
-      void message.success('현재 분석 조건 URL을 복사했습니다.');
-    } catch {
-      void message.error('URL을 복사하지 못했습니다. 브라우저 권한을 확인해 주세요.');
-    }
-  }, [appliedQuery, location.pathname, message]);
 
   const handleCsvExport = useCallback(() => {
     if (!data) {
@@ -580,10 +689,45 @@ export default function AnalyticsLearningPage(): JSX.Element {
     []
   );
 
+  const { maxTopicSubmissions, topicRows } = useMemo(() => {
+    const rows = [...(data?.topicStats ?? [])].sort((a, b) => {
+      const submissionsOrder = b.submissions - a.submissions;
+      if (submissionsOrder !== 0) {
+        return submissionsOrder;
+      }
+
+      const mainTopicOrder = a.topicMain.localeCompare(b.topicMain, 'ko-KR');
+      if (mainTopicOrder !== 0) {
+        return mainTopicOrder;
+      }
+
+      const detailTopicOrder = a.topicDetail.localeCompare(b.topicDetail, 'ko-KR');
+      if (detailTopicOrder !== 0) {
+        return detailTopicOrder;
+      }
+
+      return a.questionNo - b.questionNo;
+    });
+
+    return {
+      maxTopicSubmissions: rows.reduce(
+        (maximum, row) => Math.max(maximum, row.submissions),
+        0
+      ),
+      topicRows: rows
+    };
+  }, [data?.topicStats]);
+
   const topicColumns = useMemo<TableColumnsType<LearningAnalyticsTopicStat>>(
     () => [
       { title: '대주제', dataIndex: 'topicMain', width: 84 },
       { title: '세부 주제', dataIndex: 'topicDetail', width: 112 },
+      {
+        title: '문제 유형',
+        dataIndex: 'questionNo',
+        width: 88,
+        render: (value: LearningQuestionNo) => `${value}번`
+      },
       {
         title: '평균 환산 점수',
         dataIndex: 'avgScoreNormalized',
@@ -607,9 +751,152 @@ export default function AnalyticsLearningPage(): JSX.Element {
           const delta = row.avgScoreNormalized - row.avgScoreNormalizedPrev;
           return <span className={delta >= 0 ? 'is-positive' : 'is-negative'}>{delta >= 0 ? '+' : ''}{formatNumber(delta, 1)}</span>;
         }
+      },
+      {
+        title: (
+          <div className="topic-submission-chart__heading">
+            <span>제출 수</span>
+            <Text type="secondary">최대 제출 기준 · 제출 많은 순</Text>
+          </div>
+        ),
+        key: 'submissionChart',
+        width: 700,
+        render: (_, row) => (
+          <TopicSubmissionBar maxSubmissions={maxTopicSubmissions} row={row} />
+        )
       }
     ],
-    []
+    [maxTopicSubmissions]
+  );
+  const pdfUsageTotal = data?.pdfUsage.totalExports ?? 0;
+  const pdfHierarchyRows = useMemo<PdfUsageHierarchyRow[]>(() => {
+    if (!data) {
+      return [];
+    }
+
+    const questionRows = data.pdfUsage.perQuestion.map((question) => {
+      const color = pdfQuestionColors[question.questionNo];
+      const children = data.pdfUsage.perTopic
+        .filter((topic) => topic.questionNo === question.questionNo)
+        .map<PdfUsageHierarchyRow>((topic, rank) => ({
+          key: `pdf-topic-${topic.questionNo}-${topic.topicMain ?? 'unmapped'}-${topic.topicDetail ?? 'unmapped'}`,
+          kind: 'topic',
+          label: `${rank + 1}위`,
+          count: topic.count,
+          color,
+          questionNo: topic.questionNo,
+          rank: rank + 1,
+          topicMain: topic.topicMain,
+          topicDetail: topic.topicDetail
+        }));
+
+      return {
+        key: `pdf-question-${question.questionNo}`,
+        kind: 'question' as const,
+        label: `${question.questionNo}번`,
+        count: question.count,
+        color,
+        questionNo: question.questionNo,
+        rank: null,
+        topicMain: null,
+        topicDetail: null,
+        children: children.length > 0 ? children : undefined
+      };
+    });
+
+    return [
+      ...questionRows,
+      {
+        key: 'pdf-mixed',
+        kind: 'mixed',
+        label: '혼합',
+        count: data.pdfUsage.mixedExports,
+        color: '#d97706',
+        questionNo: null,
+        rank: null,
+        topicMain: null,
+        topicDetail: null
+      },
+      {
+        key: 'pdf-unclassified',
+        kind: 'unclassified',
+        label: '미분류',
+        count: data.pdfUsage.unclassifiedExports,
+        color: '#dc2626',
+        questionNo: null,
+        rank: null,
+        topicMain: null,
+        topicDetail: null
+      }
+    ];
+  }, [data]);
+  const pdfHierarchyColumns = useMemo<TableColumnsType<PdfUsageHierarchyRow>>(
+    () => [
+      {
+        title: '구성',
+        dataIndex: 'label',
+        width: 96,
+        render: (_value: string, row) => (
+          <span className={`pdf-hierarchy-label is-${row.kind}`}>
+            <i aria-hidden="true" style={{ backgroundColor: row.color }} />
+            {row.kind === 'topic'
+              ? <Text type="secondary">{row.label}</Text>
+              : <Text strong>{row.label}</Text>}
+          </span>
+        )
+      },
+      {
+        title: '대주제',
+        dataIndex: 'topicMain',
+        width: 128,
+        render: (value: string | null, row) => {
+          if (row.kind === 'mixed' || row.kind === 'unclassified') {
+            return <Text type="secondary">주제 분석 불가</Text>;
+          }
+          if (row.kind === 'question') {
+            if (row.children?.length) {
+              return <Text type="secondary">{formatNumber(row.children.length)}개 주제</Text>;
+            }
+            return <Text type="secondary">{row.count > 0 ? '주제 상세 없음' : '내보내기 없음'}</Text>;
+          }
+          return value ?? <Text type="secondary">주제 미연결</Text>;
+        }
+      },
+      {
+        title: '세부 주제',
+        dataIndex: 'topicDetail',
+        width: 140,
+        render: (value: string | null, row) => row.kind === 'topic'
+          ? (value ?? <Text type="secondary">-</Text>)
+          : <Text type="secondary">-</Text>
+      },
+      {
+        title: (
+          <div className="pdf-hierarchy-count__heading">
+            <span>내보내기 완료 수</span>
+            <Text type="secondary">전체 이벤트 기준</Text>
+          </div>
+        ),
+        dataIndex: 'count',
+        width: 280,
+        render: (_value: number, row) => <PdfUsageCountBar row={row} total={pdfUsageTotal} />
+      }
+    ],
+    [pdfUsageTotal]
+  );
+  const pdfSlices = useMemo<PdfUsageSlice[]>(
+    () => data
+      ? [
+          ...data.pdfUsage.perQuestion.map((row) => ({
+            label: `${row.questionNo}번`,
+            count: row.count,
+            color: pdfQuestionColors[row.questionNo]
+          })),
+          { label: '혼합', count: data.pdfUsage.mixedExports, color: '#d97706' },
+          { label: '미분류', count: data.pdfUsage.unclassifiedExports, color: '#dc2626' }
+        ]
+      : [],
+    [data]
   );
 
   const distributionRows = useMemo(
@@ -681,6 +968,7 @@ export default function AnalyticsLearningPage(): JSX.Element {
     : [];
 
   return (
+    <ConfigProvider theme={learningTypographyTheme}>
     <main
       className={`analytics-learning-page${drawerOpen ? ' analytics-learning-page--drawer-open' : ''}`}
       data-testid="analytics-learning-page"
@@ -691,12 +979,6 @@ export default function AnalyticsLearningPage(): JSX.Element {
         description="문제 유형, 주제, 기간 기준으로 학습 성과와 피드백 활용을 분석합니다."
         actions={
           <>
-            <Button size="large" icon={<InfoCircleOutlined />} onClick={() => openDictionary('activeLearners')}>
-              지표 사전
-            </Button>
-            <Button size="large" icon={<ShareAltOutlined />} onClick={() => void handleShare()}>
-              분석 공유
-            </Button>
             <Button size="large" icon={<DownloadOutlined />} onClick={handleCsvExport} disabled={!data}>
               CSV 내보내기
             </Button>
@@ -707,22 +989,6 @@ export default function AnalyticsLearningPage(): JSX.Element {
         }
         meta={<span>데이터 갱신&nbsp; {formatRefreshTime(updatedAt)} KST</span>}
       />
-
-      <Card className="analytics-condition-bar" variant="outlined">
-        <div className="analytics-condition-bar__main">
-          <Text strong className="analytics-condition-bar__title">적용 중인 분석 조건</Text>
-          <div className="analytics-condition-tags" aria-label="적용 중인 분석 조건">
-            {conditionTags.map((tag) => (
-              <Tag key={tag}>{tag}</Tag>
-            ))}
-          </div>
-        </div>
-        <div className="analytics-condition-bar__actions">
-          <Button type="link" size="large" onClick={handleResetApplied}>조건 초기화</Button>
-          <Button size="large" icon={<FilterOutlined />} onClick={openConditionDrawer}>조건 변경</Button>
-        </div>
-        <Text className="analytics-condition-bar__helper">아래 모든 분석 섹션에 동일하게 적용됩니다.</Text>
-      </Card>
 
       {state.status === 'error' ? (
         <Alert
@@ -777,7 +1043,6 @@ export default function AnalyticsLearningPage(): JSX.Element {
                 key={card.definition.key}
                 {...card}
                 loading={false}
-                onOpenDefinition={openDictionary}
               />
             ))}
           </div>
@@ -790,13 +1055,14 @@ export default function AnalyticsLearningPage(): JSX.Element {
 
       {data ? (
         <>
-          <div className="analytics-analysis-row analytics-analysis-row--top">
+          <div className="analytics-analysis-row analytics-analysis-row--table-panels">
             <Card
-              className="analytics-panel"
+              className="analytics-panel question-comparison-panel"
               title={<div className="analytics-panel-title">문제 유형별 비교 <Tag color="blue">{appliedQuery.questions.length === 4 ? '51~54번' : appliedQuery.questions.map((question) => `${question}번`).join(' · ')}</Tag></div>}
             >
               <Table
                 aria-label="문제 유형별 비교"
+                className="analytics-fill-table"
                 rowKey="questionNo"
                 size="small"
                 columns={questionColumns}
@@ -808,7 +1074,7 @@ export default function AnalyticsLearningPage(): JSX.Element {
             </Card>
 
             <Card
-              className="analytics-panel"
+              className="analytics-panel score-distribution-panel"
               title={<div className="analytics-panel-title">문제 유형별 점수 분포 <Tag color="blue">100점 환산</Tag></div>}
               extra={
                 <Segmented
@@ -841,7 +1107,7 @@ export default function AnalyticsLearningPage(): JSX.Element {
                               style={{ width: `${bucket.percentage}%`, backgroundColor: scoreColors[index] }}
                               title={`${bucket.label}: ${bucket.count}건 (${bucket.percentage}%)`}
                             >
-                              {bucket.percentage >= 10 ? `${bucket.label} ${formatNumber(bucket.percentage)}%` : ''}
+                              {bucket.percentage >= 10 ? `${formatNumber(bucket.percentage)}%` : ''}
                             </div>
                           ))}
                         </div>
@@ -867,70 +1133,90 @@ export default function AnalyticsLearningPage(): JSX.Element {
             </Card>
           </div>
 
-          <div className="analytics-analysis-row analytics-analysis-row--bottom">
+          <div className="analytics-analysis-row analytics-analysis-row--single">
             <Card
               className="analytics-panel"
-              title={<div className="analytics-panel-title">취약 평가 영역 <Tag color="blue">표준 7개 차원</Tag></div>}
-              extra={<Text type="secondary">유형별 실제 평가 차원</Text>}
-            >
-              <div className="weak-dimension-grid">
-                {data.perQuestion.map((question) => (
-                  <div className="weak-dimension-panel" key={question.questionNo}>
-                    <div className="weak-dimension-panel__heading">
-                      <Text strong>{getQuestionShortLabel(question.questionNo)}</Text>
-                      <Text type="secondary">N={formatNumber(data.weakDimensions.find((row) => row.questionNo === question.questionNo)?.submissions ?? 0)}</Text>
-                    </div>
-                    {data.weakDimensions
-                      .filter((row) => row.questionNo === question.questionNo)
-                      .map((row) => (
-                        <div className="weak-dimension-item" key={row.dimension}>
-                          <Text>{formatWritingDimension(row.dimension)}</Text>
-                          <Progress percent={row.avgScoreNormalized ?? 0} showInfo={false} strokeColor={question.questionNo <= 52 ? '#2563eb' : '#059669'} trailColor="#e8edf3" />
-                          <Text className="weak-dimension-score">{formatNumber(row.avgScoreNormalized, 0)}</Text>
-                        </div>
-                      ))}
-                  </div>
-                ))}
-              </div>
-            </Card>
-
-            <Card
-              className="analytics-panel"
-              title={<div className="analytics-panel-title">주제별 성과 <Tag color="blue">topic_main → topic_detail</Tag></div>}
+              title={<div className="analytics-panel-title">주제별 성과</div>}
               extra={<Text type="secondary">중복 포함</Text>}
             >
               <Table
                 aria-label="주제별 성과"
-                rowKey={(row) => `${row.topicMain}-${row.topicDetail}`}
+                className="topic-performance-table"
+                rowKey={(row) => `${row.topicMain}-${row.topicDetail}-${row.questionNo}`}
                 size="small"
                 columns={topicColumns}
-                dataSource={data.topicStats}
+                dataSource={topicRows}
                 pagination={false}
                 locale={{ emptyText: '선택 조건에 해당하는 주제가 없습니다.' }}
-                scroll={{ x: 448 }}
+                scroll={{ x: 1236 }}
               />
             </Card>
+          </div>
 
+          <div className="analytics-analysis-row analytics-analysis-row--single">
             <Card
               className="analytics-panel pdf-usage-panel"
               title={<div className="analytics-panel-title">PDF 사용 분석 <Tag color="blue">내보내기 완료</Tag></div>}
             >
-              <div className="pdf-usage-stats">
-                <div><Text type="secondary">전체 이벤트</Text><strong>{formatNumber(data.pdfUsage.totalExports)}<small>건</small></strong></div>
-                <div><Text type="secondary">직접 귀속</Text><strong>{formatNumber(data.pdfUsage.attributableExports)}<small>건</small></strong></div>
-                <div><Text type="secondary">귀속률</Text><strong>{formatNumber(data.pdfUsage.attributionRate, 1)}<small>%</small></strong></div>
-              </div>
-              <div className="pdf-question-list">
-                {data.pdfUsage.perQuestion.map((row, index) => (
-                  <div key={row.questionNo}>
-                    <span><i style={{ backgroundColor: scoreColors[index % scoreColors.length] }} />{row.questionNo}번</span>
-                    <Text>{formatNumber(row.count)}건</Text>
+              <div className="pdf-usage-layout">
+                <section className="pdf-composition" aria-labelledby="pdf-composition-title">
+                  <div className="pdf-composition__heading">
+                    <Text strong id="pdf-composition-title">전체 구성 비율</Text>
+                    <Text type="secondary">전체 현황과 유형별 구성 비율을 확인합니다.</Text>
                   </div>
-                ))}
-                <div><span><i className="is-mixed" />혼합</span><Text>{formatNumber(data.pdfUsage.mixedExports)}건</Text></div>
-                <div><span><i className="is-unclassified" />미분류</span><Text>{formatNumber(data.pdfUsage.unclassifiedExports)}건</Text></div>
+                  <div className="pdf-usage-stats">
+                    <div>
+                      <Text type="secondary">전체 이벤트</Text>
+                      <strong>{formatNumber(data.pdfUsage.totalExports)}<small>건</small></strong>
+                      <small>내보내기 완료 전체</small>
+                    </div>
+                    <div>
+                      <Text type="secondary">직접 귀속</Text>
+                      <strong>{formatNumber(data.pdfUsage.attributableExports)}<small>건</small></strong>
+                      <small>귀속률 {formatNumber(data.pdfUsage.attributionRate, 1)}%</small>
+                    </div>
+                    <div>
+                      <Text type="secondary">혼합</Text>
+                      <strong>{formatNumber(data.pdfUsage.mixedExports)}<small>건</small></strong>
+                      <small>여러 문제 유형 포함</small>
+                    </div>
+                    <div>
+                      <Text type="secondary">미분류</Text>
+                      <strong>{formatNumber(data.pdfUsage.unclassifiedExports)}<small>건</small></strong>
+                      <small>유형 확인 불가</small>
+                    </div>
+                  </div>
+                  <PdfUsageCompositionPie
+                    slices={pdfSlices}
+                    total={data.pdfUsage.totalExports}
+                  />
+                </section>
+                <section className="pdf-hierarchy" aria-labelledby="pdf-hierarchy-title">
+                  <div className="pdf-hierarchy__heading">
+                    <Text strong id="pdf-hierarchy-title">문제 유형별 구성과 주제 상세</Text>
+                    <Text type="secondary">문제 유형을 펼치면 직접 귀속된 주제를 완료 수 많은 순으로 확인할 수 있습니다.</Text>
+                  </div>
+                  <Table
+                    aria-label="PDF 내보내기 구성과 주제 상세"
+                    className="pdf-hierarchy__table"
+                    rowKey="key"
+                    size="small"
+                    columns={pdfHierarchyColumns}
+                    dataSource={pdfHierarchyRows}
+                    pagination={false}
+                    expandable={{
+                      defaultExpandAllRows: true,
+                      expandRowByClick: false,
+                      indentSize: 18,
+                      rowExpandable: (row) => row.kind === 'question' && Boolean(row.children?.length)
+                    }}
+                    rowClassName={(row) => `pdf-hierarchy-row is-${row.kind}${row.count === 0 ? ' is-zero' : ''}`}
+                    locale={{ emptyText: 'PDF 내보내기 완료 데이터가 없습니다.' }}
+                    scroll={{ x: 700 }}
+                  />
+                </section>
               </div>
-              <Text className="analytics-panel-note">`export_downloaded` 완료 이벤트이며 실제 파일 저장 완료 수와는 다릅니다.</Text>
+              <Text className="analytics-panel-note">혼합·미분류는 특정 주제로 나누지 않습니다. `export_downloaded` 완료 이벤트이며 실제 파일 저장 완료 수와는 다릅니다.</Text>
             </Card>
           </div>
         </>
@@ -1111,38 +1397,7 @@ export default function AnalyticsLearningPage(): JSX.Element {
         </div>
       </Drawer>
 
-      <Modal
-        className="analytics-metric-dictionary"
-        width={760}
-        open={dictionaryOpen}
-        onCancel={() => setDictionaryOpen(false)}
-        footer={<Button size="large" type="primary" onClick={() => setDictionaryOpen(false)}>확인</Button>}
-        title="학습 분석 지표 사전"
-      >
-        <Text type="secondary">정의와 표본은 현재 적용된 분석 조건을 기준으로 표시됩니다.</Text>
-        <div className="metric-dictionary-list">
-          {metricDefinitions.map((definition) => (
-            <div
-              key={definition.key}
-              ref={(node) => { dictionaryRefs.current[definition.key] = node; }}
-              className={`metric-definition-card ${selectedMetric === definition.key ? 'is-selected' : ''}`}
-              tabIndex={-1}
-            >
-              <div className="metric-definition-heading">
-                <Tag color="blue">{definition.category}</Tag>
-                <Text strong>{definition.label}</Text>
-              </div>
-              <dl>
-                <div><dt>정의</dt><dd>{definition.definition}</dd></div>
-                <div><dt>계산식</dt><dd>{definition.formula}</dd></div>
-                <div><dt>포함 조건</dt><dd>{definition.inclusion}</dd></div>
-                <div><dt>현재 표본</dt><dd>{definition.key === 'activeLearners' ? `${formatNumber(summary?.activeEventsAttributed)}개 귀속 이벤트 · coverage ${formatNumber(summary?.activeEventAttributionRate, 1)}%` : definition.key === 'elapsedTime' ? `${formatNumber(summary?.elapsedSamples)}건` : definition.key === 'processingTime' ? `${formatNumber(summary?.processingSamples)}건` : `${formatNumber(summary?.submissions)}건 제출`}</dd></div>
-                <div><dt>주의사항</dt><dd>{definition.caution}</dd></div>
-              </dl>
-            </div>
-          ))}
-        </div>
-      </Modal>
     </main>
+    </ConfigProvider>
   );
 }

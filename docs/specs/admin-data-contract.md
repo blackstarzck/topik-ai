@@ -934,11 +934,14 @@
 - 문제 유형 배열과 같은 세부 필드 안의 값은 OR, 날짜·문제 유형·주제·서로 다른 세부 필드 사이는 AND다. `전체` 기간은 이전 기간 비교를 반환하지 않는다.
 - 기본 기간·문제 유형 집계는 제출 `problem_id → problems.id`와 `problems.question_no`를 사용해 신규 메타데이터가 없는 현재 제출도 포함한다. 주제·세부 특성 조건과 주제별 성과는 역사 `topik_writing_question_source_map`과 환경별 `topik_writing_problem_aliases`를 합친 `topik_writing_problem_question_map` 중 active/non-held이고 문제 번호·대주제·세부 주제·번호별 필수 세부 메타데이터가 완전한 연결만 사용하며, `topik_writing_question_recommendation_view.topic_main/topic_detail`이 주제 SoT다. 구 `problems.tags`는 주제 필터 SoT가 아니다.
 - 학습 활성 사용자는 `submission_id` 또는 `problem_id`로 현재 분석 범위에 귀속 가능한 `study_events`의 고유 사용자다. 귀속 불가능 이벤트는 임의 배분하지 않고 커버리지로 반환한다.
-- 반환 블록은 적용 범위 메타데이터, 8개 KPI와 이전 기간·표본·커버리지, 문제 유형별 비교, 4구간 점수 분포, 문제 유형별 표준 평가 차원, 주제별 성과, PDF 사용 분석이다. 개인 식별자·답안 원문·문장 첨삭 본문은 반환하지 않는다.
+- 반환 블록은 적용 범위 메타데이터, 8개 KPI와 이전 기간·표본·커버리지, 문제 유형별 비교, 4구간 점수 분포, 문제 유형별 표준 평가 차원, 주제별 성과, PDF 사용 분석이다. `pdf_usage`는 `perQuestion`과 직접 귀속 이벤트의 `perTopic[{questionNo,topicMain,topicDetail,count}]`을 포함하며 `perTopic`은 건수 내림차순이다. 개인 식별자·답안 원문·문장 첨삭 본문은 반환하지 않는다. 화면의 취약 평가 영역 섹션은 2026-07-15 오너 지시로 제거되어 `weak_dimensions`(및 summary의 차원 커버리지)는 RPC가 반환하지만 화면·CSV가 사용하지 않는다.
 - summary의 메타데이터 연결 계약은 `metadataEligible/Mapped/UnmappedSubmissions`, 각 `Prev`, `metadataEligible/MappedEvents`, 각 `Prev`, 제출·이벤트 coverage rate, `metadataEligible/MappedProblems`다. coverage 분모는 기간·문제 유형까지만 적용하고 주제·세부 조건으로 축소하지 않아 필터가 미매핑 행을 숨기지 못하게 한다.
 - 배포 전 coverage gate는 target/expected project ref를 모두 명시하고, 모든 metric이 비음수 정수이며 `mapped <= eligible`인지 fail-closed로 확인한 뒤 100% 연결을 요구한다. 환경 별칭 reconciliation은 기존 `held` 상태를 자동 해제하지 않고, apply/restore에서 대상 cardinality와 source-map anchor 생성·제거를 검증한다.
-- `PDF 내보내기 완료 수`는 `study_events.event_type='export_downloaded'` 건수이며 실제 파일 저장 완료를 의미하지 않는다. 단일 제출만 문제 유형/주제로 직접 귀속하고 확정할 수 없는 보고서·서재 선택은 `혼합` 또는 `미분류`로 보존한다.
+- `PDF 내보내기 완료 수`는 `study_events.event_type='export_downloaded'` 건수이며 실제 파일 저장 완료를 의미하지 않는다. 단일 제출만 문제 유형/주제로 직접 귀속하고 확정할 수 없는 보고서·서재 선택은 `혼합` 또는 `미분류`로 보존한다. 문제 유형×주제 집계는 직접 귀속·현재 scope 일치 이벤트만 포함하고 혼합·미분류를 임의 배분하지 않으며, 주제 연결이 없는 직접 귀속 행은 null 주제로 보존한다.
+- 2026-07-15: `pdf_usage.perTopic`을 문제 유형(51~54) × `topic_main` × `topic_detail` 단위로 추가했다(마이그 `20260715190000`). `count desc → questionNo → topicMain → topicDetail` 순으로 반환하며 합계는 동일 scope의 직접 귀속 수와 일치한다.
 - 필터 옵션 RPC는 `topic_main → topic_detail`과 51~54번별 세부 특성의 distinct 옵션만 반환한다. 두 RPC 모두 `private.is_admin()` + `SECURITY DEFINER` read-only 계약을 따른다.
+- 2026-07-15: `topic_stats`를 문제 유형(51~54) × `topic_main` × `topic_detail` 단위로 분해해 각 행에 `questionNo`를 포함한다. 마이그 `20260715130000`은 직전 최신 함수에서 주제 CTE와 JSON projection만 fail-closed로 교체해 metadata coverage·identity 계약을 보존하며, down도 같은 블록만 역변환한다. 정렬은 주제쌍 제출 합계 내림차순 → 대주제 → 세부 주제 → 문제 유형이다.
+- 2026-07-15: dev 선적용 과정에서 발생했던 metadata coverage summary 누락은 `20260715173826`으로 복구했다. clean migration 자산에서는 `20260715130000`부터 coverage를 보존하고, `20260715173826`은 canonical identity 객체가 모두 존재할 때만 private identity projection을 사용하며 일부 설치 상태는 fail-closed로 거부한다. 전체 신규 down을 역순 적용해도 `20260713120000` metadata 계약을 유지한다.
 - URL 복원 키는 `period`, `from`, `to`, `compare`, 반복 `question`, `topicMain`, `topicDetail`, 반복 `d.<field>`다. CSV 공개 열은 `section, question_type, topic_main, topic_detail, metric, category, value, unit, sample_count, coverage, period_start, period_end`로 고정한다.
 
 ### 기존 계약 검증(2026-07-08, dev)

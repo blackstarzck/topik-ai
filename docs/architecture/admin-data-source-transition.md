@@ -475,10 +475,13 @@ src/features/<feature>/
 ### 2026-07-10 Analytics 학습 분석 다차원 필터 확장
 
 - `/analytics/learning` facade는 `get_admin_learning_analytics_filtered(...)`와 `get_admin_learning_analytics_filter_options()`를 사용한다. 기존 `get_admin_learning_analytics(period_days)`는 호환성을 위해 유지한다.
+- `20260715190000_admin_learning_analytics_pdf_topics.sql`은 최신 metadata coverage·canonical identity 함수 계약을 보존하면서 `pdf_usage.perTopic`을 직접 귀속 `export_downloaded`의 문제 유형×대주제×세부 주제별 건수로 확장한다. safe facade는 마이그레이션 지연 환경에서 `perTopic=[]`으로 fail-safe 처리하고 mock·CSV·화면은 같은 응답 모양을 사용한다. 2026-07-15 dev DB에 적용했으며 운영 DB는 미적용이다.
+- 마이그레이션 `20260715130000_admin_learning_analytics_topic_stats_by_question.sql`은 직전 최신 RPC를 `pg_get_functiondef`로 읽고 주제 집계·응답 projection만 fail-closed로 교체한다. 문제 유형별 `topic_stats.questionNo`와 주제 전체 제출 수 정렬을 추가하면서 `20260713120000`의 metadata coverage·identity·필터 계약을 그대로 보존하고, down도 동일 블록만 역변환한다.
+- dev DB에 먼저 적용됐던 구 `20260715130000` 자산이 오래된 함수 본문을 기준으로 metadata coverage와 canonical identity 참조를 제거한 이력은 `20260715173826_restore_learning_analytics_metadata_contract.sql`로 복구했다. PR 머지 전 migration asset은 clean up/down과 역순 전체 rollback 모두 metadata coverage를 보존하도록 보강했으며, `20260715173826` down은 문제 유형별 주제 계약을 유지한 채 canonical private projection만 public 관계로 되돌린다. dev DB 실제 관리자 RPC에서는 제출 280/280·이벤트 3539/3539 연결, coverage 오류 배너 없음, 주제 15행의 `questionNo`를 확인했다. 운영 DB는 미적용이다.
 - 마이그레이션 `20260710120000_admin_learning_analytics_filtered.sql`은 2026-07-13 dev DB에 적용했다. 같은 이름의 down SQL로 RPC 2종과 tracker 행이 제거되는 것을 확인한 뒤 재적용했으며, 관리자 호출·비인증 거부·KST 날짜/문제 유형/주제/세부 조건/이전 기간·PII 미반환과 `security definer`/빈 `search_path`/실행 권한 경계를 검증했다. 운영 DB는 미적용이다.
 - live source는 writing 제출·피드백·평가 차원·계측·학습 이벤트와 `topik_writing_question_source_map`/`topik_writing_question_recommendation_view`의 신규 메타데이터를 read-only로 조합한다. 주제 필터는 `topic_main/topic_detail` 단일 기준이며 `problems.tags`를 사용하지 않는다.
 - safe facade와 결정적 mock은 같은 query/response 모양을 사용한다. 조건 재조회 실패 시 마지막 성공 결과를 유지하고, Supabase 비활성 환경에서만 mock fallback을 사용한다.
-- 기간·문제 유형·주제·세부 특성은 한 번 만든 filtered source에서 KPI, 유형 비교, 점수 분포, 취약 차원, 주제 성과, PDF 분석으로 파생한다. PDF는 `export_downloaded` 내보내기 완료 이벤트이며 직접 귀속/혼합/미분류를 분리한다.
+- 기간·문제 유형·주제·세부 특성은 한 번 만든 filtered source에서 KPI, 유형 비교, 점수 분포, 주제 성과, PDF 분석으로 파생한다(취약 차원 화면 블록은 2026-07-15 제거, RPC 반환은 유지). PDF는 `export_downloaded` 내보내기 완료 이벤트이며 직접 귀속/혼합/미분류를 분리하고, 직접 귀속만 문제 유형×주제 순위로 세분화한다.
 
 ### 2026-07-13 Analytics 학습 분석 메타데이터 연결 복구
 

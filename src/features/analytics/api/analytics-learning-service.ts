@@ -79,21 +79,20 @@ export type LearningAnalyticsScoreBucket = {
   percentage: number;
 };
 
-export type LearningAnalyticsWeakDimension = {
-  questionNo: LearningQuestionNo;
-  dimension: string;
-  avgScoreNormalized: number | null;
-  submissions: number;
-  weaknessOccurrences: number;
-  maxSeverity: number;
-};
-
 export type LearningAnalyticsTopicStat = {
+  questionNo: LearningQuestionNo;
   topicMain: string;
   topicDetail: string;
   submissions: number;
   avgScoreNormalized: number | null;
   avgScoreNormalizedPrev: number | null;
+};
+
+export type LearningAnalyticsPdfTopicUsage = {
+  questionNo: LearningQuestionNo;
+  topicMain: string | null;
+  topicDetail: string | null;
+  count: number;
 };
 
 export type LearningAnalyticsPdfUsage = {
@@ -103,6 +102,7 @@ export type LearningAnalyticsPdfUsage = {
   unclassifiedExports: number;
   attributionRate: number | null;
   perQuestion: Array<{ questionNo: LearningQuestionNo; count: number }>;
+  perTopic: LearningAnalyticsPdfTopicUsage[];
 };
 
 export type LearningAnalyticsScope = {
@@ -121,7 +121,6 @@ export type LearningAnalytics = {
   summary: LearningAnalyticsSummary;
   perQuestion: LearningAnalyticsQuestionStat[];
   scoreDistribution: LearningAnalyticsScoreBucket[];
-  weakDimensions: LearningAnalyticsWeakDimension[];
   topicStats: LearningAnalyticsTopicStat[];
   pdfUsage: LearningAnalyticsPdfUsage;
   scope: LearningAnalyticsScope;
@@ -135,11 +134,12 @@ export type LearningAnalyticsFilterOptions = {
   >;
 };
 
+// RPC 응답의 weak_dimensions·summary.dimensionCoverageSubmissions는 취약 평가 영역 섹션
+// 제거(2026-07-15)로 화면에서 쓰지 않아 타입에서 뺐다. DB RPC는 계속 반환하며 여기서 무시된다.
 type LearningAnalyticsRow = {
   summary: LearningAnalyticsSummary;
   per_question: LearningAnalyticsQuestionStat[];
   score_distribution: LearningAnalyticsScoreBucket[];
-  weak_dimensions: LearningAnalyticsWeakDimension[];
   topic_stats: LearningAnalyticsTopicStat[];
   pdf_usage: LearningAnalyticsPdfUsage;
   scope: LearningAnalyticsScope;
@@ -155,8 +155,23 @@ const emptyPdfUsage: LearningAnalyticsPdfUsage = {
   mixedExports: 0,
   unclassifiedExports: 0,
   attributionRate: null,
-  perQuestion: []
+  perQuestion: [],
+  perTopic: []
 };
+
+function normalizeLearningAnalyticsPdfUsage(
+  pdfUsage: LearningAnalyticsPdfUsage | null | undefined
+): LearningAnalyticsPdfUsage {
+  if (!pdfUsage) {
+    return emptyPdfUsage;
+  }
+
+  return {
+    ...pdfUsage,
+    perQuestion: pdfUsage.perQuestion ?? [],
+    perTopic: pdfUsage.perTopic ?? []
+  };
+}
 
 const metadataCoverageKeys = [
   'metadataEligibleSubmissions',
@@ -226,9 +241,8 @@ export function fetchLearningAnalyticsSafe(
       summary: normalizeLearningAnalyticsSummary(row.summary),
       perQuestion: row.per_question ?? [],
       scoreDistribution: row.score_distribution ?? [],
-      weakDimensions: row.weak_dimensions ?? [],
       topicStats: row.topic_stats ?? [],
-      pdfUsage: row.pdf_usage ?? emptyPdfUsage,
+      pdfUsage: normalizeLearningAnalyticsPdfUsage(row.pdf_usage),
       scope: row.scope
     };
   });
@@ -344,16 +358,6 @@ const distributionPercentages: Record<LearningQuestionNo, number[]> = {
   53: [18, 40, 30, 12],
   54: [21, 39, 28, 12]
 };
-
-const dimensionSlugs = [
-  'content',
-  'structure',
-  'expression',
-  'grammar',
-  'vocab',
-  'topic_fit',
-  'language'
-];
 
 function getMockScale(query: LearningAnalyticsQuery, now: Date): number {
   if (query.period === 'all') {
@@ -498,16 +502,6 @@ export function createMockLearningAnalytics(
       percentage
     }))
   );
-  const weakDimensions = perQuestion.flatMap((row, rowIndex) =>
-    dimensionSlugs.map((dimension, index) => ({
-      questionNo: row.questionNo,
-      dimension,
-      avgScoreNormalized: Math.max(38, round(76 - rowIndex * 3 - index * 2.1, 1)),
-      submissions: Math.max(1, round(row.submissions * (0.7 - index * 0.045))),
-      weaknessOccurrences: Math.max(0, round(row.submissions * (0.18 + index * 0.018))),
-      maxSeverity: index % 3 === 0 ? 4 : 3
-    }))
-  );
   const topics = [
     ['교육', '학교 교육', 216, 76.8, 73.7],
     ['교육', '평생 교육', 142, 71.2, 69.8],
@@ -520,13 +514,64 @@ export function createMockLearningAnalytics(
       (!query.topicMain || topicMain === query.topicMain) &&
       (!query.topicDetail || topicDetail === query.topicDetail)
     )
-    .map(([topicMain, topicDetail, count, score, previous]) => ({
-      topicMain,
-      topicDetail,
-      submissions: Math.max(1, round(count * scale)),
-      avgScoreNormalized: round(score - (query.questions.length === 1 ? 1.2 : 0), 1),
-      avgScoreNormalizedPrev: compareEnabled ? previous : null
-    }));
+    .flatMap(([topicMain, topicDetail, count, score, previous]) =>
+      query.questions.map((questionNo, questionIndex) => ({
+        questionNo,
+        topicMain,
+        topicDetail,
+        submissions: Math.max(1, round((count * scale) / query.questions.length)),
+        avgScoreNormalized: round(
+          score - (query.questions.length === 1 ? 1.2 : 0) - questionIndex * 1.1,
+          1
+        ),
+        avgScoreNormalizedPrev: compareEnabled ? round(previous - questionIndex * 1.1, 1) : null
+      }))
+    );
+  const pdfTopicUsage = perQuestion
+    .flatMap((question) => {
+      const questionTopics = topicStats.filter(
+        (topic) => topic.questionNo === question.questionNo
+      );
+      if (questionTopics.length === 0) {
+        return question.pdfExports > 0
+          ? [{
+              questionNo: question.questionNo,
+              topicMain: null,
+              topicDetail: null,
+              count: question.pdfExports
+            }]
+          : [];
+      }
+
+      const totalSubmissions = questionTopics.reduce(
+        (sum, topic) => sum + topic.submissions,
+        0
+      );
+      let allocated = 0;
+      return questionTopics.map((topic, index) => {
+        const remaining = Math.max(0, question.pdfExports - allocated);
+        const count = index === questionTopics.length - 1
+          ? remaining
+          : Math.min(
+              remaining,
+              round(question.pdfExports * (topic.submissions / totalSubmissions))
+            );
+        allocated += count;
+        return {
+          questionNo: question.questionNo,
+          topicMain: topic.topicMain,
+          topicDetail: topic.topicDetail,
+          count
+        };
+      });
+    })
+    .filter((row) => row.count > 0)
+    .sort((left, right) =>
+      right.count - left.count ||
+      left.questionNo - right.questionNo ||
+      (left.topicMain ?? '').localeCompare(right.topicMain ?? '', 'ko-KR') ||
+      (left.topicDetail ?? '').localeCompare(right.topicDetail ?? '', 'ko-KR')
+    );
 
   const periodDays =
     range.startDate && range.endDate
@@ -608,7 +653,6 @@ export function createMockLearningAnalytics(
     },
     perQuestion,
     scoreDistribution,
-    weakDimensions,
     topicStats,
     pdfUsage: {
       totalExports: totalPdfExports,
@@ -619,7 +663,8 @@ export function createMockLearningAnalytics(
       perQuestion: perQuestion.map((row) => ({
         questionNo: row.questionNo,
         count: row.pdfExports
-      }))
+      })),
+      perTopic: pdfTopicUsage
     },
     scope: {
       startDate: range.startDate,
