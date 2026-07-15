@@ -194,11 +194,22 @@ export type IngestResult = {
   promote: PromoteCounts | null;
 };
 
+const INGEST_ERROR_MESSAGES: Record<string, string> = {
+  upstream_login_failed: '외부 문항 공급 API 인증에 실패했습니다.',
+  upstream_login_error: '외부 문항 공급 API 인증 중 통신 오류가 발생했습니다.',
+  upstream_fetch_failed: '외부 문항 공급 API 조회에 실패했습니다.',
+  upstream_fetch_error: '외부 문항 공급 API 조회 중 통신 오류가 발생했습니다.',
+  ingest_rpc_failed: '가져온 문항을 인박스에 저장하지 못했습니다.',
+  ingest_partial_failure: '일부 문항을 인박스에 저장하지 못했습니다. 재시도해 주세요.',
+  promotion_failed: '가져오기는 완료됐지만 정식 문항 승격에 실패했습니다.',
+  promotion_partial_failure: '일부 문항이 승격되지 않았습니다. 보류 사유를 확인해 주세요.'
+};
+
 /**
  * "가져오기" 버튼 — 서버 라우트(/api/writing-tasks/ingest)를 관리자 access_token으로
  * 호출해 외부 목록을 무손실 적재한다. Management 토큰·상류 자격증명은 서버 전용이며
- * 브라우저는 자신의 토큰만 전달한다(auth-email sync와 동일 패턴). 라우트는 Vercel
- * 함수이므로 vite dev에는 /api 프록시가 없어 실서버(또는 vercel dev)에서만 동작한다.
+ * 브라우저는 자신의 토큰만 전달한다(auth-email sync와 동일 패턴). 프로덕션은 Vercel
+ * 함수, 로컬 개발은 vite.config.ts의 API 어댑터가 같은 엔트리를 실행한다.
  */
 async function triggerWritingTaskIngest(): Promise<IngestResult> {
   if (questionBankDataSource === 'mock' || !supabaseClient) {
@@ -224,12 +235,12 @@ async function triggerWritingTaskIngest(): Promise<IngestResult> {
     );
   }
 
-  // dev(vite)에는 /api 프록시가 없어 SPA fallback(HTML, 200)이 올 수 있다 — JSON이
-  // 아니면 라우트 미가용으로 보고 명확히 안내(오해 소지의 'HTTP 200' 메시지 방지).
+  // 플랫폼 함수가 시작 전에 실패하면 HTML/text 오류 응답이 올 수 있다. JSON이 아니면
+  // 일반 HTTP 오류로 오해하지 않도록 서버 함수 응답 오류로 안내한다.
   const contentType = res.headers.get('content-type') ?? '';
   if (!contentType.includes('application/json')) {
     throw new Error(
-      '가져오기 엔드포인트에 접근할 수 없습니다. 이 기능은 배포 환경(프로덕션/vercel dev)에서만 동작합니다.'
+      `가져오기 서버가 올바른 응답을 반환하지 않았습니다. 잠시 후 다시 시도하고 계속되면 서버 함수 로그를 확인하세요. (HTTP ${res.status})`
     );
   }
 
@@ -238,9 +249,15 @@ async function triggerWritingTaskIngest(): Promise<IngestResult> {
     counts?: IngestCounts;
     promoted?: PromoteCounts;
     error?: string;
+    error_ref?: string;
+    correlation_id?: string;
   };
   if (!res.ok || !result.ok || !result.counts) {
-    throw new Error(result.error ?? `가져오기 실패 (HTTP ${res.status})`);
+    const message = result.error
+      ? (INGEST_ERROR_MESSAGES[result.error] ?? '외부 문항 가져오기에 실패했습니다.')
+      : `외부 문항 가져오기에 실패했습니다. (HTTP ${res.status})`;
+    const reference = result.correlation_id ?? result.error_ref;
+    throw new Error(reference ? `${message} 오류 참조: ${reference}` : message);
   }
   return { ingest: result.counts, promote: result.promoted ?? null };
 }

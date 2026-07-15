@@ -36,7 +36,7 @@ export const SERVICE_STATUS_LABELS: Record<AssessmentServiceStatus, string> = {
   internal_test: '내부 테스트'
 };
 
-/** legacy 행처럼 service_status 소스 자체가 없는 경우의 표시 라벨. */
+/** service_status 소스 자체가 없는 비정상/불완전 행의 표시 라벨. */
 export const SERVICE_STATUS_UNSET_LABEL = '미지정';
 
 export function getServiceStatusLabel(

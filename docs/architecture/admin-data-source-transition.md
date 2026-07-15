@@ -247,7 +247,7 @@ src/features/<feature>/
     - `src/features/assessment/model/assessment-question-bank-schema.ts`
     - `src/features/assessment/model/assessment-question-bank-types.ts`
     - `src/features/assessment/model/assessment-question-bank-presenter.ts`
-    - `src/features/assessment/api/supabase-assessment-question-bank-service.ts`
+    - 삭제됨: 구 `src/features/assessment/api/supabase-assessment-question-bank-service.ts`(`problems` rollback adapter)
     - `src/features/assessment/pages/assessment-question-bank-page.tsx`
     - `src/features/assessment/pages/assessment-question-manage-page.tsx`
     - `src/features/assessment/pages/assessment-question-review-page.tsx`
@@ -285,24 +285,29 @@ src/features/<feature>/
 
 > **2026-06-11 오너 결정으로 본 절의 종전 아웃바운드 push 모델(`검수 → 배포(API 업로드) → 노출 통제`)은 폐기·대체됐다.** 확정 근거·재정의 전모는 `docs/architecture/metadata-tag-schema-transition-decision-record.md` §0. 본 개정으로 admin 문서는 2026-06-09 v13 경계 결정 원문("admin이 외부 API로부터 문제를 받아와, 노출 관리 포인트를 적용해, Supabase에 쓴다; v13은 read-only")과 같은 방향이 됐다.
 
-- 대상 정책: `POL-017`(재정의 — "TOPIK 쓰기 문항 수신·관리 운영정책", `docs/specs/admin-policy-source-map.md`). 운영 흐름은 `수신(외부 공급 API) -> 적재(Supabase) -> 관리 포인트(태그) + 노출 통제(service_status) -> v13 read-only 소비`로 고정한다.
+- 대상 정책: `POL-017`(재정의 — "TOPIK 쓰기 문항 수신·관리 운영정책", `docs/specs/admin-policy-source-map.md`). 운영 흐름은 `수신(외부 공급 API) -> 인박스 무손실·버전 적재 -> 번호별 정식 카탈로그 승격 -> 관리 포인트(태그) + 노출 통제(service_status) -> 학습자 안전 RPC를 통한 v13 read-only 소비`로 고정한다.
 - 데이터 방향 (인바운드)
   - **문제 발원 = 외부(공급) API.** 문제 본문·정답·메타데이터(`docs/metadata-tag-schema-rule.md` §4 메타데이터 + §7 테이블 스키마, §7.9 제외·검수 필드 제외)가 **완성 상태로** 공급된다. admin은 문제를 저작·생성·분류·검수하지 않는다.
-  - **외부 공급 API는 미개발 상태**다. 공급 계약은 `docs/requests/upstream-writing-endpoints-request-2026-06-10.md`(2026-06-11 인바운드 기준 재작성)로 요청하며, 수신 연동 구현은 계약 회신 게이트에 종속된다.
+  - **외부 공급 API 수신 경로는 구현 상태**다. 타입별 상세 API를 페이지네이션해 인박스에 적재하고 번호별 정식 테이블로 승격한다. 공급 계약 원문과 변경 통지 추적은 `docs/requests/upstream-writing-endpoints-request-2026-06-10.md`를 따른다.
   - admin은 수신분을 Supabase `topik_writing_51/52/53/54_questions` + `question_source_map`에 적재하고(idempotent), **관리 포인트(태그 — schema-rule §2)**와 **노출 통제(`service_status` — D-6)**를 부여한다.
   - v13 사용자 기능은 admin이 적재·관리한 데이터를 **read-only**로 소비한다. 관리자 프론트엔드가 직접 사용자 화면 데이터를 서빙하지 않는다.
 - 검수 개념 삭제 (결정 기록 §0-3)
   - `review_status`/`review_workflow_status`(편차 E1 철회)/`review_passed`/`validation_result`와 검수 화면·검수 쓰기·검수 감사 액션은 admin에서 제거한다. 컬럼 물리 제거는 재정의 P3 마이그레이션. 문제 품질·상태 표현은 태그(관리 포인트)로만 한다.
   - 검수 페이지·검수 쓰기 경로는 재정의 P3 구현에서 제거 완료됐다(`202f905` — §10.2는 역사 기록). 검수 4컬럼 물리 제거도 마이그레이션 `0013`으로 완료됐다(2026-06-11 적용 — 스냅샷 4테이블 검수 컬럼 0건·뷰 16컬럼·RPC 검수 참조 0건).
-- 인터림 상태 (외부 API 미개발 동안)
-  - P2 백필 466행 = **초기 코퍼스**(유효 저장 데이터, 전 행 `service_status='internal_test'`). 신규 공급은 API 가동 후 수신 경로로만 받는다.
-  - `problems`는 v13 사용자 기능이 읽는 동안 보존한다(일몰 조건은 결정 기록 §2.3 — "검수 SoT" 위상은 소멸, 레거시 원천).
-  - **`problems` read-only 동결 선언(2026-06-11, §7.1-6 이행)**: P3 컷오버 완료에 따라 `problems`는 admin 기준 read-only 레거시로 동결됐다(신규 admin write 금지 — 코드상 write 경로는 원래 부재, 선언·기록만). 공지 초안: `docs/requests/problems-read-only-freeze-notice-2026-06-11.md`(발신은 오너 채널). 구 읽기 어댑터는 env `VITE_QUESTION_BANK_SOURCE=legacy` 봉인으로 P4 종료까지 보존(롤백 경로, 실행계획안 §12.2).
+- 인터림/전환 역사
+  - P2 백필 466행 = **초기 코퍼스**(유효 저장 데이터, 전 행 `service_status='internal_test'`). 신규 공급은 구현된 외부 상세 API 수신 경로로만 받는다.
+  - `problems` 보존과 env 기반 구 읽기 어댑터 봉인은 2026-06-11 P3 당시의 과도기 결정이었다. 최종 v13 14:00 교정은 writing FK를 private registry로 옮기고 row snapshot을 백필한 뒤 `public.problems` writing 행을 삭제하므로, 이 과도기 경로를 현재 콘텐츠·과거 기록·rollback 계약으로 사용하지 않는다.
 - 전환 메모
-  - **운영 write 경계(P4 개방 완료 — 2026-06-11, 태그 별도 입력 제거 — 2026-06-12, 2026-06-23 통합, 2026-06-26 기관 정합화)**: 관리 포인트 write는 `/assessment/question-bank` 단일 통합 화면에서 RPC 단일 경로로만 수행한다 — 노출 통제 `admin_update_topik_question`(화이트리스트 `service_status` 단일, 사유 `__note`) + 태그 `admin_assign_question_tag`/`admin_remove_question_tag`(별도 메모 인자 없음) + 기관 노출 `admin_set_writing_question_institutions`/`admin_clear_writing_question_institutions`(문항 중심) 및 `admin_add_institution_writing_questions`/`admin_remove_institution_writing_questions`(기관 중심). `service_status`는 기관 노출보다 우선하는 전역 차단 조건이며, `excluded`/`internal_test` 신규 기관 추가는 blocked로 기록하고 매핑을 만들지 않는다. 기존 매핑 제거는 stale 정리를 위해 허용한다. `OPERATION_WRITE_ENABLED`/`SERVICE_STATUS_WRITE_ENABLED` 게이트는 제거됐고, 직접 테이블 write는 RLS(쓰기 정책 0건)로 전면 차단된다(P4-4 네거티브 검증). legacy 롤백 소스는 읽기 전용(조치 불가 — facade 명시 오류). POL-018 ②③ 화면 가드 포함. 증적: `logs/metadata-tag-schema-transition-evidence.md` P4 절.
+  - **운영 write 경계(P4 개방 완료 — 2026-06-11, 태그 별도 입력 제거 — 2026-06-12, 2026-06-23 통합, 2026-06-26 기관 정합화)**: 관리 포인트 write는 `/assessment/question-bank` 단일 통합 화면에서 RPC 단일 경로로만 수행한다 — 노출 통제 `admin_update_topik_question`(화이트리스트 `service_status` 단일, 사유 `__note`) + 태그 `admin_assign_question_tag`/`admin_remove_question_tag`(별도 메모 인자 없음) + 기관 노출 `admin_set_writing_question_institutions`/`admin_clear_writing_question_institutions`(문항 중심) 및 `admin_add_institution_writing_questions`/`admin_remove_institution_writing_questions`(기관 중심). `service_status`는 기관 노출보다 우선하는 전역 차단 조건이며, `excluded`/`internal_test` 신규 기관 추가는 blocked로 기록하고 매핑을 만들지 않는다. 기존 매핑 제거는 stale 정리를 위해 허용한다. `OPERATION_WRITE_ENABLED`/`SERVICE_STATUS_WRITE_ENABLED` 게이트와 `problems` legacy adapter는 제거됐고, 직접 테이블 write는 RLS(쓰기 정책 0건)로 전면 차단된다(P4-4 네거티브 검증). POL-018 ②③ 화면 가드 포함. 증적: `logs/metadata-tag-schema-transition-evidence.md` P4 절.
   - 수신·적재 시 `question_source_map`에 공급측 식별자를 보존해 재수신(idempotent)·역추적을 보장한다. `published_task_id` 컬럼은 구 push 모델 잔재로 용도 재검토 예정.
-  - 수신 감사: 공급 연동 구현 시 `question_received` 감사 액션을 추가한다(결정 기록 D-8 개정).
-  - **마스터 surface(P5-1 조회 + P5-3 토글 — 2026-06-11)**: 주제/태그 마스터(`topik_writing_topic_master`/`topik_writing_tag_master`)를 `/system/metadata`의 `TOPIK 쓰기 마스터 데이터` 섹션에서 전수(비활성 포함) 조회한다. source 경계는 facade `assessment-question-bank-service.ts`의 카탈로그 로더(`fetchQuestionBankTopicMasterCatalogSafe`/`fetchQuestionBankTagMasterCatalogSafe`, mock/topik_writing/legacy 분기 — legacy는 빈 배열)이며, 섹션 컴포넌트는 `src/features/assessment/ui/master-catalog-section.tsx`(시스템 페이지가 마운트)다. **유일한 write = tag_master 활성/비활성 토글(P5-3)**: facade `updateTagMasterStatusSafe` → RPC `admin_update_tag_master_status`(0014 — platform_admin 가드·사유 필수, 감사 `tag_master_status_changed`/`AssessmentTagMaster`). 주제 마스터·마스터 값 편집은 조회 전용 유지, 직접 테이블 write는 RLS 차단.
+  - **수신 경로(P6 구현, 2026-06-23; 배포 시작 결함 보완 2026-07-13; 승격 범위 교정 2026-07-14)**: `api/writing-tasks/ingest.ts`가 상류 상세 API를 타입별 페이지네이션하고 `topik_writing_question_import`에 무손실 적재한 뒤 §7 번호별 테이블로 자동 승격한다. 승격 RPC에는 이번 요청에서 실제 적재한 `source_task_id[]`만 전달하며, 빈 배열을 `null`로 바꾸거나 기존 전역 `held` backlog를 암묵적으로 재처리하지 않는다. 관리자 POST와 cron GET은 인증 경계를 분리하며, 적재/승격은 service-role RPC 단일 경로를 사용한다. `question_received`는 `AssessmentQuestionImport + source_task_id`와 `AssessmentQuestion + question_id`에 각각 기록한다. Vercel 함수의 상대 ESM import는 `.js` 산출물 확장자를 명시하고 Node ESM 시작 회귀 테스트로 보호한다.
+  - **정식 카탈로그 버전 고정 계약(마이그레이션 `20260713080015`, 공유 dev DB 적용 2026-07-14·운영 미적용)**: `topik_writing_question_source_map.learner_problem_id`는 `md5(question_id)::uuid` generated UNIQUE 값으로 v13 FK와 일치하고, `legacy_problem_id`는 과거 ETL provenance로만 보존한다. `canonical_import_id`는 현재 정식 문항이 승격된 정확한 인박스 버전을 가리킨다. 학습자 RPC `get_available_writing_questions`는 번호별 정식 51~54 테이블과 이 버전의 `payload_hash`만 결합하며, 인박스의 `is_latest`를 정식 문항 선택 기준으로 사용하지 않는다. 따라서 아직 승격되지 않은 새 수신 버전이 기존 정식 문항을 덮거나 숨기지 않는다. 초기 백필과 v13 활성화 게이트는 typed row를 고정 인박스 `raw_payload`에서 재구성한 record와 완전 비교해 ID만 맞는 잘못된 버전 pin도 거부한다.
+  - **재수신 멱등 계약(교정 마이그레이션 `20260714130000`, 공유 dev DB 적용 2026-07-14·운영 미적용)**: source map이 이미 같은 `canonical_import_id`를 가리키고 identity/item/hash가 일치하면 정식 본문을 delete/reinsert하지 않고 인박스·source map의 bookkeeping만 `promoted`로 복구한다. 같은 import의 hash/identity 불일치는 `held`/fail-closed다. 최종 `20260714150000`에서는 죽은 read-mode freeze를 제거하므로, 검증된 새 import는 current canonical 본문을 교체할 수 있고 기존 draft/submission은 각 row snapshot에 고정된다.
+  - **외부 식별자 라우팅 계약(2026-07-14 보강)**: 공급측 `question_id`는 opaque·불변 값이며 문항 번호를 인코딩한다고 가정하지 않는다. 번호별 테이블은 `item_number`로 라우팅한다. 기존 접두형 ID 파싱은 추천 뷰 조회를 생략하는 빠른 경로일 뿐이며, 임의 형식 ID는 추천 뷰의 `item_number` 조회 후 상세·노출 상태·태그 RPC를 호출한다.
+  - **권한 분리**: 학습자 RPC는 문제 풀이에 필요한 허용 필드만 반환하고 정답·모범답안·채점표·원시 응답·내부 메타데이터를 제외한다. Q53의 schema-less `source_data.chart_a/chart_b`도 객체 전체를 전달하지 않고 chart/series 허용 키와 숫자 값만 재구성한다. 정확한 원시 버전 조회 `get_writing_question_grading_payload`와 제출 시 버전·노출을 재검증하는 `private.assert_writing_question_submittable`은 service-role 전용이다.
+  - **최종 식별자·과거 기록 교정(`20260714140000`/`20260714150000`, dev 적용·운영 미적용)**: v13은 writing 관련 FK를 소유 `private.problem_identities`로 이관하고, 기존 초안·제출마다 금지 필드를 제외한 불변 `legacy_cutover_snapshot`을 백필한 뒤 `public.problems`의 writing 행을 삭제한다. Admin 승격은 `learner_problem_id`로 v13 소유 `private.ensure_writing_problem_identity`만 호출하며 registry table에 FK/직접 DML을 추가하지 않는다. 현재 본문·정답의 유일한 SoT는 번호별 정식 51~54 카탈로그와 source map이고, 과거 기록은 각 초안·제출 row snapshot에서 읽는다. retained mirror, current legacy/shadow/read mode, rollback sync 경로는 최종 구조에 남기지 않는다.
+  - **최종 dev 검증과 남은 운영 게이트(2026-07-15)**: v13 `20260714140000`/`20260714141000`/`20260714160000`, Admin `20260714150000`을 dev DB에 적용했다. canonical 공개 700건/source-map pin 700건, private writing identity 704건, `public.problems` writing 0건, draft 328건, submission 280건, history snapshot 누락 0건, registry 대상 FK 10개를 대사했다. identity/outbox down/up, outbox 5종 fault-injection, 실제 provider Q54 제출→분석→피드백 canary, 최신 v13 `origin/main` 기반 cross-app headed Chromium desktop 10/10·mobile 7/7(데스크톱 전용 3개 의도적 skip)을 통과했고 pageerror·console error·5xx는 0건이다. canary 정리 뒤 intent 0건과 기준 수량 복귀를 확인하고 dev 제출은 `blocked + unverified`로 fail-close했다. 남은 게이트는 운영 DB/Vercel 적용, evidence 기반 원자 활성화와 운영 smoke다.
+  - **마스터 surface(P5-1 조회 + P5-3 토글 — 2026-06-11)**: 주제/태그 마스터(`topik_writing_topic_master`/`topik_writing_tag_master`)를 `/system/metadata`의 `TOPIK 쓰기 마스터 데이터` 섹션에서 전수(비활성 포함) 조회한다. source 경계는 facade `assessment-question-bank-service.ts`의 카탈로그 로더(`fetchQuestionBankTopicMasterCatalogSafe`/`fetchQuestionBankTagMasterCatalogSafe`, 운영 `topik_writing`·Supabase 미구성 시 mock)이며, 섹션 컴포넌트는 `src/features/assessment/ui/master-catalog-section.tsx`(시스템 페이지가 마운트)다. **유일한 write = tag_master 활성/비활성 토글(P5-3)**: facade `updateTagMasterStatusSafe` → RPC `admin_update_tag_master_status`(0014 — platform_admin 가드·사유 필수, 감사 `tag_master_status_changed`/`AssessmentTagMaster`). 주제 마스터·마스터 값 편집은 조회 전용 유지, 직접 테이블 write는 RLS 차단.
 
 ## 10.4 메타데이터·태그 스키마 전환 (권장안 v0.8 — 2026-06-10 채택 확정, Phase 0 결정 완료)
 
@@ -311,7 +316,7 @@ src/features/<feature>/
 - 세 데이터 모델 관계 (2026-06-11 인바운드 전환 개정)
   - ⓐ 신규 스키마: 번호별 4분리 테이블(`topik_writing_51/52/53/54_questions`) + 태그/주제 마스터 + 추천 검색용 읽기전용 UNION 뷰 + 식별자 매핑 테이블 `topik_writing_question_source_map`(편차 E2) — **admin 문항·운영 SoT(수신·태그·노출)**
   - ⓑ 레거시 원천: v13 `problems` — 인터림 코퍼스의 백필 원천(역사), 컷오버 후 read-only 레거시 동결(일몰 조건은 결정 기록 §2.3 — "검수 SoT" 위상은 2026-06-11 §0으로 소멸)
-  - ⓒ 외부(공급) API: **문제 발원 주체 — 미개발**(§10.3, POL-017 재정의, D-11 공급 계약 요청 추적). 종전 "상류 노출본(push 대상)" 위상은 폐기
+  - ⓒ 외부(공급) API: **문제 발원 주체 — 수신 연동 구현**(§10.3, POL-017 재정의, D-11 공급 계약·변경 통지 추적). 종전 "상류 노출본(push 대상)" 위상은 폐기
 - 소유권·호스트 확정 (D-1)
   - 신규 오브젝트는 현행 v13 Supabase 프로젝트 `fglggyfvzjdsbyckinqa`(talkpik-dev)에 생성하고, 마이그레이션 자산(`supabase/migrations`)은 이 repo(topik-ai)가 소유·관리한다(시나리오 B의 공유 호스트 변형).
   - 경계 근거: v13 오너 결정(2026-06-09, v13 repo `supabase/migrations/20260609130000_remove_v13_admin_island.sql`) — "문제 데이터의 작성·노출 통제는 admin(topik-ai)이 담당, v13은 read-only". 공유 자산(`admin_audit_logs`, `private.is_*_admin` 헬퍼, `profiles.app_role`)은 재사용하고, 기존 v13 테이블 DDL 변경은 0건 원칙(P1 무변경 diff 게이트로 증명).
@@ -476,7 +481,7 @@ src/features/<feature>/
 
 - `/analytics/learning` facade는 `get_admin_learning_analytics_filtered(...)`와 `get_admin_learning_analytics_filter_options()`를 사용한다. 기존 `get_admin_learning_analytics(period_days)`는 호환성을 위해 유지한다.
 - 마이그레이션 `20260710120000_admin_learning_analytics_filtered.sql`은 2026-07-13 dev DB에 적용했다. 같은 이름의 down SQL로 RPC 2종과 tracker 행이 제거되는 것을 확인한 뒤 재적용했으며, 관리자 호출·비인증 거부·KST 날짜/문제 유형/주제/세부 조건/이전 기간·PII 미반환과 `security definer`/빈 `search_path`/실행 권한 경계를 검증했다. 운영 DB는 미적용이다.
-- live source는 writing 제출·피드백·평가 차원·계측·학습 이벤트와 `topik_writing_question_source_map`/`topik_writing_question_recommendation_view`의 신규 메타데이터를 read-only로 조합한다. 주제 필터는 `topic_main/topic_detail` 단일 기준이며 `problems.tags`를 사용하지 않는다.
+- live source는 writing 제출·피드백·평가 차원·계측·학습 이벤트와 `topik_writing_question_source_map`/`topik_writing_question_recommendation_view`의 신규 메타데이터를 read-only로 조합한다. `20260714090000`부터 제출 `problem_id`를 `learner_problem_id`로 연결하고 현재 제목·태그는 canonical projection에서 읽는다. 주제 필터는 `topic_main/topic_detail` 단일 기준이며 `legacy_problem_id`나 `problems.tags`를 사용하지 않는다.
 - safe facade와 결정적 mock은 같은 query/response 모양을 사용한다. 조건 재조회 실패 시 마지막 성공 결과를 유지하고, Supabase 비활성 환경에서만 mock fallback을 사용한다.
 - 기간·문제 유형·주제·세부 특성은 한 번 만든 filtered source에서 KPI, 유형 비교, 점수 분포, 취약 차원, 주제 성과, PDF 분석으로 파생한다. PDF는 `export_downloaded` 내보내기 완료 이벤트이며 직접 귀속/혼합/미분류를 분리한다.
 
@@ -488,6 +493,13 @@ src/features/<feature>/
 - `20260713120000_admin_learning_analytics_metadata_coverage.sql`은 통합 매핑을 사용하며, 기본 기간·문제 유형 집계는 항상 `problems.question_no`를 사용한다. 주제·세부 특성 결과와 mapped coverage는 문제 번호 일치, 대·세부 주제, 번호별 필수 메타데이터가 모두 완전한 연결만 사용하고 summary에 현재/직전 기간의 제출·이벤트 연결 대상/완료/비율과 문제 연결 수를 반환한다.
 - 배포 전 `npm run check:learning-analytics-metadata-coverage -- --project-ref <target> --expected-project-ref <target>`는 대상 project ref 일치와 metric 계약을 먼저 검증하고, 실제 참조 제출·이벤트·문제의 100% 연결, problem fan-out 0, 고아 별칭 0, hold 0, 필수 메타데이터 누락 0을 차단식으로 검사한다. dev 최종값은 제출 280/280, 이벤트 3333/3333, 문제 58/58이다.
 - 적용 후 관리자 화면에서 최근 30일 학습자 91명, 제출 280건, 51~54번 제출 217/39/11/13건을 확인했다. 빈 before-image의 별칭 700건·source-map anchor 232건 전체 rollback/reapply와 비어 있지 않은 before-image의 별칭 700건 복원을 각각 검증했다. 기간 5종, 51~54번, 주제 2단계, 세부 필드 10종, 필드 내 OR·필드 간 AND를 dev DB 독립 기준값과 대조했다. 운영 DB는 미적용이다.
+
+### 2026-07-15 Writing mirror 제거 이후 Analytics identity 교정
+
+- 앞의 2026-07-13 별칭·`problems.question_no` 계약은 mirror 제거 전 복구 단계의 역사 기록입니다. 최종 runtime은 `public.problems` writing 행과 공개 `topik_writing_problem_question_map`을 읽지 않습니다.
+- 이미 적용된 `20260714090000_admin_writing_analytics_learner_identity.sql`은 수정하지 않습니다. 후속 `20260715103000_admin_writing_analytics_canonical_coverage.sql`이 유효한 과거 ID→canonical 문항 매핑을 Admin 전용 `private.admin_writing_historical_identity_aliases`로 한 번 이관하고, 현재 canonical identity와 합친 private projection으로 최신 filtered analytics RPC의 제출·이벤트·PDF 귀속 조인을 교체합니다.
+- migration은 기존 filtered RPC의 정확한 정의를 private rollback table에 저장하고, coverage CTE/응답 shape가 예상과 다르거나 초안·제출 identity를 100% 해석할 수 없으면 중단합니다. down은 저장한 함수 원형을 먼저 복구한 뒤 private helper를 제거합니다.
+- dev DB down/up에서 원형 함수 복구와 helper 제거를 확인했습니다. 재적용 결과 private historical alias 468건, 제출 280/280, 초안 328/328, 이벤트 3532/3532가 연결됐고 함수 정의의 `public.problems`/공개 alias map 의존성은 0건입니다. 운영 DB는 미적용입니다.
 
 ## Operation > PDF 내보내기 제한 — 정책 변경 이력 (2026-07-08)
 

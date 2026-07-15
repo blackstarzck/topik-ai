@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { deriveItemNumber, extractTasks } from '../../api/writing-tasks/ingest-mapper';
+import {
+  deriveItemNumber,
+  extractTasks
+} from '../../src/features/assessment/server/writing-task-ingest-mapper';
 
 /**
  * 외부 응답 형태가 미확정·가변(스웨거 자체 모순)이라 매퍼는 형태를 단정하지 않는다.

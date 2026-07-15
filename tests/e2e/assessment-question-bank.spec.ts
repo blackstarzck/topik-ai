@@ -68,10 +68,15 @@ test('탭으로 가져온 문항(인박스) 화면으로 전환한다', async ({
   await expect(
     page.getByRole('heading', { name: '가져온 문항(인박스)', exact: true })
   ).toBeVisible();
-  // 모크 모드에서는 가져오기 버튼이 비활성이다(실모드 전용).
+  // 주요 액션은 본문 카드 툴바 안에 large 크기로 배치되고, 모크 모드에서는 비활성이다.
+  const importButton = page
+    .locator('.admin-list-card')
+    .getByRole('button', { name: '외부에서 가져오기' });
+  await expect(importButton).toBeDisabled();
+  await expect(importButton).toHaveClass(/ant-btn-lg/);
   await expect(
-    page.getByRole('button', { name: '외부에서 가져오기' })
-  ).toBeDisabled();
+    page.getByText('승격 조건을 충족한 문항은 정식 문항으로 자동 승격합니다.')
+  ).toBeVisible();
 });
 
 test('문항 상세는 번호별 실메타를 조회 전용으로 표시하고 잘못된 ID는 오류로 처리한다', async ({

@@ -351,7 +351,7 @@
 ## 19) 평가 > TOPIK 쓰기 문항 목록 (구 TOPIK 쓰기 문제 검수)
 
 - 2026-06-11 재정의: 인바운드 전환(`docs/architecture/metadata-tag-schema-transition-decision-record.md` §0)으로 이 페이지는 `TOPIK 쓰기 문항 목록`으로 재정의됐습니다. admin은 문제를 저작·생성·분류·검수하지 않으며(문제 본문+메타데이터는 외부(공급) API가 완성 상태로 공급 — 미개발 상태), 검수 표면(검수 축 요약 카드, 검수 상태 컬럼, 검수 메모, 2depth 검수 페이지)은 재정의 P3 코드 컷오버(커밋 `202f905`)에서 **전부 제거 완료**됐습니다. 컬럼/필터 축은 주제(topic_main/topic_detail)·노출 상태(`service_status`) 기준으로 재작성됐고, 2026-06-23 이후 태그/노출/기관 노출 조치가 통합됐습니다.
-- 현재 상태: 구현됨 (facade 스위치 기본 `topik_writing` — 신규 4테이블 + 추천 뷰 조회, 롤백 env `VITE_QUESTION_BANK_SOURCE=legacy`. JSON fixture/store fallback 없음)
+- 현재 상태: 구현됨 (`topik_writing` canonical 4테이블 + 추천 뷰가 유일한 운영 조회 source. `VITE_QUESTION_BANK_SOURCE`와 `public.problems` read adapter는 제거됐고 JSON fixture/store fallback 없음)
 - 라우트: `/assessment/question-bank` (조회+관리 통합 문항 목록 — 재정의 P3 재작성, 2026-06-23 통합)
 - 화면 구조: `PageTitle -> ListSummaryCards -> AdminListCard(toolbar=문제 번호 체크박스 그룹 -> SearchBar(summary), body=안내 Alert -> Table)` + 2depth 상세 페이지(조회 전용 — 구 검수 페이지를 재정의 P3에서 재작성 완료)
 - 문제 번호 체크박스 그룹: `51번`, `52번`, `53번`, `54번` 다중 선택, 기본 전체 선택
@@ -374,7 +374,7 @@
 
 - 2026-06-11 재정의: 인바운드 전환(결정 기록 §0)으로 이 페이지는 admin의 **관리 포인트** 페이지로 재정의됐습니다 — ① 태그 부여/제거(schema-rule §2 tag_master 사전 기반 `question_tags`), ② 노출 통제(`service_status` 컬럼: available/excluded/internal_test, 기본 internal_test — D-6 유지). **P4 관리 포인트 개방(2026-06-11)으로 두 write 모두 활성입니다.**
 - 2026-06-26 갱신: `/assessment/question-bank`에 기관 컬럼과 기관 노출 설정/기관 한정 지정/기관 한정 해제 진입점을 다시 제공했습니다. 같은 `topik_writing_question_institution_exposure` 매핑을 `Users > 기관 코드`에서도 기관 중심으로 관리합니다.
-- 현재 상태: 구현됨 (facade 스위치 기본 `topik_writing` — 신규 4테이블 + 추천 뷰 조회, 롤백 env `VITE_QUESTION_BANK_SOURCE=legacy`. JSON fixture/store fallback 없음)
+- 현재 상태: 구현됨 (`topik_writing` canonical 4테이블 + 추천 뷰가 유일한 운영 조회 source. `VITE_QUESTION_BANK_SOURCE`와 `public.problems` read adapter는 제거됐고 JSON fixture/store fallback 없음)
 - 라우트: `/assessment/question-bank` (`/assessment/question-bank/manage`는 redirect되는 역사 경로)
 - 화면 구조: `PageTitle -> ListSummaryCards -> AdminListCard(toolbar=문제 번호 체크박스 그룹 -> SearchBar(summary), body=Table)` + 행별 `태그 편집` 모달/조치 ConfirmAction
 - 문제 번호 체크박스 그룹: `51번`, `52번`, `53번`, `54번` 다중 선택, 기본 전체 선택
@@ -466,7 +466,7 @@
 ## 28-1) Analytics > 학습 분석
 
 - 현재 상태: 구현됨. `/analytics/learning`, `analytics.read`, 조회 전용.
-- source: `get_admin_learning_analytics_filtered(...)` 집계 RPC + `get_admin_learning_analytics_filter_options()` 필터 옵션 RPC. 주제·세부 특성 연결은 `topik_writing_problem_question_map` 통합 뷰를 사용하고 기존 `get_admin_learning_analytics(period_days)`는 호환용으로 유지합니다.
+- source: `get_admin_learning_analytics_filtered(...)` 집계 RPC + `get_admin_learning_analytics_filter_options()` 필터 옵션 RPC. 제출·이벤트 `problem_id`는 현재 canonical identity와 전환 시 이관한 private historical identity snapshot을 합친 projection에 연결하고 기존 `get_admin_learning_analytics(period_days)`는 호환용으로 유지합니다. 구 `problems`와 공개 환경별 alias map은 runtime 집계 source가 아닙니다.
 - 필터: 최근 7/30/90일·전체·직접 날짜, 이전 동일 기간 비교, 문제 유형 51~54, `topic_main → topic_detail`, 단일 문제 유형의 세부 특성. 같은 문제 유형/세부 필드 안은 OR, 서로 다른 필터 축은 AND입니다.
 - KPI: 학습 활성 사용자, 제출 수, 피드백 완료율, 평균 환산 점수, 피드백 조회율, 평균 풀이 시간, 처리 시간 중앙값, PDF 내보내기 완료 수. 지표 사전에서 계산식·표본·커버리지·비교 기준을 확인합니다.
 - 문제 유형별 비교 컬럼: 문제 유형, 학습자, 제출자, 제출 수, 완료율, 평균 환산 점수, 조회율, 풀이 시간, 재제출률, PDF 내보내기 수.

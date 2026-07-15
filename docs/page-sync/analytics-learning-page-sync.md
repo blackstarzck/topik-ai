@@ -9,7 +9,7 @@ status: "구현됨"
 primary_entity: "LearningAnalyticsAggregate"
 primary_table_candidate: "read-only aggregate RPC"
 owner_agent_scope: "shared"
-last_reviewed_at: "2026-07-13"
+last_reviewed_at: "2026-07-15"
 ---
 
 ## 1. 문서 목적
@@ -47,11 +47,11 @@ last_reviewed_at: "2026-07-13"
 
 | 엔티티 | source | CRUD | 주요 데이터 | 사용자 화면 영향 | 차이 |
 | --- | --- | --- | --- | --- | --- |
-| LearningAnalyticsAggregate | `get_admin_learning_analytics_filtered(...)` | Read | 8 KPI, 유형·점수·차원·주제·PDF 집계 | 내부 전용 | 개인 식별자·민감 본문 미반환 |
+| LearningAnalyticsAggregate | `get_admin_learning_analytics_filtered(...)` | Read | 8 KPI, 유형·점수·차원·주제·PDF 집계 | 내부 전용 | 제출·이벤트의 `problem_id`를 현재 canonical identity 또는 전환 시 이관한 private historical identity snapshot에 연결하며 개인 식별자·민감 본문은 반환하지 않음 |
 | LearningAnalyticsFilterOptions | `get_admin_learning_analytics_filter_options()` | Read | 주제 계층, 유형별 세부 특성 | 내부 전용 | 신규 TOPIK 쓰기 메타데이터를 read-only 참조 |
 
 - Create/Update/Delete는 지원하지 않습니다. Read 실패 시 마지막 성공 결과와 재시도를 제공합니다.
-- 기본 기간·문제 유형 집계는 `problems.question_no`를 사용해 메타데이터 미매핑 제출도 포함합니다. 주제·세부 특성 필터와 주제별 성과는 역사 source map과 환경별 별칭을 합친 `topik_writing_problem_question_map` 중 active/non-held이고 문제 번호·대주제·세부 주제·번호별 필수 메타데이터가 모두 일치하는 연결만 사용합니다.
+- 기본 기간·문제 유형 집계는 private identity projection의 `item_number`를 사용해 메타데이터 미매핑 제출도 포함합니다. 주제·세부 특성 필터와 주제별 성과는 현재 canonical identity와 `20260715103000`에서 이관한 historical identity snapshot 중 문제 번호·대주제·세부 주제·번호별 필수 메타데이터가 모두 일치하는 연결만 사용합니다. `public.problems`와 공개 환경별 alias map은 runtime 집계 source가 아닙니다.
 - 집계 summary는 현재/직전 기간의 제출·학습 이벤트 메타데이터 대상 수와 연결 수를 별도로 반환합니다. 대상이 있는데 100% 미만이면 화면이 네 범위를 구분해 경고하며, 연결 상태 필드가 없으면 통계 계약 오류를 표시합니다.
 
 ## 6. 관리자 조치와 감사 로그 계약
@@ -95,7 +95,7 @@ last_reviewed_at: "2026-07-13"
 
 ## 12. 에이전트 작업 메모
 
-- 두 RPC, mock, URL 직렬화가 같은 query/response 계약을 유지하는지 확인합니다.
+- 두 RPC, mock, URL 직렬화가 같은 query/response 계약을 유지하고 current-content metadata는 canonical identity로, 전환 전 기록은 private historical identity snapshot으로 연결되는지 확인합니다.
 - 문제 유형·주제·세부 특성이 모든 분석 블록에 동일하게 적용되는지 e2e로 검증합니다.
 - B2C 노출 상태는 `내부 전용`이며 별도 사용자 화면 기능을 추정하지 않습니다.
 

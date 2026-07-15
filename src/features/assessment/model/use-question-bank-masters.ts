@@ -24,7 +24,7 @@ export type UseQuestionBankTopicMasterResult = {
 /**
  * §7.2 마스터 로딩 훅: 주제 필터 축을 정적 8값 상수 대신
  * `topik_writing_topic_master`(17주제·세부 85쌍)에서 비동기 로딩한다.
- * legacy/mock 소스는 facade가 대체 축을 공급한다.
+ * Supabase 미구성 시에만 mock facade가 결정적 대체 축을 공급한다.
  */
 export function useQuestionBankTopicMaster(): UseQuestionBankTopicMasterResult {
   const [rows, setRows] = useState<TopikWritingTopicMasterRow[]>([]);

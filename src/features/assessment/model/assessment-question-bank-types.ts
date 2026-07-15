@@ -6,7 +6,7 @@ export type AssessmentQuestionNumber = '51' | '52' | '53' | '54';
  * 수행한다. 검수 개념은 전면 삭제됐다. rows come from the topik_writing_* schema
  * (recommendation view for lists, per-number tables for detail). Statuses are the
  * DB ASCII codes; Korean labels live in assessment-question-bank-schema.ts. The
- * sealed legacy `problems` adapter maps its rows into this same model with honest
+ * deterministic mock fixtures map their rows into this same model with honest
  * sentinels ('' / null) where the old schema has no source.
  */
 export type AssessmentServiceStatus = 'available' | 'excluded' | 'internal_test';
@@ -35,7 +35,7 @@ export type BulkServiceStatusResult = {
 
 /**
  * 목록 행 — `topik_writing_question_recommendation_view`의 16컬럼과 1:1.
- * serviceStatus가 null이면 소스가 없는 legacy 행이다('미지정' 표시).
+ * serviceStatus가 null이면 노출 상태를 확인할 수 없는 비정상/불완전 행이다('미지정' 표시).
  */
 export type AssessmentQuestionSummary = {
   questionId: string;

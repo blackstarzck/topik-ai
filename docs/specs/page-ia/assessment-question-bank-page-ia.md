@@ -24,7 +24,7 @@
 | --- | --- |
 | 모듈 | Assessment |
 | 페이지명 | TOPIK 쓰기 문항 (조회 + 관리 통합) |
-| 현재 상태 | 구현됨 — 데이터 소스는 facade 스위치(**`topik_writing` 기본** — 재정의 P3 컷오버 완료 / `legacy` 롤백(env `VITE_QUESTION_BANK_SOURCE=legacy`) / `mock`). 검수 표면은 재정의 P3에서 제거 완료(커밋 `202f905`) |
+| 현재 상태 | 구현됨 — Supabase 구성 시 `topik_writing` canonical 단일 경로, 미구성 시 결정적 `mock`. legacy env/adapter는 제거됨. 검수 표면은 재정의 P3에서 제거 완료(커밋 `202f905`) |
 | 페이지 유형 | 통합(조회+관리)형 + route-backed 탭(문항/가져온 문항) + 2depth 상세 |
 | 목록 라우트 | `/assessment/question-bank` |
 | 상세 라우트 | `/assessment/question-bank/:questionId` (2026-06-11 재정의 P3 구현에서 구 검수 라우트 `…/review/:questionId` 개명 완료) |
@@ -94,7 +94,7 @@
 - `questionTypeName`
 - `targetLevel` / `difficultyLevel`(1~6)
 - `situationSummary` / `scenarioType`
-- `serviceStatus`(노출 상태 — legacy 소스는 null이며 `미지정` 표시)
+- `serviceStatus`(노출 상태 — null/불완전 응답은 `미지정` 표시)
 - `institutionExposure`(기관 노출 매핑 수와 전역 노출 상태 기준 실제 미노출 여부)
 - `recommendationKeys`
 - `updatedAt`
@@ -116,8 +116,7 @@
 ### 6.3 문항 상세 페이지 데이터
 
 - 데이터 소스는 facade 스위치(`question-bank-data-source.ts`)가 결정한다:
-  - `topik_writing`(현행 기본값 — 재정의 P3 컷오버 완료) — 신규 스키마(`topik_writing_51/52/53/54_questions` + `question_source_map`, 주제 마스터·태그) 읽기.
-  - `legacy`(롤백 경로 — env `VITE_QUESTION_BANK_SOURCE=legacy`) — v13 `problems` 읽기를 신규 화면 모델로 매핑하는 읽기 전용 어댑터. P4 종료까지 봉인 보존.
+  - `topik_writing`(Supabase 구성 시 유일한 운영 경로) — 신규 스키마(`topik_writing_51/52/53/54_questions` + `question_source_map`, 주제 마스터·태그) 읽기.
   - `mock` — Supabase 미구성/`VITE_SUPABASE_DISABLED` 시 결정적 픽스처(D-12).
 - 공통 메타데이터(수신값, 조회 전용)
   - 주제 축(`topic_main`/`topic_detail`, 보조 주제), 유형(`question_type_name`), 급수/난이도, 시나리오 유형, 상황 요약, 학습 목표, 문항 본문, 모범답안, 추천 키
@@ -138,7 +137,7 @@
 
 | 항목 | 계약 | 비고 |
 | --- | --- | --- |
-| 노출 상태(`service_status`) | `available`(노출 가능) / `excluded`(노출 제외) / `internal_test`(내부 테스트, 기본값) | 유일한 물리 노출 상태(D-6). 이 통합 페이지에서 표시·전환한다. legacy 소스 행은 값이 없어 `미지정` 표시 |
+| 노출 상태(`service_status`) | `available`(노출 가능) / `excluded`(노출 제외) / `internal_test`(내부 테스트, 기본값) | 유일한 물리 노출 상태(D-6). 이 통합 페이지에서 표시·전환하며 null/불완전 응답은 `미지정` 표시 |
 | 태그 | `tag_master` 사전 기반 `question_tags` 활성 태그 | 문항 품질·상태 표현은 태그로만 한다. 부여/제거는 이 통합 페이지 책임(P4 개방 완료 — 2026-06-11, 2026-06-23 통합) |
 | `auto_checks_passed` | 수신·적재 자동 정합 검사 표식 | 존치 — 검수 개념과 무관한 적재 검증값 |
 | `content_team_memo` | 수신 메타데이터 | admin 쓰기 없음. 구 검수 메모 쓰기 경로는 재정의 P3에서 제거 완료(상세 `문항 상태` 카드에 읽기 전용 표시) |
@@ -197,17 +196,16 @@
   - `src/features/assessment/model/assessment-question-bank-schema.ts`
   - `src/features/assessment/model/assessment-question-bank-presenter.ts`
   - `src/features/assessment/model/use-assessment-question-list.ts` / `use-assessment-question-filters.ts` / `use-question-bank-masters.ts`
-  - `src/features/assessment/api/question-bank-data-source.ts` (P3 컷오버 스위치 — 기본 `topik_writing`, 롤백 env `VITE_QUESTION_BANK_SOURCE=legacy`)
+  - `src/features/assessment/api/question-bank-data-source.ts` (Supabase 구성 여부만 판별: 운영 `topik_writing` / 미구성 `mock`)
   - `src/features/assessment/api/assessment-question-bank-service.ts` (facade)
   - `src/features/assessment/api/topik-writing-question-bank-service.ts` (신규 스키마)
-  - `src/features/assessment/api/supabase-assessment-question-bank-service.ts` (legacy `problems` 어댑터)
   - `src/features/assessment/api/mock-question-bank-service.ts` (D-12 모크)
 
 ## 12. 오픈 이슈
 
 - **외부 공급 API 미개발 — 수신 경로 미구현.** 문제 발원인 외부(공급) API가 아직 개발되지 않아 admin의 수신·적재 경로(및 `question_received` 감사 액션)는 미구현이다. 공급 계약은 요청 문서(`docs/requests/upstream-writing-endpoints-request-2026-06-10.md`, D-11 재정의)로 추진하며, 그동안 신규 공급 없이 백필 466행(초기 코퍼스)만 조회된다.
 - 검수 표면 제거(재정의 P3 구현 범위)는 완료됐다(`202f905`): 페이지 제목·요약 카드(검수 상태 축)·목록 검수 상태 컬럼·`reviewStatus` 파라미터·상세 검수 메모 카드·검수 액션 3종·검수 라우트 명칭 전부 제거·개명 완료. 검수 4컬럼 물리 제거 마이그레이션 `0013`도 적용 완료됐다(2026-06-11 — 스냅샷 4테이블 검수 컬럼 0건·뷰 16컬럼·RPC 검수 참조 0건).
-- 데이터 소스 스위치 기본값은 `topik_writing`이다(재정의 P3 컷오버 완료 — freeze→델타 재적재→발산 0건 대사 후 플립). 롤백은 env `VITE_QUESTION_BANK_SOURCE=legacy`이며, legacy 행은 `service_status` 소스가 없어 노출 상태가 `미지정`으로 표시된다.
+- Supabase 구성 환경의 데이터 소스는 `topik_writing` 하나다(재정의 P3 컷오버 완료 — freeze→델타 재적재→발산 0건 대사 후 플립). 최종 canonical 전환에서 env 기반 legacy 롤백과 `problems` adapter를 삭제했다.
 - 목록의 조회 축은 재정의 P3에서 확정·구현됐다(노출 상태 컬럼 추가, 요약 카드는 번호별 건수 축). P4(2026-06-11)는 관리 페이지의 태그 편집·노출 write를 개방했고, 이 목록 페이지의 태그 컬럼/필터(`tag` 예약 키)·노출 상태·태그 축 요약 카드 확장은 후속 검토 범위로 남는다(P5 마스터 surface와 함께 판단).
 - v13 사용자 기능의 신규 스키마 소비 경로 전환(현재 v13은 `problems`를 읽음)은 별도 트랙이며, EPS TOPIK / 레벨 테스트 편성 화면의 문항 소비 계약도 여전히 별도 후속 문서가 필요하다.
 - Supabase 미설정 시 JSON fallback 대신 명시적 mock 모드, 조회 실패 시 error/retry 상태를 노출한다.
