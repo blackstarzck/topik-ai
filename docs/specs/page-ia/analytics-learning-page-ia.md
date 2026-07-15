@@ -85,7 +85,9 @@
 - 집계 RPC: `get_admin_learning_analytics_filtered(...)`.
 - 필터 옵션 RPC: `get_admin_learning_analytics_filter_options()`.
 - 두 RPC는 `private.is_admin()` + `SECURITY DEFINER` read-only 계약이며 개인 식별자와 민감 본문을 반환하지 않습니다.
-- 제출의 `problem_id`를 `topik_writing_question_source_map.legacy_problem_id`에 연결하고 `topik_writing_question_recommendation_view`의 `topic_main/topic_detail`을 주제 SoT로 사용합니다. 구 `problems.tags`는 주제 필터 SoT로 사용하지 않습니다.
+- 기본 기간·문제 유형 통계는 제출의 `problem_id`를 `problems.id`에 연결하고 `problems.question_no`로 51~54번을 판별합니다. 따라서 신규 메타데이터 매핑이 없는 현재 제출도 학습자·제출·점수·피드백 통계에서 누락하지 않습니다.
+- 주제·세부 특성 조건과 주제별 성과는 역사 source map과 환경별 별칭을 합친 `topik_writing_problem_question_map`의 active/non-held 연결 및 `topik_writing_question_recommendation_view`를 사용합니다. 연결은 `problems.question_no = item_number`, `topic_main/topic_detail` 존재, 51~54번별 필수 세부 메타데이터 완전성을 모두 만족해야 합니다. `topic_main/topic_detail`이 주제 SoT이며 구 `problems.tags`는 사용하지 않습니다.
+- 집계 summary는 현재/직전 기간 각각 제출과 학습 이벤트의 메타데이터 대상·연결 수를 반환합니다. coverage 분모에는 기간·문제 유형만 적용하며 주제·세부 조건을 적용하지 않습니다.
 - 기존 `get_admin_learning_analytics(period_days)`는 호환성을 위해 유지하며 새 화면 facade는 filtered RPC와 filter-options RPC를 사용합니다.
 
 ## 10. 네트워크 상태와 fail-safe
@@ -93,6 +95,7 @@
 - 초기 pending은 skeleton으로 표시합니다. 조건 재조회 중에는 마지막 성공 결과를 유지하고 갱신 상태를 표시합니다.
 - success와 empty를 구분하고, 0·미수집·귀속 불가를 서로 다른 상태로 렌더합니다.
 - error 시 마지막 성공 결과를 유지하며 오류 안내와 재시도를 제공합니다.
+- 메타데이터 coverage가 100% 미만이면 현재 제출·직전 제출·현재 이벤트·직전 이벤트를 별도 경고하고 `연결 N건 / 대상 M건`을 표시합니다. coverage 필드 누락, 음수, mapped가 eligible보다 큰 응답은 0으로 간주하지 않고 재시도 액션이 있는 계약 오류로 표시합니다.
 - 새 조건 적용 시 이전 요청을 취소하고 최신 요청 결과만 반영합니다.
 
 ## 11. 다른 화면 영향
@@ -108,8 +111,8 @@
 
 - 페이지: `src/features/analytics/pages/analytics-learning-page.tsx`.
 - 서비스: `src/features/analytics/api/analytics-learning-service.ts`.
-- 신규 마이그레이션은 `supabase/migrations-admin/`와 동일 이름의 `down/` 파일로 관리하고 기존 v13 소유 테이블 DDL은 변경하지 않습니다.
-- e2e는 조건 draft/apply/reset, URL 복원, 모든 분석 섹션의 동일 필터 적용, 지표 사전·공유·CSV, pending/empty/error fallback을 검증합니다.
-- 소요 시간·PDF 귀속 커버리지가 낮으면 표본과 커버리지를 표시하며 값을 임의 보정하지 않습니다.
+- 환경별 별칭 스키마는 `supabase/migrations/20260713072205_topik_writing_problem_alias.sql`, 집계 RPC는 `supabase/migrations-admin/20260713120000_admin_learning_analytics_metadata_coverage.sql`과 각 down 파일로 관리하며 기존 v13 소유 테이블 DDL은 변경하지 않습니다.
+- e2e는 조건 draft/apply/reset, URL 복원, 모든 분석 섹션의 동일 필터 적용, 지표 사전·공유·CSV, pending/empty/error fallback을 검증합니다. live 검증은 dev DB의 KST 날짜 경계를 독립 SQL로 계산하고 기간 5종, 비교 켬/끔과 직전 동일 기간, 51~54번, 대주제 단독·주제 2단계·의도적 0건 주제 조합, 번호별 세부 필드 10종, 같은 필드 OR, 필드 간 AND, 문항+주제+세부 조건 교차 AND, Drawer 실제 적용을 대조합니다. 각 조건의 제출 KPI뿐 아니라 문제 유형 비교·점수 분포·주제 성과·PDF 분석 화면과 취약 평가 차원 RPC 계약도 같은 독립 SQL scope와 비교합니다.
+- 소요 시간·PDF 귀속·메타데이터 연결 커버리지가 낮으면 표본과 커버리지를 표시하며 값을 임의 보정하지 않습니다.
 - 취약 평가 영역(평가 차원) 섹션은 2026-07-15 오너 지시로 화면·CSV·프론트 계약에서 제거했습니다. 집계 RPC의 `weak_dimensions`·차원 커버리지 필드는 유지되며 프론트가 무시합니다.
 - 적용 조건 요약 바(조건 초기화·조건 변경)도 2026-07-15 오너 지시로 제거했습니다. 적용 조건 확인·변경·초기화는 헤더 `분석 조건 N` 버튼으로 여는 Drawer(적용될 조건 태그, 초기화 → 분석 적용)가 담당합니다.

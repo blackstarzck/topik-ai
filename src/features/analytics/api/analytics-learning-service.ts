@@ -38,6 +38,23 @@ export type LearningAnalyticsSummary = {
   activeEventsTotal: number;
   activeEventsAttributed: number;
   activeEventAttributionRate: number | null;
+  dimensionCoverageSubmissions: number;
+  metadataEligibleSubmissions: number | null;
+  metadataMappedSubmissions: number | null;
+  metadataUnmappedSubmissions: number | null;
+  metadataCoverageRate: number | null;
+  metadataEligibleSubmissionsPrev: number | null;
+  metadataMappedSubmissionsPrev: number | null;
+  metadataUnmappedSubmissionsPrev: number | null;
+  metadataCoverageRatePrev: number | null;
+  metadataEligibleEvents: number | null;
+  metadataMappedEvents: number | null;
+  metadataEventCoverageRate: number | null;
+  metadataEligibleEventsPrev: number | null;
+  metadataMappedEventsPrev: number | null;
+  metadataEventCoverageRatePrev: number | null;
+  metadataEligibleProblems: number | null;
+  metadataMappedProblems: number | null;
 };
 
 export type LearningAnalyticsQuestionStat = {
@@ -133,6 +150,39 @@ const emptyPdfUsage: LearningAnalyticsPdfUsage = {
   perQuestion: []
 };
 
+const metadataCoverageKeys = [
+  'metadataEligibleSubmissions',
+  'metadataMappedSubmissions',
+  'metadataUnmappedSubmissions',
+  'metadataCoverageRate',
+  'metadataEligibleSubmissionsPrev',
+  'metadataMappedSubmissionsPrev',
+  'metadataUnmappedSubmissionsPrev',
+  'metadataCoverageRatePrev',
+  'metadataEligibleEvents',
+  'metadataMappedEvents',
+  'metadataEventCoverageRate',
+  'metadataEligibleEventsPrev',
+  'metadataMappedEventsPrev',
+  'metadataEventCoverageRatePrev',
+  'metadataEligibleProblems',
+  'metadataMappedProblems'
+] as const satisfies ReadonlyArray<keyof LearningAnalyticsSummary>;
+
+function normalizeLearningAnalyticsSummary(
+  summary: LearningAnalyticsSummary
+): LearningAnalyticsSummary {
+  const source = summary as unknown as Record<string, unknown>;
+  const coverage = Object.fromEntries(
+    metadataCoverageKeys.map((key) => {
+      const value = source[key];
+      return [key, typeof value === 'number' && Number.isFinite(value) ? value : null];
+    })
+  ) as Pick<LearningAnalyticsSummary, (typeof metadataCoverageKeys)[number]>;
+
+  return { ...summary, ...coverage };
+}
+
 export function fetchLearningAnalyticsSafe(
   query: LearningAnalyticsQuery,
   signal?: AbortSignal
@@ -165,7 +215,7 @@ export function fetchLearningAnalyticsSafe(
       throw new Error('학습 분석 응답이 비어 있습니다.');
     }
     return {
-      summary: row.summary,
+      summary: normalizeLearningAnalyticsSummary(row.summary),
       perQuestion: row.per_question ?? [],
       scoreDistribution: row.score_distribution ?? [],
       topicStats: row.topic_stats ?? [],
@@ -381,6 +431,42 @@ export function createMockLearningAnalytics(
   );
   const activeEventsAttributed = round(submissions * 1.18);
   const activeEventsTotal = activeEventsAttributed + Math.max(2, round(scale * 17));
+  const submissionsPrev = compareEnabled ? round(submissions / 1.08) : null;
+  const metadataEligibleEventsPrev = compareEnabled
+    ? round(activeEventsAttributed / 1.08)
+    : null;
+  const usePartialCoverageFixture =
+    import.meta.env.VITE_ANALYTICS_METADATA_COVERAGE_FIXTURE === 'partial';
+  const metadataUnmappedSubmissions = usePartialCoverageFixture
+    ? Math.max(1, round(submissions * 0.04))
+    : 0;
+  const metadataMappedSubmissions = Math.max(
+    0,
+    submissions - metadataUnmappedSubmissions
+  );
+  const metadataUnmappedSubmissionsPrev =
+    usePartialCoverageFixture && submissionsPrev != null
+      ? Math.max(1, round(submissionsPrev * 0.04))
+      : 0;
+  const metadataMappedSubmissionsPrev =
+    submissionsPrev == null
+      ? null
+      : Math.max(0, submissionsPrev - metadataUnmappedSubmissionsPrev);
+  const metadataUnmappedEvents = usePartialCoverageFixture
+    ? Math.max(1, round(activeEventsAttributed * 0.03))
+    : 0;
+  const metadataMappedEvents = Math.max(
+    0,
+    activeEventsAttributed - metadataUnmappedEvents
+  );
+  const metadataUnmappedEventsPrev =
+    usePartialCoverageFixture && metadataEligibleEventsPrev != null
+      ? Math.max(1, round(metadataEligibleEventsPrev * 0.03))
+      : 0;
+  const metadataMappedEventsPrev =
+    metadataEligibleEventsPrev == null
+      ? null
+      : Math.max(0, metadataEligibleEventsPrev - metadataUnmappedEventsPrev);
   const processingSamples = feedbackComplete;
   const totalPdfExports = pdfExports + Math.max(1, round(scale * 15));
 
@@ -439,7 +525,7 @@ export function createMockLearningAnalytics(
       activeLearnersPrev: compareEnabled ? round(activeLearners / 1.079) : null,
       submitters: perQuestion.reduce((sum, row) => sum + row.submitters, 0),
       submissions,
-      submissionsPrev: compareEnabled ? round(submissions / 1.08) : null,
+      submissionsPrev,
       feedbackComplete,
       completionRate,
       completionRatePrev: compareEnabled && completionRate != null ? round(completionRate - 2.7, 1) : null,
@@ -462,7 +548,40 @@ export function createMockLearningAnalytics(
       pdfExportsPrev: compareEnabled ? round(pdfExports / 1.136) : null,
       activeEventsTotal,
       activeEventsAttributed,
-      activeEventAttributionRate: round((activeEventsAttributed / activeEventsTotal) * 100, 1)
+      activeEventAttributionRate: round((activeEventsAttributed / activeEventsTotal) * 100, 1),
+      dimensionCoverageSubmissions: round(feedbackComplete * 0.82),
+      metadataEligibleSubmissions: submissions,
+      metadataMappedSubmissions,
+      metadataUnmappedSubmissions,
+      metadataCoverageRate:
+        submissions > 0 ? round((metadataMappedSubmissions / submissions) * 100, 1) : null,
+      metadataEligibleSubmissionsPrev: submissionsPrev,
+      metadataMappedSubmissionsPrev,
+      metadataUnmappedSubmissionsPrev: submissionsPrev == null
+        ? null
+        : metadataUnmappedSubmissionsPrev,
+      metadataCoverageRatePrev:
+        submissionsPrev != null && submissionsPrev > 0 && metadataMappedSubmissionsPrev != null
+          ? round((metadataMappedSubmissionsPrev / submissionsPrev) * 100, 1)
+          : null,
+      metadataEligibleEvents: activeEventsAttributed,
+      metadataMappedEvents,
+      metadataEventCoverageRate:
+        activeEventsAttributed > 0
+          ? round((metadataMappedEvents / activeEventsAttributed) * 100, 1)
+          : null,
+      metadataEligibleEventsPrev,
+      metadataMappedEventsPrev,
+      metadataEventCoverageRatePrev:
+        metadataEligibleEventsPrev != null &&
+        metadataEligibleEventsPrev > 0 &&
+        metadataMappedEventsPrev != null
+          ? round((metadataMappedEventsPrev / metadataEligibleEventsPrev) * 100, 1)
+          : null,
+      metadataEligibleProblems: query.questions.length,
+      metadataMappedProblems: usePartialCoverageFixture
+        ? Math.max(0, query.questions.length - 1)
+        : query.questions.length
     },
     perQuestion,
     scoreDistribution,

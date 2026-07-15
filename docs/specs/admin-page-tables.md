@@ -466,12 +466,13 @@
 ## 28-1) Analytics > 학습 분석
 
 - 현재 상태: 구현됨. `/analytics/learning`, `analytics.read`, 조회 전용.
-- source: `get_admin_learning_analytics_filtered(...)` 집계 RPC + `get_admin_learning_analytics_filter_options()` 필터 옵션 RPC. 기존 `get_admin_learning_analytics(period_days)`는 호환용으로 유지합니다.
+- source: `get_admin_learning_analytics_filtered(...)` 집계 RPC + `get_admin_learning_analytics_filter_options()` 필터 옵션 RPC. 주제·세부 특성 연결은 `topik_writing_problem_question_map` 통합 뷰를 사용하고 기존 `get_admin_learning_analytics(period_days)`는 호환용으로 유지합니다.
 - 필터: 최근 7/30/90일·전체·직접 날짜, 이전 동일 기간 비교, 문제 유형 51~54, `topic_main → topic_detail`, 단일 문제 유형의 세부 특성. 같은 문제 유형/세부 필드 안은 OR, 서로 다른 필터 축은 AND입니다.
 - KPI: 학습 활성 사용자, 제출 수, 피드백 완료율, 평균 환산 점수, 피드백 조회율, 평균 풀이 시간, 처리 시간 중앙값, PDF 내보내기 완료 수. 지표 사전에서 계산식·표본·커버리지·비교 기준을 확인합니다.
 - 문제 유형별 비교 컬럼: 문제 유형, 학습자, 제출자, 제출 수, 완료율, 평균 환산 점수, 조회율, 풀이 시간, 재제출률, PDF 내보내기 수.
 - 보조 블록: 4구간 점수 분포(차트/표), 주제별 성과, PDF 사용 분석(직접 귀속/혼합/미분류/귀속률). 취약 평가 차원 블록은 2026-07-15 오너 지시로 제거.
-- 액션: 분석 조건 적용·초기화, 지표 사전, 현재 조건 URL 공유, 현재 결과 CSV 내보내기, 오류 재시도. 데이터 변경과 감사 로그는 없습니다.
+- 액션: 분석 조건 적용·초기화, 지표 사전, 현재 조건 URL 공유, 현재 결과 CSV 내보내기, 데이터 오류·coverage 계약 오류 재시도. 데이터 변경과 감사 로그는 없습니다.
+- 연결 상태: summary의 현재/직전 제출·이벤트 메타데이터 대상/연결 수를 비교해 100% 미만인 범위만 별도 Alert로 표시합니다. 연결 필드 누락 또는 비정상 cardinality는 통계 계약 오류로 표시합니다.
 - URL 복원: `period`, `from`, `to`, `compare`, 반복 `question`, `topicMain`, `topicDetail`, 반복 `d.<field>`.
 
 ## 29) 시스템 > 관리자 계정

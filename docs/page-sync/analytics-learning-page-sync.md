@@ -52,6 +52,8 @@ last_reviewed_at: "2026-07-15"
 | LearningAnalyticsFilterOptions | `get_admin_learning_analytics_filter_options()` | Read | 주제 계층, 유형별 세부 특성 | 내부 전용 | 신규 TOPIK 쓰기 메타데이터를 read-only 참조 |
 
 - Create/Update/Delete는 지원하지 않습니다. Read 실패 시 마지막 성공 결과와 재시도를 제공합니다.
+- 기본 기간·문제 유형 집계는 `problems.question_no`를 사용해 메타데이터 미매핑 제출도 포함합니다. 주제·세부 특성 필터와 주제별 성과는 역사 source map과 환경별 별칭을 합친 `topik_writing_problem_question_map` 중 active/non-held이고 문제 번호·대주제·세부 주제·번호별 필수 메타데이터가 모두 일치하는 연결만 사용합니다.
+- 집계 summary는 현재/직전 기간의 제출·학습 이벤트 메타데이터 대상 수와 연결 수를 별도로 반환합니다. 대상이 있는데 100% 미만이면 화면이 네 범위를 구분해 경고하며, 연결 상태 필드가 없으면 통계 계약 오류를 표시합니다.
 
 ## 6. 관리자 조치와 감사 로그 계약
 

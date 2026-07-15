@@ -220,9 +220,11 @@
 | `writing_submissions`, `writing_feedback`, `feedback_dimension_scores`, `writing_submission_metrics` | v13 | v13 writing flow | `get_admin_learning_analytics_filtered` | read-only aggregate. 답안·문장 첨삭 본문과 개인 식별자 미반환. |
 | `study_events` | v13 | v13 telemetry | `get_admin_learning_analytics_filtered` | 귀속 가능한 학습 이벤트와 `export_downloaded` 집계만 사용. payload 원문 미반환. |
 | `topik_writing_question_source_map`, `topik_writing_question_recommendation_view` 및 기반 `topik_writing_51/52/53/54_questions` | topik_writing domain (this repo) | topik_writing migration/ETL | `get_admin_learning_analytics_filtered`, `get_admin_learning_analytics_filter_options` | 문제 유형·주제·세부 특성 read-only 참조. 기존 v13 테이블 DDL 무변경. |
+| `topik_writing_problem_aliases`, `topik_writing_problem_question_map` | topik_writing domain (this repo) | topik_writing migration + exact-match reconciliation ETL | `get_admin_learning_analytics_filtered` | 환경 재시드로 달라진 현재 `problems.id`를 canonical question에 추가 연결한다. 기존 source map 재바인딩과 v13 `problems` DDL/DML은 금지하며, 수동 `held` 별칭은 별도 승인 없이 재활성화하지 않는다. |
 
 - 두 신규 admin RPC의 migration home은 `supabase/migrations-admin/`와 같은 이름의 `down/` 파일이며 tracker는 `admin_schema_migrations`다.
 - `private.is_admin()` + `SECURITY DEFINER` read-only 경계를 사용하고, topik_writing 객체의 소유권이나 쓰기 경로를 admin Analytics로 이전하지 않는다.
+- 별칭 edge는 자체 `mapping_status`/`hold_reason`을 가지며 역사 source-map hold를 상속하거나 덮어쓰지 않는다. 적용 전후 보호 데이터 hash, 1 problem→1 question, 고아 별칭, 필수 메타데이터 coverage를 별도 gate로 검증한다.
 
 ## 2026-07-07 기관 초대(동의 기반 소속 배정) 경계 기록
 

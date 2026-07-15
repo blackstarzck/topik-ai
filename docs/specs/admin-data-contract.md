@@ -932,9 +932,11 @@
 - 기존 `get_admin_learning_analytics(period_days)`는 호환용으로 유지하고 `/analytics/learning`의 신규 facade는 두 확장 RPC를 사용한다.
 - 집계 입력은 KST 날짜 범위, 이전 동일 기간 비교 여부, 문제 유형 51~54 배열, `topic_main/topic_detail`, 유형별 세부 조건 JSON이다. 화면 기본값은 최근 30일·51~54 전체·이전 기간 비교다.
 - 문제 유형 배열과 같은 세부 필드 안의 값은 OR, 날짜·문제 유형·주제·서로 다른 세부 필드 사이는 AND다. `전체` 기간은 이전 기간 비교를 반환하지 않는다.
-- 제출 `problem_id`는 `topik_writing_question_source_map.legacy_problem_id`를 통해 신규 문항 메타데이터에 연결하고 `topik_writing_question_recommendation_view.topic_main/topic_detail`을 주제 SoT로 사용한다. 구 `problems.tags`는 주제 필터 SoT가 아니다.
+- 기본 기간·문제 유형 집계는 제출 `problem_id → problems.id`와 `problems.question_no`를 사용해 신규 메타데이터가 없는 현재 제출도 포함한다. 주제·세부 특성 조건과 주제별 성과는 역사 `topik_writing_question_source_map`과 환경별 `topik_writing_problem_aliases`를 합친 `topik_writing_problem_question_map` 중 active/non-held이고 문제 번호·대주제·세부 주제·번호별 필수 세부 메타데이터가 완전한 연결만 사용하며, `topik_writing_question_recommendation_view.topic_main/topic_detail`이 주제 SoT다. 구 `problems.tags`는 주제 필터 SoT가 아니다.
 - 학습 활성 사용자는 `submission_id` 또는 `problem_id`로 현재 분석 범위에 귀속 가능한 `study_events`의 고유 사용자다. 귀속 불가능 이벤트는 임의 배분하지 않고 커버리지로 반환한다.
 - 반환 블록은 적용 범위 메타데이터, 8개 KPI와 이전 기간·표본·커버리지, 문제 유형별 비교, 4구간 점수 분포, 문제 유형별 표준 평가 차원, 주제별 성과, PDF 사용 분석이다. 개인 식별자·답안 원문·문장 첨삭 본문은 반환하지 않는다. 화면의 취약 평가 영역 섹션은 2026-07-15 오너 지시로 제거되어 `weak_dimensions`(및 summary의 차원 커버리지)는 RPC가 반환하지만 화면·CSV가 사용하지 않는다.
+- summary의 메타데이터 연결 계약은 `metadataEligible/Mapped/UnmappedSubmissions`, 각 `Prev`, `metadataEligible/MappedEvents`, 각 `Prev`, 제출·이벤트 coverage rate, `metadataEligible/MappedProblems`다. coverage 분모는 기간·문제 유형까지만 적용하고 주제·세부 조건으로 축소하지 않아 필터가 미매핑 행을 숨기지 못하게 한다.
+- 배포 전 coverage gate는 target/expected project ref를 모두 명시하고, 모든 metric이 비음수 정수이며 `mapped <= eligible`인지 fail-closed로 확인한 뒤 100% 연결을 요구한다. 환경 별칭 reconciliation은 기존 `held` 상태를 자동 해제하지 않고, apply/restore에서 대상 cardinality와 source-map anchor 생성·제거를 검증한다.
 - `PDF 내보내기 완료 수`는 `study_events.event_type='export_downloaded'` 건수이며 실제 파일 저장 완료를 의미하지 않는다. 단일 제출만 문제 유형/주제로 직접 귀속하고 확정할 수 없는 보고서·서재 선택은 `혼합` 또는 `미분류`로 보존한다.
 - 필터 옵션 RPC는 `topic_main → topic_detail`과 51~54번별 세부 특성의 distinct 옵션만 반환한다. 두 RPC 모두 `private.is_admin()` + `SECURITY DEFINER` read-only 계약을 따른다.
 - 2026-07-15: `topic_stats`를 문제 유형(51~54) × `topic_main` × `topic_detail` 단위로 분해해 각 행에 `questionNo`를 포함한다(마이그 `20260715130000`, 함수 본문만 교체, dev 적용). 정렬은 주제쌍 제출 합계 내림차순 → 대주제 → 세부 주제 → 문제 유형.
