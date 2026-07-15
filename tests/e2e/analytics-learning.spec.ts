@@ -38,6 +38,7 @@ test('학습 분석 기본 대시보드가 8개 KPI와 전체 분석 섹션을 �
   const pdfCompositionSection = pdfPanel.locator('.pdf-composition');
   const pdfHierarchySection = pdfPanel.locator('.pdf-hierarchy');
   const pdfStats = pdfPanel.locator('.pdf-usage-stats');
+  const pdfCompositionChart = pdfPanel.locator('.pdf-composition-chart');
   const pdfComposition = pdfPanel.getByRole('img', {
     name: /PDF 내보내기 완료 전체 .*건의 구성/
   });
@@ -57,74 +58,115 @@ test('학습 분석 기본 대시보드가 8개 KPI와 전체 분석 섹션을 �
     await expect(pdfStats.getByText(label, { exact: true })).toBeVisible();
   }
 
-  const [pdfCompositionSectionBox, pdfHierarchySectionBox, pdfStatsBox, pdfCompositionBox] = await Promise.all([
+  const [
+    pdfCompositionSectionBox,
+    pdfHierarchySectionBox,
+    pdfStatsBox,
+    pdfCompositionChartBox,
+    pdfCompositionBox
+  ] = await Promise.all([
     pdfCompositionSection.boundingBox(),
     pdfHierarchySection.boundingBox(),
     pdfStats.boundingBox(),
+    pdfCompositionChart.boundingBox(),
     pdfComposition.boundingBox()
   ]);
   expect(pdfCompositionSectionBox).not.toBeNull();
   expect(pdfHierarchySectionBox).not.toBeNull();
   expect(pdfStatsBox).not.toBeNull();
+  expect(pdfCompositionChartBox).not.toBeNull();
   expect(pdfCompositionBox).not.toBeNull();
   expect(pdfCompositionSectionBox!.x).toBeLessThan(pdfHierarchySectionBox!.x);
   expect(Math.abs(pdfCompositionSectionBox!.y - pdfHierarchySectionBox!.y)).toBeLessThanOrEqual(1);
   expect(pdfCompositionSectionBox!.width).toBeLessThan(pdfHierarchySectionBox!.width);
   expect(Math.abs(pdfCompositionSectionBox!.height - pdfHierarchySectionBox!.height)).toBeLessThanOrEqual(1);
-  expect(pdfStatsBox!.y).toBeLessThan(pdfCompositionBox!.y);
+  expect(Math.abs(pdfStatsBox!.height - pdfCompositionChartBox!.height)).toBeLessThanOrEqual(1);
+  expect(pdfStatsBox!.y + pdfStatsBox!.height).toBeLessThanOrEqual(pdfCompositionChartBox!.y + 1);
+  expect(Math.abs(
+    (pdfCompositionChartBox!.y + pdfCompositionChartBox!.height / 2)
+      - (pdfCompositionBox!.y + pdfCompositionBox!.height / 2)
+  )).toBeLessThanOrEqual(1);
+  await expect(pdfStats).toHaveCSS('align-content', 'center');
   await expect(page.getByText('51~54번 전체').first()).toBeVisible();
   await expect(page.locator('[data-testid^="metadata-coverage-warning-"]')).toHaveCount(0);
   await expect(page.getByTestId('metadata-coverage-unavailable')).toHaveCount(0);
 });
 
-test('같은 행의 분석 표는 카드 본문의 남는 높이를 채우고 작은 화면에서는 자연 높이로 돌아간다', async ({ page }) => {
+test('문제 유형 분석 행은 자식 카드의 자연 높이를 포함하고 다음 섹션과 겹치지 않는다', async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 900 });
   await page.goto('/analytics/learning');
 
   const comparisonRow = page.locator('.analytics-analysis-row--table-panels');
   const comparisonPanel = comparisonRow.locator('.question-comparison-panel');
   const distributionPanel = comparisonRow.locator('.score-distribution-panel');
+  const nextAnalysisRow = page.locator('.analytics-analysis-row--single').first();
   await distributionPanel.getByText('표', { exact: true }).click();
 
   const comparisonBody = comparisonPanel.locator(':scope > .ant-card-body');
-  const comparisonTable = comparisonPanel.locator('.analytics-fill-table');
+  const comparisonTable = comparisonPanel.locator('.question-comparison-table');
   const comparisonNote = comparisonPanel.locator('.analytics-panel-note');
-  const [comparisonPanelBox, distributionPanelBox, comparisonBodyBox, comparisonTableBox, comparisonNoteBox] = await Promise.all([
+  const distributionTable = distributionPanel.getByRole('table', { name: '문제 유형별 점수 분포 표' });
+  const [
+    comparisonRowBox,
+    comparisonPanelBox,
+    distributionPanelBox,
+    comparisonBodyBox,
+    comparisonTableBox,
+    comparisonNoteBox,
+    distributionTableBox,
+    nextAnalysisRowBox
+  ] = await Promise.all([
+    comparisonRow.boundingBox(),
     comparisonPanel.boundingBox(),
     distributionPanel.boundingBox(),
     comparisonBody.boundingBox(),
     comparisonTable.boundingBox(),
-    comparisonNote.boundingBox()
+    comparisonNote.boundingBox(),
+    distributionTable.boundingBox(),
+    nextAnalysisRow.boundingBox()
   ]);
 
+  expect(comparisonRowBox).not.toBeNull();
   expect(comparisonPanelBox).not.toBeNull();
   expect(distributionPanelBox).not.toBeNull();
   expect(comparisonBodyBox).not.toBeNull();
   expect(comparisonTableBox).not.toBeNull();
   expect(comparisonNoteBox).not.toBeNull();
-  expect(Math.abs(comparisonPanelBox!.height - distributionPanelBox!.height)).toBeLessThanOrEqual(1);
-  expect(comparisonTableBox!.height).toBeGreaterThan(comparisonBodyBox!.height * 0.8);
-  expect(Math.abs(
-    comparisonTableBox!.y + comparisonTableBox!.height + 8 - comparisonNoteBox!.y
-  )).toBeLessThanOrEqual(1);
-
-  const comparisonRowHeights = await comparisonTable.locator('tbody > tr').evaluateAll(
-    (rows) => rows.map((row) => row.getBoundingClientRect().height)
+  expect(distributionTableBox).not.toBeNull();
+  expect(nextAnalysisRowBox).not.toBeNull();
+  expect(comparisonPanelBox!.height).toBeLessThan(distributionPanelBox!.height);
+  expect(Math.abs(comparisonRowBox!.height - distributionPanelBox!.height)).toBeLessThanOrEqual(1);
+  expect(comparisonPanelBox!.y + comparisonPanelBox!.height).toBeLessThanOrEqual(
+    comparisonRowBox!.y + comparisonRowBox!.height + 1
   );
-  expect(Math.max(...comparisonRowHeights)).toBeLessThan(60);
+  expect(distributionPanelBox!.y + distributionPanelBox!.height).toBeLessThanOrEqual(
+    comparisonRowBox!.y + comparisonRowBox!.height + 1
+  );
+  expect(comparisonNoteBox!.y + comparisonNoteBox!.height).toBeLessThan(
+    comparisonPanelBox!.y + comparisonPanelBox!.height
+  );
+  expect(distributionTableBox!.y + distributionTableBox!.height).toBeLessThan(
+    distributionPanelBox!.y + distributionPanelBox!.height
+  );
+  expect(comparisonRowBox!.y + comparisonRowBox!.height).toBeLessThanOrEqual(nextAnalysisRowBox!.y);
 
   await page.setViewportSize({ width: 1024, height: 900 });
-  const [stackedComparisonPanelBox, stackedDistributionPanelBox, stackedComparisonTableBox] = await Promise.all([
+  const [stackedRowBox, stackedComparisonPanelBox, stackedDistributionPanelBox, stackedNextRowBox] = await Promise.all([
+    comparisonRow.boundingBox(),
     comparisonPanel.boundingBox(),
     distributionPanel.boundingBox(),
-    comparisonTable.boundingBox()
+    nextAnalysisRow.boundingBox()
   ]);
+  expect(stackedRowBox).not.toBeNull();
   expect(stackedComparisonPanelBox).not.toBeNull();
   expect(stackedDistributionPanelBox).not.toBeNull();
-  expect(stackedComparisonTableBox).not.toBeNull();
+  expect(stackedNextRowBox).not.toBeNull();
   expect(stackedComparisonPanelBox!.y).toBeLessThan(stackedDistributionPanelBox!.y);
   expect(stackedComparisonPanelBox!.height).toBeLessThan(stackedDistributionPanelBox!.height);
-  expect(stackedComparisonTableBox!.height).toBeLessThan(stackedComparisonPanelBox!.height);
+  expect(stackedDistributionPanelBox!.y + stackedDistributionPanelBox!.height).toBeLessThanOrEqual(
+    stackedRowBox!.y + stackedRowBox!.height + 1
+  );
+  expect(stackedRowBox!.y + stackedRowBox!.height).toBeLessThanOrEqual(stackedNextRowBox!.y);
 });
 
 test('PDF 사용 분석이 Ant Design expandable 표로 문제 유형별 주제 상세를 표시한다', async ({ page }) => {
@@ -176,6 +218,11 @@ test('PDF 사용 분석이 Ant Design expandable 표로 문제 유형별 주제 
   const topicRows51 = hierarchyTable.locator('tbody > tr[data-row-key^="pdf-topic-51-"]');
   const initialTopicCount = await topicRows51.count();
   expect(initialTopicCount).toBeGreaterThan(0);
+  await expect(hierarchyTable.getByText(/^\d+위$/)).toHaveCount(0);
+  const topicMainLabels51 = await topicRows51.evaluateAll((rows) => Array.from(new Set(
+    rows.map((row) => row.querySelector('td:nth-child(2)')?.textContent?.trim() ?? '주제 미연결')
+  )));
+  await expect(question51Row.getByRole('cell').nth(1)).toHaveText(String(topicMainLabels51.length));
   const topicCounts51 = await topicRows51.evaluateAll((rows) => rows.map((row) => {
     const countLabel = row.querySelector('.pdf-hierarchy-count strong')?.textContent ?? '0';
     return Number(countLabel.replace(/[^0-9]/g, ''));

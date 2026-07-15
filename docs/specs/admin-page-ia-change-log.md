@@ -15,6 +15,9 @@
 
 | Date | Page | Change Type | Updated Files | Summary |
 | --- | --- | --- | --- | --- |
+| 2026-07-16 | `Analytics > 학습 분석` | PDF 주제 수·파이 영역 정렬 | `docs/specs/page-ia/analytics-learning-page-ia.md`, `docs/specs/admin-page-tables.md` | 계층표 부모 행은 나열하던 고유 대주제를 단위 없는 숫자 개수로 축약했다. 데스크톱 `전체 구성 비율`은 제목 아래 KPI·차트 영역을 같은 높이로 나누고 각각 세로 중앙 정렬해 파이를 하단 절반에 배치하며, 1024px 이하의 자연 높이는 유지한다. |
+| 2026-07-16 | `Analytics > 학습 분석` | PDF 계층표 주제 요약·순위 라벨 정리 | `docs/specs/page-ia/analytics-learning-page-ia.md`, `docs/specs/admin-page-tables.md` | `문제 유형별 구성과 주제 상세`의 부모 행은 `n개 주제` 대신 고유 대주제를 가운데점으로 모두 나열하고, 확장된 주제 자식 행의 `1위`, `2위` 라벨은 제거했다. 완료 수 내림차순 정렬, 문제 유형 색상 표식, 주제·건수 정보와 확장 동작은 유지한다. |
+| 2026-07-16 | `Analytics > 학습 분석` | 문제 유형 분석 카드 자연 높이 복원 | `docs/specs/page-ia/analytics-learning-page-ia.md`, `docs/specs/admin-page-tables.md` | 문제 유형별 비교·점수 분포 카드의 데스크톱 강제 동일 높이와 표 wrapper 높이 채움을 제거했다. 각 카드는 자식 콘텐츠의 자연 높이를 사용하고 부모 분석 행은 더 큰 자식 높이를 포함한 뒤 다음 섹션을 배치한다. |
 | 2026-07-15 | `Analytics > 학습 분석` | 분석 섹션 내부 높이 정렬 | `docs/specs/page-ia/analytics-learning-page-ia.md`, `docs/specs/admin-page-tables.md` | 데스크톱에서 문제 유형별 비교 표 viewport가 같은 행의 점수 분포 카드 높이에 맞춰 카드 본문의 남는 공간을 채우고, PDF 사용 분석의 좌우 내부 섹션 하단도 맞도록 정렬했다. 표 행 밀도는 유지하며 1024px 이하 세로 전환에서는 강제 높이를 해제한다. |
 | 2026-07-15 | `Analytics > 학습 분석` | PDF 범례 카드·테이블 행 배경 제거 | `docs/specs/page-ia/analytics-learning-page-ia.md`, `docs/specs/admin-page-tables.md` | 첨부 화면의 파이 하단 6개 범례 카드를 제거하고, 문제 유형별 구성·주제 상세 계층표의 헤더·부모·자식·혼합/미분류·hover 배경을 투명하게 통일했다. 파이 접근성 설명과 표의 색상 표식·확장 동작은 유지한다. |
 | 2026-07-15 | `Analytics > 학습 분석` | PDF 전체 구성 파이 차트 전환 | `docs/specs/page-ia/analytics-learning-page-ia.md`, `docs/specs/admin-page-tables.md` | 좌측 `전체 구성 비율` 하단의 누적 막대를 파이 차트로 교체하고 51~54번·혼합·미분류의 색상, 건수, 비율을 함께 읽을 수 있는 6개 범례를 고정했다. 0건 항목도 범례에서 유지한다. |

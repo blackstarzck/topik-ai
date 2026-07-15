@@ -412,7 +412,6 @@ type PdfUsageHierarchyRow = {
   count: number;
   color: string;
   questionNo: LearningQuestionNo | null;
-  rank: number | null;
   topicMain: string | null;
   topicDetail: string | null;
   children?: PdfUsageHierarchyRow[];
@@ -778,14 +777,13 @@ export default function AnalyticsLearningPage(): JSX.Element {
       const color = pdfQuestionColors[question.questionNo];
       const children = data.pdfUsage.perTopic
         .filter((topic) => topic.questionNo === question.questionNo)
-        .map<PdfUsageHierarchyRow>((topic, rank) => ({
+        .map<PdfUsageHierarchyRow>((topic) => ({
           key: `pdf-topic-${topic.questionNo}-${topic.topicMain ?? 'unmapped'}-${topic.topicDetail ?? 'unmapped'}`,
           kind: 'topic',
-          label: `${rank + 1}위`,
+          label: '',
           count: topic.count,
           color,
           questionNo: topic.questionNo,
-          rank: rank + 1,
           topicMain: topic.topicMain,
           topicDetail: topic.topicDetail
         }));
@@ -797,7 +795,6 @@ export default function AnalyticsLearningPage(): JSX.Element {
         count: question.count,
         color,
         questionNo: question.questionNo,
-        rank: null,
         topicMain: null,
         topicDetail: null,
         children: children.length > 0 ? children : undefined
@@ -813,7 +810,6 @@ export default function AnalyticsLearningPage(): JSX.Element {
         count: data.pdfUsage.mixedExports,
         color: '#d97706',
         questionNo: null,
-        rank: null,
         topicMain: null,
         topicDetail: null
       },
@@ -824,7 +820,6 @@ export default function AnalyticsLearningPage(): JSX.Element {
         count: data.pdfUsage.unclassifiedExports,
         color: '#dc2626',
         questionNo: null,
-        rank: null,
         topicMain: null,
         topicDetail: null
       }
@@ -839,9 +834,7 @@ export default function AnalyticsLearningPage(): JSX.Element {
         render: (_value: string, row) => (
           <span className={`pdf-hierarchy-label is-${row.kind}`}>
             <i aria-hidden="true" style={{ backgroundColor: row.color }} />
-            {row.kind === 'topic'
-              ? <Text type="secondary">{row.label}</Text>
-              : <Text strong>{row.label}</Text>}
+            {row.kind === 'topic' ? null : <Text strong>{row.label}</Text>}
           </span>
         )
       },
@@ -854,10 +847,10 @@ export default function AnalyticsLearningPage(): JSX.Element {
             return <Text type="secondary">주제 분석 불가</Text>;
           }
           if (row.kind === 'question') {
-            if (row.children?.length) {
-              return <Text type="secondary">{formatNumber(row.children.length)}개 주제</Text>;
-            }
-            return <Text type="secondary">{row.count > 0 ? '주제 상세 없음' : '내보내기 없음'}</Text>;
+            const topicCount = new Set(
+              (row.children ?? []).map((child) => child.topicMain ?? '주제 미연결')
+            ).size;
+            return <Text type="secondary">{topicCount}</Text>;
           }
           return value ?? <Text type="secondary">주제 미연결</Text>;
         }
@@ -1062,7 +1055,7 @@ export default function AnalyticsLearningPage(): JSX.Element {
             >
               <Table
                 aria-label="문제 유형별 비교"
-                className="analytics-fill-table"
+                className="question-comparison-table"
                 rowKey="questionNo"
                 size="small"
                 columns={questionColumns}
