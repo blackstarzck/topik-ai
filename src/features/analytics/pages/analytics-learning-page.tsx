@@ -4,7 +4,6 @@ import {
   FilterOutlined,
   InfoCircleOutlined,
   ReloadOutlined,
-  ShareAltOutlined,
   TableOutlined
 } from '@ant-design/icons';
 import {
@@ -18,13 +17,13 @@ import {
   Divider,
   Drawer,
   Empty,
-  Modal,
   Segmented,
   Select,
   Skeleton,
   Switch,
   Table,
   Tag,
+  Tooltip,
   Typography
 } from 'antd';
 import type { TableColumnsType, ThemeConfig } from 'antd';
@@ -34,10 +33,9 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState
 } from 'react';
-import { useLocation, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 
 import {
   createMockLearningAnalytics,
@@ -98,7 +96,7 @@ type MetricDefinition = {
   caution: string;
 };
 
-// 지표 사전 문구는 비개발 운영자 기준(오너, 2026-07-15): DB·SQL 용어와 '귀속/커버리지' 같은
+// KPI 설명은 비개발 운영자 기준(오너, 2026-07-15): DB·SQL 용어와 '귀속/커버리지' 같은
 // 전문어를 쓰지 않는다. e2e가 평균 환산 점수 계산 방법 문구를 검증하므로 수정 시 스펙도 함께 갱신.
 const metricDefinitions: MetricDefinition[] = [
   {
@@ -290,8 +288,36 @@ type KpiCardProps = {
   trend?: ReactNode;
   helper: ReactNode;
   loading: boolean;
-  onOpenDefinition: (key: KpiKey) => void;
 };
+
+function MetricDefinitionTooltip({ definition }: { definition: MetricDefinition }): JSX.Element {
+  return (
+    <div className="analytics-kpi-tooltip-content">
+      <header className="analytics-kpi-tooltip-content__header">
+        <span className="analytics-kpi-tooltip-content__eyebrow">{definition.category} 지표</span>
+        <strong className="analytics-kpi-tooltip-content__title">{definition.label}</strong>
+      </header>
+      <div className="analytics-kpi-tooltip-content__summary">
+        <span>지표 정의</span>
+        <p>{definition.definition}</p>
+      </div>
+      <dl className="analytics-kpi-tooltip-content__details">
+        <div>
+          <dt>계산 방법</dt>
+          <dd>{definition.formula}</dd>
+        </div>
+        <div>
+          <dt>포함 조건</dt>
+          <dd>{definition.inclusion}</dd>
+        </div>
+        <div className="analytics-kpi-tooltip-content__caution">
+          <dt>주의사항</dt>
+          <dd>{definition.caution}</dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
 
 function KpiCard({
   definition,
@@ -299,23 +325,28 @@ function KpiCard({
   unit,
   trend,
   helper,
-  loading,
-  onOpenDefinition
+  loading
 }: KpiCardProps): JSX.Element {
   return (
     <Card className="analytics-kpi-card" loading={loading} variant="outlined">
       <Text className="analytics-kpi-category">{definition.category}</Text>
       <div className="analytics-kpi-title-row">
         <Text strong>{definition.label}</Text>
-        <Button
-          type="text"
-          size="small"
-          shape="circle"
-          className="analytics-kpi-info"
-          aria-label={`${definition.label} 지표 설명`}
-          icon={<InfoCircleOutlined />}
-          onClick={() => onOpenDefinition(definition.key)}
-        />
+        <Tooltip
+          title={<MetricDefinitionTooltip definition={definition} />}
+          trigger={['hover', 'focus', 'click']}
+          placement="top"
+          rootClassName="analytics-kpi-tooltip"
+        >
+          <Button
+            type="text"
+            size="small"
+            shape="circle"
+            className="analytics-kpi-info"
+            aria-label={`${definition.label} 지표 설명`}
+            icon={<InfoCircleOutlined />}
+          />
+        </Tooltip>
       </div>
       <div className="analytics-kpi-value-row">
         <span className="analytics-kpi-value">{value}</span>
@@ -325,18 +356,6 @@ function KpiCard({
       <Text className="analytics-kpi-helper">{helper}</Text>
     </Card>
   );
-}
-
-function copyTextFallback(text: string): boolean {
-  const textarea = document.createElement('textarea');
-  textarea.value = text;
-  textarea.style.position = 'fixed';
-  textarea.style.opacity = '0';
-  document.body.appendChild(textarea);
-  textarea.select();
-  const copied = document.execCommand('copy');
-  textarea.remove();
-  return copied;
 }
 
 function getAppliedConditionTags(query: LearningAnalyticsQuery): string[] {
@@ -373,7 +392,6 @@ function getQuestionShortLabel(questionNo: LearningQuestionNo): string {
 
 export default function AnalyticsLearningPage(): JSX.Element {
   const { message } = App.useApp();
-  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const searchKey = searchParams.toString();
   const appliedQuery = useMemo(
@@ -386,8 +404,6 @@ export default function AnalyticsLearningPage(): JSX.Element {
   );
   const [draftQuery, setDraftQuery] = useState<LearningAnalyticsQuery>(appliedQuery);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [dictionaryOpen, setDictionaryOpen] = useState(false);
-  const [selectedMetric, setSelectedMetric] = useState<KpiKey>('activeLearners');
   const [chartMode, setChartMode] = useState<'chart' | 'table'>('chart');
   const [retryKey, setRetryKey] = useState(0);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
@@ -399,8 +415,6 @@ export default function AnalyticsLearningPage(): JSX.Element {
     data: LearningAnalytics | null;
     errorMessage: string | null;
   }>({ status: 'pending', data: null, errorMessage: null });
-  const dictionaryRefs = useRef<Partial<Record<KpiKey, HTMLDivElement | null>>>({});
-
   useEffect(() => {
     const controller = new AbortController();
     void fetchLearningAnalyticsFilterOptionsSafe(controller.signal).then((result) => {
@@ -450,19 +464,6 @@ export default function AnalyticsLearningPage(): JSX.Element {
     }
   }, [appliedQueryKey, appliedQuery, drawerOpen]);
 
-  useEffect(() => {
-    if (!dictionaryOpen) {
-      return;
-    }
-    const frame = window.requestAnimationFrame(() => {
-      dictionaryRefs.current[selectedMetric]?.scrollIntoView({
-        block: 'nearest',
-        behavior: 'smooth'
-      });
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [dictionaryOpen, selectedMetric]);
-
   const data = state.data;
   const summary = data?.summary;
   const comparePrevious = data?.scope.comparePrevious ?? false;
@@ -482,11 +483,6 @@ export default function AnalyticsLearningPage(): JSX.Element {
   const selectedTopic = filterOptions.topics.find(
     (topic) => topic.topicMain === draftQuery.topicMain
   );
-
-  const openDictionary = useCallback((key: KpiKey) => {
-    setSelectedMetric(key);
-    setDictionaryOpen(true);
-  }, []);
 
   const openConditionDrawer = useCallback(() => {
     setDraftQuery(appliedQuery);
@@ -520,21 +516,6 @@ export default function AnalyticsLearningPage(): JSX.Element {
     applyQuery(draftQuery);
     setDrawerOpen(false);
   }, [applyQuery, draftQuery, message]);
-
-  const handleShare = useCallback(async () => {
-    const queryString = serializeLearningAnalyticsQuery(appliedQuery).toString();
-    const url = `${window.location.origin}${location.pathname}?${queryString}`;
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(url);
-      } else if (!copyTextFallback(url)) {
-        throw new Error('clipboard unavailable');
-      }
-      void message.success('현재 분석 조건 URL을 복사했습니다.');
-    } catch {
-      void message.error('URL을 복사하지 못했습니다. 브라우저 권한을 확인해 주세요.');
-    }
-  }, [appliedQuery, location.pathname, message]);
 
   const handleCsvExport = useCallback(() => {
     if (!data) {
@@ -694,12 +675,6 @@ export default function AnalyticsLearningPage(): JSX.Element {
         description="문제 유형, 주제, 기간 기준으로 학습 성과와 피드백 활용을 분석합니다."
         actions={
           <>
-            <Button size="large" icon={<InfoCircleOutlined />} onClick={() => openDictionary('activeLearners')}>
-              지표 사전
-            </Button>
-            <Button size="large" icon={<ShareAltOutlined />} onClick={() => void handleShare()}>
-              분석 공유
-            </Button>
             <Button size="large" icon={<DownloadOutlined />} onClick={handleCsvExport} disabled={!data}>
               CSV 내보내기
             </Button>
@@ -764,7 +739,6 @@ export default function AnalyticsLearningPage(): JSX.Element {
                 key={card.definition.key}
                 {...card}
                 loading={false}
-                onOpenDefinition={openDictionary}
               />
             ))}
           </div>
@@ -1072,38 +1046,6 @@ export default function AnalyticsLearningPage(): JSX.Element {
         </div>
       </Drawer>
 
-      <Modal
-        className="analytics-metric-dictionary"
-        width={760}
-        open={dictionaryOpen}
-        onCancel={() => setDictionaryOpen(false)}
-        footer={<Button size="large" type="primary" onClick={() => setDictionaryOpen(false)}>확인</Button>}
-        title="학습 분석 지표 사전"
-      >
-        <Text type="secondary">아래 설명과 숫자는 지금 적용된 분석 조건을 기준으로 합니다.</Text>
-        <div className="metric-dictionary-list">
-          {metricDefinitions.map((definition) => (
-            <div
-              key={definition.key}
-              ref={(node) => { dictionaryRefs.current[definition.key] = node; }}
-              className={`metric-definition-card ${selectedMetric === definition.key ? 'is-selected' : ''}`}
-              tabIndex={-1}
-            >
-              <div className="metric-definition-heading">
-                <Tag color="blue">{definition.category}</Tag>
-                <Text strong>{definition.label}</Text>
-              </div>
-              <dl>
-                <div><dt>정의</dt><dd>{definition.definition}</dd></div>
-                <div><dt>계산 방법</dt><dd>{definition.formula}</dd></div>
-                <div><dt>포함 조건</dt><dd>{definition.inclusion}</dd></div>
-                <div><dt>현재 집계</dt><dd>{definition.key === 'activeLearners' ? `조건에 연결된 학습 활동 ${formatNumber(summary?.activeEventsAttributed)}건 · 연결률 ${formatNumber(summary?.activeEventAttributionRate, 1)}%` : definition.key === 'elapsedTime' ? `시간이 기록된 제출 ${formatNumber(summary?.elapsedSamples)}건` : definition.key === 'processingTime' ? `완료 피드백 ${formatNumber(summary?.processingSamples)}건` : `제출 ${formatNumber(summary?.submissions)}건`}</dd></div>
-                <div><dt>주의사항</dt><dd>{definition.caution}</dd></div>
-              </dl>
-            </div>
-          ))}
-        </div>
-      </Modal>
     </main>
     </ConfigProvider>
   );

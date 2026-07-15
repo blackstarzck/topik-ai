@@ -116,6 +116,97 @@
   color: #475569;
 }
 
+.analytics-kpi-tooltip.ant-tooltip {
+  max-width: min(420px, calc(100vw - 32px));
+  --antd-arrow-background-color: #1f1f1f;
+}
+
+.analytics-kpi-tooltip .ant-tooltip-inner {
+  padding: 0;
+  overflow: hidden;
+  background: #1f1f1f;
+  box-shadow: 0 12px 30px rgb(15 23 42 / 28%);
+}
+
+.analytics-kpi-tooltip-content {
+  display: grid;
+  line-height: 1.5;
+}
+
+.analytics-kpi-tooltip-content__header {
+  display: grid;
+  gap: 2px;
+  padding: 14px 16px 11px;
+  border-bottom: 1px solid rgb(255 255 255 / 14%);
+}
+
+.analytics-kpi-tooltip-content__eyebrow {
+  color: #91caff;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.analytics-kpi-tooltip-content__title {
+  color: #ffffff;
+  font-size: 17px;
+  line-height: 1.35;
+}
+
+.analytics-kpi-tooltip-content__summary {
+  display: grid;
+  gap: 4px;
+  padding: 11px 16px 12px;
+  background: rgb(255 255 255 / 5%);
+  border-bottom: 1px solid rgb(255 255 255 / 10%);
+}
+
+.analytics-kpi-tooltip-content__summary > span {
+  color: rgb(255 255 255 / 60%);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.analytics-kpi-tooltip-content__summary p {
+  margin: 0;
+  color: #ffffff;
+  font-size: 14px;
+}
+
+.analytics-kpi-tooltip-content__details {
+  display: grid;
+  margin: 0;
+  padding: 4px 16px 6px;
+}
+
+.analytics-kpi-tooltip-content__details > div {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr);
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid rgb(255 255 255 / 10%);
+}
+
+.analytics-kpi-tooltip-content__details > div:last-child {
+  border-bottom: 0;
+}
+
+.analytics-kpi-tooltip-content__details dt {
+  color: rgb(255 255 255 / 62%);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.analytics-kpi-tooltip-content__details dd {
+  margin: 0;
+  color: rgb(255 255 255 / 90%);
+  font-size: 13px;
+}
+
+.analytics-kpi-tooltip-content__caution dt {
+  color: #fcd34d;
+}
+
 .analytics-kpi-value-row {
   display: flex;
   align-items: baseline;
@@ -492,59 +583,6 @@
   background: #f8fafc;
 }
 
-.metric-dictionary-list {
-  display: grid;
-  gap: 10px;
-  max-height: 62vh;
-  margin-top: 14px;
-  padding-right: 4px;
-  overflow: auto;
-}
-
-.metric-definition-card {
-  padding: 14px;
-  border: 1px solid #f0f0f0;
-  border-radius: 8px;
-  background: #ffffff;
-  transition: border-color 160ms ease, background-color 160ms ease;
-}
-
-.metric-definition-card.is-selected {
-  border-color: #69b1ff;
-  background: #f0f7ff;
-}
-
-.metric-definition-heading {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.metric-definition-card dl {
-  display: grid;
-  gap: 7px;
-  margin: 0;
-}
-
-.metric-definition-card dl > div {
-  display: grid;
-  grid-template-columns: 80px minmax(0, 1fr);
-  gap: 12px;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.metric-definition-card dt {
-  color: #475569;
-  font-weight: 600;
-}
-
-.metric-definition-card dd {
-  margin: 0;
-  color: #1f2937;
-}
-
 @media (max-width: 1280px) {
   .analytics-learning-page--drawer-open {
     margin-right: 0;
@@ -578,11 +616,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .analytics-learning-page {
-    transition: none;
-  }
-
-  .metric-definition-card {
-    scroll-behavior: auto;
     transition: none;
   }
 }

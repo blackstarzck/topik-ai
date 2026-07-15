@@ -5,10 +5,14 @@ test('학습 분석 기본 대시보드가 8개 KPI와 전체 분석 섹션을 �
 
   await expect(page.getByRole('heading', { name: '학습 분석' })).toBeVisible();
   await expect(page.getByText('문제 유형, 주제, 기간 기준으로')).toBeVisible();
-  for (const action of ['지표 사전', '분석 공유', 'CSV 내보내기']) {
-    await expect(page.getByRole('button', { name: action })).toBeVisible();
-  }
-  await expect(page.getByRole('button', { name: /분석 조건/ })).toBeVisible();
+  const csvExportButton = page.getByRole('button', { name: 'CSV 내보내기' });
+  const conditionButton = page.getByRole('button', { name: /분석 조건/ });
+  await expect(csvExportButton).toBeVisible();
+  await expect(csvExportButton).toHaveClass(/ant-btn-lg/);
+  await expect(conditionButton).toBeVisible();
+  await expect(conditionButton).toHaveClass(/ant-btn-lg/);
+  await expect(page.getByRole('button', { name: '지표 사전' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '분석 공유' })).toHaveCount(0);
 
   for (const metric of [
     '해당 조건 학습자',
@@ -85,30 +89,26 @@ test('조건 Drawer는 draft를 적용 전까지 보존하고 다중 유형에�
   await expect(page.getByRole('checkbox', { name: '54번 논술' })).not.toBeChecked();
 });
 
-test('지표 사전, 표 대체 보기, 공유 URL, CSV 내보내기가 동작한다', async ({ page }) => {
-  await page.addInitScript(() => {
-    Object.defineProperty(navigator, 'clipboard', {
-      configurable: true,
-      value: {
-        writeText: async (text: string) => {
-          (window as Window & { __copiedAnalyticsUrl?: string }).__copiedAnalyticsUrl = text;
-        }
-      }
-    });
-  });
+test('KPI 설명 툴팁, 표 대체 보기, CSV 내보내기가 동작한다', async ({ page }) => {
   await page.goto('/analytics/learning?period=30d&compare=1&question=51&question=53');
 
   await page.getByRole('button', { name: '평균 환산 점수 지표 설명' }).click();
-  await expect(page.getByRole('dialog', { name: '학습 분석 지표 사전' })).toBeVisible();
-  await expect(page.getByText('(받은 점수 ÷ 그 문제의 만점) × 100')).toBeVisible();
-  await page.getByRole('button', { name: '확인' }).click();
+  const metricTooltip = page.getByRole('tooltip');
+  await expect(metricTooltip).toBeVisible();
+  await expect(metricTooltip.locator('.analytics-kpi-tooltip-content__eyebrow')).toHaveText('성과 지표');
+  await expect(metricTooltip.locator('.analytics-kpi-tooltip-content__title')).toHaveText('평균 환산 점수');
+  await expect(metricTooltip.locator('.analytics-kpi-tooltip-content__summary > span')).toHaveText('지표 정의');
+  await expect(metricTooltip.locator('.analytics-kpi-tooltip-content__details dt')).toHaveText([
+    '계산 방법',
+    '포함 조건',
+    '주의사항'
+  ]);
+  await expect(metricTooltip).toContainText('(받은 점수 ÷ 그 문제의 만점) × 100');
+  await expect(page.getByRole('dialog', { name: '학습 분석 지표 사전' })).toHaveCount(0);
+  await page.keyboard.press('Escape');
 
   await page.locator('.analytics-panel').filter({ hasText: '문제 유형별 점수 분포' }).getByText('표', { exact: true }).click();
   await expect(page.getByRole('table', { name: '문제 유형별 점수 분포 표' })).toBeVisible();
-
-  await page.getByRole('button', { name: '분석 공유' }).click();
-  await expect.poll(() => page.evaluate(() => (window as Window & { __copiedAnalyticsUrl?: string }).__copiedAnalyticsUrl)).toContain('question=51');
-  await expect.poll(() => page.evaluate(() => (window as Window & { __copiedAnalyticsUrl?: string }).__copiedAnalyticsUrl)).toContain('question=53');
 
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'CSV 내보내기' }).click();
