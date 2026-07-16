@@ -1959,7 +1959,7 @@ _관리자가 시험 문항의 노출 상태(공개/제외/내부테스트)를 �
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `p_question_id` | text | 필수 | 문항 ID (예: topik-writing-51-9901). 프론트가 question_id를 그대로 전달 |
-| `p_item_number` | smallint | 필수 | 51/52/53/54 중 하나. 프론트는 question_id 접두부에서 파싱한 번호를 Number(kind)로 전달(JS number→smallint 강제됨). 51/52/53/54 외 값이면 예외 |
+| `p_item_number` | smallint | 필수 | 51/52/53/54 중 하나. 프론트는 추천 뷰에서 조회한 `item_number`를 Number(kind)로 전달합니다. 기존 `topik-writing-{번호}-*` ID는 빠른 경로로만 해석하며 외부 공급 `question_id`는 opaque 값으로 취급합니다. 51/52/53/54 외 값이면 예외 |
 | `p_patch` | jsonb | 필수 | 갱신 patch 객체. 화이트리스트 키: review_status / review_workflow_status / service_status / content_team_memo. 예약 키 __note는 컬럼에 닿지 않고 감사 payload.review_note로만 기록. 프론트 실제 전송 형태: { service_status: 'available'\|'excluded'\|'internal_test', __note: 사유 } |
 
 **기대 Response**:
@@ -1984,7 +1984,7 @@ void (RETURNS void) — 성공 시 반환값 없음. 변경분이 없으면(diff
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `p_question_id` | text | 필수 | 대상 문항 ID |
-| `p_item_number` | smallint | 필수 | 51/52/53/54. question_id 접두부에서 파싱한 Number(kind) |
+| `p_item_number` | smallint | 필수 | 51/52/53/54. 추천 뷰에서 조회한 `item_number`의 Number(kind). 기존 접두형 ID 파싱은 조회 생략용 최적화일 뿐 계약이 아님 |
 | `p_tag_code` | text | 필수 | 부여할 태그 코드(tag_master.tag_code). '서비스_노출상태' 그룹 태그는 차단됨 |
 | `p_tag_value` | text | - | 태그 값(선택, default null). ⚠️프론트는 이 인자를 전달하지 않음 → 항상 null로 들어감 |
 | `p_memo` | text | - | 부여 사유(default null이나 프론트·facade에서 trim 후 빈값이면 호출 전 차단 — 사실상 필수). question_tags.memo + 감사 payload.tag_memo에 기록 |
@@ -2168,7 +2168,7 @@ raw rows: { tag_assignment_id: number(bigint); question_id: string; tag_code: st
 > 🟢 **쉬운 설명**: 문항 하나의 자세한 내용을 가져온다
 > 🔵 **돌아오는 값(쉽게)**: 문항의 모든 상세 정보(주제/지문/난이도 등)가 돌아온다
 
-**자세한 목적**: 문항 상세(AssessmentQuestionDetail) 단건 조회. question_id 접두부(51/52/53/54)로 테이블을 라우팅해 .select('*').eq('question_id',...).maybeSingle(). 공통 컬럼 + 번호별 전용 content를 매핑.
+**자세한 목적**: 문항 상세(AssessmentQuestionDetail) 단건 조회. 기존 접두형 ID는 번호를 바로 추론하고, 그 밖의 외부 공급 `question_id`는 추천 뷰에서 `item_number`를 조회한 뒤 번호별 테이블로 라우팅해 `.select('*').eq('question_id',...).maybeSingle()`을 수행합니다. 공통 컬럼 + 번호별 전용 content를 매핑합니다.
 
 **사용 위치**:
 - `src/features/assessment/api/topik-writing-question-bank-service.ts:229 (loadTopikWritingDetail, TABLE_BY_NUMBER 라우팅)`
@@ -2191,34 +2191,6 @@ raw row 전 컬럼(공통 35+ : question_id, item_number, target_level, difficul
 | `source_data(53번)` | jsonb | 차트 원시 데이터 JSONB — 프론트는 sourceData:unknown 그대로 전달(D-13 1차) |
 
 **비고(권한·예외)**: 스코프 명시 테이블은 아니나 상세 조회의 실 소스라 포함. RLS: select만(private.is_admin), 직접 write 차단 → service_status 변경은 admin_update_topik_question RPC 경유. topic_main/detail은 topic_master FK. 공통 컬럼 블록은 4테이블 동결 계약(변경은 4테이블 동시 마이그). 정의: supabase/migrations/20260610200300~200600_topik_writing_5x_questions.sql.
-
-### `problems` · 테이블 · select
-> 🟢 **쉬운 설명**: 옛날 방식으로 문항을 읽는 비상용 경로다(평소엔 꺼짐)
-> 🔵 **돌아오는 값(쉽게)**: 옛 형식의 문항 정보가 돌아와 신규 화면 형태로 바꿔 보여준다
-
-**자세한 목적**: [봉인된 LEGACY 롤백 경로] v13 구 스키마 problems 테이블을 읽어 신규 AssessmentQuestionSummary/Detail 모델로 매핑. VITE_QUESTION_BANK_SOURCE=legacy 일 때만 활성(평시 비활성 — 기본은 topik_writing). P4 종료까지 봉인 보존.
-
-**사용 위치**:
-- `src/features/assessment/api/supabase-assessment-question-bank-service.ts:176 (loadLegacySummaries)`
-- `src/features/assessment/api/supabase-assessment-question-bank-service.ts:196 (loadLegacyDetail)`
-
-**요청 파라미터**:
-| 이름 | 타입 | 필수 | 설명 |
-|---|---|---|---|
-| `select` | columns | 필수 | id, question_no, title, prompt, difficulty, topic_category_code, explanation, answer_key, rubric, created_at, updated_at |
-| `in / eq` | filter | 필수 | 목록: .in('question_no',[51,52,53,54]).order('created_at',desc). 상세: .eq('id', questionId).maybeSingle() |
-
-**기대 Response**:
-```ts
-ProblemRow: { id:string; question_no:number|null; title:string|null; prompt:string|null; difficulty:number|null; topic_category_code:string|null; explanation:string|null; answer_key:unknown(jsonb); rubric:unknown(jsonb); created_at:string|null; updated_at:string|null }[]. → AssessmentQuestionSummary/Detail로 매핑하되 신규 스키마 전용 필드는 정직한 sentinel로 채움: targetLevel='', topicDetail='', speechAct='', scenarioType='', recommendationKeys=[], avoidRepeatKeys=[], serviceStatus=null('미지정'), content=빈 객체, autoChecksPassed=null. topicMain은 topic_category_code 8값 라벨 맵(life→생활 등, 없으면 '미분류'). questionTypeName은 question_no 라벨 맵. modelAnswer는 answer_key.text 또는 answer_key 문자열.
-```
-| 필드 | 타입 | 설명 |
-|---|---|---|
-| `question_no` | int(nullable) | 51~54 문항 번호. 신규 questionNumber로 변환 |
-| `topic_category_code` | text(nullable) | 폐기 예정 8값 SUBJECT 축(life/study/society/...). 롤백 표시용 라벨만 |
-| `answer_key` | jsonb | 정답 키. {text:...} 객체 또는 문자열 → modelAnswer로 추출 |
-
-**비고(권한·예외)**: ⚠️problems는 v13(외부) 소유 테이블 — 이 repo의 마이그레이션에 DDL 정의 없음(컬럼 타입은 프론트 ProblemRow 어댑터 추정치). 읽기 전용 롤백 경로(write 경로 admin_update_problem은 v13 admin island 제거로 이미 부재). legacy 모드에서는 service_status 변경·태그 편집 전부 차단(facade가 'legacy 롤백 모드' 예외). 기본 경로(topik_writing)에서는 호출 안 됨.
 
 ## billing (환불 심사)
 _관리자가 사용자의 결제 환불 요청을 검토해 승인하거나 반려하는 영역입니다._

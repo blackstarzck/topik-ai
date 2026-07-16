@@ -86,8 +86,8 @@
 - 집계 RPC: `get_admin_learning_analytics_filtered(...)`.
 - 필터 옵션 RPC: `get_admin_learning_analytics_filter_options()`.
 - 두 RPC는 `private.is_admin()` + `SECURITY DEFINER` read-only 계약이며 개인 식별자와 민감 본문을 반환하지 않습니다.
-- 기본 기간·문제 유형 통계는 제출의 `problem_id`를 `problems.id`에 연결하고 `problems.question_no`로 51~54번을 판별합니다. 따라서 신규 메타데이터 매핑이 없는 현재 제출도 학습자·제출·점수·피드백 통계에서 누락하지 않습니다.
-- 주제·세부 특성 조건과 주제별 성과는 역사 source map과 환경별 별칭을 합친 `topik_writing_problem_question_map`의 active/non-held 연결 및 `topik_writing_question_recommendation_view`를 사용합니다. 연결은 `problems.question_no = item_number`, `topic_main/topic_detail` 존재, 51~54번별 필수 세부 메타데이터 완전성을 모두 만족해야 합니다. `topic_main/topic_detail`이 주제 SoT이며 구 `problems.tags`는 사용하지 않습니다.
+- 기본 기간·문제 유형 통계와 주제·세부 특성 조건은 제출·이벤트의 `problem_id`를 현재 canonical identity 또는 전환 시 이관한 private historical identity snapshot에 연결해 51~54번과 canonical metadata를 판별합니다. 공개 환경별 alias map과 구 `problems`는 runtime 분석에 사용하지 않습니다.
+- 연결된 canonical 행은 `topik_writing_question_recommendation_view`의 `topic_main/topic_detail`과 번호별 필수 세부 메타데이터 완전성을 만족해야 합니다. 최신 coverage RPC의 현재·직전 제출 및 이벤트 대상·연결 수와 100% fail-closed gate는 그대로 유지합니다.
 - 집계 summary는 현재/직전 기간 각각 제출과 학습 이벤트의 메타데이터 대상·연결 수를 반환합니다. coverage 분모에는 기간·문제 유형만 적용하며 주제·세부 조건을 적용하지 않습니다.
 - 기존 `get_admin_learning_analytics(period_days)`는 호환성을 위해 유지하며 새 화면 facade는 filtered RPC와 filter-options RPC를 사용합니다.
 
@@ -112,7 +112,7 @@
 
 - 페이지: `src/features/analytics/pages/analytics-learning-page.tsx`.
 - 서비스: `src/features/analytics/api/analytics-learning-service.ts`.
-- 환경별 별칭 스키마는 `supabase/migrations/20260713072205_topik_writing_problem_alias.sql`, 집계 RPC의 coverage·문제 유형별 주제 통합 정의는 `supabase/migrations-admin/20260715173826_restore_learning_analytics_metadata_contract.sql`, PDF 문제 유형×주제 확장은 `supabase/migrations-admin/20260715190000_admin_learning_analytics_pdf_topics.sql`과 각 down 파일로 관리하며 기존 v13 소유 테이블 DDL은 변경하지 않습니다.
+- 과거 환경별 별칭은 `supabase/migrations/20260713072205_topik_writing_problem_alias.sql`에서 관리됐고, `supabase/migrations-admin/20260715103000_admin_writing_analytics_canonical_coverage.sql`이 유효 매핑을 Admin private snapshot으로 이관합니다. 집계 RPC의 coverage·문제 유형별 주제 통합 정의는 `supabase/migrations-admin/20260715173826_restore_learning_analytics_metadata_contract.sql`, PDF 문제 유형×주제 확장은 `supabase/migrations-admin/20260715190000_admin_learning_analytics_pdf_topics.sql`과 각 down 파일로 관리하며 기존 v13 소유 테이블 DDL은 변경하지 않습니다.
 - e2e는 조건 draft/apply/reset, URL 복원, 모든 분석 섹션의 동일 필터 적용, 문제 유형별 비교·점수 분포 카드의 콘텐츠 자연 높이와 부모 행의 자식 높이 포함·다음 섹션 비겹침·1024px 이하 세로 전환, 주제별 성과의 제출 수 내림차순·최대 제출 수 기준 막대·행 단위 1:1 대응, PDF 전체 구성 파이 차트·범례 카드 미노출, 계층표 헤더·부모·자식·혼합 행과 hover 상태의 투명 배경, PDF 두 섹션의 데스크톱 병렬·동일 높이 배치와 1024px 이하 세로 전환·자연 높이 복원·문서 가로 넘침 방지, 부모 합계와 직접 귀속 합계 일치, 자식 주제의 건수 내림차순, Ant Design 기본 확장 버튼의 키보드 펼치기·접기, 혼합·미분류의 주제 분석 불가 상태, KPI 설명 툴팁·헤더 버튼 제거·CSV, pending/empty/error fallback을 검증합니다. live 검증은 dev DB의 KST 날짜 경계를 독립 SQL로 계산하고 기간 5종, 비교 켬/끔과 직전 동일 기간, 51~54번, 대주제 단독·주제 2단계·의도적 0건 주제 조합, 번호별 세부 필드 10종, 같은 필드 OR, 필드 간 AND, 문항+주제+세부 조건 교차 AND, Drawer 실제 적용을 대조합니다. 각 조건의 제출 KPI뿐 아니라 문제 유형 비교·점수 분포·주제 성과·PDF 분석 화면과 취약 평가 차원 RPC 계약도 같은 독립 SQL scope와 비교합니다.
 - 소요 시간·PDF 귀속·메타데이터 연결 커버리지가 낮으면 표본과 커버리지를 표시하며 값을 임의 보정하지 않습니다.
 - 취약 평가 영역(평가 차원) 섹션은 2026-07-15 오너 지시로 화면·CSV·프론트 계약에서 제거했습니다. 집계 RPC의 `weak_dimensions`·차원 커버리지 필드는 유지되며 프론트가 무시합니다.

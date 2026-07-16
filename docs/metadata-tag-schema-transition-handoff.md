@@ -1,5 +1,7 @@
 # 메타데이터·태그 스키마 전환 — HANDOFF (P0~P5 전부 PASS, 다음 = P6(외부 게이트). 2026-06-11)
 
+> **역사 문서:** 2026-07-14 최종 canonical 전환에서 이 문서가 보존하던 `VITE_QUESTION_BANK_SOURCE=legacy`와 `problems` read adapter를 삭제했습니다. 현재 계약은 `docs/architecture/admin-data-source-transition.md`와 `docs/specs/admin-data-contract.md`를 따릅니다.
+
 | 항목 | 내용 |
 | :---- | :---- |
 | 작성일 | 2026-06-11 (P5 채점 PASS 직후 — 종전 핸드오프를 본 문서로 대체) |

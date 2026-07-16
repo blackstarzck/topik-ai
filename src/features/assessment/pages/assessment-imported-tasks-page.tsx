@@ -224,47 +224,43 @@ export default function AssessmentImportedTasksPage(): JSX.Element {
     [topicFilterOptions]
   );
 
+  const toolbar = (
+    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+      <Tooltip
+        title={isMock ? '실모드(Supabase)에서만 가져오기를 실행할 수 있습니다.' : ''}
+      >
+        <span>
+          <Button
+            type="primary"
+            size="large"
+            loading={ingesting}
+            disabled={isMock}
+            onClick={handleIngest}
+          >
+            외부에서 가져오기
+          </Button>
+        </span>
+      </Tooltip>
+    </div>
+  );
+
   return (
     <>
       {notificationContextHolder}
       <div>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: 12,
-            flexWrap: 'wrap'
-          }}
-        >
-          <PageTitle title="가져온 문항(인박스)" />
-          <Tooltip
-            title={isMock ? '실모드(Supabase)에서만 가져오기를 실행할 수 있습니다.' : ''}
-          >
-            <span>
-              <Button
-                type="primary"
-                loading={ingesting}
-                disabled={isMock}
-                onClick={handleIngest}
-              >
-                외부에서 가져오기
-              </Button>
-            </span>
-          </Tooltip>
-        </div>
+        <PageTitle title="가져온 문항(인박스)" />
 
         <AssessmentBankTabs active="imported" />
 
         <ListSummaryCards items={summaryItems} />
 
-      <AdminListCard>
+        <AdminListCard toolbar={toolbar}>
         <Alert
           type="info"
           showIcon
           style={{ marginBottom: 16 }}
           message="외부 공급 API에서 가져온 문항 목록입니다."
-          description="목록 응답(제목·주제·난이도 등)을 무손실로 적재한 1차 착지점입니다. 문항 본문·정답은 상류의 문항별 상세 조회 엔드포인트가 확보되면 보강(승격)됩니다."
+          description="상류 문항별 상세 응답을 무손실 인박스에 적재하고, 승격 조건을 충족한 문항은 정식 문항으로 자동 승격합니다."
         />
 
         {questionBankDataSource === 'mock' ? (
@@ -304,7 +300,7 @@ export default function AssessmentImportedTasksPage(): JSX.Element {
         {state.data.length === 0 && state.status !== 'pending' ? (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="아직 가져온 문항이 없습니다. 우측 상단 '외부에서 가져오기' 버튼(실모드)으로 외부 목록을 가져올 수 있습니다."
+            description="아직 가져온 문항이 없습니다. 본문 상단 '외부에서 가져오기' 버튼(실모드)으로 외부 목록을 가져올 수 있습니다."
           />
         ) : (
           <AdminDataTable<ImportedWritingTask>

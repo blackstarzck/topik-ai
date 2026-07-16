@@ -16,7 +16,7 @@
 | --- | --- |
 | 모듈 | Assessment |
 | 페이지명 | TOPIK 쓰기 문항 관리 |
-| 현재 상태 | 구현됨 — 조회 + 관리 조치 활성(P4 관리 포인트 개방, 2026-06-11: 노출 상태 전환 + 태그 부여/제거. `OPERATION_WRITE_ENABLED`/`SERVICE_STATUS_WRITE_ENABLED` 게이트 제거). 데이터 소스는 facade 스위치(**`topik_writing` 기본** — 재정의 P3 컷오버 완료 / `legacy` 롤백(env, 조치 불가) / `mock`) |
+| 현재 상태 | 구현됨 — 조회 + 관리 조치 활성(P4 관리 포인트 개방, 2026-06-11: 노출 상태 전환 + 태그 부여/제거. `OPERATION_WRITE_ENABLED`/`SERVICE_STATUS_WRITE_ENABLED` 게이트 제거). Supabase 구성 시 `topik_writing` canonical 단일 경로, 미구성 시 `mock` |
 | 페이지 유형 | 목록 운영형 |
 | 라우트 | `/assessment/question-bank/manage` |
 | 주요 권한 | `assessment.question-bank.manage` |
@@ -72,8 +72,8 @@
 - `topicMain` / `topicDetail`
 - `questionTypeName`
 - `targetLevel` / `difficultyLevel`(1~6)
-- `serviceStatus` (legacy 소스 행은 null — `미지정` 표시)
-- 활성 태그 수 (`question_tags` 집계 — `topik_writing` 소스 전용, legacy 소스는 빈 값)
+- `serviceStatus` (null/불완전 응답은 `미지정` 표시)
+- 활성 태그 수 (`question_tags` 집계)
 - `updatedAt`
 
 ### 6.2 목록 테이블 컬럼
@@ -81,11 +81,11 @@
 | 컬럼 | 의미 | source/표시 |
 | --- | --- | --- |
 | 문항 번호 | 문제 번호(`51~54`) | 화면 모델 `questionNumber` |
-| 문항 ID | 문항 식별자 | `questionId` (신규 스키마 채번 `topik-writing-{번호}-{연번}` — D-4. legacy 소스는 `problems.id`) |
+| 문항 ID | 문항 식별자 | `questionId` (신규 스키마 채번 `topik-writing-{번호}-{연번}` — D-4) |
 | 주제(종합/세부) | 주제 축 2단 | `topic_main` / `topic_detail` |
 | 유형/난이도 | 유형 명칭 + 급수·난이도 | `question_type_name`, `targetLevel`/`difficultyLevel` |
 | (제거 완료 — 재정의 P3, `202f905`) 검수 상태 | 구 모델의 검수 진척 표시 | `review_status` 기반 컬럼 표시는 제거 완료. 물리 컬럼 제거도 마이그레이션 `0013`으로 완료(2026-06-11 적용) |
-| 노출 상태 | `available`/`excluded`/`internal_test` | `service_status`. legacy 소스는 물리 컬럼이 없어 `미지정` 표시 |
+| 노출 상태 | `available`/`excluded`/`internal_test` | `service_status`. null/불완전 응답은 `미지정` 표시 |
 | 태그 | 활성 태그 수 + 편집 진입 | `question_tags` 활성 행 집계(`N개`, 없으면 `-`) + `태그 편집` 모달 버튼(P4 개방 — §7.3) |
 | 운영 조치 | `노출 가능`/`노출 제외`/`내부 테스트` 전환 액션 | 활성(P4 개방) — 현재 노출 상태와 같은 전환 버튼만 disabled (§7.3) |
 | 최근 수정 | 최종 수정 시각 | `updatedAt` |
@@ -111,7 +111,7 @@
 | `internal_test`(내부 테스트) | 기본값. 사용자 노출 차단 — 백필(초기 코퍼스) 466행 전부 이 상태로 적재됨 |
 | `available`(노출 가능) | v13 read-only 소비에 노출 가능 |
 | `excluded`(노출 제외) | 사용자 노출에서 제외 |
-| `미지정` | legacy 소스 행처럼 `service_status` 물리 컬럼 자체가 없는 경우의 표시 라벨 |
+| `미지정` | `service_status`를 확인할 수 없는 비정상/불완전 응답의 표시 라벨 |
 
 - `service_status` 컬럼이 **유일한 물리 노출 상태**다. '서비스_노출상태' 태그 그룹은 시드에서 제외하고 태그 RPC에서 부여를 차단한다(이중 기록 방지). '운영 제외'는 `excluded` + 운영주의 태그 값 '운영 제외' 부여로 구분한다.
 
@@ -133,7 +133,7 @@
 - 모든 write는 RPC 단일 경로다: 노출 상태 = `admin_update_topik_question`(화이트리스트 `service_status` 단일, `__note` → `payload.note`), 태그 = `admin_assign_question_tag`/`admin_remove_question_tag`(별도 메모 인자 없음). 직접 테이블 write는 RLS로 전면 차단된다(P4-4 네거티브 검증).
 - 태그 편집 모달: tag_master 활성 사전 기반 부여 후보를 2열 선택 패널(좌측 `tagGroup` 목록, 우측 해당 그룹의 체크박스 목록, 하단 선택 chip/초기화 영역)로 제공한다. `Descriptions` 기반 입력 테이블은 이 모달에서 예외로 제거한다. 대상 식별자는 모달 subtitle의 `questionId`로 축소하고, 활성 태그 목록과 제거 버튼은 compact 섹션으로 배치한다. 이미 활성인 태그는 비활성 처리하고, 우측 패널에는 해당 그룹 태그의 description/usage_rule 안내를 표시한다. 부여는 태그 선택 전까지 비활성, 제거는 단순 확인 모달을 거친다. '서비스_노출상태' 그룹은 facade 옵션 필터 + RPC 가드로 이중 차단된다(D-6).
 - **POL-018 화면 가드**: ② `available` 전환 확인 모달에서 대상 문항의 운영주의 그룹 활성 태그를 검사해 태그명을 명시한 경고를 표시한다(사유는 항상 필수). ③ 반복방지 그룹 활성 태그가 임계(2개) 이상이면 `available` 전환 모달과 태그 편집 모달에 `excluded` 권고를 표시한다.
-- legacy 롤백 소스에서는 조치가 동작하지 않는다(facade가 명시 오류 — 구 스키마에 물리 노출 상태·태그 없음). mock 소스는 인메모리 왕복으로만 동작한다(감사 미기록, D-12).
+- mock 소스는 Supabase 미구성 환경의 인메모리 왕복으로만 동작한다(감사 미기록, D-12). 구성된 Supabase에서는 canonical RPC 경로만 사용한다.
 
 ### 7.4 수신·관리 운영정책 (POL-017 — 2026-06-11 재정의) + 노출 제외 기준 (POL-018)
 
@@ -180,13 +180,13 @@
   - `src/features/assessment/ui/assessment-question-bank-toolbar.tsx`
   - `src/features/assessment/ui/question-tag-edit-modal.tsx` (P4 태그 부여/제거 모달)
 - 데이터 source
-  - facade(`src/features/assessment/api/assessment-question-bank-service.ts`) + 컷오버 스위치(`question-bank-data-source.ts`, 기본 `topik_writing` — 재정의 P3 컷오버 완료, 롤백 env `VITE_QUESTION_BANK_SOURCE=legacy`). `topik_writing` 소스는 신규 스키마(노출 상태·태그 실값), `legacy` 소스는 v13 `problems` 읽기 전용 어댑터(노출 상태 `미지정`·태그 빈 값), `mock`은 D-12 결정적 픽스처. 문항 목록 페이지 `/assessment/question-bank`와 동일한 조회 결과를 공유한다.
+  - facade(`src/features/assessment/api/assessment-question-bank-service.ts`) + source 판별(`question-bank-data-source.ts`). Supabase 구성 시 `topik_writing` 신규 스키마(노출 상태·태그 실값)만 사용하고, 미구성 시 `mock` D-12 결정적 픽스처를 사용한다. 문항 목록 페이지 `/assessment/question-bank`와 동일한 조회 결과를 공유한다.
 
 ## 11. 오픈 이슈
 
 - **외부 공급 API 미개발 — 수신 경로 미구현.** 이 페이지가 관리할 신규 문항의 공급원이 아직 없어, 인터림 동안 관리 대상은 백필 466행(초기 코퍼스)뿐이다. 공급 계약은 요청 문서(`docs/requests/upstream-writing-endpoints-request-2026-06-10.md`, D-11 재정의)로 추진하며, 수신 감사 액션 `question_received`도 연동 시 추가한다.
 - (해소 — P4 관리 포인트 개방, 2026-06-11) 노출 상태 write와 태그 편집 UI 활성화 완료: `OPERATION_WRITE_ENABLED`/`SERVICE_STATUS_WRITE_ENABLED` 게이트 제거 + facade 태그 write 함수(`assignQuestionTagSafe`/`removeQuestionTagSafe`) 신설. RT-4 관리 쓰기 왕복·RLS 네거티브 증적은 `logs/metadata-tag-schema-transition-evidence.md` P4 절.
-- 데이터 소스 스위치 기본값은 `topik_writing`이다(재정의 P3 컷오버 완료 — `202f905`). 롤백(env `VITE_QUESTION_BANK_SOURCE=legacy`) 시 노출 상태는 `미지정`, 태그는 빈 값으로 표시된다. 참고(실측 2026-06-10): legacy 경로에 연결됐던 구 `admin_update_problem` RPC는 v13 admin island 제거(2026-06-09)로 라이브 DB에 존재하지 않아, legacy 운영 write는 물리적으로 동작 불가다(어댑터도 읽기 전용으로 봉인됨).
+- Supabase 구성 환경의 데이터 소스는 `topik_writing` 하나다(재정의 P3 컷오버 완료 — `202f905`). 최종 canonical 전환에서 `VITE_QUESTION_BANK_SOURCE=legacy`와 구 `problems` read adapter를 삭제했다.
 - 구 `검수 상태` 컬럼 잔존(§6.2)과 확인 모달의 구 POL-018 기준 ① 문구(§7.3)는 재정의 P3에서 제거·정리 완료됐다(`202f905`). 검수 4컬럼 물리 제거도 마이그레이션 `0013`으로 완료됐다(2026-06-11 적용).
 - (해소 — P4, 2026-06-11) POL-018 기준 ②·③ 화면 강제 구현 완료: `available` 전환 모달이 대상 문항의 운영주의 활성 태그를 검사해 경고하고(②), 반복방지 활성 태그 임계(2개) 이상이면 `excluded` 권고를 표시한다(③ — 태그 편집 모달에도 동일 권고). §7.3 참조.
 - Supabase 미설정 시 JSON fallback 대신 명시적 mock 모드, 조회 실패 시 error/retry 상태를 노출한다.

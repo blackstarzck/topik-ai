@@ -312,11 +312,6 @@ export function AssessmentMasterCatalogSection(): JSX.Element {
           showIcon
           style={{ marginBottom: 12 }}
           message={`등록된 ${subjectLabel}가 없습니다.`}
-          description={
-            questionBankDataSource === 'legacy'
-              ? '마스터 데이터는 신규 스키마(topik_writing) 전용입니다. legacy 롤백 모드에서는 표시되지 않습니다.'
-              : undefined
-          }
         />
       );
     }

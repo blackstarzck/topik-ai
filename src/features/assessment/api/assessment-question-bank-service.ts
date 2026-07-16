@@ -1,10 +1,6 @@
 import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
 import { questionBankDataSource } from './question-bank-data-source';
 import {
-  loadLegacyDetail,
-  loadLegacySummaries
-} from './supabase-assessment-question-bank-service';
-import {
   assignMockQuestionTag,
   clearMockQuestionInstitutions,
   loadMockActiveQuestionTags,
@@ -53,8 +49,8 @@ import type {
 
 /**
  * Facade — 페이지는 이 모듈만 호출한다. 실제 경로는 데이터 소스 스위치
- * (question-bank-data-source.ts)가 결정한다: topik_writing(신규 스키마, 기본) /
- * legacy(구 problems, 봉인 롤백 경로) / mock(D-12 — Supabase 미구성 시).
+ * (question-bank-data-source.ts)가 결정한다: topik_writing(canonical 운영 경로) /
+ * mock(D-12 — Supabase 미구성 시).
  *
  * 인바운드 모델(결정 기록 §0): 조회 + 관리 포인트 — 노출 통제(service_status)
  * + 태그 부여/제거 — 를 제공한다(P4 개방, 실행계획안 §8). 검수 쓰기·검수
@@ -106,10 +102,7 @@ async function loadSummaries(signal?: AbortSignal): Promise<AssessmentQuestionSu
   if (questionBankDataSource === 'mock') {
     return loadMockSummaries();
   }
-  if (questionBankDataSource === 'topik_writing') {
-    return loadTopikWritingSummaries(signal);
-  }
-  return loadLegacySummaries(signal);
+  return loadTopikWritingSummaries(signal);
 }
 
 async function loadDetail(
@@ -119,10 +112,7 @@ async function loadDetail(
   if (questionBankDataSource === 'mock') {
     return loadMockDetail(questionId);
   }
-  if (questionBankDataSource === 'topik_writing') {
-    return loadTopikWritingDetail(questionId, signal);
-  }
-  return loadLegacyDetail(questionId, signal);
+  return loadTopikWritingDetail(questionId, signal);
 }
 
 async function loadTopicMaster(
@@ -131,13 +121,7 @@ async function loadTopicMaster(
   if (questionBankDataSource === 'mock') {
     return loadMockTopicMaster();
   }
-  if (questionBankDataSource === 'topik_writing') {
-    return loadTopikWritingTopicMaster(signal);
-  }
-  // legacy: 17주제 마스터는 신규 스키마 전용 — 폐기 예정 8값 축으로 대체 표시.
-  return ['생활', '학습', '사회', '문화', '경제', '교육', '환경', '기술'].map(
-    (topicMain, index) => ({ topicMain, topicDetail: '', sortOrder: index + 1 })
-  );
+  return loadTopikWritingTopicMaster(signal);
 }
 
 async function loadTagMaster(
@@ -146,19 +130,15 @@ async function loadTagMaster(
   if (questionBankDataSource === 'mock') {
     return loadMockTagMaster();
   }
-  if (questionBankDataSource === 'topik_writing') {
-    const rows = await loadTopikWritingTagMaster(signal);
-    // D-6 방어: '서비스_노출상태' 그룹은 시드 제외가 원칙이지만, 사전에 끼어
-    // 들어도 부여 옵션으로 노출하지 않는다(부여 차단은 RPC에도 내장).
-    return rows.filter((row) => row.tagGroup !== '서비스_노출상태');
-  }
-  return [];
+  const rows = await loadTopikWritingTagMaster(signal);
+  // D-6 방어: '서비스_노출상태' 그룹은 시드 제외가 원칙이지만, 사전에 끼어
+  // 들어도 부여 옵션으로 노출하지 않는다(부여 차단은 RPC에도 내장).
+  return rows.filter((row) => row.tagGroup !== '서비스_노출상태');
 }
 
 /**
  * P5-1 마스터 카탈로그(전수·비활성 포함) — /system/metadata 읽기 전용 조회
- * surface 전용. legacy 모드는 마스터 테이블이 없으므로 빈 배열(화면 empty
- * state)로 처리한다.
+ * surface 전용.
  */
 async function loadTopicMasterCatalog(
   signal?: AbortSignal
@@ -166,10 +146,7 @@ async function loadTopicMasterCatalog(
   if (questionBankDataSource === 'mock') {
     return loadMockTopicMasterCatalog();
   }
-  if (questionBankDataSource === 'topik_writing') {
-    return loadTopikWritingTopicMasterCatalog(signal);
-  }
-  return [];
+  return loadTopikWritingTopicMasterCatalog(signal);
 }
 
 async function loadTagMasterCatalog(
@@ -178,10 +155,7 @@ async function loadTagMasterCatalog(
   if (questionBankDataSource === 'mock') {
     return loadMockTagMasterCatalog();
   }
-  if (questionBankDataSource === 'topik_writing') {
-    return loadTopikWritingTagMasterCatalog(signal);
-  }
-  return [];
+  return loadTopikWritingTagMasterCatalog(signal);
 }
 
 async function loadActiveQuestionTags(
@@ -190,10 +164,7 @@ async function loadActiveQuestionTags(
   if (questionBankDataSource === 'mock') {
     return loadMockActiveQuestionTags();
   }
-  if (questionBankDataSource === 'topik_writing') {
-    return loadTopikWritingActiveQuestionTags(signal);
-  }
-  return [];
+  return loadTopikWritingActiveQuestionTags(signal);
 }
 
 async function updateServiceStatus(
@@ -210,15 +181,12 @@ async function updateServiceStatus(
 
   if (questionBankDataSource === 'mock') {
     await setMockServiceStatus(payload.questionId, payload.nextStatus);
-  } else if (questionBankDataSource === 'topik_writing') {
+  } else {
     await setTopikWritingServiceStatus(
       payload.questionId,
       payload.nextStatus,
       payload.reason
     );
-  } else {
-    // legacy: 구 스키마에 물리 노출 상태가 없다 — 롤백 모드에서는 쓰기 불가.
-    throw new Error('legacy 롤백 모드에서는 노출 상태를 변경할 수 없습니다.');
   }
   return loadDetail(payload.questionId, signal);
 }
@@ -241,15 +209,11 @@ async function updateServiceStatusBulk(
   if (questionBankDataSource === 'mock') {
     return setMockServiceStatusBulk(payload.questionIds, payload.nextStatus);
   }
-  if (questionBankDataSource === 'topik_writing') {
-    return setTopikWritingServiceStatusBulk(
-      payload.questionIds,
-      payload.nextStatus,
-      payload.reason
-    );
-  }
-  // legacy: 구 스키마에 물리 노출 상태가 없다 — 롤백 모드에서는 쓰기 불가.
-  throw new Error('legacy 롤백 모드에서는 노출 상태를 변경할 수 없습니다.');
+  return setTopikWritingServiceStatusBulk(
+    payload.questionIds,
+    payload.nextStatus,
+    payload.reason
+  );
 }
 
 async function assignQuestionTag(payload: AssignQuestionTagPayload): Promise<void> {
@@ -257,11 +221,7 @@ async function assignQuestionTag(payload: AssignQuestionTagPayload): Promise<voi
     await assignMockQuestionTag(payload.questionId, payload.tagCode);
     return;
   }
-  if (questionBankDataSource === 'topik_writing') {
-    await assignTopikWritingQuestionTag(payload.questionId, payload.tagCode);
-    return;
-  }
-  throw new Error('legacy 롤백 모드에서는 태그를 편집할 수 없습니다.');
+  await assignTopikWritingQuestionTag(payload.questionId, payload.tagCode);
 }
 
 async function removeQuestionTag(payload: RemoveQuestionTagPayload): Promise<void> {
@@ -269,11 +229,7 @@ async function removeQuestionTag(payload: RemoveQuestionTagPayload): Promise<voi
     await removeMockQuestionTag(payload.tagAssignmentId);
     return;
   }
-  if (questionBankDataSource === 'topik_writing') {
-    await removeTopikWritingQuestionTag(payload.tagAssignmentId);
-    return;
-  }
-  throw new Error('legacy 롤백 모드에서는 태그를 편집할 수 없습니다.');
+  await removeTopikWritingQuestionTag(payload.tagAssignmentId);
 }
 
 /**
@@ -288,10 +244,7 @@ async function loadQuestionInstitutions(
   if (questionBankDataSource === 'mock') {
     return loadMockQuestionInstitutions(questionId);
   }
-  if (questionBankDataSource === 'topik_writing') {
-    return loadTopikWritingQuestionInstitutions(questionId, signal);
-  }
-  return [];
+  return loadTopikWritingQuestionInstitutions(questionId, signal);
 }
 
 async function setQuestionInstitutions(
@@ -311,14 +264,11 @@ async function setQuestionInstitutions(
       payload.reason
     );
   }
-  if (questionBankDataSource === 'topik_writing') {
-    return setTopikWritingQuestionInstitutions(
-      payload.questionIds,
-      payload.institutionCodes,
-      payload.reason
-    );
-  }
-  throw new Error('legacy 롤백 모드에서는 기관 노출을 변경할 수 없습니다.');
+  return setTopikWritingQuestionInstitutions(
+    payload.questionIds,
+    payload.institutionCodes,
+    payload.reason
+  );
 }
 
 async function clearQuestionInstitutions(
@@ -334,10 +284,7 @@ async function clearQuestionInstitutions(
   if (questionBankDataSource === 'mock') {
     return clearMockQuestionInstitutions(payload.questionIds);
   }
-  if (questionBankDataSource === 'topik_writing') {
-    return clearTopikWritingQuestionInstitutions(payload.questionIds, payload.reason);
-  }
-  throw new Error('legacy 롤백 모드에서는 기관 노출을 변경할 수 없습니다.');
+  return clearTopikWritingQuestionInstitutions(payload.questionIds, payload.reason);
 }
 
 export function fetchAssessmentQuestionSummariesSafe(signal?: AbortSignal) {
@@ -382,15 +329,11 @@ async function updateTagMasterStatus(
     await setMockTagMasterStatus(payload.tagCode, payload.nextActive);
     return;
   }
-  if (questionBankDataSource === 'topik_writing') {
-    await setTopikWritingTagMasterStatus(
-      payload.tagCode,
-      payload.nextActive,
-      payload.reason
-    );
-    return;
-  }
-  throw new Error('legacy 롤백 모드에서는 태그 마스터를 변경할 수 없습니다.');
+  await setTopikWritingTagMasterStatus(
+    payload.tagCode,
+    payload.nextActive,
+    payload.reason
+  );
 }
 
 export function updateTagMasterStatusSafe(payload: UpdateTagMasterStatusPayload) {

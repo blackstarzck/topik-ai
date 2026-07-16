@@ -17,7 +17,8 @@ import type {
 /**
  * 신규 스키마 어댑터 (인바운드 모델 — 결정 기록 §0): 목록은
  * `topik_writing_question_recommendation_view`(16컬럼) 1회 조회, 상세는
- * question_id의 번호로 라우팅한 번호별 테이블 조회. 쓰기는 노출 통제
+ * 뷰의 item_number로 라우팅한 번호별 테이블 조회. 기존 접두형 question_id는
+ * 빠른 경로로만 해석하며 외부 공급 ID는 opaque 값으로 취급한다. 쓰기는 노출 통제
  * (`service_status`) 단일이며 `admin_update_topik_question` RPC 경로다
  * (D-8 — 직접 write는 RLS 차단, 개방은 P4).
  */
@@ -82,6 +83,26 @@ export function itemNumberOfQuestionId(
 ): AssessmentQuestionNumber | null {
   const match = /^topik-writing-(51|52|53|54)-/.exec(questionId);
   return match ? (match[1] as AssessmentQuestionNumber) : null;
+}
+
+async function resolveQuestionNumber(
+  client: ReturnType<typeof requireClient>,
+  questionId: string
+): Promise<AssessmentQuestionNumber> {
+  const inferred = itemNumberOfQuestionId(questionId);
+  if (inferred) return inferred;
+
+  const { data, error } = await client
+    .from('topik_writing_question_recommendation_view')
+    .select('item_number')
+    .eq('question_id', questionId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  const itemNumber = String(data?.item_number ?? '');
+  if (!['51', '52', '53', '54'].includes(itemNumber)) {
+    throw new Error('문항 대상을 찾을 수 없습니다.');
+  }
+  return itemNumber as AssessmentQuestionNumber;
 }
 
 function mapSummary(row: ViewRow): AssessmentQuestionSummary {
@@ -233,10 +254,7 @@ export async function loadTopikWritingDetail(
   signal?: AbortSignal
 ): Promise<AssessmentQuestionDetail> {
   const client = requireClient();
-  const kind = itemNumberOfQuestionId(questionId);
-  if (!kind) {
-    throw new Error('문항 대상을 찾을 수 없습니다.');
-  }
+  const kind = await resolveQuestionNumber(client, questionId);
   const { data, error } = await client
     .from(TABLE_BY_NUMBER[kind])
     .select('*')
@@ -445,10 +463,7 @@ async function callUpdateRpc(
   patch: Record<string, unknown>
 ): Promise<void> {
   const client = requireClient();
-  const kind = itemNumberOfQuestionId(questionId);
-  if (!kind) {
-    throw new Error('문항 대상을 찾을 수 없습니다.');
-  }
+  const kind = await resolveQuestionNumber(client, questionId);
   const { error } = await client.rpc('admin_update_topik_question', {
     p_question_id: questionId,
     p_item_number: Number(kind),
@@ -526,10 +541,7 @@ export async function assignTopikWritingQuestionTag(
   tagCode: string
 ): Promise<void> {
   const client = requireClient();
-  const kind = itemNumberOfQuestionId(questionId);
-  if (!kind) {
-    throw new Error('문항 대상을 찾을 수 없습니다.');
-  }
+  const kind = await resolveQuestionNumber(client, questionId);
   const { error } = await client.rpc('admin_assign_question_tag', {
     p_question_id: questionId,
     p_item_number: Number(kind),

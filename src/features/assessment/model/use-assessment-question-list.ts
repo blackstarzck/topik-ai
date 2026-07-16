@@ -12,8 +12,8 @@ export type UseAssessmentQuestionListResult = {
 /**
  * Shared data source for the split question-bank pages (문항 목록 / 문항 관리). Both
  * pages read the same summary inventory — P3 cutover: the recommendation view
- * (18 cols, 1 query) on the topik_writing source, `problems` on the sealed
- * legacy source — and apply their own status filter on top.
+ * (18 cols, 1 query) on the topik_writing canonical source and apply their own
+ * status filter on top.
  */
 export function useAssessmentQuestionList(): UseAssessmentQuestionListResult {
   const [state, setState] = useState<AsyncState<AssessmentQuestionSummary[]>>({

@@ -9,7 +9,7 @@ status: "구현됨"
 primary_entity: "User"
 primary_table_candidate: "users, user_activities, user_payments, user_community_posts, user_access_logs, user_admin_memos"
 owner_agent_scope: "shared"
-last_reviewed_at: "2026-07-09"
+last_reviewed_at: "2026-07-14"
 ---
 
 ## 1. 문서 목적
@@ -119,7 +119,8 @@ last_reviewed_at: "2026-07-09"
 ## 2026-07-08 학습 현황 writing 중심 재정의 동기화 기준
 
 - 기준 원천 변경: TOPIK 쓰기 학습 현황은 `writing_submissions`·`writing_feedback`·
-  `feedback_dimension_scores`·`problems`·`study_events`·`learning_goals`·`writing_submission_metrics`
+  `feedback_dimension_scores`·`topik_writing_question_source_map.learner_problem_id`·canonical metadata
+  projection·`study_events`·`learning_goals`·`writing_submission_metrics`
   (v13 신규, 소요 시간)로 재정의. `problem_attempts`는 객관식 분리 블록 한정(전 회원 0 표시 불일치 해소).
 - v13↔admin 동일값 기준: 같은 사용자/기간에서 제출 수·피드백 상태·정규화 평균 점수(행별 `score_max`
   기준)·소요 시간이 v13 화면과 admin 회원 상세에서 같은 계산식으로 재현되어야 한다. 점수는 원점수+
@@ -162,7 +163,7 @@ last_reviewed_at: "2026-07-09"
 ## 2026-06-18 학습 현황 탭 동기화
 
 - Admin `Users > 회원 상세 > 학습 현황`은 B2C 학습 결과 자체를 수정하지 않는 운영 조회 화면이다.
-- 참조 source는 v13 학습 테이블 read-only: `problem_attempts`, `problems`, `writing_submissions`, `writing_feedback`, `feedback_dimension_scores`, `learning_goals`.
+- 참조 source는 v13 학습 테이블 read-only인 `problem_attempts`, `writing_submissions`, `writing_feedback`, `feedback_dimension_scores`, `learning_goals`과 Admin canonical 문항 metadata projection이다. 현재 작문 제목·태그는 canonical projection에서, 과거 본문은 제출 row의 불변 cutover/canonical snapshot에서 읽으며 `public.problems` writing fallback은 사용하지 않는다.
 - B2C 영향 상태: `운영상 추정`. 사용자가 푼 문제, 정답 여부, 점수, 제출 시각, 작문 제출/피드백 상태가 관리자 요약으로 집계된다.
 - B2C에 직접 노출되는 답안 본문과 문장 첨삭 본문은 admin 화면에서 제외한다. 필요한 경우 별도 권한/감사 정책을 먼저 확정해야 한다.
 - 활동(`study_events`)과 결제(`payment_history`) 탭의 실데이터화는 이번 변경 범위에서 제외하며 기존 page-sync 미확정 항목으로 유지한다.
