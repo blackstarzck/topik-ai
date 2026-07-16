@@ -644,3 +644,9 @@
 - Updated `supabase/README.md`, `docs/runbooks/admin-account-separation-prod-cutover.md`, `docs/architecture/admin-data-source-transition.md`, `docs/architecture/shared-supabase-schema-ownership.md`, `docs/specs/admin-page-gap-register.md`, and `logs/admin-doc-update-log.md`.
 - Reason: `topik-prod`에 admin/TOPIK 쓰기 canonical migration을 안전한 manifest runner로 적용하고, 현재 설정된 관리자 계정을 `admin_accounts` SoT의 active `platform_admin`으로 승격했다. 운영 DB 완료와 실제 Vercel bundle 완료를 분리해 기록했다.
 - Validation: 운영 admin tracker 83개·checksum 누락 0, writing tracker 32개와 차단 migration 1개, active platform admin 1명, bootstrap audit 1건, 최종 admin profile role 0건, RLS 10/10, anon executable admin function 0건, legacy key 비활성을 확인했다. 최신 소스+운영 DB에서 현재 관리자 로그인과 정기 쿠폰 템플릿 생성→상세→수정→삭제→감사 로그 Playwright E2E를 통과했고 테스트 업무 행은 0건으로 정리됐다. 실제 Vercel alias는 이전 profile 인증과 mock 쿠폰 source를 사용하므로 재배포 후 Production URL 재검증이 남아 있다.
+
+## 2026-07-16 Vercel Hobby Cron 배포 차단 해소
+
+- Updated `vercel.json`, `docs/runbooks/notification-worker-production-verification.md`, and `logs/admin-doc-update-log.md`.
+- Reason: PR Preview가 Vercel Hobby 플랜에서 허용하지 않는 `*/15 * * * *` Cron 때문에 실패했다. 관리자 조치의 인증된 즉시 `POST` kick은 유지하고, 남은 `pending` 이메일을 회수하는 보조 Cron만 매일 `00:00 UTC`(`09:00 KST`)로 조정했다.
+- Validation boundary: JSON/정적 게이트와 Preview 재배포를 통과한 뒤 실제 함수 `401` 경계 및 Production 브라우저 CRUD를 다시 검증해야 완료다.

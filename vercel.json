@@ -3,7 +3,7 @@
   "crons": [
     {
       "path": "/api/notifications/dispatch-email",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 0 * * *"
     },
     {
       "path": "/api/writing-tasks/ingest",
