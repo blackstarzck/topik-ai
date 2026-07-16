@@ -329,6 +329,14 @@
   - 엔티티 후보
     - `AssessmentQuestion`
     - `AssessmentQuestionAuditEvent`
+    - `AssessmentQuestionVersion` — 같은 `question_id`에 속하는 불변 수신 버전. `canonical_import_id`(또는 동등한 import ID)와 `payload_hash`로 식별
+    - `AssessmentQuestionCurrentVersion` — 신규 풀이·북마크·임시저장이 해석할 현재 버전 포인터
+  - 버전·사용자 노출 계약(SoT: `docs/architecture/writing-question-version-policy.md`)
+    - 논리 식별자: `question_id`는 수정 전후 동일 문항을 묶고, 학습 과제·답안 형식·평가 목표가 달라지면 새 `question_id`를 발급한다.
+    - 버전 식별자 후보: `canonical_import_id`, `payload_hash`, `received_at`, `is_current`. 동일 payload 재수신은 새 버전을 만들지 않는다.
+    - 북마크·임시저장: `question_id` 기준으로 현재 버전을 해석하며 과거 버전을 사용자 노출용으로 고정하지 않는다.
+    - 제출: 서버 제출 확정 시점의 `canonical_import_id`, `payload_hash`, learner-safe `question_snapshot`을 함께 고정하고 채점·피드백·과거 결과에서 재사용한다.
+    - 현재 문항 테이블 upsert는 최신 조회용 projection이며 불변 버전 이력의 SoT가 아니다.
   - 현재 Supabase source (facade 스위치 `question-bank-data-source.ts` 기본 `topik_writing` — 재정의 P3 컷오버 완료)
     - 목록: 추천 뷰 `topik_writing_question_recommendation_view`(E4 확장 컬럼 포함) + 활성 태그 집계(`topik_writing_question_tags`)
     - 상세: 번호별 테이블 `topik_writing_51/52/53/54_questions`(번호별 전용 필드 포함)

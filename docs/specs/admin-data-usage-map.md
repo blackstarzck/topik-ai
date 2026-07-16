@@ -81,6 +81,14 @@
 | System     | `System > 감사 로그`              | 관리자 조치 로그                            | Target Type, Target ID, Action, Reason                                                                                       | 동적 감사 데이터          | 없음                                                                                            | 내부 전용   | 운영 증적 데이터. Users/Community/Commerce/Message/System 원본 화면과 `Target Type + Target ID` 링크로 상호 추적된다                                                                                                                                                                                                                                                                                 |
 | System     | `System > 시스템 로그`            | 기술 로그                                   | component, level, timestamp                                                                                                  | 시스템 이벤트             | 없음                                                                                            | 내부 전용   | 장애 분석용. 컴포넌트 단위로 관련 운영 화면과 연결되어 영향 범위를 빠르게 좁히는 데 사용                                                                                                                                                                                                                                                                                                             |
 
+### Assessment 문항 버전·사용자 상태별 노출
+
+- SoT: `docs/architecture/writing-question-version-policy.md`
+- 관리자 `topik_writing_question_import` 불변 버전과 현재 버전 포인터는 관리자 이력·신규 사용자 노출의 원천입니다.
+- 신규 풀이·북마크·임시저장은 `question_id`의 현재 버전을 사용하고, 제출 완료·채점·피드백·과거 결과는 제출 시점의 import ID/hash/문항 스냅샷을 사용합니다.
+- B2C 노출 상태: `확인됨`(제출 스냅샷 기반 구조), `구현/교차 검증 필요`(현재 버전 포인터, 관리자 이력 UI, 북마크·활성 임시저장 최신화와 호환성 차단).
+- 사용자에게 일반 문항 수정 알림이나 버전 번호를 노출하지 않으며, 관리자 운영 값(`service_status`, 태그, 기관 노출)은 외부 문항 내용 버전과 분리해 보존합니다.
+
 ## 5) 운영 메모
 
 - 이 문서는 관리자 프론트엔드 저장소 기준으로 작성되며, B2C 실제 구현 저장소가 없으면 `운영상 추정`과 `노출 예정`을 사용합니다.
