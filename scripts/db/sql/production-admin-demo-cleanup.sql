@@ -1,6 +1,9 @@
 -- Production is receiving these admin-domain tables for the first time. Remove
 -- fixture/demo rows inserted by historical development migrations while keeping
--- code tables, system metadata, notification/auth templates, and quota defaults.
+-- code tables, system metadata, notification/auth templates, quota defaults,
+-- and operation_policies/operation_policy_histories. POL-001/POL-002 are the
+-- source of truth for the user-facing terms/privacy projection and must never
+-- be treated as disposable admin demo data.
 
 delete from public.community_post_admin_notes;
 delete from public.community_reports;
@@ -9,8 +12,6 @@ delete from public.community_posts;
 delete from public.operation_faq_curations;
 delete from public.operation_faq_metrics;
 delete from public.operation_faqs;
-delete from public.operation_policy_histories;
-delete from public.operation_policies;
 delete from public.operation_events;
 delete from public.operation_notices;
 

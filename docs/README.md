@@ -98,6 +98,7 @@
 - `index.md`
 
 ### `docs/runbooks`
+- `dev-to-prod-data-recovery.md` — Supabase dev → prod 사용자·학습·정책·Storage 데이터 복구 절차와 재실행 안전장치, 검증 기준을 기록한 운영 runbook
 - `notification-worker-production-verification.md` — v13 transition email worker를 topik-ai production worker로 넘기기 전/후 SOT, Vercel readiness, smoke, cross-app state evidence를 기록하는 운영 검증 runbook
 - `notification-worker-production-evidence.example.md` — 실제 production evidence 파일 작성 시 secret 값을 남기지 않도록 돕는 redacted 예시 문서
 - `admin-account-separation-prod-cutover.md` — 관리자 계정 분리 production cutover 적용 순서·검증·롤백 runbook

@@ -662,3 +662,9 @@
 - Updated `.env.example`, worker readiness/secret-boundary scripts and unit tests, `docs/runbooks/notification-worker-production-verification.md`, `docs/알림-기능-구현-페이즈-가이드.md`, `docs/architecture/admin-data-source-transition.md`, `docs/specs/admin-page-gap-register.md`, `docs/specs/page-ia/message-mail-page-ia.md`, `docs/page-sync/message-mail-page-sync.md`, `docs/specs/admin-page-ia-change-log.md`, `logs/notification-feature-evidence.md`, and `logs/admin-doc-update-log.md`.
 - Reason: 실제 발송 승인 후 운영 DB가 기본 `disabled`라 첫 시도를 `no_transport`로 건너뛴 문제를 `live` 전환으로 해소하고, 현재 SMTP 구현과 어긋난 Resend/15분 Cron readiness 계약을 교정했다. Vercel `Ready`와 인증된 서버 함수 런타임 성공을 분리해 기록했다.
 - Validation: 현재 관리자 UI dispatch 생성·감사 로그, 운영 DB pending 단일성, 현재 워커 소스의 실제 SMTP `processed=1/sent=1/failed=0`, attempt sent/provider id/sent_at/retry 0, Production 발송 이력 완료/성공 Drawer, browser console/page error 0을 확인했다. 배포된 API 3개는 같은 유효 운영 JWT를 `invalid_session`으로 거부해 Vercel server-only Supabase env 교정이 남았다. 전체 unit suite 41 files/280 tests 통과.
+
+## 2026-07-17 Supabase dev → prod 사용자 데이터 복구와 운영정책 보강
+
+- Updated `scripts/db/recover-prod-from-dev.mjs`, `scripts/db/prod-data-recovery-core.mjs`, `scripts/db/sql/repair-operation-policy-history-links.sql`, `scripts/db/sql/production-admin-demo-cleanup.sql`, 관련 unit tests, `package.json`, `docs/runbooks/dev-to-prod-data-recovery.md`, `docs/README.md`, `logs/admin-doc-update-log.md`.
+- Reason: prod에는 스키마만 적용되고 dev의 Auth 사용자·학습 데이터·Storage가 이관되지 않았으며, production demo cleanup이 사용자 고지의 원본인 운영정책까지 삭제해 약관/개인정보 placeholder가 노출됐다. 사용자 앱 데이터와 canonical 문항, 법률 문서, 운영정책을 복구하고 같은 정리 절차가 정책을 다시 삭제하지 못하도록 고정했다.
+- Validation: dry-run manifest 확인 → 전체 prod 트랜잭션 실행 후 rollback 검증 → 접근 제한 backup schema 생성 → apply → FK·행 수·Auth·법률·Storage checksum 재검증 순서로 수행했다. 최종 사용자 200명, 로그인 연결정보 209개, 프로필 200명, 로그인 연결정보 없는 사용자 0명, 정책 16개/이력 21개/잘못 연결된 현재 이력 0개, placeholder 0개, Storage 4 bucket/43 object/1,999,432 bytes다. 사용자별 핵심 17영역을 200명 전수 비교해 불일치 0건이었다.
