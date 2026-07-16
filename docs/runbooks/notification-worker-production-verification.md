@@ -119,9 +119,9 @@ Evidence to record:
 2026-07-16 status note:
 
 - The Vercel Supabase variables are split by target and the Production bundle resolves only `topik-prod`.
-- The current Production deployment does not yet reach the server functions: unauthenticated `POST` requests to `/api/auth-email/sync`, `/api/admin/invite`, and `/api/notifications/dispatch-email` return `405` instead of each handler's expected `401`.
-- The first PR Preview attempt failed because the previous `*/15 * * * *` worker schedule exceeded the Vercel Hobby Cron limit. The fallback schedule is now `0 0 * * *`; Preview and Production route smoke remain required before this gate can close.
-- This does not close the worker production gate. Non-Supabase worker env names, API function routing, prod schema parity, and unauthenticated/authenticated worker smoke still require the checks above.
+- The first PR Preview attempt failed because the previous `*/15 * * * *` worker schedule exceeded the Vercel Hobby Cron limit. The fallback schedule is now `0 0 * * *`, and the replacement Preview and Production deployments are Ready.
+- Production unauthenticated `POST` requests to `/api/auth-email/sync`, `/api/admin/invite`, and `/api/notifications/dispatch-email` now return each handler's expected `401`. The worker's unauthenticated `GET` also returns `401`.
+- API function routing and unauthenticated worker smoke are closed. The authenticated dispatch smoke remains intentionally open because it may process real pending email attempts; run it only after confirming that live delivery is acceptable.
 
 ## Phase 2 - Production Worker Smoke
 
