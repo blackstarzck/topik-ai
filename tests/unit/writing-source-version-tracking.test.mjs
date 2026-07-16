@@ -49,8 +49,15 @@ describe('TOPIK 쓰기 원본 updated_at 버전 판정 SQL 계약', () => {
       "question_import.version_decision in ('legacy', 'initial', 'content_changed', 'metadata_only')"
     );
     expect(migration).toContain(
-      'v_reference_content_hash := coalesce(v_canonical_content_hash, v_reference_content_hash)'
+      "question_import.mapping_status = 'promoted'"
     );
+    expect(migration).toContain(
+      "question_import.raw_payload->>'review_status' = u&'\\ac80\\c218 \\c644\\b8cc'"
+    );
+    expect(migration).toContain(
+      'order by question_import.source_updated_at desc nulls last, question_import.import_id desc'
+    );
+    expect(migration).not.toContain('v_canonical_content_hash');
     expect(migration).toContain(
       "version_decision not in ('invalid_timestamp', 'identity_conflict')"
     );

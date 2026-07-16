@@ -335,7 +335,7 @@
   - 버전·사용자 노출 계약(SoT: `docs/architecture/writing-question-version-policy.md`)
     - 논리 식별자: `question_id`는 수정 전후 동일 문항을 묶고, 학습 과제·답안 형식·평가 목표가 달라지면 새 `question_id`를 발급한다.
     - 외부 계약: `question_id`는 논리 ID, `created_at`은 문항군 불변 UTC ISO-8601, `updated_at`은 수정 시 단조 증가하는 UTC ISO-8601이며 미수정이면 `created_at`과 같다. 한 응답의 `question_id`는 중복될 수 없다.
-    - 버전 판정: 동일 `payload_hash`는 수신 횟수만 갱신한다. 더 최신 `source_updated_at`과 다른 `content_hash`가 함께 확인된 경우만 `content_changed` 새 버전이며, 같은 내용은 `metadata_only` 수신 행으로만 보존한다. 같거나 과거인 시각의 내용 충돌과 생성 시각/번호/ID 충돌은 held다.
+    - 버전 판정: 동일 `payload_hash`는 수신 횟수만 갱신한다. 가장 최신의 유효한 수신본(`promoted` 또는 검수 완료 수신)보다 더 최신인 `source_updated_at`과 다른 `content_hash`가 함께 확인된 경우만 `content_changed` 새 버전이며, 같은 내용은 `metadata_only` 수신 행으로만 보존한다. 같거나 과거인 시각의 내용 충돌과 생성 시각/번호/ID 충돌은 held다. 서비스 현재 버전 판별은 이 비교 기준과 분리해 `canonical_import_id`만 사용한다.
     - 버전 식별자는 내부 `import_id`를 유지하고 `updated_at`을 URL/PK로 쓰지 않는다.
     - 북마크·임시저장: `question_id` 기준으로 현재 버전을 해석하며 과거 버전을 사용자 노출용으로 고정하지 않는다.
     - 제출: 서버 제출 확정 시점의 `canonical_import_id`, `payload_hash`, learner-safe `question_snapshot`을 함께 고정하고 채점·피드백·과거 결과에서 재사용한다.

@@ -65,7 +65,7 @@
 
 - 한 응답에는 같은 `question_id`가 한 번만 존재해야 하며, `created_at`은 같은 문항군에서 불변이고 `updated_at >= created_at`이어야 한다.
 - 동일 `payload_hash` 재수신은 새 행을 만들지 않고 재수신 횟수와 마지막 수신 시각만 갱신한다.
-- 더 최신 `updated_at`과 다른 `content_hash`가 함께 확인된 경우에만 `content_changed` 불변 버전을 추가하고 승격 후보로 둔다. 비교 기준은 현재 canonical 버전이며, 아직 canonical 포인터가 없으면 최근 유효 수신의 content hash를 사용해 적재와 승격 사이의 재수신도 중복 버전으로 만들지 않는다. 과거 내용으로 되돌린 수정도 더 최신 시각이면 새 버전이다.
+- 더 최신 `updated_at`과 다른 `content_hash`가 함께 확인된 경우에만 `content_changed` 불변 버전을 추가하고 승격 후보로 둔다. 내용 비교 기준은 가장 최신의 유효한 수신본(`promoted` 또는 검수 완료 수신)이며, 서비스 현재 버전 판별은 계속 canonical 포인터만 사용한다. 따라서 승격 재시도 전에 같은 내용이 더 최신 시각으로 다시 수신돼도 중복 내용 버전을 만들지 않고, 과거 내용으로 되돌린 수정은 직전 유효 수신과 내용이 다르고 시각이 더 최신이면 새 버전이 된다.
 - 더 최신 `updated_at`이지만 `content_hash`가 같으면 `metadata_only` 수신 행으로 보존하되 수정 횟수와 현재 포인터를 바꾸지 않는다.
 - 같거나 과거인 `updated_at`에 내용이 다르면 `timestamp_conflict`/`out_of_order`, 문항군의 `created_at`·번호가 다르면 `identity_conflict`, 시각이 없거나 잘못됐으면 `invalid_timestamp`로 보류한다.
 - `metadata_only`와 이상 응답은 인박스에서 상태·사유를 확인하며 문항관리의 승격 버전 수에는 포함하지 않는다.

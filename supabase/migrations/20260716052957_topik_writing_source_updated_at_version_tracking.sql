@@ -187,7 +187,6 @@ declare
   v_latest_source_updated_at timestamptz;
   v_family_item_number smallint;
   v_family_item_number_count integer := 0;
-  v_canonical_content_hash text;
   v_reference_content_hash text;
   v_import_id bigint;
   v_existing_id bigint;
@@ -280,24 +279,18 @@ begin
   from public.topik_writing_question_import
   where source_task_id = v_sid;
 
-  select canonical_import.content_hash
-    into v_canonical_content_hash
-    from public.topik_writing_question_source_map as source_map
-    join public.topik_writing_question_import as canonical_import
-      on canonical_import.import_id = source_map.canonical_import_id
-     and canonical_import.source_task_id = source_map.question_id
-   where source_map.question_id = v_sid;
-
   select question_import.content_hash
     into v_reference_content_hash
     from public.topik_writing_question_import as question_import
    where question_import.source_task_id = v_sid
      and question_import.content_hash is not null
      and question_import.version_decision in ('legacy', 'initial', 'content_changed', 'metadata_only')
+     and (
+       question_import.mapping_status = 'promoted'
+       or question_import.raw_payload->>'review_status' = U&'\AC80\C218 \C644\B8CC'
+     )
    order by question_import.source_updated_at desc nulls last, question_import.import_id desc
    limit 1;
-
-  v_reference_content_hash := coalesce(v_canonical_content_hash, v_reference_content_hash);
 
   if v_source_created_at is null
      or v_source_updated_at is null
