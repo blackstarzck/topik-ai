@@ -8,7 +8,9 @@
 - 최종 상태에서 해당 사용자의 `profiles.app_role`은 `learner`로 복원했다. 관리자 권한 SoT는 `admin_accounts`이며 `admin_get_self` 로그인 검증을 통과했다.
 - `admin_bootstrapped` 감사 로그는 계정별 1건으로 멱등 보관한다.
 - legacy API key는 비활성 상태다. admin 소유 public 함수의 `anon` execute는 0건이며, 운영 seed/demo 업무 데이터는 정리 후 0건이다.
-- 최신 소스+운영 DB의 브라우저 검증은 통과했다. 다만 현재 `https://topik-ai.vercel.app` 배포본은 이전 `profiles.app_role` 인증 로직과 mock 쿠폰 source를 포함하므로 새 배포 전까지 운영 웹 릴리스는 미완료다.
+- 최신 소스를 Vercel Production에 배포했고 `https://topik-ai.vercel.app`에서 현재 관리자 계정의 `admin_get_self` 로그인과 실제 `topik-prod` 쿠폰 source를 확인했다.
+- Production 브라우저 E2E에서 정기 쿠폰 템플릿 생성·상세·수정·삭제·감사 로그 확인을 통과했고 테스트 업무 행은 0건으로 정리됐다. headed Chromium 화면에서도 `topik-prod` 요청 `200`, page error `0`, 재확인 console error `0`을 확인했다.
+- `/api/auth-email/sync`, `/api/admin/invite`, `/api/notifications/dispatch-email`의 비인증 `POST`와 알림 워커 비인증 `GET`은 모두 `401`을 반환해 Production 함수 라우팅 경계를 통과했다.
 
 ## 1. 필수 환경 가드
 
@@ -104,13 +106,21 @@ npm run test:e2e:prod-admin
 
 이 테스트는 현재 관리자 로그인, 운영 프로젝트 ref 네트워크 요청, 정기 쿠폰 템플릿 생성·상세·수정·삭제, 감사 로그 화면, DB 잔존 행과 감사 건수를 함께 확인하고 테스트 업무 행을 삭제한다.
 
-## 6. Vercel 배포 승인 게이트
+## 6. Vercel 배포 승인 게이트 (2026-07-16 통과)
 
 - Production/Preview의 Supabase 환경값이 `topik-prod`인지 확인한다.
 - 새 배포 bundle이 `admin_get_self` 인증 경로를 사용해야 한다.
 - `/commerce/coupons`가 `commerce_coupon_subscription_templates`를 실제 요청해야 하며 mock seed가 노출되면 안 된다.
 - 현재 관리자 계정으로 Vercel 로그인, CRUD, 감사 로그 확인을 다시 수행한다.
 - 위 조건 전에는 DB 컷오버 완료와 웹 릴리스 완료를 동일하게 취급하지 않는다.
+
+통과 증거:
+
+- PR `#14` rebase merge 뒤 Production commit `536cad11db0a27c7105c07f43fa04daa073705a9`이 Vercel Ready 상태가 됐다.
+- 현재 관리자 세션은 `E2E Admin · 슈퍼`로 표시되고, 쿠폰 템플릿 요청은 `https://eymlabowhfgtxbiqwxqh.supabase.co/rest/v1/commerce_coupon_subscription_templates`에서 `200`을 반환했다.
+- `npm run test:e2e:prod-admin` 1/1 통과: 생성 1건, 저장 감사 2건, 삭제 감사 1건과 삭제 사유를 확인한 뒤 업무 행을 삭제했다.
+- Production API 비인증 smoke는 `/api/auth-email/sync`, `/api/admin/invite`, `/api/notifications/dispatch-email` `POST`와 알림 워커 `GET` 모두 `401`이다.
+- 실제 SMTP 발송을 일으킬 수 있는 인증된 알림 워커 smoke는 이번 관리자 컷오버 검증에서 실행하지 않았다.
 
 ## 7. 롤백
 

@@ -650,3 +650,9 @@
 - Updated `vercel.json`, `docs/runbooks/notification-worker-production-verification.md`, and `logs/admin-doc-update-log.md`.
 - Reason: PR Preview가 Vercel Hobby 플랜에서 허용하지 않는 `*/15 * * * *` Cron 때문에 실패했다. 관리자 조치의 인증된 즉시 `POST` kick은 유지하고, 남은 `pending` 이메일을 회수하는 보조 Cron만 매일 `00:00 UTC`(`09:00 KST`)로 조정했다.
 - Validation boundary: JSON/정적 게이트와 Preview 재배포를 통과한 뒤 실제 함수 `401` 경계 및 Production 브라우저 CRUD를 다시 검증해야 완료다.
+
+## 2026-07-16 운영 Admin Vercel Production 최종 검증
+
+- Updated `docs/runbooks/admin-account-separation-prod-cutover.md`, `docs/runbooks/notification-worker-production-verification.md`, `docs/architecture/admin-data-source-transition.md`, `docs/specs/admin-page-gap-register.md`, `supabase/README.md`, and `logs/admin-doc-update-log.md`.
+- Reason: PR `#14` 병합과 Vercel Production 배포 뒤 기존 mock/profile-role bundle과 API `405` 결손이 해소됐으므로, 운영 DB 완료와 웹 릴리스 완료를 분리해 두던 문서 상태를 실제 배포 증거에 맞춰 닫았다.
+- Validation: Production commit `536cad11db0a27c7105c07f43fa04daa073705a9` Ready, API 3개 비인증 `POST`와 알림 워커 비인증 `GET` 모두 `401`, 현재 관리자 `admin_get_self` 로그인, `topik-prod` 쿠폰 요청 `200`, 정기 쿠폰 템플릿 생성→상세→수정→삭제→감사 로그 Playwright 1/1을 통과했다. headed Chromium에서 본문 탭/검색/생성 버튼/빈 상태 baseline을 확인했고 재확인 console error·page error는 0건이다. 인증된 이메일 워커 실발송 smoke는 실제 pending 처리 위험 때문에 별도 승인 항목으로 남겼다.

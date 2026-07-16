@@ -84,4 +84,4 @@
 - `topik-prod` TOPIK 쓰기 tracker: 32개 적용. `20260716052957_topik_writing_source_updated_at_version_tracking.sql`은 공급 `updated_at` 전제조건 미충족으로 차단.
 - `topik-dev` admin tracker: canonical 83개 + superseded remote-only 이력 1개. manifest가 remote-only 파일을 재생하지 않도록 고정한다.
 - admin 보안 마이그레이션 `20260716130000`/`20260716131000`은 admin 소유 public 함수의 anon/PUBLIC execute를 회수한다. 운영 검증에서 표본 anon executable admin function은 0건이다.
-- 운영 DB 적용 완료와 Vercel 웹 배포 완료는 별도다. 최신 소스+운영 DB E2E가 통과했더라도 Production alias의 실제 bundle과 source switch를 다시 검증해야 한다.
+- 운영 DB 적용 완료와 Vercel 웹 배포 완료는 별도다. 최신 소스+운영 DB E2E가 통과했더라도 Production alias의 실제 bundle과 source switch를 다시 검증해야 한다. 2026-07-16 관리자 컷오버는 두 단계를 각각 검증해 `topik-prod` tracker/권한과 Production `admin_get_self` 로그인·쿠폰 CRUD·감사 로그까지 통과했다.
