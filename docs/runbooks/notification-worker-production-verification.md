@@ -109,7 +109,8 @@ Supported local aliases:
 Evidence to record:
 
 - `.vercel/project.json` exists and contains project/org identifiers.
-- `vercel.json` schedules `/api/notifications/dispatch-email`.
+- `vercel.json` schedules `/api/notifications/dispatch-email` once daily at `00:00 UTC` (`09:00 KST`) so the fallback worker remains compatible with the Vercel Hobby Cron limit.
+- Administrator-triggered delivery uses the authenticated immediate `POST` kick; the daily Cron is a recovery path for attempts that remain `pending`.
 - `vercel.json` excludes `/api/` from the SPA rewrite.
 - Readiness output contains no secret values.
 - Strict readiness treats missing runtime env names as a failed production gate.
@@ -119,6 +120,7 @@ Evidence to record:
 
 - The Vercel Supabase variables are split by target and the Production bundle resolves only `topik-prod`.
 - The current Production deployment does not yet reach the server functions: unauthenticated `POST` requests to `/api/auth-email/sync`, `/api/admin/invite`, and `/api/notifications/dispatch-email` return `405` instead of each handler's expected `401`.
+- The first PR Preview attempt failed because the previous `*/15 * * * *` worker schedule exceeded the Vercel Hobby Cron limit. The fallback schedule is now `0 0 * * *`; Preview and Production route smoke remain required before this gate can close.
 - This does not close the worker production gate. Non-Supabase worker env names, API function routing, prod schema parity, and unauthenticated/authenticated worker smoke still require the checks above.
 
 ## Phase 2 - Production Worker Smoke
