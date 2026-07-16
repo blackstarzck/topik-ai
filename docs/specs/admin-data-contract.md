@@ -325,21 +325,28 @@
   - 라우트: `/assessment/question-bank`(목록+관리 통합), `/assessment/question-bank/manage`(redirect 역사 경로), 상세 2depth `/assessment/question-bank/{questionId}`(재정의 P3에서 구 `…/review/{questionId}` 개명 완료).
   - query (공통, 두 페이지): 반복 `questionNo`, `topicMain`, `topicDetail`, `questionType`, `difficulty`, `keyword` (+ P4 태그 필터 예약 키 `tag`)
   - query (통합 페이지): `serviceStatus` (구 `operationStatus`·목록 전용 `reviewStatus`는 재정의 P3에서 제거 완료)
-  - 각 라우트는 자체 URL 상태를 보존하며 `tab` 쿼리 파라미터는 더 이상 사용하지 않습니다.
+  - 각 라우트는 자체 URL 상태를 보존하며 페이지 전환용 `tab` 쿼리 파라미터는 더 이상 사용하지 않습니다. 상세는 `detailTab=history`와 `versionId=<import_id>`를 사용하고 목록 복귀 시 이 두 키만 제거합니다.
   - 엔티티 후보
     - `AssessmentQuestion`
     - `AssessmentQuestionAuditEvent`
-    - `AssessmentQuestionVersion` — 같은 `question_id`에 속하는 불변 수신 버전. `canonical_import_id`(또는 동등한 import ID)와 `payload_hash`로 식별
+    - `AssessmentQuestionVersion` — 같은 `question_id`에 속하는 불변 내용 버전. 내부 `import_id`와 `payload_hash`로 식별하며 원본 순서는 `source_updated_at`으로 판정
     - `AssessmentQuestionCurrentVersion` — 신규 풀이·북마크·임시저장이 해석할 현재 버전 포인터
+    - 화면 조회 모델 `AssessmentQuestionVersionSummary`(`questionId`, `canonicalImportId`, `versionCount`, `revisionCount`), `AssessmentQuestionVersionEntry`(`questionId`, `importId`, `payloadHash`, `contentHash`, `sourceCreatedAt`, `sourceUpdatedAt`, `firstSeenAt`, `lastSeenAt`, `ingestCount`), `AssessmentQuestionVersionDetail`(`entry`, `question`)
   - 버전·사용자 노출 계약(SoT: `docs/architecture/writing-question-version-policy.md`)
     - 논리 식별자: `question_id`는 수정 전후 동일 문항을 묶고, 학습 과제·답안 형식·평가 목표가 달라지면 새 `question_id`를 발급한다.
-    - 버전 식별자 후보: `canonical_import_id`, `payload_hash`, `received_at`, `is_current`. 동일 payload 재수신은 새 버전을 만들지 않는다.
+    - 외부 계약: `question_id`는 논리 ID, `created_at`은 문항군 불변 UTC ISO-8601, `updated_at`은 수정 시 단조 증가하는 UTC ISO-8601이며 미수정이면 `created_at`과 같다. 한 응답의 `question_id`는 중복될 수 없다.
+    - 버전 판정: 동일 `payload_hash`는 수신 횟수만 갱신한다. 더 최신 `source_updated_at`과 다른 `content_hash`가 함께 확인된 경우만 `content_changed` 새 버전이며, 같은 내용은 `metadata_only` 수신 행으로만 보존한다. 같거나 과거인 시각의 내용 충돌과 생성 시각/번호/ID 충돌은 held다.
+    - 버전 식별자는 내부 `import_id`를 유지하고 `updated_at`을 URL/PK로 쓰지 않는다.
     - 북마크·임시저장: `question_id` 기준으로 현재 버전을 해석하며 과거 버전을 사용자 노출용으로 고정하지 않는다.
     - 제출: 서버 제출 확정 시점의 `canonical_import_id`, `payload_hash`, learner-safe `question_snapshot`을 함께 고정하고 채점·피드백·과거 결과에서 재사용한다.
     - 현재 문항 테이블 upsert는 최신 조회용 projection이며 불변 버전 이력의 SoT가 아니다.
+    - 관리자 문항 이력은 `mapping_status='promoted'`인 승격 버전만 포함합니다. `raw`·`held`·`metadata_only`는 모든 수신 행을 보여주는 인박스에서만 확인하고, 현재 판별은 `question_source_map.canonical_import_id`만 사용하며 인박스 `is_latest`나 `source_updated_at`을 추론하지 않습니다.
   - 현재 Supabase source (facade 스위치 `question-bank-data-source.ts` 기본 `topik_writing` — 재정의 P3 컷오버 완료)
     - 목록: 추천 뷰 `topik_writing_question_recommendation_view`(E4 확장 컬럼 포함) + 활성 태그 집계(`topik_writing_question_tags`)
     - 상세: 번호별 테이블 `topik_writing_51/52/53/54_questions`(번호별 전용 필드 포함)
+    - 버전 요약: 읽기 전용 `topik_writing_question_version_summary_view`(`question_id`, `canonical_import_id`, `version_count`, `revision_count`). `revision_count=greatest(승격 버전 수-1, 0)`이며 현재 포인터가 없으면 UI는 `버전 연결 없음`으로 분리합니다.
+    - 버전 목록·과거 상세: `topik_writing_question_import`의 `mapping_status='promoted'` 행. `source_created_at`, `source_updated_at`, `content_hash`, `payload_hash`를 포함하며 과거 상세는 반드시 `question_id + import_id`를 함께 검증하고 `raw_payload`를 기존 상세 mapper로 변환합니다.
+    - 인박스: `topik_writing_question_import` 모든 수신 행의 `is_latest`, `mapping_status`, `version_decision`, `hold_reason`, 원본 시각과 두 hash를 표시합니다. `is_latest`는 마지막 수신 원문일 뿐 현재 서비스 버전이 아닙니다.
     - 마스터: `topik_writing_topic_master`(주제 17/85 — 검색 옵션), `topik_writing_tag_master`(활성 사전 — 태그 편집 옵션 축, '서비스_노출상태' 그룹은 facade에서 필터)
     - 마스터 카탈로그(P5-1 — 2026-06-11): 동일 마스터 2테이블의 **전수 조회**(비활성·전 그룹 포함, 필터 없음) facade `fetchQuestionBankTopicMasterCatalogSafe`/`fetchQuestionBankTagMasterCatalogSafe` — `/system/metadata`의 `TOPIK 쓰기 마스터 데이터` 섹션이 소비(legacy 모드는 빈 배열). 화면 모델: `TopikWritingTopicMasterCatalogRow`(topicId/topicMain/topicDetail/sourceName/isActive/sortOrder/memo), `TopikWritingTagMasterCatalogRow`(tagCode/tagNameKo/tagGroup/description/usageRule/exampleQuestionId/isActive/updatedAt)
     - 마스터 쓰기(P5-3 개방 — 2026-06-11): tag_master **활성/비활성 토글 단일** — `admin_update_tag_master_status`(0014, SECURITY DEFINER, **platform_admin 가드** — 문항 RPC의 content_admin과 분리, 사유 필수·미존재·무변경 거부, `admin_audit_logs` 기록: `tag_master_status_changed`/`AssessmentTagMaster`/tag_code/diff `{is_active:{from,to}}`/payload `{note, active_assignment_count}`). facade `updateTagMasterStatusSafe`(사유 공백 거부, mock 분기 동반, legacy 거부). 주제 마스터·마스터 값 편집(이름·설명·그룹 등)은 조회 전용 유지 — 직접 테이블 write는 RLS 차단(쓰기 정책 0건)
@@ -347,12 +354,17 @@
     - 최종 source: Supabase가 구성된 환경은 `topik_writing` canonical repository만 사용합니다. env `VITE_QUESTION_BANK_SOURCE`와 v13 `problems` 읽기 어댑터, 구 `admin_update_problem` 경로는 제거됐습니다. Supabase 미구성 CI·스모크 환경만 결정적 mock을 사용합니다.
   - 핵심 필드
     - Supabase 원천(공통): `question_id`, `item_number`, `topic_main`/`topic_detail`(+보조 주제), `question_type_name`, `target_level`/`difficulty_level`, `scenario_type`, `situation_summary`, `learning_objective`, 문항 본문, 모범답안, `auto_checks_passed`(수신 정합 검사 — 존치), `content_team_memo`(수신 메타데이터 — admin 쓰기 없음), `service_status`, `recommendation_keys`, `created_at`, `updated_at` + 번호별 전용 컬럼(51 빈칸 메타/52 완성 단위·단서/53 자료 수치 `source_data`/54 문항 질문 등 — page-IA §5.2)
-    - 화면 모델: `questionId`, `questionNumber`, `topicMain`/`topicDetail`, `questionTypeName`, `targetLevel`/`difficultyLevel`, `scenarioType`, `situationSummary`, `serviceStatus`, `institutionExposure`, `recommendationKeys`, `updatedAt` + 상세 전용(학습 목표, 문항 본문, 번호별 전용 블록, 모범답안, `autoChecksPassed`, `contentTeamMemo` 읽기 전용)
+    - 화면 모델: `questionId`, `questionNumber`, `topicMain`/`topicDetail`, `questionTypeName`, `targetLevel`/`difficultyLevel`, `scenarioType`, `situationSummary`, `serviceStatus`, `institutionExposure`, `recommendationKeys`, `updatedAt` + 상세 전용(학습 목표, 문항 본문, 번호별 전용 블록, 모범답안, `autoChecksPassed`, `contentTeamMemo` 읽기 전용) + 버전 조회 모델(요약/이력/과거 상세)
     - (제거 완료 — 재정의 P3, `202f905`) 구 화면 모델의 `reviewStatus`/`validationStatus`/`reviewMemo`/`operationStatus`/`usageCount`/`linkedExamCount`/`revisionHistory` 등 검수·구 운영 축 필드는 제거됐다. 검수 4컬럼(`review_status`/`review_workflow_status`/`review_passed`/`validation_result`)도 마이그레이션 `0013`에서 물리 제거 완료됐다(2026-06-11 적용 — 스냅샷 4테이블 검수 컬럼 0건)
   - 계약 메모
     - `AssessmentQuestionSeed`, feature 내부 JSON fixture, Zustand 문제은행 store는 source 계약에서 제거되었습니다. Supabase 조회가 실패해도 JSON fixture를 fallback으로 읽지 않습니다(Supabase 미구성 시 명시적 `mock` 모드 — D-12).
     - 목록 `상황 요약` 컬럼은 `situation_summary`를 1줄 말줄임 + hover 툴팁(전문/시나리오 유형)으로 표시하고, `주제(종합/세부)` 컬럼은 `topic_main`/`topic_detail` 2단으로 표시합니다.
     - Supabase source가 없는 표시값은 임의 생성하지 않고 `-`, `미지정`, 빈 목록 sentinel로 표시합니다(legacy 롤백 소스의 `serviceStatus`=`미지정`, 태그=빈 값 포함).
+    - 과거 `raw_payload`를 상세 mapper로 변환할 때 현재 운영 값인 `serviceStatus`를 과거 payload의 상태처럼 노출하지 않습니다. 버전 ID, 원본 생성/수정 시각, content/payload hash, 수신 시각/재수신 정보는 별도 버전 정보로 표시합니다.
+    - 수신/승격은 `question_id` advisory transaction lock으로 직렬화하고 각 bulk RPC는 ID 정렬을 유지합니다. API는 50건 적재 청크를 모두 성공한 뒤 50개 ID 승격 청크를 실행하며 재시도는 payload/import 멱등 계약을 사용합니다.
+    - 2026-07-16 상류 실응답 701건의 `updated_at`이 모두 null이므로 신규 source timestamp 판정 마이그레이션은 공급 계약 검증 전 dev/운영 적용 보류입니다.
+    - 버전 요약·이력 조회 실패는 기존 목록/현재 상세 요청과 분리된 safe 조회 경계에서 처리하고, 해당 컬럼·탭만 error/retry 상태로 격리합니다.
+    - 이전 버전 대비 자동 필드 diff와 과거 버전 복원·재활성화는 현재 계약 범위가 아닙니다.
     - **[폐기 — 2026-06-11 인바운드 전환]** 구판 계약("`reviewStatus = 검수 완료` → 운영정책 `POL-017`에 따라 상류 `TalkPik AI Service`로 배포(API 업로드)")은 폐기됐습니다. 상류 push(업로드/배포) 트랙 자체가 소멸했고, `POL-017`은 "TOPIK 쓰기 문항 수신·관리 운영정책"으로 재정의됐습니다. 상류 Writing API(`GET /api/writing/tasks`)의 작문 과제는 v13 사용자 노출용이며 admin 배포 대상이 아닙니다. admin의 노출 통제는 `service_status` 컬럼(§12.3), 문항 품질·상태 표현은 태그로만 합니다.
     - **[폐기 — 2026-06-11 인바운드 전환]** 배포 연동 필드 후보(`reviewExportStatus`, `reviewExportedAt`, 상류 작문 과제 식별자 `publishedTaskId`)는 push 트랙 소멸로 계약 후보에서 제거합니다. 단 `topik_writing_question_source_map.published_task_id` 컬럼은 물리적으로 존재하므로 용도 재검토 예정으로 표시합니다(§12.1).
     - (제거 완료 — 재정의 P3, `202f905`) 구 `reviewMemo` UI-local annotation과 검수 메모 영구화 계약(구 D-7)은 검수 개념 삭제로 철회·제거됐습니다. 태그 부여/제거용 운영 메모 필드도 2026-06-12 계약에서 제거했습니다. `content_team_memo`는 수신 메타데이터로 존치하되 admin 쓰기는 없습니다(상세 `문항 상태` 카드에 읽기 전용 표시).

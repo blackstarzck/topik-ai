@@ -357,18 +357,31 @@
 - 문제 번호 체크박스 그룹: `51번`, `52번`, `53번`, `54번` 다중 선택, 기본 전체 선택
 - 상단 요약 카드: 전체 문항 + 번호별(`51`~`54`) 건수 — 카드 클릭은 번호 선택 토글 (구 검수 축 카드는 재정의 P3에서 제거 완료. 노출 상태·태그 축 카드 확장은 P4 후속 검토)
 - 필터: SearchBar `주제(종합/세부 — 17주제 2단 마스터 기반)`, `유형`, `난이도(1~6)`, `검색` (구 `도메인` 축과 `reviewStatus` 요약 카드 필터는 재정의 P3에서 제거 완료. 태그 필터는 P4 예약 `tag` 키)
-- 컬럼: 문항 번호, 문항 ID, 주제, 난이도, TOPIK 급수, 노출 상태(`service_status` Tag), 태그, 기관 노출, 최근 수정, 더보기 (구 `검수 상태` 컬럼은 재정의 P3에서 제거 완료)
+- 컬럼: 문항 번호, 문항 ID, 주제, 난이도, TOPIK 급수, 노출 상태(`service_status` Tag), 태그, 기관 노출, 최근 수정, `버전`, 더보기 (구 `검수 상태` 컬럼은 재정의 P3에서 제거 완료)
+  - `버전`은 `topik_writing_question_version_summary_view.revision_count`를 `0회`, `1회` 형식으로 표시하고 숫자 정렬을 지원합니다. 현재 `canonical_import_id`가 없으면 `0회`가 아니라 `버전 연결 없음`으로 표시합니다.
+  - `revision_count>=1`이고 현재 버전 포인터가 있는 행만 확장 아이콘을 표시합니다. 확장 `AdminDataTable`은 현재 버전을 제외한 승격 이력을 최신 `source_updated_at` 순으로 `버전 ID`, `원본 생성 시각`, `원본 수정 시각`, `최초 수신`, `마지막 수신`, `수신 횟수`, `content hash`, `payload hash` 컬럼에 표시하며 행 클릭/키보드 Enter로 과거 상세에 진입합니다. `raw`·`held`·`metadata_only`는 포함하지 않습니다.
   - `상황 요약` 셀: 기본 목록에서는 1줄 말줄임으로 노출한다. hover/focus 시 툴팁에서 상황 요약 전문과 시나리오 유형을 확인하고, 하단 `상세 보기` 버튼(구 `검수하기` — 재정의 P3에서 개명 완료)으로 동일 2depth 상세 페이지에 진입할 수 있다. source는 신규 스키마 `situation_summary`/`scenario_type`이다.
   - `주제(종합/세부)` 셀은 `topic_main`/`topic_detail`을 2단으로 노출한다. `유형/난이도` 셀은 `question_type_name`과 급수·난이도(`target_level`/`difficulty_level`)를 노출한다.
 - 행 클릭/툴팁 `상세 보기`: `/assessment/question-bank/:questionId` 2depth 페이지로 이동 (재정의 P3에서 구 `…/review/:questionId` 개명 완료)
-- 2depth 상세 페이지(조회 전용): 좌측 본문은 `Descriptions` 기반 문서형 레이아웃으로, 공통 상단(문항 번호/ID/주제(종합/세부)/보조 주제/유형·급수/시나리오 유형/상황 요약/학습 목표/문항 본문) + 번호별 전용 row + 공통 꼬리(모범답안, `auto_checks_passed`, 추천 키)를 렌더링한다. 우측은 조회 전용 `문항 상태` 카드(노출 상태 Tag, 콘텐츠팀 메모 읽기 전용, 감사 로그 링크)다.
+- 2depth 상세 페이지(조회 전용): `AdminListCard` 상단 탭을 `버전 #<canonical_import_id>`, `변경 이력보기`로 구성합니다. 현재 탭의 좌측 본문은 `Descriptions` 기반 문서형 레이아웃으로, 공통 상단(문항 번호/ID/주제(종합/세부)/보조 주제/유형·급수/시나리오 유형/상황 요약/학습 목표/문항 본문) + 번호별 전용 row + 공통 꼬리(모범답안, `auto_checks_passed`, 추천 키)를 렌더링합니다. 우측은 조회 전용 `문항 상태` 카드(노출 상태 Tag, 콘텐츠팀 메모 읽기 전용, 감사 로그 링크)입니다.
+  - `변경 이력보기`는 현재 버전을 제외한 승격 이력 테이블을 표시합니다. 선택한 과거 행은 기존 상세 mapper로 전체 payload를 렌더링하되 운영 상태를 과거 payload 값처럼 표시하지 않고, `과거 버전 #ID · 현재 노출 버전 아님` 안내와 별도 버전 정보 카드, `변경 이력 목록으로`/`현재 버전 보기` 동선을 제공합니다.
+  - 버전 조회 실패·잘못된 ID·다른 문항의 `versionId`는 이력 탭 안에서 오류/재시도로 격리하고 현재 버전 탭은 유지합니다.
   - 번호별 전용 row: `51` 복원문·빈칸 ㄱ/ㄴ 메타·대표/허용 정답, `52` 복원문·완성 단위/허용답안 범위·연결/요구 표현 기능·단서 문장·대표 정답·채점 주의, `53` 자료 유형/주제·차트 제목/단위·비교/변화/해석 난이도·글자 수·글 구성·핵심 발견·자료 수치(`source_data`)·채점 중점, `54` 글쓰기 유형/쟁점·관점 요구/추론 패턴·문항 질문·글자 수·글 구성·근거 키워드·금지 요소·채점 중점.
   - Supabase source가 없는 표시값은 임의 생성하지 않고 화면에서 `-`, 빈 목록(empty state) sentinel로 표시한다.
 - 검수 메모 규칙: 제거 완료 — 구 2depth 검수 페이지의 검수 메모·검수 조치 표면은 재정의 P3에서 전부 제거됐습니다(`202f905`). 태그 부여/제거용 운영 메모 필드도 2026-06-12 계약에서 제거했습니다(`/manage` 담당, P4 개방 완료 — 2026-06-11).
 - 주요 액션: `상세 보기`, `노출 가능`, `노출 제외`, `내부 테스트`, `태그 편집`, `기관 노출 설정`, 일괄 `기관 한정 지정`/`기관 한정 해제`. 기관 신규 추가는 `service_status='available'` 문항만 허용하고, 기존 기관 매핑 제거는 문항 상태와 무관하게 허용합니다.
-- URL 복원 메모: `questionNo`(반복), `topicMain`, `topicDetail`, `questionType`, `difficulty`, `keyword`, `serviceStatus` (구 `domain`·`reviewStatus` 축은 재정의 P3에서 제거 완료). `tab` 쿼리는 사용하지 않고 라우트 자체가 URL 상태를 보존합니다.
+- URL 복원 메모: `questionNo`(반복), `topicMain`, `topicDetail`, `questionType`, `difficulty`, `keyword`, `serviceStatus` (구 `domain`·`reviewStatus` 축은 재정의 P3에서 제거 완료). 페이지 전환용 `tab` 쿼리는 사용하지 않습니다. 상세 전용 `detailTab=history`와 `versionId=<import_id>`를 지원하고, 목록 복귀 시 이 두 키만 제거해 목록 필터를 보존합니다.
 - 통합 메모: 구 `문항 관리` 형제 라우트 `/assessment/question-bank/manage`는 `/assessment/question-bank`로 redirect되는 역사 경로입니다. 현행 route element는 `src/features/assessment/pages/assessment-question-manage-page.tsx`입니다.
 - 전환 메모: 2026-06-11 인바운드 전환(결정 기록 §0)으로 재정의된 P3(조회 컷오버 + 검수 표면·컬럼 제거)의 코드 컷오버·표 재작성은 완료됐습니다(`202f905`). 검수 4컬럼 물리 제거 마이그레이션 `0013`도 2026-06-11 적용 완료(`docs/architecture/metadata-tag-schema-transition-decision-record.md` §0, 실행계획안 2026-06-11 개정 — §12.4 P3 = PASS).
+
+### 19-A) 가져온 문항(인박스) 테이블
+
+- 라우트: `/assessment/question-bank/imported`
+- 데이터 범위: `topik_writing_question_import`의 모든 수신 행. 같은 `question_id`의 과거 응답도 보존해 표시하며 `is_latest`는 서비스 현재 버전이 아니라 마지막 수신 원문 표시다.
+- 컬럼: 문항 번호, 소스 ID, 제목, 주제, 난이도, 생성 출처, 적재 상태, 최근 수신본, 이력 판정, 원본 생성 시각, 원본 수정 시각, content hash, 판정 사유, 최근 수신.
+- `version_decision`: `legacy`, `initial`, `content_changed`, `metadata_only`, `out_of_order`, `timestamp_conflict`, `identity_conflict`, `invalid_timestamp`. `initial`/`content_changed`만 승격 후보이며 나머지는 인박스 조회 전용이다.
+- `외부에서 가져오기`는 50건 단위 적재를 전부 성공한 뒤 50개 문항 ID 단위 승격을 실행한다. 응답은 `inserted/new_version/metadata_only/held/unchanged/failed`와 `promoted/held`를 분리한다.
+- 상류 `updated_at` 701건 non-null 사전 검증 전에는 신규 판정 마이그레이션을 DB에 적용하지 않는다.
 
 ## 19-1) 평가 > TOPIK 쓰기 문항 관리
 

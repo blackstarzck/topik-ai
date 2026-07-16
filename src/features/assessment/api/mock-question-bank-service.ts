@@ -1,6 +1,9 @@
 import type {
   AssessmentQuestionDetail,
   AssessmentQuestionSummary,
+  AssessmentQuestionVersionDetail,
+  AssessmentQuestionVersionEntry,
+  AssessmentQuestionVersionSummary,
   AssessmentServiceStatus,
   BulkServiceStatusResult,
   TopikWritingQuestionTagRow,
@@ -233,6 +236,143 @@ function toSummary(detail: AssessmentQuestionDetail): AssessmentQuestionSummary 
   };
 }
 
+const mockVersionSummaries: AssessmentQuestionVersionSummary[] = [
+  {
+    questionId: 'topik-writing-51-9901',
+    canonicalImportId: 5103,
+    versionCount: 3,
+    revisionCount: 2
+  },
+  {
+    questionId: 'topik-writing-52-9901',
+    canonicalImportId: 5201,
+    versionCount: 1,
+    revisionCount: 0
+  },
+  {
+    questionId: 'topik-writing-53-9901',
+    canonicalImportId: null,
+    versionCount: 0,
+    revisionCount: 0
+  },
+  {
+    questionId: 'topik-writing-54-9901',
+    canonicalImportId: 5402,
+    versionCount: 2,
+    revisionCount: 1
+  }
+];
+
+const mockVersionEntries: AssessmentQuestionVersionEntry[] = [
+  {
+    questionId: 'topik-writing-51-9901',
+    importId: 5103,
+    itemNumber: '51',
+    payloadHash: '51-current-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+    contentHash: '51-content-current-bbbbbbbbbbbbbbbbbbbbbbbbb',
+    sourceCreatedAt: '2026-06-10 09:00',
+    sourceUpdatedAt: '2026-06-12 09:00',
+    firstSeenAt: '2026-06-12 09:00',
+    lastSeenAt: '2026-06-12 09:30',
+    ingestCount: 2
+  },
+  {
+    questionId: 'topik-writing-51-9901',
+    importId: 5102,
+    itemNumber: '51',
+    payloadHash: '51-history-aaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    contentHash: '51-content-history-aaaaaaaaaaaaaaaaaaaaaaaaa',
+    sourceCreatedAt: '2026-06-10 09:00',
+    sourceUpdatedAt: '2026-06-11 10:00',
+    firstSeenAt: '2026-06-11 10:00',
+    lastSeenAt: '2026-06-11 10:00',
+    ingestCount: 1
+  },
+  {
+    questionId: 'topik-writing-51-9901',
+    importId: 5101,
+    itemNumber: '51',
+    payloadHash: '51-history-0000000000000000000000000000',
+    contentHash: '51-content-history-0000000000000000000000000',
+    sourceCreatedAt: '2026-06-10 09:00',
+    sourceUpdatedAt: '2026-06-10 09:00',
+    firstSeenAt: '2026-06-10 09:00',
+    lastSeenAt: '2026-06-10 09:10',
+    ingestCount: 2
+  },
+  {
+    questionId: 'topik-writing-52-9901',
+    importId: 5201,
+    itemNumber: '52',
+    payloadHash: '52-current-cccccccccccccccccccccccccccccccc',
+    contentHash: '52-content-current-cccccccccccccccccccccccc',
+    sourceCreatedAt: '2026-06-10 09:00',
+    sourceUpdatedAt: '2026-06-10 09:00',
+    firstSeenAt: '2026-06-10 09:00',
+    lastSeenAt: '2026-06-10 09:00',
+    ingestCount: 1
+  },
+  {
+    questionId: 'topik-writing-54-9901',
+    importId: 5402,
+    itemNumber: '54',
+    payloadHash: '54-current-dddddddddddddddddddddddddddddd',
+    contentHash: '54-content-current-dddddddddddddddddddddddd',
+    sourceCreatedAt: '2026-06-10 09:00',
+    sourceUpdatedAt: '2026-06-13 13:00',
+    firstSeenAt: '2026-06-13 13:00',
+    lastSeenAt: '2026-06-13 13:00',
+    ingestCount: 1
+  },
+  {
+    questionId: 'topik-writing-54-9901',
+    importId: 5401,
+    itemNumber: '54',
+    payloadHash: '54-history-eeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
+    contentHash: '54-content-history-eeeeeeeeeeeeeeeeeeeeeeeee',
+    sourceCreatedAt: '2026-06-10 09:00',
+    sourceUpdatedAt: '2026-06-10 09:00',
+    firstSeenAt: '2026-06-10 09:00',
+    lastSeenAt: '2026-06-10 09:00',
+    ingestCount: 1
+  }
+];
+
+const mockHistoricalDetails: AssessmentQuestionVersionDetail[] = [
+  {
+    ...mockVersionEntries[1],
+    question: {
+      ...mockDetails[0],
+      serviceStatus: null,
+      situationSummary: '[이전 버전] 도서관 운영 시간 변경을 알리는 학교 공지문',
+      promptText:
+        '도서관에서 안내 말씀드립니다. 다음 주부터 이용 시간을 ( ㄱ ). 책을 빌리려면 ( ㄴ ).',
+      updatedAt: '2026-06-11 10:00'
+    }
+  },
+  {
+    ...mockVersionEntries[2],
+    question: {
+      ...mockDetails[0],
+      serviceStatus: null,
+      situationSummary: '[최초 버전] 학교 도서관 이용 안내문',
+      promptText: '도서관 이용 시간을 확인하고 다음 문장을 완성하십시오. ( ㄱ ) ( ㄴ )',
+      updatedAt: '2026-06-10 09:00'
+    }
+  },
+  {
+    ...mockVersionEntries[5],
+    question: {
+      ...mockDetails[3],
+      serviceStatus: null,
+      situationSummary: '[이전 버전] 인공지능을 활용한 수업에 대한 의견 서술 과제',
+      promptText:
+        '인공지능을 수업에 활용하는 것에 대한 자신의 생각을 600~700자로 쓰시오.',
+      updatedAt: '2026-06-10 09:00'
+    }
+  }
+];
+
 export async function loadMockSummaries(): Promise<AssessmentQuestionSummary[]> {
   return mockDetails.map(toSummary);
 }
@@ -245,6 +385,35 @@ export async function loadMockDetail(
     throw new Error('문항 대상을 찾을 수 없습니다.');
   }
   return { ...found };
+}
+
+export async function loadMockQuestionVersionSummaries(
+  questionIds: string[]
+): Promise<AssessmentQuestionVersionSummary[]> {
+  const requested = new Set(questionIds);
+  return mockVersionSummaries.filter((row) => requested.has(row.questionId));
+}
+
+export async function loadMockQuestionVersionEntries(
+  questionId: string
+): Promise<AssessmentQuestionVersionEntry[]> {
+  return mockVersionEntries.filter((entry) => entry.questionId === questionId);
+}
+
+export async function loadMockQuestionVersionDetail(
+  questionId: string,
+  importId: number
+): Promise<AssessmentQuestionVersionDetail> {
+  const found = mockHistoricalDetails.find(
+    (detail) => detail.questionId === questionId && detail.importId === importId
+  );
+  if (!found) {
+    throw new Error('선택한 문항 버전을 찾을 수 없습니다.');
+  }
+  return {
+    ...found,
+    question: { ...found.question }
+  };
 }
 
 export async function loadMockTopicMaster(): Promise<TopikWritingTopicMasterRow[]> {

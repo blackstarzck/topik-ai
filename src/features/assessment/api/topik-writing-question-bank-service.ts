@@ -4,6 +4,9 @@ import type {
   AssessmentQuestionDetail,
   AssessmentQuestionNumber,
   AssessmentQuestionSummary,
+  AssessmentQuestionVersionDetail,
+  AssessmentQuestionVersionEntry,
+  AssessmentQuestionVersionSummary,
   AssessmentServiceStatus,
   BulkServiceStatusResult,
   TopikWritingQuestionTagRow,
@@ -128,6 +131,71 @@ function mapSummary(row: ViewRow): AssessmentQuestionSummary {
 
 type TableRow = Record<string, unknown>;
 
+type VersionSummaryRow = {
+  question_id: string;
+  canonical_import_id: number | string | null;
+  version_count: number | string;
+  revision_count: number | string;
+};
+
+type VersionEntryRow = {
+  import_id: number | string;
+  promoted_question_id: string;
+  item_number: number | string;
+  payload_hash: string;
+  content_hash: string | null;
+  source_created_at: string | null;
+  source_updated_at: string | null;
+  first_seen_at: string | null;
+  last_seen_at: string | null;
+  ingest_count: number | string;
+  raw_payload?: unknown;
+};
+
+function toSafeInteger(value: unknown, fallback = 0): number {
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+export function mapAssessmentQuestionVersionSummaryRow(
+  row: VersionSummaryRow
+): AssessmentQuestionVersionSummary {
+  const versionCount = toSafeInteger(row.version_count);
+  const canonicalImportId =
+    row.canonical_import_id == null
+      ? null
+      : toSafeInteger(row.canonical_import_id) || null;
+
+  return {
+    questionId: row.question_id,
+    canonicalImportId,
+    versionCount,
+    revisionCount: Math.min(toSafeInteger(row.revision_count), versionCount)
+  };
+}
+
+export function mapAssessmentQuestionVersionEntryRow(
+  row: VersionEntryRow
+): AssessmentQuestionVersionEntry {
+  const itemNumber = String(row.item_number);
+  if (!['51', '52', '53', '54'].includes(itemNumber)) {
+    throw new Error('문항 버전의 문항 번호가 올바르지 않습니다.');
+  }
+
+  return {
+    questionId: row.promoted_question_id,
+    importId: toSafeInteger(row.import_id),
+    itemNumber: itemNumber as AssessmentQuestionNumber,
+    payloadHash: row.payload_hash,
+    contentHash: row.content_hash ?? '',
+    sourceCreatedAt: toDateTime(row.source_created_at),
+    sourceUpdatedAt: toDateTime(row.source_updated_at),
+    firstSeenAt: toDateTime(row.first_seen_at),
+    lastSeenAt: toDateTime(row.last_seen_at),
+    ingestCount: toSafeInteger(row.ingest_count)
+  };
+}
+
 function mapBlank(row: TableRow, n: 1 | 2) {
   return {
     position: toText(row[`blank_${n}_position`]),
@@ -202,7 +270,11 @@ function mapContent(
   }
 }
 
-function mapDetail(kind: AssessmentQuestionNumber, row: TableRow): AssessmentQuestionDetail {
+export function mapTopikWritingQuestionDetail(
+  kind: AssessmentQuestionNumber,
+  row: TableRow,
+  serviceStatusOverride?: AssessmentServiceStatus | null
+): AssessmentQuestionDetail {
   return {
     questionId: toText(row.question_id),
     questionNumber: kind,
@@ -216,7 +288,10 @@ function mapDetail(kind: AssessmentQuestionNumber, row: TableRow): AssessmentQue
     questionTypeName: toText(row.question_type_name),
     recommendationKeys: toStringArray(row.recommendation_keys),
     avoidRepeatKeys: toStringArray(row.avoid_repeat_keys),
-    serviceStatus: row.service_status as AssessmentServiceStatus,
+    serviceStatus:
+      serviceStatusOverride === undefined
+        ? (row.service_status as AssessmentServiceStatus)
+        : serviceStatusOverride,
     contentTeamMemo: toText(row.content_team_memo),
     createdAt: toDateTime(row.created_at as string | null),
     updatedAt: toDateTime(row.updated_at as string | null),
@@ -269,7 +344,111 @@ export async function loadTopikWritingDetail(
   if (!data) {
     throw new Error('문항 대상을 찾을 수 없습니다.');
   }
-  return mapDetail(kind, data as TableRow);
+  return mapTopikWritingQuestionDetail(kind, data as TableRow);
+}
+
+export async function loadTopikWritingQuestionVersionSummaries(
+  questionIds: string[],
+  signal?: AbortSignal
+): Promise<AssessmentQuestionVersionSummary[]> {
+  if (questionIds.length === 0) {
+    return [];
+  }
+
+  const client = requireClient();
+  const { data, error } = await client
+    .from('topik_writing_question_version_summary_view')
+    .select('question_id, canonical_import_id, version_count, revision_count')
+    .in('question_id', questionIds)
+    .order('question_id');
+  if (signal?.aborted) {
+    throw new DOMException('Request aborted', 'AbortError');
+  }
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return ((data ?? []) as unknown as VersionSummaryRow[]).map(
+    mapAssessmentQuestionVersionSummaryRow
+  );
+}
+
+export async function loadTopikWritingQuestionVersionEntries(
+  questionId: string,
+  signal?: AbortSignal
+): Promise<AssessmentQuestionVersionEntry[]> {
+  const client = requireClient();
+  const { data, error } = await client
+    .from('topik_writing_question_import')
+    .select(
+      'import_id, promoted_question_id, item_number, payload_hash, content_hash, source_created_at, source_updated_at, first_seen_at, last_seen_at, ingest_count'
+    )
+    .eq('promoted_question_id', questionId)
+    .eq('mapping_status', 'promoted')
+    .order('import_id', { ascending: false });
+  if (signal?.aborted) {
+    throw new DOMException('Request aborted', 'AbortError');
+  }
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return ((data ?? []) as unknown as VersionEntryRow[]).map(
+    mapAssessmentQuestionVersionEntryRow
+  );
+}
+
+export async function loadTopikWritingQuestionVersionDetail(
+  questionId: string,
+  importId: number,
+  signal?: AbortSignal
+): Promise<AssessmentQuestionVersionDetail> {
+  const client = requireClient();
+  const { data, error } = await client
+    .from('topik_writing_question_import')
+    .select(
+      'import_id, promoted_question_id, item_number, payload_hash, content_hash, source_created_at, source_updated_at, first_seen_at, last_seen_at, ingest_count, raw_payload'
+    )
+    .eq('import_id', importId)
+    .eq('promoted_question_id', questionId)
+    .eq('mapping_status', 'promoted')
+    .maybeSingle();
+  if (signal?.aborted) {
+    throw new DOMException('Request aborted', 'AbortError');
+  }
+  if (error) {
+    throw new Error(error.message);
+  }
+  if (!data) {
+    throw new Error('선택한 문항 버전을 찾을 수 없습니다.');
+  }
+
+  const row = data as unknown as VersionEntryRow;
+  const entry = mapAssessmentQuestionVersionEntryRow(row);
+  const payload =
+    row.raw_payload && typeof row.raw_payload === 'object' && !Array.isArray(row.raw_payload)
+      ? (row.raw_payload as TableRow)
+      : null;
+  if (!payload) {
+    throw new Error('선택한 문항 버전의 상세 payload가 올바르지 않습니다.');
+  }
+  const payloadQuestionId = toText(payload.question_id);
+  if (payloadQuestionId && payloadQuestionId !== questionId) {
+    throw new Error('선택한 버전이 현재 문항과 일치하지 않습니다.');
+  }
+
+  return {
+    ...entry,
+    question: mapTopikWritingQuestionDetail(
+      entry.itemNumber,
+      {
+        ...payload,
+        question_id: questionId,
+        item_number: Number(entry.itemNumber)
+      },
+      null
+    )
+  };
 }
 
 export async function loadTopikWritingTopicMaster(

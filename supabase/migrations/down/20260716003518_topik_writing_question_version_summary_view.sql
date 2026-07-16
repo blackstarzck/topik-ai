@@ -1,0 +1,1 @@
+drop view if exists public.topik_writing_question_version_summary_view;

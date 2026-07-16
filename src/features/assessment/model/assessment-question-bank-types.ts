@@ -140,6 +140,33 @@ export type AssessmentQuestionDetail = AssessmentQuestionSummary & {
   content: AssessmentQuestionContent;
 };
 
+/** 문항 목록의 현재 포인터와 승격 버전 집계. raw/held/mapped 인박스는 제외한다. */
+export type AssessmentQuestionVersionSummary = {
+  questionId: string;
+  canonicalImportId: number | null;
+  versionCount: number;
+  revisionCount: number;
+};
+
+/** 관리자 변경 이력 테이블에 노출하는 승격 완료 import 버전. */
+export type AssessmentQuestionVersionEntry = {
+  questionId: string;
+  importId: number;
+  itemNumber: AssessmentQuestionNumber;
+  payloadHash: string;
+  contentHash: string;
+  sourceCreatedAt: string;
+  sourceUpdatedAt: string;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  ingestCount: number;
+};
+
+/** 과거 import payload를 기존 상세 모델로 매핑한 관리자 전용 조회 결과. */
+export type AssessmentQuestionVersionDetail = AssessmentQuestionVersionEntry & {
+  question: AssessmentQuestionDetail;
+};
+
 export type TopikWritingTopicMasterRow = {
   topicMain: string;
   topicDetail: string;

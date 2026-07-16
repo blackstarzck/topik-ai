@@ -39,6 +39,7 @@
 - 외부(공급) API로부터 수신·적재된 TOPIK 쓰기 `51~54번` 문항(Supabase `topik_writing_51/52/53/54_questions` + `question_source_map`)을 문제 번호 단위로 조회·열람한다. 외부 API가 미개발인 인터림 동안에는 P2 백필 466행(초기 코퍼스)이 조회 대상이다.
 - 표시 축은 **주제(`topic_main`/`topic_detail`)·난이도(1~6)·유형·노출 상태(`service_status`)·태그·기관 노출 매핑**이다. 문항 품질·상태 표현은 태그로만 한다.
 - 2depth 문항 상세에서 공급된 메타데이터(`docs/metadata-tag-schema-rule.md` §4·§7, §7.9 제외)를 조회 전용으로 열람한다 — 51/52 빈칸 메타, 53 자료 수치, 54 문항 질문 등 번호별 전용 필드 포함.
+- 목록의 수정 횟수와 확장 이력, 상세의 `버전 #<canonical_import_id>`/`변경 이력보기` 탭을 통해 성공적으로 승격된 현재·과거 버전을 관리자 조회 전용으로 역추적한다.
 - 노출 상태·태그·기관 노출 조치가 필요한 문항을 이 페이지의 더보기 메뉴와 일괄 조치 바에서 바로 처리한다.
 
 ### 비목표
@@ -49,6 +50,7 @@
 - 상류 서비스로의 배포(API 업로드/push)는 폐기된 개념이며 이 화면을 포함한 admin 어디에도 존재하지 않는다(2026-06-11 §0 — 구 POL-017 push 모델 폐기).
 - EPS TOPIK, 레벨 테스트 세트 편성을 이 화면 책임으로 가져오지 않는다.
 - JSON 업로드, JSON fallback 조회, 배치 재생성, 대량 일괄 조치는 포함하지 않는다.
+- 과거 버전 복원·재활성화와 이전 버전 대비 자동 필드 diff는 포함하지 않는다. `raw`·`held` 버전은 이 페이지 이력이 아니라 가져온 문항 인박스에서 확인한다.
 
 ## 4. 운영자 사용 시나리오
 
@@ -57,6 +59,7 @@
 - 시나리오 3: 운영자가 목록에서 태그 부여/제거, 노출 상태 전환, 기관 노출 설정이 필요하다고 판단하면 더보기 메뉴 또는 선택 행 일괄 조치 바에서 처리한다. 2depth 상세는 공급 메타데이터와 현재 문항 상태를 조회 전용으로 확인하는 화면이다.
 - (제거 완료 — 재정의 P3, `202f905`) 구 2depth 페이지 우측의 `검수 메모` 카드와 `검수 완료`/`사용 보류`/`검수 필요` 액션, `content_team_memo` 쓰기 경로는 제거됐다. 현행 우측은 조회 전용 `문항 상태` 카드다: 노출 상태 Tag, 조회 전용 안내 문구, 콘텐츠팀 메모(수신 메타데이터 — 읽기 전용 표시), 감사 로그 링크.
 - 목록+관리 통합 페이지와 2depth 상세는 동일한 조회 결과(공유 hook/facade)를 기준으로 동기화된다.
+- 시나리오 4: 운영자가 목록의 `버전` 수정 횟수를 확인하고 수정 이력이 있는 행을 확장해 과거 승격 버전을 본다. 중첩 테이블 행을 클릭하거나 키보드 Enter로 해당 과거 버전 상세에 진입한 뒤 이력 목록 또는 현재 버전으로 복귀한다.
 
 ## 5. 화면 구조
 
@@ -68,15 +71,18 @@
 | 상단 요약 카드 | 조회 범위 파악 | 현행: `전체 문항` + 번호별(`51`~`54`) 건수 — 카드 클릭은 번호 선택 토글 (구 검수 상태(`reviewStatus`)별 건수 카드는 재정의 P3에서 제거 완료. 노출 상태·태그 축 카드 확장은 P4 태그 필터와 함께 후속 검토) | 카드 클릭 필터 |
 | 문제 번호 체크박스 그룹 | `51`, `52`, `53`, `54` 범위 전환 | 문제 번호 | 다중 선택 전환, 기본 전체 선택 |
 | SearchBar | 공통 목록형 검색 조건 적용 | 검색어, 상세 검색 팝오버(주제 종합/세부 · 유형 · 난이도) | 즉시 필터, 상세 검색 적용 |
-| 목록 테이블 | 수신 문항 비교·열람 | 문항 번호, 문항 ID, 주제, 난이도, TOPIK 급수, **노출 상태**(`service_status` Tag), 태그, 기관 노출, 최근 수정 (구 검수 상태 컬럼은 재정의 P3에서 제거 완료) | 문항 ID/더보기로 상세 진입, 노출 상태/태그 조치, 기관 노출 설정 |
+| 목록 테이블 | 수신 문항 비교·열람 | 문항 번호, 문항 ID, 주제, 난이도, TOPIK 급수, **노출 상태**(`service_status` Tag), 태그, 기관 노출, 최근 수정, `버전` 수정 횟수 (구 검수 상태 컬럼은 재정의 P3에서 제거 완료) | 문항 ID/더보기로 상세 진입, 노출 상태/태그 조치, 기관 노출 설정, 수정 이력 행 확장 |
+| 확장 변경 이력 | 승격된 과거 내용 버전 역추적 | 버전 ID, 원본 생성 시각, 원본 수정 시각, 최초 수신, 마지막 수신, 수신 횟수, content hash, payload hash | 행 클릭/키보드 Enter로 과거 상세 진입 |
 
 ### 5.2 문항 상세 페이지 (라우트 `/assessment/question-bank/:questionId` — 재정의 P3에서 개명 완료)
 
 | 영역 | 목적 | 주요 데이터 | 주요 액션 |
 | --- | --- | --- | --- |
 | `PageTitle` + 돌아가기 | 문항 문맥 식별 | 제목 `TOPIK {n}번 문항 상세`, `목록으로 돌아가기` 버튼 (구 `TOPIK {n}번 문항 검수` 제목은 재정의 P3에서 교체 완료) | 목록 복귀 |
+| `AdminListCard` 상단 탭 | 현재·과거 버전 전환 | `버전 #<canonical_import_id>`, `변경 이력보기` | 현재 상세, 과거 버전 목록, 선택한 과거 payload 상세 전환 |
 | 메타데이터 `Descriptions` | 공급 메타데이터 조회 전용 열람 | 공통 상단(문항 번호/ID/주제(종합/세부)/보조 주제/유형 · 급수·난이도/시나리오 유형/상황 요약/학습 목표/문항 본문) + 번호별 전용 row + 공통 꼬리(모범답안, `auto_checks_passed`, 추천 키) | 본문 열람(쓰기 없음) |
 | 우측 `문항 상태` 카드 (조회 전용) | 노출 상태·수신 메모 확인과 감사 역추적 | 노출 상태 Tag(`service_status`), 조회 전용 안내, 콘텐츠팀 메모(수신 메타데이터 — 읽기 전용), 감사 로그 링크 | 감사 로그 이동. (구 `검수 메모` 카드와 검수 액션 3종은 재정의 P3에서 제거 완료 — `202f905`) |
+| 과거 버전 정보 카드 | 과거 payload와 현재 운영 상태 분리 | 버전 ID, 원본 생성/수정 시각, content/payload hash, 최초/마지막 수신, 수신 횟수 | `변경 이력 목록으로`, `현재 버전 보기` |
 
 - 번호별 전용 row(조회 전용, 현행 화면 모델 기준):
   - `51`: 복원문(빈칸 채움), 빈칸 ㄱ/ㄴ 메타(역할/기능/정답 유형)와 대표·허용 정답
@@ -98,6 +104,7 @@
 - `institutionExposure`(기관 노출 매핑 수와 전역 노출 상태 기준 실제 미노출 여부)
 - `recommendationKeys`
 - `updatedAt`
+- `versionSummary`: `canonicalImportId`, `versionCount`, `revisionCount`. 현재 포인터가 없으면 `버전 연결 없음`이고 `0회`로 간주하지 않는다.
 - (제거 완료 — 재정의 P3, `202f905`) `reviewStatus` / `reviewWorkflowStatus`는 화면 모델·목록 컬럼에서 제거됐다. 컬럼 물리 제거도 마이그레이션 `0013`으로 완료됐다(2026-06-11 적용).
 
 ### 6.2 검색/선택 데이터
@@ -112,6 +119,7 @@
 - 목록 페이지 전용 쿼리는 없다 (구 `reviewStatus` 쿼리는 검수 개념 삭제로 재정의 P3에서 제거 완료).
 - 노출 상태 쿼리(`serviceStatus`)는 이 통합 페이지에서 요약 카드 필터로 사용한다.
 - `tab` 쿼리 파라미터는 제거되었다. 각 라우트가 자체 URL 상태를 보존한다.
+- 상세 전용 쿼리 `detailTab=history`, `versionId=<import_id>`는 목록 필터와 함께 보존하되 목록 복귀 시 이 두 키만 제거한다.
 
 ### 6.3 문항 상세 페이지 데이터
 
@@ -123,6 +131,8 @@
   - `auto_checks_passed` — 수신·적재 자동 정합 검사 표식(존치)
   - `content_team_memo` — 수신 메타데이터(admin 쓰기 없음)
 - Supabase source가 없는 값은 임의 생성하지 않고 화면에서 `-`, 빈 목록(empty state)으로 표시한다. JSON fixture fallback은 사용하지 않는다(`mock` 소스는 Supabase 미구성 시의 명시적 모크 모드이며 fallback이 아니다).
+- 버전 요약 source는 `topik_writing_question_version_summary_view`, 버전 목록·과거 상세 source는 `topik_writing_question_import`의 `mapping_status='promoted'` 행이다. 각 이력에는 `source_created_at`, `source_updated_at`, `content_hash`, `payload_hash`를 표시한다. 현재 판별은 `question_source_map.canonical_import_id`만 사용하고 `updated_at`/`is_latest`를 추론하지 않는다.
+- 과거 상세는 기존 번호별 상세 mapper를 재사용하지만 현재 운영 값인 `serviceStatus`를 과거 payload의 상태처럼 표시하지 않는다. `AssessmentQuestionVersionSummary`, `AssessmentQuestionVersionEntry`, `AssessmentQuestionVersionDetail` 화면 모델을 조회 경계로 사용한다.
 - (제거 완료 — 재정의 P3, `202f905`) 상세 화면 모델의 `review_status`/`review_workflow_status` 기반 표시와 검수 메모 쓰기 경로는 제거됐다. `content_team_memo`는 상세 `문항 상태` 카드에 읽기 전용으로만 표시한다.
 
 ## 7. 액션 정의
@@ -173,7 +183,8 @@
 ### 문항 상세 페이지
 
 - 상세 페이지 URL은 목록 페이지 쿼리를 그대로 보존해 들어간다.
-- `목록으로 돌아가기`는 현재 상세 페이지의 쿼리를 이용해 같은 목록 상태를 복원한다.
+- `detailTab=history`는 과거 버전 목록, `detailTab=history&versionId=<import_id>`는 선택한 과거 버전 상세를 복원한다.
+- `목록으로 돌아가기`는 `detailTab`과 `versionId`만 제거하고 나머지 목록 쿼리를 이용해 같은 목록 상태를 복원한다.
 
 ## 10. 네트워크 상태와 fail-safe
 
@@ -181,6 +192,7 @@
 - success: 현재 필터 결과를 렌더링한다.
 - empty: 조건에 맞는 문항이 없음을 Empty 상태로 안내한다.
 - error: 오류 메시지와 `다시 시도`를 제공하고, 가능한 경우 마지막 성공 목록을 유지한다.
+- 버전 요약·이력·과거 상세 오류는 기존 문항 목록과 현재 상세를 중단시키지 않고 해당 컬럼/탭 안의 Alert와 재시도로 격리한다. 잘못된 ID나 다른 문항의 `versionId`도 이력 탭에서만 차단한다.
 - abort/retry: 화면 이탈 시 요청 취소, 조회 실패 시 수동 재시도를 적용한다.
 - mock 모드: Supabase 미구성 시 "모크 모드로 동작 중" Alert를 노출하고 결정적 픽스처를 표시한다(실데이터·감사 로그 미기록).
 
@@ -200,12 +212,15 @@
   - `src/features/assessment/api/assessment-question-bank-service.ts` (facade)
   - `src/features/assessment/api/topik-writing-question-bank-service.ts` (신규 스키마)
   - `src/features/assessment/api/mock-question-bank-service.ts` (D-12 모크)
+  - `src/features/assessment/model/question-version-navigation.ts` (버전 탭·목록 복귀 URL 계약)
+  - `src/features/assessment/ui/question-version-history-table.tsx` (확장/상세 공용 이력 테이블)
 
 ## 12. 오픈 이슈
 
-- **외부 공급 API 미개발 — 수신 경로 미구현.** 문제 발원인 외부(공급) API가 아직 개발되지 않아 admin의 수신·적재 경로(및 `question_received` 감사 액션)는 미구현이다. 공급 계약은 요청 문서(`docs/requests/upstream-writing-endpoints-request-2026-06-10.md`, D-11 재정의)로 추진하며, 그동안 신규 공급 없이 백필 466행(초기 코퍼스)만 조회된다.
+- **`updated_at` 공급 계약 적용 대기.** 수신·적재 경로와 관리자 이력 UI는 구현됐지만 2026-07-16 실응답 701건의 `updated_at`이 모두 null이다. UTC ISO-8601 non-null·증가 계약 검증 전에는 `source_updated_at + content_hash` 판정 마이그레이션을 dev/운영 DB에 적용하지 않는다.
 - 검수 표면 제거(재정의 P3 구현 범위)는 완료됐다(`202f905`): 페이지 제목·요약 카드(검수 상태 축)·목록 검수 상태 컬럼·`reviewStatus` 파라미터·상세 검수 메모 카드·검수 액션 3종·검수 라우트 명칭 전부 제거·개명 완료. 검수 4컬럼 물리 제거 마이그레이션 `0013`도 적용 완료됐다(2026-06-11 — 스냅샷 4테이블 검수 컬럼 0건·뷰 16컬럼·RPC 검수 참조 0건).
 - Supabase 구성 환경의 데이터 소스는 `topik_writing` 하나다(재정의 P3 컷오버 완료 — freeze→델타 재적재→발산 0건 대사 후 플립). 최종 canonical 전환에서 env 기반 legacy 롤백과 `problems` adapter를 삭제했다.
 - 목록의 조회 축은 재정의 P3에서 확정·구현됐다(노출 상태 컬럼 추가, 요약 카드는 번호별 건수 축). P4(2026-06-11)는 관리 페이지의 태그 편집·노출 write를 개방했고, 이 목록 페이지의 태그 컬럼/필터(`tag` 예약 키)·노출 상태·태그 축 요약 카드 확장은 후속 검토 범위로 남는다(P5 마스터 surface와 함께 판단).
 - v13 사용자 기능의 신규 스키마 소비 경로 전환(현재 v13은 `problems`를 읽음)은 별도 트랙이며, EPS TOPIK / 레벨 테스트 편성 화면의 문항 소비 계약도 여전히 별도 후속 문서가 필요하다.
 - Supabase 미설정 시 JSON fallback 대신 명시적 mock 모드, 조회 실패 시 error/retry 상태를 노출한다.
+- 관리자 버전 이력 1차 조회 UI와 원본 생성/수정 시각·content hash 표시는 구현됐다. 남은 범위는 이전 버전 대비 자동 필드 diff이며, 과거 버전 복원·재활성화는 정책 비범위다. v13 운영 코드/스키마는 변경하지 않고 기존 임시저장 충돌 가드·제출 스냅샷을 교차 검증한다.

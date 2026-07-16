@@ -8,12 +8,14 @@ import {
   Typography,
   notification
 } from 'antd';
-import type { TableColumnsType } from 'antd';
-import { SearchOutlined } from '@ant-design/icons';
+import type { TableColumnsType, TableProps } from 'antd';
+import { RightOutlined, SearchOutlined } from '@ant-design/icons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import {
+  fetchAssessmentQuestionVersionEntriesSafe,
+  fetchAssessmentQuestionVersionSummariesSafe,
   updateAssessmentQuestionServiceStatusBulkSafe,
   updateAssessmentQuestionServiceStatusSafe
 } from '../api/assessment-question-bank-service';
@@ -46,6 +48,8 @@ import {
   applyCommonQuestionFilters,
   filterQuestionsByNumbers
 } from '../model/assessment-question-bank-presenter';
+import { buildQuestionDetailHref } from '../model/question-version-navigation';
+import { QuestionVersionHistoryTable } from '../ui/question-version-history-table';
 import {
   TableActionMenu,
   type TableActionMenuItem
@@ -53,8 +57,11 @@ import {
 import type {
   AssessmentQuestionNumber,
   AssessmentQuestionSummary,
+  AssessmentQuestionVersionEntry,
+  AssessmentQuestionVersionSummary,
   AssessmentServiceStatus
 } from '../model/assessment-question-bank-types';
+import type { AsyncState } from '../../../shared/model/async-state';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
@@ -66,6 +73,13 @@ import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-
 import { createTextSorter } from '../../../shared/ui/table/table-column-utils';
 
 const { Text } = Typography;
+
+const EMPTY_VERSION_HISTORY_STATE: AsyncState<AssessmentQuestionVersionEntry[]> = {
+  status: 'idle',
+  data: [],
+  errorMessage: null,
+  errorCode: null
+};
 
 /**
  * P4 관리 포인트 개방 (실행계획안 §8, 2026-06-11): 노출 통제(service_status)와
@@ -147,6 +161,18 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
     null
   );
   const [tagEditQuestionId, setTagEditQuestionId] = useState<string | null>(null);
+  const [versionSummaryState, setVersionSummaryState] = useState<
+    AsyncState<Record<string, AssessmentQuestionVersionSummary>>
+  >({
+    status: 'idle',
+    data: {},
+    errorMessage: null,
+    errorCode: null
+  });
+  const [versionHistoryByQuestionId, setVersionHistoryByQuestionId] = useState<
+    Record<string, AsyncState<AssessmentQuestionVersionEntry[]>>
+  >({});
+  const [versionSummaryReloadKey, setVersionSummaryReloadKey] = useState(0);
   const [notificationApi, notificationContextHolder] =
     notification.useNotification();
 
@@ -166,6 +192,91 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
   );
 
   const hasCachedQuestions = state.data.length > 0;
+  const versionQuestionIdsSignature = useMemo(
+    () => state.data.map((question) => question.questionId).sort().join('\u0000'),
+    [state.data]
+  );
+
+  useEffect(() => {
+    const questionIds = versionQuestionIdsSignature
+      ? versionQuestionIdsSignature.split('\u0000')
+      : [];
+    const controller = new AbortController();
+
+    setVersionSummaryState((previous) => ({
+      ...previous,
+      status: 'pending',
+      errorMessage: null,
+      errorCode: null
+    }));
+
+    void fetchAssessmentQuestionVersionSummariesSafe(
+      questionIds,
+      controller.signal
+    ).then((result) => {
+      if (controller.signal.aborted) {
+        return;
+      }
+      if (!result.ok) {
+        setVersionSummaryState((previous) => ({
+          ...previous,
+          status: 'error',
+          errorMessage: result.error.message,
+          errorCode: result.error.code
+        }));
+        return;
+      }
+
+      const byQuestionId = Object.fromEntries(
+        result.data.map((summary) => [summary.questionId, summary])
+      );
+      setVersionSummaryState({
+        status: 'success',
+        data: byQuestionId,
+        errorMessage: null,
+        errorCode: null
+      });
+    });
+
+    return () => controller.abort();
+  }, [versionQuestionIdsSignature, versionSummaryReloadKey]);
+
+  const loadVersionHistory = useCallback((questionId: string) => {
+    setVersionHistoryByQuestionId((previous) => ({
+      ...previous,
+      [questionId]: {
+        ...(previous[questionId] ?? EMPTY_VERSION_HISTORY_STATE),
+        status: 'pending',
+        errorMessage: null,
+        errorCode: null
+      }
+    }));
+
+    void fetchAssessmentQuestionVersionEntriesSafe(questionId).then((result) => {
+      if (!result.ok) {
+        setVersionHistoryByQuestionId((previous) => ({
+          ...previous,
+          [questionId]: {
+            ...(previous[questionId] ?? EMPTY_VERSION_HISTORY_STATE),
+            status: 'error',
+            errorMessage: result.error.message,
+            errorCode: result.error.code
+          }
+        }));
+        return;
+      }
+
+      setVersionHistoryByQuestionId((previous) => ({
+        ...previous,
+        [questionId]: {
+          status: 'success',
+          data: result.data,
+          errorMessage: null,
+          errorCode: null
+        }
+      }));
+    });
+  }, []);
 
   const currentNumberQuestions = useMemo(
     () => filterQuestionsByNumbers(state.data, activeQuestionNumbers),
@@ -431,6 +542,20 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
     [navigate, searchParams]
   );
 
+  const openVersionDetail = useCallback(
+    (entry: AssessmentQuestionVersionEntry) => {
+      navigate(
+        buildQuestionDetailHref(
+          entry.questionId,
+          searchParams.toString(),
+          'history',
+          entry.importId
+        )
+      );
+    },
+    [navigate, searchParams]
+  );
+
   // 컬럼 헤더 필터 옵션 — 주제·TOPIK 급수는 데이터에서 distinct 추출.
   const topicMainFilterOptions = useMemo(
     () =>
@@ -546,6 +671,35 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
         )
       },
       {
+        title: '버전',
+        key: 'version',
+        width: 140,
+        sorter: (a, b) => {
+          const left = versionSummaryState.data[a.questionId];
+          const right = versionSummaryState.data[b.questionId];
+          const leftValue = left?.canonicalImportId == null ? -1 : left.revisionCount;
+          const rightValue =
+            right?.canonicalImportId == null ? -1 : right.revisionCount;
+          return leftValue - rightValue;
+        },
+        render: (_, record) => {
+          const summary = versionSummaryState.data[record.questionId];
+          if (!summary) {
+            return versionSummaryState.status === 'error' ? (
+              <Text type="danger">확인 실패</Text>
+            ) : versionSummaryState.status === 'pending' ? (
+              <Text type="secondary">확인 중</Text>
+            ) : (
+              <Text type="secondary">버전 연결 없음</Text>
+            );
+          }
+          if (summary.canonicalImportId == null) {
+            return <Text type="secondary">버전 연결 없음</Text>;
+          }
+          return <Text>{summary.revisionCount.toLocaleString()}회</Text>;
+        }
+      },
+      {
         title: '주제',
         dataIndex: 'topicMain',
         width: 160,
@@ -638,7 +792,64 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
       openDetail,
       tagCountByQuestionId,
       targetLevelFilterOptions,
-      topicMainFilterOptions
+      topicMainFilterOptions,
+      versionSummaryState.data,
+      versionSummaryState.status
+    ]
+  );
+
+  const versionExpandable = useMemo<
+    NonNullable<TableProps<AssessmentQuestionSummary>['expandable']>
+  >(
+    () => ({
+      expandIcon: ({ expanded, expandable, onExpand, record }) =>
+        expandable ? (
+          <Button
+            type="text"
+            size="small"
+            className="question-version-expand-button"
+            aria-label={expanded ? '문항 변경 이력 접기' : '문항 변경 이력 펼치기'}
+            icon={<RightOutlined rotate={expanded ? 90 : 0} />}
+            onClick={(event) => {
+              event.stopPropagation();
+              onExpand(record, event);
+            }}
+          />
+        ) : null,
+      rowExpandable: (record) => {
+        const summary = versionSummaryState.data[record.questionId];
+        return Boolean(
+          summary?.canonicalImportId != null && summary.revisionCount > 0
+        );
+      },
+      onExpand: (expanded, record) => {
+        if (!expanded) {
+          return;
+        }
+        const historyState = versionHistoryByQuestionId[record.questionId];
+        if (!historyState || historyState.status === 'idle') {
+          loadVersionHistory(record.questionId);
+        }
+      },
+      expandedRowRender: (record) => (
+        <QuestionVersionHistoryTable
+          state={
+            versionHistoryByQuestionId[record.questionId] ??
+            EMPTY_VERSION_HISTORY_STATE
+          }
+          currentImportId={
+            versionSummaryState.data[record.questionId]?.canonicalImportId ?? null
+          }
+          onOpenVersion={openVersionDetail}
+          onRetry={() => loadVersionHistory(record.questionId)}
+        />
+      )
+    }),
+    [
+      loadVersionHistory,
+      openVersionDetail,
+      versionHistoryByQuestionId,
+      versionSummaryState.data
     ]
   );
 
@@ -729,6 +940,24 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
             />
           ) : null}
 
+          {versionSummaryState.status === 'error' ? (
+            <Alert
+              type="warning"
+              showIcon
+              style={{ marginBottom: 16 }}
+              message="버전 정보를 불러오지 못했습니다."
+              description="문항 목록은 계속 사용할 수 있습니다. 버전 컬럼만 다시 불러옵니다."
+              action={
+                <Button
+                  size="small"
+                  onClick={() => setVersionSummaryReloadKey((previous) => previous + 1)}
+                >
+                  다시 시도
+                </Button>
+              }
+            />
+          ) : null}
+
           {selectedQuestions.length > 0 ? (
             <div
               data-testid="bulk-action-bar"
@@ -803,10 +1032,11 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
                 pageSizeOptions: [10, 20, 50, 100],
                 showTotal: (total) => `총 ${total.toLocaleString()}건`
               }}
-              scroll={{ x: 1730 }}
+              scroll={{ x: 1870 }}
               tableLayout="fixed"
               columns={manageColumns}
               dataSource={filteredQuestions}
+              expandable={versionExpandable}
             />
           )}
         </AdminListCard>

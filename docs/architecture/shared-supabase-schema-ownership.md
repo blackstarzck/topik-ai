@@ -42,6 +42,7 @@
 | `system_logs` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | backend/infra service-role ingest(TBD), admin write none | admin | RLS enable+force, admin select only(`private.is_admin`). Read-only technical logs; no admin write policy/RPC |
 | `admin_audit_logs` | **topik-ai** (admin 운영 감사 도메인) | admin RPC | admin | admin select. **소유권 정정(2026-06-17): v13 소유 아님 — admin 운영 감사 sink는 도메인 기준 topik-ai 소유. admin이 조회 인덱스·읽기 RPC 추가 가능(Phase 0 감사 화면 실연동 unblock)** |
 | `topik_writing_*` | topik-ai (`topik_writing_schema_migrations`) | 기존 결정(D-1) | 기존 결정 | `metadata-tag-schema-transition-decision-record.md` §2 |
+| `topik_writing_question_version_summary_view` | **topik-ai** (`topik_writing_schema_migrations`, `supabase/migrations`) | 없음(읽기 전용 뷰) | authenticated admin | `security_invoker=true`; 기반 `question_source_map`/`question_import` admin RLS 적용. `PUBLIC`·`anon` 권한 회수, `authenticated` 명시적 SELECT |
 | `private.problem_identities`, `private.ensure_writing_problem_identity(uuid,text,smallint)` | **v13** (v13 user-facing migration) | v13 소유 함수만 write | topik-ai 승격 RPC는 함수 interface만 호출, 직접 table read 없음 | private registry. topik-ai는 직접 DDL/DML·FK를 만들지 않고 함수 부재·충돌 시 fail-closed |
 
 ## 3. 변경 절차
@@ -49,6 +50,17 @@
 1. 새 객체 추가: owner repo의 migration home에 migration+down 작성 → 본 문서 §2에 행 추가 → 적용.
 2. 공유 객체 reader/writer 변경: 양 repo 문서에 반영하고 본 문서의 decision record 칸에 일자·근거 기록.
 3. v13 소유 테이블 DDL 변경: v13 오너 승인 + decision record 없이는 금지.
+
+2026-07-16 TOPIK 쓰기 관리자 버전 이력 읽기 경계:
+- `topik_writing_question_version_summary_view`는 topik-ai 소유 `question_source_map.canonical_import_id`와 `question_import.mapping_status='promoted'`만 결합하는 관리자 조회 전용 뷰다. 인박스 `is_latest`로 현재 버전을 추론하지 않고 `raw`·`held` 행을 집계하지 않는다.
+- 뷰는 `security_invoker=true`로 실행되어 기반 테이블의 기존 admin RLS를 그대로 적용한다. `PUBLIC`·`anon` SELECT는 회수하고 `authenticated`에만 명시적으로 부여한다.
+- v13 소유 테이블·함수·프론트엔드는 변경하지 않으며, 과거 버전 복원·재활성화 write 경계도 추가하지 않는다.
+
+2026-07-16 TOPIK 쓰기 원본 수정 시각 판정 경계:
+- `topik_writing_question_import.source_created_at/source_updated_at/content_hash/version_decision`과 판정·승격 RPC의 owner/migration home은 topik-ai `supabase/migrations`/`topik_writing_schema_migrations`다. v13 소유 초안·제출 테이블 DDL은 변경하지 않는다.
+- current pointer writer는 계속 topik-ai `admin_promote_writing_questions`이며 `question_source_map.canonical_import_id`만 원자적으로 전환한다. 외부 `updated_at`과 인박스 `is_latest`는 current pointer가 아니다.
+- v13은 기존 learner-safe canonical read, draft import/hash 충돌 가드, submission snapshot을 그대로 사용한다. 이번 변경의 v13 범위는 `metadata_only` 무영향·실제 승격 충돌·완료 제출 스냅샷 보존 교차 테스트뿐이다.
+- 2026-07-16 공급 API 701건의 `updated_at`이 모두 null이므로 신규 마이그레이션은 dev/운영 미적용 상태다. 공급 계약 검증이 topik-ai DB 적용의 선행 게이트다.
 
 2026-07-14 TOPIK 쓰기 learner identity registry 경계 교정:
 - `private.problem_identities`와 `private.ensure_writing_problem_identity(uuid,text,smallint)`의 owner/migration home은 v13이다. Admin 소유 `topik_writing_question_source_map.learner_problem_id`는 그대로 유지하며, 승격 트랜잭션에서 v13 함수를 호출해 결정성 UUID·`question_id`·`item_number` 충돌을 검증한다.
