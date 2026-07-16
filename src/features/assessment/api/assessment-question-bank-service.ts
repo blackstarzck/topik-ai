@@ -5,6 +5,9 @@ import {
   clearMockQuestionInstitutions,
   loadMockActiveQuestionTags,
   loadMockDetail,
+  loadMockQuestionVersionDetail,
+  loadMockQuestionVersionEntries,
+  loadMockQuestionVersionSummaries,
   loadMockQuestionInstitutions,
   loadMockSummaries,
   loadMockTagMaster,
@@ -22,6 +25,9 @@ import {
   clearTopikWritingQuestionInstitutions,
   loadTopikWritingActiveQuestionTags,
   loadTopikWritingDetail,
+  loadTopikWritingQuestionVersionDetail,
+  loadTopikWritingQuestionVersionEntries,
+  loadTopikWritingQuestionVersionSummaries,
   loadTopikWritingQuestionInstitutions,
   loadTopikWritingSummaries,
   loadTopikWritingTagMaster,
@@ -37,6 +43,9 @@ import {
 import type {
   AssessmentQuestionDetail,
   AssessmentQuestionSummary,
+  AssessmentQuestionVersionDetail,
+  AssessmentQuestionVersionEntry,
+  AssessmentQuestionVersionSummary,
   AssessmentServiceStatus,
   BulkServiceStatusResult,
   TopikWritingQuestionTagRow,
@@ -113,6 +122,37 @@ async function loadDetail(
     return loadMockDetail(questionId);
   }
   return loadTopikWritingDetail(questionId, signal);
+}
+
+async function loadQuestionVersionSummaries(
+  questionIds: string[],
+  signal?: AbortSignal
+): Promise<AssessmentQuestionVersionSummary[]> {
+  if (questionBankDataSource === 'mock') {
+    return loadMockQuestionVersionSummaries(questionIds);
+  }
+  return loadTopikWritingQuestionVersionSummaries(questionIds, signal);
+}
+
+async function loadQuestionVersionEntries(
+  questionId: string,
+  signal?: AbortSignal
+): Promise<AssessmentQuestionVersionEntry[]> {
+  if (questionBankDataSource === 'mock') {
+    return loadMockQuestionVersionEntries(questionId);
+  }
+  return loadTopikWritingQuestionVersionEntries(questionId, signal);
+}
+
+async function loadQuestionVersionDetail(
+  questionId: string,
+  importId: number,
+  signal?: AbortSignal
+): Promise<AssessmentQuestionVersionDetail> {
+  if (questionBankDataSource === 'mock') {
+    return loadMockQuestionVersionDetail(questionId, importId);
+  }
+  return loadTopikWritingQuestionVersionDetail(questionId, importId, signal);
 }
 
 async function loadTopicMaster(
@@ -299,6 +339,40 @@ export function fetchAssessmentQuestionDetailSafe(
 ) {
   return toSafeResult(() =>
     withRetry(() => loadDetail(questionId, signal), { maxRetries: 1 })
+  );
+}
+
+export function fetchAssessmentQuestionVersionSummariesSafe(
+  questionIds: string[],
+  signal?: AbortSignal
+) {
+  return toSafeResult(() =>
+    withRetry(() => loadQuestionVersionSummaries(questionIds, signal), {
+      maxRetries: 1
+    })
+  );
+}
+
+export function fetchAssessmentQuestionVersionEntriesSafe(
+  questionId: string,
+  signal?: AbortSignal
+) {
+  return toSafeResult(() =>
+    withRetry(() => loadQuestionVersionEntries(questionId, signal), {
+      maxRetries: 1
+    })
+  );
+}
+
+export function fetchAssessmentQuestionVersionDetailSafe(
+  questionId: string,
+  importId: number,
+  signal?: AbortSignal
+) {
+  return toSafeResult(() =>
+    withRetry(() => loadQuestionVersionDetail(questionId, importId, signal), {
+      maxRetries: 1
+    })
   );
 }
 

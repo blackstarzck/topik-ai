@@ -7,6 +7,16 @@
  */
 export type ImportedTaskMappingStatus = 'raw' | 'mapped' | 'promoted' | 'held';
 
+export type ImportedTaskVersionDecision =
+  | 'legacy'
+  | 'initial'
+  | 'content_changed'
+  | 'metadata_only'
+  | 'out_of_order'
+  | 'timestamp_conflict'
+  | 'identity_conflict'
+  | 'invalid_timestamp';
+
 export type ImportedWritingTask = {
   importId: number;
   /** 상류 task.id (멱등 키). */
@@ -18,7 +28,14 @@ export type ImportedWritingTask = {
   generatedBy: string;
   difficultyLevel: number | null;
   mappingStatus: ImportedTaskMappingStatus;
+  /** 같은 question_id에서 가장 최근에 수신한 원문 행. 서비스 현재 버전과 무관하다. */
+  isLatestReceived: boolean;
+  versionDecision: ImportedTaskVersionDecision;
+  holdReason: string;
   promotedQuestionId: string | null;
+  sourceCreatedAt: string;
+  sourceUpdatedAt: string;
+  contentHash: string;
   sourceEndpoint: string;
   ingestCount: number;
   /** KST 분 단위 표시 문자열. */

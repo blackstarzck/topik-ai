@@ -1,4 +1,4 @@
-import { Alert, Button, Empty, Input, Space, Tag, Tooltip, notification } from 'antd';
+import { Alert, Button, Empty, Input, Space, Tag, Tooltip, Typography, notification } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import { useCallback, useMemo, useState } from 'react';
@@ -9,6 +9,7 @@ import { useImportedTasks } from '../model/use-imported-tasks';
 import { AssessmentBankTabs } from '../ui/assessment-bank-tabs';
 import type {
   ImportedTaskMappingStatus,
+  ImportedTaskVersionDecision,
   ImportedWritingTask
 } from '../model/imported-task-types';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
@@ -31,11 +32,29 @@ const MAPPING_STATUS_LABELS: Record<ImportedTaskMappingStatus, string> = {
   held: '보류'
 };
 
+const VERSION_DECISION_LABELS: Record<ImportedTaskVersionDecision, string> = {
+  legacy: '기존 이력',
+  initial: '최초 버전',
+  content_changed: '내용 변경',
+  metadata_only: '메타데이터만 변경',
+  out_of_order: '과거 시각 수신',
+  timestamp_conflict: '동일 시각 충돌',
+  identity_conflict: '문항 식별 충돌',
+  invalid_timestamp: '잘못된 시각'
+};
+
 function mappingStatusColor(status: ImportedTaskMappingStatus): string {
   if (status === 'promoted') return 'green';
   if (status === 'mapped') return 'geekblue';
   if (status === 'held') return 'volcano';
   return 'default';
+}
+
+function versionDecisionColor(decision: ImportedTaskVersionDecision): string {
+  if (decision === 'initial' || decision === 'content_changed') return 'green';
+  if (decision === 'legacy') return 'default';
+  if (decision === 'metadata_only') return 'blue';
+  return 'volcano';
 }
 
 const ITEM_NUMBERS = [51, 52, 53, 54] as const;
@@ -66,7 +85,7 @@ export default function AssessmentImportedTasksPage(): JSX.Element {
       : '';
     notificationApi.success({
       message: '외부 문항을 가져왔습니다.',
-      description: `적재: 추가 ${i.inserted} / 변경 ${i.new_version} / 동일 ${i.unchanged} (총 ${i.total})${promoteText}`
+      description: `적재: 추가 ${i.inserted} / 내용 변경 ${i.new_version} / 메타데이터만 변경 ${i.metadata_only} / 보류 ${i.held} / 동일 ${i.unchanged} (총 ${i.total})${promoteText}`
     });
     reload();
   }, [notificationApi, reload]);
@@ -214,6 +233,72 @@ export default function AssessmentImportedTasksPage(): JSX.Element {
         )
       },
       {
+        title: '최근 수신본',
+        dataIndex: 'isLatestReceived',
+        width: 120,
+        sorter: (a, b) => Number(a.isLatestReceived) - Number(b.isLatestReceived),
+        filters: [
+          { text: '최근 수신본', value: true },
+          { text: '이전 수신본', value: false }
+        ],
+        onFilter: (value, record) => record.isLatestReceived === value,
+        render: (value: boolean) => (
+          <Tag color={value ? 'blue' : 'default'}>{value ? '최근' : '이전'}</Tag>
+        )
+      },
+      {
+        title: '이력 판정',
+        dataIndex: 'versionDecision',
+        width: 170,
+        sorter: createTextSorter((record) => record.versionDecision),
+        filters: Object.entries(VERSION_DECISION_LABELS).map(([value, text]) => ({
+          text,
+          value
+        })),
+        onFilter: (value, record) => record.versionDecision === value,
+        render: (decision: ImportedTaskVersionDecision) => (
+          <Tag color={versionDecisionColor(decision)}>
+            {VERSION_DECISION_LABELS[decision]}
+          </Tag>
+        )
+      },
+      {
+        title: '원본 생성 시각',
+        dataIndex: 'sourceCreatedAt',
+        width: 170,
+        sorter: createTextSorter((record) => record.sourceCreatedAt),
+        render: (value: string) => value || '-'
+      },
+      {
+        title: '원본 수정 시각',
+        dataIndex: 'sourceUpdatedAt',
+        width: 170,
+        sorter: createTextSorter((record) => record.sourceUpdatedAt),
+        render: (value: string) => value || '-'
+      },
+      {
+        title: 'content hash',
+        dataIndex: 'contentHash',
+        width: 200,
+        ellipsis: true,
+        render: (value: string) => (
+          <Typography.Text code ellipsis={{ tooltip: value }}>
+            {value || '-'}
+          </Typography.Text>
+        )
+      },
+      {
+        title: '판정 사유',
+        dataIndex: 'holdReason',
+        width: 300,
+        ellipsis: true,
+        render: (value: string) => (
+          <Typography.Text ellipsis={{ tooltip: value }}>
+            {value || '-'}
+          </Typography.Text>
+        )
+      },
+      {
         title: '최근 수신',
         dataIndex: 'lastSeenAt',
         width: 160,
@@ -255,14 +340,6 @@ export default function AssessmentImportedTasksPage(): JSX.Element {
         <ListSummaryCards items={summaryItems} />
 
         <AdminListCard toolbar={toolbar}>
-        <Alert
-          type="info"
-          showIcon
-          style={{ marginBottom: 16 }}
-          message="외부 공급 API에서 가져온 문항 목록입니다."
-          description="상류 문항별 상세 응답을 무손실 인박스에 적재하고, 승격 조건을 충족한 문항은 정식 문항으로 자동 승격합니다."
-        />
-
         {questionBankDataSource === 'mock' ? (
           <Alert
             type="info"
@@ -311,7 +388,7 @@ export default function AssessmentImportedTasksPage(): JSX.Element {
               pageSizeOptions: [20, 50, 100],
               showTotal: (total) => `총 ${total.toLocaleString()}건`
             }}
-            scroll={{ x: 1250 }}
+            scroll={{ x: 2380 }}
             tableLayout="fixed"
             columns={columns}
             dataSource={state.data}

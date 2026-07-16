@@ -6,7 +6,11 @@ import { cwd, execPath } from 'node:process';
 import ts from 'typescript';
 import { describe, expect, test } from 'vitest';
 
-import { promotionQuestionIdsOf } from '../../api/writing-tasks/ingest.ts';
+import {
+  chunkItems,
+  duplicateQuestionIdsOf,
+  promotionQuestionIdsOf
+} from '../../api/writing-tasks/ingest.ts';
 
 const root = cwd();
 const entryPath = join(root, 'api', 'writing-tasks', 'ingest.ts');
@@ -57,11 +61,35 @@ describe('writing task ingest Vercel entrypoint', () => {
     expect(promotionQuestionIdsOf([])).toEqual([]);
 
     const source = readFileSync(entryPath, 'utf8');
-    expect(source).toContain('p_question_ids: promotionQuestionIds');
+    expect(source).toContain('for (const chunk of chunkItems(payload))');
+    expect(source).toContain('for (const questionIdChunk of chunkItems(promotionQuestionIds))');
+    expect(source).toContain('p_question_ids: questionIdChunk');
     expect(source).not.toContain('p_question_ids: null');
     expect(source).toMatch(
       /idempotent_skipped:\s*numberField\(value,\s*["']idempotent_skipped["']\)/
     );
+  });
+
+  test('chunks ingest and promotion deterministically and rejects duplicate question IDs', () => {
+    const items = Array.from({ length: 121 }, (_, index) => index + 1);
+    expect(chunkItems(items).map((chunk) => chunk.length)).toEqual([50, 50, 21]);
+    expect(chunkItems([])).toEqual([]);
+    expect(() => chunkItems(items, 0)).toThrow('chunk size must be a positive integer');
+
+    expect(
+      duplicateQuestionIdsOf([
+        { source_task_id: 'question-a' },
+        { source_task_id: 'question-b' },
+        { source_task_id: 'question-a' }
+      ])
+    ).toEqual(['question-a']);
+    expect(duplicateQuestionIdsOf([{ source_task_id: 'question-a' }])).toEqual([]);
+
+    const source = readFileSync(entryPath, 'utf8');
+    expect(source.indexOf('for (const chunk of chunkItems(payload))')).toBeLessThan(
+      source.indexOf('for (const questionIdChunk of chunkItems(promotionQuestionIds))')
+    );
+    expect(source).toContain("error: 'upstream_contract_invalid'");
   });
 
   test('loads after TypeScript emit in the Node ESM runtime', () => {

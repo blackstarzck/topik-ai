@@ -1810,6 +1810,10 @@ body {
   border-bottom-color: rgba(250, 173, 20, 0.2);
 }
 
+.assessment-detail-page__memo-card .ant-typography code {
+  overflow-wrap: anywhere;
+}
+
 .assessment-detail-page__history-section {
   display: flex;
   flex-direction: column;
@@ -1918,6 +1922,15 @@ body {
 .assessment-detail-page__memo-footnote {
   display: block;
   font-size: 12px;
+}
+
+.question-version-history-table .ant-table-tbody > tr.ant-table-row {
+  cursor: pointer;
+}
+
+.question-version-history-table .ant-table-tbody > tr.ant-table-row:focus-visible > td {
+  outline: 2px solid #1677ff;
+  outline-offset: -2px;
 }
 
 /* 통합 문항 테이블(assessment-bank-table): 체크(선택) 행 배경 강조 제거 — 오너

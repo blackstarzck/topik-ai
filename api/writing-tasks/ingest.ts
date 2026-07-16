@@ -19,7 +19,7 @@ declare const process: {
  *          actor = INGEST_SYSTEM_ACTOR_ID(시스템 content_admin). (정기 동기화)
  *
  * 공통 흐름: 상류 로그인 → 목록 전체 페이지네이션 수신 → 방어적 추출 →
- *           admin_ingest_writing_tasks_bulk 1회 호출(서버측 루프, 멱등·버전·감사).
+ *           50건 단위 순차 적재 완료 → 50개 ID 단위 순차 승격.
  * 멱등이라 재실행 시 새 문항만 추가되고 기존은 unchanged.
  *
  * 보안: Service Role 키·상류 자격증명·시스템 actor는 서버 전용. 브라우저는 자신의
@@ -28,6 +28,7 @@ declare const process: {
 
 const ADMIN_ROLES = new Set(['content_admin', 'platform_admin']);
 const PAGE = 50; // 상류 목록 limit 상한(라이브 확인: limit<=50)
+export const INGEST_CHUNK_SIZE = 50;
 const SOURCE_ENDPOINT = '/api/writing/tasks';
 const LOG_PREFIX = '[writing-tasks/ingest]';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -35,7 +36,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // review_status가 정확히 이 값이 아니면(누락·다른 값 포함) 적재 제외.
 const REVIEW_COMPLETE = '검수 완료';
 
-// 서버리스 함수 최대 실행 시간(상류 페이지네이션 + 벌크 RPC 1회 여유).
+// 서버리스 함수 최대 실행 시간(상류 페이지네이션 + 50건 단위 순차 RPC 여유).
 export const maxDuration = 60;
 
 type IngestRequestBody = {
@@ -54,6 +55,8 @@ type ServerEnv = {
 type IngestCounts = {
   inserted: number;
   new_version: number;
+  metadata_only: number;
+  held: number;
   unchanged: number;
   failed: number;
   total: number;
@@ -110,9 +113,35 @@ function sanitizeIngestCounts(value: unknown): IngestCounts {
   return {
     inserted: numberField(value, 'inserted'),
     new_version: numberField(value, 'new_version'),
+    metadata_only: numberField(value, 'metadata_only'),
+    held: numberField(value, 'held'),
     unchanged: numberField(value, 'unchanged'),
     failed: numberField(value, 'failed'),
     total: numberField(value, 'total')
+  };
+}
+
+function emptyIngestCounts(): IngestCounts {
+  return {
+    inserted: 0,
+    new_version: 0,
+    metadata_only: 0,
+    held: 0,
+    unchanged: 0,
+    failed: 0,
+    total: 0
+  };
+}
+
+function addIngestCounts(total: IngestCounts, next: IngestCounts): IngestCounts {
+  return {
+    inserted: total.inserted + next.inserted,
+    new_version: total.new_version + next.new_version,
+    metadata_only: total.metadata_only + next.metadata_only,
+    held: total.held + next.held,
+    unchanged: total.unchanged + next.unchanged,
+    failed: total.failed + next.failed,
+    total: total.total + next.total
   };
 }
 
@@ -131,10 +160,55 @@ function sanitizePromoteCounts(value: unknown): PromoteCounts {
   };
 }
 
+function emptyPromoteCounts(): PromoteCounts {
+  return {
+    promoted_new: 0,
+    promoted_updated: 0,
+    idempotent_skipped: 0,
+    held: 0,
+    skipped_review: 0,
+    failure_count: 0
+  };
+}
+
+function addPromoteCounts(total: PromoteCounts, next: PromoteCounts): PromoteCounts {
+  return {
+    promoted_new: total.promoted_new + next.promoted_new,
+    promoted_updated: total.promoted_updated + next.promoted_updated,
+    idempotent_skipped: total.idempotent_skipped + next.idempotent_skipped,
+    held: total.held + next.held,
+    skipped_review: total.skipped_review + next.skipped_review,
+    failure_count: total.failure_count + next.failure_count
+  };
+}
+
+export function chunkItems<T>(items: ReadonlyArray<T>, size = INGEST_CHUNK_SIZE): T[][] {
+  if (!Number.isInteger(size) || size < 1) {
+    throw new Error('chunk size must be a positive integer');
+  }
+  const chunks: T[][] = [];
+  for (let offset = 0; offset < items.length; offset += size) {
+    chunks.push(items.slice(offset, offset + size));
+  }
+  return chunks;
+}
+
 export function promotionQuestionIdsOf(
   payload: ReadonlyArray<{ source_task_id: string }>
 ): string[] {
   return [...new Set(payload.map((task) => task.source_task_id))];
+}
+
+export function duplicateQuestionIdsOf(
+  payload: ReadonlyArray<{ source_task_id: string }>
+): string[] {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+  for (const task of payload) {
+    if (seen.has(task.source_task_id)) duplicates.add(task.source_task_id);
+    seen.add(task.source_task_id);
+  }
+  return [...duplicates];
 }
 
 function jsonResponse(body: unknown, init?: ResponseInit): Response {
@@ -346,6 +420,34 @@ async function runIngest(
     (task) => (task.raw as Record<string, unknown>).review_status === REVIEW_COMPLETE
   );
   const skippedReview = tasks.length - reviewComplete.length;
+  const payload = reviewComplete.map((task) => ({
+    source_task_id: task.sourceTaskId,
+    raw_payload: task.raw,
+    raw_response_text: JSON.stringify(task.raw),
+    item_number: task.itemNumber
+  }));
+  const duplicateQuestionIds = duplicateQuestionIdsOf(payload);
+  if (duplicateQuestionIds.length > 0) {
+    const errorRef = deterministicErrorRef(
+      `duplicate-question-ids:${duplicateQuestionIds.sort().join(',')}`
+    );
+    emitIngestResult('error', {
+      correlation_id: opts.correlationId,
+      status: 'failed',
+      code: 'upstream_contract_invalid',
+      error_ref: errorRef,
+      duplicate_question_id_count: duplicateQuestionIds.length
+    });
+    return jsonResponse(
+      {
+        ok: false,
+        error: 'upstream_contract_invalid',
+        error_ref: errorRef,
+        correlation_id: opts.correlationId
+      },
+      { status: 502 }
+    );
+  }
   if (opts.dryRun) {
     emitIngestResult('log', {
       correlation_id: opts.correlationId,
@@ -363,104 +465,116 @@ async function runIngest(
       warnings
     });
   }
-
-  const payload = reviewComplete.map((task) => ({
-    source_task_id: task.sourceTaskId,
-    raw_payload: task.raw,
-    raw_response_text: JSON.stringify(task.raw),
-    item_number: task.itemNumber
-  }));
   const promotionQuestionIds = promotionQuestionIdsOf(payload);
 
-  const { data, error } = await supabase.rpc('admin_ingest_writing_tasks_bulk', {
-    p_actor_id: opts.actorId,
-    p_source_endpoint: SOURCE_ENDPOINT,
-    p_tasks: payload
-  });
-  if (error) {
-    const errorRef = deterministicErrorRef(error.message);
-    emitIngestResult('error', {
-      correlation_id: opts.correlationId,
-      status: 'failed',
-      code: 'ingest_rpc_failed',
-      error_ref: errorRef
-    });
-    return jsonResponse(
-      {
-        ok: false,
-        error: 'ingest_rpc_failed',
-        error_ref: errorRef,
-        correlation_id: opts.correlationId
-      },
-      { status: 500 }
-    );
-  }
-
-  const counts = sanitizeIngestCounts(data);
-  if (counts.failed > 0) {
-    emitIngestResult('error', {
-      correlation_id: opts.correlationId,
-      status: 'partial_failure',
-      code: 'ingest_partial_failure',
-      ...counts,
-      skipped_review: skippedReview,
-      warning_count: warnings.length
-    });
-    return jsonResponse(
-      {
-        ok: false,
-        error: 'ingest_partial_failure',
-        correlation_id: opts.correlationId,
-        counts,
-        skipped_review: skippedReview,
-        warnings
-      },
-      { status: 502 }
-    );
-  }
-
-  // 이번 요청에서 실제 적재한 문항만 승격한다. 빈 배열도 그대로 전달해 기존 held
-  // backlog를 암묵적으로 재처리하지 않는다.
-  const { data: promoted, error: promoteError } = await supabase.rpc(
-    'admin_promote_writing_questions',
-    {
+  let counts = emptyIngestCounts();
+  for (const chunk of chunkItems(payload)) {
+    const { data, error } = await supabase.rpc('admin_ingest_writing_tasks_bulk', {
       p_actor_id: opts.actorId,
-      p_question_ids: promotionQuestionIds
-    }
-  );
-  if (promoteError) {
-    // 적재는 성공, 승격만 실패 — 인박스에 보존돼 다음 실행에서 재승격된다.
-    const errorRef = deterministicErrorRef(promoteError.message);
-    emitIngestResult('error', {
-      correlation_id: opts.correlationId,
-      status: 'failed',
-      code: 'promotion_failed',
-      error_ref: errorRef,
-      ...counts,
-      skipped_review: skippedReview,
-      warning_count: warnings.length
+      p_source_endpoint: SOURCE_ENDPOINT,
+      p_tasks: chunk
     });
-    return jsonResponse(
-      {
-        ok: false,
-        error: 'promotion_failed',
-        error_ref: errorRef,
+    if (error) {
+      const errorRef = deterministicErrorRef(error.message);
+      emitIngestResult('error', {
         correlation_id: opts.correlationId,
-        counts,
+        status: 'failed',
+        code: 'ingest_rpc_failed',
+        error_ref: errorRef,
+        ...counts
+      });
+      return jsonResponse(
+        {
+          ok: false,
+          error: 'ingest_rpc_failed',
+          error_ref: errorRef,
+          correlation_id: opts.correlationId,
+          counts
+        },
+        { status: 500 }
+      );
+    }
+
+    counts = addIngestCounts(counts, sanitizeIngestCounts(data));
+    if (counts.failed > 0) {
+      const errorRef = deterministicErrorRef(
+        `ingest-partial:${opts.correlationId}:${counts.total}:${counts.failed}`
+      );
+      emitIngestResult('error', {
+        correlation_id: opts.correlationId,
+        status: 'partial_failure',
+        code: 'ingest_partial_failure',
+        error_ref: errorRef,
+        ...counts,
         skipped_review: skippedReview,
-        warnings
-      },
-      { status: 502 }
+        warning_count: warnings.length
+      });
+      return jsonResponse(
+        {
+          ok: false,
+          error: 'ingest_partial_failure',
+          error_ref: errorRef,
+          correlation_id: opts.correlationId,
+          counts,
+          skipped_review: skippedReview,
+          warnings
+        },
+        { status: 502 }
+      );
+    }
+  }
+
+  // 모든 적재 청크가 성공한 뒤, 이번 요청의 문항만 승격한다. 빈 배열이면 RPC를
+  // 호출하지 않아 기존 held backlog를 암묵적으로 재처리하지 않는다.
+  let promotedCounts = emptyPromoteCounts();
+  for (const questionIdChunk of chunkItems(promotionQuestionIds)) {
+    const { data: promoted, error: promoteError } = await supabase.rpc(
+      'admin_promote_writing_questions',
+      {
+        p_actor_id: opts.actorId,
+        p_question_ids: questionIdChunk
+      }
     );
+    if (promoteError) {
+      // 적재는 성공, 승격만 실패 — 인박스에 보존돼 다음 실행에서 재승격된다.
+      const errorRef = deterministicErrorRef(promoteError.message);
+      emitIngestResult('error', {
+        correlation_id: opts.correlationId,
+        status: 'failed',
+        code: 'promotion_failed',
+        error_ref: errorRef,
+        ...counts,
+        ...promotedCounts,
+        skipped_review: skippedReview,
+        warning_count: warnings.length
+      });
+      return jsonResponse(
+        {
+          ok: false,
+          error: 'promotion_failed',
+          error_ref: errorRef,
+          correlation_id: opts.correlationId,
+          counts,
+          promoted: promotedCounts,
+          skipped_review: skippedReview,
+          warnings
+        },
+        { status: 502 }
+      );
+    }
+    promotedCounts = addPromoteCounts(promotedCounts, sanitizePromoteCounts(promoted));
   }
 
   // 성공 요약을 로그로 — cron(GET)은 응답 본문을 버리므로 가시화에 필요.
-  const promotedCounts = sanitizePromoteCounts(promoted);
   if (promotedCounts.held > 0 || promotedCounts.failure_count > 0) {
+    const errorRef = deterministicErrorRef(
+      `promotion-partial:${opts.correlationId}:${promotedCounts.held}:${promotedCounts.failure_count}`
+    );
     emitIngestResult('error', {
       correlation_id: opts.correlationId,
       status: 'partial_failure',
       code: 'promotion_partial_failure',
+      error_ref: errorRef,
       ...counts,
       ...promotedCounts,
       skipped_review: skippedReview,
@@ -470,6 +584,7 @@ async function runIngest(
       {
         ok: false,
         error: 'promotion_partial_failure',
+        error_ref: errorRef,
         correlation_id: opts.correlationId,
         counts,
         promoted: promotedCounts,

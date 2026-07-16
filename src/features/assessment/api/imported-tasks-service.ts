@@ -3,6 +3,7 @@ import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
 import { questionBankDataSource } from './question-bank-data-source';
 import type {
   ImportedTaskMappingStatus,
+  ImportedTaskVersionDecision,
   ImportedWritingTask
 } from '../model/imported-task-types';
 
@@ -16,8 +17,9 @@ import type {
  */
 
 const SELECT_COLUMNS =
-  'import_id, source_task_id, item_number, raw_payload, mapping_status, ' +
-  'promoted_question_id, source_endpoint, ingest_count, first_seen_at, last_seen_at';
+  'import_id, source_task_id, item_number, raw_payload, mapping_status, is_latest, ' +
+  'hold_reason, promoted_question_id, source_endpoint, ingest_count, first_seen_at, last_seen_at, ' +
+  'source_created_at, source_updated_at, content_hash, version_decision';
 
 type ImportRow = {
   import_id: number;
@@ -25,11 +27,17 @@ type ImportRow = {
   item_number: number | null;
   raw_payload: unknown;
   mapping_status: string;
+  is_latest: boolean;
+  hold_reason: string | null;
   promoted_question_id: string | null;
   source_endpoint: string | null;
   ingest_count: number | null;
   first_seen_at: string | null;
   last_seen_at: string | null;
+  source_created_at: string | null;
+  source_updated_at: string | null;
+  content_hash: string | null;
+  version_decision: string;
 };
 
 function toDateTime(ts: string | null | undefined): string {
@@ -54,11 +62,27 @@ function payloadNumber(payload: unknown, key: string): number | null {
 }
 
 const KNOWN_STATUSES: ImportedTaskMappingStatus[] = ['raw', 'mapped', 'promoted', 'held'];
+const KNOWN_VERSION_DECISIONS: ImportedTaskVersionDecision[] = [
+  'legacy',
+  'initial',
+  'content_changed',
+  'metadata_only',
+  'out_of_order',
+  'timestamp_conflict',
+  'identity_conflict',
+  'invalid_timestamp'
+];
 
 function toMappingStatus(value: string): ImportedTaskMappingStatus {
   return (KNOWN_STATUSES as string[]).includes(value)
     ? (value as ImportedTaskMappingStatus)
     : 'raw';
+}
+
+function toVersionDecision(value: string): ImportedTaskVersionDecision {
+  return (KNOWN_VERSION_DECISIONS as string[]).includes(value)
+    ? (value as ImportedTaskVersionDecision)
+    : 'legacy';
 }
 
 function mapRow(row: ImportRow): ImportedWritingTask {
@@ -71,7 +95,13 @@ function mapRow(row: ImportRow): ImportedWritingTask {
     generatedBy: payloadString(row.raw_payload, 'generated_by'),
     difficultyLevel: payloadNumber(row.raw_payload, 'difficulty_level'),
     mappingStatus: toMappingStatus(row.mapping_status),
+    isLatestReceived: row.is_latest,
+    versionDecision: toVersionDecision(row.version_decision),
+    holdReason: row.hold_reason ?? '',
     promotedQuestionId: row.promoted_question_id,
+    sourceCreatedAt: toDateTime(row.source_created_at),
+    sourceUpdatedAt: toDateTime(row.source_updated_at),
+    contentHash: row.content_hash ?? '',
     sourceEndpoint: row.source_endpoint ?? '',
     ingestCount: row.ingest_count ?? 1,
     fetchedAt: toDateTime(row.first_seen_at),
@@ -89,7 +119,13 @@ const MOCK_IMPORTED_TASKS: ImportedWritingTask[] = [
     generatedBy: 'seed',
     difficultyLevel: 3,
     mappingStatus: 'raw',
+    isLatestReceived: true,
+    versionDecision: 'initial',
+    holdReason: '',
     promotedQuestionId: null,
+    sourceCreatedAt: '2026-06-22 09:00',
+    sourceUpdatedAt: '2026-06-22 10:00',
+    contentHash: 'mock-content-hash-51',
     sourceEndpoint: '/api/writing/tasks',
     ingestCount: 1,
     fetchedAt: '2026-06-22 10:00',
@@ -103,8 +139,14 @@ const MOCK_IMPORTED_TASKS: ImportedWritingTask[] = [
     topic: '공원',
     generatedBy: 'seed',
     difficultyLevel: 4,
-    mappingStatus: 'raw',
+    mappingStatus: 'held',
+    isLatestReceived: true,
+    versionDecision: 'metadata_only',
+    holdReason: 'metadata_only: canonical learner/grading content is unchanged',
     promotedQuestionId: null,
+    sourceCreatedAt: '2026-06-22 09:00',
+    sourceUpdatedAt: '2026-06-22 10:00',
+    contentHash: 'mock-content-hash-52',
     sourceEndpoint: '/api/writing/tasks',
     ingestCount: 1,
     fetchedAt: '2026-06-22 10:00',
@@ -118,8 +160,14 @@ const MOCK_IMPORTED_TASKS: ImportedWritingTask[] = [
     topic: '교육',
     generatedBy: 'seed',
     difficultyLevel: 5,
-    mappingStatus: 'raw',
+    mappingStatus: 'held',
+    isLatestReceived: true,
+    versionDecision: 'out_of_order',
+    holdReason: 'out_of_order: source updated_at is older than the latest observed source revision',
     promotedQuestionId: null,
+    sourceCreatedAt: '2026-06-22 09:00',
+    sourceUpdatedAt: '2026-06-22 09:30',
+    contentHash: 'mock-content-hash-53',
     sourceEndpoint: '/api/writing/tasks',
     ingestCount: 1,
     fetchedAt: '2026-06-22 10:00',
@@ -134,7 +182,13 @@ const MOCK_IMPORTED_TASKS: ImportedWritingTask[] = [
     generatedBy: 'seed',
     difficultyLevel: 5,
     mappingStatus: 'raw',
+    isLatestReceived: true,
+    versionDecision: 'content_changed',
+    holdReason: '',
     promotedQuestionId: null,
+    sourceCreatedAt: '2026-06-22 09:00',
+    sourceUpdatedAt: '2026-06-22 10:00',
+    contentHash: 'mock-content-hash-54',
     sourceEndpoint: '/api/writing/tasks',
     ingestCount: 1,
     fetchedAt: '2026-06-22 10:00',
@@ -156,7 +210,6 @@ async function loadImportedTasks(
   const { data, error } = await supabaseClient
     .from('topik_writing_question_import')
     .select(SELECT_COLUMNS)
-    .eq('is_latest', true)
     .order('item_number', { ascending: true, nullsFirst: false })
     .order('last_seen_at', { ascending: false });
 
@@ -178,6 +231,8 @@ export function fetchImportedTasksSafe(signal?: AbortSignal) {
 export type IngestCounts = {
   inserted: number;
   new_version: number;
+  metadata_only: number;
+  held: number;
   unchanged: number;
   failed: number;
   total: number;
@@ -199,6 +254,7 @@ const INGEST_ERROR_MESSAGES: Record<string, string> = {
   upstream_login_error: '외부 문항 공급 API 인증 중 통신 오류가 발생했습니다.',
   upstream_fetch_failed: '외부 문항 공급 API 조회에 실패했습니다.',
   upstream_fetch_error: '외부 문항 공급 API 조회 중 통신 오류가 발생했습니다.',
+  upstream_contract_invalid: '외부 문항 응답 계약이 올바르지 않습니다. 중복 문항 ID를 확인해 주세요.',
   ingest_rpc_failed: '가져온 문항을 인박스에 저장하지 못했습니다.',
   ingest_partial_failure: '일부 문항을 인박스에 저장하지 못했습니다. 재시도해 주세요.',
   promotion_failed: '가져오기는 완료됐지만 정식 문항 승격에 실패했습니다.',

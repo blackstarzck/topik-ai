@@ -43,6 +43,7 @@ test('통합 문항 화면은 모크 모드에서 탭·조회·관리 컬럼을 
   // 컬럼: 주제 단일·난이도·TOPIK 급수 분리, 운영 조치 컬럼은 더보기로 이동.
   await expect(page.getByRole('columnheader', { name: '문항 번호' })).toBeVisible();
   await expect(page.getByRole('columnheader', { name: '문항 ID' })).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: '버전' })).toBeVisible();
   await expect(page.getByRole('columnheader', { name: '주제', exact: true })).toBeVisible();
   await expect(page.getByRole('columnheader', { name: '난이도' })).toBeVisible();
   await expect(page.getByRole('columnheader', { name: 'TOPIK 급수' })).toBeVisible();
@@ -56,6 +57,72 @@ test('통합 문항 화면은 모크 모드에서 탭·조회·관리 컬럼을 
   // antd measure-row 제외, 실데이터 행만 센다.
   await expect(page.locator('tbody tr.ant-table-row')).toHaveCount(4);
   await expect(page.getByText('topik-writing-51-9901')).toBeVisible();
+  await expect(
+    page.locator('tbody tr.ant-table-row').filter({ hasText: 'topik-writing-51-9901' }).getByText('2회')
+  ).toBeVisible();
+  await expect(
+    page
+      .locator('tbody tr.ant-table-row')
+      .filter({ hasText: 'topik-writing-53-9901' })
+      .getByText('버전 연결 없음')
+  ).toBeVisible();
+});
+
+test('버전 컬럼에서 수정 이력 행만 확장하고 과거 상세에 키보드로 진입한다', async ({
+  page
+}) => {
+  await page.goto('/assessment/question-bank?questionNo=51&keyword=%EA%B5%90%EC%9C%A1');
+  await skipIfAuthRequired(page);
+
+  const versionedRow = page
+    .locator('tbody tr.ant-table-row')
+    .filter({ hasText: 'topik-writing-51-9901' });
+  await expect(versionedRow.getByText('2회', { exact: true })).toBeVisible();
+  await versionedRow.getByRole('button', { name: '문항 변경 이력 펼치기' }).click();
+
+  const historyTable = page.getByTestId('question-version-history-table');
+  await expect(historyTable).toBeVisible();
+  await expect(historyTable.getByText('#5102', { exact: true })).toBeVisible();
+  await expect(historyTable.getByText('#5101', { exact: true })).toBeVisible();
+  await expect(historyTable.getByText('#5103', { exact: true })).toHaveCount(0);
+  await expect(historyTable.getByRole('columnheader', { name: '원본 생성 시각' })).toBeVisible();
+  await expect(historyTable.getByRole('columnheader', { name: '원본 수정 시각' })).toBeVisible();
+  await expect(historyTable.getByRole('columnheader', { name: 'content hash' })).toBeVisible();
+
+  const historyRow = historyTable
+    .locator('tbody tr.ant-table-row')
+    .filter({ hasText: '#5102' });
+  await historyRow.focus();
+  await historyRow.press('Enter');
+
+  await expect(page).toHaveURL(/questionNo=51/);
+  await expect(page).toHaveURL(/keyword=%EA%B5%90%EC%9C%A1/);
+  await expect(page).toHaveURL(/detailTab=history/);
+  await expect(page).toHaveURL(/versionId=5102/);
+  await expect(
+    page.getByText('과거 버전 #5102 · 현재 노출 버전 아님')
+  ).toBeVisible();
+});
+
+test('무이력·버전 연결 없음 행은 확장 아이콘을 제공하지 않는다', async ({ page }) => {
+  await page.goto('/assessment/question-bank');
+  await skipIfAuthRequired(page);
+
+  const noHistoryRow = page
+    .locator('tbody tr.ant-table-row')
+    .filter({ hasText: 'topik-writing-52-9901' });
+  await expect(noHistoryRow.getByText('0회', { exact: true })).toBeVisible();
+  await expect(
+    noHistoryRow.getByRole('button', { name: '문항 변경 이력 펼치기' })
+  ).toHaveCount(0);
+
+  const unlinkedRow = page
+    .locator('tbody tr.ant-table-row')
+    .filter({ hasText: 'topik-writing-53-9901' });
+  await expect(unlinkedRow.getByText('버전 연결 없음')).toBeVisible();
+  await expect(
+    unlinkedRow.getByRole('button', { name: '문항 변경 이력 펼치기' })
+  ).toHaveCount(0);
 });
 
 test('탭으로 가져온 문항(인박스) 화면으로 전환한다', async ({ page }) => {
@@ -74,9 +141,20 @@ test('탭으로 가져온 문항(인박스) 화면으로 전환한다', async ({
     .getByRole('button', { name: '외부에서 가져오기' });
   await expect(importButton).toBeDisabled();
   await expect(importButton).toHaveClass(/ant-btn-lg/);
+  await expect(page.getByRole('columnheader', { name: '최근 수신본' })).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: '이력 판정' })).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: '원본 생성 시각' })).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: '원본 수정 시각' })).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: 'content hash' })).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: '판정 사유' })).toBeVisible();
+  await expect(page.getByText('메타데이터만 변경', { exact: true })).toBeVisible();
+  await expect(page.getByText('과거 시각 수신', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('외부 공급 API에서 가져온 문항 목록입니다.')
+  ).toHaveCount(0);
   await expect(
     page.getByText('승격 조건을 충족한 문항은 정식 문항으로 자동 승격합니다.')
-  ).toBeVisible();
+  ).toHaveCount(0);
 });
 
 test('문항 상세는 번호별 실메타를 조회 전용으로 표시하고 잘못된 ID는 오류로 처리한다', async ({
@@ -88,6 +166,8 @@ test('문항 상세는 번호별 실메타를 조회 전용으로 표시하고 �
   await expect(
     page.getByRole('heading', { name: 'TOPIK 52번 문항 상세' })
   ).toBeVisible();
+  await expect(page.getByRole('tab', { name: '버전 #5201' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: '변경 이력보기' })).toBeVisible();
   await expect(page.getByText('문항 본문', { exact: true })).toBeVisible();
   await expect(
     page.getByText('연결 기능(ㄱ) / 요구 표현 기능(ㄴ)', { exact: true })
@@ -105,6 +185,80 @@ test('문항 상세는 번호별 실메타를 조회 전용으로 표시하고 �
   await page.goto('/assessment/question-bank/AQ-51001');
   await expect(page.getByText('문항을 불러오지 못했습니다.')).toBeVisible();
   await expect(page.getByRole('button', { name: '다시 시도' })).toBeVisible();
+});
+
+test('상세 탭은 과거 버전 목록·상세·현재 버전 복귀와 목록 필터 복원을 지원한다', async ({
+  page
+}) => {
+  await page.goto(
+    '/assessment/question-bank/topik-writing-51-9901?questionNo=51&topicMain=%EA%B5%90%EC%9C%A1'
+  );
+  await skipIfAuthRequired(page);
+
+  await expect(page.getByRole('tab', { name: '버전 #5103' })).toBeVisible();
+  await page.getByRole('tab', { name: '변경 이력보기' }).click();
+  await expect(page).toHaveURL(/detailTab=history/);
+  await expect(page.getByTestId('question-version-history-table')).toBeVisible();
+
+  await page
+    .getByTestId('question-version-history-table')
+    .locator('tbody tr.ant-table-row')
+    .filter({ hasText: '#5102' })
+    .click();
+  await expect(page).toHaveURL(/versionId=5102/);
+  await expect(
+    page.getByText('과거 버전 #5102 · 현재 노출 버전 아님')
+  ).toBeVisible();
+  await expect(
+    page.getByText('[이전 버전] 도서관 운영 시간 변경을 알리는 학교 공지문')
+  ).toBeVisible();
+  await expect(page.getByText(/과거 payload의 운영 상태는 표시하지 않습니다/)).toBeVisible();
+
+  await page.getByRole('button', { name: '현재 버전 보기' }).click();
+  await expect(page).not.toHaveURL(/detailTab=/);
+  await expect(page).not.toHaveURL(/versionId=/);
+  await expect(page).toHaveURL(/questionNo=51/);
+  await expect(page).toHaveURL(/topicMain=%EA%B5%90%EC%9C%A1/);
+
+  await page.getByRole('button', { name: '목록으로 돌아가기' }).click();
+  await expect(page).toHaveURL(/\/assessment\/question-bank\?/);
+  await expect(page).toHaveURL(/questionNo=51/);
+  await expect(page).toHaveURL(/topicMain=%EA%B5%90%EC%9C%A1/);
+});
+
+test('다른 문항 또는 잘못된 버전 ID 오류를 이력 탭에 격리한다', async ({ page }) => {
+  await page.goto(
+    '/assessment/question-bank/topik-writing-51-9901?detailTab=history&versionId=5201'
+  );
+  await skipIfAuthRequired(page);
+
+  await expect(page.getByText('과거 버전을 불러오지 못했습니다.')).toBeVisible();
+  await expect(page.getByText('선택한 문항 버전을 찾을 수 없습니다.')).toBeVisible();
+  await expect(page.getByRole('button', { name: '다시 시도' })).toBeVisible();
+
+  await page.getByRole('tab', { name: '버전 #5103' }).click();
+  await expect(page.getByText('문항 본문', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText(
+      '도서관에서 안내 말씀드립니다. 다음 주부터 시험 기간이라서 이용 시간을 ( ㄱ ). 책을 빌리고 싶은 학생은 ( ㄴ ).',
+      { exact: true }
+    )
+  ).toBeVisible();
+});
+
+test('버전 이력 UI는 데스크톱과 모바일에서 본문 카드 안에 유지된다', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/assessment/question-bank/topik-writing-51-9901?detailTab=history');
+  await skipIfAuthRequired(page);
+  await expect(page.getByRole('tab', { name: '변경 이력보기' })).toBeVisible();
+  await expect(page.getByTestId('question-version-history-table')).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole('tab', { name: '변경 이력보기' })).toBeVisible();
+  const cardBox = await page.locator('.admin-list-card').boundingBox();
+  expect(cardBox).not.toBeNull();
+  expect(cardBox?.x ?? 0).toBeGreaterThanOrEqual(0);
+  expect((cardBox?.x ?? 0) + (cardBox?.width ?? 0)).toBeLessThanOrEqual(390);
 });
 
 test('통합 문항 화면은 관리 포인트(노출 조치·태그 편집)를 개방 상태로 렌더한다', async ({
