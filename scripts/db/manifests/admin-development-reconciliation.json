@@ -1,0 +1,61 @@
+{
+  "namespace": "admin",
+  "environment": "development",
+  "projectRef": "fglggyfvzjdsbyckinqa",
+  "expectedLocalCount": 83,
+  "knownRemoteOnly": {
+    "20260713140000_admin_learning_analytics_dual_id_coverage.sql": {
+      "status": "superseded",
+      "supersededBy": "20260713120000_admin_learning_analytics_metadata_coverage.sql",
+      "reason": "Dev applied the later experimental definition first, then restored the clean canonical source definition. Production must not replay the superseded file."
+    }
+  },
+  "batches": {
+    "adopt-untracked": {
+      "afterSql": "../sql/dev-admin-remote-only-reconciliation.sql",
+      "migrations": [
+        {
+          "name": "20260619100000_instructors.sql",
+          "mode": "adopt",
+          "precondition": "../sql/dev-admin-drift-precondition.sql"
+        },
+        {
+          "name": "20260619120000_referrals.sql",
+          "mode": "adopt",
+          "precondition": "../sql/dev-admin-drift-precondition.sql"
+        },
+        {
+          "name": "20260619130000_user_detail_tabs.sql",
+          "mode": "adopt",
+          "precondition": "../sql/dev-admin-drift-precondition.sql"
+        },
+        {
+          "name": "20260619140000_institution_codes.sql",
+          "mode": "adopt",
+          "precondition": "../sql/dev-admin-drift-precondition.sql"
+        },
+        {
+          "name": "20260622100000_auth_email_templates.sql",
+          "mode": "adopt",
+          "precondition": "../sql/dev-admin-drift-precondition.sql"
+        }
+      ]
+    },
+    "security-hardening": {
+      "precondition": "../sql/dev-admin-security-hardening-precondition.sql",
+      "migrations": [
+        "20260716130000_admin_revoke_anon_rpc_execute.sql"
+      ]
+    },
+    "security-hardening-followup": {
+      "precondition": "../sql/dev-admin-security-hardening-followup-precondition.sql",
+      "migrations": [
+        "20260716131000_admin_revoke_public_refund_rpc_execute.sql"
+      ]
+    },
+    "baseline-all": {
+      "from": "20260612170000_notification_admin_tables.sql",
+      "to": "20260716131000_admin_revoke_public_refund_rpc_execute.sql"
+    }
+  }
+}

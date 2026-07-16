@@ -13,3 +13,5 @@ pnpm-debug.log*
 .env.local
 .env.*.local
 .omx-*.json
+
+.vercel

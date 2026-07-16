@@ -104,7 +104,8 @@
 
 ### 2.4 prod 프로젝트 비범위 선언
 
-- `talkpik-prod`(`eymlabowhfgtxbiqwxqh`)가 별도로 존재하나, admin과 v13의 `.env`가 모두 talkpik-dev를 가리키는 현행 운영 기준을 따른다. prod 승격·동기화는 본 전환 비범위이며 P6 이후 별도 트랙.
+- 본 결정을 작성한 당시에는 `topik-prod`(`eymlabowhfgtxbiqwxqh`)가 별도로 존재했지만 admin과 v13의 `.env`가 모두 `topik-dev`를 가리키고 있었다. prod 승격·동기화는 본 전환 비범위이며 P6 이후 별도 트랙으로 두었다.
+- 후속 기록(2026-07-16): Admin 환경 라우팅은 localhost/Vercel Development=`topik-dev`, Vercel Preview/Production=`topik-prod`로 분리했다. 이는 연결 대상만 바꾼 것이며 본 결정의 스키마·데이터 승격 완료를 뜻하지 않는다. prod의 migration tracker와 필수 Admin 객체 대사는 별도 운영 승격 게이트로 유지한다.
 
 ## 3. freeze 가드 해제 기록 (P0-3)
 

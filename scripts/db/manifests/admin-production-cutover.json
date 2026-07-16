@@ -1,0 +1,50 @@
+{
+  "namespace": "admin",
+  "environment": "production",
+  "projectRef": "eymlabowhfgtxbiqwxqh",
+  "expectedLocalCount": 83,
+  "batches": {
+    "notification-baseline": {
+      "from": "20260612170000_notification_admin_tables.sql",
+      "to": "20260612180100_email_body_size_guard.sql"
+    },
+    "foundation": {
+      "from": "20260617120000_operation_notices.sql",
+      "to": "20260623120000_admin_users_affiliation_filter.sql",
+      "precondition": "../sql/production-admin-foundation-precondition.sql",
+      "afterSql": "../sql/production-admin-demo-cleanup.sql"
+    },
+    "account-model": {
+      "precondition": "../sql/production-admin-account-model-precondition.sql",
+      "migrations": [
+        "20260623200000_admin_accounts.sql"
+      ]
+    },
+    "account-cutover": {
+      "from": "20260623210000_admin_accounts_backfill.sql",
+      "to": "20260623240000_admin_gate_helpers_to_admin_accounts.sql",
+      "precondition": "../sql/production-admin-account-cutover-precondition.sql"
+    },
+    "post-cutover": {
+      "from": "20260623250000_admin_invite_finalize.sql",
+      "to": "20260715190000_admin_learning_analytics_pdf_topics.sql",
+      "precondition": "../sql/production-admin-post-cutover-precondition.sql"
+    },
+    "security-hardening": {
+      "precondition": "../sql/production-admin-security-hardening-precondition.sql",
+      "migrations": [
+        "20260716130000_admin_revoke_anon_rpc_execute.sql"
+      ]
+    },
+    "security-hardening-followup": {
+      "precondition": "../sql/production-admin-security-hardening-followup-precondition.sql",
+      "migrations": [
+        "20260716131000_admin_revoke_public_refund_rpc_execute.sql"
+      ]
+    },
+    "baseline-all": {
+      "from": "20260612170000_notification_admin_tables.sql",
+      "to": "20260716131000_admin_revoke_public_refund_rpc_execute.sql"
+    }
+  }
+}

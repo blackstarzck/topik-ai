@@ -1,66 +1,55 @@
 #!/usr/bin/env node
-// Run SQL against the v13 Supabase project via the Supabase Management API.
-// Server-side tooling only (P1+ migration/smoke path) — never bundled into the client.
-//
-// Usage:
-//   node scripts/db/run-sql.mjs --sql "select 1"
-//   node scripts/db/run-sql.mjs --file supabase/migrations/0001_topic_master.sql
-//
-// Auth: SUPABASE_ACCESS_TOKEN env var (sbp_...). PROJECT_REF defaults to the
-// v13 project; override with SUPABASE_PROJECT_REF.
+// Read-only SQL helper by default. Mutating SQL requires --write plus the same
+// explicit target/expected/production confirmation contract as migrations.
 
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { loadLocalEnv, runSql } from './migrate-core.mjs';
 
-// Convenience: if SUPABASE_ACCESS_TOKEN is not already in the environment, read it
-// from .env.local in the current directory so this server-side tool works in any
-// shell (cmd / PowerShell / bash) without manual env injection. Never bundled into
-// the client; .env.local stays untracked.
-if (!process.env.SUPABASE_ACCESS_TOKEN && existsSync('.env.local')) {
-  for (const line of readFileSync('.env.local', 'utf8').split(/\r?\n/)) {
-    const match = /^\s*SUPABASE_ACCESS_TOKEN\s*=\s*(.+?)\s*$/.exec(line);
-    if (match) {
-      process.env.SUPABASE_ACCESS_TOKEN = match[1].replace(/^["']|["']$/g, '');
-      break;
-    }
-  }
+loadLocalEnv();
+
+const args = process.argv.slice(2);
+const isWrite = args.includes('--write');
+const projectRef = process.env.SUPABASE_PROJECT_REF;
+const expectedRef = process.env.SUPABASE_EXPECTED_PROJECT_REF;
+const token = process.env.SUPABASE_ACCESS_TOKEN;
+
+if (!projectRef || !token) {
+  console.error('SUPABASE_PROJECT_REF and SUPABASE_ACCESS_TOKEN are required.');
+  process.exit(1);
 }
-
-const PROJECT_REF = process.env.SUPABASE_PROJECT_REF ?? 'fglggyfvzjdsbyckinqa';
-const TOKEN = process.env.SUPABASE_ACCESS_TOKEN;
-
-if (!TOKEN) {
-  console.error('SUPABASE_ACCESS_TOKEN is not set.');
+if (isWrite && (!expectedRef || expectedRef !== projectRef)) {
+  console.error('Writes require SUPABASE_EXPECTED_PROJECT_REF matching the target.');
+  process.exit(1);
+}
+if (
+  isWrite
+  && projectRef === 'eymlabowhfgtxbiqwxqh'
+  && process.env.SUPABASE_PRODUCTION_CONFIRM !== projectRef
+) {
+  console.error('Production writes require SUPABASE_PRODUCTION_CONFIRM.');
   process.exit(1);
 }
 
-const args = process.argv.slice(2);
 let sql = null;
-for (let i = 0; i < args.length; i += 1) {
-  if (args[i] === '--sql') sql = args[i + 1];
-  if (args[i] === '--file') sql = readFileSync(args[i + 1], 'utf8');
+for (let index = 0; index < args.length; index += 1) {
+  if (args[index] === '--sql') sql = args[index + 1];
+  if (args[index] === '--file') sql = readFileSync(args[index + 1], 'utf8');
 }
 if (!sql) {
   console.error('Provide --sql "<query>" or --file <path>.');
   process.exit(1);
 }
 
-const res = await fetch(`https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query`, {
-  method: 'POST',
-  headers: {
-    Authorization: `Bearer ${TOKEN}`,
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({ query: sql }),
-});
-
-const text = await res.text();
-if (!res.ok) {
-  console.error(`HTTP ${res.status}`);
-  console.error(text);
+const mutationPattern = /\b(insert|update|delete|alter|create|drop|truncate|grant|revoke|comment|vacuum|reindex)\b/i;
+if (!isWrite && mutationPattern.test(sql.replace(/--.*$/gm, ''))) {
+  console.error('Mutating SQL requires --write.');
   process.exit(1);
 }
+
 try {
-  console.log(JSON.stringify(JSON.parse(text), null, 2));
-} catch {
-  console.log(text);
+  const result = await runSql({ projectRef, token, sql });
+  console.log(JSON.stringify(result, null, 2));
+} catch (error) {
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exit(1);
 }

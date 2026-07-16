@@ -524,3 +524,14 @@ src/features/<feature>/
 - Supabase source: `search_admin_pdf_quota_reset_users(p_search, p_page, p_page_size)` — `operation.pdf-quota.manage` 권한 기준, `profiles`/`auth.users` 최소 필드, 서버 검색/페이지네이션. `get_admin_users`의 platform_admin 게이트와 100명 창 제약을 재사용하지 않는다.
 - mock fallback: `mockUsers`에서 동일 search/page/pageSize 계약으로 필터링해 100명 초과 회원 선택 회귀를 e2e에서 검증한다.
 - fallback 조건: Supabase 미구성 또는 `VITE_SUPABASE_DISABLED=true` 또는 `VITE_OPERATION_PDF_QUOTA_SOURCE=mock`.
+
+## 11. 2026-07-16 Supabase 환경 라우팅 계약
+
+- 환경 대상은 `localhost`와 Vercel `Development`에서 `topik-dev`(`fglggyfvzjdsbyckinqa`), Vercel `Preview`와 `Production`에서 `topik-prod`(`eymlabowhfgtxbiqwxqh`)로 고정한다.
+- 브라우저 연결값은 `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_DISABLED`를 사용한다. `VITE_*`에는 service-role/secret 키를 넣지 않는다.
+- 서버 함수 연결값은 `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_PROJECT_REF`, 필요 시 `SUPABASE_MANAGEMENT_API_TOKEN`을 사용한다. 배포 환경에서는 dev 기본값이나 브라우저용 alias에 기대지 않고 대상별 canonical 변수로 명시한다.
+- 로컬 `.env.local`은 `topik-dev`를 유지한다. Vercel 환경값 변경은 기존 배포에 소급되지 않으므로 변경 뒤 새 배포가 필요하다.
+- 2026-07-16 Vercel 프로젝트 환경 레코드의 대상 매핑은 위 계약으로 정리했다. 그러나 현재 Production alias `https://topik-ai.vercel.app`의 실제 배포 bundle은 `topik-prod` ref를 사용하면서도 이전 `profiles.app_role` 인증 로직과 `VITE_COMMERCE_COUPONS_SOURCE=mock` 동작을 포함한다. 환경 레코드 변경과 최신 소스 재배포·alias 승격을 별도 단계로 취급한다.
+- 같은 날 운영 DB 컷오버를 완료했다. `topik-prod`는 admin canonical tracker 83개, TOPIK 쓰기 tracker 32개가 적용됐고, 공급 `updated_at` 전제조건 미충족인 writing migration 1개는 manifest에서 차단했다. `topik-dev`는 admin canonical 83개와 superseded remote-only 이력 1개, writing 32개를 유지한다.
+- 현재 설정된 관리자 계정은 `admin_accounts`의 active `platform_admin`이며 최종 `profiles.app_role`은 `learner`다. 인증 SoT는 `admin_get_self`/`admin_accounts`이고 bootstrap 감사 로그를 남긴다.
+- 최신 소스+운영 DB에서는 로그인과 `CommerceCouponTemplate` 생성·상세·수정·삭제·감사 로그 브라우저 E2E가 통과했다. 반면 실제 Vercel 배포본은 관리자 로그인을 profile role에 의존하고 쿠폰 DB 요청 없이 mock seed를 노출하므로 새 배포 후 동일 검증 전까지 서비스 릴리스 승인을 보류한다.

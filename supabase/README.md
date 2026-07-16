@@ -53,6 +53,22 @@
 - **롤백 SQL**: 각 디렉터리의 `down/`에 같은 파일명으로 짝지어 보관하며,
   `--down <name>` 실행 시 해당 SQL을 적용하고 tracker에서 untrack 한다.
 
+### 3.1 환경 manifest와 쓰기 가드
+
+- 개발/운영 적용 목록은 `scripts/db/manifests/*.json`에서 project ref, 로컬 canonical 개수,
+  batch 범위, precondition/finalizer, blocked/remote-only 이력을 명시한다.
+- manifest 실행은 `--manifest`와 `--batch`가 필수이며, 장부에 없는 파일을 암묵적으로
+  전체 replay하지 않는다.
+- 쓰기는 `SUPABASE_EXPECTED_PROJECT_REF`가 실제 target과 같아야 한다. 운영 프로젝트는
+  `SUPABASE_PRODUCTION_CONFIRM=eymlabowhfgtxbiqwxqh`까지 일치해야 한다.
+- migration 본문과 tracker 기록은 같은 transaction에서 처리한다. tracker에는
+  SHA-256 checksum, apply mode, batch id, applied by를 보관해 파일 변조와 잘못된 장부 채택을 탐지한다.
+- 운영 SQL 보조 도구 `scripts/db/run-sql.mjs`는 기본 read-only이며 mutation keyword는
+  `--write`와 동일한 target/production guard 없이는 거부한다.
+- 현재 관리자 계정 부트스트랩은 `scripts/db/bootstrap-admin.mjs`의
+  `prepare -> verify -> finalize -> verify` 순서를 사용한다. 최종 관리자 권한 SoT는
+  `admin_accounts`이고 `profiles.app_role`은 `learner`로 복원한다.
+
 ## 4. 경계 규칙 (중요)
 
 - 두 네임스페이스의 추적 테이블을 **섞지 않는다** — `topik_writing`은 `db:migrate`,
@@ -61,3 +77,11 @@
 - 공유 Supabase 스키마 소유권은 앱 기준이 아니라 **도메인 기준**으로 정한다.
   양쪽 앱이 읽거나 쓰는 공유 객체의 경계·승인 절차는
   `docs/architecture/shared-supabase-schema-ownership.md`의 decision record를 따른다.
+
+## 5. 2026-07-16 운영 적용 상태
+
+- `topik-prod` admin tracker: canonical 83개 적용, checksum 누락 0.
+- `topik-prod` TOPIK 쓰기 tracker: 32개 적용. `20260716052957_topik_writing_source_updated_at_version_tracking.sql`은 공급 `updated_at` 전제조건 미충족으로 차단.
+- `topik-dev` admin tracker: canonical 83개 + superseded remote-only 이력 1개. manifest가 remote-only 파일을 재생하지 않도록 고정한다.
+- admin 보안 마이그레이션 `20260716130000`/`20260716131000`은 admin 소유 public 함수의 anon/PUBLIC execute를 회수한다. 운영 검증에서 표본 anon executable admin function은 0건이다.
+- 운영 DB 적용 완료와 Vercel 웹 배포 완료는 별도다. 최신 소스+운영 DB E2E가 통과했더라도 Production alias의 실제 bundle과 source switch를 다시 검증해야 한다.
