@@ -5,10 +5,14 @@ import { pathToFileURL } from 'node:url';
 
 export const blockedPatterns = [
   'SUPABASE_SERVICE_ROLE_KEY',
+  'SUPABASE_SECRET_KEY',
   'RESEND_API_KEY',
+  'SMTP_HOST',
+  'SMTP_USER',
+  'SMTP_PASS',
+  'SMTP_FROM',
   'NOTIFICATION_WORKER_SECRET',
   'CRON_SECRET',
-  'api/notifications/dispatch-email',
   'x-worker-secret'
 ];
 

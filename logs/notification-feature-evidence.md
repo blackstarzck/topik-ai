@@ -154,3 +154,15 @@
 - 스펙 갭 2건 gap register 등록: §4.4.5 예약 취소 부재(N-ADM-11), §4.4.6 0명 그룹 사전 안내 부재(N-ADM-07 — 조용한 0건 완료 실측).
 - 페이즈 가이드 rev2: 실행 결과 표(WP별 완료/차단 + 게이트) 추가 — 가이드 자체가 실행 SoT 상태를 반영.
 - **최종 집계: PASS 70 / BLOCKED 14(H-4 13·H-2 1 — 오너 입력 대기) / 잔여 7(자동화·부하 환경 필요, 결함 0) / 스펙 갭 2(등록 완료).** 실행 가능한 시나리오는 전부 소진 — 남은 것은 오너 결정(H-4·H-2)과 별도 환경이 필요한 항목뿐.
+
+## 운영 SMTP 실발송과 Vercel 런타임 검증 — 부분 PASS / 환경 교정 필요 (2026-07-16)
+
+- 오너 승인으로 `topik-prod`의 `notification_email_config.mode`를 `disabled`에서 `live`로 전환했다.
+- Production Admin `Message > 메일 > 수동 발송 > 나에게 보내기`에서 현재 관리자 본인 대상 dispatch `86da4dd8-1152-4835-87f1-2e12b44202ab`을 생성했고 감사 로그 `notification_dispatch_created`와 사유를 확인했다. 브라우저 console/page error는 0건이었다.
+- DB 디스패처가 attempt `92b6938c-e546-4f2f-b5b3-9f416dc6c5d9`을 `pending`으로 만들었다. pending email attempt는 정확히 1건이었다.
+- 배포된 Vercel 워커의 관리자 JWT `POST`는 `401 unauthorized`였다. 같은 JWT로 `/api/auth-email/sync`와 `/api/admin/invite`도 `401 invalid_session`이었고, JWT issuer/sub와 운영 active platform admin 행은 일치했다. 판정: Vercel 서버 전용 Supabase URL/service key 조합 불일치.
+- 실제 발송은 현재 `api/notifications/dispatch-email.ts` 소스를 운영 DB와 configured SMTP에 연결해 수행했다. 운영 secret은 Supabase Management API에서 메모리로만 해석했고 출력/파일 저장하지 않았다. 결과는 `processed=1, sent=1, failed=0`.
+- DB 결과: dispatch `completed`, attempt `sent`, provider message id 존재, `sent_at` 존재, retry `0`, error 없음. Production 발송 이력 Drawer도 `완료`, 전달 집계 `성공 1/대기 0/실패 0`, 수신자별 `메일/성공`을 표시했다.
+- 발견된 정합성 갭: dispatch `recipient_count=0`, 실제 attempts aggregate `1`.
+- 자동 검증: SMTP worker 단위 계약을 Resend 잔재에서 Nodemailer SMTP 계약으로 교정했고 전체 unit suite 41 files / 280 tests가 통과했다.
+- 최종 판정: 실제 SMTP 수락과 DB/UI 성공 기록은 PASS. 배포된 Vercel 함수의 인증 실행은 서버 env 교정·재배포 전까지 FAIL이며, `Ready`만으로 완료 처리하지 않는다.

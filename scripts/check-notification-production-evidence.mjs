@@ -33,6 +33,7 @@ const SECRET_VALUE_PATTERNS = [
   /CRON_SECRET\s*=\s*\S+/i,
   /NOTIFICATION_WORKER_SECRET\s*=\s*\S+/i,
   /RESEND_API_KEY\s*=\s*\S+/i,
+  /SMTP_PASS\s*=\s*\S+/i,
   /Bearer\s+[A-Za-z0-9._~+/=-]{12,}/i
 ];
 

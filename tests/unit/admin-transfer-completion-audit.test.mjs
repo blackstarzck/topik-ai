@@ -107,13 +107,16 @@ function writeReadinessFixtures(root) {
     'SUPABASE_SERVICE_ROLE_KEY=',
     'NOTIFICATION_WORKER_SECRET=',
     'CRON_SECRET=',
-    'RESEND_API_KEY=',
-    'RESEND_FROM=',
+    'SMTP_HOST=',
+    'SMTP_PORT=',
+    'SMTP_USER=',
+    'SMTP_PASS=',
+    'SMTP_FROM=',
     'SITE_URL=',
     'TOPIK_AI_PRODUCTION_URL='
   ].join('\n'));
   write(root, 'vercel.json', JSON.stringify({
-    crons: [{ path: '/api/notifications/dispatch-email', schedule: '*/15 * * * *' }],
+    crons: [{ path: '/api/notifications/dispatch-email', schedule: '0 0 * * *' }],
     rewrites: [{ source: '/((?!api/).*)', destination: '/index.html' }]
   }));
   write(root, '.env.local', [
@@ -179,13 +182,16 @@ describe('check-admin-transfer-completion-audit', () => {
       'SUPABASE_SERVICE_ROLE_KEY=',
       'NOTIFICATION_WORKER_SECRET=',
       'CRON_SECRET=',
-      'RESEND_API_KEY=',
-      'RESEND_FROM=',
+      'SMTP_HOST=',
+      'SMTP_PORT=',
+      'SMTP_USER=',
+      'SMTP_PASS=',
+      'SMTP_FROM=',
       'SITE_URL=',
       'TOPIK_AI_PRODUCTION_URL='
     ].join('\n'));
     write(topikAiRoot, 'vercel.json', JSON.stringify({
-      crons: [{ path: '/api/notifications/dispatch-email', schedule: '*/15 * * * *' }],
+      crons: [{ path: '/api/notifications/dispatch-email', schedule: '0 0 * * *' }],
       rewrites: [{ source: '/((?!api/).*)', destination: '/index.html' }]
     }));
     write(topikAiRoot, '.env.local', [
@@ -249,8 +255,11 @@ describe('check-admin-transfer-completion-audit', () => {
         SUPABASE_SERVICE_ROLE_KEY: 'service-role-key',
         NOTIFICATION_WORKER_SECRET: 'worker-secret',
         CRON_SECRET: 'cron-secret',
-        RESEND_API_KEY: 'resend-key',
-        RESEND_FROM: 'noreply@example.com',
+        SMTP_HOST: 'smtp.example.com',
+        SMTP_PORT: '465',
+        SMTP_USER: 'smtp-user',
+        SMTP_PASS: 'smtp-pass',
+        SMTP_FROM: 'noreply@example.com',
         SITE_URL: 'https://app.example.com',
         TOPIK_AI_PRODUCTION_URL: 'https://admin.example.com'
       }

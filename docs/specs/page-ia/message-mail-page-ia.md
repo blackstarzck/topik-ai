@@ -107,7 +107,7 @@
 | 템플릿 수정 | 수정 | Message + templateId | 불필요 | 행 클릭 미리보기 Modal 푸터의 `템플릿 수정` 버튼에서 본문 등록 상세 페이지로 이동해 TinyMCE 본문을 수정합니다. | 조회 이동 동선이므로 원본 화면 흐름을 사용합니다. |
 | 템플릿 정보 수정 | 수정 | Message + templateId | 사유 권장 | 메타 정보 수정 완료 후 대상 식별 정보와 후속 확인 경로를 안내합니다. | /system/audit-logs?targetType=Message&targetId={templateId} |
 | 미리보기 | 조회 | Message + templateId | 불필요 | 행 클릭으로 TinyMCE에 저장된 HTML 본문을 전용 Modal로 확인하고, 빈 본문이면 등록 상세 작성 경로를 안내합니다. | 조회 액션이므로 별도 감사 로그는 필요하지 않거나 원본 화면 흐름을 사용합니다. |
-| 나에게 보내기 | 조회 | Message + templateId | 불필요 | 나에게 보내기 결과 패널을 열거나 관련 화면으로 이동합니다. | 조회 액션이므로 별도 감사 로그는 필요하지 않거나 원본 화면 흐름을 사용합니다. |
+| 나에게 보내기 | 발송 조치 | Notification + dispatchId | 사유 필수 | 현재 관리자 본인 대상 실행을 생성하고 발송 이력 ID, 전달 상태, 감사 로그 확인 경로를 안내합니다. | /system/audit-logs?targetType=Notification&targetId={dispatchId} |
 | 즉시 발송 | 수정 | Message + historyId | 사유 필수 | 발송 그룹/방식/사유 입력 Modal에서 실행되며, 완료 후 발송 이력 ID와 감사 로그 확인 경로를 안내합니다. | /system/audit-logs?targetType=Message&targetId={historyId} |
 | 예약 발송 | 수정 | Message + historyId | 사유 필수 | 발송 그룹/방식/사유 입력 Modal에서 예약 등록되며, 완료 후 발송 이력 ID와 감사 로그 확인 경로를 안내합니다. | /system/audit-logs?targetType=Message&targetId={historyId} |
 | 활성화/비활성화 | 파괴적 | Message + templateId | 확인 + 사유 필수 | 자동 발송 탭 상태 컬럼의 스위치에서 실행되며, 완료 후 대상 식별 정보와 후속 확인 경로를 안내합니다. | /system/audit-logs?targetType=Message&targetId={templateId} |
@@ -163,12 +163,14 @@
 ## 14. 오픈 이슈
 
 - 템플릿 승인과 발송 승인 권한 분리 여부 미정
+- `notification_dispatches.recipient_count`가 테스트 발송에서 `0`으로 남지만 실제 `notification_delivery_attempts`는 1건 생성되는 정합성 갭이 있습니다. 발송 이력의 실제 전달 집계는 attempts를 기준으로 신뢰하고, ledger count 보정은 파이프라인 소유 경계에서 후속 처리합니다.
+- Vercel Production의 브라우저용 Supabase 연결은 `topik-prod`이지만 서버 함수용 `SUPABASE_URL`/service key 조합은 현재 관리자 JWT를 `invalid_session`으로 거부합니다. 서버 환경 교정과 재배포 전에는 Vercel 워커 실발송 완료로 간주하지 않습니다.
 
 ## 15. 2026-06-12 알림 기능 supabase 연동
 
 - 데이터 소스 분기: `VITE_MESSAGE_SOURCE`로 `mock`↔`supabase`를 전환합니다(`src/features/message/api/message-data-source.ts`). Supabase 구성 시 기본 `supabase`이며, `mock` 강제 시 기존 시드 동작(회귀 e2e 경로)을 유지합니다.
 - supabase 모드 write는 admin RPC 단일 경로입니다: 템플릿 저장/상태 변경/삭제(`admin_save_notification_template`/`admin_set_notification_template_status`/`admin_delete_notification_template`) + 발송 실행(`admin_send_notification`). 모든 쓰기는 **사유 필수**이며 감사 로그는 `Target Type=Notification`, `Target ID={row uuid}`로 남습니다(액션 사전: `docs/specs/admin-action-log.md`).
 - supabase 전용 폼 필드: `template_key`(필수), 분류 `class`(transactional·operational·learning·marketing 4종 — 필수), `mandatory`(marketing은 저장 차단, ON 시 수신 선호 우회·감사 기록 고지 확인 모달), `category`, `link_url`(인앱 클릭 이동 경로), 사유 입력. 테이블은 `notification_templates`(channel='email'), 계약 SoT는 `notification-contract.md`(docs/specs).
-- 발송(나에게 보내기/즉시/예약)은 `admin_send_notification`이 `notification_dispatches` 실행 행을 생성하고 파이프라인이 집행합니다. email 전달 transport는 Phase 3(준비 중)이며, 현재 실제 전달은 in_app 채널이 담당합니다.
+- 발송(나에게 보내기/즉시/예약)은 `admin_send_notification`이 `notification_dispatches` 실행 행을 생성하고 DB 파이프라인이 email attempt를 `pending`으로 만든 뒤 topik-ai 서버의 SMTP 워커가 전달합니다. SMTP 성공(resolve) 후에만 attempt를 `sent`로 기록하고 `provider_message_id`/`sent_at`을 저장하며, 실패는 `smtp_error`와 retry count로 남깁니다.
 - 채널 매핑: `/messages/mail`=email, `/messages/push`=push(준비 중 — 발송 비활성), `/messages/in-app`=in_app(신규 — `docs/specs/page-ia/message-inapp-page-ia.md`). 스키마 소유권은 `docs/architecture/shared-supabase-schema-ownership.md`를 따릅니다.
-
+- 2026-07-16 승인된 운영 실발송에서 현재 관리자 본인 대상 메일 1건이 SMTP 수락됐고 운영 DB/발송 이력 화면 모두 `성공`을 확인했습니다. 단, 이 성공은 현재 워커 소스를 운영 DB+SMTP로 실행한 결과이며 배포된 Vercel 함수는 서버 Supabase 환경 불일치로 인증 smoke가 아직 실패합니다.

@@ -61,4 +61,17 @@ describe('check-client-source-secret-boundary', () => {
       marker: '/api/notifications/dispatch-email'
     });
   });
+
+  it('allows the dedicated admin-session worker kick wrapper', () => {
+    const root = createTempRoot();
+    writeProjectFile(
+      root,
+      'src/shared/api/notification-email-kick.ts',
+      "fetch('/api/notifications/dispatch-email', { headers: { Authorization: 'Bearer session' } });\n"
+    );
+
+    const result = evaluateClientSourceSecretBoundary({ rootDir: root });
+
+    expect(result).toEqual({ matches: [] });
+  });
 });
