@@ -42,12 +42,18 @@
 | `system_logs` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | backend/infra service-role ingest(TBD), admin write none | admin | RLS enable+force, admin select only(`private.is_admin`). Read-only technical logs; no admin write policy/RPC |
 | `admin_audit_logs` | **topik-ai** (admin 운영 감사 도메인) | admin RPC | admin | admin select. **소유권 정정(2026-06-17): v13 소유 아님 — admin 운영 감사 sink는 도메인 기준 topik-ai 소유. admin이 조회 인덱스·읽기 RPC 추가 가능(Phase 0 감사 화면 실연동 unblock)** |
 | `topik_writing_*` | topik-ai (`topik_writing_schema_migrations`) | 기존 결정(D-1) | 기존 결정 | `metadata-tag-schema-transition-decision-record.md` §2 |
+| `private.problem_identities`, `private.ensure_writing_problem_identity(uuid,text,smallint)` | **v13** (v13 user-facing migration) | v13 소유 함수만 write | topik-ai 승격 RPC는 함수 interface만 호출, 직접 table read 없음 | private registry. topik-ai는 직접 DDL/DML·FK를 만들지 않고 함수 부재·충돌 시 fail-closed |
 
 ## 3. 변경 절차
 
 1. 새 객체 추가: owner repo의 migration home에 migration+down 작성 → 본 문서 §2에 행 추가 → 적용.
 2. 공유 객체 reader/writer 변경: 양 repo 문서에 반영하고 본 문서의 decision record 칸에 일자·근거 기록.
 3. v13 소유 테이블 DDL 변경: v13 오너 승인 + decision record 없이는 금지.
+
+2026-07-14 TOPIK 쓰기 learner identity registry 경계 교정:
+- `private.problem_identities`와 `private.ensure_writing_problem_identity(uuid,text,smallint)`의 owner/migration home은 v13이다. Admin 소유 `topik_writing_question_source_map.learner_problem_id`는 그대로 유지하며, 승격 트랜잭션에서 v13 함수를 호출해 결정성 UUID·`question_id`·`item_number` 충돌을 검증한다.
+- topik-ai가 v13 private table에 FK를 추가하면 양 tracker의 적용·rollback 순서가 결합되므로 의도적으로 추가하지 않는다. 직접 table read/write 대신 owner 함수 interface를 사용하고, 선행 함수가 없으면 `20260714150000` 마이그레이션이 중단된다.
+- v13 교정 마이그레이션 `20260714140000`은 writing 관련 FK를 `private.problem_identities`로 이관하고, 기존 초안·제출에는 학습자 안전 필드만 담은 불변 `legacy_cutover_snapshot`을 백필한 뒤 `public.problems`의 writing 행을 삭제한다. 이후 과거 기록 조회도 mirror 행에 의존하지 않는다. v13 `20260714140000`과 Admin `20260714150000`, v13 CHECK 권한 교정 `20260714160000`은 dev DB에 적용했고 실제 FK·snapshot·mirror 삭제 대사와 cross-app headed browser를 통과했다. 운영 DB는 미적용이며 destructive down rehearsal은 아직 수행하지 않았다.
 
 2026-06-17 `admin_audit_logs` 소유권 정정:
 - 종전 §2 행은 `admin_audit_logs`를 v13 소유(2026-06-09 결정)로 기재했으나, 오너 결정(2026-06-17)으로 **도메인 기준 topik-ai(admin 운영) 소유**로 정정한다. admin 운영 조치의 감사 sink이므로 admin 도메인 자산이다.

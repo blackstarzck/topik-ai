@@ -168,3 +168,7 @@
   `미수집`으로 표기하고 0분으로 렌더하지 않는다.
 - 작문 평가 차원 슬러그는 공유 라벨(`writing-dimension-labels.ts`)로 한글 표기한다(내용/구성/표현/
   문법/어휘/주제 적합성/언어 사용).
+- 최근 작문 제목·태그는 제출 `problem_id`를 `topik_writing_question_source_map.learner_problem_id`로
+  연결한 canonical metadata projection에서 읽는다. 과거 문항 본문은 제출 row의 불변
+  `legacy_cutover_snapshot`/`question_snapshot`에서 읽고, `public.problems` writing 행이나
+  `legacy_problem_id`를 콘텐츠 source로 사용하지 않는다.

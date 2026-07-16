@@ -1,6 +1,8 @@
+import { createHash, randomUUID } from 'node:crypto';
+
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-import { extractTasks } from './ingest-mapper';
+import { extractTasks } from '../../src/features/assessment/server/writing-task-ingest-mapper.js';
 
 declare const process: {
   env: Record<string, string | undefined>;
@@ -25,7 +27,6 @@ declare const process: {
  */
 
 const ADMIN_ROLES = new Set(['content_admin', 'platform_admin']);
-const ERROR_SNIPPET_MAX = 200;
 const PAGE = 50; // 상류 목록 limit 상한(라이브 확인: limit<=50)
 const SOURCE_ENDPOINT = '/api/writing/tasks';
 const LOG_PREFIX = '[writing-tasks/ingest]';
@@ -37,7 +38,11 @@ const REVIEW_COMPLETE = '검수 완료';
 // 서버리스 함수 최대 실행 시간(상류 페이지네이션 + 벌크 RPC 1회 여유).
 export const maxDuration = 60;
 
-type IngestRequestBody = { task_type?: unknown; limit?: unknown; dry_run?: unknown };
+type IngestRequestBody = {
+  task_type?: unknown;
+  limit?: unknown;
+  dry_run?: unknown;
+};
 type ServerEnv = {
   supabaseUrl: string;
   serviceRoleKey: string;
@@ -45,6 +50,92 @@ type ServerEnv = {
   upstreamEmail: string;
   upstreamPassword: string;
 };
+
+type IngestCounts = {
+  inserted: number;
+  new_version: number;
+  unchanged: number;
+  failed: number;
+  total: number;
+};
+
+type PromoteCounts = {
+  promoted_new: number;
+  promoted_updated: number;
+  idempotent_skipped: number;
+  held: number;
+  skipped_review: number;
+  failure_count: number;
+};
+
+class IngestFailure extends Error {
+  constructor(
+    readonly code: string,
+    readonly responseStatus: number,
+    readonly errorRef: string,
+    readonly upstreamStatus?: number
+  ) {
+    super(code);
+  }
+}
+
+function deterministicErrorRef(value: unknown): string {
+  const message = value instanceof Error ? value.message : String(value ?? 'unknown');
+  return createHash('sha256').update(message).digest('hex').slice(0, 16);
+}
+
+function upstreamFailure(code: string, status: number, responseBody: string): IngestFailure {
+  return new IngestFailure(
+    code,
+    502,
+    deterministicErrorRef(`${code}:${status}:${responseBody}`),
+    status
+  );
+}
+
+function emitIngestResult(
+  level: 'log' | 'error',
+  event: Record<string, string | number | boolean | undefined>
+): void {
+  console[level](JSON.stringify({ event: 'writing_ingest_result', ...event }));
+}
+
+function numberField(value: unknown, key: string): number {
+  if (!value || typeof value !== 'object') return 0;
+  const field = (value as Record<string, unknown>)[key];
+  return typeof field === 'number' && Number.isFinite(field) ? field : 0;
+}
+
+function sanitizeIngestCounts(value: unknown): IngestCounts {
+  return {
+    inserted: numberField(value, 'inserted'),
+    new_version: numberField(value, 'new_version'),
+    unchanged: numberField(value, 'unchanged'),
+    failed: numberField(value, 'failed'),
+    total: numberField(value, 'total')
+  };
+}
+
+function sanitizePromoteCounts(value: unknown): PromoteCounts {
+  const failureCount =
+    value && typeof value === 'object' && Array.isArray((value as Record<string, unknown>).failures)
+      ? ((value as Record<string, unknown>).failures as unknown[]).length
+      : 0;
+  return {
+    promoted_new: numberField(value, 'promoted_new'),
+    promoted_updated: numberField(value, 'promoted_updated'),
+    idempotent_skipped: numberField(value, 'idempotent_skipped'),
+    held: numberField(value, 'held'),
+    skipped_review: numberField(value, 'skipped_review'),
+    failure_count: failureCount
+  };
+}
+
+export function promotionQuestionIdsOf(
+  payload: ReadonlyArray<{ source_task_id: string }>
+): string[] {
+  return [...new Set(payload.map((task) => task.source_task_id))];
+}
 
 function jsonResponse(body: unknown, init?: ResponseInit): Response {
   return Response.json(body, init);
@@ -60,13 +151,17 @@ function resolveServerEnv(): { env?: ServerEnv; error?: Response } {
   const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY;
   if (!supabaseUrl || !serviceRoleKey) {
-    return { error: jsonResponse({ ok: false, error: 'server_misconfigured' }, { status: 500 }) };
+    return {
+      error: jsonResponse({ ok: false, error: 'server_misconfigured' }, { status: 500 })
+    };
   }
   const upstreamBase = process.env.API_BASE_URL;
   const upstreamEmail = process.env.API_ACCOUNT_INFO_EMAIL;
   const upstreamPassword = process.env.API_ACCOUNT_INFO_PASSWORD;
   if (!upstreamBase || !upstreamEmail || !upstreamPassword) {
-    return { error: jsonResponse({ ok: false, error: 'upstream_not_configured' }, { status: 503 }) };
+    return {
+      error: jsonResponse({ ok: false, error: 'upstream_not_configured' }, { status: 503 })
+    };
   }
   return {
     env: {
@@ -83,14 +178,22 @@ async function upstreamLogin(env: ServerEnv): Promise<string> {
   const res = await fetch(`${env.upstreamBase}/api/eval/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: env.upstreamEmail, password: env.upstreamPassword })
+    body: JSON.stringify({
+      email: env.upstreamEmail,
+      password: env.upstreamPassword
+    })
   });
   const text = await res.text();
   if (!res.ok) {
-    throw new Error(`upstream_login_failed: ${res.status} ${text.slice(0, ERROR_SNIPPET_MAX)}`);
+    throw upstreamFailure('upstream_login_failed', res.status, text);
   }
   const body = JSON.parse(text) as { token?: unknown; access_token?: unknown };
-  const token = typeof body.token === 'string' ? body.token : typeof body.access_token === 'string' ? body.access_token : '';
+  const token =
+    typeof body.token === 'string'
+      ? body.token
+      : typeof body.access_token === 'string'
+        ? body.access_token
+        : '';
   if (!token) throw new Error('upstream_login_no_token');
   return token;
 }
@@ -136,7 +239,7 @@ async function fetchAllTasks(
       );
       const text = await res.text();
       if (!res.ok) {
-        throw new Error(`upstream_fetch_failed: ${res.status} ${text.slice(0, ERROR_SNIPPET_MAX)}`);
+        throw upstreamFailure('upstream_fetch_failed', res.status, text);
       }
       const page = pageItemsOf(JSON.parse(text));
 
@@ -172,6 +275,7 @@ async function fetchAllTasks(
 
 type IngestOptions = {
   actorId: string;
+  correlationId: string;
   taskType?: string | null;
   maxLimit?: number | null;
   dryRun?: boolean;
@@ -186,9 +290,26 @@ async function runIngest(
   try {
     token = await upstreamLogin(env);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'upstream_login_error';
-    console.error(`${LOG_PREFIX} upstream login failed:`, message);
-    return jsonResponse({ ok: false, error: message }, { status: 502 });
+    const failure =
+      error instanceof IngestFailure
+        ? error
+        : new IngestFailure('upstream_login_error', 502, deterministicErrorRef(error));
+    emitIngestResult('error', {
+      correlation_id: opts.correlationId,
+      status: 'failed',
+      code: failure.code,
+      error_ref: failure.errorRef,
+      upstream_status: failure.upstreamStatus
+    });
+    return jsonResponse(
+      {
+        ok: false,
+        error: failure.code,
+        error_ref: failure.errorRef,
+        correlation_id: opts.correlationId
+      },
+      { status: failure.responseStatus }
+    );
   }
 
   let tasks;
@@ -198,9 +319,26 @@ async function runIngest(
     tasks = extracted.tasks;
     warnings = extracted.warnings;
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'upstream_fetch_error';
-    console.error(`${LOG_PREFIX} upstream fetch failed:`, message);
-    return jsonResponse({ ok: false, error: message }, { status: 502 });
+    const failure =
+      error instanceof IngestFailure
+        ? error
+        : new IngestFailure('upstream_fetch_error', 502, deterministicErrorRef(error));
+    emitIngestResult('error', {
+      correlation_id: opts.correlationId,
+      status: 'failed',
+      code: failure.code,
+      error_ref: failure.errorRef,
+      upstream_status: failure.upstreamStatus
+    });
+    return jsonResponse(
+      {
+        ok: false,
+        error: failure.code,
+        error_ref: failure.errorRef,
+        correlation_id: opts.correlationId
+      },
+      { status: failure.responseStatus }
+    );
   }
 
   // 검수 완료 게이트: review_status가 정확히 '검수 완료'인 항목만 적재한다(나머지 제외).
@@ -208,14 +346,18 @@ async function runIngest(
     (task) => (task.raw as Record<string, unknown>).review_status === REVIEW_COMPLETE
   );
   const skippedReview = tasks.length - reviewComplete.length;
-  if (skippedReview > 0) {
-    console.log(`${LOG_PREFIX} skipped ${skippedReview} non-review-complete item(s)`);
-  }
-
   if (opts.dryRun) {
+    emitIngestResult('log', {
+      correlation_id: opts.correlationId,
+      status: 'dry_run',
+      candidate_count: reviewComplete.length,
+      skipped_review: skippedReview,
+      warning_count: warnings.length
+    });
     return jsonResponse({
       ok: true,
       dry_run: true,
+      correlation_id: opts.correlationId,
       candidate_count: reviewComplete.length,
       skipped_review: skippedReview,
       warnings
@@ -228,6 +370,7 @@ async function runIngest(
     raw_response_text: JSON.stringify(task.raw),
     item_number: task.itemNumber
   }));
+  const promotionQuestionIds = promotionQuestionIdsOf(payload);
 
   const { data, error } = await supabase.rpc('admin_ingest_writing_tasks_bulk', {
     p_actor_id: opts.actorId,
@@ -235,24 +378,124 @@ async function runIngest(
     p_tasks: payload
   });
   if (error) {
-    console.error(`${LOG_PREFIX} bulk ingest RPC failed:`, error.message);
-    return jsonResponse({ ok: false, error: error.message }, { status: 500 });
+    const errorRef = deterministicErrorRef(error.message);
+    emitIngestResult('error', {
+      correlation_id: opts.correlationId,
+      status: 'failed',
+      code: 'ingest_rpc_failed',
+      error_ref: errorRef
+    });
+    return jsonResponse(
+      {
+        ok: false,
+        error: 'ingest_rpc_failed',
+        error_ref: errorRef,
+        correlation_id: opts.correlationId
+      },
+      { status: 500 }
+    );
   }
 
-  // 적재 직후 자동 승격: 인박스(is_latest raw/held) → §7 upsert(노출·태그 보존).
-  const { data: promoted, error: promoteError } = await supabase.rpc('admin_promote_writing_questions', {
-    p_actor_id: opts.actorId,
-    p_question_ids: null
-  });
+  const counts = sanitizeIngestCounts(data);
+  if (counts.failed > 0) {
+    emitIngestResult('error', {
+      correlation_id: opts.correlationId,
+      status: 'partial_failure',
+      code: 'ingest_partial_failure',
+      ...counts,
+      skipped_review: skippedReview,
+      warning_count: warnings.length
+    });
+    return jsonResponse(
+      {
+        ok: false,
+        error: 'ingest_partial_failure',
+        correlation_id: opts.correlationId,
+        counts,
+        skipped_review: skippedReview,
+        warnings
+      },
+      { status: 502 }
+    );
+  }
+
+  // 이번 요청에서 실제 적재한 문항만 승격한다. 빈 배열도 그대로 전달해 기존 held
+  // backlog를 암묵적으로 재처리하지 않는다.
+  const { data: promoted, error: promoteError } = await supabase.rpc(
+    'admin_promote_writing_questions',
+    {
+      p_actor_id: opts.actorId,
+      p_question_ids: promotionQuestionIds
+    }
+  );
   if (promoteError) {
     // 적재는 성공, 승격만 실패 — 인박스에 보존돼 다음 실행에서 재승격된다.
-    console.error(`${LOG_PREFIX} promote RPC failed:`, promoteError.message);
-    return jsonResponse({ ok: true, counts: data, promote_error: promoteError.message, warnings });
+    const errorRef = deterministicErrorRef(promoteError.message);
+    emitIngestResult('error', {
+      correlation_id: opts.correlationId,
+      status: 'failed',
+      code: 'promotion_failed',
+      error_ref: errorRef,
+      ...counts,
+      skipped_review: skippedReview,
+      warning_count: warnings.length
+    });
+    return jsonResponse(
+      {
+        ok: false,
+        error: 'promotion_failed',
+        error_ref: errorRef,
+        correlation_id: opts.correlationId,
+        counts,
+        skipped_review: skippedReview,
+        warnings
+      },
+      { status: 502 }
+    );
   }
 
   // 성공 요약을 로그로 — cron(GET)은 응답 본문을 버리므로 가시화에 필요.
-  console.log(`${LOG_PREFIX} ingest ok:`, JSON.stringify(data), '| promote:', JSON.stringify(promoted), '| skipped_review:', skippedReview);
-  return jsonResponse({ ok: true, counts: data, promoted, skipped_review: skippedReview, warnings });
+  const promotedCounts = sanitizePromoteCounts(promoted);
+  if (promotedCounts.held > 0 || promotedCounts.failure_count > 0) {
+    emitIngestResult('error', {
+      correlation_id: opts.correlationId,
+      status: 'partial_failure',
+      code: 'promotion_partial_failure',
+      ...counts,
+      ...promotedCounts,
+      skipped_review: skippedReview,
+      warning_count: warnings.length
+    });
+    return jsonResponse(
+      {
+        ok: false,
+        error: 'promotion_partial_failure',
+        correlation_id: opts.correlationId,
+        counts,
+        promoted: promotedCounts,
+        skipped_review: skippedReview,
+        warnings
+      },
+      { status: 502 }
+    );
+  }
+
+  emitIngestResult('log', {
+    correlation_id: opts.correlationId,
+    status: 'succeeded',
+    ...counts,
+    ...promotedCounts,
+    skipped_review: skippedReview,
+    warning_count: warnings.length
+  });
+  return jsonResponse({
+    ok: true,
+    correlation_id: opts.correlationId,
+    counts,
+    promoted: promotedCounts,
+    skipped_review: skippedReview,
+    warnings
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -288,7 +531,10 @@ async function handleManualIngest(request: Request): Promise<Response> {
   if (adminResult.error) {
     return jsonResponse({ ok: false, error: 'role_check_failed' }, { status: 500 });
   }
-  const admin = adminResult.data as { role: string | null; status: string | null } | null;
+  const admin = adminResult.data as {
+    role: string | null;
+    status: string | null;
+  } | null;
   if (!admin || admin.status !== 'active' || !ADMIN_ROLES.has(String(admin.role ?? ''))) {
     return jsonResponse({ ok: false, error: 'forbidden' }, { status: 403 });
   }
@@ -306,6 +552,7 @@ async function handleManualIngest(request: Request): Promise<Response> {
 
   return runIngest(supabase, serverEnv, {
     actorId: userId,
+    correlationId: randomUUID(),
     taskType: normalizeTaskType(body.task_type),
     maxLimit,
     dryRun: body.dry_run === true
@@ -344,7 +591,10 @@ async function handleCronIngest(request: Request): Promise<Response> {
   });
 
   // actor가 실제 content_admin인지는 RPC가 검증한다(forbidden 시 그대로 반영).
-  return runIngest(supabase, serverEnv, { actorId: systemActorId });
+  return runIngest(supabase, serverEnv, {
+    actorId: systemActorId,
+    correlationId: randomUUID()
+  });
 }
 
 export function POST(request: Request): Promise<Response> | Response {

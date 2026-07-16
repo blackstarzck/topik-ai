@@ -435,9 +435,9 @@
 
 ### 4.7 Assessment
 
-- 대상 파일: `src/features/assessment/pages/assessment-question-bank-page.tsx`, `src/features/assessment/pages/assessment-question-detail-page.tsx`(구 `assessment-question-review-page.tsx` — 재정의 P3 개명), `src/features/assessment/pages/assessment-question-manage-page.tsx`, `src/features/assessment/api/assessment-question-bank-service.ts`, `src/features/assessment/api/topik-writing-question-bank-service.ts`, `src/features/assessment/api/supabase-assessment-question-bank-service.ts`(legacy 롤백 어댑터), `src/app/router/routes.ts`
+- 대상 파일: `src/features/assessment/pages/assessment-question-bank-page.tsx`, `src/features/assessment/pages/assessment-question-detail-page.tsx`(구 `assessment-question-review-page.tsx` — 재정의 P3 개명), `src/features/assessment/pages/assessment-question-manage-page.tsx`, `src/features/assessment/api/assessment-question-bank-service.ts`, `src/features/assessment/api/topik-writing-question-bank-service.ts`, `src/features/assessment/api/question-bank-data-source.ts`, `src/app/router/routes.ts`
 - 현 상태
-  - `TOPIK 쓰기 문제은행` 단일 페이지(`tab` 쿼리 토글)는 두 형제 라우트로 분리되었다. `Assessment > TOPIK 쓰기 문제 검수`(`/assessment/question-bank`)와 `Assessment > TOPIK 쓰기 문항 관리`(`/assessment/question-bank/manage`)가 동일한 Supabase `problems`(question_no 51-54) 조회 결과를 공유 hook으로 함께 쓰며, JSON fixture/store fallback은 제거되었다.
+  - 현재 `/assessment/question-bank`는 문항/가져온 문항 route-backed 탭의 통합 화면이다. Supabase 구성 시 번호별 `topik_writing_51~54_questions`와 추천 뷰만 읽고, 구 `problems` adapter와 env legacy rollback은 2026-07-14 삭제했다. 미구성 환경은 결정적 mock만 사용한다.
   - 검수 페이지는 `reviewStatus 요약 카드+필터 -> 목록 -> 2depth 검수 페이지(/assessment/question-bank/review/:questionId)`와 `검수 메모 입력 -> 검수 완료 / 수정 필요 / 보류` 흐름을 유지한다. `tab` 쿼리는 제거되고 각 라우트가 자체 URL 상태(공통 `questionNo`/`domain`/`questionType`/`difficulty`/`keyword`, 검수 전용 `reviewStatus`, 관리 전용 `operationStatus`)를 복원한다. ※ 2026-06-11 인바운드 전환에 따라 이 검수 표면은 재정의 P3 코드 컷오버(`202f905`)에서 제거 완료됐으며, 현 단락은 역사 기록이다.
   - `EPS TOPIK`, `레벨 테스트`는 아직 Placeholder
 - 미확정/누락/오구현
@@ -460,23 +460,26 @@
     - 백필 원천 데이터 품질 메모(P2 표본 적대 감사 실측, 2026-06-10 — 분류 오류 아님): 구 `problems`의 title/hints가 본문과 전혀 다른 시나리오로 오염된 행 3건 — `0027601f`(힌트 '전통 음악 공연 추천' vs 본문 수강 신청), `7a6857b3`(title '회의 일정 변경 요청' vs 본문 도서관 공지), `aae581e2`(힌트 '컴퓨터실 임시 등록' vs 본문 주차 등록). 신규 스키마 분류·rationale은 본문 기준이라 적재 무영향이나, title을 그대로 표시하는 구 problems 기반 화면에서는 혼동 소지가 있다. → **[2026-06-11 갱신]** 콘텐츠팀 회신 트랙 폐기 — 해당 3건은 인터림 코퍼스 참고 기록으로만 유지(구 `problems` 기반 화면은 재정의 P3 컷오버로 해소).
     - 콘텐츠 메타(~45컬럼) 입력/저작 UI는 비범위로 확정(D-10, 2026-06-11 재정의에서도 원칙 유지 — 메타데이터는 외부 공급) — 갭 아님.
   - `2026-06-11 인바운드 모델 전환` (오너 결정 — 결정 기록 `docs/architecture/metadata-tag-schema-transition-decision-record.md` §0, 실행계획안 2026-06-11 개정)
-    - 전환 결정: 문제 발원 = 외부(공급) API(**미개발**) — 문제 본문+메타데이터(schema-rule §4 + §7, §7.9·검수 필드 제외)가 **완성 상태로 공급**된다. admin은 문항을 저작·생성·분류·검수하지 않으며, admin 역할 = ①수신·적재(외부 API → Supabase `topik_writing_51/52/53/54_questions`+`question_source_map`) ②관리 포인트=태그(부여/제거) ③노출 통제=`service_status`(기본 `internal_test`)다. v13은 read-only 소비.
+    - 전환 결정: 문제 발원 = 외부(공급) API — 문제 본문+메타데이터(schema-rule §4 + §7, §7.9·검수 필드 제외)가 **완성 상태로 공급**된다. admin은 문항을 저작·생성·분류·검수하지 않으며, admin 역할 = ①수신·적재(외부 상세 API → 인박스 → Supabase `topik_writing_51/52/53/54_questions`) ②관리 포인트=태그(부여/제거) ③노출 통제=`service_status`(기본 `internal_test`)다. v13은 read-only 소비.
     - 검수 개념 전면 삭제: `review_status`·`review_workflow_status`(편차 E1 철회)·`review_passed`·`validation_result` 필드와 검수 화면·검수 쓰기·검수 감사 액션 4종·검수 메모를 admin 표면·스키마·계약·정책에서 제거한다(컬럼 물리 제거는 재정의 P3 마이그레이션). 품질·상태 표현은 태그로만 한다. 상류 push(업로드/배포) 트랙·`question_published`도 폐기. POL-017은 "TOPIK 쓰기 문항 수신·관리 운영정책"으로 재정의, POL-018은 검수 결합 기준 ① 삭제·운영주의 태그 활성 시 `available` 전환 사유 필수·반복과다 `excluded` 권고 유지로 개정.
     - 소멸·해소로 닫힌 기존 갭: ①검수 메모 영구화(구 D-7 — UI-local 가짜 저장 문제는 개념 삭제로 소멸, 2026-06-12에 태그 부여/제거용 운영 메모 필드도 제거) ②P2-5 콘텐츠팀 샘플 승인 대기 ③상류 업로드/upsert 엔드포인트·배포 트리거 미확정 ④문제 번호별 review field profile schema 승격 ⑤배포 승인 체계 — 전부 트랙 소멸로 폐기 처리(상단 `TOPIK 쓰기 문제 검수` 블록 마킹 참조).
-    - **신규 갭 ① — 외부 공급 API 미개발(수신 경로 미구현, 차단)**: 문항 수신·적재 경로(외부 API → Supabase)가 공급측 미개발로 구현 불가다. 공급 계약(D-11 재작성: 문항 공급(인바운드) API 계약 요청)이 확정되기 전까지 신규 문항 유입이 없고, `question_received` 감사 액션도 확정 불가다. 인터림은 P2 백필 466행 초기 코퍼스(전 행 `service_status='internal_test'`)로 운영한다. 분류: `미확정 + 누락`(외부 의존 — 차단).
+    - **신규 갭 ① — 외부 공급 수신 경로**: 종전에는 공급 API 미개발로 차단됐으나, 2026-06-23 상세 API 타입별 페이지네이션 → 무손실 인박스 적재 → 자동 승격 → `question_received` 감사 결선까지 구현됐다. → **[2026-07-13 런타임 갭 해소]** 배포 함수가 확장자 없는 ESM import 때문에 시작 전 `ERR_MODULE_NOT_FOUND`로 500을 반환하던 결함을 매퍼의 `/api` 밖 이동 + `.js` specifier + Node ESM 시작 회귀 테스트로 해소했다. 분류: `해소`(운영 반영은 변경 배포 후 production 시작 프로브로 확인).
     - **신규 갭 ② — 검수 표면·컬럼 제거(재정의 P3)**: 검수 화면(`/assessment/question-bank`의 검수 흐름·요약 카드·`reviewStatus` 필터, `/assessment/question-bank/review/:questionId` 상세)과 검수 감사 액션 분기가 코드에 잔존해 새 모델(검수 없음)과 어긋났던 갭. → **[2026-06-11 갱신 — 코드 측 해소 완료]** 재정의 P3 코드 컷오버(`202f905`)로 화면 재구성(question-bank=문항 목록(조회), manage=문항 관리(관리 포인트)), 상세 라우트 `/assessment/question-bank/:questionId` 개명, 검수 표면 전면 제거, 스위치 기본값 `topik_writing` 플립이 완료됐다. → **[2026-06-11 재갱신 — 갭 종결]** 검수 4컬럼(`review_status`/`review_workflow_status`/`review_passed`/`validation_result`) 물리 제거 마이그레이션 `0013`도 적용 완료(스냅샷 4테이블 검수 컬럼 0건·뷰 16컬럼·RPC 검수 참조 0건 — 증적 로그 P3 재채점 절, §12.4 P3 = PASS). 분류: `해소`.
     - **P5-1 마스터 조회 surface(2026-06-11 구현)**: 주제/태그 마스터(`topik_writing_topic_master`/`topik_writing_tag_master`) 전수(비활성 포함)를 `/system/metadata`의 `TOPIK 쓰기 마스터 데이터 (읽기 전용)` 섹션에서 조회한다(`src/features/assessment/ui/master-catalog-section.tsx` + facade 카탈로그 로더). 신규 라우트 없음 — P5-2 라우트 동기화는 해당 없음. 추천키/반복방지키 JSONB는 문항 상세 조회로 유지(D-10 비범위).
     - **신규 갭 ③ — tag_master 활성/비활성 write 미개방(P5-3 권장)**: 현행 감사 RPC는 문항용 3종뿐이라 tag_master write에는 전용 RPC 신설(마이그레이션)·platform_admin 가드·신규 Target Type(`admin_audit_logs`)·감사 라벨 결정이 필요했다. → **[2026-06-11 같은 날 해소]** 마이그레이션 0014(`admin_update_tag_master_status` — platform_admin 가드·사유 RPC 단 필수) 적용 + 카탈로그 태그 탭 토글 UI(ConfirmAction 사유 필수) + 신규 감사 계약(`AssessmentTagMaster`/`tag_master_status_changed` — 라벨·딥링크 포함) 결선. 동작 확인 프로브 14단계 ALL PASS(가드 3방향 거부 + platform_admin 화면 왕복 + 감사 2행 역추적 + 원복 — `.omx/evidence/p5-3-tag-master-write-report.json`). 분류: `해소`.
+    - **신규 갭 ④ — v13 canonical 직접 읽기 이전 단계 증거(2026-07-13~14)**: generated `learner_problem_id`, `canonical_import_id`/`payload_hash`, 번호별 정식 테이블 learner-safe projection을 대상으로 역할별 권한, 700↔700 shadow, 활성 초안 36건 reconciliation, current-content·history/PDF live E2E, Cron 해제·재등록 훈련을 완료했다. 이 결과는 최종 mirror 제거 전 데이터 대사와 회귀 증거이며, legacy/shadow/read mode/rollback sync를 최종 구조에 유지한다는 뜻이 아니다.
+    - **신규 갭 ⑤ — v13 identity/FK/snapshot/outbox 최종 교정(2026-07-15, dev 검증 완료·운영 전환 대기)**: v13 `20260714140000`/`20260714141000`/`20260714160000`, Admin `20260714150000`을 dev에 적용해 writing FK를 private identity registry로 이관하고 기존 초안·제출 snapshot을 백필한 뒤 `public.problems` writing 행을 0건으로 만들었습니다. canonical/source-map 700건, identity 704건, draft 328건, submission 280건, snapshot 누락 0건, registry FK 10개를 대사했습니다. migration down/up, outbox 5종 fault-injection, 실제 provider Q54 제출→분석→피드백, 최신 v13 `origin/main` 기반 desktop/mobile headed E2E를 통과했습니다. retained mirror/current legacy/shadow/read mode/rollback sync는 남기지 않습니다. 남은 갭은 운영 DB/Vercel 적용, evidence 기반 활성화와 운영 smoke입니다. 분류: `dev 구현·검증 완료 + 운영 게이트 차단`.
   - `EPS TOPIK`, `레벨 테스트`
     - 여전히 Placeholder이며, 편성/배점/발행/결과 정책의 화면 SoT와 데이터 source 경계가 미정이다.
 - 분류
   - `부분 구현 + 미확정`
   - 문항 관리 운영 상태 조치: `해소` (2026-06-11 P4 관리 포인트 개방 — `service_status`+태그 write 활성, RT-4·RLS 네거티브 검증)
-  - 메타데이터·태그 스키마 전환: `진행 중` (P0~P5 PASS — 잔여 P6(외부 공급 수신 연동, D-11 회신 게이트))
+  - 메타데이터·태그 스키마 전환: `구현 완료` (P0~P6 — 외부 공급 상세 수신·인박스 적재·자동 승격 결선)
   - tag_master 활성/비활성 write: `해소` (P5-3 — 2026-06-11 개방, 신규 갭 ③ 종결 기록 참조)
-  - 외부 공급 API 미개발(수신 경로): `미확정 + 누락` (공급 계약 확정 전 차단)
+  - 외부 공급 수신 경로: `해소` (2026-06-23 구현, 2026-07-13 Vercel Node ESM 시작 결함 보완)
   - 검수 표면·컬럼 제거: `해소` (재정의 P3 코드 컷오버 `202f905` + 마이그레이션 `0013` 적용 — 신규 갭 ② 종결 기록 참조)
   - 문항 버전·상태별 사용자 노출: `정책 확정 + 구현/검증 필요` — `docs/architecture/writing-question-version-policy.md` 기준. `topik_writing_question_import` 버전 보존과 v13 제출 스냅샷 기반은 확인됐으나, 현재 버전 포인터·관리자 이력 UI·`question_received` 버전 diff·북마크/활성 임시저장 최신화와 호환성 차단은 구현 또는 교차 저장소 검증이 필요하다.
+  - v13 canonical 읽기·제출 컷오버: `dev 구현·E2E 완료 + 운영 전환 대기` (14:00/14:10/15:00/16:00 dev 적용, down/up·fault-injection·실제 provider canary·desktop/mobile headed browser 완료, 운영 적용과 evidence 활성화 전 fail-close)
 
 ### 4.8 Content
 

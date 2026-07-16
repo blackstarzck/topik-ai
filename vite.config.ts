@@ -14,16 +14,25 @@ import { defineConfig, type Plugin, type ViteDevServer } from 'vite';
  * vite는 VITE_ 변수만 import.meta.env에 노출하므로, 서버 함수가 읽는 process.env
  * (API_*, SUPABASE_SERVICE_ROLE_KEY/SECRET_KEY, CRON_SECRET 등)를 .env.local에서 주입한다.
  */
+export function parseDotEnvLocal(raw: string): Array<[string, string]> {
+  const entries: Array<[string, string]> = [];
+  for (const rawLine of raw.replace(/^\uFEFF/, '').split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) continue;
+    const match = /^(?:export\s+)?([A-Za-z0-9_]+)\s*=\s*(.*)$/.exec(line);
+    if (!match) continue;
+    let value = match[2];
+    if (/^".*"$/.test(value) || /^'.*'$/.test(value)) value = value.slice(1, -1);
+    entries.push([match[1], value]);
+  }
+  return entries;
+}
+
 function loadDotEnvLocalIntoProcessEnv(): void {
   const envPath = resolve(process.cwd(), '.env.local');
   if (!existsSync(envPath)) return;
-  for (const line of readFileSync(envPath, 'utf8').split(/\r?\n/)) {
-    const match = /^([A-Za-z0-9_]+)\s*=\s*(.*)$/.exec(line);
-    if (!match) continue;
-    const key = match[1];
+  for (const [key, value] of parseDotEnvLocal(readFileSync(envPath, 'utf8'))) {
     if (process.env[key] !== undefined) continue;
-    let value = match[2];
-    if (/^".*"$/.test(value) || /^'.*'$/.test(value)) value = value.slice(1, -1);
     process.env[key] = value;
   }
 }

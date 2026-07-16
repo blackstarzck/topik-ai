@@ -18,6 +18,16 @@
   - 롤백: `node scripts/db/migrate.mjs --down <name>`
 - **소유권 근거**: `docs/architecture/metadata-tag-schema-transition-decision-record.md` §2
 
+### 1.1 정식 작문 카탈로그 읽기 계약 (`20260713080015`)
+
+- 인박스 `topik_writing_question_import`와 번호별 정식 51~54 테이블은 역할이 다르다. 인박스는 원시 응답·버전 보존용이고, 학습자 읽기 SoT는 번호별 정식 테이블이다.
+- `topik_writing_question_source_map.learner_problem_id`는 `md5(question_id)::uuid` generated UNIQUE 값으로 v13 FK와 일치하고, `question_id` 변경은 trigger로 거부한다. `legacy_problem_id`는 과거 ETL provenance일 뿐 학습자 식별자로 사용하지 않는다. `canonical_import_id`가 정식 문항과 정확한 인박스 버전을 연결한다. 학습자 RPC는 이 버전의 `payload_hash`와 허용 필드만 반환하며 정답·채점표·원시 응답을 제외한다. 53번 차트 JSON은 루트/series/value 단계의 명시적 재귀 허용 목록으로 다시 만들어 중첩된 비허용 필드도 노출하지 않는다.
+- service-role 전용 채점 payload/제출 guard와 authenticated 전용 학습자 RPC의 `GRANT`를 섞지 않는다. 실제 적용 전후에 `anon` 거부, `authenticated` 안전 projection, `service_role` 정확 버전 조회를 각각 검사한다.
+- 최초 `20260713080015` 승격 RPC는 v13 소유 `private.ensure_writing_problem_anchor(uuid,text,smallint)`에 의존했다. 교정 마이그레이션 `20260714150000_topik_writing_identity_registry_bridge.sql`부터는 v13 소유 `private.ensure_writing_problem_identity(uuid,text,smallint)`를 먼저 확인하고, 기존 pinned canonical identity와 신규 승격 identity를 이 함수로만 등록·검증한다. v13 registry 마이그레이션을 먼저 적용해야 하며, 함수가 없으면 Admin 마이그레이션은 fail-closed로 중단한다.
+- `private.problem_identities`는 v13 소유이므로 이 repo는 직접 DDL/DML 또는 cross-domain FK를 추가하지 않는다. v13 `20260714140000`은 writing 관련 FK를 registry로 이관하고 초안·제출에 불변 learner-safe cutover snapshot을 백필한 뒤 `public.problems` writing 행을 삭제한다. 현재 문항과 과거 기록 모두 retained mirror에 의존하지 않는다.
+- `private.assert_writing_canonical_content_parity()`는 정식 typed row를 고정 인박스 `raw_payload`에서 다시 만든 record와 완전 비교한다. 초기 백필에서 불일치하면 마이그레이션을 중단하고, v13 canonical 활성화 게이트에서도 다시 실행한다.
+- 2026-07-15 기준 최종 구조의 v13 `20260714140000`/`20260714141000`/`20260714160000`과 Admin `20260714150000`은 dev DB에 적용됐다. identity/FK/snapshot/mirror 삭제 대사, migration down/up, outbox fault-injection, 실제 provider 제출·피드백 canary, desktop/mobile cross-app headed browser를 통과했다. 검증 뒤 dev 제출은 `blocked + unverified`로 fail-close했으며 운영 DB에는 미적용이다. 최종 구조에는 legacy/shadow/read mode/rollback sync가 없고, 서비스 재개 시 검증된 outbox evidence로만 canonical 제출을 활성화한다.
+
 ## 2. `migrations-admin/` — admin 운영 네임스페이스 (알림 등)
 
 - **소유 영역**: 관리자 운영 기능 — 알림 운영 객체(`notification_templates`,
@@ -29,6 +39,9 @@
   - 상태 확인: `npm run db:admin:migrate:status`
   - 롤백: `node scripts/db/admin-migrate.mjs --down <name>`
 - **소유권 근거**: `docs/architecture/shared-supabase-schema-ownership.md`
+- **TOPIK 쓰기 분석 교정 순서**: `20260714090000_admin_writing_analytics_learner_identity.sql`은
+  `migrations/20260713080015_topik_writing_canonical_read_contract.sql` 적용 후 실행한다. admin tracker에는
+  read interface만 기록하며, `learner_problem_id`가 없으면 fail-closed로 중단한다.
 
 ## 3. 공통 실행 메커니즘
 
