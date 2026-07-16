@@ -51,6 +51,12 @@
 2. 공유 객체 reader/writer 변경: 양 repo 문서에 반영하고 본 문서의 decision record 칸에 일자·근거 기록.
 3. v13 소유 테이블 DDL 변경: v13 오너 승인 + decision record 없이는 금지.
 
+2026-07-16 admin public RPC 실행 권한 경계:
+- topik-ai 소유 admin public 함수 inventory를 signature 단위로 고정하고 `20260716130000_admin_revoke_anon_rpc_execute.sql`에서 `anon` execute를 회수했다.
+- `admin_approve_billing_refund`/`admin_reject_billing_refund`에 남아 있던 `PUBLIC` execute는 `20260716131000_admin_revoke_public_refund_rpc_execute.sql`에서 별도로 회수했다.
+- 두 migration은 함수 본문, table/RLS, v13 소유 객체를 변경하지 않는다. `authenticated` 실행은 각 함수 내부의 `admin_accounts`/permission gate를 계속 통과해야 한다.
+- dev와 production에 적용했으며 운영 검증에서 admin 소유 함수의 anonymous execute는 0건이다. 신규 admin SECURITY DEFINER 함수는 같은 revoke 계약과 down pair를 함께 추가해야 한다.
+
 2026-07-16 TOPIK 쓰기 관리자 버전 이력 읽기 경계:
 - `topik_writing_question_version_summary_view`는 topik-ai 소유 `question_source_map.canonical_import_id`와 `question_import.mapping_status='promoted'`만 결합하는 관리자 조회 전용 뷰다. 인박스 `is_latest`로 현재 버전을 추론하지 않고 `raw`·`held` 행을 집계하지 않는다.
 - 뷰는 `security_invoker=true`로 실행되어 기반 테이블의 기존 admin RLS를 그대로 적용한다. `PUBLIC`·`anon` SELECT는 회수하고 `authenticated`에만 명시적으로 부여한다.

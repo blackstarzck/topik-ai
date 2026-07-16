@@ -81,6 +81,17 @@
 - 우선순위: `누락`
 - 필요 조치: 정책 관리를 시작점으로 삼아 고위험 조치가 있는 목록/상세/조치 플로우를 모듈별로 순차 확장해야 한다.
 
+### 3.7 운영 DB 컷오버 완료와 Vercel 배포 bundle 불일치
+
+- `Resolved(DB)`: 2026-07-16 `topik-prod`에 admin canonical migration 83개와 TOPIK 쓰기 migration 32개를 적용·장부화했다. 공급 `updated_at` 전제조건이 충족되지 않은 writing migration 1개는 manifest에서 명시적으로 차단했다.
+- `Resolved(Auth)`: 현재 설정된 관리자 계정을 active `platform_admin`으로 승격했다. 최종 `profiles.app_role`은 `learner`이고 `admin_accounts`/`admin_get_self`가 관리자 권한 SoT다. bootstrap 감사 로그와 legacy key 비활성 상태를 검증했다.
+- `Resolved(Security)`: admin 소유 public 함수의 anon execute를 회수했고 운영 표본 쿼리에서 anon executable admin function 0건, 점검 대상 RLS 10/10을 확인했다.
+- `Resolved(CRUD)`: 최신 소스+운영 DB에서 현재 관리자 로그인, 정기 쿠폰 템플릿 생성·상세·수정·삭제, 감사 로그 확인, 삭제 후 업무 행 0건과 저장 2건/삭제 1건 감사를 브라우저와 DB로 검증했다.
+- `Open(Deployment)`: 현재 Production alias bundle은 `topik-prod`를 가리키지만 이전 `profiles.app_role` 인증 경로와 mock 쿠폰 source를 사용한다. 실제 배포 화면에서 현재 관리자 로그인은 profile 임시 승격 없이는 거부되고, 쿠폰 화면은 DB 요청 없이 seed 6건을 노출했다.
+- `Open(API)`: Production의 `/api/auth-email/sync`, `/api/admin/invite`, `/api/notifications/dispatch-email` POST가 함수별 비인증 `401`이 아니라 `405`로 응답한 기존 증거는 별도 serverless 라우팅 결손으로 유지한다.
+- 우선순위: `부분 해소 + 운영 배포 차단`
+- 필요 조치: 최신 소스를 Vercel Production에 재배포·alias 승격하고 `admin_get_self` 로그인, 실제 `commerce_coupon_subscription_templates` 네트워크 요청, CRUD·감사 로그를 Production URL에서 재검증한다. API 3개의 route build도 교정 후 비인증 `401`부터 다시 확인한다.
+
 ## 4. 모듈별 레지스트리
 
 ### 4.1 Dashboard

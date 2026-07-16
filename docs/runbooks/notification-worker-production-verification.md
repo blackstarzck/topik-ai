@@ -79,6 +79,13 @@ npm run check:vercel-worker-readiness -- --strict-env
 npm run check:notification-worker-smoke
 ```
 
+Supabase environment routing contract:
+
+- localhost and Vercel Development use `topik-dev` (`fglggyfvzjdsbyckinqa`).
+- Vercel Preview and Production use `topik-prod` (`eymlabowhfgtxbiqwxqh`).
+- Set both browser-safe `VITE_SUPABASE_*` values and canonical server-only `SUPABASE_*` values per Vercel target.
+- A Vercel env update requires a new deployment. Do not treat successful env mapping as proof that prod migrations or worker runtime dependencies are ready.
+
 Required production runtime env names:
 
 - `SUPABASE_URL`
@@ -107,6 +114,12 @@ Evidence to record:
 - Readiness output contains no secret values.
 - Strict readiness treats missing runtime env names as a failed production gate.
 - Unauthenticated worker smoke returns `401` before any authenticated dispatch smoke is attempted.
+
+2026-07-16 status note:
+
+- The Vercel Supabase variables are split by target and the Production bundle resolves only `topik-prod`.
+- The current Production deployment does not yet reach the server functions: unauthenticated `POST` requests to `/api/auth-email/sync`, `/api/admin/invite`, and `/api/notifications/dispatch-email` return `405` instead of each handler's expected `401`.
+- This does not close the worker production gate. Non-Supabase worker env names, API function routing, prod schema parity, and unauthenticated/authenticated worker smoke still require the checks above.
 
 ## Phase 2 - Production Worker Smoke
 
