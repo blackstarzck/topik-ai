@@ -92,8 +92,11 @@ Required production runtime env names:
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `NOTIFICATION_WORKER_SECRET`
 - `CRON_SECRET`
-- `RESEND_API_KEY`
-- `RESEND_FROM`
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_USER`
+- `SMTP_PASS`
+- `SMTP_FROM`
 - `SITE_URL`
 
 Operator-only smoke env:
@@ -121,7 +124,11 @@ Evidence to record:
 - The Vercel Supabase variables are split by target and the Production bundle resolves only `topik-prod`.
 - The first PR Preview attempt failed because the previous `*/15 * * * *` worker schedule exceeded the Vercel Hobby Cron limit. The fallback schedule is now `0 0 * * *`, and the replacement Preview and Production deployments are Ready.
 - Production unauthenticated `POST` requests to `/api/auth-email/sync`, `/api/admin/invite`, and `/api/notifications/dispatch-email` now return each handler's expected `401`. The worker's unauthenticated `GET` also returns `401`.
-- API function routing and unauthenticated worker smoke are closed. The authenticated dispatch smoke remains intentionally open because it may process real pending email attempts; run it only after confirming that live delivery is acceptable.
+- `Ready` is a Vercel deployment/build/alias state. It does not prove that authenticated server functions can use their runtime Supabase or SMTP environment.
+- An approved live smoke changed `notification_email_config.mode` from `disabled` to `live`, created dispatch `86da4dd8-1152-4835-87f1-2e12b44202ab`, and produced pending attempt `92b6938c-e546-4f2f-b5b3-9f416dc6c5d9`.
+- The deployed Vercel worker and the adjacent `/api/auth-email/sync` and `/api/admin/invite` routes rejected the valid `topik-prod` administrator JWT with `401 invalid_session`. The JWT issuer and `admin_accounts` row both match `topik-prod`, so the Vercel server-only `SUPABASE_URL`/service key pair must be corrected and redeployed before the authenticated Vercel smoke can pass.
+- To complete the approved real-send check without falsifying delivery state, the current worker source was executed locally with the production project secret resolved in memory from the Supabase Management API and the configured SMTP transport. It returned `processed=1, sent=1, failed=0`; the attempt is `sent` with `provider_message_id` and `sent_at`, retry count `0`, and no error.
+- Production Admin `Message > 발송 이력` shows the same dispatch as `완료` and the attempt as `성공`. The dispatch ledger `recipient_count` remains `0` while the actual attempt aggregate is `1`; this is a separate data-consistency gap.
 
 ## Phase 2 - Production Worker Smoke
 
@@ -146,7 +153,7 @@ Expected:
 
 - Vercel Cron style `GET` with `Authorization: Bearer ${CRON_SECRET}` returns 2xx.
 - Manual `POST` with `x-worker-secret` returns 2xx.
-- Non-2xx Resend responses do not mark attempts as `sent`.
+- SMTP rejection or transport failure does not mark attempts as `sent`; it keeps retry bookkeeping and writes `smtp_error`.
 
 For the full production handoff gate, run:
 
@@ -181,7 +188,7 @@ Verify in Supabase or topik-ai admin views:
 - `notification_delivery_attempts.status` moves from `pending` to `sent`, `failed`, `skipped`, or `opted_out`.
 - `sent_at` is set only for `sent`.
 - `provider_message_id` is recorded only after provider success.
-- retry/failure bookkeeping remains when provider config is missing or Resend returns non-2xx.
+- retry/failure bookkeeping remains when provider config is missing or SMTP rejects/fails.
 
 Verify in topik-ai:
 

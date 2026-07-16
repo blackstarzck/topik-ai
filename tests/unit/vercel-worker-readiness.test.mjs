@@ -16,8 +16,11 @@ const REQUIRED_ENV = {
   SUPABASE_SERVICE_ROLE_KEY: 'service-role-secret',
   NOTIFICATION_WORKER_SECRET: 'worker-secret',
   CRON_SECRET: 'cron-secret',
-  RESEND_API_KEY: 'resend-secret',
-  RESEND_FROM: 'Talkpik <notify@example.com>',
+  SMTP_HOST: 'smtp.example.com',
+  SMTP_PORT: '465',
+  SMTP_USER: 'smtp-user',
+  SMTP_PASS: 'smtp-pass',
+  SMTP_FROM: 'Talkpik <notify@example.com>',
   SITE_URL: 'https://app.example.com',
   TOPIK_AI_PRODUCTION_URL: 'https://admin.example.com'
 };
@@ -41,7 +44,7 @@ function writeReadyFiles(root) {
     orgId: 'team_test'
   });
   writeJson(join(root, 'vercel.json'), {
-    crons: [{ path: '/api/notifications/dispatch-email', schedule: '*/15 * * * *' }],
+    crons: [{ path: '/api/notifications/dispatch-email', schedule: '0 0 * * *' }],
     rewrites: [{ source: '/((?!api/|.*\\..*).*)', destination: '/index.html' }]
   });
   writeFileSync(
@@ -64,7 +67,7 @@ describe('check-vercel-worker-readiness', () => {
   it('fails closed when the Vercel project link is missing', () => {
     const root = createTempRoot();
     writeJson(join(root, 'vercel.json'), {
-      crons: [{ path: '/api/notifications/dispatch-email', schedule: '*/15 * * * *' }],
+      crons: [{ path: '/api/notifications/dispatch-email', schedule: '0 0 * * *' }],
       rewrites: [{ source: '/((?!api/|.*\\..*).*)', destination: '/index.html' }]
     });
     writeFileSync(
@@ -88,7 +91,7 @@ describe('check-vercel-worker-readiness', () => {
 
     const result = evaluateVercelWorkerReadiness({
       rootDir: root,
-      env: { RESEND_API_KEY: 'super-secret-value' }
+      env: { SMTP_PASS: 'super-secret-value' }
     });
     const report = formatReadinessReport(result);
 
@@ -96,7 +99,7 @@ describe('check-vercel-worker-readiness', () => {
     expect(result.warnings).toContain(
       'SUPABASE_SERVICE_ROLE_KEY or supported alias SUPABASE_SECRET_KEY is not configured in process env or .env.local. It must be set in production runtime env before dispatch verification.'
     );
-    expect(report).toContain('RESEND_FROM is not configured');
+    expect(report).toContain('SMTP_FROM is not configured');
     expect(report).toContain('Next production handoff steps:');
     expect(report).toContain('Link the intended Vercel project so .vercel/project.json contains projectId and orgId.');
     expect(report).toContain('Configure missing runtime env names in Vercel production env or .env.local for verification.');
@@ -135,10 +138,10 @@ describe('check-vercel-worker-readiness', () => {
   it('parses documented env names without exposing comments or blank lines', () => {
     const root = createTempRoot();
     const file = join(root, '.env.example');
-    writeFileSync(file, '# comment\n\nCRON_SECRET=\nRESEND_FROM=Talkpik\n', 'utf8');
+    writeFileSync(file, '# comment\n\nCRON_SECRET=\nSMTP_FROM=Talkpik\n', 'utf8');
 
     const parsed = parseEnvFile(file);
 
-    expect([...parsed.keys()]).toEqual(['CRON_SECRET', 'RESEND_FROM']);
+    expect([...parsed.keys()]).toEqual(['CRON_SECRET', 'SMTP_FROM']);
   });
 });

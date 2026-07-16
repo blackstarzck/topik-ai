@@ -3,23 +3,35 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import worker, { GET, POST } from '../../api/notifications/dispatch-email';
 
 const ORIGINAL_ENV = { ...process.env };
-const { createClientMock } = vi.hoisted(() => ({
-  createClientMock: vi.fn()
+const { createClientMock, createTransportMock, sendMailMock } = vi.hoisted(() => ({
+  createClientMock: vi.fn(),
+  createTransportMock: vi.fn(),
+  sendMailMock: vi.fn()
 }));
 
 vi.mock('@supabase/supabase-js', () => ({
   createClient: createClientMock
 }));
 
+vi.mock('nodemailer', () => ({
+  default: {
+    createTransport: createTransportMock
+  }
+}));
+
 function resetEnv() {
   process.env = { ...ORIGINAL_ENV };
   delete process.env.CRON_SECRET;
   delete process.env.NOTIFICATION_WORKER_SECRET;
-  delete process.env.RESEND_API_KEY;
   delete process.env.SUPABASE_SERVICE_ROLE_KEY;
   delete process.env.SUPABASE_SECRET_KEY;
   delete process.env.SUPABASE_URL;
   delete process.env.VITE_SUPABASE_URL;
+  delete process.env.SMTP_HOST;
+  delete process.env.SMTP_PORT;
+  delete process.env.SMTP_USER;
+  delete process.env.SMTP_PASS;
+  delete process.env.SMTP_FROM;
 }
 
 function request(method: string, headers?: HeadersInit): Request {
@@ -32,7 +44,6 @@ function request(method: string, headers?: HeadersInit): Request {
 type MockSupabaseOptions = {
   templateClass?: 'marketing' | 'transactional';
   displayName?: string | null;
-  resendOk?: boolean;
 };
 
 function createQueryMock(table: string, options: Required<MockSupabaseOptions>) {
@@ -104,8 +115,7 @@ function createQueryMock(table: string, options: Required<MockSupabaseOptions>) 
 function installSupabaseMock(options: MockSupabaseOptions = {}) {
   const normalized: Required<MockSupabaseOptions> = {
     templateClass: options.templateClass ?? 'marketing',
-    displayName: options.displayName ?? null,
-    resendOk: options.resendOk ?? true
+    displayName: options.displayName ?? null
   };
   const tableMocks = new Map<string, ReturnType<typeof createQueryMock>>();
   const updates: unknown[] = [];
@@ -139,6 +149,8 @@ describe('notification dispatch email worker auth boundary', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     createClientMock.mockReset();
+    createTransportMock.mockReset();
+    sendMailMock.mockReset();
     resetEnv();
   });
 
@@ -154,7 +166,7 @@ describe('notification dispatch email worker auth boundary', () => {
     });
   });
 
-  it('accepts cron GET auth before failing closed when Resend is not configured', async () => {
+  it('accepts cron GET auth before failing closed when SMTP is not configured', async () => {
     process.env.CRON_SECRET = 'cron-secret';
 
     const response = await GET(
@@ -164,7 +176,7 @@ describe('notification dispatch email worker auth boundary', () => {
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toEqual({
       ok: false,
-      error: 'resend_not_configured'
+      error: 'smtp_not_configured'
     });
   });
 
@@ -180,7 +192,7 @@ describe('notification dispatch email worker auth boundary', () => {
     });
   });
 
-  it('accepts manual POST auth before failing closed when Resend is not configured', async () => {
+  it('accepts manual POST auth before failing closed when SMTP is not configured', async () => {
     process.env.NOTIFICATION_WORKER_SECRET = 'worker-secret';
 
     const response = await POST(
@@ -190,7 +202,7 @@ describe('notification dispatch email worker auth boundary', () => {
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toEqual({
       ok: false,
-      error: 'resend_not_configured'
+      error: 'smtp_not_configured'
     });
   });
 
@@ -206,14 +218,17 @@ describe('notification dispatch email worker auth boundary', () => {
 
   it('sends marketing email with the v13 Korean rendering contract', async () => {
     process.env.NOTIFICATION_WORKER_SECRET = 'worker-secret';
-    process.env.RESEND_API_KEY = 'resend-secret';
     process.env.SUPABASE_URL = 'https://supabase.example.com';
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-secret';
     process.env.SITE_URL = 'https://app.example.com';
+    process.env.SMTP_HOST = 'smtp.example.com';
+    process.env.SMTP_PORT = '465';
+    process.env.SMTP_USER = 'smtp-user';
+    process.env.SMTP_PASS = 'smtp-pass';
+    process.env.SMTP_FROM = 'TOPIK AI <sender@example.com>';
     installSupabaseMock({ templateClass: 'marketing', displayName: null });
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ id: 'resend-message-1' }), { status: 200 })
-    );
+    createTransportMock.mockReturnValue({ sendMail: sendMailMock });
+    sendMailMock.mockResolvedValue({ messageId: 'smtp-message-1' });
 
     const response = await POST(
       request('POST', { 'x-worker-secret': 'worker-secret' })
@@ -226,11 +241,19 @@ describe('notification dispatch email worker auth boundary', () => {
       sent: 1,
       failed: 0
     });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [, init] = fetchMock.mock.calls[0];
-    const body = JSON.parse(String(init?.body));
+    expect(createTransportMock).toHaveBeenCalledWith({
+      host: 'smtp.example.com',
+      port: 465,
+      secure: true,
+      auth: {
+        user: 'smtp-user',
+        pass: 'smtp-pass'
+      }
+    });
+    expect(sendMailMock).toHaveBeenCalledTimes(1);
+    const body = sendMailMock.mock.calls[0][0];
     expect(body).toMatchObject({
-      from: 'onboarding@resend.dev',
+      from: 'TOPIK AI <sender@example.com>',
       to: 'learner@example.com',
       subject: '안녕하세요 학습자'
     });
@@ -243,13 +266,14 @@ describe('notification dispatch email worker auth boundary', () => {
 
   it('dispatches pending email attempts through the Vercel Cron GET path', async () => {
     process.env.CRON_SECRET = 'cron-secret';
-    process.env.RESEND_API_KEY = 'resend-secret';
     process.env.SUPABASE_URL = 'https://supabase.example.com';
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-secret';
+    process.env.SMTP_HOST = 'smtp.example.com';
+    process.env.SMTP_USER = 'smtp-user';
+    process.env.SMTP_PASS = 'smtp-pass';
     const { updates } = installSupabaseMock({ templateClass: 'transactional' });
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ id: 'cron-message-1' }), { status: 200 })
-    );
+    createTransportMock.mockReturnValue({ sendMail: sendMailMock });
+    sendMailMock.mockResolvedValue({ messageId: 'cron-message-1' });
 
     const response = await GET(
       request('GET', { Authorization: 'Bearer cron-secret' })
@@ -262,7 +286,7 @@ describe('notification dispatch email worker auth boundary', () => {
       sent: 1,
       failed: 0
     });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(sendMailMock).toHaveBeenCalledTimes(1);
     expect(updates).toContainEqual(
       expect.objectContaining({
         status: 'sent',
@@ -273,13 +297,14 @@ describe('notification dispatch email worker auth boundary', () => {
 
   it('accepts the legacy server-only Supabase secret alias for local worker verification', async () => {
     process.env.NOTIFICATION_WORKER_SECRET = 'worker-secret';
-    process.env.RESEND_API_KEY = 'resend-secret';
     process.env.VITE_SUPABASE_URL = 'https://supabase.example.com';
     process.env.SUPABASE_SECRET_KEY = 'service-role-secret';
+    process.env.SMTP_HOST = 'smtp.example.com';
+    process.env.SMTP_USER = 'smtp-user';
+    process.env.SMTP_PASS = 'smtp-pass';
     installSupabaseMock({ templateClass: 'transactional' });
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ id: 'alias-message-1' }), { status: 200 })
-    );
+    createTransportMock.mockReturnValue({ sendMail: sendMailMock });
+    sendMailMock.mockResolvedValue({ messageId: 'alias-message-1' });
 
     const response = await POST(
       request('POST', { 'x-worker-secret': 'worker-secret' })
@@ -293,24 +318,63 @@ describe('notification dispatch email worker auth boundary', () => {
     );
   });
 
-  it('marks attempts sent only after Resend returns 2xx', async () => {
+  it('marks attempts sent only after SMTP resolves', async () => {
     process.env.NOTIFICATION_WORKER_SECRET = 'worker-secret';
-    process.env.RESEND_API_KEY = 'resend-secret';
     process.env.SUPABASE_URL = 'https://supabase.example.com';
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-secret';
+    process.env.SMTP_HOST = 'smtp.example.com';
+    process.env.SMTP_USER = 'smtp-user';
+    process.env.SMTP_PASS = 'smtp-pass';
     const { updates } = installSupabaseMock({ templateClass: 'transactional' });
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ id: 'resend-message-1' }), { status: 200 })
-    );
+    createTransportMock.mockReturnValue({ sendMail: sendMailMock });
+    sendMailMock.mockResolvedValue({ messageId: 'smtp-message-1' });
 
     await POST(request('POST', { 'x-worker-secret': 'worker-secret' }));
 
     expect(updates).toContainEqual(
       expect.objectContaining({
         status: 'sent',
-        provider_message_id: 'resend-message-1',
+        provider_message_id: 'smtp-message-1',
         error_code: null,
         error_message: null
+      })
+    );
+  });
+
+  it('keeps a failed SMTP attempt pending and increments retry bookkeeping', async () => {
+    process.env.NOTIFICATION_WORKER_SECRET = 'worker-secret';
+    process.env.SUPABASE_URL = 'https://supabase.example.com';
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-secret';
+    process.env.SMTP_HOST = 'smtp.example.com';
+    process.env.SMTP_USER = 'smtp-user';
+    process.env.SMTP_PASS = 'smtp-pass';
+    const { updates } = installSupabaseMock({ templateClass: 'transactional' });
+    createTransportMock.mockReturnValue({ sendMail: sendMailMock });
+    sendMailMock.mockRejectedValue(new Error('temporary SMTP failure'));
+
+    const response = await POST(
+      request('POST', { 'x-worker-secret': 'worker-secret' })
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      ok: true,
+      processed: 1,
+      sent: 0,
+      failed: 1
+    });
+    expect(updates).toContainEqual(
+      expect.objectContaining({
+        status: 'pending',
+        retry_count: 1,
+        error_code: 'smtp_error',
+        error_message: 'temporary SMTP failure',
+        sent_at: null
+      })
+    );
+    expect(updates).not.toContainEqual(
+      expect.objectContaining({
+        status: 'sent'
       })
     );
   });

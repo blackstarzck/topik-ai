@@ -533,5 +533,7 @@ src/features/<feature>/
 - 로컬 `.env.local`은 `topik-dev`를 유지한다. Vercel 환경값 변경은 기존 배포에 소급되지 않으므로 변경 뒤 새 배포가 필요하다.
 - 2026-07-16 Vercel 프로젝트 환경 레코드의 대상 매핑을 위 계약으로 정리하고 최신 소스를 Production alias `https://topik-ai.vercel.app`에 배포했다. 현재 bundle은 `admin_get_self` 인증과 Supabase 쿠폰 source를 사용하며, 브라우저에서 `topik-prod`의 `commerce_coupon_subscription_templates` 요청 `200`을 확인했다.
 - 같은 날 운영 DB 컷오버를 완료했다. `topik-prod`는 admin canonical tracker 83개, TOPIK 쓰기 tracker 32개가 적용됐고, 공급 `updated_at` 전제조건 미충족인 writing migration 1개는 manifest에서 차단했다. `topik-dev`는 admin canonical 83개와 superseded remote-only 이력 1개, writing 32개를 유지한다.
+- 후속 실발송 검증에서 브라우저 번들과 운영 DB는 `topik-prod`로 일치하지만, 배포된 서버 함수 3개가 같은 운영 관리자 JWT를 `invalid_session`으로 거부했다. 따라서 Vercel의 canonical 서버 전용 `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` 조합은 아직 운영 프로젝트와 일치한다고 볼 수 없으며, 환경값 교정 뒤 새 배포와 인증 smoke가 필요하다.
+- Vercel의 `Ready` 상태는 빌드와 배포 alias가 사용 가능하다는 뜻이지, 서버 함수의 Supabase/SMTP 런타임 통합 검증을 포함하지 않는다.
 - 현재 설정된 관리자 계정은 `admin_accounts`의 active `platform_admin`이며 최종 `profiles.app_role`은 `learner`다. 인증 SoT는 `admin_get_self`/`admin_accounts`이고 bootstrap 감사 로그를 남긴다.
 - Production URL에서 현재 관리자 로그인과 `CommerceCouponTemplate` 생성·상세·수정·삭제·감사 로그 브라우저 E2E 1/1을 통과했다. 테스트 업무 행은 삭제 후 0건이고, 저장 감사 2건·삭제 감사 1건과 삭제 사유를 DB에서 대사했다. 비인증 server function smoke도 API 3개 `POST`와 알림 워커 `GET` 모두 `401`을 반환한다.

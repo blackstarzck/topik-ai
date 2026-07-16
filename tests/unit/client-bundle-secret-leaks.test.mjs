@@ -52,17 +52,13 @@ describe('check-client-secret-leaks', () => {
     expect(formatClientBundleSecretLeakReport(result)).toBe('Client bundle secret leak check passed.');
   });
 
-  it('fails when built client files include worker secrets or endpoint markers', () => {
+  it('fails when built client files include worker authentication secrets', () => {
     const root = createTempRoot();
     writeDistFile(root, 'assets/app.js', 'fetch("/api/notifications/dispatch-email", { headers: { "x-worker-secret": "x" } });\n');
 
     const result = evaluateClientBundleSecretLeaks({ rootDir: root });
 
     expect(result.matches).toEqual([
-      {
-        file: join('dist', 'assets', 'app.js'),
-        marker: 'api/notifications/dispatch-email'
-      },
       {
         file: join('dist', 'assets', 'app.js'),
         marker: 'x-worker-secret'

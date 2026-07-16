@@ -5,14 +5,24 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CLIENT_SOURCE_DIRS = ['src'];
+const WORKER_ENDPOINT_MARKERS = [
+  '/api/notifications/dispatch-email',
+  'api/notifications/dispatch-email'
+];
+const WORKER_ENDPOINT_ALLOWLIST = new Set([
+  'src/shared/api/notification-email-kick.ts'
+]);
 
 const BLOCKED_MARKERS = [
   'SUPABASE_SERVICE_ROLE_KEY',
+  'SUPABASE_SECRET_KEY',
   'RESEND_API_KEY',
+  'SMTP_HOST',
+  'SMTP_USER',
+  'SMTP_PASS',
+  'SMTP_FROM',
   'NOTIFICATION_WORKER_SECRET',
   'CRON_SECRET',
-  '/api/notifications/dispatch-email',
-  'api/notifications/dispatch-email',
   'x-worker-secret'
 ];
 
@@ -52,6 +62,14 @@ export function evaluateClientSourceSecretBoundary({ rootDir = ROOT_DIR } = {}) 
     for (const marker of BLOCKED_MARKERS) {
       if (content.includes(marker)) {
         matches.push({ file, marker });
+      }
+    }
+
+    if (!WORKER_ENDPOINT_ALLOWLIST.has(file)) {
+      for (const marker of WORKER_ENDPOINT_MARKERS) {
+        if (content.includes(marker)) {
+          matches.push({ file, marker });
+        }
       }
     }
   }

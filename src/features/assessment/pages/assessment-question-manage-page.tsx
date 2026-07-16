@@ -191,7 +191,6 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
     searchParams.get('serviceStatus')
   );
 
-  const hasCachedQuestions = state.data.length > 0;
   const versionQuestionIdsSignature = useMemo(
     () => state.data.map((question) => question.questionId).sort().join('\u0000'),
     [state.data]
@@ -931,15 +930,6 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
             />
           ) : null}
 
-          {state.status === 'pending' && !hasCachedQuestions ? (
-            <Alert
-              type="info"
-              showIcon
-              style={{ marginBottom: 16 }}
-              message="문항 목록을 불러오는 중입니다."
-            />
-          ) : null}
-
           {versionSummaryState.status === 'error' ? (
             <Alert
               type="warning"
@@ -1012,7 +1002,7 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
             </div>
           ) : null}
 
-          {filteredQuestions.length === 0 ? (
+          {state.status !== 'pending' && filteredQuestions.length === 0 ? (
             <Empty
               image={Empty.PRESENTED_IMAGE_SIMPLE}
               description="조건에 맞는 관리 대상 문항이 없습니다."
@@ -1037,6 +1027,7 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
               columns={manageColumns}
               dataSource={filteredQuestions}
               expandable={versionExpandable}
+              loading={state.status === 'pending'}
             />
           )}
         </AdminListCard>

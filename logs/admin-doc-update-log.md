@@ -656,3 +656,9 @@
 - Updated `docs/runbooks/admin-account-separation-prod-cutover.md`, `docs/runbooks/notification-worker-production-verification.md`, `docs/architecture/admin-data-source-transition.md`, `docs/specs/admin-page-gap-register.md`, `supabase/README.md`, and `logs/admin-doc-update-log.md`.
 - Reason: PR `#14` 병합과 Vercel Production 배포 뒤 기존 mock/profile-role bundle과 API `405` 결손이 해소됐으므로, 운영 DB 완료와 웹 릴리스 완료를 분리해 두던 문서 상태를 실제 배포 증거에 맞춰 닫았다.
 - Validation: Production commit `536cad11db0a27c7105c07f43fa04daa073705a9` Ready, API 3개 비인증 `POST`와 알림 워커 비인증 `GET` 모두 `401`, 현재 관리자 `admin_get_self` 로그인, `topik-prod` 쿠폰 요청 `200`, 정기 쿠폰 템플릿 생성→상세→수정→삭제→감사 로그 Playwright 1/1을 통과했다. headed Chromium에서 본문 탭/검색/생성 버튼/빈 상태 baseline을 확인했고 재확인 console error·page error는 0건이다. 인증된 이메일 워커 실발송 smoke는 실제 pending 처리 위험 때문에 별도 승인 항목으로 남겼다.
+
+## 2026-07-16 운영 SMTP 실발송과 Vercel 서버 환경 갭 확인
+
+- Updated `.env.example`, worker readiness/secret-boundary scripts and unit tests, `docs/runbooks/notification-worker-production-verification.md`, `docs/알림-기능-구현-페이즈-가이드.md`, `docs/architecture/admin-data-source-transition.md`, `docs/specs/admin-page-gap-register.md`, `docs/specs/page-ia/message-mail-page-ia.md`, `docs/page-sync/message-mail-page-sync.md`, `docs/specs/admin-page-ia-change-log.md`, `logs/notification-feature-evidence.md`, and `logs/admin-doc-update-log.md`.
+- Reason: 실제 발송 승인 후 운영 DB가 기본 `disabled`라 첫 시도를 `no_transport`로 건너뛴 문제를 `live` 전환으로 해소하고, 현재 SMTP 구현과 어긋난 Resend/15분 Cron readiness 계약을 교정했다. Vercel `Ready`와 인증된 서버 함수 런타임 성공을 분리해 기록했다.
+- Validation: 현재 관리자 UI dispatch 생성·감사 로그, 운영 DB pending 단일성, 현재 워커 소스의 실제 SMTP `processed=1/sent=1/failed=0`, attempt sent/provider id/sent_at/retry 0, Production 발송 이력 완료/성공 Drawer, browser console/page error 0을 확인했다. 배포된 API 3개는 같은 유효 운영 JWT를 `invalid_session`으로 거부해 Vercel server-only Supabase env 교정이 남았다. 전체 unit suite 41 files/280 tests 통과.

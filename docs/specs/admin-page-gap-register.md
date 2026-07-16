@@ -81,7 +81,7 @@
 - 우선순위: `누락`
 - 필요 조치: 정책 관리를 시작점으로 삼아 고위험 조치가 있는 목록/상세/조치 플로우를 모듈별로 순차 확장해야 한다.
 
-### 3.7 운영 DB 컷오버와 Vercel Production 배포 완료
+### 3.7 운영 DB 컷오버와 Vercel 웹 배포 완료 / 서버 워커 환경 교정 필요
 
 - `Resolved(DB)`: 2026-07-16 `topik-prod`에 admin canonical migration 83개와 TOPIK 쓰기 migration 32개를 적용·장부화했다. 공급 `updated_at` 전제조건이 충족되지 않은 writing migration 1개는 manifest에서 명시적으로 차단했다.
 - `Resolved(Auth)`: 현재 설정된 관리자 계정을 active `platform_admin`으로 승격했다. 최종 `profiles.app_role`은 `learner`이고 `admin_accounts`/`admin_get_self`가 관리자 권한 SoT다. bootstrap 감사 로그와 legacy key 비활성 상태를 검증했다.
@@ -89,9 +89,11 @@
 - `Resolved(CRUD)`: 최신 소스+운영 DB에서 현재 관리자 로그인, 정기 쿠폰 템플릿 생성·상세·수정·삭제, 감사 로그 확인, 삭제 후 업무 행 0건과 저장 2건/삭제 1건 감사를 브라우저와 DB로 검증했다.
 - `Resolved(Deployment)`: PR `#14`를 rebase merge해 Production commit `536cad11db0a27c7105c07f43fa04daa073705a9`을 배포했다. `https://topik-ai.vercel.app`에서 현재 관리자 로그인, `topik-prod`의 `commerce_coupon_subscription_templates` 요청 `200`, 정기 쿠폰 CRUD·감사 로그 E2E 1/1을 통과했고 mock seed는 노출되지 않았다.
 - `Resolved(API)`: Production의 `/api/auth-email/sync`, `/api/admin/invite`, `/api/notifications/dispatch-email` 비인증 `POST`와 알림 워커 비인증 `GET`이 모두 `401`을 반환한다.
-- `Open(Worker live smoke)`: 인증된 알림 워커 smoke는 실제 pending 이메일을 발송할 수 있어 이번 관리자 컷오버에서는 실행하지 않았다. 즉시 `POST` kick과 일 1회 fallback Cron 계약은 배포됐으며, 실발송 승인이 있을 때 별도 검증한다.
-- 우선순위: `핵심 해소 + 알림 실발송 검증 분리`
-- 필요 조치: 운영에서 실제 이메일 pending 처리가 허용되는 시점에 `check:notification-worker-smoke -- --dispatch`를 실행하고 SMTP 결과를 확인한다. 관리자 DB 컷오버와 웹 CRUD 릴리스에는 추가 차단이 없다.
+- `Resolved(Actual SMTP)`: 2026-07-16 오너 승인 후 `notification_email_config.mode=live`로 전환하고 현재 관리자 본인 대상 dispatch `86da4dd8-1152-4835-87f1-2e12b44202ab`/attempt `92b6938c-e546-4f2f-b5b3-9f416dc6c5d9`을 생성했다. 현재 워커 소스를 운영 DB와 실제 SMTP에 연결해 `processed=1, sent=1, failed=0`을 확인했고 attempt는 `sent`, provider message id 존재, `sent_at` 존재, retry `0`, error 없음이다. Production 발송 이력 Drawer도 `완료/성공 1`로 일치했다.
+- `Open(Vercel server env)`: 동일한 유효 `topik-prod` 관리자 JWT가 배포된 `/api/notifications/dispatch-email`, `/api/auth-email/sync`, `/api/admin/invite`에서 모두 `401 invalid_session`으로 거부된다. JWT issuer·subject와 운영 `admin_accounts(active platform_admin)`는 일치하므로 Vercel 서버 전용 `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` 조합이 운영 프로젝트와 불일치한다. `Ready`는 배포 성공 상태일 뿐 이 런타임 통합 성공을 의미하지 않는다.
+- `Open(Recipient count)`: 해당 테스트 dispatch의 `recipient_count=0`이지만 실제 attempt aggregate는 `1`이다. 현재 전달 결과 화면은 attempts 집계를 정확히 표시하나 실행 ledger 수치 보정이 필요하다.
+- 우선순위: `P0 Vercel 서버 환경 + P1 발송 수 정합성`
+- 필요 조치: Vercel Production/Preview의 canonical 서버 env를 `topik-prod` URL과 활성 secret key로 다시 저장하고 새 배포 후 관리자 JWT `POST` smoke를 2xx로 통과시킨다. 이후 같은 attempt를 재발송하지 말고 pending 0건 상태에서 워커 no-op과 신규 통제 발송을 각각 검증한다. recipient count는 v13 소유 디스패처 경계에서 수정 제안/적용한다.
 
 ## 4. 모듈별 레지스트리
 

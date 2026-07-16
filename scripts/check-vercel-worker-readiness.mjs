@@ -8,8 +8,11 @@ const requiredServerEnv = [
   'SUPABASE_SERVICE_ROLE_KEY',
   'NOTIFICATION_WORKER_SECRET',
   'CRON_SECRET',
-  'RESEND_API_KEY',
-  'RESEND_FROM',
+  'SMTP_HOST',
+  'SMTP_PORT',
+  'SMTP_USER',
+  'SMTP_PASS',
+  'SMTP_FROM',
   'SITE_URL'
 ];
 const smokeEnv = ['TOPIK_AI_PRODUCTION_URL'];
@@ -77,9 +80,9 @@ export function evaluateVercelWorkerReadiness({
     const config = readJson(vercelJsonPath, 'vercel.json', failures);
     if (config) {
       const hasCron = Array.isArray(config.crons)
-        && config.crons.some((cron) => cron?.path === workerPath && cron?.schedule === '*/15 * * * *');
+        && config.crons.some((cron) => cron?.path === workerPath && cron?.schedule === '0 0 * * *');
       if (!hasCron) {
-        failures.push(`vercel.json must schedule ${workerPath} every 15 minutes.`);
+        failures.push(`vercel.json must schedule ${workerPath} daily at 00:00 UTC for the Vercel Hobby fallback.`);
       }
 
       const rewrites = Array.isArray(config.rewrites) ? config.rewrites : [];
@@ -130,7 +133,11 @@ export function formatReadinessReport({ failures, warnings }) {
     }
   }
   if (failures.length === 0) {
-    lines.push('Vercel worker readiness check passed.');
+    lines.push(
+      warnings.length === 0
+        ? 'Vercel worker readiness check passed.'
+        : 'Vercel worker structural readiness passed; production runtime readiness is not verified.'
+    );
   }
   if (failures.length > 0 || warnings.length > 0) {
     lines.push('Next production handoff steps:');

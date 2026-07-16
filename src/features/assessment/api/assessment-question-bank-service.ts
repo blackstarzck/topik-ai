@@ -107,8 +107,35 @@ type UpdateTagMasterStatusPayload = {
   reason: string;
 };
 
+function waitForMockRequest(signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException('Request aborted', 'AbortError'));
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      cleanup();
+      resolve();
+    }, 120);
+
+    const onAbort = (): void => {
+      cleanup();
+      reject(new DOMException('Request aborted', 'AbortError'));
+    };
+
+    const cleanup = (): void => {
+      window.clearTimeout(timer);
+      signal?.removeEventListener('abort', onAbort);
+    };
+
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
 async function loadSummaries(signal?: AbortSignal): Promise<AssessmentQuestionSummary[]> {
   if (questionBankDataSource === 'mock') {
+    await waitForMockRequest(signal);
     return loadMockSummaries();
   }
   return loadTopikWritingSummaries(signal);
