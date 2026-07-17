@@ -6,15 +6,32 @@ import { createClient } from '@supabase/supabase-js';
 
 import { loadLocalEnv } from './migrate-core.mjs';
 import {
+  AUTH_USER_COPY_COLUMN_ALLOWLIST,
+  AUTH_USER_ONE_TIME_TOKEN_COLUMNS,
+  assertNoConflictingPrimaryKeys,
   assertStorageReplaySafe,
   assertProductionApplyGuards,
+  buildAuthTokenCleanupBackupSql,
   buildInsertFromStageSql,
+  buildAuthTokenCleanupSql,
+  buildCopiedAuthTokenCleanupPlan,
   buildNaturalKeyMap,
+  buildStageLoadSql,
   buildUserMergePlan,
+  createStorageUploadState,
+  createAuthTokenCleanupManifestHash,
   createManifestHash,
+  filterExcludedPrimaryKeys,
   replaceMappedStrings,
+  rollbackUploadedStorage,
+  runSupabaseSql,
+  sanitizeAuthUserForProduction,
   selectCommonInsertableColumns,
+  selectRecoveryWorkflow,
+  shouldCleanupAuthTokenStageAfterFailure,
+  shouldRollbackStorageAfterFailure,
   stableStringify,
+  uploadStorage,
 } from './prod-data-recovery-core.mjs';
 
 const DEV_REF = 'fglggyfvzjdsbyckinqa';
@@ -27,9 +44,19 @@ const STORAGE_BUCKETS = [
 ];
 
 const TABLES = [
-  { schema: 'auth', table: 'users', special: 'auth-users' },
+  {
+    schema: 'auth',
+    table: 'users',
+    special: 'auth-users',
+    allowedColumns: AUTH_USER_COPY_COLUMN_ALLOWLIST,
+  },
   { schema: 'auth', table: 'identities', special: 'auth-identities' },
-  { schema: 'public', table: 'profiles', updateOnConflict: true },
+  {
+    schema: 'public',
+    table: 'profiles',
+    updateOnConflict: true,
+    preserveOnConflictColumns: ['app_role', 'plan_label', 'status', 'deleted_at'],
+  },
   { schema: 'private', table: 'problem_identities', special: 'problem-identities' },
   { schema: 'public', table: 'topik_writing_51_questions' },
   { schema: 'public', table: 'topik_writing_52_questions' },
@@ -45,7 +72,14 @@ const TABLES = [
   { schema: 'public', table: 'operation_policies', updateOnConflict: true },
   { schema: 'public', table: 'operation_policy_histories' },
   { schema: 'public', table: 'legal_documents', deletePlaceholders: true },
-  { schema: 'public', table: 'institution_codes' },
+  {
+    schema: 'public',
+    table: 'institution_codes',
+    excludePrimaryKeys: [
+      { code: 'EXPO2026-BOOTH-A' },
+      { code: 'EXPO2026-BOOTH-B' },
+    ],
+  },
   { schema: 'public', table: 'notification_groups' },
   { schema: 'public', table: 'learning_goals' },
   { schema: 'public', table: 'writing_drafts' },
@@ -107,46 +141,8 @@ function hashValue(value) {
   return createHash('sha256').update(stableStringify(value)).digest('hex');
 }
 
-async function safeRunSql({ projectRef, token, sql, phase }) {
-  const url = `https://api.supabase.com/v1/projects/${projectRef}/database/query`;
-  for (let attempt = 1; attempt <= 4; attempt += 1) {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ query: sql }),
-    });
-    const text = await response.text();
-    if (response.ok) {
-      try {
-        return JSON.parse(text);
-      } catch {
-        return text;
-      }
-    }
-    if ((response.status === 429 || response.status >= 500) && attempt < 4) {
-      await new Promise((resolve) => setTimeout(resolve, attempt * 750));
-      continue;
-    }
-    let code = 'unknown';
-    let marker = null;
-    try {
-      const payload = JSON.parse(text);
-      code = payload?.code ?? code;
-      marker = String(payload?.message ?? '').match(
-        /recovery_[a-z0-9_.:-]+/i,
-      )?.[0] ?? null;
-    } catch {
-      // Response bodies can contain SQL fragments or row values; never echo them.
-    }
-    const markerSuffix = marker ? `, marker ${marker}` : '';
-    throw new Error(
-      `${phase} failed (HTTP ${response.status}, code ${code}${markerSuffix}).`,
-    );
-  }
-  throw new Error(`${phase} exhausted retries.`);
+async function safeRunSql(options) {
+  return runSupabaseSql(options);
 }
 
 async function getApiKeys(projectRef, token) {
@@ -302,6 +298,7 @@ async function readTableRows({ projectRef, token, descriptor }) {
     projectRef,
     token,
     phase: `read ${tableKey(descriptor)}`,
+    readOnly: true,
     sql: `
 select to_jsonb(source_row) as row_data
 from ${relation} source_row
@@ -322,6 +319,7 @@ async function readColumns({ projectRef, token, descriptors }) {
     projectRef,
     token,
     phase: 'read column metadata',
+    readOnly: true,
     sql: `
 with targets(schema_name, table_name) as (
   values ${targetValuesSql(descriptors)}
@@ -347,6 +345,7 @@ async function readPrimaryKeys({ projectRef, token, descriptors }) {
     projectRef,
     token,
     phase: 'read primary-key metadata',
+    readOnly: true,
     sql: `
 with targets(schema_name, table_name) as (
   values ${targetValuesSql(descriptors)}
@@ -384,6 +383,7 @@ async function readForeignKeys({ projectRef, token, descriptors }) {
     projectRef,
     token,
     phase: 'read foreign-key metadata',
+    readOnly: true,
     sql: `
 with targets(schema_name, table_name) as (
   values ${targetValuesSql(descriptors)}
@@ -518,10 +518,20 @@ async function buildPlan(token) {
   const devIdentities = byKey.get('auth.identities').devRows;
   const prodIdentities = byKey.get('auth.identities').prodRows;
   const userPlan = buildUserMergePlan({ devUsers, prodUsers });
-  const devEmails = new Set(devUsers.map((row) => row.email.trim().toLowerCase()));
-  if (prodUsers.some((row) => !devEmails.has(row.email.trim().toLowerCase()))) {
-    throw new Error('production contains an auth user that is absent from dev.');
-  }
+  const devAuthColumns = new Set(
+    (devColumns.get('auth.users') ?? []).map((column) => column.column_name),
+  );
+  const prodAuthColumns = new Set(
+    (prodColumns.get('auth.users') ?? []).map((column) => column.column_name),
+  );
+  const authTokenCleanup = buildCopiedAuthTokenCleanupPlan({
+    overlaps: userPlan.overlaps,
+    devUsers,
+    prodUsers,
+    columns: AUTH_USER_ONE_TIME_TOKEN_COLUMNS.filter(
+      (column) => devAuthColumns.has(column) && prodAuthColumns.has(column),
+    ),
+  });
   assertMatchingOverlapProviders({
     overlaps: userPlan.overlaps,
     devIdentities,
@@ -602,6 +612,7 @@ async function buildPlan(token) {
     const columns = selectCommonInsertableColumns({
       devColumns: sourceColumns,
       prodColumns: targetColumns,
+      allowedColumns: inventory.descriptor.allowedColumns ?? null,
     });
     const primaryKeyColumns = primaryKeys.get(key);
     if (!primaryKeyColumns?.length) {
@@ -613,11 +624,18 @@ async function buildPlan(token) {
 
     let sourceRows = inventory.devRows;
     if (inventory.descriptor.special === 'auth-users') {
-      sourceRows = userPlan.inserts;
+      sourceRows = userPlan.inserts.map(sanitizeAuthUserForProduction);
     } else if (inventory.descriptor.special === 'auth-identities') {
       sourceRows = importedIdentities;
     } else if (inventory.descriptor.special === 'problem-identities') {
       sourceRows = problemPlan.inserts;
+    }
+    if (inventory.descriptor.excludePrimaryKeys?.length) {
+      sourceRows = filterExcludedPrimaryKeys({
+        rows: sourceRows,
+        primaryKeyColumns,
+        excludedKeys: inventory.descriptor.excludePrimaryKeys,
+      });
     }
     sourceRows = sourceRows
       .map((row) => replaceMappedStrings(row, mappings))
@@ -627,6 +645,14 @@ async function buildPlan(token) {
       targetRowsForFinal = inventory.prodRows
         .filter((row) => !row.is_placeholder)
         .map((row) => pickColumns(row, columns));
+    }
+    if (!inventory.descriptor.updateOnConflict) {
+      assertNoConflictingPrimaryKeys({
+        label: key,
+        sourceRows,
+        targetRows: targetRowsForFinal,
+        primaryKeyColumns,
+      });
     }
     plannedTables.push({
       ...inventory,
@@ -684,11 +710,16 @@ async function buildPlan(token) {
     },
     mappings: {
       existingProdUsersKept: userPlan.overlaps.length,
+      prodOnlyUsersKept: userPlan.prodOnly.length,
       usersToInsert: userPlan.inserts.length,
       existingProblemIdentitiesKept: problemPlan.mappings.size,
       problemIdentitiesToInsert: problemPlan.inserts.length,
       notificationTemplates: templateMap.size,
       pdfQuotaPolicies: policyMap.size,
+    },
+    authTokenCleanup: {
+      count: authTokenCleanup.records.length,
+      hash: hashValue(authTokenCleanup.records),
     },
     tables: Object.fromEntries(plannedTables.map((table) => [
       table.key,
@@ -722,13 +753,19 @@ async function buildPlan(token) {
     plannedTables,
     foreignKeys,
     mappings,
+    authTokenCleanup,
     auth: {
       devUsers: devUsers.length,
       prodUsers: prodUsers.length,
       overlaps: userPlan.overlaps.length,
+      prodOnly: userPlan.prodOnly.length,
       inserts: userPlan.inserts.length,
       devIdentities: devIdentities.length,
       importedIdentities: importedIdentities.length,
+      copiedOneTimeTokenUsers: authTokenCleanup.records.length,
+      copiedOneTimeTokens: Object.values(authTokenCleanup.countsByColumn)
+        .reduce((sum, count) => sum + count, 0),
+      copiedOneTimeTokensByColumn: authTokenCleanup.countsByColumn,
     },
     legal: {
       sourceDocuments: legalSource.length,
@@ -745,6 +782,52 @@ async function buildPlan(token) {
   };
 }
 
+async function buildAuthTokenCleanupOnlyPlan(token) {
+  const descriptor = TABLES.find((table) => table.special === 'auth-users');
+  const [devColumns, prodColumns, devUsers, prodUsers] = await Promise.all([
+    readColumns({ projectRef: DEV_REF, token, descriptors: [descriptor] }),
+    readColumns({ projectRef: PROD_REF, token, descriptors: [descriptor] }),
+    readTableRows({ projectRef: DEV_REF, token, descriptor }),
+    readTableRows({ projectRef: PROD_REF, token, descriptor }),
+  ]);
+  const devAuthColumns = new Set(
+    (devColumns.get('auth.users') ?? []).map((column) => column.column_name),
+  );
+  const prodAuthColumns = new Set(
+    (prodColumns.get('auth.users') ?? []).map((column) => column.column_name),
+  );
+  const userPlan = buildUserMergePlan({ devUsers, prodUsers });
+  const authTokenCleanup = buildCopiedAuthTokenCleanupPlan({
+    overlaps: userPlan.overlaps,
+    devUsers,
+    prodUsers,
+    columns: AUTH_USER_ONE_TIME_TOKEN_COLUMNS.filter(
+      (column) => devAuthColumns.has(column) && prodAuthColumns.has(column),
+    ),
+  });
+  const manifestHash = createAuthTokenCleanupManifestHash({
+    sourceRef: DEV_REF,
+    targetRef: PROD_REF,
+    columns: authTokenCleanup.columns,
+    records: authTokenCleanup.records,
+  });
+
+  return {
+    token,
+    manifestHash,
+    authTokenCleanup,
+    auth: {
+      devUsers: devUsers.length,
+      prodUsers: prodUsers.length,
+      overlaps: userPlan.overlaps.length,
+      copiedOneTimeTokenUsers: authTokenCleanup.records.length,
+      copiedOneTimeTokens: Object.values(authTokenCleanup.countsByColumn)
+        .reduce((sum, count) => sum + count, 0),
+      copiedOneTimeTokensByColumn: authTokenCleanup.countsByColumn,
+    },
+  };
+}
+
 function redactedReport(plan, mode) {
   return {
     mode,
@@ -756,7 +839,7 @@ function redactedReport(plan, mode) {
       tableCount: plan.plannedTables.length,
       rowsToStage: plan.plannedTables.reduce(
         (sum, table) => sum + table.sourceRows.length,
-        0,
+        plan.authTokenCleanup.records.length,
       ),
       tables: plan.plannedTables.map((table) => ({
         table: table.key,
@@ -770,6 +853,16 @@ function redactedReport(plan, mode) {
       target: storageSummary(plan.storage.target),
       replayMode: plan.storage.replayMode,
     },
+    manifestHash: plan.manifestHash,
+  };
+}
+
+function redactedAuthTokenCleanupReport(plan, mode) {
+  return {
+    mode,
+    source: { name: 'topik-dev', projectRef: DEV_REF },
+    target: { name: 'topik-prod', projectRef: PROD_REF },
+    auth: plan.auth,
     manifestHash: plan.manifestHash,
   };
 }
@@ -834,6 +927,22 @@ commit;`,
   });
 }
 
+async function createAuthTokenCleanupBackup({ plan, stageSchema, backupSchema }) {
+  await safeRunSql({
+    projectRef: PROD_REF,
+    token: plan.token,
+    phase: 'create auth token cleanup backup',
+    sql: buildAuthTokenCleanupBackupSql({
+      stageSchema,
+      backupSchema,
+      expectedUserCount: plan.authTokenCleanup.records.length,
+      manifestHash: plan.manifestHash,
+      sourceRef: DEV_REF,
+      targetRef: PROD_REF,
+    }),
+  });
+}
+
 function chunkRecords(records, maxCharacters = 450_000) {
   const chunks = [];
   let current = [];
@@ -852,7 +961,11 @@ function chunkRecords(records, maxCharacters = 450_000) {
   return chunks;
 }
 
-async function createAndLoadStage({ plan, stageSchema }) {
+async function createAndLoadStage({
+  plan,
+  stageSchema,
+  authTokenCleanupOnly = false,
+}) {
   await safeRunSql({
     projectRef: PROD_REF,
     token: plan.token,
@@ -869,32 +982,32 @@ create table ${quoteTable(stageSchema, 'rows')} (
 revoke all on table ${quoteTable(stageSchema, 'rows')}
   from public, anon, authenticated, service_role;`,
   });
-  const records = plan.plannedTables.flatMap((table) => (
+  const records = authTokenCleanupOnly ? [] : plan.plannedTables.flatMap((table) => (
     table.sourceRows.map((row, index) => ({
       table_key: table.key,
       ordinal: index + 1,
       row_data: row,
     }))
   ));
+  records.push(...plan.authTokenCleanup.records.map((row, index) => ({
+    table_key: 'auth.user-token-cleanup',
+    ordinal: index + 1,
+    row_data: row,
+  })));
   const chunks = chunkRecords(records);
   for (let index = 0; index < chunks.length; index += 1) {
-    const delimiter = `$recovery_${index}$`;
-    const json = JSON.stringify(chunks[index]);
     await safeRunSql({
       projectRef: PROD_REF,
       token: plan.token,
       phase: `load recovery stage chunk ${index + 1}/${chunks.length}`,
-      sql: `
-insert into ${quoteTable(stageSchema, 'rows')} (table_key, ordinal, row_data)
-select table_key, ordinal, row_data
-from jsonb_to_recordset(${delimiter}${json}${delimiter}::jsonb)
-  as staged(table_key text, ordinal bigint, row_data jsonb);`,
+      sql: buildStageLoadSql({ stageSchema, records: chunks[index] }),
     });
   }
   const stageCounts = await safeRunSql({
     projectRef: PROD_REF,
     token: plan.token,
     phase: 'verify recovery stage',
+    readOnly: true,
     sql: `
 select table_key, count(*)::integer as count
 from ${quoteTable(stageSchema, 'rows')}
@@ -902,10 +1015,18 @@ group by table_key
 order by table_key`,
   });
   const actual = new Map(stageCounts.map((row) => [row.table_key, row.count]));
-  for (const table of plan.plannedTables) {
-    if ((actual.get(table.key) ?? 0) !== table.sourceRows.length) {
-      throw new Error(`recovery stage count mismatch for ${table.key}.`);
+  if (!authTokenCleanupOnly) {
+    for (const table of plan.plannedTables) {
+      if ((actual.get(table.key) ?? 0) !== table.sourceRows.length) {
+        throw new Error(`recovery stage count mismatch for ${table.key}.`);
+      }
     }
+  }
+  if (
+    (actual.get('auth.user-token-cleanup') ?? 0)
+    !== plan.authTokenCleanup.records.length
+  ) {
+    throw new Error('auth token cleanup stage count mismatch.');
   }
 }
 
@@ -919,67 +1040,6 @@ async function cleanupStage({ token, stageSchema }) {
     });
   } catch {
     // The stage is private and revoked. Report the schema name for manual cleanup.
-  }
-}
-
-async function uploadStorage(plan) {
-  const createdBuckets = [];
-  const uploaded = new Map();
-  if (plan.storage.replayMode === 'already-synced') {
-    return { createdBuckets, uploaded };
-  }
-  const targetById = new Map(
-    plan.storage.target.map((bucket) => [bucket.bucketId, bucket]),
-  );
-  for (const sourceBucket of plan.storage.source) {
-    if (sourceBucket.missing) continue;
-    const targetBucket = targetById.get(sourceBucket.bucketId);
-    if (!targetBucket || targetBucket.missing) {
-      const { error } = await plan.storage.targetClient.storage.createBucket(
-        sourceBucket.bucketId,
-        sourceBucket.options,
-      );
-      if (error) throw new Error(`storage bucket creation failed for ${sourceBucket.bucketId}.`);
-      createdBuckets.push(sourceBucket.bucketId);
-    }
-    for (const object of sourceBucket.objects) {
-      const { error } = await plan.storage.targetClient.storage
-        .from(sourceBucket.bucketId)
-        .upload(object.path, object.bytes, {
-          cacheControl: '3600',
-          contentType: object.contentType,
-          upsert: false,
-        });
-      if (error) throw new Error(`storage upload failed for bucket ${sourceBucket.bucketId}.`);
-      if (!uploaded.has(sourceBucket.bucketId)) uploaded.set(sourceBucket.bucketId, []);
-      uploaded.get(sourceBucket.bucketId).push(object.path);
-      const { data, error: verifyError } = await plan.storage.targetClient.storage
-        .from(sourceBucket.bucketId)
-        .download(object.path);
-      if (verifyError || !data) {
-        throw new Error(`storage verification download failed for ${sourceBucket.bucketId}.`);
-      }
-      const digest = createHash('sha256')
-        .update(Buffer.from(await data.arrayBuffer()))
-        .digest('hex');
-      if (digest !== object.digest) {
-        throw new Error(`storage checksum mismatch for bucket ${sourceBucket.bucketId}.`);
-      }
-    }
-  }
-  return { createdBuckets, uploaded };
-}
-
-async function rollbackUploadedStorage(plan, uploadState) {
-  for (const [bucketId, paths] of uploadState.uploaded) {
-    for (let index = 0; index < paths.length; index += 100) {
-      await plan.storage.targetClient.storage
-        .from(bucketId)
-        .remove(paths.slice(index, index + 100));
-    }
-  }
-  for (const bucketId of uploadState.createdBuckets) {
-    await plan.storage.targetClient.storage.deleteBucket(bucketId);
   }
 }
 
@@ -1031,6 +1091,10 @@ async function applyDatabase({
   backupSchema,
   rollbackOnly = false,
 }) {
+  const authTokenCleanupSql = buildAuthTokenCleanupSql({
+    stageSchema,
+    columns: plan.authTokenCleanup.columns,
+  });
   const inserts = plan.plannedTables.map((table, index) => {
     const insertSql = buildInsertFromStageSql({
       stageSchema,
@@ -1040,6 +1104,7 @@ async function applyDatabase({
       columns: table.columns,
       primaryKeyColumns: table.primaryKeyColumns,
       updateOnConflict: Boolean(table.descriptor.updateOnConflict),
+      preserveOnConflictColumns: table.descriptor.preserveOnConflictColumns ?? [],
     });
     return `
 do $recovery_insert_${index}$
@@ -1075,6 +1140,7 @@ set local statement_timeout = '10min';
 select pg_advisory_xact_lock(hashtextextended('topik-prod-data-recovery', 0));
 set local session_replication_role = replica;
 delete from public.legal_documents where is_placeholder;
+${authTokenCleanupSql}
 ${inserts}
 set local session_replication_role = origin;
 do $recovery_verify$
@@ -1093,13 +1159,65 @@ end if;
 if exists (select 1 from public.legal_documents where is_placeholder) then
   raise exception 'recovery_legal_placeholder_remaining';
 end if;
+if exists (
+  select 1
+  from public.operation_policies policy_row
+  where policy_row.current_version_id is not null
+    and not exists (
+      select 1
+      from public.operation_policy_histories history_row
+      where history_row.id = policy_row.current_version_id
+        and history_row.policy_id = policy_row.id
+    )
+) then
+  raise exception 'recovery_invalid_policy_history_link';
+end if;
 end
 $recovery_verify$;
 ${completionSql}`,
   });
 }
 
+async function applyAuthTokenCleanup({
+  plan,
+  stageSchema,
+  backupSchema,
+  rollbackOnly = false,
+}) {
+  const authTokenCleanupSql = buildAuthTokenCleanupSql({
+    stageSchema,
+    columns: plan.authTokenCleanup.columns,
+  });
+  const completionSql = rollbackOnly
+    ? 'rollback;'
+    : `
+update ${quoteTable(backupSchema, 'recovery_manifest')}
+set status = 'applied', applied_at = now()
+where manifest_hash = ${sqlLiteral(plan.manifestHash)};
+drop schema ${quoteIdentifier(stageSchema)} cascade;
+commit;`;
+
+  await safeRunSql({
+    projectRef: PROD_REF,
+    token: plan.token,
+    phase: 'apply auth token cleanup transaction',
+    sql: `
+begin;
+set local lock_timeout = '10s';
+set local statement_timeout = '2min';
+select pg_advisory_xact_lock(hashtextextended('topik-prod-auth-token-cleanup', 0));
+${authTokenCleanupSql}
+${completionSql}`,
+  });
+}
+
 async function verifyDatabase(plan) {
+  const expectedAuthUsers = plan.plannedTables.find(
+    (table) => table.key === 'auth.users',
+  )?.expectedFinalCount;
+  const expectedProfiles = plan.plannedTables.find(
+    (table) => table.key === 'public.profiles',
+  )?.expectedFinalCount;
   const countSelects = plan.plannedTables.map((table) => `
 select ${sqlLiteral(table.key)} as table_key,
        count(*)::integer as count
@@ -1108,6 +1226,7 @@ from ${quoteTable(table.descriptor.schema, table.descriptor.table)}`);
     projectRef: PROD_REF,
     token: plan.token,
     phase: 'verify recovered table counts',
+    readOnly: true,
     sql: countSelects.join('\nunion all\n'),
   });
   const counts = new Map(rows.map((row) => [row.table_key, row.count]));
@@ -1120,6 +1239,7 @@ from ${quoteTable(table.descriptor.schema, table.descriptor.table)}`);
     projectRef: PROD_REF,
     token: plan.token,
     phase: 'verify recovered invariants',
+    readOnly: true,
     sql: `
 select
   (select count(*)::integer from auth.users) as auth_users,
@@ -1131,14 +1251,26 @@ select
     where not exists (
       select 1 from auth.identities identity_row
       where identity_row.user_id = user_row.id
-    )
-  ) as users_without_identity`,
+   )
+  ) as users_without_identity,
+  (
+    select count(*)::integer
+    from public.operation_policies policy_row
+    where policy_row.current_version_id is not null
+      and not exists (
+        select 1
+        from public.operation_policy_histories history_row
+        where history_row.id = policy_row.current_version_id
+          and history_row.policy_id = policy_row.id
+      )
+  ) as invalid_policy_history_links`,
   });
   if (
-    checks.auth_users !== plan.auth.devUsers
-    || checks.profiles !== plan.auth.devUsers
+    checks.auth_users !== expectedAuthUsers
+    || checks.profiles !== expectedProfiles
     || checks.placeholders !== 0
     || checks.users_without_identity !== 0
+    || checks.invalid_policy_history_links !== 0
   ) {
     throw new Error('post-apply auth/profile/legal invariant failed.');
   }
@@ -1175,15 +1307,30 @@ function argValue(args, name) {
 async function main() {
   loadLocalEnv();
   const args = process.argv.slice(2);
-  const apply = args.includes('--apply');
-  const validateTransaction = args.includes('--validate-transaction');
+  const workflow = selectRecoveryWorkflow({
+    apply: args.includes('--apply'),
+    validateTransaction: args.includes('--validate-transaction'),
+    authTokenCleanupOnly: args.includes('--auth-token-cleanup-only'),
+  });
+  const apply = workflow.endsWith('-apply');
+  const validateTransaction = workflow.endsWith('-validate');
+  const authTokenCleanupOnly = workflow.startsWith('auth-token-cleanup-');
   const token = process.env.SUPABASE_ACCESS_TOKEN;
   if (!token) throw new Error('SUPABASE_ACCESS_TOKEN is required.');
 
-  const plan = await buildPlan(token);
+  const plan = authTokenCleanupOnly
+    ? await buildAuthTokenCleanupOnlyPlan(token)
+    : await buildPlan(token);
   if (!apply && !validateTransaction) {
-    console.log(JSON.stringify(redactedReport(plan, 'dry-run'), null, 2));
+    const report = authTokenCleanupOnly
+      ? redactedAuthTokenCleanupReport(plan, 'auth-token-cleanup-dry-run')
+      : redactedReport(plan, 'dry-run');
+    console.log(JSON.stringify(report, null, 2));
     return;
+  }
+
+  if (authTokenCleanupOnly && plan.authTokenCleanup.records.length === 0) {
+    throw new Error('no copied auth tokens require cleanup.');
   }
 
   assertProductionApplyGuards({
@@ -1194,42 +1341,97 @@ async function main() {
     actualManifestHash: plan.manifestHash,
   });
 
-  const suffix = new Date().toISOString().replace(/\D/g, '').slice(0, 14);
-  const backupSchema = `recovery_backup_${suffix}`;
-  const stageSchema = `recovery_stage_${suffix}`;
+  const suffix = new Date().toISOString().replace(/\D/g, '').slice(0, 17);
+  const backupSchema = authTokenCleanupOnly
+    ? `auth_token_cleanup_backup_${suffix}`
+    : `recovery_backup_${suffix}`;
+  const stageSchema = authTokenCleanupOnly
+    ? `auth_token_cleanup_stage_${suffix}`
+    : `recovery_stage_${suffix}`;
   if (validateTransaction) {
     try {
-      await createAndLoadStage({ plan, stageSchema });
-      await applyDatabase({
-        plan,
-        stageSchema,
-        backupSchema: null,
-        rollbackOnly: true,
-      });
+      await createAndLoadStage({ plan, stageSchema, authTokenCleanupOnly });
+      if (authTokenCleanupOnly) {
+        await applyAuthTokenCleanup({
+          plan,
+          stageSchema,
+          backupSchema: null,
+          rollbackOnly: true,
+        });
+      } else {
+        await applyDatabase({
+          plan,
+          stageSchema,
+          backupSchema: null,
+          rollbackOnly: true,
+        });
+      }
     } finally {
       await cleanupStage({ token, stageSchema });
     }
-    console.log(JSON.stringify(
-      redactedReport(plan, 'transaction-validated-and-rolled-back'),
-      null,
-      2,
-    ));
+    const report = authTokenCleanupOnly
+      ? redactedAuthTokenCleanupReport(
+        plan,
+        'auth-token-cleanup-validated-and-rolled-back',
+      )
+      : redactedReport(plan, 'transaction-validated-and-rolled-back');
+    console.log(JSON.stringify(report, null, 2));
     return;
   }
 
-  let uploadState = null;
+  if (authTokenCleanupOnly) {
+    try {
+      await createAndLoadStage({ plan, stageSchema, authTokenCleanupOnly: true });
+      await createAuthTokenCleanupBackup({ plan, stageSchema, backupSchema });
+      await applyAuthTokenCleanup({ plan, stageSchema, backupSchema });
+    } catch (error) {
+      if (!shouldCleanupAuthTokenStageAfterFailure(error)) {
+        console.error(
+          'Auth token cleanup outcome is unknown; private stage and backup were preserved.',
+        );
+      } else {
+        await cleanupStage({ token, stageSchema });
+      }
+      throw error;
+    }
+
+    const verificationPlan = await buildAuthTokenCleanupOnlyPlan(token);
+    if (verificationPlan.authTokenCleanup.records.length !== 0) {
+      throw new Error('post-apply copied auth token cleanup verification failed.');
+    }
+    console.log(JSON.stringify({
+      ...redactedAuthTokenCleanupReport(
+        plan,
+        'auth-token-cleanup-applied-and-verified',
+      ),
+      backupSchema,
+      verification: {
+        copiedOneTimeTokenUsersRemaining: 0,
+        copiedOneTimeTokensRemaining: 0,
+      },
+    }, null, 2));
+    return;
+  }
+
+  const uploadState = createStorageUploadState();
   try {
     await createBackup({ plan, backupSchema });
     await createAndLoadStage({ plan, stageSchema });
-    uploadState = await uploadStorage(plan);
+    await uploadStorage(plan.storage, uploadState);
     await applyDatabase({ plan, stageSchema, backupSchema });
   } catch (error) {
-    if (uploadState) {
+    if (shouldRollbackStorageAfterFailure(error)) {
       try {
-        await rollbackUploadedStorage(plan, uploadState);
+        await rollbackUploadedStorage(plan.storage, uploadState);
       } catch {
         console.error('Storage rollback needs manual review; no object paths were logged.');
       }
+    } else {
+      console.error(
+        error?.storageOutcomeUnknown
+          ? 'Storage write outcome is unknown; automatic rollback was skipped for manual verification.'
+          : 'Database write outcome is unknown; Storage was preserved for manual verification.',
+      );
     }
     await cleanupStage({ token, stageSchema });
     throw error;
