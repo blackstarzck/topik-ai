@@ -55,6 +55,10 @@
     "baseline-all": {
       "from": "20260612170000_notification_admin_tables.sql",
       "to": "20260720104000_users_audit_target_projection.sql"
+    },
+    "release-all": {
+      "from": "20260612170000_notification_admin_tables.sql",
+      "to": "20260720104000_users_audit_target_projection.sql"
     }
   }
 }

@@ -1,5 +1,13 @@
 # supabase/ — 마이그레이션 디렉터리 안내
 
+## CI/CD 마이그레이션 게이트 (2026-07-20)
+
+- development와 production manifest는 두 namespace 모두 `release-all` batch를 제공한다. 자동 적용 순서는 항상 `topik_writing` 후 admin이다.
+- `--verify-all --require-clean --json-out <PATH>`는 tracker와 로컬 전체 migration의 checksum, pending, remote-only, blocked 적용, down pair를 대사한다.
+- PR에서는 `scripts/db/check-expand-migrations.mjs`가 기존 migration 수정·삭제와 contract migration을 거부한다.
+- 고정 v13 SHA를 포함한 전체 재생은 `scripts/ci/run-shadow-contract.mjs`가 담당한다. shadow fixture와 cron 호환 계층은 임시 로컬 DB에만 존재한다.
+- `origin/main` 뒤 topik-dev 적용·권한·CRUD·브라우저 검증이 먼저 성공해야 회사 저장소 fast-forward와 topik-prod staged release가 시작된다. 상세 순서는 `docs/architecture/admin-cicd-pipeline.md`를 따른다. DB down migration은 자동화하지 않는다.
+
 이 디렉터리는 공유 Supabase 프로젝트(v13)에 적용하는 SQL 마이그레이션을 담는다.
 하나의 DB를 **도메인 기준 네임스페이스**로 나눠 두 디렉터리로 분리 운영하며, 각 디렉터리는
 서로 다른 **마이그레이션 추적 테이블(tracker)** 로 적용 이력을 따로 관리한다.

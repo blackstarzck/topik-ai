@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
@@ -10,6 +13,7 @@
     "check:client-source-secrets": "node ./scripts/check-client-source-secret-boundary.mjs",
     "check:message-history-boundary": "node ./scripts/check-message-history-boundary.mjs",
     "check:migration-boundary": "node ./scripts/check-migration-ownership-boundary.mjs",
+    "check:expand-migrations": "node ./scripts/db/check-expand-migrations.mjs",
     "check:transfer-sot-checklist": "node ./scripts/check-transfer-sot-checklist.mjs",
     "check:notification-cross-app-state": "node ./scripts/check-notification-cross-app-state.mjs",
     "check:notification-worker-smoke": "node ./scripts/check-notification-worker-smoke.mjs",
@@ -31,6 +35,9 @@
     "db:admin:migrate": "node ./scripts/db/admin-migrate.mjs",
     "db:admin:migrate:status": "node ./scripts/db/admin-migrate.mjs --status",
     "db:admin:bootstrap": "node ./scripts/db/bootstrap-admin.mjs",
+    "db:contracts:verify": "node ./scripts/db/verify-migration-contracts.mjs",
+    "db:shadow:verify": "node ./scripts/ci/run-shadow-contract.mjs",
+    "db:users-contract": "node ./scripts/db/verify-users-contract.mjs",
     "db:recover-prod": "node ./scripts/db/recover-prod-from-dev.mjs",
     "db:snapshot": "node ./scripts/db/schema-snapshot.mjs",
     "db:sql": "node ./scripts/db/run-sql.mjs",
@@ -39,6 +46,7 @@
     "test:e2e": "playwright test",
     "test:e2e:mock": "set VITE_SUPABASE_DISABLED=true&& playwright test tests/e2e/assessment-question-bank.spec.ts",
     "test:e2e:prod-admin": "playwright test --config=playwright.prod-admin.config.ts",
+    "test:e2e:release-admin": "playwright test --config=playwright.release-admin.config.ts",
     "test:unit": "vitest run tests/unit",
     "etl:extract": "node ./scripts/etl/extract-problems.mjs",
     "etl:transform": "node ./scripts/etl/transform-questions.mjs",

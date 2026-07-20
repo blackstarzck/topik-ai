@@ -10,6 +10,9 @@
       "reason": "Dev applied the later experimental definition first, then restored the clean canonical source definition. Production must not replay the superseded file."
     }
   },
+  "approvedRemoteOnly": [
+    "20260713140000_admin_learning_analytics_dual_id_coverage.sql"
+  ],
   "batches": {
     "adopt-untracked": {
       "afterSql": "../sql/dev-admin-remote-only-reconciliation.sql",
@@ -64,6 +67,10 @@
       ]
     },
     "baseline-all": {
+      "from": "20260612170000_notification_admin_tables.sql",
+      "to": "20260720104000_users_audit_target_projection.sql"
+    },
+    "release-all": {
       "from": "20260612170000_notification_admin_tables.sql",
       "to": "20260720104000_users_audit_target_projection.sql"
     }

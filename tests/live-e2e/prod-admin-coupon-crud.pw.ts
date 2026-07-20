@@ -1,6 +1,7 @@
 import { expect, test, type Page, type Response } from '@playwright/test';
 
 const PRODUCTION_PROJECT_REF = 'eymlabowhfgtxbiqwxqh';
+const targetProjectRef = process.env.E2E_TARGET_PROJECT_REF ?? PRODUCTION_PROJECT_REF;
 const adminEmail = process.env.E2E_ADMIN_EMAIL;
 const adminPassword = process.env.E2E_ADMIN_PASSWORD;
 const accessToken = process.env.SUPABASE_ACCESS_TOKEN;
@@ -32,7 +33,7 @@ async function runSql<T extends Record<string, unknown>>(sql: string): Promise<T
   );
   const body = await response.text();
   if (!response.ok) {
-    throw new Error(`production verification query failed (${response.status}): ${body}`);
+    throw new Error(`live verification query failed (${response.status}): ${body}`);
   }
   return JSON.parse(body) as T[];
 }
@@ -52,21 +53,22 @@ test.beforeAll(() => {
     );
   }
   if (
-    projectRef !== PRODUCTION_PROJECT_REF
-    || expectedProjectRef !== PRODUCTION_PROJECT_REF
+    projectRef !== targetProjectRef
+    || expectedProjectRef !== targetProjectRef
   ) {
-    throw new Error('Production E2E requires explicit matching production project refs.');
+    throw new Error('Live CRUD E2E requires explicit matching target project refs.');
   }
 });
 
-test('현재 관리자 계정으로 topik-prod 정기 쿠폰 CRUD와 감사 로그를 검증한다', async ({
+test('현재 관리자 계정으로 대상 DB의 정기 쿠폰 CRUD와 감사 로그를 검증한다', async ({
   page
 }) => {
   const templateResponses: Response[] = [];
   const runId = Date.now();
-  const templateName = `E2E PROD PW ${runId}`;
+  const targetLabel = targetProjectRef === PRODUCTION_PROJECT_REF ? 'PROD' : 'DEV';
+  const templateName = `E2E ${targetLabel} PW ${runId}`;
   const updatedTemplateName = `${templateName} UPDATED`;
-  const deletionReason = `운영 Playwright E2E 검증 후 테스트 데이터 정리 ${runId}`;
+  const deletionReason = `${targetLabel} Playwright E2E 검증 후 테스트 데이터 정리 ${runId}`;
   let templateId = '';
   let deletedThroughUi = false;
 
@@ -85,7 +87,7 @@ test('현재 관리자 계정으로 topik-prod 정기 쿠폰 CRUD와 감사 로�
     await expect.poll(() => templateResponses.length).toBeGreaterThan(0);
     expect(
       templateResponses.every((response) =>
-        response.url().startsWith(`https://${PRODUCTION_PROJECT_REF}.supabase.co/`)
+        response.url().startsWith(`https://${targetProjectRef}.supabase.co/`)
       )
     ).toBe(true);
     expect(templateResponses.some((response) => response.status() >= 400)).toBe(false);
@@ -181,7 +183,7 @@ test('현재 관리자 계정으로 topik-prod 정기 쿠폰 CRUD와 감사 로�
       await runSql(`
         delete from public.commerce_coupon_subscription_templates
         where id = ${sqlLiteral(templateId)}
-          and template_name like 'E2E PROD PW %';
+          and template_name like ${sqlLiteral(`E2E ${targetLabel} PW %`)};
       `);
     }
   }

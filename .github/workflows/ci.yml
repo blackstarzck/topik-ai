@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '24.x'
+  SUPABASE_CLI_VERSION: '2.105.0'
+  V13_CONTRACT_SHA: fb5fa73107034edacd698d364d7f97b7b1d6b0c7
+
+jobs:
+  quality:
+    name: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run harness:check
+      - run: npm run test:unit
+      - run: npm run build
+
+  db-contract:
+    name: db-contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          repository: blackstarzck/topik-project-v13
+          ref: ${{ env.V13_CONTRACT_SHA }}
+          path: .ci/v13
+          sparse-checkout: supabase
+          sparse-checkout-cone-mode: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: ${{ env.SUPABASE_CLI_VERSION }}
+      - run: npm ci
+      - name: Verify repository ownership and client secret boundaries
+        run: |
+          npm run check:migration-boundary -- --v13-root=.ci/v13
+          npm run check:client-source-secrets
+      - name: Verify migration manifests and expand-only changes
+        shell: bash
+        run: |
+          npm run db:contracts:verify -- --json-out .ci-artifacts/migration-contracts.json
+          base_sha="${{ github.event.pull_request.base.sha }}"
+          if [ -z "$base_sha" ]; then
+            base_sha="$(git rev-parse HEAD^)"
+          fi
+          npm run check:expand-migrations -- --base "$base_sha"
+      - run: >-
+          npx vitest run
+          tests/unit/db-migrate-core.test.mjs
+          tests/unit/expand-migration-gate.test.mjs
+          tests/unit/users-release-contract.test.mjs
+          tests/unit/release-pipeline-contract.test.mjs
+      - name: Rebuild the v13, writing, and admin schema in shadow Supabase
+        run: >-
+          npm run db:shadow:verify --
+          --v13-dir .ci/v13
+          --v13-sha $V13_CONTRACT_SHA
+          --json-out .ci-artifacts/shadow-contract.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: db-contract-${{ github.sha }}
+          path: .ci-artifacts/*.json
+          if-no-files-found: error
+          retention-days: 90
+
+  browser-e2e:
+    name: browser-e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+        env:
+          CI: 'true'
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-e2e-failure-${{ github.sha }}
+          path: |
+            playwright-report
+            test-results
+          if-no-files-found: ignore
+          retention-days: 14

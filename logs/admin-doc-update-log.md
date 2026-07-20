@@ -681,3 +681,9 @@
 - Updated `supabase/migrations-admin/20260720102000_users_phone_source_alignment.sql`, `supabase/migrations-admin/20260720104000_users_audit_target_projection.sql`, Users/System 감사 로그 프런트 정규화, 관련 Users IA/page-sync/data-contract/data-usage/source-transition/ownership/gap 문서, migration manifest와 unit tests.
 - Reason: dev에는 legacy `profiles.phone`이 있지만 prod에는 split field만 있어 배포 회원 목록이 `column p.phone does not exist`로 실패했다. CRUD 검증 중 저장 Target `User`와 화면 링크 `Users` 혼재로 감사 로그가 0건 표시되는 후속 결함도 확인했다.
 - Validation: 두 admin 마이그레이션을 dev/prod에 동일 적용하고 목록 20/총 200, 상세 1, 내보내기 1을 확인했다. Production 브라우저에서 회원 검색, 상세, 정상→정지→정상 원복, 감사 로그 2건과 상세 역링크를 확인했다. v13 `profiles` DDL/DML은 변경하지 않았다.
+
+## 2026-07-20 TOPIK Admin CI/CD development-first staged production 파이프라인
+
+- Updated `.github/workflows/ci.yml`, `.github/workflows/release-development.yml`, `.github/workflows/release-production.yml`, migration/CI runner와 실제 dev CRUD 테스트, `docs/architecture/admin-cicd-pipeline.md`, `docs/README.md`, `docs/harness/index.md`, `supabase/README.md`, and `logs/admin-doc-update-log.md`.
+- Reason: PR shadow 검증 뒤 곧바로 topik-prod로 이동하던 누락을 교정했다. `origin/main`의 동일 SHA를 topik-dev에 먼저 적용해 DB·권한·CRUD·브라우저를 검증한 성공 artifact만 회사 저장소와 topik-prod staged release로 전달한다. hook과 Vercel Git 자동 배포는 사용하지 않는다.
+- Validation: migration runner·릴리스 계약을 포함한 unit 368개, 고정 v13부터 전체 shadow migration 86개 재생과 Users RPC fingerprint, `topik-dev` writing/admin tracker clean 및 권한 계약, 현재 관리자 계정의 Users 목록·상세·내보내기·감사 로그와 정기 쿠폰 생성→조회→수정→삭제→감사 로그 live browser E2E 2/2, mock browser E2E 105/105, harness·build·migration boundary를 통과했다. GitHub `development` 환경과 main 전용 정책을 구성했고, `origin/main`에는 `quality`·`db-contract`·`browser-e2e` required check, CODEOWNERS 승인, 직접/force push 차단을 적용했다. Vercel `topik-admin`의 `keduall/topik-admin` Git 연결을 해제해 자동 Git 배포 우회도 차단했다. 첫 PR green check와 실제 `main → topik-dev → mirror → topik-prod 후보 → Production 승격` 자동 실행은 이 변경의 커밋·push·PR 병합 뒤 검증 대상으로 남는다.

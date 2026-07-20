@@ -1,0 +1,190 @@
+name: Release production
+
+on:
+  workflow_run:
+    workflows: [Validate development]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: topik-admin-production
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '24.x'
+  VERCEL_CLI_VERSION: '48.12.0'
+  V13_CONTRACT_SHA: ${{ vars.V13_CONTRACT_SHA }}
+  RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+  VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+  PROD_ADMIN_DOMAIN: ${{ vars.PROD_ADMIN_DOMAIN }}
+  SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+  SUPABASE_EXPECTED_PROJECT_REF: ${{ vars.SUPABASE_EXPECTED_PROJECT_REF }}
+  SUPABASE_PRODUCTION_CONFIRM: ${{ vars.SUPABASE_PROJECT_REF }}
+  SUPABASE_MIGRATION_OPERATOR: github-actions-production
+  SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+  VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+  E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+  E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+  E2E_TARGET_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+  MIRROR_GITHUB_TOKEN: ${{ secrets.MIRROR_GITHUB_TOKEN }}
+
+jobs:
+  release:
+    name: staged-production-release
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_SHA }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: development-evidence-${{ env.RELEASE_SHA }}
+          path: development-evidence
+          github-token: ${{ github.token }}
+          run-id: ${{ github.event.workflow_run.id }}
+      - name: Lock the verified development SHA and Production targets
+        shell: bash
+        run: |
+          test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
+          node scripts/ci/validate-release-env.mjs
+          node scripts/ci/verify-development-evidence.mjs \
+            --input development-evidence/development.json \
+            --commit-sha "$RELEASE_SHA" \
+            --v13-sha "$V13_CONTRACT_SHA" \
+            --project-ref fglggyfvzjdsbyckinqa
+          mkdir -p release-evidence
+          cp development-evidence/development.json release-evidence/development.json
+          npm run db:contracts:verify -- --json-out release-evidence/migration-contracts.json
+      - name: Fast-forward the development-verified SHA to the private deployment mirror
+        shell: bash
+        run: |
+          export GIT_ASKPASS="$RUNNER_TEMP/github-mirror-askpass.sh"
+          export GIT_TERMINAL_PROMPT=0
+          node <<'NODE'
+          const fs = require('node:fs');
+          fs.writeFileSync(
+            process.env.GIT_ASKPASS,
+            `#!/bin/sh
+          case "$1" in
+            *Username*) printf '%s\\n' 'x-access-token' ;;
+            *) printf '%s\\n' "$MIRROR_GITHUB_TOKEN" ;;
+          esac
+          `,
+            { mode: 0o700 }
+          );
+          NODE
+          trap 'rm -f "$GIT_ASKPASS"' EXIT
+          git remote add deployment-mirror https://github.com/keduall/topik-admin.git
+          git fetch deployment-mirror main
+          git merge-base --is-ancestor deployment-mirror/main "$RELEASE_SHA"
+          git push deployment-mirror "$RELEASE_SHA:refs/heads/main"
+      - name: Capture current Production deployment
+        id: previous
+        run: >-
+          node scripts/ci/capture-vercel-production.mjs
+          --domain "$PROD_ADMIN_DOMAIN"
+          --team-id "$VERCEL_ORG_ID"
+          --json-out release-evidence/previous-deployment.json
+      - name: Install the pinned Vercel CLI
+        run: npm install --global vercel@$VERCEL_CLI_VERSION
+      - name: Configure ephemeral Vercel CLI authentication
+        shell: bash
+        run: |
+          export VERCEL_GLOBAL_CONFIG="$RUNNER_TEMP/vercel-cli"
+          install -m 700 -d "$VERCEL_GLOBAL_CONFIG"
+          node -e "const fs=require('node:fs'); fs.writeFileSync(process.env.VERCEL_GLOBAL_CONFIG + '/auth.json', JSON.stringify({token:process.env.VERCEL_TOKEN}), {mode:0o600})"
+          echo "VERCEL_GLOBAL_CONFIG=$VERCEL_GLOBAL_CONFIG" >> "$GITHUB_ENV"
+          vercel whoami --global-config "$VERCEL_GLOBAL_CONFIG"
+      - name: Build an unaliased Production candidate
+        id: candidate
+        shell: bash
+        run: |
+          rm -rf .vercel
+          vercel pull --yes --environment=production --global-config "$VERCEL_GLOBAL_CONFIG"
+          node -e "const p=require('./.vercel/project.json'); if(p.orgId!==process.env.VERCEL_ORG_ID||p.projectId!==process.env.VERCEL_PROJECT_ID) process.exit(1)"
+          vercel build --prod --global-config "$VERCEL_GLOBAL_CONFIG"
+          candidate_url="$(vercel deploy --prebuilt --prod --skip-domain --yes --global-config "$VERCEL_GLOBAL_CONFIG" | tail -n 1)"
+          vercel inspect "$candidate_url" --wait --timeout 10m --global-config "$VERCEL_GLOBAL_CONFIG"
+          node scripts/ci/capture-vercel-production.mjs \
+            --domain "$candidate_url" \
+            --team-id "$VERCEL_ORG_ID" \
+            --json-out release-evidence/candidate-deployment.json
+      - name: Apply topik-prod expand migrations in ownership order
+        shell: bash
+        run: |
+          npm run db:migrate -- --apply --manifest scripts/db/manifests/writing-production-cutover.json --batch release-all
+          npm run db:admin:migrate -- --apply --manifest scripts/db/manifests/admin-production-cutover.json --batch release-all
+      - name: Verify Production trackers and Users schema fingerprint
+        shell: bash
+        run: |
+          npm run db:migrate -- --verify-all --require-clean --manifest scripts/db/manifests/writing-production-cutover.json --batch release-all --json-out release-evidence/writing-migrations.json
+          npm run db:admin:migrate -- --verify-all --require-clean --manifest scripts/db/manifests/admin-production-cutover.json --batch release-all --json-out release-evidence/admin-migrations.json
+          npm run db:users-contract -- --expected-project-ref "$SUPABASE_EXPECTED_PROJECT_REF" --require-no-legacy-phone --expected-fingerprint-file development-evidence/shadow-contract.json --json-out release-evidence/users-contract.json
+      - name: Verify the candidate with the configured administrator account
+        run: >-
+          node scripts/ci/run-release-e2e.mjs
+          --target candidate
+          --json-out release-evidence/candidate-e2e.json
+        env:
+          ADMIN_E2E_BASE_URL: ${{ steps.candidate.outputs.deployment_url }}
+      - name: Promote the verified candidate without rebuilding
+        id: promote
+        run: >-
+          vercel promote "${{ steps.candidate.outputs.deployment_id }}"
+          --yes --timeout 10m --global-config "$VERCEL_GLOBAL_CONFIG"
+      - name: Verify the Production domain and runtime error stream
+        id: production_smoke
+        shell: bash
+        run: |
+          vercel logs "$PROD_ADMIN_DOMAIN" --json --global-config "$VERCEL_GLOBAL_CONFIG" > .vercel-runtime.ndjson 2> .vercel-runtime.stderr &
+          log_pid=$!
+          sleep 2
+          set +e
+          ADMIN_E2E_BASE_URL="https://$PROD_ADMIN_DOMAIN" node scripts/ci/run-release-e2e.mjs --target production --json-out release-evidence/production-e2e.json
+          smoke_status=$?
+          kill "$log_pid" 2>/dev/null
+          wait "$log_pid" 2>/dev/null
+          set -e
+          node scripts/ci/check-vercel-runtime-logs.mjs --input .vercel-runtime.ndjson --json-out release-evidence/runtime-log-summary.json
+          test "$smoke_status" -eq 0
+      - name: Write the PII-free release summary
+        run: >-
+          node scripts/ci/write-release-evidence.mjs
+          --json-out release-evidence/release.json
+          --commit-sha "$RELEASE_SHA"
+          --v13-sha "$V13_CONTRACT_SHA"
+          --previous-deployment-id "${{ steps.previous.outputs.deployment_id }}"
+          --candidate-deployment-id "${{ steps.candidate.outputs.deployment_id }}"
+          --candidate-deployment-url "${{ steps.candidate.outputs.deployment_url }}"
+          --production-domain "$PROD_ADMIN_DOMAIN"
+      - name: Roll back the Production alias when post-promotion checks fail
+        if: always() && steps.promote.outcome == 'success' && steps.production_smoke.outcome == 'failure'
+        shell: bash
+        run: |
+          vercel rollback "${{ steps.previous.outputs.deployment_id }}" --yes --timeout 10m --global-config "$VERCEL_GLOBAL_CONFIG"
+          node scripts/ci/capture-vercel-production.mjs \
+            --domain "$PROD_ADMIN_DOMAIN" \
+            --team-id "$VERCEL_ORG_ID" \
+            --json-out release-evidence/rollback-deployment.json
+          node -e "const fs=require('node:fs'); const previous=JSON.parse(fs.readFileSync('release-evidence/previous-deployment.json')); const restored=JSON.parse(fs.readFileSync('release-evidence/rollback-deployment.json')); if(previous.deploymentId!==restored.deploymentId) { console.error('Rollback verification did not restore the previous deployment.'); process.exit(1); }"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: production-release-${{ env.RELEASE_SHA }}
+          path: release-evidence/*.json
+          if-no-files-found: error
+          retention-days: 90

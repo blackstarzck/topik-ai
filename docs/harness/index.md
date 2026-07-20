@@ -1,5 +1,13 @@
 # TOPIK AI Admin Harness
 
+## CI/CD 자동 게이트 (2026-07-20)
+
+- PR required checks는 `.github/workflows/ci.yml`의 `quality`, `db-contract`, `browser-e2e`다.
+- `npm run db:contracts:verify`는 development/production manifest의 `release-all`, down pair, project ref를 정적으로 검사한다.
+- `npm run check:expand-migrations -- --base <SHA>`는 기존 migration 변경과 contract 축소 SQL을 차단한다.
+- `npm run db:shadow:verify -- --v13-dir <PATH> --v13-sha <SHA>`는 고정 v13, `topik_writing`, admin migration을 로컬 Supabase에 재생하고 Users RPC·권한을 확인한다.
+- `main → topik-dev 실제 검증 → 회사 저장소 → topik-prod 후보 → Production 승격` 순서와 실패 정책은 `docs/architecture/admin-cicd-pipeline.md`를 단일 원문으로 사용한다.
+
 ## 1. 목적
 
 - 이 문서는 TOPIK AI Admin 저장소에서 Codex와 사람이 함께 사용하는 기본 하네스를 정의한다.

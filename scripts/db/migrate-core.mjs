@@ -1,8 +1,10 @@
 import { createHash } from 'node:crypto';
 import {
   existsSync,
+  mkdirSync,
   readFileSync,
   readdirSync,
+  writeFileSync,
 } from 'node:fs';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 
@@ -47,22 +49,29 @@ export function parseMigrationArgs(args) {
     ['apply', '--apply'],
     ['baseline', '--baseline-existing'],
     ['down', '--down'],
+    ['verifyAll', '--verify-all'],
   ].filter(([, flag]) => args.includes(flag));
 
   if (actionFlags.length !== 1) {
     fail(
       'Choose exactly one action: --status, --plan, --apply, '
-      + '--baseline-existing, or --down <migration>.'
+      + '--baseline-existing, --down <migration>, or --verify-all.'
     );
   }
 
   const [action] = actionFlags[0];
+  const requireClean = args.includes('--require-clean');
+  if (requireClean && action !== 'verifyAll') {
+    fail('--require-clean is only valid with --verify-all.');
+  }
   return {
     action,
     manifestPath: getArgValue(args, '--manifest'),
     batchName: getArgValue(args, '--batch'),
     downName: action === 'down' ? getArgValue(args, '--down') : null,
     allowDown: args.includes('--allow-down'),
+    requireClean,
+    jsonOut: getArgValue(args, '--json-out'),
   };
 }
 
@@ -76,7 +85,7 @@ function requireMigrationName(value) {
   return value;
 }
 
-function sha256(contents) {
+export function sha256(contents) {
   return createHash('sha256').update(contents).digest('hex');
 }
 
@@ -105,7 +114,7 @@ export function stripOuterTransaction(sql) {
   return lines.join('\n').trim();
 }
 
-function listLocalMigrations(migrationsDir) {
+export function listLocalMigrations(migrationsDir) {
   if (!existsSync(migrationsDir)) return [];
   return readdirSync(migrationsDir)
     .filter((name) => name.endsWith('.sql') && MIGRATION_NAME_PATTERN.test(name))
@@ -166,7 +175,7 @@ export function resolveManifestBatch({ manifest, batchName, localMigrations }) {
   return { batch, entries };
 }
 
-function validateLocalSet(manifest, localMigrations) {
+export function validateLocalSet(manifest, localMigrations) {
   if (
     Number.isInteger(manifest.expectedLocalCount)
     && localMigrations.length !== manifest.expectedLocalCount
@@ -183,15 +192,181 @@ function validateLocalSet(manifest, localMigrations) {
   }
 }
 
+export function inspectStaticMigrationContract({
+  manifest,
+  batchName,
+  localMigrations,
+  migrationsDir,
+}) {
+  validateLocalSet(manifest, localMigrations);
+  const { batch, entries } = resolveManifestBatch({
+    manifest,
+    batchName,
+    localMigrations,
+  });
+  validateBlocked(manifest, entries);
+
+  const blocked = new Set(manifest.blockedMigrations ?? []);
+  const selected = new Set(entries.map((entry) => entry.name));
+  const manifestMissing = localMigrations.filter(
+    (name) => !blocked.has(name) && !selected.has(name)
+  );
+  const missingDown = localMigrations.filter(
+    (name) => !existsSync(join(migrationsDir, 'down', name))
+  );
+
+  return {
+    batch,
+    entries,
+    manifestMissing,
+    missingDown,
+    clean: manifestMissing.length === 0 && missingDown.length === 0,
+  };
+}
+
+export function classifyMigrationVerification({
+  localRecords,
+  selectedEntries,
+  blockedMigrations = [],
+  approvedRemoteOnly = [],
+  appliedRows,
+  manifestMissing = [],
+  missingDown = [],
+}) {
+  const applied = new Map(appliedRows.map((row) => [row.name, row]));
+  const blocked = new Set(blockedMigrations);
+  const selected = new Set(selectedEntries.map((entry) => entry.name));
+  const approvedRemote = new Set(approvedRemoteOnly);
+  const migrations = [];
+  const issues = {
+    manifestMissing: [...manifestMissing],
+    missingDown: [...missingDown],
+    pending: [],
+    checksumMissing: [],
+    checksumMismatch: [],
+    remoteOnly: [],
+    blockedApplied: [],
+  };
+
+  for (const record of localRecords) {
+    const row = applied.get(record.name);
+    let state;
+    if (blocked.has(record.name)) {
+      state = row ? 'blocked-applied' : 'blocked-not-applied';
+      if (row) issues.blockedApplied.push(record.name);
+    } else if (!selected.has(record.name)) {
+      state = 'manifest-missing';
+    } else if (!row) {
+      state = 'pending';
+      issues.pending.push(record.name);
+    } else if (!row.checksum_sha256) {
+      state = 'checksum-missing';
+      issues.checksumMissing.push(record.name);
+    } else if (row.checksum_sha256 !== record.checksum) {
+      state = 'checksum-mismatch';
+      issues.checksumMismatch.push(record.name);
+    } else {
+      state = 'applied';
+    }
+    migrations.push({
+      name: record.name,
+      checksumSha256: record.checksum,
+      state,
+    });
+  }
+
+  const localNames = new Set(localRecords.map((record) => record.name));
+  const remoteOnlyApproved = [];
+  for (const row of appliedRows) {
+    if (localNames.has(row.name)) continue;
+    if (approvedRemote.has(row.name)) remoteOnlyApproved.push(row.name);
+    else issues.remoteOnly.push(row.name);
+  }
+
+  const issueCount = Object.values(issues).reduce(
+    (total, values) => total + values.length,
+    0
+  );
+  return {
+    clean: issueCount === 0,
+    issueCount,
+    issues,
+    migrations,
+    remoteOnlyApproved,
+  };
+}
+
+function buildMigrationVerificationReport({
+  manifest,
+  manifestPath,
+  batchName,
+  localMigrations,
+  migrationsDir,
+  appliedRows,
+  trackTable,
+  projectRef,
+}) {
+  const staticContract = inspectStaticMigrationContract({
+    manifest,
+    batchName,
+    localMigrations,
+    migrationsDir,
+  });
+  const localRecords = localMigrations.map((name) => migrationRecord({
+    migrationsDir,
+    entry: { name, mode: 'apply' },
+  }));
+  const verification = classifyMigrationVerification({
+    localRecords,
+    selectedEntries: staticContract.entries,
+    blockedMigrations: manifest.blockedMigrations,
+    approvedRemoteOnly: manifest.approvedRemoteOnly,
+    appliedRows,
+    manifestMissing: staticContract.manifestMissing,
+    missingDown: staticContract.missingDown,
+  });
+
+  return {
+    schemaVersion: 1,
+    generatedAt: new Date().toISOString(),
+    commitSha: process.env.GITHUB_SHA ?? process.env.CI_COMMIT_SHA ?? null,
+    namespace: manifest.namespace ?? trackTable,
+    environment: manifest.environment ?? null,
+    projectRef,
+    tracker: trackTable,
+    batch: batchName,
+    manifestSha256: sha256(readFileSync(manifestPath)),
+    localMigrationCount: localMigrations.length,
+    appliedTrackerCount: appliedRows.length,
+    ...verification,
+  };
+}
+
+function writeJsonReport(path, report) {
+  if (!path) return;
+  const absolutePath = resolve(path);
+  mkdirSync(dirname(absolutePath), { recursive: true });
+  writeFileSync(absolutePath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+}
+
+function printVerificationReport(report) {
+  console.log(`verification namespace=${report.namespace} batch=${report.batch}`);
+  console.log(
+    `local=${report.localMigrationCount} tracker=${report.appliedTrackerCount} `
+    + `issues=${report.issueCount} clean=${report.clean}`
+  );
+  for (const [name, values] of Object.entries(report.issues)) {
+    for (const value of values) console.log(`[${name}] ${value}`);
+  }
+}
+
 function getTarget({ manifest = null, write = false }) {
   const projectRef = process.env.SUPABASE_PROJECT_REF;
   const token = process.env.SUPABASE_ACCESS_TOKEN;
   if (!projectRef) fail('SUPABASE_PROJECT_REF is required; there is no default project.');
   if (!token) fail('SUPABASE_ACCESS_TOKEN is required.');
 
-  if (manifest && manifest.projectRef !== projectRef) {
-    fail(`Manifest projectRef ${manifest.projectRef} does not match target ${projectRef}.`);
-  }
+  if (manifest) assertManifestProjectRef(manifest.projectRef, projectRef);
 
   if (write) {
     const expectedRef = process.env.SUPABASE_EXPECTED_PROJECT_REF;
@@ -208,6 +383,14 @@ function getTarget({ manifest = null, write = false }) {
   }
 
   return { projectRef, token };
+}
+
+export function assertManifestProjectRef(manifestProjectRef, targetProjectRef) {
+  if (manifestProjectRef !== targetProjectRef) {
+    fail(
+      `Manifest projectRef ${manifestProjectRef} does not match target ${targetProjectRef}.`
+    );
+  }
 }
 
 export async function runSql({ projectRef, token, sql }) {
@@ -580,6 +763,25 @@ export async function runMigrate({ trackTable, migrationsDir, args }) {
   const target = getTarget({ manifest, write });
   if (write) await ensureTracker({ target, trackTable });
   const appliedRows = await loadApplied({ target, trackTable });
+
+  if (options.action === 'verifyAll') {
+    const report = buildMigrationVerificationReport({
+      manifest,
+      manifestPath,
+      batchName: options.batchName,
+      localMigrations,
+      migrationsDir,
+      appliedRows,
+      trackTable,
+      projectRef: target.projectRef,
+    });
+    writeJsonReport(options.jsonOut, report);
+    printVerificationReport(report);
+    if (options.requireClean && !report.clean) {
+      fail(`Migration verification failed with ${report.issueCount} issue(s).`);
+    }
+    return report;
+  }
 
   if (options.action === 'plan') {
     printPlan({
