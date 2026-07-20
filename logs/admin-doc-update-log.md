@@ -670,7 +670,6 @@
 - Validation: dry-run manifest 확인 → 전체 prod 트랜잭션 실행 후 rollback 검증 → 접근 제한 backup schema 생성 → apply → FK·행 수·Auth·법률·Storage checksum 재검증 순서로 수행했다. 최종 사용자 200명, 로그인 연결정보 209개, 프로필 200명, 로그인 연결정보 없는 사용자 0명, 정책 16개/이력 21개/잘못 연결된 현재 이력 0개, placeholder 0개, Storage 4 bucket/43 object/1,999,432 bytes다. 사용자별 핵심 17영역을 200명 전수 비교해 불일치 0건이었다.
 - Review hardening: 독립 리뷰에서 발견된 Auth 일회용 토큰·개발 권한 claim 복사, Storage 부분 실패·응답 유실·동시 writer 롤백 경계, prod-only 사용자/신뢰 프로필 필드 보존, 개발용 기관 코드 seed, 정책 이력 기본키 충돌, 불확실한 DB 쓰기와 응답 본문 읽기 실패, staging delimiter 충돌을 회귀 테스트로 먼저 재현하고 차단했다. Auth import는 일반 사용자 권한과 로그인 제공자 metadata만 허용하고, 과거 이관으로 남은 일회용 토큰은 비어 있지 않은 dev/prod 값이 정확히 같고 적용 순간에도 prod 값이 그대로일 때만 제거한다. Storage 결과 불명 실패는 자동 삭제하지 않으며 확정된 충돌 후보는 롤백 대상에서 제외한다. 수정 후 운영 dry-run과 전체 prod 트랜잭션 rollback 검증을 다시 통과했고 임시 staging schema가 0개임을 확인했다.
 - Auth token cleanup isolation: 운영 사용 중 전체 복구 manifest가 달라져 안전장치가 적용을 중단한 뒤, 다른 운영 데이터나 Storage를 다시 쓰지 않는 `--auth-token-cleanup-only` 경로를 추가했다. 이 경로는 정리 대상 토큰만으로 별도 manifest를 만들고, 대상 Auth 사용자만 접근 제한 schema에 백업한 뒤 예상 토큰과 현재 prod 값이 같은 경우에만 단일 트랜잭션으로 정리한다. 독립 리뷰와 전용 트랜잭션 rollback 검증 후 22명의 복사된 일회용 토큰 23개를 `auth_token_cleanup_backup_20260717003343716`에 백업하고 정리했으며, 재조회와 별도 감사에서 대상 토큰·임시 stage·위험 Auth 역할·허용하지 않은 app metadata가 모두 0건임을 확인했다.
-
 ## 2026-07-20 Vercel topik-prod 환경 교정·실배포·SMTP 재검증
 
 - Updated `docs/runbooks/admin-account-separation-prod-cutover.md`, `docs/runbooks/notification-worker-production-verification.md`, and `logs/admin-doc-update-log.md`.
