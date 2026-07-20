@@ -59,7 +59,7 @@ jobs:
       - name: Verify migration manifests and expand-only changes
         shell: bash
         run: |
-          npm run db:contracts:verify -- --json-out .ci-artifacts/migration-contracts.json
+          npm run db:contracts:verify -- --json-out ci-artifacts/migration-contracts.json
           base_sha="${{ github.event.pull_request.base.sha }}"
           if [ -z "$base_sha" ]; then
             base_sha="$(git rev-parse HEAD^)"
@@ -76,12 +76,12 @@ jobs:
           npm run db:shadow:verify --
           --v13-dir .ci/v13
           --v13-sha $V13_CONTRACT_SHA
-          --json-out .ci-artifacts/shadow-contract.json
+          --json-out ci-artifacts/shadow-contract.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: db-contract-${{ github.sha }}
-          path: .ci-artifacts/*.json
+          path: ci-artifacts/*.json
           if-no-files-found: error
           retention-days: 90
 
