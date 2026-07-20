@@ -88,6 +88,7 @@
 ### `docs/architecture`
 - `admin-overview.md`
 - `admin-data-source-transition.md`
+- `admin-cicd-pipeline.md` — PR shadow 계약, main 이후 topik-dev DB·권한·CRUD·브라우저 검증, 회사 저장소 fast-forward, topik-prod staged promotion·자동 rollback의 단일 배포 SoT
 - `writing-question-version-policy.md` — `POL-017` 문항 수정 이력, 현재 버전, 북마크·임시저장 최신화, 제출 시점 스냅샷 고정의 도메인 SoT
 - `users-registration-lifecycle-v13-handoff.md` — 이메일 미인증/약관 동의/회원 상태 불변식과 v13 원천 스키마·백필 요청 handoff(2026-06-26)
 - `shared-supabase-schema-ownership.md` — 공유 Supabase 스키마 소유권 매트릭스(객체별 owner/writer/reader/RLS/migration home — 2026-06-12 알림 기능 WP0-1)

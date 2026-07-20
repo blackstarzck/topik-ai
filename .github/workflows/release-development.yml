@@ -1,0 +1,111 @@
+name: Validate development
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: topik-admin-development
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '24.x'
+  SUPABASE_CLI_VERSION: '2.105.0'
+  V13_CONTRACT_SHA: ${{ vars.V13_CONTRACT_SHA }}
+  SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+  SUPABASE_EXPECTED_PROJECT_REF: ${{ vars.SUPABASE_EXPECTED_PROJECT_REF }}
+  SUPABASE_MIGRATION_OPERATOR: github-actions-development
+  SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+  E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+  E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+  E2E_TARGET_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+  ADMIN_E2E_BASE_URL: http://127.0.0.1:4188
+  VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+  VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+  VITE_SUPABASE_DISABLED: 'false'
+
+jobs:
+  validate:
+    name: topik-dev-validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    environment: development
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          repository: blackstarzck/topik-project-v13
+          ref: ${{ env.V13_CONTRACT_SHA }}
+          path: .ci/v13
+          sparse-checkout: supabase
+          sparse-checkout-cone-mode: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: ${{ env.SUPABASE_CLI_VERSION }}
+      - run: npm ci
+      - name: Lock the development identity and target
+        shell: bash
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          node scripts/ci/validate-development-env.mjs
+          mkdir -p development-evidence
+      - name: Re-run mandatory quality and mock browser gates
+        shell: bash
+        run: |
+          npm run harness:check
+          npm run check:migration-boundary -- --v13-root=.ci/v13
+          npm run check:client-source-secrets
+          npm run db:contracts:verify -- --json-out development-evidence/migration-contracts.json
+          npm run check:expand-migrations -- --base "$GITHUB_SHA^"
+          npm run test:unit
+          npm run build
+          npx playwright install --with-deps chromium
+          npm run test:e2e
+      - name: Rebuild the pinned cross-repository shadow schema
+        run: >-
+          npm run db:shadow:verify --
+          --v13-dir .ci/v13
+          --v13-sha $V13_CONTRACT_SHA
+          --json-out development-evidence/shadow-contract.json
+      - name: Apply topik-dev migrations in ownership order
+        shell: bash
+        run: |
+          npm run db:migrate -- --apply --manifest scripts/db/manifests/writing-development-release.json --batch release-all
+          npm run db:migrate -- --baseline-existing --manifest scripts/db/manifests/writing-development-release.json --batch release-all
+          npm run db:admin:migrate -- --apply --manifest scripts/db/manifests/admin-development-reconciliation.json --batch release-all
+          npm run db:admin:migrate -- --baseline-existing --manifest scripts/db/manifests/admin-development-reconciliation.json --batch release-all
+      - name: Verify topik-dev trackers, Users schema, and permissions
+        shell: bash
+        run: |
+          npm run db:migrate -- --verify-all --require-clean --manifest scripts/db/manifests/writing-development-release.json --batch release-all --json-out development-evidence/writing-migrations.json
+          npm run db:admin:migrate -- --verify-all --require-clean --manifest scripts/db/manifests/admin-development-reconciliation.json --batch release-all --json-out development-evidence/admin-migrations.json
+          npm run db:users-contract -- --expected-project-ref "$SUPABASE_EXPECTED_PROJECT_REF" --expected-fingerprint-file development-evidence/shadow-contract.json --json-out development-evidence/users-contract.json
+      - name: Verify topik-dev CRUD and browser flows with the configured administrator
+        run: >-
+          node scripts/ci/run-release-e2e.mjs
+          --target development
+          --json-out development-evidence/development-e2e.json
+      - name: Write the PII-free development evidence
+        run: >-
+          node scripts/ci/write-development-evidence.mjs
+          --json-out development-evidence/development.json
+          --commit-sha "$GITHUB_SHA"
+          --v13-sha "$V13_CONTRACT_SHA"
+          --project-ref "$SUPABASE_PROJECT_REF"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: development-evidence-${{ github.sha }}
+          path: development-evidence/*.json
+          if-no-files-found: error
+          retention-days: 90

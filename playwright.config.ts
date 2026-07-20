@@ -15,7 +15,8 @@ export default defineConfig({
     url: 'http://127.0.0.1:4177',
     env: {
       ...process.env,
-      VITE_SUPABASE_DISABLED: 'true'
+      VITE_SUPABASE_DISABLED: 'true',
+      VITE_SUPABASE_URL: 'https://fglggyfvzjdsbyckinqa.supabase.co'
     },
     reuseExistingServer: false,
     timeout: 120_000
