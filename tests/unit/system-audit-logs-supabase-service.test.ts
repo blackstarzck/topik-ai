@@ -81,4 +81,21 @@ describe('mapSupabaseAuditLogRow', () => {
     expect(row.reason).toBe('');
     expect(row.createdAt).toBe('2026-06-17 01:02:03');
   });
+
+  it('normalizes the persisted User target to the Users UI contract', () => {
+    const row = mapSupabaseAuditLogRow({
+      log_id: '00000000-0000-0000-0000-000000000005',
+      target_type: 'User',
+      target_id: 'U00002',
+      action: 'user_status_changed',
+      actor: 'Platform Admin',
+      reason: 'status test',
+      diff: null,
+      payload: null,
+      created_at: '2026-07-20T00:00:00Z',
+      total_count: 1
+    });
+
+    expect(row.targetType).toBe('Users');
+  });
 });

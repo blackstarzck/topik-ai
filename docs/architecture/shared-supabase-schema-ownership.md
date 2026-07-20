@@ -81,7 +81,7 @@
 2026-06-17 Users 회원 목록 P0 결손 RPC 핫픽스 기록:
 - 근거: `supabase/migrations-admin/20260617210000_admin_users_directory.sql` + `supabase/migrations-admin/down/20260617210000_admin_users_directory.sql`.
 - 적용: `admin_schema_migrations` tracker 기준 2026-06-17 dev DB 적용 완료.
-- 경계: 신규 테이블은 만들지 않는다. `profiles`, `auth.users`, `writing_submissions`는 v13 소유이며, `get_admin_users(search text, sort text, page integer, page_size integer, affiliation text default null)`가 platform_admin 전용 read RPC로 `profiles` + `auth.users` 조인과 `writing_submissions` 집계, `gender`, `phone_masked`, `total_count` window를 제공한다. 2026-07-09 보강의 `admin_export_users(p_reason,p_include_full_phone,p_affiliation)`도 v13 DDL 변경 없이 `profiles.gender`/`profiles.phone`을 읽고 감사 로그를 남기는 admin RPC 경계로 둔다.
+- 경계: 신규 테이블은 만들지 않는다. `profiles`, `auth.users`, `writing_submissions`는 v13 소유이며, `get_admin_users(search text, sort text, page integer, page_size integer, affiliation text default null)`가 platform_admin 전용 read RPC로 `profiles` + `auth.users` 조인과 `writing_submissions` 집계, `gender`, `phone_masked`, `total_count` window를 제공한다. 전화번호 원천은 v13의 `profiles.phone_country_code` + `profiles.phone_number`이며, dev에만 남아 있을 수 있는 `profiles.phone`은 JSON 호환 fallback으로만 읽는다. `admin_export_users`도 이 projection을 공유하며 v13 DDL을 변경하지 않는다.
 - 쓰기 경계: `admin_set_user_status(target_id uuid, new_status text)`는 platform_admin 전용 write RPC이며 `new_status`는 `active`/`blocked`만 허용하고 `deleted` 사용자는 차단한다. v13 `profiles` DDL은 변경하지 않고 `profiles.status` 컬럼만 토글한다.
 - 트리거/감사: `profiles.status` 토글은 `protect_profile_columns` 트리거의 admin `auth.uid()` bypass로 통과 검증됐다. 감사 로그는 `admin_audit_logs`에 `action='user_status_changed'`, `target_table='User'`, `target_id=userId`로 기록한다.
 

@@ -122,6 +122,7 @@
   - `get_admin_users(search, sort, page, page_size, affiliation)`는 v13 `profiles`/`auth.users` 조인과 `writing_submissions` 집계 및 `gender`/`phone_masked`를 반환하고, `admin_set_user_status(target_id, new_status)`는 `profiles.status`만 `active`/`blocked`로 토글한다. 신규 테이블은 없고 v13 `profiles` DDL은 변경하지 않는다.
   - `Resolved`(2026-06-26): Admin 노출 `회원 상태`는 `profiles.status` 원천값 단독이 아니라 `get_admin_users.registration_status` 기반 값으로 표시한다. 이메일 미인증은 `인증 대기`, 인증 후 약관 미동의는 `약관 대기`이며, 이메일 미인증 약관 집계는 RPC에서 `none/null`로 정규화한다.
   - `Resolved`(2026-07-09): 회원 목록 성별 컬럼은 `gender`, 전화번호 컬럼은 `phone_masked`만 표시하고, 회원 정보 내보내기는 `admin_export_users` RPC + 사유 필수 + `User + batch:{uuid}` 감사 로그 계약으로 확정했다. 기본 내보내기는 현재 목록 조건 + 전체 컬럼 + 마스킹 전화번호이며, 선택 행 scope와 XLSX 컬럼 선택을 지원한다. 원문 포함 여부와 선택 컬럼 key, 안전한 필터 요약은 감사 payload에 남기되 검색어 원문/성별 값/전화번호 값/파일 내용은 저장하지 않는다.
+  - `Resolved`(2026-07-20): prod에는 legacy `profiles.phone`이 없어 Users RPC 3종이 실패하던 환경 드리프트를 `private.admin_profile_phone(to_jsonb(profile_row))`로 해소했다. canonical source는 `phone_country_code` + `phone_number`이고 v13 DDL/DML은 무변경이다. 함께 발견된 감사 로그 저장 Target `User`/UI alias `Users` 혼재는 read RPC projection과 프런트 URL/row 정규화로 복원했다.
 - 미확정/누락/오구현
   - `Resolved`(2026-06-17): 정지/해제 조치 결과는 Supabase 모드에서 `admin_set_user_status` RPC를 통해 실제 `profiles.status`에 반영되고, `admin_audit_logs`에 `target_table='User'`, action `user_status_changed`로 기록된다.
   - `미확정`(v13 handoff): v13 사용자 앱의 가입 플로우는 이메일 미인증 `user_consents` 차단, 필수 약관 전 사용자 기능 활성화 차단, dry-run/backfill로 정리해야 한다.

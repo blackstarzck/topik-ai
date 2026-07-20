@@ -76,8 +76,8 @@ last_reviewed_at: "2026-07-09"
 
 | 조치 | 파괴적 여부 | 확인 단계 | 사유/근거 입력 | Target Type | Target ID | 감사 로그 확인 경로 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 회원 정지/해제 | 예 | 필수 | 필수 | User | userId | /system/audit-logs?targetType=User&targetId={userId} |
-| 회원 정보 내보내기 | 개인정보 반출 | 필수 | 필수 | User | batch:{uuid} | /system/audit-logs?targetType=User&targetId=batch:{uuid} |
+| 회원 정지/해제 | 예 | 필수 | 필수 | User | userId | /system/audit-logs?targetType=Users&targetId={userId} |
+| 회원 정보 내보내기 | 개인정보 반출 | 필수 | 필수 | User | batch:{uuid} | /system/audit-logs?targetType=Users&targetId=batch:{uuid} |
 
 ## 7. 사용자 화면 동기화 포인트
 
@@ -116,6 +116,7 @@ last_reviewed_at: "2026-07-09"
 - 마이그레이션: `supabase/migrations-admin/20260617210000_admin_users_directory.sql`(+ down), tracker `admin_schema_migrations`, 2026-06-17 dev DB 적용 완료.
 - 신규 테이블 0건. `profiles`, `auth.users`, `writing_submissions`는 v13 소유이며, v13 `profiles` DDL은 변경하지 않는다.
 - read RPC: `get_admin_users(search text, sort text, page integer, page_size integer, affiliation text default null)`는 platform_admin 전용이다. PostgREST 매칭을 위해 인자명 `search`/`sort`/`page`/`page_size`/`affiliation`은 프론트 JSON 키와 정확히 일치해야 한다. 목록은 성별 `gender`와 전화번호 `phone_masked`를 반환한다.
+- 전화번호 원천은 v13 `profiles.phone_country_code` + `profiles.phone_number`이며, admin RPC는 optional legacy `phone`을 JSON fallback으로만 읽는다. 감사 로그 저장 Target은 `User`, UI 조회 alias는 `Users`로 정규화한다.
 - write RPC: `admin_set_user_status(target_id uuid, new_status text)`는 platform_admin 전용이며 `active`/`blocked`만 허용하고 `deleted`는 차단한다. 감사 로그는 `target_table='User'`, action `user_status_changed`다.
 - export RPC: `admin_export_users(p_reason, p_include_full_phone, p_affiliation, p_scope, p_selected_user_ids, p_search, p_search_field, p_start_date, p_end_date, p_gender_filters, p_tier_filters, p_subscription_status_filters, p_membership_status_filters, p_terms_consent_status_filters, p_email_verification_status_filters, p_selected_column_keys)`는 platform_admin 전용이며 사유 필수, 감사 action `users_exported`, Target ID `batch:{uuid}`를 사용한다. 파일에는 사용자 ID 필수 + 선택 컬럼만 포함되며, 감사 payload에는 검색어 원문/성별 값/전화번호 값/파일 내용을 저장하지 않는다.
 

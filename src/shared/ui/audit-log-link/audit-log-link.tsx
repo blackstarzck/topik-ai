@@ -1,5 +1,7 @@
 ﻿import { Link } from 'react-router-dom';
 
+import { normalizeTargetType } from '../../model/target-type-label';
+
 type AuditLogLinkProps = {
   targetType: string;
   targetId: string;
@@ -12,7 +14,7 @@ export function AuditLogLink({
   label
 }: AuditLogLinkProps): JSX.Element {
   const query = new URLSearchParams({
-    targetType,
+    targetType: normalizeTargetType(targetType),
     targetId
   }).toString();
 

@@ -74,7 +74,7 @@ last_reviewed_at: "2026-07-14"
 
 | 조치 | 파괴적 여부 | 확인 단계 | 사유/근거 입력 | Target Type | Target ID | 감사 로그 확인 경로 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 회원 상세 주요 조치 | 예 | 필수 | 필수 | User | 대상 ID | /system/audit-logs?targetType=User&targetId={targetId} |
+| 회원 상세 주요 조치 | 예 | 필수 | 필수 | User | 대상 ID | /system/audit-logs?targetType=Users&targetId={targetId} |
 
 ## 7. 사용자 화면 동기화 포인트
 

@@ -5,7 +5,10 @@ import { Link, useSearchParams } from 'react-router-dom';
 
 import { fetchSystemAuditLogsSafe } from '../api/system-audit-logs-service';
 import type { SystemAuditLogRow as AuditLogRow } from '../model/system-log-types';
-import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
+import {
+  getTargetTypeLabel,
+  normalizeTargetType
+} from '../../../shared/model/target-type-label';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
@@ -181,7 +184,7 @@ export default function SystemAuditLogsPage(): JSX.Element {
   const [loadErrorMessage, setLoadErrorMessage] = useState('');
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedRow, setSelectedRow] = useState<AuditLogRow | null>(null);
-  const targetTypeFilter = searchParams.get('targetType') ?? '';
+  const targetTypeFilter = normalizeTargetType(searchParams.get('targetType') ?? '');
   const targetIdFilter = searchParams.get('targetId') ?? '';
   const searchField = searchParams.get('searchField') ?? 'all';
   const keyword = searchParams.get('keyword') ?? '';

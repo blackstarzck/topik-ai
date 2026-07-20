@@ -1,4 +1,5 @@
 import { supabaseClient } from '../../../shared/api/supabase-client';
+import { normalizeTargetType } from '../../../shared/model/target-type-label';
 import type { SystemAuditLogRow } from '../model/system-log-types';
 import { decorateAuditLogAction } from './system-audit-logs-service';
 
@@ -35,7 +36,7 @@ function toDateTime(value: string): string {
 export function mapSupabaseAuditLogRow(row: AuditLogDbRow): SystemAuditLogRow {
   return decorateAuditLogAction({
     logId: row.log_id,
-    targetType: row.target_type,
+    targetType: normalizeTargetType(row.target_type),
     targetId: row.target_id,
     action: row.action,
     actor: row.actor ?? '',
