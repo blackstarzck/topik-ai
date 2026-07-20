@@ -670,3 +670,15 @@
 - Validation: dry-run manifest 확인 → 전체 prod 트랜잭션 실행 후 rollback 검증 → 접근 제한 backup schema 생성 → apply → FK·행 수·Auth·법률·Storage checksum 재검증 순서로 수행했다. 최종 사용자 200명, 로그인 연결정보 209개, 프로필 200명, 로그인 연결정보 없는 사용자 0명, 정책 16개/이력 21개/잘못 연결된 현재 이력 0개, placeholder 0개, Storage 4 bucket/43 object/1,999,432 bytes다. 사용자별 핵심 17영역을 200명 전수 비교해 불일치 0건이었다.
 - Review hardening: 독립 리뷰에서 발견된 Auth 일회용 토큰·개발 권한 claim 복사, Storage 부분 실패·응답 유실·동시 writer 롤백 경계, prod-only 사용자/신뢰 프로필 필드 보존, 개발용 기관 코드 seed, 정책 이력 기본키 충돌, 불확실한 DB 쓰기와 응답 본문 읽기 실패, staging delimiter 충돌을 회귀 테스트로 먼저 재현하고 차단했다. Auth import는 일반 사용자 권한과 로그인 제공자 metadata만 허용하고, 과거 이관으로 남은 일회용 토큰은 비어 있지 않은 dev/prod 값이 정확히 같고 적용 순간에도 prod 값이 그대로일 때만 제거한다. Storage 결과 불명 실패는 자동 삭제하지 않으며 확정된 충돌 후보는 롤백 대상에서 제외한다. 수정 후 운영 dry-run과 전체 prod 트랜잭션 rollback 검증을 다시 통과했고 임시 staging schema가 0개임을 확인했다.
 - Auth token cleanup isolation: 운영 사용 중 전체 복구 manifest가 달라져 안전장치가 적용을 중단한 뒤, 다른 운영 데이터나 Storage를 다시 쓰지 않는 `--auth-token-cleanup-only` 경로를 추가했다. 이 경로는 정리 대상 토큰만으로 별도 manifest를 만들고, 대상 Auth 사용자만 접근 제한 schema에 백업한 뒤 예상 토큰과 현재 prod 값이 같은 경우에만 단일 트랜잭션으로 정리한다. 독립 리뷰와 전용 트랜잭션 rollback 검증 후 22명의 복사된 일회용 토큰 23개를 `auth_token_cleanup_backup_20260717003343716`에 백업하고 정리했으며, 재조회와 별도 감사에서 대상 토큰·임시 stage·위험 Auth 역할·허용하지 않은 app metadata가 모두 0건임을 확인했다.
+
+## 2026-07-20 Vercel topik-prod 환경 교정·실배포·SMTP 재검증
+
+- Updated `docs/runbooks/admin-account-separation-prod-cutover.md`, `docs/runbooks/notification-worker-production-verification.md`, and `logs/admin-doc-update-log.md`.
+- Reason: 실제 운영 프로젝트가 로컬 `.vercel` 링크의 `topik-ai`가 아니라 Vercel `topik-admin`이었고, 배포된 서버 함수가 dev Supabase 기본값/키 조합으로 유효한 운영 관리자 JWT를 거부했다. Production/Preview의 browser/server Supabase 환경을 `topik-prod`로 명시하고 최신 컷오버 commit을 운영 alias에 재배포한 실제 상태로 런북을 교정했다.
+- Validation: 최종 Production bundle의 prod ref 포함/dev ref 미포함, 현재 관리자 로그인, 정기 쿠폰 CRUD·감사 로그 E2E 1/1 및 테스트 행 정리, 실제 SMTP `processed=1/sent=1/failed=0`, provider message ID·`sent_at`, 발송 이력 `완료`, API 인증 경계, cross-app attempts sent/pending/failed `28/0/0`, v13 boundary 3 files/14 tests를 확인했다. `harness:check`, build, migration/secret/admin-env 게이트는 통과했다. 통합 transfer wrapper는 current v13 `main`에서 제거된 과거 SOT 문서 5개를 요구하는 stale checklist 때문에 미통과이며 계약 교정 전 완료로 표시하지 않는다.
+
+## 2026-07-20 운영 Users phone source·감사 로그 alias 정합화
+
+- Updated `supabase/migrations-admin/20260720102000_users_phone_source_alignment.sql`, `supabase/migrations-admin/20260720104000_users_audit_target_projection.sql`, Users/System 감사 로그 프런트 정규화, 관련 Users IA/page-sync/data-contract/data-usage/source-transition/ownership/gap 문서, migration manifest와 unit tests.
+- Reason: dev에는 legacy `profiles.phone`이 있지만 prod에는 split field만 있어 배포 회원 목록이 `column p.phone does not exist`로 실패했다. CRUD 검증 중 저장 Target `User`와 화면 링크 `Users` 혼재로 감사 로그가 0건 표시되는 후속 결함도 확인했다.
+- Validation: 두 admin 마이그레이션을 dev/prod에 동일 적용하고 목록 20/총 200, 상세 1, 내보내기 1을 확인했다. Production 브라우저에서 회원 검색, 상세, 정상→정지→정상 원복, 감사 로그 2건과 상세 역링크를 확인했다. v13 `profiles` DDL/DML은 변경하지 않았다.

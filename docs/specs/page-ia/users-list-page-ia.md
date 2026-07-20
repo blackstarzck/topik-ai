@@ -51,7 +51,7 @@
 ### 데이터 source
 
 - Supabase 모드의 회원 목록 source는 `get_admin_users(search, sort, page, page_size, affiliation)` RPC입니다.
-- read source는 v13 소유 `profiles`와 `auth.users` 조인, `writing_submissions` 제출 수/최근 활동 집계입니다. `profiles.gender`는 성별 표시값으로 읽고, `profiles.phone`은 목록에서 `phone_masked`로만 노출합니다. 신규 테이블은 만들지 않으며 v13 `profiles` DDL은 변경하지 않습니다.
+- read source는 v13 소유 `profiles`와 `auth.users` 조인, `writing_submissions` 제출 수/최근 활동 집계입니다. `profiles.gender`는 성별 표시값으로 읽고, 전화번호는 canonical `profiles.phone_country_code` + `profiles.phone_number`를 조합해 목록에서 `phone_masked`로만 노출합니다. optional legacy `profiles.phone`은 row JSON fallback으로만 허용합니다. 신규 테이블은 만들지 않으며 v13 `profiles` DDL은 변경하지 않습니다.
 - 정지/해제 source는 `admin_set_user_status(target_id, new_status)` RPC이며 `profiles.status`만 `active`/`blocked`로 토글하고 `deleted`는 차단합니다.
 - 회원 정보 내보내기 source는 `admin_export_users(p_reason, p_include_full_phone, p_affiliation, p_scope, p_selected_user_ids, 목록 필터, p_selected_column_keys)` RPC입니다. 사유는 필수이고 기본 범위는 현재 목록 조건입니다. 선택 행이 있으면 선택 회원만 내보낼 수 있으며, 파일에는 사용자 ID 필수 + 선택 컬럼만 포함됩니다. 전화번호 컬럼을 선택하지 않으면 원문 포함은 비활성화합니다.
 
@@ -86,9 +86,9 @@
 | 액션 | 성격 | 대상 식별 기준 | 확인/사유 필요 여부 | 성공 후 피드백 | 감사 로그 확인 경로 |
 | --- | --- | --- | --- | --- | --- |
 | 회원 상세 | 조회 | User + userId | 불필요 | 회원 상세 결과 패널을 열거나 관련 화면으로 이동합니다. | 조회 액션이므로 별도 감사 로그는 필요하지 않거나 원본 화면 흐름을 사용합니다. |
-| 회원 정지/해제 | 파괴적 | User + userId | 확인 + 사유 필수 | 회원 정지/해제 완료 후 대상 식별 정보와 후속 확인 경로를 안내합니다. | /system/audit-logs?targetType=User&targetId={userId} |
-| 회원 정보 내보내기 | 개인정보 반출 | User + batch:{uuid} | 사유 필수 | 엑셀 파일을 다운로드하고 반출 내역이 감사 로그에 기록되었음을 안내합니다. | /system/audit-logs?targetType=User&targetId=batch:{uuid} |
-| 관리자 메모 | 수정 | User + userId | 사유 권장 | 관리자 메모 저장 후 대상 식별 정보와 후속 확인 경로를 안내합니다. | /system/audit-logs?targetType=User&targetId={userId} |
+| 회원 정지/해제 | 파괴적 | User + userId | 확인 + 사유 필수 | 회원 정지/해제 완료 후 대상 식별 정보와 후속 확인 경로를 안내합니다. | /system/audit-logs?targetType=Users&targetId={userId} |
+| 회원 정보 내보내기 | 개인정보 반출 | User + batch:{uuid} | 사유 필수 | 엑셀 파일을 다운로드하고 반출 내역이 감사 로그에 기록되었음을 안내합니다. | /system/audit-logs?targetType=Users&targetId=batch:{uuid} |
+| 관리자 메모 | 수정 | User + userId | 사유 권장 | 관리자 메모 저장 후 대상 식별 정보와 후속 확인 경로를 안내합니다. | /system/audit-logs?targetType=Users&targetId={userId} |
 
 ## 8. 상태값/정책/운영 규칙
 

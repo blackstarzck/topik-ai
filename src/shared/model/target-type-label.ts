@@ -38,3 +38,7 @@
 export function getTargetTypeLabel(targetType: string): string {
   return targetTypeLabelMap[targetType] ?? targetType;
 }
+
+export function normalizeTargetType(targetType: string): string {
+  return targetType === "User" ? "Users" : targetType;
+}

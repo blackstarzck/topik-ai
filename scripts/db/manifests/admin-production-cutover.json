@@ -2,7 +2,7 @@
   "namespace": "admin",
   "environment": "production",
   "projectRef": "eymlabowhfgtxbiqwxqh",
-  "expectedLocalCount": 83,
+  "expectedLocalCount": 85,
   "batches": {
     "notification-baseline": {
       "from": "20260612170000_notification_admin_tables.sql",
@@ -42,9 +42,19 @@
         "20260716131000_admin_revoke_public_refund_rpc_execute.sql"
       ]
     },
+    "users-phone-source-alignment": {
+      "migrations": [
+        "20260720102000_users_phone_source_alignment.sql"
+      ]
+    },
+    "users-audit-target-projection": {
+      "migrations": [
+        "20260720104000_users_audit_target_projection.sql"
+      ]
+    },
     "baseline-all": {
       "from": "20260612170000_notification_admin_tables.sql",
-      "to": "20260716131000_admin_revoke_public_refund_rpc_execute.sql"
+      "to": "20260720104000_users_audit_target_projection.sql"
     }
   }
 }

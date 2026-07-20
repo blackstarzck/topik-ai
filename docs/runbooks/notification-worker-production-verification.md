@@ -130,6 +130,17 @@ Evidence to record:
 - To complete the approved real-send check without falsifying delivery state, the current worker source was executed locally with the production project secret resolved in memory from the Supabase Management API and the configured SMTP transport. It returned `processed=1, sent=1, failed=0`; the attempt is `sent` with `provider_message_id` and `sent_at`, retry count `0`, and no error.
 - Production Admin `Message > 발송 이력` shows the same dispatch as `완료` and the attempt as `성공`. The dispatch ledger `recipient_count` remains `0` while the actual attempt aggregate is `1`; this is a separate data-consistency gap.
 
+2026-07-20 resolution note:
+
+- Vercel project `topik-admin` Production/Preview now uses `topik-prod` for the browser URL/publishable key and the server-only Supabase URL/secret/project ref. The disabled legacy anon key is not used as a fallback; both public-key variables resolve to the active publishable key.
+- Production source `34034d0ba449d0fde39e5cf21275af2db2583de4` was rebuilt with the corrected Project Settings and assigned to `https://topik-admin.vercel.app`.
+- The final production bundle contains `eymlabowhfgtxbiqwxqh` and does not contain the dev ref `fglggyfvzjdsbyckinqa`.
+- The configured administrator login and production coupon CRUD/audit Playwright test pass after the final redeploy; the test business row is deleted.
+- The same valid `topik-prod` administrator JWT that previously received `401 invalid_session` now receives `200` from the deployed worker. The approved live dispatch returned `processed=1`, `sent=1`, `failed=0`; its attempt has a provider message ID, `sent_at`, retry count `0`, and no error. Production Admin history shows the dispatch as `완료`.
+- Unauthenticated worker GET and adjacent unauthenticated auth-email/invite POST checks return `401`. A subsequent authenticated worker POST returns `200` with an empty queue.
+- `check:notification-cross-app-state` passes with no pending or failed attempts and no open dispatches.
+- The repository-wide transfer wrapper is not yet green because its transfer SOT checklist still names five v13 documents removed from current v13 `main`. The current v13 `pnpm harness:admin-boundary` passes owner-read and transition-route checks (3 test files, 14 tests). Do not mark the checklist wrapper complete until its retired-document contract is updated.
+
 ## Phase 2 - Production Worker Smoke
 
 Run unauthenticated smoke first:
