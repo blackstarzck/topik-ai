@@ -7,11 +7,9 @@ test('dashboard backup card is isolated and links authorized administrators to d
 
   const card = page.locator('.ant-card').filter({ hasText: '백업 상태' });
   await expect(card).toBeVisible();
-  await expect(card).toContainText('마지막 전체 성공');
-  await expect(card).toContainText('데이터베이스');
-  await expect(card).toContainText('파일 저장소');
-  await expect(card).toContainText('운영 백업 상태의 개발환경 복사본입니다.');
-  await expect(card).toContainText('마지막 동기화');
+  await expect(card).toContainText('종합 상태');
+  await expect(card).toContainText('실행 시각');
+  await expect(card.locator('.ant-table-tbody > tr.ant-table-row')).toHaveCount(4);
   await expect(card.getByRole('button', { name: '백업 관리 보기' })).toBeVisible();
 
   await card.getByRole('button', { name: '백업 관리 보기' }).click();

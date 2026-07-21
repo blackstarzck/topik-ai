@@ -1,15 +1,15 @@
-import { Alert, Button, Card, Descriptions, Space, Typography } from 'antd';
+import { Alert, Button, Card, Descriptions, Space, Table, Typography } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { fetchBackupSummarySafe } from '../../system/api/backups-service';
+import { fetchBackupRunsSafe, fetchBackupSummarySafe } from '../../system/api/backups-service';
 import { backupViewContext } from '../../system/api/backup-data-source';
 import {
   backupComponentStatusLabels,
+  backupRunStatusLabels,
   formatBackupDateTime,
-  isRestoreDrillWarning,
   resolveBackupHealth,
-  resolveDiskStatus,
+  type BackupRun,
   type BackupSummary
 } from '../../system/model/backup-types';
 import { usePermissionStore } from '../../system/model/permission-store';
@@ -17,6 +17,31 @@ import type { AsyncState } from '../../../shared/model/async-state';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 
 const { Text } = Typography;
+
+const RECENT_RUN_COUNT = 4;
+
+// 카드 폭이 좁아 연도를 뺀 짧은 시각으로 표기한다(KST).
+const shortDateTimeFormatter = new Intl.DateTimeFormat('ko-KR', {
+  timeZone: 'Asia/Seoul',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false
+});
+
+function formatShortDateTime(value: string | null): string {
+  if (!value) return '기록 없음';
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? '기록 없음' : shortDateTimeFormatter.format(parsed);
+}
+
+function failedComponentLabels(run: BackupRun): string[] {
+  const parts: string[] = [];
+  if (run.databaseStatus === 'failed') parts.push('DB');
+  if (run.storageStatus === 'failed') parts.push('저장소');
+  return parts;
+}
 
 export function BackupStatusCard(): JSX.Element {
   const navigate = useNavigate();
@@ -26,7 +51,15 @@ export function BackupStatusCard(): JSX.Element {
     () => admins.find((admin) => admin.adminId === currentAdminId)?.permissions.includes('system.backups.read') ?? false,
     [admins, currentAdminId]
   );
-  const [state, setState] = useState<AsyncState<BackupSummary | null>>({
+  const [summaryState, setSummaryState] = useState<AsyncState<BackupSummary | null>>({
+    status: 'pending',
+    data: null,
+    errorMessage: null,
+    errorCode: null
+  });
+  // 이력 조회 RPC는 system.backups.read 권한이 필요해서 권한이 없는 관리자는
+  // 요약(Descriptions) 보기로 폴백한다.
+  const [runsState, setRunsState] = useState<AsyncState<BackupRun[]>>({
     status: 'pending',
     data: null,
     errorMessage: null,
@@ -36,11 +69,11 @@ export function BackupStatusCard(): JSX.Element {
 
   useEffect(() => {
     const controller = new AbortController();
-    setState((current) => ({ ...current, status: 'pending', errorMessage: null, errorCode: null }));
+    setSummaryState((current) => ({ ...current, status: 'pending', errorMessage: null, errorCode: null }));
     void fetchBackupSummarySafe(controller.signal).then((result) => {
       if (controller.signal.aborted) return;
       if (result.ok) {
-        setState({
+        setSummaryState({
           status: result.data.latestRunId ? 'success' : 'empty',
           data: result.data,
           errorMessage: null,
@@ -48,7 +81,7 @@ export function BackupStatusCard(): JSX.Element {
         });
         return;
       }
-      setState((current) => ({
+      setSummaryState((current) => ({
         ...current,
         status: 'error',
         errorMessage: result.error.message,
@@ -58,105 +91,138 @@ export function BackupStatusCard(): JSX.Element {
     return () => controller.abort();
   }, [reloadKey]);
 
+  useEffect(() => {
+    if (!canReadDetails) {
+      setRunsState({ status: 'empty', data: [], errorMessage: null, errorCode: null });
+      return;
+    }
+    const controller = new AbortController();
+    setRunsState((current) => ({ ...current, status: 'pending', errorMessage: null, errorCode: null }));
+    void fetchBackupRunsSafe({ page: 1, pageSize: RECENT_RUN_COUNT }, controller.signal).then((result) => {
+      if (controller.signal.aborted) return;
+      if (result.ok) {
+        setRunsState({
+          status: result.data.rows.length > 0 ? 'success' : 'empty',
+          data: result.data.rows,
+          errorMessage: null,
+          errorCode: null
+        });
+        return;
+      }
+      setRunsState((current) => ({
+        ...current,
+        status: 'error',
+        errorMessage: result.error.message,
+        errorCode: result.error.code
+      }));
+    });
+    return () => controller.abort();
+  }, [canReadDetails, reloadKey]);
+
   const handleRetry = useCallback(() => setReloadKey((current) => current + 1), []);
-  const summary = state.data;
+  const summary = summaryState.data;
+  const runs = runsState.data ?? [];
   const health = resolveBackupHealth(summary);
-  const diskStatus = resolveDiskStatus(summary?.diskUsedPercent ?? null);
-  const restoreWarning = isRestoreDrillWarning(summary);
+  const loading =
+    (summaryState.status === 'pending' && !summary) ||
+    (canReadDetails && runsState.status === 'pending' && runs.length === 0);
+  const hasError = summaryState.status === 'error' || runsState.status === 'error';
 
   return (
     <Card
       title="백업 상태"
-      loading={state.status === 'pending' && !summary}
+      loading={loading}
       extra={canReadDetails ? (
         <Button type="link" onClick={() => navigate('/system/backups')}>
           백업 관리 보기
         </Button>
       ) : null}
     >
-      {backupViewContext === 'mirror' ? (
-        <Alert
-          type="info"
-          showIcon
-          style={{ marginBottom: 16 }}
-          message="운영 백업 상태의 개발환경 복사본입니다."
-          description={`마지막 동기화: ${formatBackupDateTime(summary?.lastReportReceivedAt ?? null)}`}
-        />
-      ) : null}
+      <Space direction="vertical" size={12} style={{ width: '100%' }}>
+        <Space size={8}>
+          <Text type="secondary">종합 상태</Text>
+          <StatusBadge status={health} />
+        </Space>
 
-      {state.status === 'error' ? (
-        <Alert
-          type="error"
-          showIcon
-          style={{ marginBottom: 16 }}
-          message="백업 상태를 불러오지 못했습니다."
-          description={summary ? '마지막으로 확인된 값을 유지하고 있습니다.' : state.errorMessage}
-          action={<Button size="small" onClick={handleRetry}>재시도</Button>}
-        />
-      ) : null}
+        {hasError ? (
+          <Alert
+            type="error"
+            showIcon
+            message="백업 상태를 불러오지 못했습니다."
+            description={summary || runs.length > 0 ? '마지막으로 확인된 값을 유지하고 있습니다.' : summaryState.errorMessage ?? runsState.errorMessage}
+            action={<Button size="small" onClick={handleRetry}>재시도</Button>}
+          />
+        ) : null}
 
-      {state.status === 'empty' ? (
-        <Alert
-          type="info"
-          showIcon
-          message="아직 수신된 백업 기록이 없습니다."
-          description="온프레미스 백업이 처음 완료되면 이 카드에 결과가 표시됩니다."
-        />
-      ) : (
-        // 대시보드 우측의 좁은 컬럼에 놓이므로 가로 분할 없이 세로로 쌓는다.
-        <Space direction="vertical" size={12} style={{ width: '100%' }}>
-          <Space direction="vertical" size={4}>
-            <Text type="secondary">종합 상태</Text>
-            <StatusBadge status={health} />
-          </Space>
+        {canReadDetails ? (
+          <Table<BackupRun>
+            size="small"
+            rowKey="runId"
+            pagination={false}
+            dataSource={runs}
+            locale={{ emptyText: '아직 수신된 백업 기록이 없습니다.' }}
+            columns={[
+              {
+                title: '실행 시각',
+                dataIndex: 'startedAt',
+                render: (value: string) => (
+                  <Text style={{ whiteSpace: 'nowrap' }}>{formatShortDateTime(value)}</Text>
+                )
+              },
+              {
+                title: '결과',
+                dataIndex: 'status',
+                render: (value: BackupRun['status'], run) => {
+                  const failedParts = failedComponentLabels(run);
+                  return (
+                    <Space size={6} wrap>
+                      <StatusBadge status={backupRunStatusLabels[value]} />
+                      {failedParts.length > 0 ? (
+                        <Text type="secondary" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+                          {failedParts.join('·')} 실패
+                        </Text>
+                      ) : null}
+                    </Space>
+                  );
+                }
+              }
+            ]}
+          />
+        ) : (
           <Descriptions
             size="small"
             column={1}
-              items={[
-                {
-                  key: 'last-success',
-                  label: '마지막 전체 성공',
-                  children: formatBackupDateTime(summary?.lastSuccessAt ?? null)
-                },
-                {
-                  key: 'database',
-                  label: '데이터베이스',
-                  children: <StatusBadge status={summary?.databaseStatus ? backupComponentStatusLabels[summary.databaseStatus] : '기록 없음'} />
-                },
-                {
-                  key: 'storage',
-                  label: '파일 저장소',
-                  children: <StatusBadge status={summary?.storageStatus ? backupComponentStatusLabels[summary.storageStatus] : '기록 없음'} />
-                },
-                {
-                  key: 'disk',
-                  label: '온프레미스 디스크',
-                  children: (
-                    <Space size={6}>
-                      <Text>{summary?.diskUsedPercent === null || summary?.diskUsedPercent === undefined ? '기록 없음' : `${summary.diskUsedPercent.toLocaleString('ko-KR')}%`}</Text>
-                      <StatusBadge status={diskStatus} />
-                    </Space>
-                  )
-                },
-                {
-                  key: 'next',
-                  label: '다음 실행',
-                  children: formatBackupDateTime(summary?.nextScheduledAt ?? null)
-                },
-                {
-                  key: 'restore',
-                  label: '마지막 복원 점검',
-                  children: (
-                    <Space size={6}>
-                      <Text>{formatBackupDateTime(summary?.lastRestoreCompletedAt ?? null)}</Text>
-                      {restoreWarning ? <StatusBadge status="주의" /> : <StatusBadge status="정상" />}
-                    </Space>
-                  )
-                }
-              ]}
+            items={[
+              {
+                key: 'last-success',
+                label: '마지막 전체 성공',
+                children: formatBackupDateTime(summary?.lastSuccessAt ?? null)
+              },
+              {
+                key: 'database',
+                label: '데이터베이스',
+                children: <StatusBadge status={summary?.databaseStatus ? backupComponentStatusLabels[summary.databaseStatus] : '기록 없음'} />
+              },
+              {
+                key: 'storage',
+                label: '파일 저장소',
+                children: <StatusBadge status={summary?.storageStatus ? backupComponentStatusLabels[summary.storageStatus] : '기록 없음'} />
+              },
+              {
+                key: 'next',
+                label: '다음 실행',
+                children: formatBackupDateTime(summary?.nextScheduledAt ?? null)
+              }
+            ]}
           />
-        </Space>
-      )}
+        )}
+
+        {backupViewContext === 'mirror' ? (
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            개발환경 복사본 · 마지막 동기화 {formatBackupDateTime(summary?.lastReportReceivedAt ?? null)}
+          </Text>
+        ) : null}
+      </Space>
     </Card>
   );
 }

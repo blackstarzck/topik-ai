@@ -705,3 +705,9 @@
 - Updated `scripts/backup/backup.env.example`(REPORT_URL을 topik-admin.vercel.app으로 교정), Vercel topik-admin env 12종(BACKUP_* 2계열, SUPABASE_* 운영 교정 — 신형 sb_secret 키), prod DB에 admin backup 마이그레이션 3본 적용(장부 88), CLI 배포 2회+promote.
 - Reason: 운영 수신 실패의 근본 원인이 prod 레거시 API 키의 2026-07-16 비활성화("Legacy API keys are disabled")로 확인됐다 — 문서에 남아 있던 서버 함수 invalid_session 이슈와 동일 원인. 또한 topik-ai.vercel.app은 별개(구) 프로젝트 도메인이고 실제 운영 프로젝트 도메인은 topik-admin.vercel.app이며, Vercel 프로젝트에 Git 연동이 없어 배포는 CLI+promote 방식임을 확인했다.
 - Validation: 서버 outbox 16건 전량 전송(잔여 0), prod/dev 완전 일치(runs 3=성공1·부분실패2, drills 2=성공1·실패1, system_logs 5). 합성 실패 보고 주입으로 즉시 경보 발송 경로를 검증하고 합성 행은 삭제했다(시간창 삭제로 report_events 8건이 함께 삭제됨 — 멱등 장부 성격이라 실행·드릴·로그 데이터는 무손실, 다음 백업부터 재적재). mock e2e 백업 화면 3/3 통과.
+
+## 2026-07-21 대시보드 백업 카드 이력형 재설계
+
+- Updated `src/features/dashboard/components/backup-status-card.tsx`, `src/features/dashboard/pages/dashboard-page.tsx`(4컬럼 행 배치), `docs/specs/page-ia/dashboard-page-ia.md`, `docs/specs/admin-page-ia-change-log.md`, `tests/e2e/system-backups.spec.ts`.
+- Reason: 오너 요청 — 전폭 카드를 빠른 진입·처리 대기 큐·운영 경고와 같은 행 우측에 배치하고, 안내 Alert 대신 최근 4개 실행 이력을 기본으로 표시한다. 좁은 컬럼에서 4열 테이블이 넘쳐(부족 72px) 시각을 연도 생략 단축 포맷으로, 구성 상태는 결과 옆 실패 요소 표기(예: "부분 실패 · 저장소 실패")로 압축했다.
+- Validation: 좌표 실측으로 같은 행(top 303)·우측 끝 배치와 테이블 넘침 0px를 확인했고, mock 렌더에서 4행(진행 중/정상/부분 실패·저장소 실패/실패·DB·저장소 실패)과 복사본 캡션을 확인했다. lint/typecheck/backup e2e 3/3 통과. 이력 RPC 권한(system.backups.read)이 없는 관리자는 요약 보기 폴백을 유지한다.
