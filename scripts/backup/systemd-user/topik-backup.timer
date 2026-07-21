@@ -1,0 +1,9 @@
+[Unit]
+Description=TOPIK backup schedule (KST 00:30/06:30/12:30/18:30)
+
+[Timer]
+OnCalendar=*-*-* 00,06,12,18:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

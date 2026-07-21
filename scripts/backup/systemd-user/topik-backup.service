@@ -1,0 +1,13 @@
+[Unit]
+Description=TOPIK topik-prod on-premise backup (user scope)
+
+[Service]
+Type=oneshot
+EnvironmentFile=%h/topik-backup/etc/backup.env
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/topik-backup/bin/topik-backup.sh backup
+TimeoutStartSec=2h
+TimeoutStopSec=1min
+NoNewPrivileges=true
+PrivateTmp=true
+UMask=0077

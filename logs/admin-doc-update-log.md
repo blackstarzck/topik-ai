@@ -681,3 +681,9 @@
 - Updated `supabase/migrations-admin/20260720102000_users_phone_source_alignment.sql`, `supabase/migrations-admin/20260720104000_users_audit_target_projection.sql`, Users/System 감사 로그 프런트 정규화, 관련 Users IA/page-sync/data-contract/data-usage/source-transition/ownership/gap 문서, migration manifest와 unit tests.
 - Reason: dev에는 legacy `profiles.phone`이 있지만 prod에는 split field만 있어 배포 회원 목록이 `column p.phone does not exist`로 실패했다. CRUD 검증 중 저장 Target `User`와 화면 링크 `Users` 혼재로 감사 로그가 0건 표시되는 후속 결함도 확인했다.
 - Validation: 두 admin 마이그레이션을 dev/prod에 동일 적용하고 목록 20/총 200, 상세 1, 내보내기 1을 확인했다. Production 브라우저에서 회원 검색, 상세, 정상→정지→정상 원복, 감사 로그 2건과 상세 역링크를 확인했다. v13 `profiles` DDL/DML은 변경하지 않았다.
+
+## 2026-07-21 topik-prod 온프레미스 백업 설치·검증과 스크립트 현행화
+
+- Updated `scripts/backup/`(topik-backup.sh 수정판, drill-stack 4파일 신규, enter-secrets/set-db-url/run-backup 헬퍼, systemd-user 유닛 6종, backup.env.example), `docs/runbooks/topik-prod-onprem-backup.md`(현행판 신규), `docs/README.md` 색인.
+- Reason: 초안(커밋 `22a7ef3`)은 auth/storage 스키마가 백업에서 빠져 복원 시 전 회원 로그인이 불가하고, supabase CLI 덤프가 `SET ROLE postgres` 강제로 전용 롤과 양립하지 않으며, 드릴 스택 구성 파일이 리포에 없었다. 온프레미스 서버에 실제 배치한 검증본과 리포를 일치시켜 재설치 시 결함 재발을 차단한다.
+- Validation: 운영 서버에서 첫 완전 백업(스냅샷 86707982, 덤프 4종+스토리지 45파일)과 복원 드릴 succeeded를 확인했다. 복원본 실측으로 profiles 200·auth.users 200(비밀번호 해시 보존)·identities 209·buckets 4·objects 43(delta 0)이 운영과 일치했고, 백업 롤의 운영 쓰기 권한 부재(insert/update/delete 전부 false)를 카탈로그로 증명했다. 백업 4회/일·드릴 월 1회·보고 재시도 5분 타이머를 linger와 함께 활성화했다. 수신 API/마이그레이션 배포·능동 알림·오프사이트는 후속 항목으로 런북 §8에 기록했다.
