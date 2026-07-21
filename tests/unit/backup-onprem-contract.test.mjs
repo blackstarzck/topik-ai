@@ -32,7 +32,9 @@ describe('on-premise backup operating contract', () => {
     expect(script).toContain('rclone sync "${STORAGE_RCLONE_REMOTE}:"');
     expect(script).toContain('rclone size "${STORAGE_RCLONE_REMOTE}:"');
     expect(script).toContain('gzip -t');
-    expect(script).toContain('zgrep -q "PostgreSQL database dump"');
+    // zgrep -q는 systemd(IgnoreSIGPIPE) 아래에서 EPIPE 오탐을 내므로 금지한다.
+    expect(script).not.toContain('zgrep -q');
+    expect(script).toContain('grep -c "PostgreSQL database dump"');
   });
 
   it('prevents overlap, retains seven days, and performs an isolated restore check', () => {
