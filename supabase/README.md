@@ -4,7 +4,7 @@
 
 - development와 production manifest는 두 namespace 모두 `release-all` batch를 제공한다. 자동 적용 순서는 항상 `topik_writing` 후 admin이다.
 - `--verify-all --require-clean --json-out <PATH>`는 tracker와 로컬 전체 migration의 checksum, pending, remote-only, blocked 적용, down pair를 대사한다.
-- PR 변경 분류가 `database`일 때 `scripts/db/check-expand-migrations.mjs`가 기존 migration 수정·삭제와 contract migration을 거부한다. 분류가 모호하거나 CI/DB/API/Auth 설정에 닿으면 항상 `database`로 fail-closed 처리한다.
+- PR 변경 분류가 `database`일 때 `scripts/db/check-expand-migrations.mjs`가 기존 migration 수정·삭제와 contract migration을 거부한다. 같은 PR에서 앞선 신규 migration이 처음 만든 0인자 함수를 뒤의 신규 migration이 동일 이름으로 즉시 재생성하는 경우만 미출시 release 내부 보정으로 허용한다. 기존 함수·인자 함수·procedure·재생성 없는 삭제는 계속 차단한다. 분류가 모호하거나 CI/DB/API/Auth 설정에 닿으면 항상 `database`로 fail-closed 처리한다.
 - 고정 v13 SHA를 포함한 전체 재생은 `scripts/ci/run-shadow-contract.mjs`가 담당한다. shadow fixture와 cron 호환 계층은 임시 로컬 DB에만 존재한다.
 - 신규 forward migration이 있는 `db-only`/`app-db` 변경은 origin/main 뒤 topik-dev 적용·권한·CRUD·브라우저 검증이 먼저 성공해야 회사 저장소 fast-forward와 topik-prod 적용이 시작된다. `db-only`는 Vercel을 실행하지 않고, `app-only`는 migration을 적용하지 않으며, `sync-only`는 코드 동기화 후 DB/Vercel 없이 종료한다. 상세 순서는 `docs/architecture/admin-cicd-pipeline.md`를 따른다. 기존 forward migration 변경과 자동 down migration은 허용하지 않는다.
 

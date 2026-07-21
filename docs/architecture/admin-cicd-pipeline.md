@@ -41,6 +41,12 @@ flowchart TD
 - `full`: app 검사에 고정 v13 → `topik_writing` → admin shadow 전체 재생, migration 경계·manifest·expand 계약을 추가한다.
 - `ci-gate`: 분류기가 선택한 job만 정확히 성공했는지 확인하는 단일 required check다.
 
+expand 게이트는 기존 객체의 `DROP`을 계속 차단한다. 단, 같은 PR의 앞선 신규
+migration이 `CREATE FUNCTION name()`으로 처음 도입한 0인자 함수를 뒤의 신규
+migration이 동일 이름으로 즉시 재생성하는 경우만 단일 미출시 release 안의
+정의 보정으로 인정한다. 기존 함수, 인자가 있는 함수, procedure, 재생성 없는
+삭제는 이 예외에 포함되지 않는다.
+
 workflow·CI runner 같은 control-plane 변경은 실제 배포를 만들지 않지만 `full` 검사를 통과해야 회사 저장소에 동기화된다.
 
 ## 4. main과 topik-dev 검증

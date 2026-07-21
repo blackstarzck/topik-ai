@@ -1,0 +1,67 @@
+name: topik-prod-backup-drill
+
+services:
+  db:
+    image: public.ecr.aws/supabase/postgres:17.6.1.132
+    restart: "no"
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-55433}:5432"
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-drillonly}
+      POSTGRES_DB: postgres
+      JWT_SECRET: ${JWT_SECRET:-drillonly-jwt}
+      JWT_EXP: 3600
+    volumes:
+      - ./roles-init.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:ro
+      - drill-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  auth:
+    image: supabase/gotrue:v2.193.1
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: "9999"
+      API_EXTERNAL_URL: http://127.0.0.1:9999
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD:-drillonly}@db:5432/postgres
+      GOTRUE_SITE_URL: http://127.0.0.1
+      GOTRUE_URI_ALLOW_LIST: ""
+      GOTRUE_DISABLE_SIGNUP: "true"
+      GOTRUE_JWT_SECRET: ${JWT_SECRET:-drillonly-jwt}
+      GOTRUE_JWT_EXP: "3600"
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+
+  storage:
+    image: supabase/storage-api@sha256:32ef6705783ee2289f38a55845c346c78c29fb26a9e02d0abebdd7e6ae88697a
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ANON_KEY: ${ANON_KEY:-drillonly}
+      SERVICE_KEY: ${SERVICE_ROLE_KEY:-drillonly}
+      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD:-drillonly}@db:5432/postgres
+      PGRST_JWT_SECRET: ${JWT_SECRET:-drillonly-jwt}
+      POSTGREST_URL: http://127.0.0.1:3000
+      FILE_SIZE_LIMIT: "52428800"
+      STORAGE_BACKEND: file
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      TENANT_ID: drill
+      REGION: local
+      GLOBAL_S3_BUCKET: drill
+    volumes:
+      - drill-storage-data:/var/lib/storage
+
+volumes:
+  drill-db-data:
+  drill-storage-data:

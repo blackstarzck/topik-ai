@@ -22,6 +22,103 @@ describe('automatic release expand-migration gate', () => {
     `)).toEqual(['drop-column', 'drop-function']);
   });
 
+  it('allows replacing a zero-argument function introduced earlier in the same release', () => {
+    const issues = classifyMigrationDiff(
+      [
+        {
+          status: 'A',
+          path: 'supabase/migrations-admin/20260101000000_add_summary.sql',
+        },
+        {
+          status: 'A',
+          path: 'supabase/migrations-admin/20260101000100_extend_summary.sql',
+        },
+      ],
+      (migrationPath) => migrationPath.endsWith('add_summary.sql')
+        ? `create function public.get_summary() returns integer language sql as $$ select 1 $$;`
+        : `
+            drop function public.get_summary();
+            create function public.get_summary() returns table (value integer)
+            language sql as $$ select 1 $$;
+          `
+    );
+
+    expect(issues).toEqual([]);
+  });
+
+  it('still rejects replacing a function that may have existed before the release', () => {
+    const issues = classifyMigrationDiff(
+      [
+        {
+          status: 'A',
+          path: 'supabase/migrations-admin/20260101000000_update_summary.sql',
+        },
+        {
+          status: 'A',
+          path: 'supabase/migrations-admin/20260101000100_replace_summary.sql',
+        },
+      ],
+      (migrationPath) => migrationPath.endsWith('update_summary.sql')
+        ? `create or replace function public.get_summary() returns integer language sql as $$ select 1 $$;`
+        : `
+            drop function public.get_summary();
+            create function public.get_summary() returns table (value integer)
+            language sql as $$ select 1 $$;
+          `
+    );
+
+    expect(issues).toEqual([
+      'supabase/migrations-admin/20260101000100_replace_summary.sql: contract operation detected (drop-function)',
+    ]);
+  });
+
+  it('rejects dropping an introduced function without recreating it', () => {
+    const issues = classifyMigrationDiff(
+      [
+        {
+          status: 'A',
+          path: 'supabase/migrations-admin/20260101000000_add_summary.sql',
+        },
+        {
+          status: 'A',
+          path: 'supabase/migrations-admin/20260101000100_drop_summary.sql',
+        },
+      ],
+      (migrationPath) => migrationPath.endsWith('add_summary.sql')
+        ? `create function public.get_summary() returns integer language sql as $$ select 1 $$;`
+        : `drop function public.get_summary();`
+    );
+
+    expect(issues).toEqual([
+      'supabase/migrations-admin/20260101000100_drop_summary.sql: contract operation detected (drop-function)',
+    ]);
+  });
+
+  it('rejects replacing an introduced function with arguments', () => {
+    const issues = classifyMigrationDiff(
+      [
+        {
+          status: 'A',
+          path: 'supabase/migrations-admin/20260101000000_add_summary.sql',
+        },
+        {
+          status: 'A',
+          path: 'supabase/migrations-admin/20260101000100_replace_summary.sql',
+        },
+      ],
+      (migrationPath) => migrationPath.endsWith('add_summary.sql')
+        ? `create function public.get_summary(integer) returns integer language sql as $$ select $1 $$;`
+        : `
+            drop function public.get_summary(integer);
+            create function public.get_summary(integer) returns bigint language sql as $$ select $1::bigint $$;
+          `
+    );
+
+    expect(issues).toEqual([
+      'supabase/migrations-admin/20260101000100_replace_summary.sql: contract operation detected (drop-function)',
+    ]);
+  });
+
   it('rejects mutation or deletion of an existing migration', () => {
     const issues = classifyMigrationDiff(
       [

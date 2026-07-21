@@ -100,7 +100,7 @@
 - `index.md`
 
 ### `docs/runbooks`
-- `topik-prod-onprem-backup.md` — topik-prod 데이터베이스·전체 파일 저장소의 온프레미스 암호화 백업, 월간 격리 복원, 예약·보고·운영 완료 절차
+- `topik-prod-onprem-backup.md` — topik-prod 온프레미스 백업·복원 점검(드릴) 현행 runbook. 전용 읽기 롤, 컨테이너 pg_dump 방식, 드릴 스택 구성, 2026-07-21 실증 기록과 초안 대비 변경 근거를 포함
 - `dev-to-prod-data-recovery.md` — Supabase dev → prod 사용자·학습·정책·Storage 데이터 복구 절차와 재실행 안전장치, 검증 기준을 기록한 운영 runbook
 - `notification-worker-production-verification.md` — v13 transition email worker를 topik-ai production worker로 넘기기 전/후 SOT, Vercel readiness, smoke, cross-app state evidence를 기록하는 운영 검증 runbook
 - `notification-worker-production-evidence.example.md` — 실제 production evidence 파일 작성 시 secret 값을 남기지 않도록 돕는 redacted 예시 문서
