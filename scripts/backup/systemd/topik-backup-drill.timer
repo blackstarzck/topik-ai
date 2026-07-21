@@ -1,0 +1,11 @@
+[Unit]
+Description=TOPIK restore drill on the first Sunday of each month at 03:00 KST
+
+[Timer]
+OnCalendar=Sun *-*-01..07 03:00:00 Asia/Seoul
+Persistent=true
+AccuracySec=1min
+Unit=topik-backup-drill.service
+
+[Install]
+WantedBy=timers.target

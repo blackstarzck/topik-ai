@@ -68,6 +68,7 @@
 - `system-admins-page-sync.md`
 - `system-audit-logs-page-sync.md`
 - `system-logs-page-sync.md`
+- `system-backups-page-sync.md` — 온프레미스 백업·월간 복원 점검의 조회 전용 관리자 계약과 B2C 비노출 경계
 - `system-metadata-page-sync.md`
 - `system-permissions-page-sync.md`
 - `users-detail-page-sync.md`
@@ -159,6 +160,7 @@
 - `page-ia/system-admins-page-ia.md`
 - `page-ia/system-audit-logs-page-ia.md`
 - `page-ia/system-logs-page-ia.md`
+- `page-ia/system-backups-page-ia.md` — 백업 상태·실행 이력·검사 결과·시스템 로그 연결을 제공하는 조회 전용 화면
 - `page-ia/system-metadata-page-ia.md`
 - `page-ia/system-permissions-page-ia.md`
 - `page-ia/users-detail-page-ia.md`

@@ -48,6 +48,9 @@ function getComponentRoute(component: string): string | null {
   if (component === 'admin-auth') {
     return '/system/admins';
   }
+  if (component === 'backup-service') {
+    return '/system/backups';
+  }
   return null;
 }
 

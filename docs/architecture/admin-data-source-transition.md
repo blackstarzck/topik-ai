@@ -538,3 +538,15 @@ src/features/<feature>/
 - Vercel의 `Ready` 상태는 빌드와 배포 alias가 사용 가능하다는 뜻이지, 서버 함수의 Supabase/SMTP 런타임 통합 검증을 포함하지 않는다.
 - 현재 설정된 관리자 계정은 `admin_accounts`의 active `platform_admin`이며 최종 `profiles.app_role`은 `learner`다. 인증 SoT는 `admin_get_self`/`admin_accounts`이고 bootstrap 감사 로그를 남긴다.
 - Production URL에서 현재 관리자 로그인과 `CommerceCouponTemplate` 생성·상세·수정·삭제·감사 로그 브라우저 E2E 1/1을 통과했다. 테스트 업무 행은 삭제 후 0건이고, 저장 감사 2건·삭제 감사 1건과 삭제 사유를 DB에서 대사했다. 비인증 server function smoke도 API 3개 `POST`와 알림 워커 `GET` 모두 `401`을 반환한다.
+## 12. System 백업 관리 데이터 소스 (2026-07-20)
+
+- 실제 자동 백업 대상은 `topik-prod`의 데이터베이스와 전체 파일 저장소뿐입니다. `topik-dev` 자체는 백업하지 않습니다.
+- 대시보드 백업 카드와 `/system/backups`의 source는 `admin_backup_runs`, `admin_backup_component_results`, `admin_restore_drills`입니다. 운영 배포는 `topik-prod`의 원본 보고를 읽고, localhost는 `topik-dev`에 독립 저장된 같은 보고의 복사본을 읽습니다.
+- 브라우저는 `get_admin_backup_summary`와 `get_admin_backup_runs` 읽기 RPC만 사용합니다. localhost에서 복사본을 읽을 때는 화면에 개발환경 복사본임을 표시하고 `admin_backup_report_events.received_at` 기준 마지막 복사 시각을 함께 보여줍니다.
+- mock은 명시적으로 선택했거나 Supabase가 비활성인 검사 환경에서만 사용합니다. localhost에 정상적인 `topik-dev` 연결이 있으면 복사본을 읽습니다.
+- 온프레미스 보고는 `POST /api/backups/report`로 같은 본문을 운영 원본과 개발 복사본에 각각 전송합니다. 각 전송은 서로 다른 공유 비밀값과 전송 대상이 포함된 서명을 사용하며, Vercel 서버는 대상별로 고정된 Supabase 프로젝트만 호출합니다.
+- 운영 원본 전송과 개발 복사본 전송의 대기열·재시도는 서로 독립적입니다. 개발 복사 실패가 실제 백업이나 운영 원본 기록을 실패로 바꾸지 않습니다.
+- 보고 수신은 전송 시각·본문 크기·엄격 필드·상태 정합성을 확인한 뒤 서버 전용 `record_admin_backup_report` RPC를 호출합니다. 파일명·경로·회원 정보·비밀값은 어느 환경에도 전달하지 않습니다.
+- 백업 카드 요청은 기존 대시보드 데이터와 별도로 수행하고 실패를 카드 단위로 격리합니다.
+- `topik-dev`에는 `20260720150000`·`20260720150100`·`20260720150200`을 적용했고 관리자 요약·목록 조회 및 마지막 복사 시각 필드를 실제 호출로 확인했습니다. 아직 실제 보고가 없어 마지막 복사 시각이 비어 있는 것은 정상입니다.
+- 운영 전환 순서는 `topik-prod` admin migration 적용 → Vercel의 운영·개발 복사용 서버 연결 확인과 새 배포 → 온프레미스 수동 백업·복원 점검 → 두 저장 대상 반영 확인 → 예약 작업 활성화입니다.

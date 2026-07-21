@@ -42,7 +42,7 @@
 | Assessment | `/assessment/question-bank`, `/assessment/question-bank/manage`, `/assessment/question-bank/:questionId`, `/assessment/question-bank/eps-topik`, `/assessment/level-tests` | TOPIK 쓰기 문항 목록, 문항 관리, 문항 상세(조회 전용), EPS TOPIK, 레벨 테스트 |
 | Content | `/content/library`, `/content/badges`, `/content/vocabulary`, `/content/vocabulary/sonagi`, `/content/vocabulary/multiple-choice`, `/content/missions` | 콘텐츠 관리, 배지, 단어장, 소나기, 객관식 선택, 학습 미션 |
 | Analytics | `/analytics/overview` | 통계 개요 |
-| System | `/system/admins`, `/system/permissions`, `/system/metadata`, `/system/audit-logs`, `/system/logs` | 관리자 계정, 권한 관리, 메타데이터 관리, 감사 로그, 시스템 로그 |
+| System | `/system/admins`, `/system/permissions`, `/system/metadata`, `/system/audit-logs`, `/system/logs`, `/system/backups` | 관리자 계정, 권한 관리, 메타데이터 관리, 감사 로그, 시스템 로그, 백업 관리 |
 
 ## 6. 역할과 권한 방향
 
@@ -106,6 +106,7 @@
 | 메타데이터 관리 | 구현됨 | 목록 운영형 |
 | 감사 로그 | 구현됨 | 목록 운영형 |
 | 시스템 로그 | 구현됨 | 목록 운영형 |
+| 백업 관리 | 구현됨 | 조회 전용 목록 운영형 + 상세 Drawer |
 
 ## 9. 모듈 책임 요약
 
@@ -117,7 +118,7 @@
 - `Assessment`: 시험/문항/검수 워크스페이스
 - `Content`: 학습 자산/보상형 콘텐츠 카탈로그와 편집
 - `Analytics`: 핵심 운영 KPI와 교차 분석 진입
-- `System`: 관리자 계정/권한/메타데이터/감사 로그/시스템 로그 운영
+- `System`: 관리자 계정/권한/메타데이터/감사 로그/시스템 로그/백업 상태 운영
 
 ## 10. 문서 연결 기준
 

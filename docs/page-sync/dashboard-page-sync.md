@@ -9,7 +9,7 @@ status: "구현됨"
 primary_entity: "DashboardMetric"
 primary_table_candidate: "dashboard_metrics 또는 원본 도메인 집계 view"
 owner_agent_scope: "shared"
-last_reviewed_at: "2026-06-01"
+last_reviewed_at: "2026-07-20"
 ---
 
 ## 1. 문서 목적
@@ -27,7 +27,7 @@ last_reviewed_at: "2026-06-01"
 | 라우트 | `/dashboard` |
 | 현재 상태 | `구현됨` |
 | 페이지 유형 | `대시보드형` |
-| 페이지 목적 한 줄 요약 | 운영자가 회원, 결제, 환불, 메시지, 시스템 알림 지표를 빠르게 확인하는 관리자 첫 화면입니다. |
+| 페이지 목적 한 줄 요약 | 운영자가 핵심 지표와 자동 백업 상태를 빠르게 확인하는 관리자 첫 화면입니다. |
 | 주요 운영자 | `OPS_ADMIN, SUPER_ADMIN` |
 | 주요 권한 | `dashboard.read` |
 | 코드 근거 | `src/features/dashboard/pages/dashboard-page.tsx` |
@@ -52,6 +52,7 @@ last_reviewed_at: "2026-06-01"
 | --- | --- | --- | --- | --- | --- |
 | 대시보드 조회 | 대시보드의 목록/상세 또는 예정 데이터 블록을 확인합니다. | 조회 | DashboardMetric | 현재 상태 확인 | 불필요 |
 | 대시보드 관리 | 운영 KPI·알림·시스템 지표를 확인하고 원본 도메인 화면으로 이동합니다. | 조회 | DashboardMetric + metricKey | 조회 결과 확인 | 불필요 |
+| 백업 상태 확인 | 마지막 전체 성공, 대상별 결과, 디스크, 다음 실행, 복원 점검을 확인합니다. localhost에서는 개발환경 복사본과 마지막 복사 시각도 확인합니다. | 조회 | BackupRun | 조회 결과 확인 | 불필요 |
 
 ## 5. 관리 데이터베이스(CRUD)
 
@@ -60,6 +61,7 @@ last_reviewed_at: "2026-06-01"
 | 엔티티 후보 | 테이블 후보 | CRUD | 관리자 UI 진입점 | 주요 필드 후보 | 감사 로그 Target | 사용자 화면 영향 | 미확정/차이 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | DashboardMetric | dashboard_metrics 또는 원본 도메인 집계 view | Read | 대시보드 본문/상세/Modal | 운영 KPI, 알림, 원본 화면 링크, id, status, created_at, updated_at | DashboardMetric + metricKey | 내부 전용 | 현재 프론트엔드/문서 기준 후보 |
+| BackupRun | `admin_backup_runs` + 대상별 결과 + 복원 점검 + 마지막 보고 수신 | Read | 독립된 `백업 상태` 카드 | 상태, 마지막 성공, 대상 결과, 디스크, 다음 실행, 복원 점검, localhost 마지막 복사 시각 | 없음 | 내부 전용 | 운영은 `topik-prod` 원본, localhost는 `topik-dev` 보고 복사본. 별도 조회로 기존 지표와 장애 격리 |
 
 ### CRUD 상세
 
@@ -91,6 +93,7 @@ last_reviewed_at: "2026-06-01"
 | Commerce > 환불 관리 | 참고/후속 | 대시보드 데이터의 원본 확인 또는 후속 검증 | 식별자 또는 필터 기반 이동 | 선행 또는 후행 | 운영상 추정 |
 | Message > 발송 이력 | 참고/후속 | 대시보드 데이터의 원본 확인 또는 후속 검증 | 식별자 또는 필터 기반 이동 | 선행 또는 후행 | 운영상 추정 |
 | System > 시스템 로그 | 참고/후속 | 대시보드 데이터의 원본 확인 또는 후속 검증 | 식별자 또는 필터 기반 이동 | 선행 또는 후행 | 운영상 추정 |
+| System > 백업 관리 | 상세/후속 | 백업 카드의 실행 이력과 검사 확인 | `/system/backups` 이동, 상세 권한 필요 | 후행 | 확인됨 |
 
 ### 사용자 화면
 
@@ -104,6 +107,7 @@ last_reviewed_at: "2026-06-01"
 | --- | --- | --- | --- | --- |
 | 알림 심각도 | 알림 심각도 | page-specific enum candidate | 알림 심각도 | 정확한 상태 세트는 IA와 데이터 계약 문서를 우선합니다. |
 | 지표 갱신 상태 | 지표 갱신 상태 | page-specific enum candidate | 지표 갱신 상태 | 정확한 상태 세트는 IA와 데이터 계약 문서를 우선합니다. |
+| 백업 상태 | running/succeeded/partial_failure/failed/delayed | 백업 상태 코드 | 진행 중/정상/부분 실패/실패/지연/기록 없음 | 8시간 주의, 12시간 실패 임계값 포함 |
 
 ## 10. URL/검색/복원 규칙
 
@@ -121,7 +125,7 @@ last_reviewed_at: "2026-06-01"
 | pending | pending 상태에서 목록/상세 loading 표시 | 대기 또는 취소 | 동기화 지연 |
 | success | success 상태에서 데이터 표시 | 후속 조치 또는 원본 확인 | 동기화 가능 |
 | empty | empty 상태에서 빈 상태와 필터 초기화 또는 등록 유도 | 필터 초기화 또는 등록/후속 확인 | 직접 영향 없음 |
-| error | error 상태에서 재시도와 마지막 성공 상태 fallback 제공 | 재시도 또는 마지막 성공 상태 확인 | 동기화 보류 |
+| error | 백업 카드를 포함한 각 영역 안에서 재시도와 마지막 성공 상태 fallback 제공 | 재시도 또는 마지막 성공 상태 확인 | 동기화 보류 |
 
 ## 12. 에이전트 작업 메모
 

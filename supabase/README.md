@@ -43,6 +43,16 @@
   `migrations/20260713080015_topik_writing_canonical_read_contract.sql` 적용 후 실행한다. admin tracker에는
   read interface만 기록하며, `learner_problem_id`가 없으면 fail-closed로 중단한다.
 
+### 2.1 백업 관리 운영 객체 (`20260720150000`~`20260720150200`)
+
+- 소유 객체: `admin_backup_runs`, `admin_backup_component_results`, `admin_restore_drills`, `admin_backup_report_events`
+- 보고 함수: `record_admin_backup_report` — service role 전용, 중복 안전성·완료 불변성·보관 정리 담당
+- 조회 함수: `get_admin_backup_summary`, `get_admin_backup_runs` — 관리자 조회 전용. `20260720150100`은 목록 함수의 열 이름 충돌을 교정하고, `20260720150200`은 요약에 마지막 보고 수신 시각을 추가한다.
+- 자동 완료 이벤트는 `system_logs`에만 연결하며 `admin_audit_logs`에는 기록하지 않는다.
+- 브라우저 직접 테이블 접근과 쓰기는 허용하지 않고 모든 테이블에 RLS enable+force를 적용한다.
+- 세 migration은 모두 `down/`에 같은 파일명의 되돌리기 SQL을 둔다.
+- 실제 백업 원본은 `topik-prod`뿐이며, 동일한 비민감 보고 요약을 `topik-dev`에 독립 저장해 localhost 관리자 화면에서 확인한다. 두 환경의 보고 저장은 서로 다른 서버 전용 키와 독립 재시도를 사용한다.
+
 ## 3. 공통 실행 메커니즘
 
 - 두 러너는 동일한 `scripts/db/migrate-core.mjs`를 사용하고, `trackTable`과

@@ -360,6 +360,13 @@ export function buildAdminBreadcrumbItems(
     ];
   }
 
+  if (pathname.startsWith('/system/backups')) {
+    return [
+      breadcrumbLinkItem(adminMenuLabels.system, '/system/admins'),
+      breadcrumbTextItem(adminMenuLabels.systemBackups)
+    ];
+  }
+
   if (pathname.startsWith('/system/audit-logs')) {
     return [
       breadcrumbLinkItem(adminMenuLabels.system, '/system/admins'),

@@ -687,3 +687,9 @@
 - Updated `scripts/backup/`(topik-backup.sh 수정판, drill-stack 4파일 신규, enter-secrets/set-db-url/run-backup 헬퍼, systemd-user 유닛 6종, backup.env.example), `docs/runbooks/topik-prod-onprem-backup.md`(현행판 신규), `docs/README.md` 색인.
 - Reason: 초안(커밋 `22a7ef3`)은 auth/storage 스키마가 백업에서 빠져 복원 시 전 회원 로그인이 불가하고, supabase CLI 덤프가 `SET ROLE postgres` 강제로 전용 롤과 양립하지 않으며, 드릴 스택 구성 파일이 리포에 없었다. 온프레미스 서버에 실제 배치한 검증본과 리포를 일치시켜 재설치 시 결함 재발을 차단한다.
 - Validation: 운영 서버에서 첫 완전 백업(스냅샷 86707982, 덤프 4종+스토리지 45파일)과 복원 드릴 succeeded를 확인했다. 복원본 실측으로 profiles 200·auth.users 200(비밀번호 해시 보존)·identities 209·buckets 4·objects 43(delta 0)이 운영과 일치했고, 백업 롤의 운영 쓰기 권한 부재(insert/update/delete 전부 false)를 카탈로그로 증명했다. 백업 4회/일·드릴 월 1회·보고 재시도 5분 타이머를 linger와 함께 활성화했다. 수신 API/마이그레이션 배포·능동 알림·오프사이트는 후속 항목으로 런북 §8에 기록했다.
+
+## 2026-07-21 백업 모니터링 기능 선별 통합 (codex 22a7ef3)
+
+- Updated `api/backups/report.ts`, `supabase/migrations-admin/20260720150000~150200`(+down), `/system/backups` 화면과 대시보드 카드 등 src 15파일, `system-backups` page-sync/IA 문서와 관련 SoT 문서 12건, `docs/README.md` 색인 2줄, `supabase/README.md` §2.1, 매니페스트 2종(85→88), 루트 systemd 유닛(+TimeoutStartSec), 백업 계약 테스트 4종.
+- Reason: 백업 모니터링(수신 API·테이블·화면)이 미머지 브랜치에만 있어 서버가 보내는 보고를 받을 수 없었다. 같은 커밋에 묶인 미검증 CI/CD 파이프라인(워크플로우·classifier·vercel.json 변경)은 배포 방식 자체를 바꾸므로 제외하고 백업 기능 파일만 선별 통합했다. `backup-onprem-contract.test.mjs`는 구버전 스크립트 기준이라 현행 계약(auth/storage 덤프 강제, pg 도구 직접 호출, 드릴 포트 55433, 잠금 확장)으로 갱신했다.
+- Validation: 백업 단위 테스트 4스위트 26개 포함 전체 unit 51파일/348개 통과, harness:check(mojibake·crosslink·route-coverage·lint·typecheck) 통과. CI 스택 파일(.github/scripts-ci/admin-cicd-pipeline.md)은 가져오지 않았고 문서 참조 스캔으로 dangling 참조가 없음을 확인했다.
