@@ -1,4 +1,4 @@
-import { Alert, Button, Card, Col, Descriptions, Row, Space, Typography } from 'antd';
+import { Alert, Button, Card, Descriptions, Space, Typography } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -103,17 +103,15 @@ export function BackupStatusCard(): JSX.Element {
           description="온프레미스 백업이 처음 완료되면 이 카드에 결과가 표시됩니다."
         />
       ) : (
-        <Row gutter={[20, 16]}>
-          <Col xs={24} lg={6}>
-            <Space direction="vertical" size={4}>
-              <Text type="secondary">종합 상태</Text>
-              <StatusBadge status={health} />
-            </Space>
-          </Col>
-          <Col xs={24} lg={18}>
-            <Descriptions
-              size="small"
-              column={{ xs: 1, sm: 2, xl: 3 }}
+        // 대시보드 우측의 좁은 컬럼에 놓이므로 가로 분할 없이 세로로 쌓는다.
+        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          <Space direction="vertical" size={4}>
+            <Text type="secondary">종합 상태</Text>
+            <StatusBadge status={health} />
+          </Space>
+          <Descriptions
+            size="small"
+            column={1}
               items={[
                 {
                   key: 'last-success',
@@ -156,9 +154,8 @@ export function BackupStatusCard(): JSX.Element {
                   )
                 }
               ]}
-            />
-          </Col>
-        </Row>
+          />
+        </Space>
       )}
     </Card>
   );

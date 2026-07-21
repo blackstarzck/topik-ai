@@ -347,12 +347,8 @@ export default function DashboardPage(): JSX.Element {
         ))}
       </Row>
 
-      <div style={{ marginTop: 16 }}>
-        <BackupStatusCard />
-      </div>
-
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-        <Col xs={24} xl={10}>
+        <Col xs={24} xl={8}>
           <Card
             title="빠른 진입"
             extra={
@@ -376,7 +372,7 @@ export default function DashboardPage(): JSX.Element {
           </Card>
         </Col>
 
-        <Col xs={24} xl={7}>
+        <Col xs={24} xl={5}>
           <Card title="처리 대기 큐">
             <List
               dataSource={queueItems}
@@ -417,7 +413,7 @@ export default function DashboardPage(): JSX.Element {
           </Card>
         </Col>
 
-        <Col xs={24} xl={7}>
+        <Col xs={24} xl={5}>
           <Card title="운영 경고">
             <Space direction="vertical" size={12} style={{ width: '100%' }}>
               {alertItems.map((item) => (
@@ -451,6 +447,10 @@ export default function DashboardPage(): JSX.Element {
               ))}
             </Space>
           </Card>
+        </Col>
+
+        <Col xs={24} xl={6}>
+          <BackupStatusCard />
         </Col>
       </Row>
     </div>
