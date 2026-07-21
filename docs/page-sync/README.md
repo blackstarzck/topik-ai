@@ -4,7 +4,7 @@
 
 - 관리자(Admin) 페이지별로 **`목적` / `가능한 작업` / `관리 데이터베이스(CRUD) 후보` / `연관 페이지` / `사용자(B2C) 화면 동기화 포인트`** 를 한 장으로 정리한 문서 모음이다.
 - 목적은 **별도로 개발 중인 사용자 화면과 관리자 관리 포인트를 동기화**하는 것이다. 운영자가 각 페이지에서 무엇을 다루는지, 그 데이터가 사용자 화면에 어떻게 이어지는지를 한 곳에서 추적한다.
-- **라우트 1개 = 문서 1개** 원칙. 현재 이 README를 포함해 41개 파일이 있고, 페이지 동기화 문서는 40개다.
+- **라우트 1개 = 문서 1개** 원칙. 현재 이 README를 포함해 42개 파일이 있고, 페이지 동기화 문서는 41개다.
 - 모든 페이지 문서는 [`docs/templates/admin-page-sync-template.md`](../templates/admin-page-sync-template.md)의 동일한 13개 섹션 틀을 따른다.
 - 템플릿: `docs/templates/admin-page-sync-template.md`
 - 기준 라우트: `src/app/router/routes.ts` (`app-router.tsx`는 shell composition)
@@ -53,7 +53,7 @@
 
 ## 5. 문서 목록 (모듈별)
 
-현재 페이지 동기화 문서 40개 — **`구현됨` 30 / `placeholder` 10**. (placeholder = Content 6개 전부 + EPS TOPIK · 레벨 테스트 · 이커머스 관리 · 챗봇 설정)
+현재 페이지 동기화 문서 41개 — **`구현됨` 31 / `placeholder` 10**. (placeholder = Content 6개 전부 + EPS TOPIK · 레벨 테스트 · 이커머스 관리 · 챗봇 설정)
 
 ### Dashboard
 
@@ -144,6 +144,7 @@
 | [메타데이터 관리](./system-metadata-page-sync.md) | `/system/metadata` | 구현됨 |
 | [감사 로그](./system-audit-logs-page-sync.md) | `/system/audit-logs` | 구현됨 |
 | [시스템 로그](./system-logs-page-sync.md) | `/system/logs` | 구현됨 |
+| [백업 관리](./system-backups-page-sync.md) | `/system/backups` | 구현됨 |
 
 ## 6. 작성·갱신 규칙
 

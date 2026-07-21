@@ -593,6 +593,35 @@
   - `Resolved`: mock-only source, 감사 미적재, item-level 감사 Target Type 미확정
   - `미확정`: PK 동시성, 기본값 단일성 정책, 위치/이력 정규화
 
+#### 4.10.5 백업 관리
+
+- 대상 파일
+  - `src/features/dashboard/components/backup-status-card.tsx`
+  - `src/features/system/pages/system-backups-page.tsx`
+  - `api/backups/report.ts`
+  - `supabase/migrations-admin/20260720150000_admin_backup_monitoring.sql`
+  - `supabase/migrations-admin/20260720150100_admin_backup_read_rpc_qualification.sql`
+  - `supabase/migrations-admin/20260720150200_admin_backup_mirror_summary.sql`
+  - `scripts/backup/`
+- 현 상태
+  - `Resolved/구현됨`(2026-07-20): 대시보드 요약 카드와 `/system/backups` 조회 전용 화면, `system.backups.read` 권한, 목록/상세 URL 복원, 시스템 로그 연결을 구현했다.
+  - `Resolved/구현됨`: Vercel 보고 수신은 공유 비밀 서명, 5분 전송 시각, 32KB 제한, 엄격 필드, 중복 안전성, 완료 결과 불변성을 적용한다.
+  - `Resolved/구현됨`: admin 소유 백업 실행·대상별 결과·복원 점검·보고 원장과 짝이 되는 down migration을 추가했다. v13 소유 테이블은 변경하지 않았다.
+  - `Resolved/구현됨`: 온프레미스 스크립트와 예약 작업은 하루 4회, 첫째 일요일 복원 점검, 겹침 방지, 부팅 보충, 7일 보관, outbox 재전송을 제공한다.
+  - `Resolved/구현됨`: 실제 백업은 `topik-prod`만 수행하고, 동일한 비민감 보고를 운영 원본과 `topik-dev` 조회 복사본에 별도 서명·별도 대기열로 전송한다. localhost는 복사본 안내와 마지막 복사 시각을 표시한다.
+  - `Resolved/설계 조정`: 기존 AI PostgreSQL과 같은 온프레미스 서버를 쓰되 AI Compose 프로젝트·경로·cron은 변경하지 않는다. TOPIK은 전용 계정·경로·systemd와 `topik-prod-backup-drill` 임시 Compose 프로젝트를 사용하고, 복원 점검 포트는 미사용 여부 확인 후 loopback에만 연결한다.
+  - `Resolved/dev 적용`: 백업 관리 3개 migration을 `topik-dev`에 적용했고 실제 관리자 요약·목록 호출과 마지막 보고 수신 필드를 확인했다. tracker는 canonical 88개 + remote-only 1개, checksum 누락 0이다.
+- 미확정/누락/오구현
+  - `운영 적용 대기`: `topik-prod` migration, Vercel의 운영/개발 복사용 서버 연결과 서로 다른 보고 비밀값, 온프레미스 비밀·Storage·Docker 복원 환경은 실제 운영자가 적용해야 한다.
+  - `온프레미스 사전 점검 대기`: 기존 AI 컨테이너·cron·사용 포트·CPU·메모리·공용 디스크 기준값과 월간 복원 점검 중 AI 서비스 영향이 아직 확인되지 않았다.
+  - `운영 증거 대기`: 실제 백업 1회, 격리 복원 1회, 예약 활성화 뒤 24시간 4회 연속 5분 내 화면 반영 증거가 없다.
+  - `잔여 위험 수용`: 외부 저장소와 외장 디스크가 없어 온프레미스 디스크와 원본의 동시 장애는 복구할 수 없다.
+- 분류
+  - `Resolved`: 코드·스키마·화면·운영 스크립트·문서 계약
+  - `운영 적용 대기`: 실제 비밀값과 외부 시스템 설정
+  - `운영 증거 대기`: 첫 백업·복원·24시간 연속성
+  - `잔여 위험 수용`: 단일 온프레미스 저장소
+
 ## 5. 우선 정리 권장 순서
 
 1. 인코딩 깨짐과 전역 한글 라벨 복구

@@ -269,3 +269,10 @@
 - 조회 데이터는 답안 본문/문장 첨삭 본문을 제외한 집계와 메타데이터로 제한한다.
 - 회원 정지/해제 같은 조치성 액션은 기존 `Target Type=Users`, `Target ID=userId`, 사유 필수, `/system/audit-logs?targetType=Users&targetId={userId}` 확인 경로를 유지한다.
 - 향후 답안 본문 또는 sentence feedback 열람이 승인되면 조회 행위 자체를 별도 감사 대상으로 재검토한다.
+## 2026-07-20 System 백업 관리 로그 계약
+
+- `/system/backups`는 조회 전용이며 관리자가 백업·복원을 실행하거나 상태를 수정할 수 없습니다.
+- `backup_completed`와 `restore_drill_completed` 자동 결과는 `system_logs.component='backup-service'`에 연결합니다.
+- 자동 작업은 관리자 조치가 아니므로 `admin_audit_logs`에 기록하지 않습니다. `Target Type`, `Target ID`, 사유 입력 계약도 만들지 않습니다.
+- 시스템 로그 context에는 작업 번호, 안전한 상태, 데이터베이스·파일 검사 상태만 허용합니다. 파일명, 저장 경로, 회원 정보, 연결 정보, 비밀키, 원문 오류는 금지합니다.
+- 백업 상세의 시스템 로그 이동 경로는 `/system/logs?logId={systemLogId}`이며 원본 화면 복귀는 `/system/backups?runId={runId}`입니다.

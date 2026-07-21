@@ -113,6 +113,9 @@ const SystemPermissionsPage = lazy(
 const SystemMetadataPage = lazy(
   () => import('../../features/system/pages/system-metadata-page')
 );
+const SystemBackupsPage = lazy(
+  () => import('../../features/system/pages/system-backups-page')
+);
 const SystemAuditLogsPage = lazy(
   () => import('../../features/system/pages/system-audit-logs-page')
 );
@@ -197,6 +200,8 @@ function renderPageRouteElement(route: PageRouteDefinition): JSX.Element {
       return <SystemPermissionsPage />;
     case 'system-metadata':
       return <SystemMetadataPage />;
+    case 'system-backups':
+      return <SystemBackupsPage />;
     case 'system-audit-logs':
       return <SystemAuditLogsPage />;
     case 'system-logs':

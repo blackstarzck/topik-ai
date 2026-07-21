@@ -972,3 +972,34 @@
   (elapsed 7s/active 7s) 생성 → 개인/전체 RPC와 admin 화면(회원 상세 학습 탭·학습 분석)에서 동일 값 확인.
 - 기존 e2e 학생 계정은 외부 평가 API 409("Email already registered with another account")로 제출이
   차단된 상태 — v13/admin 코드 결함 아님(외부 서비스 계정 레지스트리 충돌, 별도 해소 필요).
+## 46. System 백업 관리 데이터 계약 (2026-07-20)
+
+### 엔티티와 원본
+
+| 엔티티 | 원본 | 역할 |
+| --- | --- | --- |
+| BackupRun | `admin_backup_runs` | 한 번의 전체 백업 실행 |
+| BackupComponentResult | `admin_backup_component_results` | 데이터베이스·파일 저장소별 결과와 검사 |
+| RestoreDrill | `admin_restore_drills` | 월간 격리 복원 점검 |
+| BackupReportEvent | `admin_backup_report_events` | 보고 중복·완료 변경 차단용 내부 원장 |
+
+### 서버 보고 계약
+
+- 보고 종류는 `backup_started`, `backup_completed`, `restore_drill_completed`만 허용합니다.
+- 공통 식별자는 UUID 작업 번호, 보고 번호, 원본 프로젝트 `topik-prod`입니다.
+- 실제 백업 대상은 `topik-prod` 하나입니다. 같은 비민감 보고 본문을 운영 원본과 `topik-dev` 조회 복사본에 각각 저장하지만, `topik-dev` 데이터베이스나 파일 저장소를 백업했다는 뜻은 아닙니다.
+- 운영 원본과 개발 복사본은 서로 다른 공유 비밀값, 대상이 포함된 서명, 고정된 서버 연결을 사용합니다. 한쪽 전송 실패는 다른 쪽 기록과 실제 백업 결과를 바꾸지 않습니다.
+- 전체 상태는 `running`, `succeeded`, `partial_failure`, `failed`, `delayed`입니다.
+- 대상별 상태는 `pending`, `succeeded`, `failed`, `not_run`, 검사 상태는 `pending`, `passed`, `failed`, `not_run`입니다.
+- 전송 가능 정보는 시작·종료·다음 예정 시각, 데이터베이스 결과·용량, 파일 결과·개수·용량, 검사 결과, 디스크 사용률, 짧은 오류 분류입니다.
+- 파일명, 저장 경로, 회원 정보, 연결 정보, 비밀키, 원문 오류는 계약에 포함하지 않습니다.
+- 완료 보고의 전체 상태는 대상별 결과로 서버가 다시 계산하며 맞지 않으면 거부합니다.
+- 같은 보고 번호와 같은 내용은 성공으로 재처리하고, 같은 보고 번호로 다른 내용을 보내거나 완료 결과를 바꾸는 요청은 거부합니다.
+
+### 조회·권한·보관
+
+- 대시보드 요약 조회는 active admin, 상세 목록 조회는 `system.backups.read` 권한이 필요합니다.
+- 요약에는 보고 원장의 가장 최근 수신 시각을 포함합니다. localhost는 이 값을 `마지막 복사 시각`으로 표시하고 개발환경 복사본임을 명확히 안내합니다.
+- 브라우저의 원본 테이블 직접 쓰기와 서비스 역할 함수를 통한 임의 호출은 금지합니다.
+- 실행·대상별 결과·일반 보고 원장은 90일, 복원 점검과 해당 보고 원장은 13개월 보관합니다.
+- 완료 자동 작업은 `system_logs`의 `backup-service`로 연결하고 `admin_audit_logs`에는 쓰지 않습니다.

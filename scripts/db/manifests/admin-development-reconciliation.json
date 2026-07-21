@@ -2,7 +2,7 @@
   "namespace": "admin",
   "environment": "development",
   "projectRef": "fglggyfvzjdsbyckinqa",
-  "expectedLocalCount": 85,
+  "expectedLocalCount": 88,
   "knownRemoteOnly": {
     "20260713140000_admin_learning_analytics_dual_id_coverage.sql": {
       "status": "superseded",
@@ -66,13 +66,28 @@
         "20260720104000_users_audit_target_projection.sql"
       ]
     },
+    "backup-monitoring": {
+      "migrations": [
+        "20260720150000_admin_backup_monitoring.sql"
+      ]
+    },
+    "backup-monitoring-read-fix": {
+      "migrations": [
+        "20260720150100_admin_backup_read_rpc_qualification.sql"
+      ]
+    },
+    "backup-monitoring-mirror-summary": {
+      "migrations": [
+        "20260720150200_admin_backup_mirror_summary.sql"
+      ]
+    },
     "baseline-all": {
       "from": "20260612170000_notification_admin_tables.sql",
-      "to": "20260720104000_users_audit_target_projection.sql"
+      "to": "20260720150200_admin_backup_mirror_summary.sql"
     },
     "release-all": {
       "from": "20260612170000_notification_admin_tables.sql",
-      "to": "20260720104000_users_audit_target_projection.sql"
+      "to": "20260720150200_admin_backup_mirror_summary.sql"
     }
   }
 }

@@ -28,6 +28,7 @@ import {
 import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
 import type { AsyncState } from '../../../shared/model/async-state';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import { BackupStatusCard } from '../components/backup-status-card';
 
 const { Paragraph, Text } = Typography;
 
@@ -345,6 +346,10 @@ export default function DashboardPage(): JSX.Element {
           </Col>
         ))}
       </Row>
+
+      <div style={{ marginTop: 16 }}>
+        <BackupStatusCard />
+      </div>
 
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         <Col xs={24} xl={10}>

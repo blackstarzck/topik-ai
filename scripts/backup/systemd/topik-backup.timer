@@ -1,0 +1,11 @@
+[Unit]
+Description=TOPIK backup at 00:30, 06:30, 12:30, and 18:30 KST
+
+[Timer]
+OnCalendar=*-*-* 00,06,12,18:30:00 Asia/Seoul
+Persistent=true
+AccuracySec=1min
+Unit=topik-backup.service
+
+[Install]
+WantedBy=timers.target
