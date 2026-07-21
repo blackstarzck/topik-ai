@@ -68,6 +68,7 @@
 - `system-admins-page-sync.md`
 - `system-audit-logs-page-sync.md`
 - `system-logs-page-sync.md`
+- `system-backups-page-sync.md` — 온프레미스 백업·월간 복원 점검의 조회 전용 관리자 계약과 B2C 비노출 경계
 - `system-metadata-page-sync.md`
 - `system-permissions-page-sync.md`
 - `users-detail-page-sync.md`
@@ -88,7 +89,7 @@
 ### `docs/architecture`
 - `admin-overview.md`
 - `admin-data-source-transition.md`
-- `admin-cicd-pipeline.md` — PR shadow 계약, main 이후 topik-dev DB·권한·CRUD·브라우저 검증, 회사 저장소 fast-forward, topik-prod staged promotion·자동 rollback의 단일 배포 SoT
+- `admin-cicd-pipeline.md` — 변경을 sync-only/app-only/db-only/app-db로 분리하는 PR gate, 경로별 topik-dev 검증, 회사 저장소 코드 fast-forward, 필요한 경우에만 topik-prod migration·Vercel promotion을 실행하는 단일 배포 SoT
 - `writing-question-version-policy.md` — `POL-017` 문항 수정 이력, 현재 버전, 북마크·임시저장 최신화, 제출 시점 스냅샷 고정의 도메인 SoT
 - `users-registration-lifecycle-v13-handoff.md` — 이메일 미인증/약관 동의/회원 상태 불변식과 v13 원천 스키마·백필 요청 handoff(2026-06-26)
 - `shared-supabase-schema-ownership.md` — 공유 Supabase 스키마 소유권 매트릭스(객체별 owner/writer/reader/RLS/migration home — 2026-06-12 알림 기능 WP0-1)
@@ -99,6 +100,7 @@
 - `index.md`
 
 ### `docs/runbooks`
+- `topik-prod-onprem-backup.md` — topik-prod 데이터베이스·전체 파일 저장소의 온프레미스 암호화 백업, 월간 격리 복원, 예약·보고·운영 완료 절차
 - `dev-to-prod-data-recovery.md` — Supabase dev → prod 사용자·학습·정책·Storage 데이터 복구 절차와 재실행 안전장치, 검증 기준을 기록한 운영 runbook
 - `notification-worker-production-verification.md` — v13 transition email worker를 topik-ai production worker로 넘기기 전/후 SOT, Vercel readiness, smoke, cross-app state evidence를 기록하는 운영 검증 runbook
 - `notification-worker-production-evidence.example.md` — 실제 production evidence 파일 작성 시 secret 값을 남기지 않도록 돕는 redacted 예시 문서
@@ -159,6 +161,7 @@
 - `page-ia/system-admins-page-ia.md`
 - `page-ia/system-audit-logs-page-ia.md`
 - `page-ia/system-logs-page-ia.md`
+- `page-ia/system-backups-page-ia.md` — 백업 상태·실행 이력·검사 결과·시스템 로그 연결을 제공하는 조회 전용 화면
 - `page-ia/system-metadata-page-ia.md`
 - `page-ia/system-permissions-page-ia.md`
 - `page-ia/users-detail-page-ia.md`

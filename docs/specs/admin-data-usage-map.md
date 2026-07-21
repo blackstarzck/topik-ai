@@ -158,3 +158,12 @@
 | 모듈 | 관리자 화면 | 데이터 source | 관리자 노출 필드 | 데이터 성격 | B2C 노출 위치 | B2C 노출 상태 | 비고 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Users | `Users > 회원 상세 > 학습 현황` | v13 `problem_attempts`, `problems`, `writing_submissions`, `writing_feedback`, `feedback_dimension_scores`, `learning_goals` | 총 풀이, 풀이 완료 문제, 정답률, 평균 점수, 학습 시간, 북마크 수, 영역별 정답률, 약점, 최근 풀이 메타데이터, 최근 작문 제출/점수/약점 차원 | 학습 결과 집계 + 메타데이터 read-only | 학습 결과/마이페이지/작문 피드백 화면 후보 | 운영상 추정 | 답안 본문과 문장 첨삭 본문은 admin 미노출. 신규 테이블/FK/v13 DDL 없음. |
+## 2026-07-20 System 백업 관리 데이터 사용
+
+| 모듈 | 관리자 화면 | 데이터 source | 관리자 노출 필드 | 데이터 성격 | B2C 노출 위치 | B2C 노출 상태 | 비고 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Dashboard/System | `대시보드 > 백업 상태`, `System > 백업 관리` | `admin_backup_runs`, `admin_backup_component_results`, `admin_restore_drills`, `admin_backup_report_events`, 연결 `system_logs` | 종합·대상별 상태, 시각, 용량, 파일 개수, 검사, 디스크, 마지막 보고 수신, 정리된 오류, 시스템 로그 번호 | 자동 운영 증적 | 없음 | 내부 전용 | 운영은 `topik-prod` 원본, localhost는 `topik-dev` 보고 복사본. 파일명·경로·회원 정보·연결 정보·비밀키·원문 오류 미수집. 실제 백업 자료는 온프레미스에만 저장 |
+
+- 백업 관리 데이터는 사용자 화면이나 v13 기능에 노출하지 않습니다.
+- 운영 원본 데이터는 계속 `topik-prod`에 있고, 이 관리 데이터는 백업 파일 자체가 아니라 상태 증적입니다.
+- `topik-dev`에는 동일한 상태 증적만 별도 저장하며 개발 데이터 자체를 백업하지 않습니다.

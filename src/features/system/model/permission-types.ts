@@ -333,6 +333,13 @@ export const permissionCatalog: PermissionDefinition[] = [
     module: '시스템',
     scopeDescription: '기술 로그 및 장애 탐지 정보를 조회합니다.',
     risk: 'medium'
+  },
+  {
+    key: 'system.backups.read',
+    name: '백업 상세 조회',
+    module: '시스템',
+    scopeDescription: '온프레미스 백업 실행 결과와 복원 점검 상세를 조회합니다.',
+    risk: 'medium'
   }
 ];
 

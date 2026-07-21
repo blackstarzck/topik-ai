@@ -50,6 +50,7 @@ export const adminMenuLabels = {
   systemAdmins: '관리자 계정',
   systemPermissions: '권한 관리',
   systemMetadata: '메타데이터 관리',
+  systemBackups: '백업 관리',
   systemAuditLogs: '감사 로그',
   systemLogs: '시스템 로그'
 } as const;

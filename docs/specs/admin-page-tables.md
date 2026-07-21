@@ -649,3 +649,16 @@
 - 응답은 기존 화면 계약처럼 `SystemMetadataGroup.items[]` 중첩 구조로 매핑한다.
 - action/audit: `metadata_group_saved`, `metadata_item_saved`, `metadata_group_status_changed`, `metadata_item_status_changed`, `metadata_item_deleted`, `metadata_items_reordered`; Target Type은 `SystemMetadataGroup`, Target ID는 `groupId`.
 - AssessmentMasterCatalog(`topik_writing_*`)는 같은 화면의 별도 섹션이며 이 그룹/항목 source 갱신 범위가 아니다.
+## 46) System > 백업 관리
+
+- 현재 상태: 구현됨, 조회 전용
+- 라우트: `/system/backups`
+- 상단 요약: 현재 상태, 마지막 전체 성공, 최근 7일 성공률, 디스크 사용률, 마지막 복원 점검, localhost 개발 복사본의 마지막 복사 시각
+- 검색 조건: 시작 기간, 전체 결과, 백업 대상(`데이터베이스`/`파일 저장소`), 작업 번호
+- 목록 컬럼: 시작, 종료, 전체 결과, 데이터베이스 결과, 파일 결과, 전체 용량, 실행 시간, 디스크 사용률
+- 행 클릭: `DetailDrawer`에서 대상별 검사 결과, 파일 개수·용량, 정리된 오류 분류, 연결 시스템 로그를 표시
+- URL 복원: `startDate`, `endDate`, `result`, `target`, `keyword`, `page`, `runId`; 페이지 크기는 20건 고정
+- 상태: `진행 중`, `정상`, `부분 실패`, `실패`, `지연`, `기록 없음`; 디스크는 `정상`, `주의`, `위험`
+- 실행·등록·수정·삭제 버튼은 제공하지 않음
+- localhost에서는 실제 대상이 `topik-prod`이고 현재 화면은 `topik-dev`에 저장된 보고 복사본임을 상단에 안내함
+- 화면 고유 예외: 사용자 확정 요구에 따라 기간 외에 결과와 대상 필터를 함께 제공합니다.

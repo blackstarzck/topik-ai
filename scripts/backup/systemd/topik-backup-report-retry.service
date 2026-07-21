@@ -1,0 +1,17 @@
+[Unit]
+Description=TOPIK backup report outbox retry
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=topikbackup
+Group=topikbackup
+EnvironmentFile=/etc/topik-backup/backup.env
+ExecStart=/opt/topik-backup/topik-backup.sh flush
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/srv/topik-backup
+UMask=0077

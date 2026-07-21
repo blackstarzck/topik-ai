@@ -334,6 +334,12 @@ const menuConfig: MenuNode[] = [
         permissionKeys: ['system.metadata.manage']
       },
       {
+        key: '/system/backups',
+        label: adminMenuLabels.systemBackups,
+        to: '/system/backups',
+        permissionKeys: ['system.backups.read']
+      },
+      {
         key: '/system/audit-logs',
         label: adminMenuLabels.systemAuditLogs,
         to: '/system/audit-logs',
@@ -504,6 +510,9 @@ function resolveSelectedKey(pathname: string): string {
   }
   if (pathname.startsWith('/system/logs')) {
     return '/system/logs';
+  }
+  if (pathname.startsWith('/system/backups')) {
+    return '/system/backups';
   }
   if (pathname.startsWith('/system/audit-logs')) {
     return '/system/audit-logs';
@@ -777,4 +786,3 @@ export function AdminShell(): JSX.Element {
     </Layout>
   );
 }
-
