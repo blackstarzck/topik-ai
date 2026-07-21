@@ -1,0 +1,9 @@
+[Unit]
+Description=TOPIK restore drill schedule (first Sunday 03:00 KST)
+
+[Timer]
+OnCalendar=Sun *-*-01..07 03:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

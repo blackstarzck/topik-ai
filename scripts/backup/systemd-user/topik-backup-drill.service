@@ -1,0 +1,13 @@
+[Unit]
+Description=TOPIK monthly restore drill (user scope)
+
+[Service]
+Type=oneshot
+EnvironmentFile=%h/topik-backup/etc/backup.env
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/topik-backup/bin/topik-backup.sh drill
+TimeoutStartSec=3h
+TimeoutStopSec=1min
+NoNewPrivileges=true
+PrivateTmp=true
+UMask=0077

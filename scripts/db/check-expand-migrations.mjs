@@ -25,6 +25,41 @@ function stripSqlComments(sql) {
     .replace(/--[^\r\n]*/g, ' ');
 }
 
+function collectFunctionNames(sql, pattern) {
+  const names = [];
+  for (const match of stripSqlComments(sql).matchAll(pattern)) {
+    names.push(match[1].toLowerCase());
+  }
+  return names;
+}
+
+function findPlainZeroArgumentFunctionCreates(sql) {
+  return collectFunctionNames(
+    sql,
+    /\bcreate\s+function\s+([a-z_][a-z0-9_$]*(?:\.[a-z_][a-z0-9_$]*)?)\s*\(\s*\)/gi
+  );
+}
+
+function isSafeIntraReleaseFunctionReplacement(sql, introducedFunctions) {
+  const normalized = stripSqlComments(sql);
+  const dropOperationCount = normalized.match(/\bdrop\s+(?:function|procedure)\b/gi)?.length ?? 0;
+  if (dropOperationCount === 0) return false;
+
+  const droppedFunctions = collectFunctionNames(
+    sql,
+    /\bdrop\s+function\s+(?:if\s+exists\s+)?([a-z_][a-z0-9_$]*(?:\.[a-z_][a-z0-9_$]*)?)\s*\(\s*\)\s*(?:cascade|restrict)?\s*;/gi
+  );
+  if (droppedFunctions.length !== dropOperationCount) return false;
+
+  const recreatedFunctions = new Set(collectFunctionNames(
+    sql,
+    /\bcreate\s+(?:or\s+replace\s+)?function\s+([a-z_][a-z0-9_$]*(?:\.[a-z_][a-z0-9_$]*)?)\s*\(\s*\)/gi
+  ));
+  return droppedFunctions.every((functionName) => (
+    introducedFunctions.has(functionName) && recreatedFunctions.has(functionName)
+  ));
+}
+
 export function findContractOperations(sql) {
   const normalized = stripSqlComments(sql);
   return CONTRACT_PATTERNS
@@ -34,7 +69,9 @@ export function findContractOperations(sql) {
 
 export function classifyMigrationDiff(entries, readMigration) {
   const issues = [];
-  for (const entry of entries) {
+  const introducedFunctions = new Set();
+  const orderedEntries = [...entries].sort((left, right) => left.path.localeCompare(right.path));
+  for (const entry of orderedEntries) {
     const forward = FORWARD_MIGRATION.test(entry.path);
     const down = DOWN_MIGRATION.test(entry.path);
     if (!forward && !down) continue;
@@ -43,8 +80,17 @@ export function classifyMigrationDiff(entries, readMigration) {
       continue;
     }
     if (!forward) continue;
-    for (const operation of findContractOperations(readMigration(entry.path))) {
+    const sql = readMigration(entry.path);
+    const safeFunctionReplacement = isSafeIntraReleaseFunctionReplacement(
+      sql,
+      introducedFunctions
+    );
+    for (const operation of findContractOperations(sql)) {
+      if (operation === 'drop-function' && safeFunctionReplacement) continue;
       issues.push(`${entry.path}: contract operation detected (${operation})`);
+    }
+    for (const functionName of findPlainZeroArgumentFunctionCreates(sql)) {
+      introducedFunctions.add(functionName);
     }
   }
   return issues;

@@ -1,0 +1,13 @@
+[Unit]
+Description=TOPIK backup report retry flush (user scope)
+
+[Service]
+Type=oneshot
+EnvironmentFile=%h/topik-backup/etc/backup.env
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/topik-backup/bin/topik-backup.sh flush
+TimeoutStartSec=4min
+TimeoutStopSec=30s
+NoNewPrivileges=true
+PrivateTmp=true
+UMask=0077
