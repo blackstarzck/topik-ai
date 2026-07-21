@@ -699,3 +699,9 @@
 - Updated `api/backups/report.ts`(실패 보고 수신 시 SMTP 즉시 경보), `api/notifications/dispatch-email.ts`(일일 크론 편승 dead-man, 응답에 backupFreshness), `.env.example`(BACKUP_ALERT_EMAILS/BACKUP_DEADMAN_HOURS), 런북 §7 경보 2단 구조, 단위 테스트 2건(resolveBackupAlert 4케이스, isBackupReportStale 3케이스).
 - Reason: 백업이 실패하거나 온프레미스 서버가 통째로 죽어도 아무도 알 수 없는 상태였다(관리자 화면 수동 확인뿐). Vercel Hobby cron 제한(2개) 때문에 새 크론 대신 기존 일일 워커에 신선도 검사를 편승시키고, 즉시 경보는 수신부에서 직접 발송한다.
 - Validation: 관련 단위 17개 통과, harness:check 통과. 실제 발송은 배포 후 합성 실패 보고 주입으로 검증 예정(주입 행은 검증 후 삭제).
+
+## 2026-07-21 백업 보고 파이프라인 개통과 운영 수신부 교정
+
+- Updated `scripts/backup/backup.env.example`(REPORT_URL을 topik-admin.vercel.app으로 교정), Vercel topik-admin env 12종(BACKUP_* 2계열, SUPABASE_* 운영 교정 — 신형 sb_secret 키), prod DB에 admin backup 마이그레이션 3본 적용(장부 88), CLI 배포 2회+promote.
+- Reason: 운영 수신 실패의 근본 원인이 prod 레거시 API 키의 2026-07-16 비활성화("Legacy API keys are disabled")로 확인됐다 — 문서에 남아 있던 서버 함수 invalid_session 이슈와 동일 원인. 또한 topik-ai.vercel.app은 별개(구) 프로젝트 도메인이고 실제 운영 프로젝트 도메인은 topik-admin.vercel.app이며, Vercel 프로젝트에 Git 연동이 없어 배포는 CLI+promote 방식임을 확인했다.
+- Validation: 서버 outbox 16건 전량 전송(잔여 0), prod/dev 완전 일치(runs 3=성공1·부분실패2, drills 2=성공1·실패1, system_logs 5). 합성 실패 보고 주입으로 즉시 경보 발송 경로를 검증하고 합성 행은 삭제했다(시간창 삭제로 report_events 8건이 함께 삭제됨 — 멱등 장부 성격이라 실행·드릴·로그 데이터는 무손실, 다음 백업부터 재적재). mock e2e 백업 화면 3/3 통과.
