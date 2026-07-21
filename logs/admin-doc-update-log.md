@@ -693,3 +693,9 @@
 - Updated `api/backups/report.ts`, `supabase/migrations-admin/20260720150000~150200`(+down), `/system/backups` 화면과 대시보드 카드 등 src 15파일, `system-backups` page-sync/IA 문서와 관련 SoT 문서 12건, `docs/README.md` 색인 2줄, `supabase/README.md` §2.1, 매니페스트 2종(85→88), 루트 systemd 유닛(+TimeoutStartSec), 백업 계약 테스트 4종.
 - Reason: 백업 모니터링(수신 API·테이블·화면)이 미머지 브랜치에만 있어 서버가 보내는 보고를 받을 수 없었다. 같은 커밋에 묶인 미검증 CI/CD 파이프라인(워크플로우·classifier·vercel.json 변경)은 배포 방식 자체를 바꾸므로 제외하고 백업 기능 파일만 선별 통합했다. `backup-onprem-contract.test.mjs`는 구버전 스크립트 기준이라 현행 계약(auth/storage 덤프 강제, pg 도구 직접 호출, 드릴 포트 55433, 잠금 확장)으로 갱신했다.
 - Validation: 백업 단위 테스트 4스위트 26개 포함 전체 unit 51파일/348개 통과, harness:check(mojibake·crosslink·route-coverage·lint·typecheck) 통과. CI 스택 파일(.github/scripts-ci/admin-cicd-pipeline.md)은 가져오지 않았고 문서 참조 스캔으로 dangling 참조가 없음을 확인했다.
+
+## 2026-07-21 백업 실패 즉시 경보와 보고 두절 감시(dead-man)를 배선
+
+- Updated `api/backups/report.ts`(실패 보고 수신 시 SMTP 즉시 경보), `api/notifications/dispatch-email.ts`(일일 크론 편승 dead-man, 응답에 backupFreshness), `.env.example`(BACKUP_ALERT_EMAILS/BACKUP_DEADMAN_HOURS), 런북 §7 경보 2단 구조, 단위 테스트 2건(resolveBackupAlert 4케이스, isBackupReportStale 3케이스).
+- Reason: 백업이 실패하거나 온프레미스 서버가 통째로 죽어도 아무도 알 수 없는 상태였다(관리자 화면 수동 확인뿐). Vercel Hobby cron 제한(2개) 때문에 새 크론 대신 기존 일일 워커에 신선도 검사를 편승시키고, 즉시 경보는 수신부에서 직접 발송한다.
+- Validation: 관련 단위 17개 통과, harness:check 통과. 실제 발송은 배포 후 합성 실패 보고 주입으로 검증 예정(주입 행은 검증 후 삭제).

@@ -4,7 +4,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   handleBackupReport,
-  isValidMonitoringTarget
+  isValidMonitoringTarget,
+  resolveBackupAlert
 } from '../../api/backups/report';
 
 const SECRET = 'unit-test-backup-report-secret';
@@ -228,5 +229,43 @@ describe('backup report receiver', () => {
       'fglggyfvzjdsbyckinqa',
       'primary'
     )).toBe(false);
+  });
+});
+
+describe('resolveBackupAlert', () => {
+  const base = {
+    report_type: 'backup_completed',
+    report_id: 'r',
+    run_id: 'run-1',
+    source_project: 'topik-prod',
+    started_at: '2026-07-21T00:00:00Z',
+    completed_at: '2026-07-21T00:10:00Z',
+    status: 'succeeded',
+    disk_used_percent: 57
+  } as never;
+
+  it('alerts on failed and partial backup completions', () => {
+    expect(resolveBackupAlert({ ...(base as object), status: 'failed' } as never)?.subject).toContain('백업 실패');
+    expect(resolveBackupAlert({ ...(base as object), status: 'partial_failure' } as never)?.subject).toContain('부분 실패');
+  });
+
+  it('alerts on failed restore drills', () => {
+    const drill = {
+      ...(base as object),
+      report_type: 'restore_drill_completed',
+      drill_id: 'd-1',
+      status: 'failed'
+    } as never;
+    expect(resolveBackupAlert(drill)?.subject).toContain('드릴');
+  });
+
+  it('alerts on dangerous disk usage even when the run succeeded', () => {
+    const alert = resolveBackupAlert({ ...(base as object), disk_used_percent: 91 } as never);
+    expect(alert?.subject).toContain('디스크');
+  });
+
+  it('stays silent for healthy reports', () => {
+    expect(resolveBackupAlert(base)).toBeNull();
+    expect(resolveBackupAlert({ ...(base as object), report_type: 'backup_started', status: undefined } as never)).toBeNull();
   });
 });
