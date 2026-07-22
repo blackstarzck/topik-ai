@@ -1,0 +1,133 @@
+name: Database health
+
+on:
+  schedule:
+    - cron: '17 18 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: topik-admin-database-health
+  queue: max
+
+env:
+  NODE_VERSION: '24.x'
+  SUPABASE_CLI_VERSION: '2.105.0'
+  V13_CONTRACT_SHA: fb5fa73107034edacd698d364d7f97b7b1d6b0c7
+
+jobs:
+  shadow:
+    name: full-shadow-replay
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: blackstarzck/topik-project-v13
+          ref: ${{ env.V13_CONTRACT_SHA }}
+          path: .ci/v13
+          sparse-checkout: supabase
+          sparse-checkout-cone-mode: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: ${{ env.SUPABASE_CLI_VERSION }}
+      - run: npm ci
+      - name: Verify manifests and replay every owned migration
+        shell: bash
+        run: |
+          mkdir -p database-health
+          npm run db:contracts:verify -- --json-out database-health/migration-contracts.json
+          npm run db:shadow:verify -- \
+            --v13-dir .ci/v13 \
+            --v13-sha "$V13_CONTRACT_SHA" \
+            --json-out database-health/shadow-contract.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-shadow-${{ github.run_id }}
+          path: database-health/*.json
+          if-no-files-found: error
+          retention-days: 90
+
+  development-drift:
+    name: topik-dev-readonly-drift
+    needs: shadow
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: development
+    env:
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      SUPABASE_EXPECTED_PROJECT_REF: ${{ vars.SUPABASE_EXPECTED_PROJECT_REF }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: nightly-shadow-${{ github.run_id }}
+          path: database-health/shadow
+      - name: Verify topik-dev trackers, RPC definitions, and permissions without writes
+        shell: bash
+        run: |
+          test "$SUPABASE_PROJECT_REF" = fglggyfvzjdsbyckinqa
+          test "$SUPABASE_EXPECTED_PROJECT_REF" = fglggyfvzjdsbyckinqa
+          mkdir -p database-health/development
+          npm run db:migrate -- --verify-all --require-clean --manifest scripts/db/manifests/writing-development-release.json --batch release-all --json-out database-health/development/writing-migrations.json
+          npm run db:admin:migrate -- --verify-all --require-clean --manifest scripts/db/manifests/admin-development-reconciliation.json --batch release-all --json-out database-health/development/admin-migrations.json
+          npm run db:users-contract -- --expected-project-ref "$SUPABASE_EXPECTED_PROJECT_REF" --expected-fingerprint-file database-health/shadow/shadow-contract.json --json-out database-health/development/users-contract.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-development-drift-${{ github.run_id }}
+          path: database-health/development/*.json
+          if-no-files-found: error
+          retention-days: 90
+
+  production-drift:
+    name: topik-prod-readonly-drift
+    needs: shadow
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: Production
+    env:
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      SUPABASE_EXPECTED_PROJECT_REF: ${{ vars.SUPABASE_EXPECTED_PROJECT_REF }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: nightly-shadow-${{ github.run_id }}
+          path: database-health/shadow
+      - name: Verify topik-prod trackers, RPC definitions, and permissions without writes
+        shell: bash
+        run: |
+          test "$SUPABASE_PROJECT_REF" = eymlabowhfgtxbiqwxqh
+          test "$SUPABASE_EXPECTED_PROJECT_REF" = eymlabowhfgtxbiqwxqh
+          mkdir -p database-health/production
+          npm run db:migrate -- --verify-all --require-clean --manifest scripts/db/manifests/writing-production-cutover.json --batch release-all --json-out database-health/production/writing-migrations.json
+          npm run db:admin:migrate -- --verify-all --require-clean --manifest scripts/db/manifests/admin-production-cutover.json --batch release-all --json-out database-health/production/admin-migrations.json
+          npm run db:users-contract -- --expected-project-ref "$SUPABASE_EXPECTED_PROJECT_REF" --require-no-legacy-phone --expected-fingerprint-file database-health/shadow/shadow-contract.json --json-out database-health/production/users-contract.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-production-drift-${{ github.run_id }}
+          path: database-health/production/*.json
+          if-no-files-found: error
+          retention-days: 90

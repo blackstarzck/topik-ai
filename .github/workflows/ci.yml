@@ -1,0 +1,260 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '24.x'
+  SUPABASE_CLI_VERSION: '2.105.0'
+  V13_CONTRACT_SHA: fb5fa73107034edacd698d364d7f97b7b1d6b0c7
+
+jobs:
+  classify:
+    name: classify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      release_plan: ${{ steps.classifier.outputs.release_plan }}
+      deploy_app: ${{ steps.classifier.outputs.deploy_app }}
+      apply_migrations: ${{ steps.classifier.outputs.apply_migrations }}
+      validation_profile: ${{ steps.classifier.outputs.validation_profile }}
+      classifier_version: ${{ steps.classifier.outputs.classifier_version }}
+      changed_files_digest: ${{ steps.classifier.outputs.changed_files_digest }}
+      base_sha: ${{ steps.classifier.outputs.base_sha }}
+      head_sha: ${{ steps.classifier.outputs.head_sha }}
+      run_unit: ${{ steps.classifier.outputs.run_unit }}
+      run_e2e: ${{ steps.classifier.outputs.run_e2e }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Classify the complete base-to-head diff
+        id: classifier
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node scripts/ci/classify-release-change.mjs \
+            --base "$BASE_SHA" \
+            --head "$HEAD_SHA" \
+            --json-out ci-artifacts/release-classification.json \
+            --github-output "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-classification-${{ github.sha }}
+          path: ci-artifacts/release-classification.json
+          if-no-files-found: error
+          retention-days: 90
+
+  blocked-validation:
+    name: blocked-validation
+    needs: classify
+    if: ${{ needs.classify.outputs.release_plan == 'blocked' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "The change classifier blocked this release. Review the classification artifact."
+          exit 1
+
+  light-validation:
+    name: light-validation
+    needs: classify
+    if: ${{ needs.classify.outputs.validation_profile == 'light' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Verify documentation contracts
+        run: npm run harness:docs
+      - name: Run the unit suite for unit-test changes
+        if: ${{ needs.classify.outputs.run_unit == 'true' }}
+        run: npm run test:unit
+      - name: Install Chromium for mock E2E changes
+        if: ${{ needs.classify.outputs.run_e2e == 'true' }}
+        run: npx playwright install --with-deps chromium
+      - name: Run the mock browser suite for E2E changes
+        if: ${{ needs.classify.outputs.run_e2e == 'true' }}
+        run: npm run test:e2e
+        env:
+          CI: 'true'
+
+  quality:
+    name: quality
+    needs: classify
+    if: ${{ needs.classify.outputs.validation_profile == 'app' || needs.classify.outputs.validation_profile == 'full' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run harness:check
+      - name: Verify client secret and static migration contracts
+        shell: bash
+        run: |
+          mkdir -p ci-artifacts
+          npm run check:client-source-secrets
+          npm run db:contracts:verify -- --json-out ci-artifacts/migration-contracts.json
+      - run: npm run test:unit
+      - run: npm run build
+
+  db-contract:
+    name: db-contract
+    needs: classify
+    if: ${{ needs.classify.outputs.validation_profile == 'full' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          repository: blackstarzck/topik-project-v13
+          ref: ${{ env.V13_CONTRACT_SHA }}
+          path: .ci/v13
+          sparse-checkout: supabase
+          sparse-checkout-cone-mode: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: ${{ env.SUPABASE_CLI_VERSION }}
+      - run: npm ci
+      - name: Verify repository ownership and client secret boundaries
+        run: |
+          npm run check:migration-boundary -- --v13-root=.ci/v13
+          npm run check:client-source-secrets
+      - name: Verify migration manifests and immutable expand changes
+        shell: bash
+        run: |
+          npm run db:contracts:verify -- --json-out ci-artifacts/migration-contracts.json
+          if [ "${{ needs.classify.outputs.apply_migrations }}" = true ]; then
+            npm run check:expand-migrations -- --base "${{ needs.classify.outputs.base_sha }}"
+          fi
+      - run: >-
+          npx vitest run
+          tests/unit/db-migrate-core.test.mjs
+          tests/unit/expand-migration-gate.test.mjs
+          tests/unit/users-release-contract.test.mjs
+          tests/unit/release-change-classifier.test.mjs
+          tests/unit/release-evidence-contract.test.mjs
+          tests/unit/release-pipeline-contract.test.mjs
+      - name: Rebuild the v13, writing, and admin schema in shadow Supabase
+        run: >-
+          npm run db:shadow:verify --
+          --v13-dir .ci/v13
+          --v13-sha $V13_CONTRACT_SHA
+          --json-out ci-artifacts/shadow-contract.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: db-contract-${{ github.sha }}
+          path: ci-artifacts/*.json
+          if-no-files-found: error
+          retention-days: 90
+
+  browser-e2e:
+    name: browser-e2e
+    needs: classify
+    if: ${{ needs.classify.outputs.validation_profile == 'app' || needs.classify.outputs.validation_profile == 'full' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+        env:
+          CI: 'true'
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-e2e-failure-${{ github.sha }}
+          path: |
+            playwright-report
+            test-results
+          if-no-files-found: ignore
+          retention-days: 14
+
+  ci-gate:
+    name: ci-gate
+    if: always()
+    needs:
+      - classify
+      - blocked-validation
+      - light-validation
+      - quality
+      - db-contract
+      - browser-e2e
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require exactly the checks selected by the classifier
+        shell: bash
+        env:
+          RELEASE_PLAN: ${{ needs.classify.outputs.release_plan }}
+          VALIDATION_PROFILE: ${{ needs.classify.outputs.validation_profile }}
+          CLASSIFY_RESULT: ${{ needs.classify.result }}
+          BLOCKED_RESULT: ${{ needs.blocked-validation.result }}
+          LIGHT_RESULT: ${{ needs.light-validation.result }}
+          QUALITY_RESULT: ${{ needs.quality.result }}
+          DB_RESULT: ${{ needs.db-contract.result }}
+          BROWSER_RESULT: ${{ needs.browser-e2e.result }}
+        run: |
+          set -euo pipefail
+          test "$CLASSIFY_RESULT" = success
+          case "$RELEASE_PLAN:$VALIDATION_PROFILE" in
+            blocked:full)
+              echo "Release classification is blocked." >&2
+              exit 1
+              ;;
+            sync-only:light)
+              test "$BLOCKED_RESULT" = skipped
+              test "$LIGHT_RESULT" = success
+              test "$QUALITY_RESULT" = skipped
+              test "$DB_RESULT" = skipped
+              test "$BROWSER_RESULT" = skipped
+              ;;
+            app-only:app)
+              test "$BLOCKED_RESULT" = skipped
+              test "$LIGHT_RESULT" = skipped
+              test "$QUALITY_RESULT" = success
+              test "$DB_RESULT" = skipped
+              test "$BROWSER_RESULT" = success
+              ;;
+            sync-only:full|db-only:full|app-db:full)
+              test "$BLOCKED_RESULT" = skipped
+              test "$LIGHT_RESULT" = skipped
+              test "$QUALITY_RESULT" = success
+              test "$DB_RESULT" = success
+              test "$BROWSER_RESULT" = success
+              ;;
+            *)
+              echo "Unsupported release plan/profile: $RELEASE_PLAN/$VALIDATION_PROFILE" >&2
+              exit 1
+              ;;
+          esac

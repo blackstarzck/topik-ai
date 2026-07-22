@@ -1,22 +1,12 @@
 {
   "namespace": "topik_writing",
-  "environment": "production",
-  "projectRef": "eymlabowhfgtxbiqwxqh",
+  "environment": "development",
+  "projectRef": "fglggyfvzjdsbyckinqa",
   "expectedLocalCount": 33,
   "blockedMigrations": [
     "20260716052957_topik_writing_source_updated_at_version_tracking.sql"
   ],
   "batches": {
-    "version-summary": {
-      "precondition": "../sql/production-writing-version-summary-precondition.sql",
-      "migrations": [
-        "20260716003518_topik_writing_question_version_summary_view.sql"
-      ]
-    },
-    "baseline-applied": {
-      "from": "20260610200100_topik_writing_topic_master.sql",
-      "to": "20260716003518_topik_writing_question_version_summary_view.sql"
-    },
     "release-all": {
       "from": "20260610200100_topik_writing_topic_master.sql",
       "to": "20260716052957_topik_writing_source_updated_at_version_tracking.sql",

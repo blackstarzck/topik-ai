@@ -1,0 +1,358 @@
+name: Validate development
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: topik-admin-development
+  queue: max
+
+env:
+  NODE_VERSION: '24.x'
+  SUPABASE_CLI_VERSION: '2.105.0'
+  V13_CONTRACT_SHA: fb5fa73107034edacd698d364d7f97b7b1d6b0c7
+  DEVELOPMENT_PROJECT_REF: fglggyfvzjdsbyckinqa
+
+jobs:
+  classify:
+    name: classify-main-release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      release_plan: ${{ steps.classifier.outputs.release_plan }}
+      deploy_app: ${{ steps.classifier.outputs.deploy_app }}
+      apply_migrations: ${{ steps.classifier.outputs.apply_migrations }}
+      validation_profile: ${{ steps.classifier.outputs.validation_profile }}
+      classifier_version: ${{ steps.classifier.outputs.classifier_version }}
+      changed_files_digest: ${{ steps.classifier.outputs.changed_files_digest }}
+      base_sha: ${{ steps.classifier.outputs.base_sha }}
+      run_unit: ${{ steps.classifier.outputs.run_unit }}
+      run_e2e: ${{ steps.classifier.outputs.run_e2e }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Classify the exact main push
+        id: classifier
+        shell: bash
+        run: |
+          node scripts/ci/classify-release-change.mjs \
+            --base "${{ github.event.before }}" \
+            --head "$GITHUB_SHA" \
+            --json-out development-classification/release-classification.json \
+            --github-output "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: development-classification-${{ github.sha }}
+          path: development-classification/release-classification.json
+          if-no-files-found: error
+          retention-days: 90
+
+  validate-sync:
+    name: sync-only-validation
+    needs: classify
+    if: ${{ needs.classify.outputs.release_plan == 'sync-only' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        if: ${{ needs.classify.outputs.validation_profile == 'full' }}
+        with:
+          repository: blackstarzck/topik-project-v13
+          ref: ${{ env.V13_CONTRACT_SHA }}
+          path: .ci/v13
+          sparse-checkout: supabase
+          sparse-checkout-cone-mode: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - uses: supabase/setup-cli@v1
+        if: ${{ needs.classify.outputs.validation_profile == 'full' }}
+        with:
+          version: ${{ env.SUPABASE_CLI_VERSION }}
+      - run: npm ci
+      - name: Lock the sync-only SHA and verify documentation contracts
+        shell: bash
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          mkdir -p development-evidence
+          npm run harness:docs
+      - name: Re-run unit tests when a light change touches unit tests
+        if: ${{ needs.classify.outputs.validation_profile == 'light' && needs.classify.outputs.run_unit == 'true' }}
+        run: npm run test:unit
+      - name: Install Chromium when a light change touches mock E2E
+        if: ${{ needs.classify.outputs.validation_profile == 'light' && needs.classify.outputs.run_e2e == 'true' }}
+        run: npx playwright install --with-deps chromium
+      - name: Re-run mock E2E when a light change touches mock E2E
+        if: ${{ needs.classify.outputs.validation_profile == 'light' && needs.classify.outputs.run_e2e == 'true' }}
+        run: npm run test:e2e
+        env:
+          CI: 'true'
+      - name: Strongly verify CI and migration control-plane changes
+        if: ${{ needs.classify.outputs.validation_profile == 'full' }}
+        shell: bash
+        run: |
+          npm run harness:check
+          npm run check:migration-boundary -- --v13-root=.ci/v13
+          npm run check:client-source-secrets
+          npm run db:contracts:verify -- --json-out development-evidence/migration-contracts.json
+          npm run test:unit
+          npm run build
+          npx playwright install --with-deps chromium
+          npm run test:e2e
+          npm run db:shadow:verify -- --v13-dir .ci/v13 --v13-sha "$V13_CONTRACT_SHA" --json-out development-evidence/shadow-contract.json
+      - name: Write the PII-free sync evidence
+        run: >-
+          node scripts/ci/write-development-evidence.mjs
+          --json-out development-evidence/development.json
+          --base-sha "${{ needs.classify.outputs.base_sha }}"
+          --commit-sha "$GITHUB_SHA"
+          --v13-sha "$V13_CONTRACT_SHA"
+          --project-ref "$DEVELOPMENT_PROJECT_REF"
+          --release-plan sync-only
+          --validation-profile "${{ needs.classify.outputs.validation_profile }}"
+          --classifier-version "${{ needs.classify.outputs.classifier_version }}"
+          --changed-files-digest "${{ needs.classify.outputs.changed_files_digest }}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: development-evidence-${{ github.sha }}
+          path: development-evidence/*.json
+          if-no-files-found: error
+          retention-days: 90
+
+  validate-app:
+    name: topik-dev-app-validation
+    needs: classify
+    if: ${{ needs.classify.outputs.release_plan == 'app-only' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: development
+    env:
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      SUPABASE_EXPECTED_PROJECT_REF: ${{ vars.SUPABASE_EXPECTED_PROJECT_REF }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+      E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+      E2E_TARGET_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      ADMIN_E2E_BASE_URL: http://127.0.0.1:4188
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      VITE_SUPABASE_DISABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Lock the app SHA and topik-dev target
+        shell: bash
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          node scripts/ci/validate-development-env.mjs
+          mkdir -p development-evidence
+      - name: Re-run app quality, build, and mock browser gates
+        shell: bash
+        run: |
+          npm run harness:check
+          npm run check:client-source-secrets
+          npm run db:contracts:verify -- --json-out development-evidence/migration-contracts.json
+          npm run test:unit
+          npm run build
+          npx playwright install --with-deps chromium
+          npm run test:e2e
+      - name: Verify topik-dev tracker and permission drift without applying migrations
+        shell: bash
+        run: |
+          npm run db:migrate -- --verify-all --require-clean --manifest scripts/db/manifests/writing-development-release.json --batch release-all --json-out development-evidence/writing-migrations.json
+          npm run db:admin:migrate -- --verify-all --require-clean --manifest scripts/db/manifests/admin-development-reconciliation.json --batch release-all --json-out development-evidence/admin-migrations.json
+          npm run db:users-contract -- --expected-project-ref "$SUPABASE_EXPECTED_PROJECT_REF" --json-out development-evidence/users-contract.json
+      - name: Verify the short topik-dev operational browser flow
+        run: >-
+          node scripts/ci/run-release-e2e.mjs
+          --target development
+          --suite operational-smoke
+          --json-out development-evidence/development-e2e.json
+      - name: Write the PII-free app development evidence
+        run: >-
+          node scripts/ci/write-development-evidence.mjs
+          --json-out development-evidence/development.json
+          --base-sha "${{ needs.classify.outputs.base_sha }}"
+          --commit-sha "$GITHUB_SHA"
+          --v13-sha "$V13_CONTRACT_SHA"
+          --project-ref "$SUPABASE_PROJECT_REF"
+          --release-plan app-only
+          --validation-profile app
+          --classifier-version "${{ needs.classify.outputs.classifier_version }}"
+          --changed-files-digest "${{ needs.classify.outputs.changed_files_digest }}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: development-evidence-${{ github.sha }}
+          path: development-evidence/*.json
+          if-no-files-found: error
+          retention-days: 90
+
+  validate-database:
+    name: topik-dev-database-validation
+    needs: classify
+    if: ${{ needs.classify.outputs.release_plan == 'db-only' || needs.classify.outputs.release_plan == 'app-db' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    environment: development
+    env:
+      RELEASE_PLAN: ${{ needs.classify.outputs.release_plan }}
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      SUPABASE_EXPECTED_PROJECT_REF: ${{ vars.SUPABASE_EXPECTED_PROJECT_REF }}
+      SUPABASE_MIGRATION_OPERATOR: github-actions-development
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+      E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+      E2E_TARGET_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      ADMIN_E2E_BASE_URL: http://127.0.0.1:4188
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      VITE_SUPABASE_DISABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          repository: blackstarzck/topik-project-v13
+          ref: ${{ env.V13_CONTRACT_SHA }}
+          path: .ci/v13
+          sparse-checkout: supabase
+          sparse-checkout-cone-mode: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: ${{ env.SUPABASE_CLI_VERSION }}
+      - run: npm ci
+      - name: Lock the database SHA and topik-dev target
+        shell: bash
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          node scripts/ci/validate-development-env.mjs
+          mkdir -p development-evidence
+      - name: Re-run mandatory quality and mock browser gates
+        shell: bash
+        run: |
+          npm run harness:check
+          npm run check:migration-boundary -- --v13-root=.ci/v13
+          npm run check:client-source-secrets
+          npm run db:contracts:verify -- --json-out development-evidence/migration-contracts.json
+          npm run check:expand-migrations -- --base "${{ needs.classify.outputs.base_sha }}"
+          npm run test:unit
+          npm run build
+          npx playwright install --with-deps chromium
+          npm run test:e2e
+      - name: Rebuild the pinned cross-repository shadow schema
+        run: >-
+          npm run db:shadow:verify --
+          --v13-dir .ci/v13
+          --v13-sha $V13_CONTRACT_SHA
+          --json-out development-evidence/shadow-contract.json
+      - name: Apply topik-dev migrations in ownership order
+        shell: bash
+        run: |
+          npm run db:migrate -- --apply --manifest scripts/db/manifests/writing-development-release.json --batch release-all
+          npm run db:migrate -- --baseline-existing --manifest scripts/db/manifests/writing-development-release.json --batch release-all
+          npm run db:admin:migrate -- --apply --manifest scripts/db/manifests/admin-development-reconciliation.json --batch release-all
+          npm run db:admin:migrate -- --baseline-existing --manifest scripts/db/manifests/admin-development-reconciliation.json --batch release-all
+      - name: Verify topik-dev trackers, Users schema, and permissions
+        shell: bash
+        run: |
+          npm run db:migrate -- --verify-all --require-clean --manifest scripts/db/manifests/writing-development-release.json --batch release-all --json-out development-evidence/writing-migrations.json
+          npm run db:admin:migrate -- --verify-all --require-clean --manifest scripts/db/manifests/admin-development-reconciliation.json --batch release-all --json-out development-evidence/admin-migrations.json
+          npm run db:users-contract -- --expected-project-ref "$SUPABASE_EXPECTED_PROJECT_REF" --expected-fingerprint-file development-evidence/shadow-contract.json --json-out development-evidence/users-contract.json
+      - name: Verify topik-dev CRUD and browser flows with the configured administrator
+        run: >-
+          node scripts/ci/run-release-e2e.mjs
+          --target development
+          --suite full
+          --json-out development-evidence/development-e2e.json
+      - name: Write the PII-free database development evidence
+        run: >-
+          node scripts/ci/write-development-evidence.mjs
+          --json-out development-evidence/development.json
+          --base-sha "${{ needs.classify.outputs.base_sha }}"
+          --commit-sha "$GITHUB_SHA"
+          --v13-sha "$V13_CONTRACT_SHA"
+          --project-ref "$SUPABASE_PROJECT_REF"
+          --release-plan "$RELEASE_PLAN"
+          --validation-profile full
+          --classifier-version "${{ needs.classify.outputs.classifier_version }}"
+          --changed-files-digest "${{ needs.classify.outputs.changed_files_digest }}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: development-evidence-${{ github.sha }}
+          path: development-evidence/*.json
+          if-no-files-found: error
+          retention-days: 90
+
+  development-gate:
+    name: development-gate
+    if: always()
+    needs:
+      - classify
+      - validate-sync
+      - validate-app
+      - validate-database
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require the selected development path
+        shell: bash
+        env:
+          RELEASE_PLAN: ${{ needs.classify.outputs.release_plan }}
+          CLASSIFY_RESULT: ${{ needs.classify.result }}
+          SYNC_RESULT: ${{ needs.validate-sync.result }}
+          APP_RESULT: ${{ needs.validate-app.result }}
+          DATABASE_RESULT: ${{ needs.validate-database.result }}
+        run: |
+          set -euo pipefail
+          test "$CLASSIFY_RESULT" = success
+          case "$RELEASE_PLAN" in
+            sync-only)
+              test "$SYNC_RESULT" = success
+              test "$APP_RESULT" = skipped
+              test "$DATABASE_RESULT" = skipped
+              ;;
+            app-only)
+              test "$SYNC_RESULT" = skipped
+              test "$APP_RESULT" = success
+              test "$DATABASE_RESULT" = skipped
+              ;;
+            db-only|app-db)
+              test "$SYNC_RESULT" = skipped
+              test "$APP_RESULT" = skipped
+              test "$DATABASE_RESULT" = success
+              ;;
+            *)
+              echo "Unsupported or blocked release plan: $RELEASE_PLAN" >&2
+              exit 1
+              ;;
+          esac

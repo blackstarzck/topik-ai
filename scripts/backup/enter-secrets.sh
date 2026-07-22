@@ -37,7 +37,7 @@ while true; do
   echo "  -> ${HOST}:${PORT} 네트워크 확인..."
   if ! timeout 6 bash -c "cat </dev/null >/dev/tcp/${HOST}/${PORT}" 2>/dev/null; then
     echo "  -> 이 서버에서 ${HOST}:${PORT} 에 TCP 연결이 안 됩니다 (방화벽/아웃바운드 차단 가능)."
-    echo "     일단 다시 시도하거나, 계속 안 되면 Claude에게 알려주세요."
+    echo "     일단 다시 시도하거나, 계속 안 되면 운영 담당자에게 알려주세요."
     continue
   fi
   echo "  -> DB 로그인 확인..."
@@ -98,7 +98,7 @@ done
 export RESTIC_REPOSITORY="${ROOT}/repository" RESTIC_PASSWORD_FILE="${ETC}/restic-password"
 if [[ ! -f "${RESTIC_REPOSITORY}/config" ]]; then
   echo "restic 저장소 초기화 중..."
-  restic init || { echo "restic init 실패 — Claude에게 알려주세요"; exit 1; }
+  restic init || { echo "restic init 실패 — 운영 담당자에게 알려주세요"; exit 1; }
 else
   echo "restic 저장소 이미 초기화됨"
 fi
@@ -106,4 +106,4 @@ fi
 touch "${ETC}/.secrets-ready"
 echo
 echo "완료! 모든 비밀값이 저장.검증됐습니다. 이 창은 닫아도 됩니다."
-echo "(Claude가 자동으로 감지해 첫 백업을 시작합니다)"
+echo "(운영 담당자가 확인한 뒤 첫 백업을 시작합니다)"

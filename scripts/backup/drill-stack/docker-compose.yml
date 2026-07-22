@@ -42,7 +42,7 @@ services:
       GOTRUE_MAILER_AUTOCONFIRM: "true"
 
   storage:
-    image: supabase/storage-api:latest
+    image: supabase/storage-api@sha256:32ef6705783ee2289f38a55845c346c78c29fb26a9e02d0abebdd7e6ae88697a
     restart: "no"
     depends_on:
       db:

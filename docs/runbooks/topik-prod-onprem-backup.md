@@ -39,6 +39,9 @@
 - Docker + docker compose v2 (드릴 스택·덤프 컨테이너 실행, 계정은 docker 그룹)
 - 덤프 도구: `public.ecr.aws/supabase/postgres:17.6.1.132` 컨테이너의
   pg_dump/pg_dumpall — **prod PG major와 일치**시키고 사전 pull 한다
+- 드릴 서비스: `supabase/gotrue:v2.193.1`과
+  `supabase/storage-api@sha256:32ef6705783ee2289f38a55845c346c78c29fb26a9e02d0abebdd7e6ae88697a`
+  — 검증한 이미지를 고정해 `latest` 변경으로 인한 드릴 재현 실패를 막는다
 - restic 0.19.x, rclone 1.74.x — 사용자 영역(`~/.local/bin`) 설치 가능
 - psql 클라이언트 16+, jq, python3, gzip
 - supabase CLI는 **덤프에 사용하지 않는다**(§9-1). 설치돼 있어도 무해하다.
@@ -112,12 +115,15 @@ journalctl --user -u topik-backup.service --since today
 ```
 
 - 사용자 타이머 + `loginctl enable-linger`로 재부팅에도 유지된다.
+- 사용자 타이머의 `OnCalendar`는 서버 호스트 시간대를 따르며, 설치 시
+  `timedatectl`로 `Asia/Seoul`임을 확인했다.
 - 보존: restic 7일 / 실행 이력 90일 / 드릴 이력 13개월(수신부 RPC가 강제)
 - 디스크 80%=주의·90%=위험(화면 표시), 50GB 미만=신규 백업 거부(스크립트)
 - 보고 실패는 백업 성공 여부를 바꾸지 않는다. 수신 API가 배포되기 전까지는
   outbox 적재가 정상 상태다. 배포 시 서버의 `report-secret`·
   `report-mirror-secret` 값을 Vercel 환경변수(`BACKUP_REPORT_SECRET`/
-  `BACKUP_MIRROR_REPORT_SECRET`)로 복사해야 연결된다.
+  `BACKUP_MIRROR_REPORT_SECRET`)로 복사하고, `REPORT_URL`을
+  `https://topik-admin.vercel.app/api/backups/report`로 설정해야 연결된다.
 - **능동 경보 2단**: ① 운영 보고가 실패(백업 failed/partial, 드릴 failed,
   디스크 ≥90%)를 담으면 수신부(`api/backups/report.ts`)가 즉시
   `BACKUP_ALERT_EMAILS`로 이메일을 보낸다(SMTP 재사용, 발송 실패는 보고

@@ -304,8 +304,8 @@ run_database_backup() {
     combined_size=$((combined_size + $(stat -c %s "${stage}/database/${file}.sql.gz")))
   done
   (( combined_size >= 1024 )) || return 1
-  # zgrep -q는 첫 매치에서 파이프를 닫아 systemd(IgnoreSIGPIPE=true) 아래에서
-  # gzip이 EPIPE(exit 2)로 실패한다. 무결성은 위의 gzip -t가 보장하므로
+  # 조기 종료하는 grep -q + zcat 파이프는 systemd(IgnoreSIGPIPE=true) 아래에서
+  # gzip을 EPIPE(exit 2)로 실패시킨다. 무결성은 위의 gzip -t가 보장하므로
   # 여기서는 전체를 읽는 grep -c로 헤더 존재만 확인한다.
   gzip -dc "${stage}/database/schema.sql.gz" | grep -c "PostgreSQL database dump" >/dev/null || return 1
   printf '%s\n' "${combined_size}"

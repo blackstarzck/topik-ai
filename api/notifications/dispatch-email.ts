@@ -445,9 +445,17 @@ async function dispatchPendingEmailAttempts(): Promise<Response> {
   }
 
   // 일일 크론에 편승한 백업 dead-man 감시. 발송 처리 결과에는 영향을 주지 않는다.
+  // 경보 수신자가 없어 검사를 건너뛴 경우('skipped')에는 기존 응답 계약을
+  // 유지하기 위해 필드를 노출하지 않는다.
   const backupFreshness = await checkBackupReportFreshness(supabase, transporter, fromAddress);
 
-  return jsonResponse({ ok: true, processed, sent, failed, backupFreshness });
+  return jsonResponse({
+    ok: true,
+    processed,
+    sent,
+    failed,
+    ...(backupFreshness === 'skipped' ? {} : { backupFreshness })
+  });
 }
 
 function isAuthorizedManualWorkerRequest(request: Request): boolean {

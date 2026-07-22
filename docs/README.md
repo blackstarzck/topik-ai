@@ -89,6 +89,7 @@
 ### `docs/architecture`
 - `admin-overview.md`
 - `admin-data-source-transition.md`
+- `admin-cicd-pipeline.md` — 변경을 sync-only/app-only/db-only/app-db로 분리하는 PR gate, 경로별 topik-dev 검증, 회사 저장소 코드 fast-forward, 필요한 경우에만 topik-prod migration·Vercel promotion을 실행하는 단일 배포 SoT
 - `writing-question-version-policy.md` — `POL-017` 문항 수정 이력, 현재 버전, 북마크·임시저장 최신화, 제출 시점 스냅샷 고정의 도메인 SoT
 - `users-registration-lifecycle-v13-handoff.md` — 이메일 미인증/약관 동의/회원 상태 불변식과 v13 원천 스키마·백필 요청 handoff(2026-06-26)
 - `shared-supabase-schema-ownership.md` — 공유 Supabase 스키마 소유권 매트릭스(객체별 owner/writer/reader/RLS/migration home — 2026-06-12 알림 기능 WP0-1)
@@ -99,6 +100,7 @@
 - `index.md`
 
 ### `docs/runbooks`
+- `topik-prod-onprem-backup.md` — topik-prod 온프레미스 백업·복원 점검(드릴) 현행 runbook. 전용 읽기 롤, 컨테이너 pg_dump 방식, 드릴 스택 구성, 2026-07-21 실증 기록과 초안 대비 변경 근거를 포함
 - `dev-to-prod-data-recovery.md` — Supabase dev → prod 사용자·학습·정책·Storage 데이터 복구 절차와 재실행 안전장치, 검증 기준을 기록한 운영 runbook
 - `notification-worker-production-verification.md` — v13 transition email worker를 topik-ai production worker로 넘기기 전/후 SOT, Vercel readiness, smoke, cross-app state evidence를 기록하는 운영 검증 runbook
 - `notification-worker-production-evidence.example.md` — 실제 production evidence 파일 작성 시 secret 값을 남기지 않도록 돕는 redacted 예시 문서

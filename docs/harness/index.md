@@ -1,5 +1,14 @@
 # TOPIK AI Admin Harness
 
+## CI/CD 자동 게이트 (2026-07-21)
+
+- PR은 `sync-only | app-only | db-only | app-db | blocked`로 fail-closed 분류하며 required check는 `.github/workflows/ci.yml`의 `ci-gate` 하나다. workflow-level path filter는 사용하지 않는다.
+- `sync-only`는 변경 성격에 따라 light/full 검증만 수행하고, `app-only`는 quality·build·mock E2E, `db-only`와 `app-db`는 여기에 전체 shadow DB 계약을 추가한다. 기존 forward migration 변경과 알 수 없는 경로는 차단한다.
+- `npm run db:contracts:verify`는 development/production manifest의 `release-all`, down pair, project ref를 정적으로 검사한다.
+- `npm run check:expand-migrations -- --base <SHA>`는 기존 migration 변경과 contract 축소 SQL을 차단한다.
+- `npm run db:shadow:verify -- --v13-dir <PATH> --v13-sha <SHA>`는 고정 v13, `topik_writing`, admin migration을 로컬 Supabase에 재생하고 Users RPC·권한을 확인한다.
+- `main → 경로별 topik-dev 검증 → 회사 저장소 → 필요 시 topik-prod 후보 → Production 승격` 순서와 실패 정책은 `docs/architecture/admin-cicd-pipeline.md`를 단일 원문으로 사용한다.
+
 ## 1. 목적
 
 - 이 문서는 TOPIK AI Admin 저장소에서 Codex와 사람이 함께 사용하는 기본 하네스를 정의한다.

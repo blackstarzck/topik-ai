@@ -711,3 +711,40 @@
 - Updated `src/features/dashboard/components/backup-status-card.tsx`, `src/features/dashboard/pages/dashboard-page.tsx`(4컬럼 행 배치), `docs/specs/page-ia/dashboard-page-ia.md`, `docs/specs/admin-page-ia-change-log.md`, `tests/e2e/system-backups.spec.ts`.
 - Reason: 오너 요청 — 전폭 카드를 빠른 진입·처리 대기 큐·운영 경고와 같은 행 우측에 배치하고, 안내 Alert 대신 최근 4개 실행 이력을 기본으로 표시한다. 좁은 컬럼에서 4열 테이블이 넘쳐(부족 72px) 시각을 연도 생략 단축 포맷으로, 구성 상태는 결과 옆 실패 요소 표기(예: "부분 실패 · 저장소 실패")로 압축했다.
 - Validation: 좌표 실측으로 같은 행(top 303)·우측 끝 배치와 테이블 넘침 0px를 확인했고, mock 렌더에서 4행(진행 중/정상/부분 실패·저장소 실패/실패·DB·저장소 실패)과 복사본 캡션을 확인했다. lint/typecheck/backup e2e 3/3 통과. 이력 RPC 권한(system.backups.read)이 없는 관리자는 요약 보기 폴백을 유지한다.
+## 2026-07-20 TOPIK Admin CI/CD development-first staged production 파이프라인
+
+- Updated `.github/workflows/ci.yml`, `.github/workflows/release-development.yml`, `.github/workflows/release-production.yml`, migration/CI runner와 실제 dev CRUD 테스트, `docs/architecture/admin-cicd-pipeline.md`, `docs/README.md`, `docs/harness/index.md`, `supabase/README.md`, and `logs/admin-doc-update-log.md`.
+- Reason: PR shadow 검증 뒤 곧바로 topik-prod로 이동하던 누락을 교정했다. `origin/main`의 동일 SHA를 topik-dev에 먼저 적용해 DB·권한·CRUD·브라우저를 검증한 성공 artifact만 회사 저장소와 topik-prod staged release로 전달한다. hook과 Vercel Git 자동 배포는 사용하지 않는다.
+- Validation: migration runner·릴리스 계약을 포함한 unit 368개, 고정 v13부터 전체 shadow migration 86개 재생과 Users RPC fingerprint, `topik-dev` writing/admin tracker clean 및 권한 계약, 현재 관리자 계정의 Users 목록·상세·내보내기·감사 로그와 정기 쿠폰 생성→조회→수정→삭제→감사 로그 live browser E2E 2/2, mock browser E2E 105/105, harness·build·migration boundary를 통과했다. GitHub `development` 환경과 main 전용 정책을 구성했고, `origin/main`에는 `quality`·`db-contract`·`browser-e2e` required check, CODEOWNERS 승인, 직접/force push 차단을 적용했다. Vercel `topik-admin`의 `keduall/topik-admin` Git 연결을 해제해 자동 Git 배포 우회도 차단했다. 첫 PR green check와 실제 `main → topik-dev → mirror → topik-prod 후보 → Production 승격` 자동 실행은 이 변경의 커밋·push·PR 병합 뒤 검증 대상으로 남는다.
+
+## 2026-07-20 topik-prod 온프레미스 백업·관리자 조회 구축
+
+- Updated `docs/runbooks/topik-prod-onprem-backup.md`, Dashboard/System 백업 IA·page-sync, `admin-overview`, `admin-data-source-transition`, `shared-supabase-schema-ownership`, `admin-data-contract`, `admin-page-tables`, `admin-action-log`, `admin-data-usage-map`, `admin-page-gap-register`, 문서 인덱스와 `supabase/README.md`.
+- Reason: Supabase Free 운영 원본의 데이터베이스와 전체 파일 저장소를 온프레미스에 하루 4회 암호화 백업하고, 월간 격리 복원 가능성과 자동 저장 상태를 관리자 화면에서 안전하게 확인하기 위한 단일 운영 계약이 필요했다.
+- Contract: 자동 작업은 시스템 로그에만 연결하고 감사 로그에는 쓰지 않는다. 화면은 조회 전용이며 파일명·경로·회원 정보·연결 정보·비밀키·원문 오류를 저장하거나 노출하지 않는다. 단일 온프레미스 디스크 동시 장애 위험을 명시한다.
+- Validation boundary: 로컬 코드·문서·mock 화면 검증과 실제 운영 마이그레이션·Vercel 설정·온프레미스 실행 증거를 분리한다. 실제 백업 1회, 격리 복원 1회, 24시간 4회 연속 보고 전에는 운영 완료로 표시하지 않는다.
+
+## 2026-07-20 운영 백업 보고의 개발환경 복사본 분리
+
+- Updated 백업 보고 수신·온프레미스 전송 스크립트, `20260720150100`/`20260720150200` admin migration과 down, 개발·운영 manifest, Dashboard/System 백업 화면, 백업 IA·page-sync·데이터 계약·운영 안내서와 관련 Architecture 문서.
+- Reason: 실제 자동 백업은 `topik-prod`만 유지하면서 localhost 관리자 화면도 같은 운영 상태를 확인할 수 있도록, 비민감 보고 요약만 `topik-dev`에 독립 저장한다. 운영 원본과 개발 복사본은 서로 다른 비밀값·대상 서명·대기열을 사용해 한쪽 장애가 다른 쪽과 실제 백업 결과에 영향을 주지 않게 했다.
+- Validation: `topik-dev`에 백업 관리 3개 migration을 적용했고 tracker canonical 88개 + remote-only 1개, checksum 누락 0을 확인했다. 실제 관리자 권한으로 요약·목록 조회와 마지막 보고 수신 필드를 확인했으며 현재 보고 이력이 없어 마지막 복사 시각은 비어 있다. `topik-prod` migration, Vercel 설정·배포, 온프레미스 실제 백업·복원·24시간 연속 보고는 아직 수행하지 않았다.
+
+## 2026-07-20 기존 AI 온프레미스 환경과 TOPIK 백업 분리 조정
+
+- Updated `docs/runbooks/topik-prod-onprem-backup.md`, `scripts/backup/backup.env.example`, `scripts/backup/topik-backup.sh`, 관련 운영 계약 테스트와 `admin-page-gap-register`.
+- Reason: 기존 서버에서 `topik-ai` PostgreSQL과 cron이 이미 운영 중이므로 두 번째 상시 데이터베이스를 추가하지 않고, TOPIK 백업 경로·계정·systemd·임시 복원 Compose 프로젝트를 분리해야 한다. 첨부 운영 문서의 외부 사본 설정은 사용자 제약에 따라 TOPIK에는 적용하지 않는다.
+- Contract: 기존 AI 컨테이너·볼륨·cron은 변경하지 않는다. 월간 복원 환경은 `topik-prod-backup-drill` 프로젝트와 확인된 미사용 포트를 사용하고, 네 공개 포트를 `127.0.0.1`에만 연결한 뒤 점검 종료 시 중지한다. 실제 적용 전 공용 디스크·CPU·메모리 영향 확인이 필요하다.
+
+## 2026-07-21 위험도 기반 CI/CD 파이프라인 경량화
+
+- Updated `.github/workflows/ci.yml`, `.github/workflows/release-development.yml`, `.github/workflows/release-production.yml`, `.github/workflows/database-health.yml`, release classifier/evidence/E2E runner와 계약 테스트, `docs/architecture/admin-cicd-pipeline.md`, `docs/harness/index.md`, `docs/README.md`, `supabase/README.md`, and `logs/admin-doc-update-log.md`.
+- Reason: 문서·테스트·일반 화면 변경에도 전체 shadow DB, dev/prod migration, CRUD, Vercel staged release가 실행되는 과도한 파이프라인을 `sync-only | app-only | db-only | app-db` 네 경로와 위험 변경 차단 경로로 분리했다. 모호한 변경은 추정 배포하지 않고 차단하며, 회사 저장소는 데이터가 아닌 검증된 코드 SHA만 fast-forward한다.
+- Validation: 분류·증거·파이프라인 계약 26개와 전체 unit 389개, mock browser E2E 105/105, harness·build·migration contract·migration boundary를 통과했다. 고정 v13 스키마 위에서 후속 교차 migration 86개를 전체 재생해 shadow fingerprint와 Users RPC·권한 계약을 확인했다. 최신 actionlint v1.7.12는 GitHub가 현재 지원하는 `queue: max`를 아직 인식하지 못해 해당 알려진 항목만 제외하고 나머지 workflow 문법 검사를 통과했다. Vercel `topik-admin`의 Production 자동 도메인 할당을 비활성화했으며 Git 연결 해제, GitHub development/Production 환경 변수·비밀 이름·main 전용 정책도 재확인했다. 실제 Actions 첫 green, topik-dev/topik-prod 실행, Vercel 승격, branch protection required check를 `ci-gate`로 교체하는 작업은 변경 commit·push·PR 병합 뒤 후속 검증 대상으로 남긴다.
+
+## 2026-07-21 PR #19 온프레미스 실증 반영·expand 게이트 교정
+
+- Updated 실제 서버에서 검증한 `scripts/backup` 비루트 사용자 구성, 최소 Docker 복원 드릴 스택, `docs/runbooks/topik-prod-onprem-backup.md`, System 백업 IA·page-sync·gap, CI/CD·Supabase migration 안내와 관련 계약 테스트.
+- Reason: PR #19 초안은 supabase CLI·루트 systemd·미구현 드릴 스택을 전제로 했지만 실제 구축은 전용 읽기 롤과 PostgreSQL 17 덤프 컨테이너, 사용자 systemd, Auth/Storage 별도 덤프·하드게이트로 완성됐다. 또한 dev에 이미 적용된 `20260720150200`의 함수 재정의가 일반 `DROP FUNCTION`으로 판정돼 PR `db-contract`가 실패했다.
+- Contract: 기존 migration 파일은 수정하지 않는다. 같은 PR에서 앞선 신규 migration이 처음 만든 0인자 함수를 뒤 신규 migration이 동일 이름으로 즉시 재생성하는 경우만 미출시 release 내부 보정으로 허용하고, 기존 함수·인자 함수·procedure·재생성 없는 삭제는 계속 차단한다.
+- Validation: 온프레미스 증빙은 runbook의 2026-07-21 실증 기록을 반영했다. 로컬에서 shell 6개·Python·Compose 문법, 비밀값 리터럴 부재, migration contract, 실제 v13 경계, PR 전체 expand 판정, `harness:check`, unit 394/394, production build, System 백업 E2E 3/3을 통과했다. 전체 mock E2E는 104/105 통과 후 PR 비관련 Analytics 메뉴 이동 1건의 병렬 타이밍 실패를 격리 3회 재실행해 3/3 통과했다. 통합 admin-boundary wrapper는 current v13에서 제거된 과거 SOT 경로를 찾는 기존 checker와 이 격리 worktree의 운영 관리자 비밀 부재 때문에 완료되지 않았으며, GitHub Actions 재실행 결과는 push 후 확인한다.

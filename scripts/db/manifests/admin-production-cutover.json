@@ -70,6 +70,10 @@
     "baseline-all": {
       "from": "20260612170000_notification_admin_tables.sql",
       "to": "20260720150200_admin_backup_mirror_summary.sql"
+    },
+    "release-all": {
+      "from": "20260612170000_notification_admin_tables.sql",
+      "to": "20260720150200_admin_backup_mirror_summary.sql"
     }
   }
 }
