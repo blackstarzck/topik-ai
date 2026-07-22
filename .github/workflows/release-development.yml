@@ -3,6 +3,18 @@ name: Validate development
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      release_plan:
+        description: 'Latest main에서 다시 실행할 전체 릴리스 유형'
+        required: true
+        type: choice
+        options:
+          - app-db
+      production_confirmation:
+        description: 'topik-prod를 입력해야 전체 릴리스를 시작합니다.'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -40,15 +52,28 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - name: Classify the exact main push
+      - name: Classify the exact main release
         id: classifier
         shell: bash
+        env:
+          EVENT_BASE_SHA: ${{ github.event.before }}
+          MANUAL_RELEASE_PLAN: ${{ inputs.release_plan }}
+          PRODUCTION_CONFIRMATION: ${{ inputs.production_confirmation }}
         run: |
+          base_sha="$EVENT_BASE_SHA"
+          classifier_args=()
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            test "$GITHUB_REF" = refs/heads/main
+            test "$PRODUCTION_CONFIRMATION" = topik-prod
+            base_sha="$GITHUB_SHA"
+            classifier_args+=(--manual-release-plan "$MANUAL_RELEASE_PLAN")
+          fi
           node scripts/ci/classify-release-change.mjs \
-            --base "${{ github.event.before }}" \
+            --base "$base_sha" \
             --head "$GITHUB_SHA" \
             --json-out development-classification/release-classification.json \
-            --github-output "$GITHUB_OUTPUT"
+            --github-output "$GITHUB_OUTPUT" \
+            "${classifier_args[@]}"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

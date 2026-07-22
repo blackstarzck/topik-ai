@@ -53,6 +53,8 @@ workflow·CI runner 같은 control-plane 변경은 실제 배포를 만들지 �
 
 `.github/workflows/release-development.yml`은 `origin/main` push마다 실행한다. 실행은 `queue: max`로 직렬화하며 진행 중인 릴리스를 취소하지 않는다.
 
+이미 검증된 최신 `main`을 운영에 전체 재적용해야 할 때는 같은 workflow의 `workflow_dispatch`를 사용한다. 수동 실행은 `main` ref, `app-db` 계획, `topik-prod` 확인 문자열을 모두 요구한다. 분류 artifact에는 자동 분류 결과와 수동 재실행 여부를 함께 기록하며, 일반 push의 자동 분류는 변경하지 않는다. 수동 재실행도 아래의 topik-dev 전체 검증과 Production evidence 검증을 생략하지 않는다.
+
 - `sync-only`: `light` 또는 `full` 오프라인 검증 후 schema v3 evidence를 작성한다. topik-dev를 변경하지 않는다.
 - `app-only`: migration을 적용하지 않는다. topik-dev tracker clean, Users RPC·권한을 확인하고 현재 관리자 계정으로 운영 스모크를 수행한다.
 - `db-only`와 `app-db`: 전체 shadow를 재생하고 `topik_writing` → admin 순서로 topik-dev expand migration을 적용한다. tracker·RPC·권한·shadow fingerprint, 관리자 Users 흐름과 정기 쿠폰 CRUD·감사 로그를 검증한다.

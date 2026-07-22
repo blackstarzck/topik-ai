@@ -6,7 +6,7 @@ import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-export const CLASSIFIER_VERSION = 2;
+export const CLASSIFIER_VERSION = 3;
 
 const ZERO_SHA = /^0+$/;
 const RELEASE_PLANS = new Set([
@@ -16,6 +16,7 @@ const RELEASE_PLANS = new Set([
   'app-db',
   'blocked',
 ]);
+const MANUAL_RELEASE_PLANS = new Set(['app-db']);
 
 function value(args, flag, { required = true } = {}) {
   const index = args.indexOf(flag);
@@ -108,6 +109,25 @@ function deriveValidationProfile({ releasePlan, controlPlaneTouched }) {
   return controlPlaneTouched ? 'full' : 'light';
 }
 
+export function applyManualReleasePlan(report, requestedReleasePlan) {
+  if (!requestedReleasePlan) return report;
+  if (!MANUAL_RELEASE_PLANS.has(requestedReleasePlan)) {
+    throw new Error(`Unsupported manual release plan: ${requestedReleasePlan}`);
+  }
+  if (report.releasePlan === 'blocked') {
+    throw new Error('A blocked change cannot be manually released.');
+  }
+  return {
+    ...report,
+    automaticReleasePlan: report.releasePlan,
+    releasePlan: requestedReleasePlan,
+    deployApp: true,
+    applyMigrations: true,
+    validationProfile: 'full',
+    manualRelease: true,
+  };
+}
+
 export function classifyChangedFiles(changes, { forcedReason = null } = {}) {
   const normalizedChanges = changes.map((change) => ({
     status: change.status,
@@ -158,6 +178,7 @@ export function classifyChangedFiles(changes, { forcedReason = null } = {}) {
   const report = {
     schemaVersion: 2,
     classifierVersion: CLASSIFIER_VERSION,
+    automaticReleasePlan: releasePlan,
     releasePlan,
     deployApp: releasePlan === 'app-only' || releasePlan === 'app-db',
     applyMigrations: releasePlan === 'db-only' || releasePlan === 'app-db',
@@ -166,6 +187,7 @@ export function classifyChangedFiles(changes, { forcedReason = null } = {}) {
     changedFileCount: normalizedChanges.length,
     runUnit: [...paths].some((filePath) => /^tests\/unit\//.test(filePath)),
     runE2e: [...paths].some((filePath) => /^tests\/e2e\//.test(filePath)),
+    manualRelease: false,
     reasons: normalizedChanges.map((change) => change.path).sort(),
     blockedReasons: uniqueBlockedReasons,
     changes: normalizedChanges,
@@ -256,8 +278,12 @@ async function main() {
   const jsonOut = resolve(value(args, '--json-out'));
   const range = resolveDiffRange(requestedBaseSha, headSha);
   const changes = range.forcedReason ? [] : changedFiles(range.baseSha, range.headSha);
+  const automaticReport = classifyChangedFiles(changes, { forcedReason: range.forcedReason });
   const report = {
-    ...classifyChangedFiles(changes, { forcedReason: range.forcedReason }),
+    ...applyManualReleasePlan(
+      automaticReport,
+      value(args, '--manual-release-plan', { required: false })
+    ),
     generatedAt: new Date().toISOString(),
     baseSha: range.baseSha,
     headSha: range.headSha,

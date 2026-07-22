@@ -761,3 +761,10 @@
 - Reason: `blackstarzck/topik-ai`와 회사 mirror remote의 push·merge 작업에서 GitHub actor와 Git commit author가 혼동되지 않도록 remote별 필수 identity와 중단 조건을 고정했다.
 - Contract: `origin`의 `main` PR merge는 `blackstarzck` 자격 정보로만 실행하고 없으면 일시중단한다. `collab`·`keduall` push·merge는 `guestkeduall-design` GitHub 계정과 `guestkeduall-design <guestkeduall@gmail.com>` author를 사용하며, 불일치 commit을 자동 rewrite하지 않는다. 앱·DB·UI 계약은 변경하지 않는다.
 - Validation: 문서 구조·링크·한글 인코딩과 Git 계정 라우팅 문구를 diff로 검토했고, `harness:check`, unit 58파일/410개, production build, 공통 테이블·Operation·System baseline smoke E2E 9/9가 통과했다.
+
+## 2026-07-23 최신 main 수동 전체 릴리스 진입점
+
+- Updated `.github/workflows/release-development.yml`, release classifier와 계약 테스트, `docs/architecture/admin-cicd-pipeline.md`.
+- Reason: 이력 정리처럼 최신 `main`이 `sync-only`로 검증된 뒤 이전 `app-db` 운영 릴리스가 중단되면, 동일 최신 SHA를 topik-dev부터 다시 전체 검증해 topik-prod와 Vercel에 안전하게 재적용할 진입점이 없었다.
+- Contract: write 권한 사용자가 `main` ref에서 `app-db`와 확인 문자열 `topik-prod`를 모두 제공한 경우만 수동 전체 릴리스를 허용한다. 자동 push 분류, 개발 evidence 검증, 회사 mirror, topik-prod migration, Vercel 후보 E2E·승격·롤백 절차는 우회하지 않는다.
+- Validation: classifier와 workflow 계약 단위 테스트, `harness:check`, production build, 공통 Operation/System smoke E2E를 실행하고 실제 수동 전체 릴리스에서 topik-dev·topik-prod·Vercel 증거 artifact를 확인한다.

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CLASSIFIER_VERSION,
+  applyManualReleasePlan,
   classifyChangedFiles,
   parseNameStatus,
 } from '../../scripts/ci/classify-release-change.mjs';
@@ -13,7 +14,7 @@ function add(...paths) {
   return classifyChangedFiles(paths.map((path) => ({ status: 'A', path })));
 }
 
-describe('release change classifier v2', () => {
+describe('release change classifier v3', () => {
   it('keeps documentation and offline tests on the light sync-only path', () => {
     const docs = classify('docs/architecture/admin-cicd-pipeline.md', 'AGENTS.md');
     expect(docs.releasePlan).toBe('sync-only');
@@ -97,6 +98,23 @@ describe('release change classifier v2', () => {
     const forced = classifyChangedFiles([], { forcedReason: 'zero-base-sha' });
     expect(forced.releasePlan).toBe('blocked');
     expect(forced.blockedReasons).toEqual(['zero-base-sha']);
+  });
+
+  it('allows only an explicit app-db replay of a non-blocked latest main', () => {
+    const automatic = classifyChangedFiles([]);
+    const manual = applyManualReleasePlan(automatic, 'app-db');
+    expect(manual.automaticReleasePlan).toBe('sync-only');
+    expect(manual.releasePlan).toBe('app-db');
+    expect(manual.deployApp).toBe(true);
+    expect(manual.applyMigrations).toBe(true);
+    expect(manual.validationProfile).toBe('full');
+    expect(manual.manualRelease).toBe(true);
+
+    expect(() => applyManualReleasePlan(automatic, 'app-only'))
+      .toThrow('Unsupported manual release plan');
+    const blocked = classifyChangedFiles([], { forcedReason: 'unresolved-git-sha:test' });
+    expect(() => applyManualReleasePlan(blocked, 'app-db'))
+      .toThrow('A blocked change cannot be manually released');
   });
 
   it('produces a stable digest independent of git output order', () => {
