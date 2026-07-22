@@ -101,6 +101,16 @@ describe('four-path release pipeline contract', () => {
     expect(productionWorkflow).not.toMatch(/on:\s*\n\s+push:/);
   });
 
+  it('allows a confirmed app-db replay only from the latest main workflow', () => {
+    expect(developmentWorkflow).toContain('workflow_dispatch:');
+    expect(developmentWorkflow).toContain('production_confirmation:');
+    expect(developmentWorkflow).toContain('test "$GITHUB_REF" = refs/heads/main');
+    expect(developmentWorkflow).toContain('test "$PRODUCTION_CONFIRMATION" = topik-prod');
+    expect(developmentWorkflow).toContain('--manual-release-plan "$MANUAL_RELEASE_PLAN"');
+    expect(developmentWorkflow).toContain('- app-db');
+    expect(productionWorkflow).not.toContain('workflow_dispatch:');
+  });
+
   it('mirrors validated code and treats an older run as superseded', () => {
     const mirror = job(productionWorkflow, 'mirror', 'release-database-only');
     expect(mirror).toContain('https://github.com/keduall/topik-admin.git');
