@@ -5,6 +5,7 @@ import {
 } from 'node:crypto';
 
 import { createClient } from '@supabase/supabase-js';
+import nodemailer from 'nodemailer';
 
 declare const process: {
   env: Record<string, string | undefined>;
@@ -457,6 +458,13 @@ export async function handleBackupReport(
       destination
     );
     const result = await recorder(report, payloadHash);
+    // 운영 보고가 실패를 담고 있으면 즉시 이메일 경보를 보낸다. 미러 보고와
+    // 중복 재전송은 제외하고, 발송 실패가 보고 수신 자체를 실패시키지 않는다.
+    if (result === 'accepted' && destination === 'primary') {
+      await sendBackupAlertEmail(report).catch((alertError) => {
+        console.error('[backup-report] alert email failed', alertError);
+      });
+    }
     return jsonResponse({ ok: true, result }, { status: result === 'duplicate' ? 200 : 202 });
   } catch (error) {
     if (error instanceof RequestFailure) {
@@ -507,6 +515,71 @@ export function isValidMonitoringTarget(
   } catch {
     return false;
   }
+}
+
+export type BackupAlert = {
+  subject: string;
+  lines: string[];
+};
+
+// 어떤 보고가 즉시 경보 대상인지 결정하는 순수 함수. 실패한 백업/드릴과
+// 디스크 위험(>=90%)만 경보하고, 정상 보고와 시작 보고는 조용히 지나간다.
+export function resolveBackupAlert(report: NormalizedBackupReport): BackupAlert | null {
+  const type = report.report_type;
+  const status = typeof report.status === 'string' ? report.status : '';
+  const disk = typeof report.disk_used_percent === 'number' ? report.disk_used_percent : null;
+  const errorCode = typeof report.error_code === 'string' ? report.error_code : null;
+  const reasons: string[] = [];
+
+  if (type === 'backup_completed' && (status === 'failed' || status === 'partial_failure')) {
+    reasons.push(`백업 ${status === 'failed' ? '실패' : '부분 실패'} — run ${String(report.run_id ?? '')}`);
+  }
+  if (type === 'restore_drill_completed' && status === 'failed') {
+    reasons.push(`복원 점검(드릴) 실패 — drill ${String(report.drill_id ?? '')}`);
+  }
+  if (disk !== null && disk >= 90) {
+    reasons.push(`백업 서버 디스크 사용률 위험: ${disk}%`);
+  }
+  if (reasons.length === 0) return null;
+
+  const lines = [...reasons];
+  if (errorCode) lines.push(`오류 코드: ${errorCode}`);
+  if (typeof report.completed_at === 'string') lines.push(`완료 시각(UTC): ${report.completed_at}`);
+  lines.push('상세: 관리자 화면 시스템 > 백업 관리에서 확인하세요.');
+  return { subject: `[topik-prod 백업 경보] ${reasons[0]}`, lines };
+}
+
+async function sendBackupAlertEmail(report: NormalizedBackupReport): Promise<void> {
+  const alert = resolveBackupAlert(report);
+  if (!alert) return;
+  const recipients = (process.env.BACKUP_ALERT_EMAILS ?? '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+  if (recipients.length === 0 || !smtpHost || !smtpUser || !smtpPass) {
+    console.warn('[backup-report] alert skipped: BACKUP_ALERT_EMAILS/SMTP env missing');
+    return;
+  }
+  const smtpPort = Number(process.env.SMTP_PORT ?? 465);
+  // 경보 발송이 보고 응답(maxDuration 10s)을 넘기지 않도록 짧게 제한한다.
+  const transporter = nodemailer.createTransport({
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpPort === 465,
+    auth: { user: smtpUser, pass: smtpPass },
+    connectionTimeout: 5000,
+    greetingTimeout: 5000,
+    socketTimeout: 8000
+  });
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM ?? smtpUser,
+    to: recipients.join(', '),
+    subject: alert.subject,
+    text: alert.lines.join('\n')
+  });
 }
 
 function parseDestination(request: Request): BackupReportDestination | null {

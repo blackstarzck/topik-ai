@@ -1,0 +1,19 @@
+[Unit]
+Description=TOPIK topik-prod encrypted on-premise backup
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=topikbackup
+Group=topikbackup
+EnvironmentFile=/etc/topik-backup/backup.env
+ExecStart=/opt/topik-backup/topik-backup.sh backup
+TimeoutStartSec=2h
+TimeoutStopSec=1min
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/srv/topik-backup
+UMask=0077

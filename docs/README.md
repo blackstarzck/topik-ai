@@ -105,6 +105,7 @@
 - `notification-worker-production-verification.md` — v13 transition email worker를 topik-ai production worker로 넘기기 전/후 SOT, Vercel readiness, smoke, cross-app state evidence를 기록하는 운영 검증 runbook
 - `notification-worker-production-evidence.example.md` — 실제 production evidence 파일 작성 시 secret 값을 남기지 않도록 돕는 redacted 예시 문서
 - `admin-account-separation-prod-cutover.md` — 관리자 계정 분리 production cutover 적용 순서·검증·롤백 runbook
+- `topik-prod-onprem-backup.md` — topik-prod 온프레미스 백업·복원 점검(드릴) 현행 runbook. 전용 읽기 롤, 컨테이너 pg_dump 방식, 드릴 스택 구성, 2026-07-21 실증 기록과 초안 대비 변경 근거를 포함
 
 ### `docs/swagger-api`
 - 상류 `TalkPik AI Service` API(Swagger) 스냅샷을 그룹별로 분리한 참조 문서다. 구 단일 문서 `topik-ai-service-api-reference.md`를 대체한다(생성 기준일 2026-06-17, Swagger UI `https://api.dotoretopik.com/docs`).

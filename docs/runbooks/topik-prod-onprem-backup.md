@@ -124,6 +124,14 @@ journalctl --user -u topik-backup.service --since today
   `report-mirror-secret` 값을 Vercel 환경변수(`BACKUP_REPORT_SECRET`/
   `BACKUP_MIRROR_REPORT_SECRET`)로 복사하고, `REPORT_URL`을
   `https://topik-admin.vercel.app/api/backups/report`로 설정해야 연결된다.
+- **능동 경보 2단**: ① 운영 보고가 실패(백업 failed/partial, 드릴 failed,
+  디스크 ≥90%)를 담으면 수신부(`api/backups/report.ts`)가 즉시
+  `BACKUP_ALERT_EMAILS`로 이메일을 보낸다(SMTP 재사용, 발송 실패는 보고
+  수신에 영향 없음). ② 보고 자체가 끊긴 경우(dead-man)는 일일 알림 워커
+  (`api/notifications/dispatch-email.ts`)가 `admin_backup_report_events`
+  최근 수신 시각을 검사해 `BACKUP_DEADMAN_HOURS`(기본 26h) 초과 시 같은
+  수신자에게 경보한다 — 서버 전원·네트워크 사망까지 잡는 외부 감시다
+  (일일 크론 편승이라 최악 감지 지연 ≈ 24h+임계).
 
 ## 8. 실증 기록 (2026-07-21)
 

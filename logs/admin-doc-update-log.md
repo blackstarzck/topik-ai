@@ -682,6 +682,35 @@
 - Reason: dev에는 legacy `profiles.phone`이 있지만 prod에는 split field만 있어 배포 회원 목록이 `column p.phone does not exist`로 실패했다. CRUD 검증 중 저장 Target `User`와 화면 링크 `Users` 혼재로 감사 로그가 0건 표시되는 후속 결함도 확인했다.
 - Validation: 두 admin 마이그레이션을 dev/prod에 동일 적용하고 목록 20/총 200, 상세 1, 내보내기 1을 확인했다. Production 브라우저에서 회원 검색, 상세, 정상→정지→정상 원복, 감사 로그 2건과 상세 역링크를 확인했다. v13 `profiles` DDL/DML은 변경하지 않았다.
 
+## 2026-07-21 topik-prod 온프레미스 백업 설치·검증과 스크립트 현행화
+
+- Updated `scripts/backup/`(topik-backup.sh 수정판, drill-stack 4파일 신규, enter-secrets/set-db-url/run-backup 헬퍼, systemd-user 유닛 6종, backup.env.example), `docs/runbooks/topik-prod-onprem-backup.md`(현행판 신규), `docs/README.md` 색인.
+- Reason: 초안(커밋 `22a7ef3`)은 auth/storage 스키마가 백업에서 빠져 복원 시 전 회원 로그인이 불가하고, supabase CLI 덤프가 `SET ROLE postgres` 강제로 전용 롤과 양립하지 않으며, 드릴 스택 구성 파일이 리포에 없었다. 온프레미스 서버에 실제 배치한 검증본과 리포를 일치시켜 재설치 시 결함 재발을 차단한다.
+- Validation: 운영 서버에서 첫 완전 백업(스냅샷 86707982, 덤프 4종+스토리지 45파일)과 복원 드릴 succeeded를 확인했다. 복원본 실측으로 profiles 200·auth.users 200(비밀번호 해시 보존)·identities 209·buckets 4·objects 43(delta 0)이 운영과 일치했고, 백업 롤의 운영 쓰기 권한 부재(insert/update/delete 전부 false)를 카탈로그로 증명했다. 백업 4회/일·드릴 월 1회·보고 재시도 5분 타이머를 linger와 함께 활성화했다. 수신 API/마이그레이션 배포·능동 알림·오프사이트는 후속 항목으로 런북 §8에 기록했다.
+
+## 2026-07-21 백업 모니터링 기능 선별 통합 (codex 22a7ef3)
+
+- Updated `api/backups/report.ts`, `supabase/migrations-admin/20260720150000~150200`(+down), `/system/backups` 화면과 대시보드 카드 등 src 15파일, `system-backups` page-sync/IA 문서와 관련 SoT 문서 12건, `docs/README.md` 색인 2줄, `supabase/README.md` §2.1, 매니페스트 2종(85→88), 루트 systemd 유닛(+TimeoutStartSec), 백업 계약 테스트 4종.
+- Reason: 백업 모니터링(수신 API·테이블·화면)이 미머지 브랜치에만 있어 서버가 보내는 보고를 받을 수 없었다. 같은 커밋에 묶인 미검증 CI/CD 파이프라인(워크플로우·classifier·vercel.json 변경)은 배포 방식 자체를 바꾸므로 제외하고 백업 기능 파일만 선별 통합했다. `backup-onprem-contract.test.mjs`는 구버전 스크립트 기준이라 현행 계약(auth/storage 덤프 강제, pg 도구 직접 호출, 드릴 포트 55433, 잠금 확장)으로 갱신했다.
+- Validation: 백업 단위 테스트 4스위트 26개 포함 전체 unit 51파일/348개 통과, harness:check(mojibake·crosslink·route-coverage·lint·typecheck) 통과. CI 스택 파일(.github/scripts-ci/admin-cicd-pipeline.md)은 가져오지 않았고 문서 참조 스캔으로 dangling 참조가 없음을 확인했다.
+
+## 2026-07-21 백업 실패 즉시 경보와 보고 두절 감시(dead-man)를 배선
+
+- Updated `api/backups/report.ts`(실패 보고 수신 시 SMTP 즉시 경보), `api/notifications/dispatch-email.ts`(일일 크론 편승 dead-man, 응답에 backupFreshness), `.env.example`(BACKUP_ALERT_EMAILS/BACKUP_DEADMAN_HOURS), 런북 §7 경보 2단 구조, 단위 테스트 2건(resolveBackupAlert 4케이스, isBackupReportStale 3케이스).
+- Reason: 백업이 실패하거나 온프레미스 서버가 통째로 죽어도 아무도 알 수 없는 상태였다(관리자 화면 수동 확인뿐). Vercel Hobby cron 제한(2개) 때문에 새 크론 대신 기존 일일 워커에 신선도 검사를 편승시키고, 즉시 경보는 수신부에서 직접 발송한다.
+- Validation: 관련 단위 17개 통과, harness:check 통과. 실제 발송은 배포 후 합성 실패 보고 주입으로 검증 예정(주입 행은 검증 후 삭제).
+
+## 2026-07-21 백업 보고 파이프라인 개통과 운영 수신부 교정
+
+- Updated `scripts/backup/backup.env.example`(REPORT_URL을 topik-admin.vercel.app으로 교정), Vercel topik-admin env 12종(BACKUP_* 2계열, SUPABASE_* 운영 교정 — 신형 sb_secret 키), prod DB에 admin backup 마이그레이션 3본 적용(장부 88), CLI 배포 2회+promote.
+- Reason: 운영 수신 실패의 근본 원인이 prod 레거시 API 키의 2026-07-16 비활성화("Legacy API keys are disabled")로 확인됐다 — 문서에 남아 있던 서버 함수 invalid_session 이슈와 동일 원인. 또한 topik-ai.vercel.app은 별개(구) 프로젝트 도메인이고 실제 운영 프로젝트 도메인은 topik-admin.vercel.app이며, Vercel 프로젝트에 Git 연동이 없어 배포는 CLI+promote 방식임을 확인했다.
+- Validation: 서버 outbox 16건 전량 전송(잔여 0), prod/dev 완전 일치(runs 3=성공1·부분실패2, drills 2=성공1·실패1, system_logs 5). 합성 실패 보고 주입으로 즉시 경보 발송 경로를 검증하고 합성 행은 삭제했다(시간창 삭제로 report_events 8건이 함께 삭제됨 — 멱등 장부 성격이라 실행·드릴·로그 데이터는 무손실, 다음 백업부터 재적재). mock e2e 백업 화면 3/3 통과.
+
+## 2026-07-21 대시보드 백업 카드 이력형 재설계
+
+- Updated `src/features/dashboard/components/backup-status-card.tsx`, `src/features/dashboard/pages/dashboard-page.tsx`(4컬럼 행 배치), `docs/specs/page-ia/dashboard-page-ia.md`, `docs/specs/admin-page-ia-change-log.md`, `tests/e2e/system-backups.spec.ts`.
+- Reason: 오너 요청 — 전폭 카드를 빠른 진입·처리 대기 큐·운영 경고와 같은 행 우측에 배치하고, 안내 Alert 대신 최근 4개 실행 이력을 기본으로 표시한다. 좁은 컬럼에서 4열 테이블이 넘쳐(부족 72px) 시각을 연도 생략 단축 포맷으로, 구성 상태는 결과 옆 실패 요소 표기(예: "부분 실패 · 저장소 실패")로 압축했다.
+- Validation: 좌표 실측으로 같은 행(top 303)·우측 끝 배치와 테이블 넘침 0px를 확인했고, mock 렌더에서 4행(진행 중/정상/부분 실패·저장소 실패/실패·DB·저장소 실패)과 복사본 캡션을 확인했다. lint/typecheck/backup e2e 3/3 통과. 이력 RPC 권한(system.backups.read)이 없는 관리자는 요약 보기 폴백을 유지한다.
 ## 2026-07-20 TOPIK Admin CI/CD development-first staged production 파이프라인
 
 - Updated `.github/workflows/ci.yml`, `.github/workflows/release-development.yml`, `.github/workflows/release-production.yml`, migration/CI runner와 실제 dev CRUD 테스트, `docs/architecture/admin-cicd-pipeline.md`, `docs/README.md`, `docs/harness/index.md`, `supabase/README.md`, and `logs/admin-doc-update-log.md`.

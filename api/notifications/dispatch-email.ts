@@ -62,6 +62,12 @@ type WorkerSchema = {
         Update: never;
         Relationships: [];
       };
+      admin_backup_report_events: {
+        Row: { received_at: string };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -98,6 +104,62 @@ const SITE_URL_FALLBACK = 'https://app.talkpik.ai';
 
 function jsonResponse(body: unknown, init?: ResponseInit): Response {
   return Response.json(body, init);
+}
+
+// 온프레미스 백업 서버가 통째로 죽어 보고 자체가 끊긴 경우(dead-man)를 잡는
+// 신선도 판정. 임계 시간은 백업 주기 6h x 4회 + 여유 = 기본 26h.
+export function isBackupReportStale(
+  lastReceivedAt: string | null,
+  now: Date,
+  thresholdHours: number
+): boolean {
+  if (!lastReceivedAt) return true;
+  const last = Date.parse(lastReceivedAt);
+  if (Number.isNaN(last)) return true;
+  return now.getTime() - last > thresholdHours * 3600 * 1000;
+}
+
+type BackupFreshness = 'fresh' | 'alerted' | 'skipped' | 'check_failed';
+
+async function checkBackupReportFreshness(
+  supabase: WorkerSupabaseClient,
+  transporter: ReturnType<typeof nodemailer.createTransport>,
+  fromAddress: string
+): Promise<BackupFreshness> {
+  const recipients = (process.env.BACKUP_ALERT_EMAILS ?? '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+  if (recipients.length === 0) return 'skipped';
+  const thresholdHours = Number(process.env.BACKUP_DEADMAN_HOURS ?? 26);
+  try {
+    const { data, error } = await supabase
+      .from('admin_backup_report_events')
+      .select('received_at')
+      .order('received_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    const lastReceivedAt = data?.received_at ?? null;
+    if (!isBackupReportStale(lastReceivedAt, new Date(), thresholdHours)) {
+      return 'fresh';
+    }
+    await transporter.sendMail({
+      from: fromAddress,
+      to: recipients.join(', '),
+      subject: '[topik-prod 백업 경보] 백업 보고 두절 감지',
+      text: [
+        `백업 보고가 ${thresholdHours}시간 이상 수신되지 않았습니다.`,
+        `마지막 수신: ${lastReceivedAt ?? '기록 없음'}`,
+        '온프레미스 백업 서버 상태(전원·네트워크·타이머)를 확인하세요.',
+        '상세: 관리자 화면 시스템 > 백업 관리'
+      ].join('\n')
+    });
+    return 'alerted';
+  } catch (error) {
+    console.error('[dispatch-email] backup freshness check failed', error);
+    return 'check_failed';
+  }
 }
 
 function siteBaseUrl(): string {
@@ -382,7 +444,18 @@ async function dispatchPendingEmailAttempts(): Promise<Response> {
     }
   }
 
-  return jsonResponse({ ok: true, processed, sent, failed });
+  // 일일 크론에 편승한 백업 dead-man 감시. 발송 처리 결과에는 영향을 주지 않는다.
+  // 경보 수신자가 없어 검사를 건너뛴 경우('skipped')에는 기존 응답 계약을
+  // 유지하기 위해 필드를 노출하지 않는다.
+  const backupFreshness = await checkBackupReportFreshness(supabase, transporter, fromAddress);
+
+  return jsonResponse({
+    ok: true,
+    processed,
+    sent,
+    failed,
+    ...(backupFreshness === 'skipped' ? {} : { backupFreshness })
+  });
 }
 
 function isAuthorizedManualWorkerRequest(request: Request): boolean {
