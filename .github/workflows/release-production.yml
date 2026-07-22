@@ -73,6 +73,7 @@ jobs:
         with:
           ref: ${{ env.RELEASE_SHA }}
           fetch-depth: 0
+          persist-credentials: false
       - name: Fast-forward the validated SHA to the private deployment mirror
         id: sync
         shell: bash

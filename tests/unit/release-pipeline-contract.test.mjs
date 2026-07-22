@@ -105,6 +105,7 @@ describe('four-path release pipeline contract', () => {
     const mirror = job(productionWorkflow, 'mirror', 'release-database-only');
     expect(mirror).toContain('https://github.com/keduall/topik-admin.git');
     expect(mirror).toContain('MIRROR_GITHUB_TOKEN: ${{ secrets.MIRROR_GITHUB_TOKEN }}');
+    expect(mirror).toContain('persist-credentials: false');
     expect(mirror).toContain('disposition=superseded');
     expect(mirror).toContain('Company mirror has diverged');
   });
