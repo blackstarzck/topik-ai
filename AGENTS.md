@@ -125,6 +125,7 @@
 - 운영/정책 관련 내용이 바뀌면 관련 MD를 지속 모니터링 대상으로 평가하고, 반영 여부 또는 미반영 사유를 결과에 남긴다.
 - 작업 완료 직전에는 기본적으로 `npm run harness:check`를 실행해 구조/문서 드리프트를 먼저 점검한다.
 - 작업 완료 직전에는 반드시 변경 영향 핵심 플로우 e2e 테스트를 실행하고, 통과/실패/차단 여부와 근거를 결과에 기록한다.
+- PR 머지가 확인된 세션은 `npm run git:sessions:cleanup -- --apply`와 `npm run git:sessions:audit -- --json --strict`를 실행해 worktree, 로컬/원격 브랜치, stale ref, 세션 manifest 정리를 완료 게이트에 포함한다. dirty·미병합·복구 필요 항목은 삭제하지 않고 분류와 후속 담당을 보고한다.
 - e2e 결과 보고에는 기능 통과 여부와 별도로, 어떤 공통 일관성 문서를 기준으로 어떤 UI baseline을 확인했는지와 예외 여부를 함께 기록한다.
 - 구현 중: 6장 리뷰 게이트 위반 시 즉시 대안 구현으로 전환한다.
 - 작업 완료 시: 적용한 품질 축과 게이트 충족 여부를 결과에 명시한다.
@@ -209,6 +210,9 @@ DO NOT
 
 ### 11.2 브랜치 전략
 - **브랜치 생성은 사용자 동의가 필수다.** 작업이 `main`에서 시작되더라도 임의로 새 브랜치를 만들지 않는다. 새 브랜치가 필요하면 이름·목적을 제안하고 동의를 받은 뒤에만 생성한다(커밋/푸시 승인과 별개 게이트).
+- 새 Codex/Claude 세션은 최신 `origin/main` 기반 detached worktree를 먼저 만들고 목적을 외부 manifest에 등록한다. Codex는 `npm run git:session -- start --agent codex --task "<요약>"`, Claude는 `--agent claude`를 사용한다.
+- detached worktree 생성 뒤 기존 manifest·브랜치·PR과 작업 목적을 대조한다. 정확한 연속 작업은 기존 브랜치를 재사용하고, 해당 브랜치가 다른 worktree에서 사용 중이면 새 worktree를 만들지 않고 그 worktree를 재사용한다. 읽기 전용 조사·리뷰는 detached 상태로 끝낼 수 있다.
+- 신규 변경일 때만 브랜치 이름과 목적을 제안해 사용자 승인을 받는다. 브랜치 생성 승인은 commit·push·PR 승인을 포함하지 않는다.
 - `main`: 기본·PR 대상·Vercel 배포 브랜치. **직접 커밋 지양** — 작업은 브랜치에서 하고 PR로 합친다.
 - `feat/*`: 기능 작업(`feat/operation-notices-db`, `feat/admin-account-separation` 등).
 - `codex/*`: 에이전트 작업(`codex/users-registration-lifecycle-admin` 등).
@@ -216,6 +220,13 @@ DO NOT
 
 ### 11.3 워크트리(동시 세션) 주의 — 중요
 - 이 저장소는 **다중 git worktree**로 운영된다(`git worktree list`로 확인): 메인 워크스페이스 + `~/.codex/worktrees/<id>/topik-ai` 여러 개. 각 워크트리는 서로 다른 브랜치/커밋·자체 `.env.local`·자체 dev 서버를 가질 수 있다.
+- 세션 상태의 단일 외부 장부는 `~/.agent-sessions/topik-ai/<worktree-id>.json`이다. 저장소, worktree 경로, 에이전트, 작업 요약, 브랜치, PR 번호, 상태, 생성·갱신 시각을 기록하고 `npm run git:session -- sync`로 현재 branch/PR/dirty 상태를 동기화한다. worktree 없이 발견한 기존 미제출 브랜치는 `sync --branch <name> --agent <codex|claude> --task "<요약>"`으로 `ORPHAN_REVIEW` 등록한다. 비밀값·diff 본문은 기록하지 않는다.
+- 통합 감사는 `npm run git:sessions:audit -- --json --strict`를 사용하며 분류값은 `DETACHED_PROBE`, `ACTIVE`, `MERGED_CLEANUP`, `ORPHAN_REVIEW`, `DIRTY_BLOCKED`, `SAFE_QUARANTINE`, `FOREIGN_REPO`, `RECOVERY_REQUIRED`, `MAIN_HISTORY_DRIFT`로 고정한다.
+- `npm run git:sessions:cleanup`은 dry-run이 기본이다. 실제 정리는 `-- --apply`를 명시한 경우에만 수행하며, fetch/prune → clean 확인 → 필요한 recovery bundle 생성·검증 → worktree·로컬 브랜치·머지된 원격 head·stale ref 정리 → 안전 조건을 만족하는 로컬 `main` 정렬 → 재감사 순서를 지킨다.
+- 강제 브랜치 삭제 전에는 `~/.agent-sessions/topik-ai/recovery`에 bundle을 만들고 `git bundle verify`를 통과해야 한다. 명시적으로 폐기할 clean 미병합 브랜치는 `npm run git:session -- archive --branch <name> --apply`로만 처리한다. 자동 `archive-*` 브랜치 생성은 금지한다.
+- recovery bundle과 `SAFE_QUARANTINE` 항목은 7일 보존한다. empty 또는 `.omx`·`.vite`·로그 등 알려진 생성물-only 물리 디렉터리만 quarantine할 수 있다. 유효한 Git worktree, source, `.env.local`, renamed/invalid `.git`은 자동 정리하지 않는다. 다른 저장소 소유 항목은 `FOREIGN_REPO`로 감사만 하고 그 저장소에서 처리한다.
+- 로컬 `main` 자동 정렬은 worktree clean, `origin/main` 대비 ahead-only, `origin/main`이 조상, 양쪽 tree 동일 조건을 모두 만족할 때만 bundle 생성·검증 후 `reset --keep origin/main`으로 수행한다. 하나라도 다르면 `MAIN_HISTORY_DRIFT`로 중단한다.
+- PR 머지 후 cleanup 담당자는 머지 완료 세션의 worktree·manifest·로컬 브랜치가 제거되고 원격 head·stale origin ref가 남지 않았음을 최종 감사로 확인한다. `DIRTY_BLOCKED`, 미병합 `ORPHAN_REVIEW`, `RECOVERY_REQUIRED`는 자동 삭제하지 않고 후속 담당과 복구 경로를 남긴다.
 - **실행 중인 dev 서버가 내 편집을 반영한다고 가정하지 않는다.** 어느 워크트리·포트에서 도는지, `process.cwd()`가 어디인지(서버측 env는 그 cwd의 `.env.local`에서 로딩됨) 먼저 확인한다. 동시 편집 중에는 탐색 Read 결과가 stale일 수 있다.
 - **다른 세션의 미커밋 변경을 함께 커밋하지 않는다.** 공유 파일을 동시 편집했다면 내 hunk만 스테이징한다:
   - `.codex-artifacts/stage_mine.py`(git diff 훅 필터 → patch) 사용.
