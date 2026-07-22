@@ -4,4 +4,6 @@
 
 새 세션은 `npm run git:session -- start --agent claude --task "<작업 요약>"`으로 최신 `origin/main` 기반 detached worktree와 외부 manifest를 만든다. 정확히 이어지는 작업은 기존 branch/worktree를 재사용하고, 신규 브랜치는 사용자 승인 후에만 생성한다. commit·push·PR 권한은 각각 기존 정책을 따른다.
 
+원격 push·merge 전에는 `AGENTS.md` §11.1의 GitHub 실행 계정·Git commit author 라우팅을 확인한다. 필수 계정 자격 정보가 없거나 확인에 실패하면 다른 계정으로 대체하지 않고 작업을 일시중단한다.
+
 PR 머지가 확인되면 `AGENTS.md` §11.3의 post-merge cleanup을 완료 조건으로 적용한다. cleanup은 기본 dry-run이며 실제 변경에는 `--apply`가 필요하다. dirty, 미병합, foreign repository, source·`.env.local`·invalid Git metadata가 포함된 항목은 자동 삭제하지 않는다.

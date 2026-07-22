@@ -78,6 +78,8 @@ Vercel 후보는 Production 환경 변수로 빌드하지만 `--skip-domain`으�
 - GitHub `development` environment는 `main`만 허용하고 topik-dev ref, Management API token, 현재 관리자 계정, 브라우저 publishable 설정을 보관한다.
 - GitHub `Production` environment는 `main`만 허용하고 topik-prod ref, Vercel project/team/domain, Management API·Vercel·mirror token, 현재 관리자 계정을 보관한다. 사람 승인자는 두지 않는다.
 - `MIRROR_GITHUB_TOKEN`은 `keduall/topik-admin` contents 쓰기 범위로 제한한다.
+- `blackstarzck/topik-ai`의 `main` PR merge actor는 `blackstarzck`으로 고정한다. 해당 GitHub 자격 정보가 없거나 확인할 수 없으면 merge를 일시중단하며 다른 계정으로 대체하지 않는다.
+- `collab`·`keduall` push 또는 merge actor는 `guestkeduall-design`, Git commit author는 `guestkeduall-design <guestkeduall@gmail.com>`으로 고정한다. 자격 정보나 identity가 일치하지 않으면 중단하고, 기존 commit을 자동 rewrite하지 않는다.
 - Node `24.x`, Supabase CLI `2.105.0`, Vercel CLI `48.12.0`을 고정한다.
 - Vercel 대상은 `topik-admin`의 team/project ID로 고정하며 로컬 `.vercel/project.json`은 CI 배포 근거로 사용하지 않는다.
 - Vercel Git 자동 배포와 Production domain 자동 할당을 끄고 GitHub Actions만 배포 권한을 가진다.

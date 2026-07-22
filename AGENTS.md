@@ -205,6 +205,9 @@ DO NOT
 - `origin` → `github.com/blackstarzck/topik-ai.git` — **PR 대상**(PR #1~#3 머지처).
 - `keduall`·`collab` → `github.com/keduall/topik-admin.git`(동일 URL, 회사 저장소).
 - 기본·PR 브랜치는 `main`. PR은 `gh` CLI로 origin `main` 대상 생성.
+- **GitHub 실행 계정과 Git commit author는 별도 계약으로 확인한다.** push·merge 전에 대상 remote, `gh auth status`의 활성 계정, `gh api user --jq .login`, `git config user.name`, `git config user.email`을 대조한다.
+- `blackstarzck/topik-ai`의 `main` PR merge는 GitHub 계정 `blackstarzck`으로만 실행한다. 자격 정보가 등록되어 있지만 비활성 상태면 `gh auth switch --user blackstarzck`으로 전환한 뒤 다시 확인한다. 자격 정보가 없거나 전환·확인에 실패하면 `BLOCKED`로 일시중단하며 `guestkeduall-design` 등 다른 계정으로 대체하지 않는다.
+- `collab` 또는 `keduall` remote로 push·merge할 때는 GitHub 계정 `guestkeduall-design`과 Git commit author `guestkeduall-design <guestkeduall@gmail.com>`을 사용한다. 해당 GitHub 자격 정보가 없거나 Git identity가 일치하지 않으면 작업을 일시중단한다. 이미 생성된 다른 author의 commit은 이 규칙을 맞추기 위해 자동 rewrite하지 않고 사용자에게 보고한다.
 - **Vercel Git 연동은 commit author로 배포를 검증한다.** main에 push되는 배포 트리거/머지 커밋은 Vercel에 연결된 계정(`guestkeduall-design <guestkeduall@gmail.com>`)이 author여야 한다. 다른 author(예: `chanchan2@keduall.com`)는 팀 계정에 매핑되지 않아 배포가 평가되지 않는다.
 - 이미 push된 `main` 히스토리를 force-rewrite하지 않는다 — author 문제는 no-op 트리거 커밋으로 해소한다.
 

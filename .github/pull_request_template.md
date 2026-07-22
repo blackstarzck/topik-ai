@@ -11,6 +11,13 @@
 - 영향 모듈:
 - 데이터 계약·공통 UI·운영 정책 영향: <!-- 없으면 없음 -->
 
+## GitHub 실행 계정
+
+- 대상 remote·작업: <!-- origin main PR merge / collab push·merge / 해당 없음 -->
+- 실행 GitHub 계정: <!-- origin main merge는 blackstarzck, collab은 guestkeduall-design -->
+- Git commit author: <!-- collab은 guestkeduall-design <guestkeduall@gmail.com> -->
+- [ ] `AGENTS.md` §11.1 계정 라우팅 확인 또는 해당 없음
+
 ## 검증
 
 - [ ] `npm run harness:check`

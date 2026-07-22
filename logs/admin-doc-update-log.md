@@ -754,3 +754,10 @@
 - Reason: PR 머지 뒤 detached worktree, 로컬·원격 브랜치, stale ref, history-only local main, 물리 디렉터리가 세션별로 남아 작업 연속성과 안전한 폐기 여부를 판단하기 어려웠다. 최신 `origin/main` detached 시작, 기존 branch/worktree 재사용, 신규 브랜치 별도 승인, bundle 선행 cleanup, 7일 quarantine을 단일 계약으로 고정했다.
 - Contract: 앱·DB·UI 계약은 변경하지 않는다. cleanup/archive는 기본 dry-run이고 `--apply`에서만 변경하며, dirty·미병합·foreign repository·source/`.env.local`·invalid Git metadata는 자동 삭제하지 않는다. Codex와 Claude 모두 `AGENTS.md`를 단일 원문으로 사용한다.
 - Validation: Vitest 임시 저장소에서 detached manifest, 기존 브랜치 연결, remote-only PR, PR/dirty/squash 분류, bundle verify, quarantine, main 정렬 성공·차단, dry-run 무변경을 검증했다. `harness:check`, unit 58파일/410개, production build, 기존 공통 헤더·본문·테이블과 Operation/System 흐름 smoke E2E 9/9가 통과했다. 실제 감사에서 생성물-only 물리 디렉터리 35개를 quarantine하고 archive 브랜치 2개를 bundle 보존했으며, merged remote head 19개를 정리했다. 최종 정리 가능 항목은 0건이고 미제출 브랜치 2건, 현재 미커밋 worktree, v13 foreign dirty worktree, source·`.env.local`·renamed Git metadata 복구 대상만 보존했다.
+
+## 2026-07-22 GitHub remote별 실행 계정 라우팅 고정
+
+- Updated `AGENTS.md`, `.claude/CLAUDE.md`, `.github/pull_request_template.md`, `docs/architecture/admin-cicd-pipeline.md`, and `logs/admin-doc-update-log.md`.
+- Reason: `blackstarzck/topik-ai`와 회사 mirror remote의 push·merge 작업에서 GitHub actor와 Git commit author가 혼동되지 않도록 remote별 필수 identity와 중단 조건을 고정했다.
+- Contract: `origin`의 `main` PR merge는 `blackstarzck` 자격 정보로만 실행하고 없으면 일시중단한다. `collab`·`keduall` push·merge는 `guestkeduall-design` GitHub 계정과 `guestkeduall-design <guestkeduall@gmail.com>` author를 사용하며, 불일치 commit을 자동 rewrite하지 않는다. 앱·DB·UI 계약은 변경하지 않는다.
+- Validation: 문서 구조·링크·한글 인코딩과 Git 계정 라우팅 문구를 diff로 검토했고, `harness:check`, unit 58파일/410개, production build, 공통 테이블·Operation·System baseline smoke E2E 9/9가 통과했다.
