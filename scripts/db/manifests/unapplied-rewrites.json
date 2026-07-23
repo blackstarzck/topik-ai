@@ -1,0 +1,9 @@
+{
+  "$comment": "Forward migrations approved for in-place rewrite while still pending in every environment tracker. The expand-migration gate accepts an M-status diff only for the paths listed here and still requires the rewritten content to stay additive. The migration runner remains the fail-closed backstop: an entry that was actually applied anywhere aborts on tracker checksum mismatch at apply/verify time. Remove each entry once the rewritten migration is applied to development and production.",
+  "rewrites": [
+    {
+      "path": "supabase/migrations-admin/20260723011242_notification_pipeline_ownership_transfer.sql",
+      "reason": "42P13 repair: converge dispatch_notification_event and dispatch_scheduled_notifications to the live single-overload contract (5-arg with p_payload/p_channel defaults, 2-arg with p_channel default). Verified pending in dev fglggyfvzjdsbyckinqa and prod eymlabowhfgtxbiqwxqh trackers on 2026-07-23; the failed 2026-07-23 apply rolled back atomically."
+    }
+  ]
+}

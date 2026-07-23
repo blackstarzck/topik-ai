@@ -9,6 +9,11 @@
 --   2. Apply topik-ai admin migrations. The four admin tables must already exist.
 --   3. This migration re-declares the final dispatcher, email pipeline, privileges,
 --      and pg_cron job without deleting or reseeding existing operational data.
+--   4. Every dispatch declaration uses the final live overload set — one
+--      dispatch_notification_event(text,uuid,text,jsonb,text) with p_payload and
+--      p_channel defaults, one dispatch_scheduled_notifications(text,text) with the
+--      p_channel default — so replaying over the live databases never removes
+--      parameter defaults (42P13) and 1/3/4/5-arg call forms stay unambiguous (42725).
 --
 -- Recovery contract: roll forward with a corrective admin migration. The paired
 -- down file intentionally preserves these shared runtime objects and all data.
@@ -79,7 +84,10 @@ $$;
 --     attempt 일일 dedupe로 1회 상한 — 다운타임 소급 스톰 방지 N-SCH-11)
 --   - 동시 실행: tick 단위 dispatch dedupe(N-SCH-03) + attempt dedupe 이중
 -- ---------------------------------------------------------------------
-create or replace function private.dispatch_scheduled_notifications(p_template_key text)
+create or replace function private.dispatch_scheduled_notifications(
+  p_template_key text,
+  p_channel      text default 'in_app'
+)
 returns jsonb
 language plpgsql
 security definer
@@ -297,7 +305,8 @@ create or replace function private.dispatch_notification_event(
   p_template_key text,
   p_user_id      uuid,
   p_event_id     text,
-  p_payload      jsonb default '{}'::jsonb
+  p_payload      jsonb default '{}'::jsonb,
+  p_channel      text  default null
 )
 returns jsonb
 language plpgsql
@@ -403,9 +412,9 @@ $$;
 
 -- private 스키마는 PostgREST 미노출이지만 명시적으로 client 실행 권한 차단
 revoke all on function private.render_notification_text(text, text) from public, anon, authenticated;
-revoke all on function private.dispatch_scheduled_notifications(text) from public, anon, authenticated;
+revoke all on function private.dispatch_scheduled_notifications(text, text) from public, anon, authenticated;
 revoke all on function private.dispatch_admin_notifications() from public, anon, authenticated;
-revoke all on function private.dispatch_notification_event(text, uuid, text, jsonb) from public, anon, authenticated;
+revoke all on function private.dispatch_notification_event(text, uuid, text, jsonb, text) from public, anon, authenticated;
 revoke all on function private.dispatch_notifications() from public, anon, authenticated;
 
 comment on function private.dispatch_notifications() is
@@ -632,7 +641,6 @@ $$;
 --                 eligible는 'pending' attempt 후 transport 호출로 종결.
 --                 dedupe_key/dispatch dedupe에 channel을 포함해 in_app과 충돌 방지.
 -- ---------------------------------------------------------------------
--- Keep the single-argument overload as an additive compatibility entrypoint.
 
 create or replace function private.dispatch_scheduled_notifications(
   p_template_key text,
@@ -792,18 +800,6 @@ begin
 end;
 $$;
 
-create or replace function private.dispatch_scheduled_notifications(p_template_key text)
-returns jsonb
-language sql
-security definer
-set search_path = pg_catalog, public, private
-as $$
-  select private.dispatch_scheduled_notifications(p_template_key, 'in_app');
-$$;
-
-revoke all on function private.dispatch_scheduled_notifications(text)
-  from public, anon, authenticated;
-
 -- ---------------------------------------------------------------------
 -- 3b. 관리자 발송 — v_tpl.channel로 분기.
 --     템플릿은 단일 channel을 가지므로 디스패치별로 분기한다.
@@ -961,13 +957,11 @@ $$;
 --     p_channel을 지정하면 해당 channel만 집행한다(검증/선택 발송용).
 --     각 dispatch dedupe_key·attempt dedupe_key에 channel을 포함해 충돌 방지.
 -- ---------------------------------------------------------------------
--- Keep the four-argument overload as an additive compatibility entrypoint.
-
 create or replace function private.dispatch_notification_event(
   p_template_key text,
   p_user_id      uuid,
   p_event_id     text,
-  p_payload      jsonb,
+  p_payload      jsonb default '{}'::jsonb,
   p_channel      text  default null   -- null = 모든 활성 channel
 )
 returns jsonb
@@ -1096,29 +1090,6 @@ begin
   return jsonb_build_object('template', p_template_key, 'event_id', p_event_id, 'channels', v_results);
 end;
 $$;
-
-create or replace function private.dispatch_notification_event(
-  p_template_key text,
-  p_user_id      uuid,
-  p_event_id     text,
-  p_payload      jsonb default '{}'::jsonb
-)
-returns jsonb
-language sql
-security definer
-set search_path = pg_catalog, public, private
-as $$
-  select private.dispatch_notification_event(
-    p_template_key,
-    p_user_id,
-    p_event_id,
-    p_payload,
-    null
-  );
-$$;
-
-revoke all on function private.dispatch_notification_event(text, uuid, text, jsonb)
-  from public, anon, authenticated;
 
 -- ---------------------------------------------------------------------
 -- 4. 실패 email attempt 재시도 (최대 3회). 3회 도달 시 terminal.
@@ -1873,7 +1844,7 @@ create or replace function private.dispatch_notification_event(
   p_template_key text,
   p_user_id      uuid,
   p_event_id     text,
-  p_payload      jsonb,
+  p_payload      jsonb default '{}'::jsonb,
   p_channel      text  default null   -- null = 모든 활성 channel
 )
 returns jsonb

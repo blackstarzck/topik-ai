@@ -222,6 +222,8 @@ declare
   v_signature text;
   v_expected_definer boolean;
   v_actual_definer boolean;
+  v_overloads int;
+  v_defaults int;
 begin
   foreach v_table in array array[
     'notification_templates',
@@ -271,10 +273,8 @@ begin
   for v_signature, v_expected_definer in
     select * from (values
       ('private.render_notification_text(text,text)', false),
-      ('private.dispatch_scheduled_notifications(text)', true),
       ('private.dispatch_scheduled_notifications(text,text)', true),
       ('private.dispatch_admin_notifications()', true),
-      ('private.dispatch_notification_event(text,uuid,text,jsonb)', true),
       ('private.dispatch_notification_event(text,uuid,text,jsonb,text)', true),
       ('private.dispatch_notifications()', true),
       ('private.notification_email_transport(text,text,text,uuid)', true),
@@ -296,6 +296,33 @@ begin
       raise exception 'client notification execute grant drift: %', v_signature;
     end if;
   end loop;
+
+  -- Each dispatch function must keep exactly one overload with its parameter
+  -- defaults intact: a second overload makes 1-arg/4-arg call forms ambiguous
+  -- (42725), and a defaults-less core cannot replay over the live databases (42P13).
+  select count(*) into v_overloads
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'private' and p.proname = 'dispatch_notification_event';
+  select pronargdefaults into v_defaults
+    from pg_proc
+   where oid = to_regprocedure('private.dispatch_notification_event(text,uuid,text,jsonb,text)');
+  if v_overloads <> 1 or v_defaults is distinct from 2 then
+    raise exception 'dispatch_notification_event overload contract drift: overloads=% defaults=%',
+      v_overloads, v_defaults;
+  end if;
+
+  select count(*) into v_overloads
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'private' and p.proname = 'dispatch_scheduled_notifications';
+  select pronargdefaults into v_defaults
+    from pg_proc
+   where oid = to_regprocedure('private.dispatch_scheduled_notifications(text,text)');
+  if v_overloads <> 1 or v_defaults is distinct from 1 then
+    raise exception 'dispatch_scheduled_notifications overload contract drift: overloads=% defaults=%',
+      v_overloads, v_defaults;
+  end if;
 
   if to_regclass('cron.job') is null or not exists (
     select 1 from cron.job
@@ -399,6 +426,21 @@ begin
        where user_id = ${sqlLiteral(memberId)}::uuid
          and template_key = 'feedback_ready' and channel = 'in_app' and status = 'sent') <> 1 then
     raise exception 'feedback_ready event dedupe contract failed';
+  end if;
+
+  -- The defaulted single overloads must accept every documented call form without
+  -- 42725 ambiguity (5-arg and 2-arg forms are exercised above).
+  perform private.dispatch_notification_event(
+    'feedback_ready', ${sqlLiteral(memberId)}::uuid, 'shadow-feedback-ready-arity4',
+    '{"link_url":"/shadow-feedback-arity4"}'::jsonb);
+  perform private.dispatch_notification_event(
+    'feedback_ready', ${sqlLiteral(memberId)}::uuid, 'shadow-feedback-ready-arity3');
+  perform private.dispatch_scheduled_notifications('study_reminder');
+  if (select count(*) from public.notification_delivery_attempts
+       where user_id = ${sqlLiteral(memberId)}::uuid
+         and template_key = 'feedback_ready' and channel = 'in_app' and status = 'sent'
+         and dedupe_key like '%:shadow-feedback-ready-arity%') <> 2 then
+    raise exception 'defaulted dispatch call-form contract failed';
   end if;
 end
 $$;

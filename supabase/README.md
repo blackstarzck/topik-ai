@@ -75,6 +75,12 @@
 - forward migration은 기존 dispatch/attempt/config row를 삭제하거나 재시드하지 않고 최종 함수,
   RLS, grants, cron을 수렴시킨다. down은 공유 운영 상태를 되돌리지 않는 의도적 no-op이며 이후 교정도
   roll-forward로만 수행한다.
+- dispatch 선언은 최종 라이브 오버로드 집합만 사용한다 — `dispatch_notification_event(text,uuid,text,jsonb,text)`
+  1본(p_payload·p_channel default)과 `dispatch_scheduled_notifications(text,text)` 1본(p_channel default).
+  레거시 1인자/4인자 오버로드를 재선언하면 1·4인자 호출이 모호해지고(42725), default 없는 core를
+  라이브에 재적용하면 default 제거로 실패한다(42P13). 미적용 migration의 승인된 in-place 재작성은
+  `scripts/db/manifests/unapplied-rewrites.json` 선언으로만 expand gate를 통과하며, 실제 적용 여부는
+  러너의 tracker checksum이 fail-closed로 재검증한다.
 
 ## 3. 공통 실행 메커니즘
 

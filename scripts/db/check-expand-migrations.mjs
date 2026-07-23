@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const FORWARD_MIGRATION = /^supabase\/(migrations|migrations-admin)\/\d{14}_[a-z0-9_]+\.sql$/;
 const DOWN_MIGRATION = /^supabase\/(migrations|migrations-admin)\/down\/\d{14}_[a-z0-9_]+\.sql$/;
@@ -89,7 +89,7 @@ export function findContractOperations(sql) {
     .map(([name]) => name);
 }
 
-export function classifyMigrationDiff(entries, readMigration) {
+export function classifyMigrationDiff(entries, readMigration, { allowedRewrites = new Set() } = {}) {
   const issues = [];
   const introducedFunctions = new Set();
   const orderedEntries = [...entries].sort((left, right) => left.path.localeCompare(right.path));
@@ -98,8 +98,16 @@ export function classifyMigrationDiff(entries, readMigration) {
     const down = DOWN_MIGRATION.test(entry.path);
     if (!forward && !down) continue;
     if (entry.status !== 'A') {
-      issues.push(`${entry.path}: applied migrations are immutable (${entry.status})`);
-      continue;
+      // A declared unapplied rewrite may modify a forward migration in place; the
+      // migration runner still fails closed on tracker checksums if the file was
+      // actually applied anywhere. Deletions are never allowed.
+      const rewriteAllowed = forward
+        && entry.status === 'M'
+        && allowedRewrites.has(entry.path);
+      if (!rewriteAllowed) {
+        issues.push(`${entry.path}: applied migrations are immutable (${entry.status})`);
+        continue;
+      }
     }
     if (!forward) continue;
     const sql = readMigration(entry.path);
@@ -128,6 +136,31 @@ function getArgValue(args, flag) {
   return value;
 }
 
+const REWRITE_ALLOWLIST_PATH = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  'manifests',
+  'unapplied-rewrites.json'
+);
+
+export function loadRewriteAllowlist(path = REWRITE_ALLOWLIST_PATH) {
+  if (!existsSync(path)) return new Set();
+  const parsed = JSON.parse(readFileSync(path, 'utf8'));
+  if (!Array.isArray(parsed?.rewrites)) {
+    throw new Error('unapplied-rewrites.json must contain a rewrites array.');
+  }
+  const paths = new Set();
+  for (const entry of parsed.rewrites) {
+    if (typeof entry?.path !== 'string' || !FORWARD_MIGRATION.test(entry.path)) {
+      throw new Error(`unapplied-rewrites.json entry has an invalid path: ${entry?.path}`);
+    }
+    if (typeof entry?.reason !== 'string' || entry.reason.trim().length === 0) {
+      throw new Error(`unapplied-rewrites.json entry needs a reason: ${entry.path}`);
+    }
+    paths.add(entry.path);
+  }
+  return paths;
+}
+
 function parseNameStatus(output) {
   return output
     .split(/\r?\n/)
@@ -154,7 +187,8 @@ function main() {
   const entries = parseNameStatus(output);
   const issues = classifyMigrationDiff(
     entries,
-    (path) => readFileSync(resolve(path), 'utf8')
+    (path) => readFileSync(resolve(path), 'utf8'),
+    { allowedRewrites: loadRewriteAllowlist() }
   );
   if (issues.length > 0) {
     throw new Error(`Only additive expand migrations may auto-release:\n${issues.join('\n')}`);
