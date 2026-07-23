@@ -775,3 +775,10 @@
 - Reason: Production runner가 Playwright Chromium을 설치하지 않아 후보 빌드 후 DB 변경 전 운영 스모크가 브라우저 실행 파일 부재로 중단됐다.
 - Contract: `db-only`와 staged app release 모두 `npm ci` 후 Chromium을 명시적으로 설치하고, DB 변경 전 첫 운영 E2E보다 설치 단계가 앞서는 순서를 단위 테스트로 고정한다. 데이터·권한·UI 계약은 변경하지 않는다.
 - Validation: pipeline 계약 단위 테스트, `harness:check`, production build, 공통 Operation/System smoke E2E를 실행하고 실제 전체 릴리스에서 운영 브라우저 E2E를 확인한다.
+
+## 2026-07-23 Vercel 후보 Deployment Protection 우회 게이트
+
+- Updated `.github/workflows/release-production.yml`, `playwright.release-admin.config.ts`, release browser·pipeline 계약 테스트, `docs/architecture/admin-cicd-pipeline.md`.
+- Reason: `--skip-domain`으로 만든 Production 후보가 Vercel SSO 보호 화면으로 이동해 관리자 앱 E2E가 실행되지 못했다.
+- Contract: GitHub `Production` environment의 `VERCEL_AUTOMATION_BYPASS_SECRET`이 없으면 후보 빌드 전에 중단한다. 우회 헤더와 후속 탐색용 쿠키 설정 헤더는 후보 E2E에만 전달하며, 운영 도메인 검사·로그·artifact에는 전달하지 않는다. 데이터·권한·UI 계약은 변경하지 않는다.
+- Validation: release browser config와 pipeline 순서·비밀 범위 계약, `harness:check`, production build, 공통 Operation/System smoke E2E를 실행하고 실제 전체 릴리스에서 후보 E2E·승격·운영 E2E를 확인한다.
