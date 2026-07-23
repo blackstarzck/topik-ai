@@ -768,3 +768,10 @@
 - Reason: 이력 정리처럼 최신 `main`이 `sync-only`로 검증된 뒤 이전 `app-db` 운영 릴리스가 중단되면, 동일 최신 SHA를 topik-dev부터 다시 전체 검증해 topik-prod와 Vercel에 안전하게 재적용할 진입점이 없었다.
 - Contract: write 권한 사용자가 `main` ref에서 `app-db`와 확인 문자열 `topik-prod`를 모두 제공한 경우만 수동 전체 릴리스를 허용한다. 자동 push 분류, 개발 evidence 검증, 회사 mirror, topik-prod migration, Vercel 후보 E2E·승격·롤백 절차는 우회하지 않는다.
 - Validation: classifier와 workflow 계약 단위 테스트, `harness:check`, production build, 공통 Operation/System smoke E2E를 실행하고 실제 수동 전체 릴리스에서 topik-dev·topik-prod·Vercel 증거 artifact를 확인한다.
+
+## 2026-07-23 Production 브라우저 런타임 설치 게이트
+
+- Updated `.github/workflows/release-production.yml`, pipeline 계약 테스트, `docs/architecture/admin-cicd-pipeline.md`.
+- Reason: Production runner가 Playwright Chromium을 설치하지 않아 후보 빌드 후 DB 변경 전 운영 스모크가 브라우저 실행 파일 부재로 중단됐다.
+- Contract: `db-only`와 staged app release 모두 `npm ci` 후 Chromium을 명시적으로 설치하고, DB 변경 전 첫 운영 E2E보다 설치 단계가 앞서는 순서를 단위 테스트로 고정한다. 데이터·권한·UI 계약은 변경하지 않는다.
+- Validation: pipeline 계약 단위 테스트, `harness:check`, production build, 공통 Operation/System smoke E2E를 실행하고 실제 전체 릴리스에서 운영 브라우저 E2E를 확인한다.

@@ -141,6 +141,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
+      - name: Install Chromium for Production browser verification
+        run: npx playwright install --with-deps chromium
       - uses: actions/download-artifact@v4
         with:
           name: development-evidence-${{ env.RELEASE_SHA }}
@@ -235,6 +237,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
+      - name: Install Chromium for Production browser verification
+        run: npx playwright install --with-deps chromium
       - uses: actions/download-artifact@v4
         with:
           name: development-evidence-${{ env.RELEASE_SHA }}

@@ -122,7 +122,17 @@ describe('four-path release pipeline contract', () => {
 
   it('runs db-only Production without building or promoting Vercel', () => {
     const database = job(productionWorkflow, 'release-database-only', 'release-app');
+    const browserInstall = position(
+      database,
+      'Install Chromium for Production browser verification'
+    );
+    const currentApp = position(
+      database,
+      'Verify the current Production app before the database change'
+    );
     expect(database).toContain("release_plan == 'db-only'");
+    expect(browserInstall).toBeLessThan(currentApp);
+    expect(database).toContain('npx playwright install --with-deps chromium');
     expect(database).toContain('Apply topik-prod expand migrations in ownership order');
     expect(database).toContain('Verify the unchanged Production app after the database change');
     expect(database).toContain('--release-plan db-only');
@@ -136,12 +146,23 @@ describe('four-path release pipeline contract', () => {
     const app = job(productionWorkflow, 'release-app');
     expect(app).toContain("release_plan == 'app-only'");
     expect(app).toContain("release_plan == 'app-db'");
+    const browserInstall = position(
+      app,
+      'Install Chromium for Production browser verification'
+    );
     const candidate = position(app, 'Build an unaliased Production candidate');
+    const currentApp = position(
+      app,
+      'Verify the current Production app before any database change'
+    );
     const migration = position(app, 'Apply topik-prod expand migrations for an app-db release');
     const oldApp = position(app, 'Verify the old Production app after an app-db migration');
     const candidateE2e = position(app, 'Verify the candidate with the configured administrator account');
     const promote = position(app, 'Promote the verified candidate without rebuilding');
-    expect(candidate).toBeLessThan(migration);
+    expect(browserInstall).toBeLessThan(currentApp);
+    expect(app).toContain('npx playwright install --with-deps chromium');
+    expect(candidate).toBeLessThan(currentApp);
+    expect(currentApp).toBeLessThan(migration);
     expect(migration).toBeLessThan(oldApp);
     expect(oldApp).toBeLessThan(candidateE2e);
     expect(candidateE2e).toBeLessThan(promote);
