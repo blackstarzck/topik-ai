@@ -795,5 +795,5 @@
 
 - Updated `.github/workflows/ci.yml`, `database-health.yml`, development/production release workflow, CI 환경 검증기, transfer SOT checklist, notification production verification runbook.
 - Reason: v13의 신뢰된 artifact 경계를 유지하기 위해 알림 migration replay guard가 `tests/scripts`로 이동했고 최종 PR HEAD가 변경되어, topik-ai의 고정 SHA와 교차 저장소 경로를 같은 커밋으로 정렬했다.
-- Contract: topik-ai shadow/health/release 검증은 v13 `9c5cf5abe4a16e1c43c31acf08e617c7f99ad63d`을 사용하며, replay guard의 정본 경로는 `tests/scripts/check-notification-migration-replay.mjs`다. 알림 스키마·권한·UI 계약은 변경하지 않는다.
+- Contract: topik-ai shadow/health/release 검증은 v13 `81e2ed7d0845194224ebe6f156c697560d70de65`을 사용하며, replay guard의 정본 경로는 `tests/scripts/check-notification-migration-replay.mjs`다. 알림 스키마·권한·UI 계약은 변경하지 않는다.
 - Validation: transfer SOT checklist, migration boundary, 전체 unit 422/422, 최종 v13 SHA 기반 통합 shadow replay 88/88, `harness:check`, build, Message e2e 1/1을 통과했다. GitHub CI는 push 후 최종 확인한다.
