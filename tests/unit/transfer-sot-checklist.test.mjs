@@ -15,7 +15,7 @@ const V13_FILES = [
   'README.md',
   'docs/supabase/security-and-ownership.md',
   'supabase/migrations/INDEX.md',
-  'scripts/check-notification-migration-replay.mjs',
+  'tests/scripts/check-notification-migration-replay.mjs',
   'tests/scripts/check-notification-migration-replay.test.mjs'
 ];
 
@@ -72,7 +72,7 @@ function writeValidFixtures(topikAiRoot, v13Root) {
   );
   writeProjectFile(
     v13Root,
-    'scripts/check-notification-migration-replay.mjs',
+    'tests/scripts/check-notification-migration-replay.mjs',
     'notification pipeline migration home: topik-ai 20260612180000_notification_dispatcher.sql 20260612200100_marketing_consent_in_dispatch.sql\n'
   );
 }

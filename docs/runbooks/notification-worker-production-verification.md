@@ -25,7 +25,7 @@ The checked-in `notification-worker-production-evidence.example.md` file is a re
 - v13 repo: README.md - v13 runtime and environment baseline.
 - v13 repo: docs/supabase/security-and-ownership.md - current notification owner/writer/reader and clean replay boundary.
 - v13 repo: supabase/migrations/INDEX.md - current migration order and historical pipeline no-op status.
-- v13 repo: scripts/check-notification-migration-replay.mjs - fail-closed static guard for the retired pipeline migrations.
+- v13 repo: tests/scripts/check-notification-migration-replay.mjs - fail-closed static guard for the retired pipeline migrations.
 - v13 repo: tests/scripts/check-notification-migration-replay.test.mjs - replay guard regression coverage.
 
 ### topik-ai

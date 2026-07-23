@@ -24,7 +24,7 @@ const V13_REQUIRED_DOCS = [
     reason: 'current v13 migration order and retired pipeline migration status'
   },
   {
-    file: 'scripts/check-notification-migration-replay.mjs',
+    file: 'tests/scripts/check-notification-migration-replay.mjs',
     reason: 'fail-closed static guard for retired notification pipeline migrations'
   },
   {
@@ -115,7 +115,7 @@ const V13_REQUIRED_DOC_TERMS = [
     ]
   },
   {
-    file: 'scripts/check-notification-migration-replay.mjs',
+    file: 'tests/scripts/check-notification-migration-replay.mjs',
     terms: [
       'notification pipeline migration home: topik-ai',
       '20260612180000_notification_dispatcher.sql',
