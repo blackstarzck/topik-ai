@@ -22,6 +22,7 @@ import {
 import { pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
+import { expectedActorFor, sanitizedBaseEnv } from './account-context.mjs';
 
 export const CLASSIFICATIONS = Object.freeze([
   'DETACHED_PROBE',
@@ -76,7 +77,7 @@ function defaultRun(command, args, options = {}) {
     cwd: options.cwd,
     encoding: 'utf8',
     env: {
-      ...process.env,
+      ...sanitizedBaseEnv(),
       GIT_TERMINAL_PROMPT: '0',
       GH_PROMPT_DISABLED: '1'
     },
@@ -1011,9 +1012,15 @@ export function archiveBranch({
   return { applied: true, branch, actions, bundlePath };
 }
 
-function ensureBlackstarzckAccount(run) {
+// Remote branch deletion still rides the ambient credential (active gh account),
+// so the gate verifies that identity against the AGENTS §11.1 account mapping for
+// the audited repository instead of a hardcoded login.
+function ensureExpectedRemoteActor(run, repository) {
+  const expected = expectedActorFor(repository);
   const login = gh(run, ['api', 'user', '--jq', '.login']).stdout.trim();
-  if (login !== 'blackstarzck') throw new Error(`Remote branch cleanup requires blackstarzck; active account is ${login || 'unknown'}`);
+  if (login !== expected) {
+    throw new Error(`Remote branch cleanup for ${repository} requires ${expected}; active account is ${login || 'unknown'}`);
+  }
 }
 
 function remoteBranchExists(run, root, branch) {
@@ -1061,7 +1068,7 @@ export function cleanupSessions({
   codexWorktreeRoot = defaultCodexWorktreeRoot(),
   includePullRequests = true,
   pullRequestProvider = null,
-  verifyRemoteAccount = ensureBlackstarzckAccount,
+  verifyRemoteAccount = ensureExpectedRemoteActor,
   clock = () => new Date()
 } = {}) {
   const initialAudit = collectAudit({ run, rootDir, stateRoot, codexWorktreeRoot, includePullRequests, pullRequestProvider });
@@ -1099,7 +1106,7 @@ export function cleanupSessions({
           clock
         }));
       }
-      verifyRemoteAccount(run);
+      verifyRemoteAccount(run, freshAudit.repository);
       git(run, root, ['push', 'origin', '--delete', branch]);
       removeManifestsForBranchOrWorktree(stateRoot, branch, null);
       continue;
@@ -1123,7 +1130,7 @@ export function cleanupSessions({
           : getPullRequest(run, freshAudit.repository, branch))
       : null;
     if (pr?.state === 'MERGED' && remoteBranchExists(run, root, branch)) {
-      verifyRemoteAccount(run);
+      verifyRemoteAccount(run, freshAudit.repository);
       git(run, root, ['push', 'origin', '--delete', branch]);
     }
     removeManifestsForBranchOrWorktree(stateRoot, branch, record.worktreePath);
