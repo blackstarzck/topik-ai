@@ -16,6 +16,7 @@ env:
 jobs:
   classify:
     name: classify
+    if: ${{ github.repository == 'blackstarzck/topik-ai' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
@@ -59,7 +60,7 @@ jobs:
   blocked-validation:
     name: blocked-validation
     needs: classify
-    if: ${{ needs.classify.outputs.release_plan == 'blocked' }}
+    if: ${{ github.repository == 'blackstarzck/topik-ai' && needs.classify.outputs.release_plan == 'blocked' }}
     runs-on: ubuntu-latest
     steps:
       - run: |
@@ -69,7 +70,7 @@ jobs:
   light-validation:
     name: light-validation
     needs: classify
-    if: ${{ needs.classify.outputs.validation_profile == 'light' }}
+    if: ${{ github.repository == 'blackstarzck/topik-ai' && needs.classify.outputs.validation_profile == 'light' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -96,7 +97,7 @@ jobs:
   quality:
     name: quality
     needs: classify
-    if: ${{ needs.classify.outputs.validation_profile == 'app' || needs.classify.outputs.validation_profile == 'full' }}
+    if: ${{ github.repository == 'blackstarzck/topik-ai' && (needs.classify.outputs.validation_profile == 'app' || needs.classify.outputs.validation_profile == 'full') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -119,7 +120,7 @@ jobs:
   db-contract:
     name: db-contract
     needs: classify
-    if: ${{ needs.classify.outputs.validation_profile == 'full' }}
+    if: ${{ github.repository == 'blackstarzck/topik-ai' && needs.classify.outputs.validation_profile == 'full' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -177,7 +178,7 @@ jobs:
   browser-e2e:
     name: browser-e2e
     needs: classify
-    if: ${{ needs.classify.outputs.validation_profile == 'app' || needs.classify.outputs.validation_profile == 'full' }}
+    if: ${{ github.repository == 'blackstarzck/topik-ai' && (needs.classify.outputs.validation_profile == 'app' || needs.classify.outputs.validation_profile == 'full') }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -203,7 +204,7 @@ jobs:
 
   ci-gate:
     name: ci-gate
-    if: always()
+    if: ${{ github.repository == 'blackstarzck/topik-ai' && always() }}
     needs:
       - classify
       - blocked-validation

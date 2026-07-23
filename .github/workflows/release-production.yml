@@ -24,7 +24,7 @@ env:
 jobs:
   prepare:
     name: verify-development-evidence
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.repository == 'blackstarzck/topik-ai' && github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     outputs:
@@ -60,6 +60,7 @@ jobs:
 
   mirror:
     name: fast-forward-company-mirror
+    if: ${{ github.repository == 'blackstarzck/topik-ai' }}
     needs: prepare
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -116,7 +117,7 @@ jobs:
   release-database-only:
     name: topik-prod-database-only-release
     needs: [prepare, mirror]
-    if: ${{ needs.prepare.outputs.release_plan == 'db-only' && needs.mirror.outputs.disposition != 'superseded' }}
+    if: ${{ github.repository == 'blackstarzck/topik-ai' && needs.prepare.outputs.release_plan == 'db-only' && needs.mirror.outputs.disposition != 'superseded' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     environment: Production
@@ -208,7 +209,7 @@ jobs:
   release-app:
     name: staged-production-app-release
     needs: [prepare, mirror]
-    if: ${{ (needs.prepare.outputs.release_plan == 'app-only' || needs.prepare.outputs.release_plan == 'app-db') && needs.mirror.outputs.disposition != 'superseded' }}
+    if: ${{ github.repository == 'blackstarzck/topik-ai' && (needs.prepare.outputs.release_plan == 'app-only' || needs.prepare.outputs.release_plan == 'app-db') && needs.mirror.outputs.disposition != 'superseded' }}
     runs-on: ubuntu-latest
     timeout-minutes: 75
     environment: Production
