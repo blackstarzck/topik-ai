@@ -1,8 +1,8 @@
-# CI/CD, database ownership boundaries, and release contracts require repository-owner review.
-/.github/ @blackstarzck
-/scripts/db/ @blackstarzck
-/scripts/ci/ @blackstarzck
-/supabase/migrations/ @blackstarzck
-/supabase/migrations-admin/ @blackstarzck
-/supabase/README.md @blackstarzck
-/docs/architecture/admin-cicd-pipeline.md @blackstarzck
+# CI/CD, database ownership boundaries, and release contracts require shared code-owner review.
+/.github/ @blackstarzck @guestkeduall-design
+/scripts/db/ @blackstarzck @guestkeduall-design
+/scripts/ci/ @blackstarzck @guestkeduall-design
+/supabase/migrations/ @blackstarzck @guestkeduall-design
+/supabase/migrations-admin/ @blackstarzck @guestkeduall-design
+/supabase/README.md @blackstarzck @guestkeduall-design
+/docs/architecture/admin-cicd-pipeline.md @blackstarzck @guestkeduall-design
