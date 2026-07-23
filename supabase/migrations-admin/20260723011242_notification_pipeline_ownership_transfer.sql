@@ -632,8 +632,7 @@ $$;
 --                 eligible는 'pending' attempt 후 transport 호출로 종결.
 --                 dedupe_key/dispatch dedupe에 channel을 포함해 in_app과 충돌 방지.
 -- ---------------------------------------------------------------------
--- 기존 single-arg overload 제거 (channel 파라미터가 추가된 2-arg 버전으로 대체).
-drop function if exists private.dispatch_scheduled_notifications(text);
+-- Keep the single-argument overload as an additive compatibility entrypoint.
 
 create or replace function private.dispatch_scheduled_notifications(
   p_template_key text,
@@ -793,6 +792,18 @@ begin
 end;
 $$;
 
+create or replace function private.dispatch_scheduled_notifications(p_template_key text)
+returns jsonb
+language sql
+security definer
+set search_path = pg_catalog, public, private
+as $$
+  select private.dispatch_scheduled_notifications(p_template_key, 'in_app');
+$$;
+
+revoke all on function private.dispatch_scheduled_notifications(text)
+  from public, anon, authenticated;
+
 -- ---------------------------------------------------------------------
 -- 3b. 관리자 발송 — v_tpl.channel로 분기.
 --     템플릿은 단일 channel을 가지므로 디스패치별로 분기한다.
@@ -950,14 +961,13 @@ $$;
 --     p_channel을 지정하면 해당 channel만 집행한다(검증/선택 발송용).
 --     각 dispatch dedupe_key·attempt dedupe_key에 channel을 포함해 충돌 방지.
 -- ---------------------------------------------------------------------
--- 이전 4-arg 버전을 새 5-arg(p_channel 추가) 버전으로 교체.
-drop function if exists private.dispatch_notification_event(text, uuid, text, jsonb);
+-- Keep the four-argument overload as an additive compatibility entrypoint.
 
 create or replace function private.dispatch_notification_event(
   p_template_key text,
   p_user_id      uuid,
   p_event_id     text,
-  p_payload      jsonb default '{}'::jsonb,
+  p_payload      jsonb,
   p_channel      text  default null   -- null = 모든 활성 channel
 )
 returns jsonb
@@ -1086,6 +1096,29 @@ begin
   return jsonb_build_object('template', p_template_key, 'event_id', p_event_id, 'channels', v_results);
 end;
 $$;
+
+create or replace function private.dispatch_notification_event(
+  p_template_key text,
+  p_user_id      uuid,
+  p_event_id     text,
+  p_payload      jsonb default '{}'::jsonb
+)
+returns jsonb
+language sql
+security definer
+set search_path = pg_catalog, public, private
+as $$
+  select private.dispatch_notification_event(
+    p_template_key,
+    p_user_id,
+    p_event_id,
+    p_payload,
+    null
+  );
+$$;
+
+revoke all on function private.dispatch_notification_event(text, uuid, text, jsonb)
+  from public, anon, authenticated;
 
 -- ---------------------------------------------------------------------
 -- 4. 실패 email attempt 재시도 (최대 3회). 3회 도달 시 terminal.
@@ -1840,7 +1873,7 @@ create or replace function private.dispatch_notification_event(
   p_template_key text,
   p_user_id      uuid,
   p_event_id     text,
-  p_payload      jsonb default '{}'::jsonb,
+  p_payload      jsonb,
   p_channel      text  default null   -- null = 모든 활성 channel
 )
 returns jsonb

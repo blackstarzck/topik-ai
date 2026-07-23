@@ -23,8 +23,10 @@ const ADMIN_TABLES = [
 ];
 const REQUIRED_FUNCTIONS = [
   ['render_notification_text', 'private.render_notification_text(text,text)', false],
+  ['dispatch_scheduled_notifications_compat', 'private.dispatch_scheduled_notifications(text)', true],
   ['dispatch_scheduled_notifications', 'private.dispatch_scheduled_notifications(text,text)', true],
   ['dispatch_admin_notifications', 'private.dispatch_admin_notifications()', true],
+  ['dispatch_notification_event_compat', 'private.dispatch_notification_event(text,uuid,text,jsonb)', true],
   ['dispatch_notification_event', 'private.dispatch_notification_event(text,uuid,text,jsonb,text)', true],
   ['retry_failed_email_attempts', 'private.retry_failed_email_attempts()', true],
   ['notification_email_transport', 'private.notification_email_transport(text,text,text,uuid)', true],

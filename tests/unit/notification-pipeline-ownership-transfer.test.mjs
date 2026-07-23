@@ -56,6 +56,13 @@ describe('notification pipeline ownership transfer migration', () => {
     expect(sql).toContain("perform cron.schedule(");
     expect(sql).toContain("to_regprocedure('cron.schedule(text,text,text)')");
     expect(sql).not.toMatch(/\b(?:update|insert\s+into|delete\s+from)\s+cron\.job\b/iu);
+    expect(sql).not.toMatch(/\bdrop\s+function\b/iu);
+    expect(sql).toContain(
+      "select private.dispatch_scheduled_notifications(p_template_key, 'in_app')"
+    );
+    expect(sql).toContain(
+      'revoke all on function private.dispatch_notification_event(text, uuid, text, jsonb)'
+    );
   });
 
   it('converges RLS and Data API grants without exposing write access to clients', () => {
