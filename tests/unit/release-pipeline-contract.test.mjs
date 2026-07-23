@@ -92,7 +92,7 @@ describe('four-path release pipeline contract', () => {
     expect(productionWorkflow).toContain('workflow_run:');
     expect(productionWorkflow).toContain('workflows: [Validate development]');
     expect(productionWorkflow).toContain(
-      "if: ${{ github.event.workflow_run.conclusion == 'success' }}"
+      "if: ${{ github.repository == 'blackstarzck/topik-ai' && github.event.workflow_run.conclusion == 'success' }}"
     );
     expect(productionWorkflow).toContain(
       'RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}'
@@ -210,5 +210,41 @@ describe('four-path release pipeline contract', () => {
     expect(healthWorkflow).not.toContain('--apply');
     expect(healthWorkflow).not.toContain('vercel deploy');
     expect(healthWorkflow).not.toContain('vercel promote');
+  });
+});
+
+describe('repository execution guards', () => {
+  const SOURCE_GUARD = "github.repository == 'blackstarzck/topik-ai'";
+  const workflows = [
+    ['ci.yml', ciWorkflow],
+    ['release-development.yml', developmentWorkflow],
+    ['release-production.yml', productionWorkflow],
+    ['database-health.yml', healthWorkflow],
+  ];
+
+  function jobEntries(workflow) {
+    const jobsIndex = position(workflow, '\njobs:');
+    const body = workflow.slice(jobsIndex + '\njobs:'.length);
+    const headings = [...body.matchAll(/^  ([A-Za-z][\w-]*):[ \t]*\r?\n/gm)];
+    expect(headings.length).toBeGreaterThan(0);
+    return headings.map((heading, index) => ({
+      id: heading[1],
+      block: body.slice(heading.index, headings[index + 1]?.index ?? body.length),
+    }));
+  }
+
+  it('guards every job so mirrored workflow copies never run outside the source repository', () => {
+    for (const [name, workflow] of workflows) {
+      for (const { id, block } of jobEntries(workflow)) {
+        expect(block, `${name}#${id} must guard on github.repository`).toContain(SOURCE_GUARD);
+      }
+    }
+  });
+
+  it('keeps result gates evaluating after failures alongside the repository guard', () => {
+    expect(job(ciWorkflow, 'ci-gate')).toContain(`${SOURCE_GUARD} && always()`);
+    expect(job(developmentWorkflow, 'development-gate')).toContain(
+      `${SOURCE_GUARD} && always()`
+    );
   });
 });

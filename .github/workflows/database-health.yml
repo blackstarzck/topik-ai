@@ -20,6 +20,7 @@ env:
 jobs:
   shadow:
     name: full-shadow-replay
+    if: ${{ github.repository == 'blackstarzck/topik-ai' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -58,6 +59,7 @@ jobs:
 
   development-drift:
     name: topik-dev-readonly-drift
+    if: ${{ github.repository == 'blackstarzck/topik-ai' }}
     needs: shadow
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -96,6 +98,7 @@ jobs:
 
   production-drift:
     name: topik-prod-readonly-drift
+    if: ${{ github.repository == 'blackstarzck/topik-ai' }}
     needs: shadow
     runs-on: ubuntu-latest
     timeout-minutes: 30
