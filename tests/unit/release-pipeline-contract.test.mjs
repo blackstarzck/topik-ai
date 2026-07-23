@@ -150,6 +150,7 @@ describe('four-path release pipeline contract', () => {
       app,
       'Install Chromium for Production browser verification'
     );
+    const bypassGate = position(app, 'Require the candidate browser bypass secret');
     const candidate = position(app, 'Build an unaliased Production candidate');
     const currentApp = position(
       app,
@@ -161,6 +162,7 @@ describe('four-path release pipeline contract', () => {
     const promote = position(app, 'Promote the verified candidate without rebuilding');
     expect(browserInstall).toBeLessThan(currentApp);
     expect(app).toContain('npx playwright install --with-deps chromium');
+    expect(bypassGate).toBeLessThan(candidate);
     expect(candidate).toBeLessThan(currentApp);
     expect(currentApp).toBeLessThan(migration);
     expect(migration).toBeLessThan(oldApp);
@@ -168,6 +170,19 @@ describe('four-path release pipeline contract', () => {
     expect(candidateE2e).toBeLessThan(promote);
     expect(app).toContain('--skip-domain');
     expect(app).toContain("apply_migrations == 'true'");
+
+    const jobEnvironment = app.slice(0, position(app, '    steps:'));
+    const candidateVerification = app.slice(candidateE2e, promote);
+    const productionVerification = app.slice(
+      promote,
+      position(app, 'Write the PII-free app release summary')
+    );
+    expect(jobEnvironment).not.toContain('VERCEL_AUTOMATION_BYPASS_SECRET');
+    expect(candidateVerification).toContain(
+      'VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}'
+    );
+    expect(productionVerification).not.toContain('VERCEL_AUTOMATION_BYPASS_SECRET');
+    expect(app).not.toMatch(/echo.*\$VERCEL_AUTOMATION_BYPASS_SECRET/);
   });
 
   it('retains verified app rollback and never runs automatic down migrations', () => {

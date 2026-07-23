@@ -73,12 +73,13 @@ development evidence schema v3는 base/head SHA, v13 SHA, dev project ref, 네 r
 5. `app-only`는 topik-prod tracker가 clean인지 확인하고 Vercel Production 후보를 테스트한 뒤 승격한다. migration을 적용하지 않는다.
 6. `app-db`는 Production 후보를 먼저 빌드하고 현재 운영 앱을 확인한다. topik-prod migration 후 기존 운영 앱 호환성, 후보 E2E를 차례로 확인한 뒤 후보를 승격한다.
 
-Vercel 후보는 Production 환경 변수로 빌드하지만 `--skip-domain`으로 운영 도메인에 연결하지 않는다. Production runner는 DB 변경 전 운영 스모크부터 후보·승격 후 스모크까지 동일한 Playwright Chromium을 명시적으로 설치해 사용한다. 검증 후 `vercel promote`로 같은 artifact를 재빌드 없이 전환한다. 운영 스모크 실패 시 Vercel alias만 이전 deployment로 되돌린다. DB down migration은 자동 실행하지 않고 roll-forward로 복구한다.
+Vercel 후보는 Production 환경 변수로 빌드하지만 `--skip-domain`으로 운영 도메인에 연결하지 않는다. Production runner는 DB 변경 전 운영 스모크부터 후보·승격 후 스모크까지 동일한 Playwright Chromium을 명시적으로 설치해 사용한다. Deployment Protection이 적용된 후보 E2E에만 `VERCEL_AUTOMATION_BYPASS_SECRET`을 우회 헤더와 쿠키 설정 헤더로 전달하며, 운영 도메인 E2E에는 전달하지 않는다. 검증 후 `vercel promote`로 같은 artifact를 재빌드 없이 전환한다. 운영 스모크 실패 시 Vercel alias만 이전 deployment로 되돌린다. DB down migration은 자동 실행하지 않고 roll-forward로 복구한다.
 
 ## 6. GitHub·Supabase·Vercel 설정
 
 - GitHub `development` environment는 `main`만 허용하고 topik-dev ref, Management API token, 현재 관리자 계정, 브라우저 publishable 설정을 보관한다.
 - GitHub `Production` environment는 `main`만 허용하고 topik-prod ref, Vercel project/team/domain, Management API·Vercel·mirror token, 현재 관리자 계정을 보관한다. 사람 승인자는 두지 않는다.
+- Vercel `topik-admin` 프로젝트의 Protection Bypass for Automation 값과 GitHub `Production` environment의 `VERCEL_AUTOMATION_BYPASS_SECRET`은 같은 값으로 관리한다. 이 값은 후보 브라우저 E2E 단계에만 노출하고 로그·artifact에는 기록하지 않는다.
 - `MIRROR_GITHUB_TOKEN`은 `keduall/topik-admin` contents 쓰기 범위로 제한한다.
 - `blackstarzck/topik-ai`의 `main` PR merge actor는 `blackstarzck`으로 고정한다. 해당 GitHub 자격 정보가 없거나 확인할 수 없으면 merge를 일시중단하며 다른 계정으로 대체하지 않는다.
 - `collab`·`keduall` push 또는 merge actor는 `guestkeduall-design`, Git commit author는 `guestkeduall-design <guestkeduall@gmail.com>`으로 고정한다. 자격 정보나 identity가 일치하지 않으면 중단하고, 기존 commit을 자동 rewrite하지 않는다.

@@ -276,6 +276,15 @@ jobs:
           node -e "const fs=require('node:fs'); fs.writeFileSync(process.env.VERCEL_GLOBAL_CONFIG + '/auth.json', JSON.stringify({token:process.env.VERCEL_TOKEN}), {mode:0o600})"
           echo "VERCEL_GLOBAL_CONFIG=$VERCEL_GLOBAL_CONFIG" >> "$GITHUB_ENV"
           vercel whoami --global-config "$VERCEL_GLOBAL_CONFIG"
+      - name: Require the candidate browser bypass secret
+        shell: bash
+        env:
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          if [ -z "$VERCEL_AUTOMATION_BYPASS_SECRET" ]; then
+            echo "::error::Missing Production environment secret VERCEL_AUTOMATION_BYPASS_SECRET."
+            exit 1
+          fi
       - name: Build an unaliased Production candidate
         id: candidate
         shell: bash
@@ -335,6 +344,7 @@ jobs:
           --json-out release-evidence/candidate-e2e.json
         env:
           ADMIN_E2E_BASE_URL: ${{ steps.candidate.outputs.deployment_url }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
       - name: Promote the verified candidate without rebuilding
         id: promote
         run: >-
