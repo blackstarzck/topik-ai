@@ -4,7 +4,7 @@ const COMMON_EXPECTED = {
   SUPABASE_PROJECT_REF: 'eymlabowhfgtxbiqwxqh',
   SUPABASE_EXPECTED_PROJECT_REF: 'eymlabowhfgtxbiqwxqh',
   PROD_ADMIN_DOMAIN: 'topik-admin.vercel.app',
-  V13_CONTRACT_SHA: '9c5cf5abe4a16e1c43c31acf08e617c7f99ad63d',
+  V13_CONTRACT_SHA: '81e2ed7d0845194224ebe6f156c697560d70de65',
 };
 
 const APP_EXPECTED = {

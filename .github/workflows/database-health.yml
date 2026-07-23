@@ -15,7 +15,7 @@ concurrency:
 env:
   NODE_VERSION: '24.x'
   SUPABASE_CLI_VERSION: '2.105.0'
-  V13_CONTRACT_SHA: 9c5cf5abe4a16e1c43c31acf08e617c7f99ad63d
+  V13_CONTRACT_SHA: 81e2ed7d0845194224ebe6f156c697560d70de65
 
 jobs:
   shadow:
