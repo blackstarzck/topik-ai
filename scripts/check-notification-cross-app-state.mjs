@@ -5,11 +5,32 @@ import { pathToFileURL } from 'node:url';
 
 const DEFAULT_PROJECT_REF = 'fglggyfvzjdsbyckinqa';
 const REQUIRED_TABLES = [
+  'notification_templates',
+  'notification_groups',
   'notification_dispatches',
   'notification_delivery_attempts',
+  'notification_email_config',
   'notification_settings',
   'user_notifications',
   'user_marketing_consent'
+];
+const ADMIN_TABLES = [
+  'notification_templates',
+  'notification_groups',
+  'notification_dispatches',
+  'notification_delivery_attempts',
+  'notification_email_config'
+];
+const REQUIRED_FUNCTIONS = [
+  ['render_notification_text', 'private.render_notification_text(text,text)', false],
+  ['dispatch_scheduled_notifications', 'private.dispatch_scheduled_notifications(text,text)', true],
+  ['dispatch_admin_notifications', 'private.dispatch_admin_notifications()', true],
+  ['dispatch_notification_event', 'private.dispatch_notification_event(text,uuid,text,jsonb,text)', true],
+  ['retry_failed_email_attempts', 'private.retry_failed_email_attempts()', true],
+  ['notification_email_transport', 'private.notification_email_transport(text,text,text,uuid)', true],
+  ['finalize_email_attempt', 'private.finalize_email_attempt(uuid,text,text,text)', true],
+  ['is_marketing_consented', 'private.is_marketing_consented(uuid)', true],
+  ['dispatch_notifications', 'private.dispatch_notifications()', true]
 ];
 const ATTEMPT_STATUSES = ['pending', 'sent', 'failed', 'skipped', 'opted_out', 'deduped'];
 
@@ -60,6 +81,47 @@ table_presence as (
     ) as exists_now
   from required_tables
 ),
+admin_table_contract as (
+  select
+    c.relname as table_name,
+    pg_get_userbyid(c.relowner) as owner_name,
+    c.relrowsecurity as rls_enabled,
+    c.relforcerowsecurity as rls_forced,
+    has_table_privilege('anon', c.oid, 'select') as anon_select,
+    has_table_privilege('authenticated', c.oid, 'select') as authenticated_select,
+    (
+      has_table_privilege('authenticated', c.oid, 'insert')
+      or has_table_privilege('authenticated', c.oid, 'update')
+      or has_table_privilege('authenticated', c.oid, 'delete')
+    ) as authenticated_write,
+    has_table_privilege('service_role', c.oid, 'select') as service_role_select,
+    (
+      has_table_privilege('service_role', c.oid, 'insert')
+      and has_table_privilege('service_role', c.oid, 'update')
+      and has_table_privilege('service_role', c.oid, 'delete')
+    ) as service_role_write
+  from pg_class c
+  join pg_namespace n on n.oid = c.relnamespace
+  where n.nspname = 'public'
+    and c.relname = any(array[${ADMIN_TABLES.map((table) => `'${table}'`).join(', ')}])
+),
+required_functions(function_name, signature, expected_security_definer) as (
+  values
+    ${REQUIRED_FUNCTIONS.map(([name, signature, securityDefiner]) => `('${name}', '${signature}', ${securityDefiner})`).join(',\n    ')}
+),
+function_contract as (
+  select
+    rf.function_name,
+    p.oid is not null as exists_now,
+    pg_get_userbyid(p.proowner) as owner_name,
+    p.prosecdef as security_definer,
+    rf.expected_security_definer,
+    coalesce(has_function_privilege('public', p.oid, 'execute'), false) as public_execute,
+    coalesce(has_function_privilege('anon', p.oid, 'execute'), false) as anon_execute,
+    coalesce(has_function_privilege('authenticated', p.oid, 'execute'), false) as authenticated_execute
+  from required_functions rf
+  left join pg_proc p on p.oid = to_regprocedure(rf.signature)
+),
 attempt_summary as (
   select
     count(*)::int as total_count,
@@ -91,6 +153,8 @@ dispatch_summary as (
 )
 select jsonb_build_object(
   'table_presence', coalesce((select jsonb_agg(to_jsonb(table_presence) order by table_name) from table_presence), '[]'::jsonb),
+  'admin_table_contract', coalesce((select jsonb_agg(to_jsonb(admin_table_contract) order by table_name) from admin_table_contract), '[]'::jsonb),
+  'function_contract', coalesce((select jsonb_agg(to_jsonb(function_contract) order by function_name) from function_contract), '[]'::jsonb),
   'attempt_summary', (select to_jsonb(attempt_summary) from attempt_summary),
   'dispatch_summary', (select to_jsonb(dispatch_summary) from dispatch_summary),
   'recent_attempts', coalesce((select jsonb_agg(to_jsonb(recent_attempts) order by created_at desc) from recent_attempts), '[]'::jsonb)
@@ -130,6 +194,42 @@ export function evaluateCrossAppStateResult(result) {
     }
   }
 
+  const adminTableContract = Array.isArray(result?.admin_table_contract) ? result.admin_table_contract : [];
+  for (const table of ADMIN_TABLES) {
+    const contract = adminTableContract.find((entry) => entry.table_name === table);
+    if (!contract) {
+      failures.push(`Missing admin table contract: ${table}`);
+      continue;
+    }
+    if (contract.owner_name !== 'postgres') failures.push(`Unexpected owner for ${table}.`);
+    if (!contract.rls_enabled || !contract.rls_forced) failures.push(`RLS is not forced for ${table}.`);
+    if (contract.anon_select) failures.push(`anon can select ${table}.`);
+    const shouldAuthenticateRead = table !== 'notification_email_config';
+    if (Boolean(contract.authenticated_select) !== shouldAuthenticateRead) {
+      failures.push(`authenticated SELECT grant mismatch for ${table}.`);
+    }
+    if (contract.authenticated_write) failures.push(`authenticated can write ${table}.`);
+    if (!contract.service_role_select || !contract.service_role_write) {
+      failures.push(`service_role privileges are incomplete for ${table}.`);
+    }
+  }
+
+  const functionContract = Array.isArray(result?.function_contract) ? result.function_contract : [];
+  for (const [functionName, , expectedSecurityDefiner] of REQUIRED_FUNCTIONS) {
+    const contract = functionContract.find((entry) => entry.function_name === functionName);
+    if (!contract?.exists_now) {
+      failures.push(`Missing notification pipeline function: ${functionName}`);
+      continue;
+    }
+    if (contract.owner_name !== 'postgres') failures.push(`Unexpected owner for ${functionName}.`);
+    if (Boolean(contract.security_definer) !== expectedSecurityDefiner) {
+      failures.push(`SECURITY DEFINER mismatch for ${functionName}.`);
+    }
+    if (contract.public_execute || contract.anon_execute || contract.authenticated_execute) {
+      failures.push(`Client EXECUTE privilege is exposed for ${functionName}.`);
+    }
+  }
+
   const recentAttempts = Array.isArray(result?.recent_attempts) ? result.recent_attempts : [];
   for (const attempt of recentAttempts) {
     if (attempt.status === 'sent' && !attempt.has_sent_at) {
@@ -160,6 +260,8 @@ export function formatCrossAppStateReport(evaluation) {
   lines.push(`- attempts dispatches: ${attempts.distinct_dispatch_count ?? 0}`);
   lines.push(`- attempts sent/pending/failed: ${attempts.sent_count ?? 0}/${attempts.pending_count ?? 0}/${attempts.failed_count ?? 0}`);
   lines.push(`- dispatches total/open/terminal: ${dispatches.total_count ?? 0}/${dispatches.open_count ?? 0}/${dispatches.terminal_count ?? 0}`);
+  lines.push(`- admin table contracts: ${result?.admin_table_contract?.length ?? 0}/${ADMIN_TABLES.length}`);
+  lines.push(`- pipeline function contracts: ${result?.function_contract?.length ?? 0}/${REQUIRED_FUNCTIONS.length}`);
   lines.push('- secret values: not printed');
   return lines.join('\n');
 }

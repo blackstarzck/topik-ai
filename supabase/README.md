@@ -39,8 +39,9 @@
 ## 2. `migrations-admin/` — admin 운영 네임스페이스 (알림 등)
 
 - **소유 영역**: 관리자 운영 기능 — 알림 운영 객체(`notification_templates`,
-  `notification_groups`, `notification_dispatches`, `notification_delivery_attempts`)와
-  관련 admin RPC, 템플릿 link_url, 이메일 본문 크기 가드, dispatch 취소 RPC 등.
+  `notification_groups`, `notification_dispatches`, `notification_delivery_attempts`,
+  `notification_email_config`)와 관련 admin RPC, DB dispatcher/email 함수, 알림 cron,
+  템플릿 link_url, 이메일 본문 크기 가드, dispatch 취소 RPC 등.
 - **추적 테이블**: `admin_schema_migrations` (`topik_writing_schema_migrations`와 분리)
 - **러너**: `scripts/db/admin-migrate.mjs`
   - 적용: `npm run db:admin:migrate`
@@ -60,6 +61,20 @@
 - 브라우저 직접 테이블 접근과 쓰기는 허용하지 않고 모든 테이블에 RLS enable+force를 적용한다.
 - 세 migration은 모두 `down/`에 같은 파일명의 되돌리기 SQL을 둔다.
 - 실제 백업 원본은 `topik-prod`뿐이며, 동일한 비민감 보고 요약을 `topik-dev`에 독립 저장해 localhost 관리자 화면에서 확인한다. 두 환경의 보고 저장은 서로 다른 서버 전용 키와 독립 재시도를 사용한다.
+
+### 2.2 알림 파이프라인 마이그레이션 홈 (`20260723011242`)
+
+- `20260723011242_notification_pipeline_ownership_transfer.sql`이 DB dispatcher, email defer/retry,
+  marketing consent gate, `notification_email_config`, `dispatch_notifications` cron의 단일 forward
+  migration home이다. 적용 이력은 `admin_schema_migrations`에만 기록한다.
+- v13의 과거 `20260612180000`~`20260612200100` 파이프라인 migration은 독립 clean replay를
+  깨뜨리지 않는 역사적 no-op이다. v13에서 admin 운영 테이블이나 파이프라인 함수를 다시 만들지 않는다.
+- 통합 clean replay는 v13 사용자 객체(`profiles`, `notification_settings`, `user_notifications`,
+  `user_marketing_consent`) → topik-ai 알림 운영 테이블/RPC → 이 forward migration 순으로 수렴한다.
+  선행 객체가 없으면 migration은 fail-closed로 중단한다.
+- forward migration은 기존 dispatch/attempt/config row를 삭제하거나 재시드하지 않고 최종 함수,
+  RLS, grants, cron을 수렴시킨다. down은 공유 운영 상태를 되돌리지 않는 의도적 no-op이며 이후 교정도
+  roll-forward로만 수행한다.
 
 ## 3. 공통 실행 메커니즘
 
@@ -100,7 +115,7 @@
 
 - `topik-prod` admin tracker: canonical 83개 적용, checksum 누락 0.
 - `topik-prod` TOPIK 쓰기 tracker: 32개 적용. `20260716052957_topik_writing_source_updated_at_version_tracking.sql`은 공급 `updated_at` 전제조건 미충족으로 차단.
-- `topik-dev` admin tracker: canonical 88개 + superseded remote-only 이력 1개, checksum 누락 0. 백업 관리 3개 migration은 적용됐고 관리자 요약·목록 읽기 함수의 실제 호출을 확인했다.
+- `topik-dev` admin tracker: canonical 88개 + superseded remote-only 이력 1개, checksum 누락 0. 백업 관리 3개 migration은 적용됐고 관리자 요약·목록 읽기 함수의 실제 호출을 확인했다. 로컬 canonical 89번째인 `20260723011242` 알림 파이프라인 소유권 이관은 아직 dev/production에 적용하지 않았다.
 - `topik-prod`의 백업 관리 3개 migration은 아직 미적용이다. 운영 백업 수신을 켜기 전에 별도 운영 적용과 확인이 필요하다.
 - admin 보안 마이그레이션 `20260716130000`/`20260716131000`은 admin 소유 public 함수의 anon/PUBLIC execute를 회수한다. 운영 검증에서 표본 anon executable admin function은 0건이다.
 - 운영 DB 적용 완료와 Vercel 웹 배포 완료는 별도다. 최신 소스+운영 DB E2E가 통과했더라도 Production alias의 실제 bundle과 source switch를 다시 검증해야 한다. 2026-07-16 관리자 컷오버는 두 단계를 각각 검증해 `topik-prod` tracker/권한과 Production `admin_get_self` 로그인·쿠폰 CRUD·감사 로그까지 통과했다.

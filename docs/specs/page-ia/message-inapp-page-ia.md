@@ -32,7 +32,7 @@
 
 ### 비목표
 
-- 발송 집행(대상 산정·전달)은 파이프라인(DB dispatcher + pg_cron, v13 소유)이 담당하며 이 화면이 직접 수행하지 않습니다.
+- 발송 집행(대상 산정·전달)은 topik-ai 소유 파이프라인(DB dispatcher + pg_cron, `admin_schema_migrations`)이 담당하며 이 화면이 직접 수행하지 않습니다.
 - 사용자 수신함(`user_notifications`, v13 소유) UI는 이 화면 범위가 아닙니다.
 
 ## 5. 운영자 사용 시나리오

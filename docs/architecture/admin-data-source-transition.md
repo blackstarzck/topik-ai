@@ -327,7 +327,7 @@ src/features/<feature>/
   - v13 측 스테이징/브랜치 DB 없음(실측 — Management API branches 0건). additive 마이그레이션 + down 스크립트 + 적용 직후 무변경 diff + RT-1 파일럿 적재 왕복으로 검증을 대체한다.
 - 스키마 소유권 일반화 (2026-06-12, 알림 기능 개발 WP0-1)
   - 종전 "topik-ai는 `topik_writing_*`만 소유" 한정을 **도메인 기준 소유권 모델**로 일반화했다. SoT: `docs/architecture/shared-supabase-schema-ownership.md` (owner/writer/reader/RLS/migration home 매트릭스).
-  - admin 운영 네임스페이스(알림: `notification_templates`/`notification_groups`/`notification_dispatches`/`notification_delivery_attempts` + admin RPC)는 topik-ai가 소유하며, 적용 이력은 `topik_writing_schema_migrations`와 분리된 **`admin_schema_migrations`** tracker(`npm run db:admin:migrate`)로 추적한다. migration 파일은 `supabase/migrations-admin/`에 둔다.
+  - admin 운영 네임스페이스(알림: `notification_templates`/`notification_groups`/`notification_dispatches`/`notification_delivery_attempts`/`notification_email_config` + admin RPC + DB dispatcher/email/marketing 함수 + pg_cron)는 topik-ai가 소유하며, 적용 이력은 `topik_writing_schema_migrations`와 분리된 **`admin_schema_migrations`** tracker(`npm run db:admin:migrate`)로 추적한다. migration 파일은 `supabase/migrations-admin/`에 둔다. 파이프라인 단일 migration home은 `20260723011242_notification_pipeline_ownership_transfer.sql`이며, v13의 과거 pipeline migration은 clean replay용 no-op이다.
   - 기존 v13 테이블 DDL 변경 0건 원칙과 무변경 diff 게이트는 알림 네임스페이스에도 동일하게 적용한다.
 - 마이그레이션 적용 절차 (P1 확정·적용 완료 2026-06-10)
   - 마이그레이션 작성 → 오너 승인(v13 오너=admin 오너 동일인, 단일 승인) → 프로덕션 적용 → §5.4 게이트(8오브젝트 스모크 + RLS 역할 매트릭스 + 뷰 anon 차단 네거티브 테스트 + 기존 테이블 무변경 diff + RT-1).

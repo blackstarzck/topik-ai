@@ -36,6 +36,7 @@ const TOPIK_AI_ADMIN_OBJECTS = [
   'notification_groups',
   'notification_dispatches',
   'notification_delivery_attempts',
+  'notification_email_config',
   'operation_notices',
   'operation_faqs',
   'operation_faq_curations',
@@ -55,6 +56,18 @@ const TOPIK_AI_ADMIN_OBJECTS = [
   'system_metadata_groups',
   'system_metadata_group_items',
   'system_logs'
+];
+
+const TOPIK_AI_NOTIFICATION_PIPELINE_OBJECTS = [
+  'notification_email_config',
+  'render_notification_text',
+  'dispatch_scheduled_notifications',
+  'dispatch_admin_notifications',
+  'dispatch_notification_event',
+  'retry_failed_email_attempts',
+  'notification_email_transport',
+  'finalize_email_attempt',
+  'dispatch_notifications'
 ];
 
 const V13_USER_SHARED_OBJECTS = [
@@ -278,6 +291,14 @@ export function evaluateMigrationOwnershipBoundary({
     if (contentHasTerm(v13HistoricalAdminSql, term) && term !== 'notification_delivery_attempts') {
       warnings.push(
         `v13 historical migrations mention ${term}; ensure current code/docs treat it as removed, topik-ai-owned, or historical.`
+      );
+    }
+  }
+
+  for (const term of TOPIK_AI_NOTIFICATION_PIPELINE_OBJECTS) {
+    if (contentHasTerm(v13HistoricalAdminSql, term)) {
+      failures.push(
+        `v13 replay migrations must not define or reference topik-ai-owned notification pipeline object ${term}.`
       );
     }
   }

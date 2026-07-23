@@ -147,4 +147,4 @@ last_reviewed_at: "2026-07-16"
 | --- | --- | --- | --- | --- | --- |
 | 메일 최종 계약 | HTML 저장 시 생성되는 JSON 본문의 API 계약과 토큰 치환 정책은 추가 확정이 필요합니다. | 기획/백엔드/프론트 | 필터/액션/감사 로그 계약 변동 가능 | 사용자 이메일 수신함에 운영상 추정으로 연결됩니다. | docs/specs/page-ia/message-mail-page-ia.md |
 | Vercel 서버 함수 환경 | Production 브라우저는 topik-prod를 사용하지만 배포된 서버 함수의 Supabase URL/service key 조합이 운영 JWT를 invalid_session으로 거부합니다. | 배포 운영자 | 인증된 즉시 worker POST, 관리자 초대, Auth 이메일 동기화 차단 | pending 메일의 Vercel 자동 전달 지연/차단 | docs/runbooks/notification-worker-production-verification.md |
-| 발송 대상 수 ledger | 테스트 발송 dispatch recipient_count=0, delivery attempt aggregate=1 불일치 | v13 파이프라인 소유자 | 목록/상세의 대상 수 표시 정합성 | 실제 SMTP 전달 결과에는 영향 없음 | docs/specs/admin-page-gap-register.md |
+| 발송 대상 수 ledger | 테스트 발송 dispatch recipient_count=0, delivery attempt aggregate=1 불일치 | topik-ai 알림 파이프라인 소유자 | 목록/상세의 대상 수 표시 정합성 | 실제 SMTP 전달 결과에는 영향 없음 | docs/specs/admin-page-gap-register.md |

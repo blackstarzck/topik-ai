@@ -15,6 +15,7 @@
 
 | Date | Page | Change Type | Updated Files | Summary |
 | --- | --- | --- | --- | --- |
+| 2026-07-23 | `Message > 인앱 알림 관리` | 알림 파이프라인 migration home 정합화 | `docs/specs/page-ia/message-inapp-page-ia.md`, `docs/page-sync/message-inapp-page-sync.md`, `docs/page-sync/message-mail-page-sync.md` | DB dispatcher/email/marketing/pg_cron 소유권을 v13에서 topik-ai `admin_schema_migrations`로 정정했다. v13은 사용자 수신함·설정·동의 객체와 사용자 UI 소유권을 유지한다. |
 | 2026-07-20 | `Dashboard > 대시보드`, `System > 백업 관리` | 백업 상태 카드·조회 전용 운영 화면 추가 | `docs/specs/page-ia/dashboard-page-ia.md`, `docs/specs/page-ia/system-backups-page-ia.md`, 관련 데이터·화면·운영 문서 | 대시보드에 장애 격리된 백업 요약을 추가하고, 권한 기반 상세 목록·Drawer·시스템 로그 연결·상태 임계값·URL 복원 계약을 확정했다. 자동 작업은 감사 로그가 아니라 시스템 로그로 추적한다. |
 | 2026-07-20 | `Dashboard > 대시보드`, `System > 백업 관리` | localhost 개발환경 복사본 안내 | `docs/specs/page-ia/dashboard-page-ia.md`, `docs/specs/page-ia/system-backups-page-ia.md` | 실제 백업 대상은 `topik-prod`만 유지하고, localhost가 `topik-dev`에 독립 저장된 보고 복사본을 읽는다는 안내와 마지막 복사 시각을 추가했다. |
 | 2026-07-20 | `Users > 회원 목록`, `Users > 회원 상세`, `System > 감사 로그` | 운영 phone source·감사 Target alias 정합화 | `docs/specs/page-ia/users-list-page-ia.md`, `docs/specs/page-ia/users-detail-page-ia.md`, `docs/specs/admin-data-contract.md`, `docs/page-sync/users-list-page-sync.md`, `docs/page-sync/users-detail-page-sync.md`, `docs/specs/admin-action-log.md` | 전화번호 원천을 v13 split field(`phone_country_code` + `phone_number`)로 고정하고 optional legacy `phone` 직접 참조를 제거했다. 감사 저장값 `User`는 유지하면서 read/UI alias를 `Users`로 정규화해 두 URL 형식 모두 같은 회원 이력을 조회하도록 했다. |
