@@ -38,6 +38,15 @@ const TOPIK_AI_ADMIN_OBJECTS = [
   'notification_groups',
   'notification_dispatches',
   'notification_delivery_attempts',
+  'notification_email_config',
+  'render_notification_text',
+  'dispatch_scheduled_notifications',
+  'dispatch_admin_notifications',
+  'dispatch_notification_event',
+  'retry_failed_email_attempts',
+  'notification_email_transport',
+  'finalize_email_attempt',
+  'dispatch_notifications',
   'operation_notices',
   'operation_faqs',
   'operation_faq_curations',
@@ -182,6 +191,23 @@ describe('check-migration-ownership-boundary', () => {
     expect(result.failures).toEqual([]);
     expect(result.warnings).toContain(
       'v13 historical migrations mention get_admin_users; ensure current code/docs treat it as removed, topik-ai-owned, or historical.'
+    );
+  });
+
+  it('fails when v13 replay migrations retain the transferred notification pipeline', () => {
+    const topikAiRoot = createTempRoot('topik-ai-migration-boundary-');
+    const v13Root = createTempRoot('v13-migration-boundary-');
+    writeValidFixtures(topikAiRoot, v13Root);
+    writeProjectFile(
+      v13Root,
+      'supabase/migrations/20260612180000_notification_dispatcher.sql',
+      'create or replace function private.dispatch_notifications() returns void language sql as $$ select 1 $$;\n'
+    );
+
+    const result = evaluateMigrationOwnershipBoundary({ topikAiRoot, v13Root });
+
+    expect(result.failures).toContain(
+      'v13 replay migrations must not define or reference topik-ai-owned notification pipeline object dispatch_notifications.'
     );
   });
 

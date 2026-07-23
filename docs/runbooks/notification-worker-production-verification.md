@@ -7,7 +7,9 @@ This runbook verifies the production handoff of the email notification worker fr
 Target end state:
 
 - topik-ai owns the server-side email worker.
+- topik-ai owns the database dispatcher/email/marketing functions, `notification_email_config`, and the `dispatch_notifications` pg_cron migration home through `20260723011242_notification_pipeline_ownership_transfer.sql`.
 - v13 remains a user-facing app and does not call the worker directly from app/client code.
+- v13 historical pipeline migrations are replay-safe no-ops; v13 still owns user notification settings, consent, inbox tables, and user-facing UI.
 - Server-only secrets stay outside browser-visible source and bundles.
 - Production dispatch state is visible from both topik-ai admin history and v13 owner-read user history.
 
@@ -21,11 +23,10 @@ The checked-in `notification-worker-production-evidence.example.md` file is a re
 
 - v13 repo: AGENTS.md - SOT change limits, v13=user-facing boundary, verification/reporting rules.
 - v13 repo: README.md - v13 runtime and environment baseline.
-- v13 repo: docs/scope-decisions/2026-06-17-ai-deferred-and-mvp-scope.md - MVP/deferred scope boundary.
-- v13 repo: docs/Wireframe/data-usage-index.md - active SOT terms that still need proposal-based cleanup.
-- v13 repo: docs/Wireframe/31-X-09-notification-settings/functional-spec.md - user notification settings/history contract.
-- v13 repo: docs/Wireframe/31-X-09-notification-settings/description.md - user notification UI description.
-- v13 repo: docs/sot-change-proposals/2026-06-18-admin-ownership-transfer-to-topik-ai.md - v13 proposal record for admin ownership transfer.
+- v13 repo: docs/supabase/security-and-ownership.md - current notification owner/writer/reader and clean replay boundary.
+- v13 repo: supabase/migrations/INDEX.md - current migration order and historical pipeline no-op status.
+- v13 repo: scripts/check-notification-migration-replay.mjs - fail-closed static guard for the retired pipeline migrations.
+- v13 repo: tests/scripts/check-notification-migration-replay.test.mjs - replay guard regression coverage.
 
 ### topik-ai
 
@@ -45,10 +46,11 @@ Run from `C:\Users\admin\Desktop\workspace\topik-ai`:
 
 ```bash
 npm run harness:admin-transfer:local
-npm run check:transfer-sot-checklist
+npm run check:transfer-sot-checklist -- --v13-root=<V13_WORKTREE>
 npm run check:client-source-secrets
 npm run check:migration-boundary
 npm run harness:admin-boundary:local
+npm run db:shadow:verify -- --v13-dir <V13_WORKTREE> --v13-sha <PINNED_SHA>
 npm run build
 npm run check:client-secrets
 npm run test:unit -- client-bundle-secret-leaks notification-worker-smoke notification-cross-app-state client-source-secret-boundary transfer-sot-checklist migration-ownership-boundary message-history-boundary vercel-worker-readiness notification-dispatch-email-worker
@@ -65,10 +67,12 @@ Expected local result:
 
 - `npm run harness:admin-transfer:local` runs both the topik-ai local admin boundary harness and the v13 admin boundary harness.
 - topik-ai local boundary checks pass.
+- The v13 notification migration segment through `20260612200100` replays without admin tables, and the integrated shadow replay applies the topik-ai ownership-transfer migration after both repositories' prerequisites.
+- A full v13 standalone reset must also pass. As of 2026-07-23 it is separately blocked after the notification segment by `20260713081559_writing_question_version_snapshot.sql` requiring absent `public.topik_writing_question_import`; do not mark the whole handoff complete until that writing dependency is resolved and the full reset is rerun.
 - topik-ai `Message > 발송 이력` e2e opens the history detail Drawer and keeps retry/audit actions live.
 - Production readiness remains a separate fail-closed gate when Vercel link/env are absent.
 - v13 boundary harness passes.
-- v13 active docs may still warn about historical/admin terms until the SOT proposal is approved and applied.
+- v13 current ownership and migration-index docs identify the historical dispatcher/email/cron files as replay-safe no-ops and topik-ai as their forward migration home.
 
 ## Phase 1 - Vercel Readiness
 

@@ -269,6 +269,17 @@
 - 분류
   - `누락`: UI 가드 개선 후보
 
+#### 4.4.7 알림 파이프라인 migration home 혼재 — **해소 (2026-07-23)**
+
+- 조치
+  - topik-ai `20260723011242_notification_pipeline_ownership_transfer.sql`을 DB dispatcher/email/marketing/cron의 단일 forward migration home으로 추가했다.
+  - v13의 과거 파이프라인 migration 6개와 down 4개를 replay-safe no-op으로 전환하고 정적 경계 검사를 추가했다.
+  - 기존 dispatch/attempt/config 데이터는 삭제·재시드하지 않으며, v13 사용자 객체 DDL은 변경하지 않는다.
+- 분류
+  - `해소`: 알림 구간(`20260612200100`까지) v13 단독 clean replay와 양 repo 통합 shadow replay의 소유권 순서 정합화
+  - `검증 차단(저장소 전체)`: v13 전체 standalone reset은 알림 구간 이후 `20260713081559_writing_question_version_snapshot.sql`이 선행 `public.topik_writing_question_import`를 찾지 못해 중단된다. 알림 migration home과 무관한 기존 writing 교차 저장소 의존성이므로 별도 해소 후 전체 reset을 재실행해야 한다.
+  - `운영 후속`: dev/production 원격 적용 전 권한·함수 owner·cron·row count 대사 필요(현재 미적용)
+
 ### 4.5 Operation
 
 #### 4.5.1 공지사항

@@ -41,7 +41,7 @@ last_reviewed_at: "2026-06-12"
 
 ### 비목표
 
-- 발송 집행(대상 산정·전달·dedupe)은 파이프라인(DB dispatcher + pg_cron, v13 소유 migration)이 담당합니다.
+- 발송 집행(대상 산정·전달·dedupe)은 topik-ai 소유 파이프라인(DB dispatcher + pg_cron, `admin_schema_migrations`)이 담당합니다.
 - 사용자 수신함 `user_notifications`(v13 소유)의 UI/보존 정책은 v13에서 결정합니다.
 
 ## 4. 이 페이지에서 할 수 있는 것

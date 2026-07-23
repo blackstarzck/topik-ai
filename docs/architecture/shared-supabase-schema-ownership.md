@@ -25,13 +25,16 @@
 | `admin_set_user_status` RPC | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | platform_admin RPC | platform_admin | `profiles.status`만 `active`/`blocked`로 토글, `deleted` 차단. `protect_profile_columns` admin bypass 검증됨 |
 | `notification_settings` | v13 | 본인(user) | 본인 | owner all (`user_id = auth.uid()`) |
 | `notification_log` | v13 | (deprecated — 신규 쓰기 경로 없음) | 본인, platform_admin | owner select. **알림 기능 rev3부터 발송 이력 SoT 아님** (O-9) |
-| `user_notifications` | v13 | service role(파이프라인 insert), 본인(`read_at`만 update), **예외: topik-ai `admin_invite_institution_members`의 inline insert(2026-07-07 결정 — 하단 기록)** | 본인 | owner select + read_at-only owner update |
+| `user_notifications` | v13 | **topik-ai 소유 알림 파이프라인의 service role**(insert), 본인(`read_at`만 update), **예외: topik-ai `admin_invite_institution_members`의 inline insert(2026-07-07 결정 — 하단 기록)** | 본인 | owner select + read_at-only owner update. topik-ai는 DDL을 소유하지 않고 승인된 writer로만 사용 |
 | `institution_code_invitations` | **topik-ai** (`supabase/migrations-admin/20260707140000`) | admin RPC(invite/cancel) + 본인 respond RPC — 직접 클라이언트 쓰기 없음 | 본인(owner select — v13 수락/거부 모달), admin | RLS enable+force, select만(`user_id=auth.uid() or is_admin`), INSERT/UPDATE/DELETE 정책 없음 + revoke |
-| 마케팅 수신 동의 저장소 (O-7 확정 시) | v13 | 본인 | 본인, 발송 파이프라인(service role) | owner |
+| `user_marketing_consent` | v13 | 본인 | 본인, topik-ai 소유 발송 파이프라인(service role) | owner. topik-ai는 동의 판정 read만 수행하고 DDL을 변경하지 않음 |
 | `notification_templates` | **topik-ai** (`admin_schema_migrations`) | admin RPC | admin, 발송 파이프라인(service role) | admin 전용 |
 | `notification_groups` | **topik-ai** | admin RPC | admin, 발송 파이프라인 | admin 전용 |
 | `notification_dispatches` | **topik-ai** | admin RPC, 발송 파이프라인(service role) | admin | admin 전용 |
-| `notification_delivery_attempts` | **topik-ai** | 발송 파이프라인(service role) | **admin + 본인(owner select — v13 X-09 발송 이력 패널이 읽음)** | service write / owner select / admin select — **공유 객체 decision record: 2026-06-12, 실행계획안 rev3 §5.2·O-9** |
+| `notification_delivery_attempts` | **topik-ai** | topik-ai 소유 발송 파이프라인(service role) | **admin + 본인(owner select — v13 X-09 발송 이력 패널이 읽음)** | service write / owner select / admin select — **공유 객체 decision record: 2026-06-12, 실행계획안 rev3 §5.2·O-9** |
+| `notification_email_config` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | migration/service role | 발송 파이프라인만 | RLS enable+force. `PUBLIC`·`anon`·`authenticated` 접근 없음, `service_role`만 접근 |
+| `private.render_notification_text`, `private.dispatch_scheduled_notifications`, `private.dispatch_admin_notifications`, `private.dispatch_notification_event`, `private.dispatch_notifications`, `private.notification_email_transport`, `private.finalize_email_attempt`, `private.retry_failed_email_attempts`, `private.is_marketing_consented` | **topik-ai** (`admin_schema_migrations`, `20260723011242_notification_pipeline_ownership_transfer.sql`) | topik-ai migration/cron | private 함수 체인 | `postgres` owner. `PUBLIC`·`anon`·`authenticated` execute 회수. v13 소유 테이블은 승인된 read/write interface로만 사용하고 DDL 변경 없음 |
+| `dispatch_notifications` pg_cron job | **topik-ai** (`admin_schema_migrations`, `20260723011242_notification_pipeline_ownership_transfer.sql`) | topik-ai migration | DB scheduler | `cron.schedule`/`cron.unschedule`로만 수렴. 직접 `cron.job` DML 금지 |
 | `operation_notices` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | admin RPC | admin | admin select only(`operation_notices_admin_select`, `private.is_admin`). INSERT/UPDATE/DELETE 정책 없음, 쓰기는 SECURITY DEFINER RPC 경유 |
 | `operation_faqs` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | admin RPC | admin | admin select only(`private.is_admin`). INSERT/UPDATE/DELETE 정책 없음, 쓰기는 SECURITY DEFINER RPC 경유 |
 | `operation_faq_curations` | **topik-ai** (`admin_schema_migrations`, `supabase/migrations-admin`) | admin RPC | admin | admin select only(`private.is_admin`). INSERT/UPDATE/DELETE 정책 없음, 쓰기는 SECURITY DEFINER RPC 경유 |
@@ -47,6 +50,18 @@
 | `topik_writing_*` | topik-ai (`topik_writing_schema_migrations`) | 기존 결정(D-1) | 기존 결정 | `metadata-tag-schema-transition-decision-record.md` §2 |
 | `topik_writing_question_version_summary_view` | **topik-ai** (`topik_writing_schema_migrations`, `supabase/migrations`) | 없음(읽기 전용 뷰) | authenticated admin | `security_invoker=true`; 기반 `question_source_map`/`question_import` admin RLS 적용. `PUBLIC`·`anon` 권한 회수, `authenticated` 명시적 SELECT |
 | `private.problem_identities`, `private.ensure_writing_problem_identity(uuid,text,smallint)` | **v13** (v13 user-facing migration) | v13 소유 함수만 write | topik-ai 승격 RPC는 함수 interface만 호출, 직접 table read 없음 | private registry. topik-ai는 직접 DDL/DML·FK를 만들지 않고 함수 부재·충돌 시 fail-closed |
+
+### 2.1 알림 파이프라인 migration home 이관 결정 (2026-07-23)
+
+- v13 과거 migration 6개(`20260612180000`, `20260612180100`, `20260612190000`,
+  `20260612190100`, `20260612190200`, `20260612200100`)는 topik-ai 소유 admin 테이블을 정적으로
+  참조해 v13 단독 clean replay를 깨뜨렸으므로 replay-safe no-op으로 은퇴한다.
+- 최종 DB dispatcher/email/marketing/cron 정의는 topik-ai
+  `20260723011242_notification_pipeline_ownership_transfer.sql` 한 곳에서 forward 적용한다.
+  이미 적용된 환경의 dispatch/attempt/config 데이터는 보존하며 파괴적 down을 제공하지 않는다.
+- v13은 `profiles`, `notification_settings`, `user_notifications`, `user_marketing_consent`의 owner로
+  남는다. topik-ai 파이프라인은 본 문서에 명시된 service-role writer/reader 권한만 사용한다.
+- 원격 DB 적용은 이 결정과 별도 운영 승인·dev 선적용·권한/건수 대사 후 수행한다.
 
 ## 3. 변경 절차
 

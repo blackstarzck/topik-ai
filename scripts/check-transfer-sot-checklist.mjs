@@ -16,24 +16,20 @@ const V13_REQUIRED_DOCS = [
     reason: 'v13 runtime and deployment baseline'
   },
   {
-    file: 'docs/scope-decisions/2026-06-17-ai-deferred-and-mvp-scope.md',
-    reason: 'MVP and deferred/external integration boundary'
+    file: 'docs/supabase/security-and-ownership.md',
+    reason: 'current v13 notification ownership and security boundary'
   },
   {
-    file: 'docs/Wireframe/data-usage-index.md',
-    reason: 'active SOT DB object references and cleanup target'
+    file: 'supabase/migrations/INDEX.md',
+    reason: 'current v13 migration order and retired pipeline migration status'
   },
   {
-    file: 'docs/Wireframe/31-X-09-notification-settings/functional-spec.md',
-    reason: 'v13 notification settings and history user contract'
+    file: 'scripts/check-notification-migration-replay.mjs',
+    reason: 'fail-closed static guard for retired notification pipeline migrations'
   },
   {
-    file: 'docs/Wireframe/31-X-09-notification-settings/description.md',
-    reason: 'v13 notification settings screen description'
-  },
-  {
-    file: 'docs/sot-change-proposals/2026-06-18-admin-ownership-transfer-to-topik-ai.md',
-    reason: 'proposal record for admin ownership transfer without direct active SOT edits'
+    file: 'tests/scripts/check-notification-migration-replay.test.mjs',
+    reason: 'regression coverage for the notification migration replay guard'
   }
 ];
 
@@ -85,8 +81,8 @@ const PHASE_OWNERSHIP_CHECKLIST = [
     phase: 'Phase 0 local boundary',
     items: [
       'v13 retained user-facing/shared objects: profiles, notification_settings, user_notifications, user_marketing_consent, notification_delivery_attempts owner-read, subscription_plans, subscriptions, payment_history, legal_documents, user_consents',
-      'topik-ai admin-owned objects: get_admin_users, admin_set_user_status, admin_audit_logs, notification templates/groups/dispatches, operation, community, commerce, system metadata/log objects',
-      'cross-check commands: v13 pnpm harness:admin-boundary; topik-ai npm run harness:admin-boundary:local'
+      'topik-ai admin-owned notification objects: templates, groups, dispatches, delivery attempts, email config, private dispatcher/email/consent functions, and notification pg_cron registration',
+      'cross-check commands: v13 pnpm harness:admin-boundary; v13 pnpm check:notification-migration-replay; topik-ai npm run harness:admin-boundary:local; topik-ai npm run db:shadow:verify'
     ]
   },
   {
@@ -98,59 +94,34 @@ const PHASE_OWNERSHIP_CHECKLIST = [
   }
 ];
 
-const REQUIRED_PROPOSAL_TERMS = [
-  'topik-ai',
-  'v13',
-  'get_admin_users',
-  'admin_set_user_status',
-  'admin_list_audit_logs',
-  'admin_set_admin_app_role',
-  'admin_list_admin_app_roles',
-  'admin_audit_logs',
-  'notification_templates',
-  'notification_groups',
-  'notification_dispatches',
-  'notification_delivery_attempts',
-  'operation_notices',
-  'operation_faqs',
-  'operation_faq_curations',
-  'operation_faq_metrics',
-  'operation_events',
-  'operation_policies',
-  'operation_policy_histories',
-  'community_posts',
-  'community_post_admin_notes',
-  'community_reports',
-  'commerce_point_policies',
-  'commerce_point_ledgers',
-  'commerce_point_expirations',
-  'commerce_coupons',
-  'commerce_coupon_subscription_templates',
-  'commerce_refunds',
-  'system_metadata_groups',
-  'system_metadata_group_items',
-  'system_logs',
-  'harness:admin-boundary',
-  'check:migration-boundary',
-  'harness:admin-boundary:production',
-  '--dispatch',
-  '--require',
-  'subscription_plans',
-  'subscriptions',
-  'payment_history',
-  'legal_documents',
-  'user_consents',
-  'profiles.nationality'
-];
-
-const REQUIRED_PRODUCTION_RETIREMENT_TERMS = [
-  'topik-ai production runtime env is configured',
-  'topik-ai `npm run check:vercel-worker-readiness -- --strict-env` passes',
-  'topik-ai `npm run check:notification-production-evidence -- --require` passes',
-  'topik-ai `npm run harness:admin-boundary:production` passes',
-  'actual `notification_delivery_attempts` state moves from `pending` to `sent` or failure bookkeeping state',
-  "v13 X-09 owner-read history verifies only the logged-in user's scope",
-  'after verification, decide whether to remove the v13 transition route'
+const V13_REQUIRED_DOC_TERMS = [
+  {
+    file: 'docs/supabase/security-and-ownership.md',
+    terms: [
+      'topik-ai',
+      'admin_schema_migrations',
+      'user_notifications',
+      'user_marketing_consent',
+      'clean replay'
+    ]
+  },
+  {
+    file: 'supabase/migrations/INDEX.md',
+    terms: [
+      '20260723011242_notification_pipeline_ownership_transfer.sql',
+      'replay-safe no-op',
+      'notification_email_config',
+      'user_marketing_consent'
+    ]
+  },
+  {
+    file: 'scripts/check-notification-migration-replay.mjs',
+    terms: [
+      'notification pipeline migration home: topik-ai',
+      '20260612180000_notification_dispatcher.sql',
+      '20260612200100_marketing_consent_in_dispatch.sql'
+    ]
+  }
 ];
 
 const TOPIK_AI_REQUIRED_DOC_TERMS = [
@@ -196,18 +167,12 @@ export function evaluateTransferSotChecklist({
     ...checkDocs(topikAiRoot, TOPIK_AI_REQUIRED_DOCS, 'topik-ai')
   ];
 
-  const proposalPath = 'docs/sot-change-proposals/2026-06-18-admin-ownership-transfer-to-topik-ai.md';
-  if (hasFile(v13Root, proposalPath)) {
-    const proposal = readText(v13Root, proposalPath);
-    for (const term of REQUIRED_PROPOSAL_TERMS) {
-      if (!proposal.includes(term)) {
-        failures.push(`v13 transfer proposal must include checklist term: ${term}`);
-      }
-    }
-
-    for (const term of REQUIRED_PRODUCTION_RETIREMENT_TERMS) {
-      if (!proposal.includes(term)) {
-        failures.push(`v13 transfer proposal must include production retirement checklist term: ${term}`);
+  for (const doc of V13_REQUIRED_DOC_TERMS) {
+    if (!hasFile(v13Root, doc.file)) continue;
+    const text = readText(v13Root, doc.file);
+    for (const term of doc.terms) {
+      if (!text.includes(term)) {
+        failures.push(`v13 required SOT/checklist file must include checklist term: ${doc.file} -> ${term}`);
       }
     }
   }
@@ -257,7 +222,11 @@ export function formatTransferSotChecklistReport(result) {
 
 function main() {
   const v13RootArg = process.argv.find((arg) => arg.startsWith('--v13-root='));
-  const v13Root = v13RootArg ? path.resolve(v13RootArg.slice('--v13-root='.length)) : DEFAULT_V13_ROOT;
+  const v13Root = v13RootArg
+    ? path.resolve(v13RootArg.slice('--v13-root='.length))
+    : process.env.TOPIK_V13_ROOT
+      ? path.resolve(process.env.TOPIK_V13_ROOT)
+      : DEFAULT_V13_ROOT;
   const result = evaluateTransferSotChecklist({ v13Root });
   const report = formatTransferSotChecklistReport(result);
 

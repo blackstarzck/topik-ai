@@ -782,3 +782,10 @@
 - Reason: `--skip-domain`으로 만든 Production 후보가 Vercel SSO 보호 화면으로 이동해 관리자 앱 E2E가 실행되지 못했다.
 - Contract: GitHub `Production` environment의 `VERCEL_AUTOMATION_BYPASS_SECRET`이 없으면 후보 빌드 전에 중단한다. 우회 헤더와 후속 탐색용 쿠키 설정 헤더는 후보 E2E에만 전달하며, 운영 도메인 검사·로그·artifact에는 전달하지 않는다. 데이터·권한·UI 계약은 변경하지 않는다.
 - Validation: release browser config와 pipeline 순서·비밀 범위 계약, `harness:check`, production build, 공통 Operation/System smoke E2E를 실행하고 실제 전체 릴리스에서 후보 E2E·승격·운영 E2E를 확인한다.
+
+## 2026-07-23 알림 파이프라인 migration home을 topik-ai로 이관
+
+- Updated `supabase/README.md`, 공유 스키마 소유권·데이터 소스·알림 계약·데이터 사용·gap 문서, Message 인앱 IA/page-sync, 메일 page-sync, API inventory, production verification runbook, 알림 실행계획, IA 변경 로그와 v13 migration index/보안 문서/과거 consistency audit.
+- Reason: v13 과거 dispatcher/email/cron migration이 topik-ai 소유 admin 알림 테이블을 정적으로 참조해 v13 단독 clean replay를 깨뜨렸으므로, 객체 소유권과 migration home을 같은 도메인 경계로 수렴해야 했다.
+- Contract: DB dispatcher/email/marketing 함수, `notification_email_config`, `dispatch_notifications` cron은 topik-ai `admin_schema_migrations`와 `20260723011242_notification_pipeline_ownership_transfer.sql`이 소유한다. v13은 `profiles`, `notification_settings`, `user_notifications`, `user_marketing_consent` 및 사용자 UI를 계속 소유하고, topik-ai 파이프라인은 승인된 service-role writer/reader로만 사용한다. 기존 dispatch/attempt/config row는 삭제·재시드하지 않고 down은 no-op, 교정은 roll-forward로만 수행한다.
+- Validation: v13 알림 구간 standalone reset(`--version 20260612200100`)과 경계 하네스 16/16, 양 repo 통합 shadow replay를 통과했다. shadow는 owner/RLS/grants, 9개 private 함수 실행 경계, cron, admin/scheduled/event dispatch 중복 방지, migration 재적용 전후 row-count 불변을 확인했다. topik-ai `harness:check`, build, Message e2e 1/1과 관련 unit 27/27, v13 lint/typecheck/build를 통과했다. v13 전체 unit suite는 15분 제한을 초과해 종료했으며, 전체 standalone reset은 알림 이후 `20260713081559_writing_question_version_snapshot.sql`의 기존 `public.topik_writing_question_import` 선행 의존성에서 중단됐다. topik-ai local admin-boundary wrapper는 격리 worktree의 `E2E_ADMIN_EMAIL`/`E2E_ADMIN_PASSWORD` 부재, live cross-app 검사는 `SUPABASE_ACCESS_TOKEN` 부재로 실행하지 않았다. 원격 dev/production DB 적용은 수행하지 않았다.

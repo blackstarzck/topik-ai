@@ -719,7 +719,8 @@
 
 > 단일 SoT: **`docs/specs/notification-contract.md`** — 채널 4종(`in_app`/`email`/`push`/`zalo`), class 4종(`transactional`/`operational`/`learning`/`marketing` + mandatory 규칙), template_key 7종, dispatch/attempt status enum, dedupe_key 2단 형식. 본 절은 색인이다.
 
-- 엔티티/테이블 (소유: 이 repo, tracker `admin_schema_migrations`, 디렉터리 `supabase/migrations-admin/`): `notification_templates`, `notification_groups`, `notification_dispatches`, `notification_delivery_attempts`. RPC: `admin_send_notification`.
+- 엔티티/테이블 (소유: 이 repo, tracker `admin_schema_migrations`, 디렉터리 `supabase/migrations-admin/`): `notification_templates`, `notification_groups`, `notification_dispatches`, `notification_delivery_attempts`, `notification_email_config`(`id=true` singleton, `mode`, nullable `fail_user_id`). RPC: `admin_send_notification`.
+- 파이프라인 객체(소유: 이 repo, migration home `20260723011242_notification_pipeline_ownership_transfer.sql`): `private.render_notification_text`, `private.dispatch_scheduled_notifications`, `private.dispatch_admin_notifications`, `private.dispatch_notification_event`, `private.dispatch_notifications`, `private.notification_email_transport`, `private.finalize_email_attempt`, `private.retry_failed_email_attempts`, `private.is_marketing_consented`, pg_cron job `dispatch_notifications`. v13의 동일 이름 과거 migration은 replay-safe no-op이며 tracker를 혼합하지 않는다.
 - v13 소유 연관 객체: `user_notifications`(인앱 수신함), `profiles.notification_prefs`, `notification_settings`. `notification_log`는 deprecated(발송 이력 SoT 아님 — O-9). 공유 객체(attempts의 v13 read 등)는 `docs/architecture/shared-supabase-schema-ownership.md`를 따른다.
 - 발송 이력은 dispatch(발송 실행)–attempt(수신자×채널) 2계층이 SoT다. opt-out 제외는 `skipped`/`opted_out`으로 집계한다(미기록 금지).
 - 기존 message 기능(`mail`/`push` 채널 UI)은 channel 계약상 `email`/`push`로 매핑하며, `push`를 `in_app`으로 재해석하지 않는다(인앱은 별도 1급 채널).

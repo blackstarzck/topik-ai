@@ -98,3 +98,16 @@ operational 토글(`exam_schedule_email` 등) 노출 범위는 O-8 결정 후 �
 
 - `reminder_time`: `HH:mm[:ss]`. `reminder_days`: 0–6 정수 배열, **0=일요일**. `timezone`: IANA 명칭, 기본 `Asia/Seoul`.
 - 슬롯 판정의 시각 출처는 **DB `now()` 단일 기준**으로 한다 (이중 시각 출처 금지 — QA N-EDGE-06).
+
+## 8. 파이프라인 소유권과 clean replay 계약
+
+- 알림 운영 테이블, `notification_email_config`, private dispatcher/email/marketing 함수, `dispatch_notifications`
+  pg_cron의 migration home은 topik-ai `supabase/migrations-admin/20260723011242_notification_pipeline_ownership_transfer.sql`이다.
+- v13은 `profiles`, `notification_settings`, `user_notifications`, `user_marketing_consent`와 사용자 UI를
+  소유한다. topik-ai 파이프라인은 이 객체를 service-role reader/writer로 사용하지만 DDL은 변경하지 않는다.
+- v13의 `20260612180000`~`20260612200100` 과거 파이프라인 migration은 v13 단독 clean replay를 위한
+  no-op이다. 통합 replay에서는 v13 사용자 객체와 topik-ai admin base를 먼저 만든 뒤 topik-ai forward
+  migration을 적용한다.
+- migration은 기존 dispatch/attempt/config row를 삭제·재시드하지 않는다. down은 공유 운영 상태 보존을
+  위해 no-op이며 교정은 roll-forward로만 수행한다.
+- `institution_invitation`은 위 cron dispatcher를 거치지 않는 inline RPC 특례를 유지한다.
