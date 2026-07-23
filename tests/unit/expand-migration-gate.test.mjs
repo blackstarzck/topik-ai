@@ -160,4 +160,65 @@ describe('automatic release expand-migration gate', () => {
       },
     ], () => 'drop table public.example;')).toEqual([]);
   });
+
+  it('allows a declared unapplied rewrite to modify a pending migration in place', () => {
+    const issues = classifyMigrationDiff(
+      [
+        {
+          status: 'M',
+          path: 'supabase/migrations-admin/20260101000000_pending_rewrite.sql',
+        },
+      ],
+      () => 'create or replace function private.example() returns int language sql as $$ select 1 $$;',
+      {
+        allowedRewrites: new Set([
+          'supabase/migrations-admin/20260101000000_pending_rewrite.sql',
+        ]),
+      }
+    );
+
+    expect(issues).toEqual([]);
+  });
+
+  it('still scans a declared rewrite for destructive contract operations', () => {
+    const issues = classifyMigrationDiff(
+      [
+        {
+          status: 'M',
+          path: 'supabase/migrations-admin/20260101000000_pending_rewrite.sql',
+        },
+      ],
+      () => 'drop table public.example;',
+      {
+        allowedRewrites: new Set([
+          'supabase/migrations-admin/20260101000000_pending_rewrite.sql',
+        ]),
+      }
+    );
+
+    expect(issues).toEqual([
+      'supabase/migrations-admin/20260101000000_pending_rewrite.sql: contract operation detected (drop-table)',
+    ]);
+  });
+
+  it('never allows deleting a migration even when declared as a rewrite', () => {
+    const issues = classifyMigrationDiff(
+      [
+        {
+          status: 'D',
+          path: 'supabase/migrations-admin/20260101000000_pending_rewrite.sql',
+        },
+      ],
+      () => 'select 1;',
+      {
+        allowedRewrites: new Set([
+          'supabase/migrations-admin/20260101000000_pending_rewrite.sql',
+        ]),
+      }
+    );
+
+    expect(issues).toEqual([
+      'supabase/migrations-admin/20260101000000_pending_rewrite.sql: applied migrations are immutable (D)',
+    ]);
+  });
 });

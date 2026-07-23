@@ -58,11 +58,32 @@ describe('notification pipeline ownership transfer migration', () => {
     expect(sql).not.toMatch(/\b(?:update|insert\s+into|delete\s+from)\s+cron\.job\b/iu);
     expect(sql).not.toMatch(/\bdrop\s+function\b/iu);
     expect(sql).toContain(
-      "select private.dispatch_scheduled_notifications(p_template_key, 'in_app')"
+      'revoke all on function private.dispatch_notification_event(text, uuid, text, jsonb, text)'
     );
-    expect(sql).toContain(
-      'revoke all on function private.dispatch_notification_event(text, uuid, text, jsonb)'
+  });
+
+  it('converges dispatch overloads to the live single-function contract', () => {
+    const eventDefinitions = sql.match(
+      /create or replace function private\.dispatch_notification_event\(/g
+    ) ?? [];
+    expect(eventDefinitions).toHaveLength(3);
+    expect(sql.match(/p_payload\s+jsonb\s+default '\{\}'::jsonb/g) ?? []).toHaveLength(3);
+    expect(sql.match(/p_channel\s+text\s+default null/g) ?? []).toHaveLength(3);
+
+    const scheduledDefinitions = sql.match(
+      /create or replace function private\.dispatch_scheduled_notifications\(/g
+    ) ?? [];
+    expect(scheduledDefinitions).toHaveLength(2);
+    expect(sql.match(/p_channel\s+text\s+default 'in_app'/g) ?? []).toHaveLength(2);
+
+    // Legacy 1-arg/4-arg overloads must never be (re)declared: next to the defaulted
+    // core signatures they make 1-arg and 4-arg call forms ambiguous (42725), and
+    // replaying them over the live database removed parameter defaults (42P13).
+    expect(sql).not.toMatch(
+      /function private\.dispatch_scheduled_notifications\(\s*p_template_key\s+text\s*\)/iu
     );
+    expect(sql).not.toContain('private.dispatch_scheduled_notifications(text)');
+    expect(sql).not.toContain('private.dispatch_notification_event(text, uuid, text, jsonb)');
   });
 
   it('converges RLS and Data API grants without exposing write access to clients', () => {

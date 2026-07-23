@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { loadRewriteAllowlist } from '../db/check-expand-migrations.mjs';
 
 export const CLASSIFIER_VERSION = 3;
 
@@ -128,7 +129,10 @@ export function applyManualReleasePlan(report, requestedReleasePlan) {
   };
 }
 
-export function classifyChangedFiles(changes, { forcedReason = null } = {}) {
+export function classifyChangedFiles(
+  changes,
+  { forcedReason = null, allowedRewrites = new Set() } = {}
+) {
   const normalizedChanges = changes.map((change) => ({
     status: change.status,
     path: normalizePath(change.path),
@@ -153,11 +157,26 @@ export function classifyChangedFiles(changes, { forcedReason = null } = {}) {
     const previousIsForwardMigration = Boolean(
       change.previousPath && isForwardMigrationPath(change.previousPath)
     );
-    if (previousIsForwardMigration || (currentIsForwardMigration && change.status !== 'A')) {
+    // A declared unapplied rewrite may modify a still-pending forward migration in
+    // place. Only an in-place modification (status 'M') qualifies — never a rename,
+    // copy, or delete — and the migration runner still fails closed on tracker
+    // checksums if the file was actually applied to any environment.
+    const isAllowedRewrite = (
+      currentIsForwardMigration
+      && !previousIsForwardMigration
+      && change.status === 'M'
+      && allowedRewrites.has(change.path)
+    );
+    if (
+      !isAllowedRewrite
+      && (previousIsForwardMigration || (currentIsForwardMigration && change.status !== 'A'))
+    ) {
       blockedReasons.push(`immutable-migration:${change.previousPath ?? change.path}`);
       continue;
     }
-    if (currentIsForwardMigration && change.status === 'A') databaseTouched = true;
+    if (currentIsForwardMigration && (change.status === 'A' || isAllowedRewrite)) {
+      databaseTouched = true;
+    }
   }
 
   const uniqueBlockedReasons = [...new Set(blockedReasons)].sort();
@@ -278,7 +297,10 @@ async function main() {
   const jsonOut = resolve(value(args, '--json-out'));
   const range = resolveDiffRange(requestedBaseSha, headSha);
   const changes = range.forcedReason ? [] : changedFiles(range.baseSha, range.headSha);
-  const automaticReport = classifyChangedFiles(changes, { forcedReason: range.forcedReason });
+  const automaticReport = classifyChangedFiles(changes, {
+    forcedReason: range.forcedReason,
+    allowedRewrites: loadRewriteAllowlist(),
+  });
   const report = {
     ...applyManualReleasePlan(
       automaticReport,

@@ -797,3 +797,10 @@
 - Reason: v13의 신뢰된 artifact 경계를 유지하기 위해 알림 migration replay guard가 `tests/scripts`로 이동했고 최종 PR HEAD가 변경되어, topik-ai의 고정 SHA와 교차 저장소 경로를 같은 커밋으로 정렬했다.
 - Contract: topik-ai shadow/health/release 검증은 v13 `81e2ed7d0845194224ebe6f156c697560d70de65`을 사용하며, replay guard의 정본 경로는 `tests/scripts/check-notification-migration-replay.mjs`다. 알림 스키마·권한·UI 계약은 변경하지 않는다.
 - Validation: transfer SOT checklist, migration boundary, 전체 unit 422/422, 최종 v13 SHA 기반 통합 shadow replay 88/88, `harness:check`, build, Message e2e 1/1을 통과했다. GitHub CI는 push 후 최종 확인한다.
+
+## 2026-07-23 알림 dispatch 오버로드 라이브 단일본 수렴(42P13 수리)
+
+- Updated `supabase/migrations-admin/20260723011242_notification_pipeline_ownership_transfer.sql`, `supabase/README.md`, `scripts/db/check-expand-migrations.mjs`, `scripts/db/manifests/unapplied-rewrites.json`(신규), `scripts/ci/run-shadow-contract.mjs`, `scripts/check-notification-cross-app-state.mjs`, 관련 unit 테스트 3종.
+- Reason: topik-dev 실적용이 `42P13: cannot remove parameter defaults`로 실패했다. 라이브 dev/prod의 dispatch 함수는 5인자 단일본(pronargdefaults=2)·2인자 단일본(pronargdefaults=1)인데, 이관 파일이 p_payload 필수 5인자와 1인자/4인자 wrapper를 재선언했다. wrapper 공존 계약은 1인자·4인자 호출 모호성(42725)도 유발한다.
+- Contract: dispatch 함수는 라이브와 동일한 단일 오버로드만 유지한다 — `dispatch_notification_event(text,uuid,text,jsonb,text)`(p_payload·p_channel default), `dispatch_scheduled_notifications(text,text)`(p_channel default). drop 없는 순수 or-replace 체인으로 fresh replay와 라이브 재적용이 같은 경로를 지난다. 미적용 migration의 in-place 재작성은 `scripts/db/manifests/unapplied-rewrites.json` 선언 + expand gate 허용 + 러너 tracker checksum fail-closed 재검증으로만 가능하고 삭제는 항상 금지다. shadow contract와 cross-app-state 검사는 오버로드 개수·default 개수·레거시 시그니처 부재·1/3/4/5인자 호출형 해석을 상시 검증한다.
+- Validation: unit 427/427, harness:check, db:contracts:verify 4계약 clean, migration-boundary 통과(기존 경고만), cross-app-state는 계약 9/9·legacy absent 2/2(잔여 2건은 미적용 상태의 기존 grant 드리프트로 본 migration 적용이 해소), expand gate 시뮬레이션 PASS. dev DB에 수정 전문을 begin…rollback으로 dry-run해 `A_CONTRACT_DRY_RUN_OK`(42P13 소멸, 1/2/3/4/5인자 호출형 비모호 실측, 롤백 후 함수 집합·tracker 무변경 확인). 원격 dev/production DB 적용은 수행하지 않았다.

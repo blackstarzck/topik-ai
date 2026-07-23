@@ -38,10 +38,8 @@ const COMPLETE_RESULT = {
   })),
   function_contract: [
     'render_notification_text',
-    'dispatch_scheduled_notifications_compat',
     'dispatch_scheduled_notifications',
     'dispatch_admin_notifications',
-    'dispatch_notification_event_compat',
     'dispatch_notification_event',
     'retry_failed_email_attempts',
     'notification_email_transport',
@@ -58,6 +56,10 @@ const COMPLETE_RESULT = {
     anon_execute: false,
     authenticated_execute: false
   })),
+  forbidden_function_contract: [
+    { function_name: 'dispatch_scheduled_notifications_legacy_1arg', exists_now: false },
+    { function_name: 'dispatch_notification_event_legacy_4arg', exists_now: false }
+  ],
   attempt_summary: {
     total_count: 3,
     distinct_user_count: 2,
@@ -91,6 +93,7 @@ describe('check-notification-cross-app-state', () => {
     expect(sql).toContain('user_marketing_consent');
     expect(sql).toContain('to_regprocedure');
     expect(sql).toContain('has_function_privilege');
+    expect(sql).toContain('forbidden_functions');
   });
 
   it('passes when required tables exist and recent attempt timestamps match status', () => {
@@ -148,6 +151,20 @@ describe('check-notification-cross-app-state', () => {
       'anon can select notification_templates.',
       'Client EXECUTE privilege is exposed for dispatch_notifications.'
     ]));
+  });
+
+  it('fails closed when a retired legacy dispatch overload reappears', () => {
+    const evaluation = evaluateCrossAppStateResult({
+      ...COMPLETE_RESULT,
+      forbidden_function_contract: [
+        { function_name: 'dispatch_scheduled_notifications_legacy_1arg', exists_now: false },
+        { function_name: 'dispatch_notification_event_legacy_4arg', exists_now: true }
+      ]
+    });
+
+    expect(evaluation.failures).toContain(
+      'Legacy dispatch overload must not exist: dispatch_notification_event_legacy_4arg'
+    );
   });
 
   it('calls the Supabase Management API without printing the access token', async () => {

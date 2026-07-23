@@ -23,16 +23,21 @@ const ADMIN_TABLES = [
 ];
 const REQUIRED_FUNCTIONS = [
   ['render_notification_text', 'private.render_notification_text(text,text)', false],
-  ['dispatch_scheduled_notifications_compat', 'private.dispatch_scheduled_notifications(text)', true],
   ['dispatch_scheduled_notifications', 'private.dispatch_scheduled_notifications(text,text)', true],
   ['dispatch_admin_notifications', 'private.dispatch_admin_notifications()', true],
-  ['dispatch_notification_event_compat', 'private.dispatch_notification_event(text,uuid,text,jsonb)', true],
   ['dispatch_notification_event', 'private.dispatch_notification_event(text,uuid,text,jsonb,text)', true],
   ['retry_failed_email_attempts', 'private.retry_failed_email_attempts()', true],
   ['notification_email_transport', 'private.notification_email_transport(text,text,text,uuid)', true],
   ['finalize_email_attempt', 'private.finalize_email_attempt(uuid,text,text,text)', true],
   ['is_marketing_consented', 'private.is_marketing_consented(uuid)', true],
   ['dispatch_notifications', 'private.dispatch_notifications()', true]
+];
+// The defaulted core signatures make these legacy overloads ambiguous for 1-arg and
+// 4-arg call forms (42725), so the live databases must keep exactly one overload per
+// dispatch function.
+const FORBIDDEN_FUNCTIONS = [
+  ['dispatch_scheduled_notifications_legacy_1arg', 'private.dispatch_scheduled_notifications(text)'],
+  ['dispatch_notification_event_legacy_4arg', 'private.dispatch_notification_event(text,uuid,text,jsonb)']
 ];
 const ATTEMPT_STATUSES = ['pending', 'sent', 'failed', 'skipped', 'opted_out', 'deduped'];
 
@@ -124,6 +129,16 @@ function_contract as (
   from required_functions rf
   left join pg_proc p on p.oid = to_regprocedure(rf.signature)
 ),
+forbidden_functions(function_name, signature) as (
+  values
+    ${FORBIDDEN_FUNCTIONS.map(([name, signature]) => `('${name}', '${signature}')`).join(',\n    ')}
+),
+forbidden_function_contract as (
+  select
+    ff.function_name,
+    to_regprocedure(ff.signature) is not null as exists_now
+  from forbidden_functions ff
+),
 attempt_summary as (
   select
     count(*)::int as total_count,
@@ -157,6 +172,7 @@ select jsonb_build_object(
   'table_presence', coalesce((select jsonb_agg(to_jsonb(table_presence) order by table_name) from table_presence), '[]'::jsonb),
   'admin_table_contract', coalesce((select jsonb_agg(to_jsonb(admin_table_contract) order by table_name) from admin_table_contract), '[]'::jsonb),
   'function_contract', coalesce((select jsonb_agg(to_jsonb(function_contract) order by function_name) from function_contract), '[]'::jsonb),
+  'forbidden_function_contract', coalesce((select jsonb_agg(to_jsonb(forbidden_function_contract) order by function_name) from forbidden_function_contract), '[]'::jsonb),
   'attempt_summary', (select to_jsonb(attempt_summary) from attempt_summary),
   'dispatch_summary', (select to_jsonb(dispatch_summary) from dispatch_summary),
   'recent_attempts', coalesce((select jsonb_agg(to_jsonb(recent_attempts) order by created_at desc) from recent_attempts), '[]'::jsonb)
@@ -232,6 +248,20 @@ export function evaluateCrossAppStateResult(result) {
     }
   }
 
+  const forbiddenContract = Array.isArray(result?.forbidden_function_contract)
+    ? result.forbidden_function_contract
+    : [];
+  for (const [functionName] of FORBIDDEN_FUNCTIONS) {
+    const contract = forbiddenContract.find((entry) => entry.function_name === functionName);
+    if (!contract) {
+      failures.push(`Missing legacy overload probe: ${functionName}`);
+      continue;
+    }
+    if (contract.exists_now) {
+      failures.push(`Legacy dispatch overload must not exist: ${functionName}`);
+    }
+  }
+
   const recentAttempts = Array.isArray(result?.recent_attempts) ? result.recent_attempts : [];
   for (const attempt of recentAttempts) {
     if (attempt.status === 'sent' && !attempt.has_sent_at) {
@@ -264,6 +294,9 @@ export function formatCrossAppStateReport(evaluation) {
   lines.push(`- dispatches total/open/terminal: ${dispatches.total_count ?? 0}/${dispatches.open_count ?? 0}/${dispatches.terminal_count ?? 0}`);
   lines.push(`- admin table contracts: ${result?.admin_table_contract?.length ?? 0}/${ADMIN_TABLES.length}`);
   lines.push(`- pipeline function contracts: ${result?.function_contract?.length ?? 0}/${REQUIRED_FUNCTIONS.length}`);
+  const legacyAbsent = (result?.forbidden_function_contract ?? [])
+    .filter((entry) => entry && entry.exists_now === false).length;
+  lines.push(`- legacy overloads absent: ${legacyAbsent}/${FORBIDDEN_FUNCTIONS.length}`);
   lines.push('- secret values: not printed');
   return lines.join('\n');
 }
