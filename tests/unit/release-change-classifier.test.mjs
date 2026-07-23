@@ -93,6 +93,40 @@ describe('release change classifier v3', () => {
     }]).releasePlan).toBe('blocked');
   });
 
+  it('routes a declared unapplied migration rewrite through the db-only path', () => {
+    const path = 'supabase/migrations-admin/20260721000000_example.sql';
+    const allowedRewrites = new Set([path]);
+
+    const report = classifyChangedFiles([{ status: 'M', path }], { allowedRewrites });
+    expect(report.releasePlan).toBe('db-only');
+    expect(report.applyMigrations).toBe(true);
+    expect(report.validationProfile).toBe('full');
+    expect(report.blockedReasons).toEqual([]);
+  });
+
+  it('still blocks migration edits that are not declared as unapplied rewrites', () => {
+    const path = 'supabase/migrations-admin/20260721000000_example.sql';
+    const report = classifyChangedFiles(
+      [{ status: 'M', path }],
+      { allowedRewrites: new Set(['supabase/migrations-admin/20260101000000_other.sql']) }
+    );
+    expect(report.releasePlan).toBe('blocked');
+    expect(report.blockedReasons).toEqual([`immutable-migration:${path}`]);
+  });
+
+  it('never allows deleting or renaming a migration even when declared as a rewrite', () => {
+    const path = 'supabase/migrations-admin/20260721000000_example.sql';
+    const allowedRewrites = new Set([path]);
+
+    expect(classifyChangedFiles([{ status: 'D', path }], { allowedRewrites }).releasePlan)
+      .toBe('blocked');
+    expect(classifyChangedFiles([{
+      status: 'R100',
+      previousPath: path,
+      path: 'supabase/migrations-admin/20260721000000_renamed.sql',
+    }], { allowedRewrites }).releasePlan).toBe('blocked');
+  });
+
   it('blocks unknown paths and invalid base ranges instead of releasing them', () => {
     expect(classify('unknown-root.config').releasePlan).toBe('blocked');
     const forced = classifyChangedFiles([], { forcedReason: 'zero-base-sha' });
