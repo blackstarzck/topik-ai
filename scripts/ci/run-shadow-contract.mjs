@@ -271,8 +271,10 @@ begin
   for v_signature, v_expected_definer in
     select * from (values
       ('private.render_notification_text(text,text)', false),
+      ('private.dispatch_scheduled_notifications(text)', true),
       ('private.dispatch_scheduled_notifications(text,text)', true),
       ('private.dispatch_admin_notifications()', true),
+      ('private.dispatch_notification_event(text,uuid,text,jsonb)', true),
       ('private.dispatch_notification_event(text,uuid,text,jsonb,text)', true),
       ('private.dispatch_notifications()', true),
       ('private.notification_email_transport(text,text,text,uuid)', true),

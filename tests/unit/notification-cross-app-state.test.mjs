@@ -38,8 +38,10 @@ const COMPLETE_RESULT = {
   })),
   function_contract: [
     'render_notification_text',
+    'dispatch_scheduled_notifications_compat',
     'dispatch_scheduled_notifications',
     'dispatch_admin_notifications',
+    'dispatch_notification_event_compat',
     'dispatch_notification_event',
     'retry_failed_email_attempts',
     'notification_email_transport',

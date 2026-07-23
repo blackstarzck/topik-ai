@@ -17,9 +17,21 @@ describe('automatic release expand-migration gate', () => {
 
   it('rejects destructive contract operations', () => {
     expect(findContractOperations(`
+      drop table public.old_records;
       alter table public.example drop column old_value;
       drop function public.old_api();
-    `)).toEqual(['drop-column', 'drop-function']);
+      truncate table public.audit_events;
+    `)).toEqual(['drop-table', 'drop-column', 'drop-function', 'truncate']);
+  });
+
+  it('ignores transaction-local table cleanup and TRUNCATE privilege revocation', () => {
+    expect(findContractOperations(`
+      drop table if exists _notification_candidates;
+      create temp table _notification_candidates on commit drop as select 1;
+      revoke insert, update, delete, truncate, references, trigger
+        on table public.notification_dispatches
+        from authenticated;
+    `)).toEqual([]);
   });
 
   it('allows replacing a zero-argument function introduced earlier in the same release', () => {

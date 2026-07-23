@@ -16,13 +16,35 @@ const CONTRACT_PATTERNS = [
   ['rename-object', /\balter\s+(?:table|type|function|procedure)\b[\s\S]{0,240}\brename\s+(?:to|column)\b/i],
   ['alter-column-type', /\balter\s+column\b[\s\S]{0,160}\btype\b/i],
   ['set-not-null', /\balter\s+column\b[\s\S]{0,160}\bset\s+not\s+null\b/i],
-  ['truncate', /\btruncate\b/i],
+  [
+    'truncate',
+    /\btruncate\s+(?:table\s+)?(?:only\s+)?(?:[a-z_][a-z0-9_$]*\.)?[a-z_][a-z0-9_$]*/i
+  ],
 ];
 
 function stripSqlComments(sql) {
   return sql
     .replace(/\/\*[\s\S]*?\*\//g, ' ')
     .replace(/--[^\r\n]*/g, ' ');
+}
+
+function stripTemporaryTableCleanup(sql) {
+  const temporaryTables = new Set();
+  for (const match of sql.matchAll(
+    /\bcreate\s+(?:global\s+|local\s+)?temp(?:orary)?\s+table\s+(?:if\s+not\s+exists\s+)?((?:[a-z_][a-z0-9_$]*\.)?[a-z_][a-z0-9_$]*)/gi
+  )) {
+    temporaryTables.add(match[1].toLowerCase().replace(/^pg_temp\./, ''));
+  }
+  if (temporaryTables.size === 0) return sql;
+
+  return sql.replace(
+    /\bdrop\s+table\s+(?:if\s+exists\s+)?((?:[a-z_][a-z0-9_$]*\.)?[a-z_][a-z0-9_$]*)(?:\s+(?:cascade|restrict))?\s*;/gi,
+    (statement, rawName) => (
+      temporaryTables.has(rawName.toLowerCase().replace(/^pg_temp\./, ''))
+        ? ' '
+        : statement
+    )
+  );
 }
 
 function collectFunctionNames(sql, pattern) {
@@ -61,7 +83,7 @@ function isSafeIntraReleaseFunctionReplacement(sql, introducedFunctions) {
 }
 
 export function findContractOperations(sql) {
-  const normalized = stripSqlComments(sql);
+  const normalized = stripTemporaryTableCleanup(stripSqlComments(sql));
   return CONTRACT_PATTERNS
     .filter(([, pattern]) => pattern.test(normalized))
     .map(([name]) => name);
