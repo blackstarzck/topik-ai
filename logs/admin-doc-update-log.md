@@ -825,3 +825,6 @@
 ## 2026-07-24 승격 파이프라인 dry-run 마커 (Phase 9)
 
 - 개편안 §5.6 dry-run: docs-only(sync-only) 변경으로 개인 main→회사 promote/stg/main 승격 체인 전체를 무배포로 실증한다. 이 커밋은 파이프라인 검증용 마커이며 코드/스키마/운영 동작을 바꾸지 않는다.
+## 2026-07-24 승격 파이프라인 dry-run 재실행 (Phase 9, gate 수정 후)
+
+- promotion-gate 단일라인 수정(afc237a) 후 승격 체인 전체를 무배포로 재실증하는 sync-only 마커.
