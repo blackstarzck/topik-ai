@@ -35,6 +35,7 @@ export function expectedDevelopmentChecks(releasePlan, validationProfile) {
     build: strongValidation ? 'passed' : 'not-required',
     migrationContracts: strongValidation ? 'passed' : 'not-required',
     shadow: validationProfile === 'full' ? 'passed' : 'not-required',
+    upgradeReplay: applyMigrations ? 'passed' : 'not-required',
     migrationApplication: applyMigrations ? 'passed' : 'not-required',
     tracker: releasesRuntime ? 'passed' : 'not-required',
     permissions: releasesRuntime ? 'passed' : 'not-required',

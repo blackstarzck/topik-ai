@@ -225,6 +225,20 @@ describe('evidence v4 source binding contract', () => {
     expect(digestCaptures).toHaveLength(3);
   });
 
+  it('replays the previous release schema before applying migrations to topik-dev', () => {
+    const database = job(developmentWorkflow, 'validate-database', 'development-gate');
+    const shadowIndex = position(database, 'Rebuild the pinned cross-repository shadow schema');
+    const upgradeIndex = position(database, 'Replay the previous release schema and upgrade it to this migration set');
+    const applyIndex = position(database, 'Apply topik-dev migrations in ownership order');
+    expect(shadowIndex).toBeLessThan(upgradeIndex);
+    expect(upgradeIndex).toBeLessThan(applyIndex);
+    expect(database).toContain('node scripts/ci/resolve-previous-release.mjs');
+    expect(database).toContain('--upgrade-from "$previous_release"');
+    expect(database).toContain('development-evidence/upgrade-replay.json');
+    expect(database).toContain('COMPANY_RELEASE_READ_TOKEN: ${{ secrets.PROMOTION_GITHUB_TOKEN }}');
+    expect(database).toContain('UPGRADE_REPLAY_BASE_OVERRIDE: ${{ vars.UPGRADE_REPLAY_BASE_OVERRIDE }}');
+  });
+
   it('recomputes and compares the tree and migration digest in every production verify', () => {
     const treeChecks = productionWorkflow.match(
       /--tree-sha "\$\(git rev-parse "HEAD\^\{tree\}"\)"/g

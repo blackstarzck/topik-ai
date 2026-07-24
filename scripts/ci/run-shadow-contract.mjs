@@ -13,7 +13,7 @@ import {
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import process from 'node:process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   inspectStaticMigrationContract,
   listLocalMigrations,
@@ -35,6 +35,78 @@ const V13_SHADOW_EXCLUDED_MIGRATIONS = new Set([
 const V13_SHADOW_COMPATIBILITY_STEPS = [
   'drop-retired-writing-runtime-unserialized-implementation',
 ];
+const SHA_PATTERN = /^[0-9a-f]{40}$/;
+
+// Upgrade delta = entries of the current release plan that the N-1 plan did not
+// contain, keyed by (source, name). Known limit: a file rewritten in place under
+// scripts/db/manifests/unapplied-rewrites.json keeps its name, so the shadow keeps
+// the N-1 content for it — the tracker checksum remains the fail-closed guard for
+// real applications.
+export function computeUpgradeDelta(currentEntries, previousEntries) {
+  const previousKeys = new Set(previousEntries.map((entry) => `${entry.source}\t${entry.name}`));
+  return currentEntries.filter((entry) => !previousKeys.has(`${entry.source}\t${entry.name}`));
+}
+
+export function extractV13Pin(workflowText) {
+  const match = /V13_CONTRACT_SHA:\s*([0-9a-f]{40})/.exec(workflowText ?? '');
+  if (!match) throw new Error('The N-1 tree does not pin V13_CONTRACT_SHA.');
+  return match[1];
+}
+
+function prepareUpgradeBase({ upgradeFrom, v13Dir, currentV13Sha }) {
+  if (!SHA_PATTERN.test(upgradeFrom)) {
+    throw new Error('--upgrade-from must be a 40-hex commit SHA.');
+  }
+  try {
+    run('git', ['merge-base', '--is-ancestor', upgradeFrom, 'HEAD']);
+  } catch {
+    throw new Error(
+      `--upgrade-from ${upgradeFrom} is not an ancestor of HEAD — the company release history has diverged; investigate before promoting.`
+    );
+  }
+  const cleanups = [];
+  const n1Root = mkdtempSync(join(tmpdir(), 'topik-ai-n1-'));
+  cleanups.push(() => rmSync(n1Root, { recursive: true, force: true }));
+  const n1Path = join(n1Root, 'tree');
+  run('git', ['worktree', 'add', '--detach', n1Path, upgradeFrom]);
+  cleanups.push(() => run('git', ['worktree', 'remove', '--force', n1Path]));
+
+  const v13Pin = extractV13Pin(
+    readFileSync(join(n1Path, '.github', 'workflows', 'release-development.yml'), 'utf8')
+  );
+  let v13BaseDir = v13Dir;
+  if (v13Pin !== currentV13Sha) {
+    run('git', ['-C', v13Dir, 'fetch', 'origin', v13Pin]);
+    const v13Root = mkdtempSync(join(tmpdir(), 'topik-ai-n1-v13-'));
+    cleanups.push(() => rmSync(v13Root, { recursive: true, force: true }));
+    v13BaseDir = join(v13Root, 'tree');
+    run('git', ['-C', v13Dir, 'worktree', 'add', '--detach', v13BaseDir, v13Pin]);
+    cleanups.push(() => run('git', ['-C', v13Dir, 'worktree', 'remove', '--force', v13BaseDir]));
+  }
+
+  const writingFiles = loadReleaseMigrations(
+    join(n1Path, 'scripts', 'db', 'manifests', 'writing-production-cutover.json'),
+    join(n1Path, 'supabase', 'migrations')
+  );
+  const adminFiles = loadReleaseMigrations(
+    join(n1Path, 'scripts', 'db', 'manifests', 'admin-production-cutover.json'),
+    join(n1Path, 'supabase', 'migrations-admin')
+  );
+  const plan = buildMigrationPlan(v13BaseDir, writingFiles, adminFiles);
+  return {
+    v13Pin,
+    plan,
+    cleanup: () => {
+      for (const cleanup of cleanups.reverse()) {
+        try {
+          cleanup();
+        } catch {
+          // best-effort teardown; temp roots are removed recursively regardless
+        }
+      }
+    }
+  };
+}
 
 function getArgValue(args, flag) {
   const inline = args.find((arg) => arg.startsWith(`${flag}=`));
@@ -758,7 +830,12 @@ async function main() {
     join(ROOT, 'supabase', 'migrations-admin')
   );
   const migrationPlan = buildMigrationPlan(v13Dir, writingFiles, adminFiles);
-  const shadowProject = createShadowProject(v13Dir, migrationPlan.bootstrap);
+  const upgradeFrom = getArgValue(args, '--upgrade-from');
+  const upgradeBase = upgradeFrom
+    ? prepareUpgradeBase({ upgradeFrom, v13Dir, currentV13Sha: expectedV13Sha })
+    : null;
+  const activePlan = upgradeBase ? upgradeBase.plan : migrationPlan;
+  const shadowProject = createShadowProject(v13Dir, activePlan.bootstrap);
   const shadowWorkdir = shadowProject.workdir;
   const password = `Shadow-${randomBytes(18).toString('base64url')}!9`;
   let started = false;
@@ -792,7 +869,15 @@ async function main() {
     });
     elevateShadowAdmin(dbContainer, adminId);
 
-    applyMigrationFiles(migrationPlan.afterFixture, dbContainer);
+    applyMigrationFiles(activePlan.afterFixture, dbContainer);
+    let upgradeDelta = null;
+    if (upgradeBase) {
+      upgradeDelta = computeUpgradeDelta(migrationPlan.all, upgradeBase.plan.all);
+      console.log(
+        `[shadow:upgrade] N-1 ${upgradeFrom.slice(0, 7)} replayed; applying ${upgradeDelta.length} delta migration(s)`
+      );
+      applyMigrationFiles(upgradeDelta, dbContainer);
+    }
     supabase([
       'db',
       'query',
@@ -823,6 +908,10 @@ async function main() {
     const report = {
       schemaVersion: 2,
       generatedAt: new Date().toISOString(),
+      mode: upgradeBase ? 'upgrade-replay' : 'fresh-replay',
+      upgradeFrom: upgradeFrom ?? null,
+      upgradeBaseV13Sha: upgradeBase?.v13Pin ?? null,
+      upgradeDeltaCount: upgradeDelta ? upgradeDelta.length : null,
       v13CommitSha: actualV13Sha,
       supabaseCliVersion: cliVersion,
       v13MigrationCount: migrationPlan.v13Count,
@@ -851,12 +940,15 @@ async function main() {
       run('supabase', ['stop', '--no-backup', '--workdir', shadowWorkdir]);
     }
     rmSync(shadowWorkdir, { recursive: true, force: true });
+    upgradeBase?.cleanup();
   }
 }
 
-try {
-  await main();
-} catch (error) {
-  console.error(error instanceof Error ? error.message : String(error));
-  process.exit(1);
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  try {
+    await main();
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  }
 }
