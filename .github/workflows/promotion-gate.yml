@@ -41,18 +41,22 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
+          set -x
           mkdir -p gate-evidence
-          node scripts/ci/company-promotion-gate.mjs --base-ref "$BASE_REF" --base-sha "$BASE_SHA" --head-sha "$HEAD_SHA" --pr-number "$PR_NUMBER" --json-out gate-evidence/promotion-gate.json
+          set +e
+          node scripts/ci/company-promotion-gate.mjs --base-ref "$BASE_REF" --base-sha "$BASE_SHA" --head-sha "$HEAD_SHA" --pr-number "$PR_NUMBER" --json-out gate-evidence/promotion-gate.json > gate-evidence/run.log 2>&1
+          gate_exit=$?
+          echo "GATE_EXIT=$gate_exit"
+          cat gate-evidence/run.log 2>/dev/null || echo "(no run.log)"
+          exit "$gate_exit"
       - name: Attest the verified head as blackstarzck
         shell: bash
         env:
           ATTESTATION_GITHUB_TOKEN: ${{ secrets.ATTESTATION_GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          test -n "$ATTESTATION_GITHUB_TOKEN"
           body="$(node scripts/ci/company-promotion-gate.mjs --print-attestation gate-evidence/promotion-gate.json)"
-          GH_TOKEN="$ATTESTATION_GITHUB_TOKEN" gh pr review "$PR_NUMBER" \
-            --repo "$GITHUB_REPOSITORY" --approve --body "$body"
+          GH_TOKEN="$ATTESTATION_GITHUB_TOKEN" gh pr review "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --approve --body "$body"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
