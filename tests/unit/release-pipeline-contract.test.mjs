@@ -292,6 +292,12 @@ describe('company promotion pipeline contract', () => {
     expect(companyStgWorkflow).toContain('node scripts/ci/write-stg-evidence.mjs');
     expect(companyStgWorkflow).toContain('--verify-all --require-clean');
     expect(companyStgWorkflow).toContain('staging-evidence-${{ env.STG_SHA }}');
+    // Every write-stg-evidence invocation (verify-source and write) reads the
+    // source-repository evidence, so each step must map the read token or it
+    // fails at runtime — pin both occurrences to prevent that regression.
+    expect(
+      companyStgWorkflow.split('EVIDENCE_GITHUB_TOKEN: ${{ secrets.EVIDENCE_GITHUB_TOKEN }}').length - 1,
+    ).toBeGreaterThanOrEqual(2);
     expect(companyStgWorkflow).not.toContain('--apply');
     expect(companyStgWorkflow).not.toContain('db:shadow:verify');
   });
