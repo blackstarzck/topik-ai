@@ -281,6 +281,9 @@ describe('company promotion pipeline contract', () => {
     expect(gateWorkflow).toContain('node scripts/ci/company-promotion-gate.mjs');
     expect(gateWorkflow).toContain('EVIDENCE_GITHUB_TOKEN: ${{ secrets.EVIDENCE_GITHUB_TOKEN }}');
     expect(gateWorkflow).toContain('ATTESTATION_GITHUB_TOKEN: ${{ secrets.ATTESTATION_GITHUB_TOKEN }}');
+    // A main-targeted PR reads the company staging-evidence artifact through the
+    // GITHUB_TOKEN REST API, which requires the actions:read permission scope.
+    expect(gateWorkflow).toContain('actions: read');
     expect(gateWorkflow).toContain('--approve');
     expect(gateWorkflow).not.toContain('--apply');
     expect(gateWorkflow).not.toContain('vercel');
