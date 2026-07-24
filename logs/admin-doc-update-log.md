@@ -831,3 +831,7 @@
 ## 2026-07-24 dry-run 3 (fixed gate v2 검증)
 
 - promotion-gate 리다이렉트-캡처 재구성 후 승격 게이트 실동작 검증용 sync-only 마커.
+
+## 2026-07-24 dry-run 4 (zip 파서 근본 수정 후 게이트 검증)
+
+- zip 중앙디렉터리 파서 수정 후 승격 게이트 실통과 검증용 sync-only 마커.
