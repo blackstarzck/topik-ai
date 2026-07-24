@@ -305,6 +305,18 @@ jobs:
           --v13-dir .ci/v13
           --v13-sha $V13_CONTRACT_SHA
           --json-out development-evidence/shadow-contract.json
+      - name: Replay the previous release schema and upgrade it to this migration set
+        shell: bash
+        env:
+          COMPANY_RELEASE_READ_TOKEN: ${{ secrets.PROMOTION_GITHUB_TOKEN }}
+          UPGRADE_REPLAY_BASE_OVERRIDE: ${{ vars.UPGRADE_REPLAY_BASE_OVERRIDE }}
+        run: |
+          previous_release="$(node scripts/ci/resolve-previous-release.mjs)"
+          npm run db:shadow:verify -- \
+            --v13-dir .ci/v13 \
+            --v13-sha "$V13_CONTRACT_SHA" \
+            --upgrade-from "$previous_release" \
+            --json-out development-evidence/upgrade-replay.json
       - name: Apply topik-dev migrations in ownership order
         shell: bash
         run: |
