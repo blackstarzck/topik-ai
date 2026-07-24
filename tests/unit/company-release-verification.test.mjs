@@ -19,18 +19,48 @@ const SHA_C = 'c'.repeat(40);
 const TREE = 'd'.repeat(40);
 const DIGEST = 'e'.repeat(64);
 
-function zipEntry(name, content, { deflate = false } = {}) {
-  const nameBuffer = Buffer.from(name, 'utf8');
-  const raw = Buffer.from(content, 'utf8');
-  const data = deflate ? deflateRawSync(raw) : raw;
-  const header = Buffer.alloc(30);
-  header.write('PK', 0, 'binary');
-  header.writeUInt16LE(deflate ? 8 : 0, 8);
-  header.writeUInt32LE(data.length, 18);
-  header.writeUInt32LE(raw.length, 22);
-  header.writeUInt16LE(nameBuffer.length, 26);
-  header.writeUInt16LE(0, 28);
-  return Buffer.concat([header, nameBuffer, data]);
+// Build a complete zip the way GitHub artifact zips are written: streaming, with
+// the data-descriptor flag set and zeroed sizes in the local header, so the
+// authoritative sizes live only in the central directory.
+function buildZip(entries) {
+  const locals = [];
+  const centrals = [];
+  let offset = 0;
+  for (const { name, content, deflate = false } of entries) {
+    const nameBuffer = Buffer.from(name, 'utf8');
+    const raw = Buffer.from(content, 'utf8');
+    const data = deflate ? deflateRawSync(raw) : raw;
+    const method = deflate ? 8 : 0;
+    const local = Buffer.alloc(30);
+    local.writeUInt32LE(0x04034b50, 0);
+    local.writeUInt16LE(0x0008, 6);
+    local.writeUInt16LE(method, 8);
+    local.writeUInt32LE(0, 18);
+    local.writeUInt32LE(0, 22);
+    local.writeUInt16LE(nameBuffer.length, 26);
+    local.writeUInt16LE(0, 28);
+    const localRecord = Buffer.concat([local, nameBuffer, data]);
+    const central = Buffer.alloc(46);
+    central.writeUInt32LE(0x02014b50, 0);
+    central.writeUInt16LE(0x0008, 8);
+    central.writeUInt16LE(method, 10);
+    central.writeUInt32LE(data.length, 20);
+    central.writeUInt32LE(raw.length, 24);
+    central.writeUInt16LE(nameBuffer.length, 28);
+    central.writeUInt32LE(offset, 42);
+    centrals.push(Buffer.concat([central, nameBuffer]));
+    locals.push(localRecord);
+    offset += localRecord.length;
+  }
+  const localBlob = Buffer.concat(locals);
+  const centralBlob = Buffer.concat(centrals);
+  const eocd = Buffer.alloc(22);
+  eocd.writeUInt32LE(0x06054b50, 0);
+  eocd.writeUInt16LE(entries.length, 8);
+  eocd.writeUInt16LE(entries.length, 10);
+  eocd.writeUInt32LE(centralBlob.length, 12);
+  eocd.writeUInt32LE(localBlob.length, 16);
+  return Buffer.concat([localBlob, centralBlob, eocd]);
 }
 
 describe('promotion source resolution', () => {
@@ -48,10 +78,11 @@ describe('promotion source resolution', () => {
       .toThrow('Unsupported promotion base');
   });
 
-  it('reads stored and deflated entries out of an artifact zip', () => {
-    const stored = zipEntry('development.json', JSON.stringify({ ok: 1 }));
-    const deflated = zipEntry('nested/staging.json', JSON.stringify({ ok: 2 }), { deflate: true });
-    const zip = Buffer.concat([stored, deflated]);
+  it('reads stored and deflated entries via the central directory', () => {
+    const zip = buildZip([
+      { name: 'development.json', content: JSON.stringify({ ok: 1 }) },
+      { name: 'nested/staging.json', content: JSON.stringify({ ok: 2 }), deflate: true },
+    ]);
     expect(extractJsonFromZip(zip, 'development.json')).toEqual({ ok: 1 });
     expect(extractJsonFromZip(zip, 'staging.json')).toEqual({ ok: 2 });
     expect(() => extractJsonFromZip(zip, 'missing.json')).toThrow('was not found');
