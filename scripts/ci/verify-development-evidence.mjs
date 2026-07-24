@@ -19,11 +19,17 @@ function value(args, flag, { required = true } = {}) {
 
 export function verifyDevelopmentEvidence(report, expected) {
   const issues = [];
-  if (report.schemaVersion !== 3) issues.push('unsupported-schema-version');
+  if (report.schemaVersion !== 4) issues.push('unsupported-schema-version');
   if (report.stage !== 'development') issues.push('wrong-stage');
   if (report.passed !== true) issues.push('development-validation-failed');
   for (const [name, expectedValue] of Object.entries(expected)) {
     if (report[name] !== expectedValue) issues.push(`mismatch:${name}`);
+  }
+  if (!/^[a-f0-9]{40}$/.test(report.sourceTreeSha ?? '')) {
+    issues.push('invalid-source-tree-sha');
+  }
+  if (!/^[a-f0-9]{64}$/.test(report.migrationDigest ?? '')) {
+    issues.push('invalid-migration-digest');
   }
   let flags = null;
   try {
@@ -70,6 +76,10 @@ async function main() {
     v13CommitSha: value(args, '--v13-sha'),
     projectRef: value(args, '--project-ref'),
   };
+  const expectedTreeSha = value(args, '--tree-sha', { required: false });
+  if (expectedTreeSha) expected.sourceTreeSha = expectedTreeSha;
+  const expectedMigrationDigest = value(args, '--migration-digest', { required: false });
+  if (expectedMigrationDigest) expected.migrationDigest = expectedMigrationDigest;
   const issues = verifyDevelopmentEvidence(report, expected);
   if (issues.length > 0) {
     for (const issue of issues) console.error(`[development-evidence] ${issue}`);

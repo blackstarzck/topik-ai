@@ -56,6 +56,8 @@ jobs:
             --commit-sha "$RELEASE_SHA" \
             --v13-sha "$V13_CONTRACT_SHA" \
             --project-ref "$DEVELOPMENT_PROJECT_REF" \
+            --tree-sha "$(git rev-parse "HEAD^{tree}")" \
+            --migration-digest "$(node scripts/ci/compute-migration-digest.mjs)" \
             --github-output "$GITHUB_OUTPUT"
 
   mirror:
@@ -159,7 +161,9 @@ jobs:
             --input development-evidence/development.json \
             --commit-sha "$RELEASE_SHA" \
             --v13-sha "$V13_CONTRACT_SHA" \
-            --project-ref "$DEVELOPMENT_PROJECT_REF"
+            --project-ref "$DEVELOPMENT_PROJECT_REF" \
+            --tree-sha "$(git rev-parse "HEAD^{tree}")" \
+            --migration-digest "$(node scripts/ci/compute-migration-digest.mjs)"
           mkdir -p release-evidence
           cp development-evidence/development.json release-evidence/development.json
           npm run db:contracts:verify -- --json-out release-evidence/migration-contracts.json
@@ -255,7 +259,9 @@ jobs:
             --input development-evidence/development.json \
             --commit-sha "$RELEASE_SHA" \
             --v13-sha "$V13_CONTRACT_SHA" \
-            --project-ref "$DEVELOPMENT_PROJECT_REF"
+            --project-ref "$DEVELOPMENT_PROJECT_REF" \
+            --tree-sha "$(git rev-parse "HEAD^{tree}")" \
+            --migration-digest "$(node scripts/ci/compute-migration-digest.mjs)"
           node -e "const report=require('./development-evidence/development.json'); if(report.releasePlan!==process.env.RELEASE_PLAN) process.exit(1)"
           mkdir -p release-evidence
           cp development-evidence/development.json release-evidence/development.json

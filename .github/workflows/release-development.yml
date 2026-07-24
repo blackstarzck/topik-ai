@@ -153,6 +153,8 @@ jobs:
           --validation-profile "${{ needs.classify.outputs.validation_profile }}"
           --classifier-version "${{ needs.classify.outputs.classifier_version }}"
           --changed-files-digest "${{ needs.classify.outputs.changed_files_digest }}"
+          --source-tree-sha "$(git rev-parse "$GITHUB_SHA^{tree}")"
+          --migration-digest "$(node scripts/ci/compute-migration-digest.mjs)"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -229,6 +231,8 @@ jobs:
           --validation-profile app
           --classifier-version "${{ needs.classify.outputs.classifier_version }}"
           --changed-files-digest "${{ needs.classify.outputs.changed_files_digest }}"
+          --source-tree-sha "$(git rev-parse "$GITHUB_SHA^{tree}")"
+          --migration-digest "$(node scripts/ci/compute-migration-digest.mjs)"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -332,6 +336,8 @@ jobs:
           --validation-profile full
           --classifier-version "${{ needs.classify.outputs.classifier_version }}"
           --changed-files-digest "${{ needs.classify.outputs.changed_files_digest }}"
+          --source-tree-sha "$(git rev-parse "$GITHUB_SHA^{tree}")"
+          --migration-digest "$(node scripts/ci/compute-migration-digest.mjs)"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

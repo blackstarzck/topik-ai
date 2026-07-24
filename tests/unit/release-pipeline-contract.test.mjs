@@ -213,6 +213,30 @@ describe('four-path release pipeline contract', () => {
   });
 });
 
+describe('evidence v4 source binding contract', () => {
+  it('captures the source tree and migration digest in every development evidence write', () => {
+    const treeCaptures = developmentWorkflow.match(
+      /--source-tree-sha "\$\(git rev-parse "\$GITHUB_SHA\^\{tree\}"\)"/g
+    ) ?? [];
+    expect(treeCaptures).toHaveLength(3);
+    const digestCaptures = developmentWorkflow.match(
+      /--migration-digest "\$\(node scripts\/ci\/compute-migration-digest\.mjs\)"/g
+    ) ?? [];
+    expect(digestCaptures).toHaveLength(3);
+  });
+
+  it('recomputes and compares the tree and migration digest in every production verify', () => {
+    const treeChecks = productionWorkflow.match(
+      /--tree-sha "\$\(git rev-parse "HEAD\^\{tree\}"\)"/g
+    ) ?? [];
+    expect(treeChecks).toHaveLength(3);
+    const digestChecks = productionWorkflow.match(
+      /--migration-digest "\$\(node scripts\/ci\/compute-migration-digest\.mjs\)"/g
+    ) ?? [];
+    expect(digestChecks).toHaveLength(3);
+  });
+});
+
 describe('repository execution guards', () => {
   const SOURCE_GUARD = "github.repository == 'blackstarzck/topik-ai'";
   const workflows = [

@@ -53,6 +53,8 @@ export function buildDevelopmentEvidence({
   validationProfile,
   classifierVersion,
   changedFilesDigest,
+  sourceTreeSha,
+  migrationDigest,
 }) {
   const numericClassifierVersion = Number(classifierVersion);
   if (!Number.isInteger(numericClassifierVersion) || numericClassifierVersion < 1) {
@@ -61,14 +63,21 @@ export function buildDevelopmentEvidence({
   if (!/^[a-f0-9]{64}$/.test(changedFilesDigest)) {
     throw new Error('changedFilesDigest must be a lowercase SHA-256 digest.');
   }
+  if (!/^[a-f0-9]{40}$/.test(sourceTreeSha ?? '')) {
+    throw new Error('sourceTreeSha must be a lowercase git tree SHA-1.');
+  }
+  if (!/^[a-f0-9]{64}$/.test(migrationDigest ?? '')) {
+    throw new Error('migrationDigest must be a lowercase SHA-256 digest.');
+  }
   const flags = releaseFlags(releasePlan);
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     validatedAt: new Date().toISOString(),
     stage: 'development',
     passed: true,
     baseSha,
     commitSha,
+    sourceTreeSha,
     v13CommitSha,
     projectRef,
     releasePlan,
@@ -76,6 +85,7 @@ export function buildDevelopmentEvidence({
     validationProfile,
     classifierVersion: numericClassifierVersion,
     changedFilesDigest,
+    migrationDigest,
     migrationOrder: ['topik_writing', 'admin'],
     checks: expectedDevelopmentChecks(releasePlan, validationProfile),
   };
@@ -93,6 +103,8 @@ async function main() {
     validationProfile: value(args, '--validation-profile'),
     classifierVersion: value(args, '--classifier-version'),
     changedFilesDigest: value(args, '--changed-files-digest'),
+    sourceTreeSha: value(args, '--source-tree-sha'),
+    migrationDigest: value(args, '--migration-digest'),
   });
   mkdirSync(dirname(jsonOut), { recursive: true });
   writeFileSync(jsonOut, `${JSON.stringify(report, null, 2)}\n`, 'utf8');

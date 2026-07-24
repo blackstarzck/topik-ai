@@ -11,6 +11,9 @@ const expected = {
   projectRef: 'fglggyfvzjdsbyckinqa',
 };
 
+const SOURCE_TREE_SHA = 'b'.repeat(40);
+const MIGRATION_DIGEST = 'c'.repeat(64);
+
 function evidence(releasePlan, validationProfile) {
   return buildDevelopmentEvidence({
     ...expected,
@@ -19,10 +22,12 @@ function evidence(releasePlan, validationProfile) {
     validationProfile,
     classifierVersion: 2,
     changedFilesDigest: 'a'.repeat(64),
+    sourceTreeSha: SOURCE_TREE_SHA,
+    migrationDigest: MIGRATION_DIGEST,
   });
 }
 
-describe('development evidence v3', () => {
+describe('development evidence v4', () => {
   it('records a light sync without claiming build or hosted checks', () => {
     const report = evidence('sync-only', 'light');
     expect(report.checks).toEqual(expectedDevelopmentChecks('sync-only', 'light'));
@@ -78,5 +83,46 @@ describe('development evidence v3', () => {
       'invalid-changed-files-digest',
       'invalid-migration-order',
     ]));
+  });
+
+  it('binds evidence to the recomputed source tree and migration digest', () => {
+    const report = evidence('db-only', 'full');
+    expect(report.sourceTreeSha).toBe(SOURCE_TREE_SHA);
+    expect(report.migrationDigest).toBe(MIGRATION_DIGEST);
+    expect(verifyDevelopmentEvidence(report, {
+      ...expected,
+      sourceTreeSha: SOURCE_TREE_SHA,
+      migrationDigest: MIGRATION_DIGEST,
+    })).toEqual([]);
+
+    expect(verifyDevelopmentEvidence(report, {
+      ...expected,
+      sourceTreeSha: 'd'.repeat(40),
+      migrationDigest: 'e'.repeat(64),
+    })).toEqual(expect.arrayContaining([
+      'mismatch:sourceTreeSha',
+      'mismatch:migrationDigest',
+    ]));
+  });
+
+  it('rejects malformed tree and migration digests even without expected values', () => {
+    const report = evidence('sync-only', 'light');
+    report.sourceTreeSha = 'not-a-tree';
+    report.migrationDigest = 'not-a-digest';
+    expect(verifyDevelopmentEvidence(report, expected)).toEqual(expect.arrayContaining([
+      'invalid-source-tree-sha',
+      'invalid-migration-digest',
+    ]));
+  });
+
+  it('refuses to build evidence without the v4 binding fields', () => {
+    expect(() => buildDevelopmentEvidence({
+      ...expected,
+      baseSha: 'base123',
+      releasePlan: 'sync-only',
+      validationProfile: 'light',
+      classifierVersion: 2,
+      changedFilesDigest: 'a'.repeat(64),
+    })).toThrow('sourceTreeSha');
   });
 });
