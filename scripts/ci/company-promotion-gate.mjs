@@ -76,24 +76,37 @@ export async function fetchDevelopmentEvidence({ sourceSha, token, repository = 
 // Minimal STORED-entry zip reader — GitHub artifact zips store small JSON files
 // uncompressed; fall back to inflateRawSync for DEFLATE entries.
 export function extractJsonFromZip(zipBuffer, fileName) {
-  const signature = Buffer.from('PK');
-  let offset = 0;
-  while ((offset = zipBuffer.indexOf(signature, offset)) !== -1) {
-    const compressionMethod = zipBuffer.readUInt16LE(offset + 8);
-    const compressedSize = zipBuffer.readUInt32LE(offset + 18);
-    const nameLength = zipBuffer.readUInt16LE(offset + 26);
-    const extraLength = zipBuffer.readUInt16LE(offset + 28);
-    const name = zipBuffer.slice(offset + 30, offset + 30 + nameLength).toString('utf8');
-    const dataStart = offset + 30 + nameLength + extraLength;
+  // GitHub artifact zips are stream-written with data descriptors, so a local
+  // file header's compressed size is unreliable (often 0). The central directory
+  // holds the authoritative sizes and offsets, so entries are located through it.
+  const EOCD_SIGNATURE = 0x06054b50;
+  const CENTRAL_SIGNATURE = 0x02014b50;
+  let eocd = -1;
+  for (let i = zipBuffer.length - 22; i >= 0; i -= 1) {
+    if (zipBuffer.readUInt32LE(i) === EOCD_SIGNATURE) { eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error('ZIP end-of-central-directory record not found.');
+  const entryCount = zipBuffer.readUInt16LE(eocd + 10);
+  let pointer = zipBuffer.readUInt32LE(eocd + 16);
+  for (let index = 0; index < entryCount; index += 1) {
+    if (zipBuffer.readUInt32LE(pointer) !== CENTRAL_SIGNATURE) break;
+    const method = zipBuffer.readUInt16LE(pointer + 10);
+    const compressedSize = zipBuffer.readUInt32LE(pointer + 20);
+    const nameLength = zipBuffer.readUInt16LE(pointer + 28);
+    const extraLength = zipBuffer.readUInt16LE(pointer + 30);
+    const commentLength = zipBuffer.readUInt16LE(pointer + 32);
+    const localOffset = zipBuffer.readUInt32LE(pointer + 42);
+    const name = zipBuffer.slice(pointer + 46, pointer + 46 + nameLength).toString('utf8');
     if (name === fileName || name.endsWith(`/${fileName}`)) {
+      const localNameLength = zipBuffer.readUInt16LE(localOffset + 26);
+      const localExtraLength = zipBuffer.readUInt16LE(localOffset + 28);
+      const dataStart = localOffset + 30 + localNameLength + localExtraLength;
       const data = zipBuffer.slice(dataStart, dataStart + compressedSize);
-      if (compressionMethod === 0) return JSON.parse(data.toString('utf8'));
-      if (compressionMethod === 8) {
-        return JSON.parse(inflateRawSync(data).toString('utf8'));
-      }
-      throw new Error(`Unsupported zip compression method ${compressionMethod} for ${name}.`);
+      if (method === 0) return JSON.parse(data.toString('utf8'));
+      if (method === 8) return JSON.parse(inflateRawSync(data).toString('utf8'));
+      throw new Error(`Unsupported zip compression method ${method} for ${name}.`);
     }
-    offset = dataStart + compressedSize;
+    pointer += 46 + nameLength + extraLength + commentLength;
   }
   throw new Error(`${fileName} was not found in the artifact zip.`);
 }
