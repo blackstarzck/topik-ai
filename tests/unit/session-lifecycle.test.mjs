@@ -12,16 +12,21 @@ import { spawnSync } from 'node:child_process';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
+  MANIFEST_SCHEMA_VERSION,
   archiveBranch,
   classifyPhysicalCandidate,
   classifySession,
   collectAudit,
   cleanupSessions,
   evaluateMainHistory,
+  formatStatus,
   parseWorktreePorcelain,
   readManifests,
   registerBranchSession,
-  startSession
+  startSession,
+  statusSessions,
+  syncSession,
+  upgradeManifest
 } from '../../scripts/git/session-lifecycle.mjs';
 
 const tempRoots = [];
@@ -348,5 +353,174 @@ describe('session lifecycle mutations', () => {
     expect(applied.quarantined).toHaveLength(1);
     expect(existsSync(applied.quarantined[0])).toBe(true);
     expect(readdirSync(join(stateRoot, 'quarantine'))).toHaveLength(1);
+  });
+});
+
+describe('manifest v2, repository lock, and status', () => {
+  it('writes schema v2 manifests atomically without temp residue', () => {
+    const { repository } = createRepository();
+    const stateRoot = tempRoot();
+    const result = startSession({
+      agent: 'claude',
+      taskSummary: 'v2 fields probe',
+      rootDir: repository,
+      stateRoot,
+      codexWorktreeRoot: tempRoot(),
+      clock: () => new Date('2026-07-24T00:00:00Z')
+    });
+
+    expect(result.manifest.schemaVersion).toBe(MANIFEST_SCHEMA_VERSION);
+    expect(result.manifest.lifecyclePhase).toBe('ACTIVE');
+    expect(result.manifest.cleanupStep).toBe('NONE');
+    expect(result.manifest.pinned).toBe(false);
+    expect(result.manifest.expectedActor).toBeNull();
+    expect(result.manifest.branchExpiresAt).toBeNull();
+    expect(readdirSync(stateRoot).some((name) => name.includes('.tmp-'))).toBe(false);
+    expect(readdirSync(join(stateRoot, 'locks'))).toEqual([]);
+  });
+
+  it('upgrades schema v1 manifests in memory and persists v2 on the next write', () => {
+    const { repository } = createRepository();
+    const stateRoot = tempRoot();
+    write(join(stateRoot, 'legacy-1.json'), `${JSON.stringify({
+      schemaVersion: 1,
+      repository: 'repository',
+      repositoryRoot: repository,
+      worktreeId: 'legacy-1',
+      worktreePath: repository,
+      agent: 'codex',
+      taskSummary: 'legacy session',
+      branch: 'main',
+      pullRequestNumber: null,
+      pullRequestUrl: null,
+      status: 'ACTIVE',
+      dirty: false,
+      createdAt: '2026-07-01T00:00:00.000Z',
+      updatedAt: '2026-07-01T00:00:00.000Z'
+    }, null, 2)}\n`);
+
+    const upgraded = readManifests(stateRoot)[0];
+    expect(upgraded.schemaVersion).toBe(MANIFEST_SCHEMA_VERSION);
+    expect(upgraded.pinned).toBe(false);
+    expect(upgraded.lifecyclePhase).toBe('ACTIVE');
+    expect(upgraded.remoteDeletedByGitHub).toBe(false);
+    expect(upgradeManifest({ schemaVersion: 2, pinned: true }).pinned).toBe(true);
+
+    const persisted = syncSession({ worktreeDir: repository, stateRoot, codexWorktreeRoot: tempRoot() });
+    expect(persisted.schemaVersion).toBe(MANIFEST_SCHEMA_VERSION);
+    expect(persisted.createdAt).toBe('2026-07-01T00:00:00.000Z');
+  });
+
+  it('refuses mutating cleanup while a live owner holds the repository lock', () => {
+    const { repository } = createRepository();
+    const stateRoot = tempRoot();
+    const lockDir = join(stateRoot, 'locks', 'repository.lock');
+    write(join(lockDir, 'owner.json'), `${JSON.stringify({
+      pid: process.pid,
+      command: 'cleanup',
+      acquiredAt: new Date().toISOString()
+    })}\n`);
+
+    expect(() => cleanupSessions({
+      apply: true,
+      rootDir: repository,
+      stateRoot,
+      codexWorktreeRoot: tempRoot(),
+      includePullRequests: false,
+      verifyRemoteAccount: () => {}
+    })).toThrow('repository lock held by pid');
+  });
+
+  it('evicts a dead lock owner atomically and proceeds', () => {
+    const { repository } = createRepository();
+    const stateRoot = tempRoot();
+    const lockDir = join(stateRoot, 'locks', 'repository.lock');
+    write(join(lockDir, 'owner.json'), `${JSON.stringify({
+      pid: 999999,
+      command: 'cleanup',
+      acquiredAt: '2026-07-01T00:00:00.000Z'
+    })}\n`);
+
+    const result = cleanupSessions({
+      apply: true,
+      rootDir: repository,
+      stateRoot,
+      codexWorktreeRoot: tempRoot(),
+      includePullRequests: false,
+      verifyRemoteAccount: () => {}
+    });
+    expect(result.applied).toBe(true);
+    const lockEntries = readdirSync(join(stateRoot, 'locks'));
+    expect(lockEntries.some((name) => name.startsWith('stale-'))).toBe(true);
+    expect(lockEntries).not.toContain('repository.lock');
+  });
+
+  it('scopes cleanup planning to a single session id', () => {
+    const { repository } = createRepository();
+    const stateRoot = tempRoot();
+    for (const branch of ['b1', 'b2']) {
+      git(repository, 'switch', '-c', branch);
+      write(join(repository, `${branch}.txt`));
+      git(repository, 'add', `${branch}.txt`);
+      git(repository, 'commit', '-m', `work on ${branch}`);
+      git(repository, 'switch', 'main');
+      git(repository, 'merge', '--no-ff', branch, '-m', `merge ${branch}`);
+      registerBranchSession({
+        branch,
+        agent: 'claude',
+        taskSummary: `session for ${branch}`,
+        rootDir: repository,
+        stateRoot
+      });
+    }
+    git(repository, 'push', 'origin', 'main');
+
+    const scoped = cleanupSessions({
+      sessionId: 'branch-b1',
+      rootDir: repository,
+      stateRoot,
+      codexWorktreeRoot: tempRoot(),
+      includePullRequests: false
+    });
+    const targets = scoped.plannedActions.map((action) => action.target);
+    expect(targets).toContain('b1');
+    expect(targets).not.toContain('b2');
+
+    expect(() => cleanupSessions({
+      sessionId: 'no-such-session',
+      rootDir: repository,
+      stateRoot,
+      codexWorktreeRoot: tempRoot(),
+      includePullRequests: false
+    })).toThrow('unknown session id');
+  });
+
+  it('reports sessions, lock state, and recovery residues in status', () => {
+    const { repository } = createRepository();
+    const stateRoot = tempRoot();
+    startSession({
+      agent: 'claude',
+      taskSummary: 'status probe',
+      rootDir: repository,
+      stateRoot,
+      codexWorktreeRoot: tempRoot()
+    });
+    write(join(stateRoot, 'recovery', 'worktree-residue-legacy', 'note.txt'));
+
+    const status = statusSessions({
+      rootDir: repository,
+      stateRoot,
+      codexWorktreeRoot: tempRoot(),
+      includePullRequests: false
+    });
+    expect(status.repository).toBe('repository');
+    expect(status.sessions.length).toBeGreaterThan(0);
+    expect(status.sessions[0]).toHaveProperty('lifecyclePhase');
+    expect(status.lock.held).toBe(false);
+    expect(status.residues).toContain('worktree-residue-legacy');
+
+    const rendered = formatStatus(status);
+    expect(rendered).toContain('PHASE');
+    expect(rendered).toContain('worktree-residue-legacy');
   });
 });
