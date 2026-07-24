@@ -21,7 +21,9 @@ import {
   evaluateMainHistory,
   formatStatus,
   parseWorktreePorcelain,
+  pinBranch,
   readManifests,
+  reconcileSessions,
   registerBranchSession,
   startSession,
   statusSessions,
@@ -309,19 +311,54 @@ describe('session lifecycle mutations', () => {
       prNumber: null
     }));
 
-    const cleaned = cleanupSessions({
+    const started = cleanupSessions({
       apply: true,
       rootDir: fixture.repository,
       stateRoot,
       codexWorktreeRoot,
       pullRequestProvider,
-      verifyRemoteAccount: () => {}
+      verifyRemoteAccount: () => {},
+      clock: () => new Date('2026-07-24T00:00:00Z')
     });
-    expect(cleaned.bundles).toHaveLength(1);
-    expect(existsSync(cleaned.bundles[0])).toBe(true);
-    expect(() => git(fixture.repository, 'bundle', 'verify', cleaned.bundles[0])).not.toThrow();
+    // Merged heads enter the 7-day read-only retention window instead of being
+    // deleted immediately.
+    expect(started.lifecycleActions.map((action) => action.outcome))
+      .toEqual(expect.arrayContaining(['RETENTION_STARTED']));
+    expect(started.bundles).toHaveLength(0);
+    expect(git(fixture.repository, 'ls-remote', '--heads', 'origin', `refs/heads/${branch}`)).not.toBe('');
+    const held = readManifests(stateRoot).find((manifest) => manifest.branch === branch);
+    expect(held.lifecyclePhase).toBe('RETENTION');
+    expect(held.branchExpiresAt).toBe('2026-07-31T00:00:00.000Z');
+
+    const heldAudit = collectAudit({
+      rootDir: fixture.repository,
+      stateRoot,
+      codexWorktreeRoot,
+      pullRequestProvider,
+      clock: () => new Date('2026-07-26T00:00:00Z')
+    });
+    expect(heldAudit.items).toContainEqual(expect.objectContaining({
+      classification: 'RETENTION_HOLD',
+      kind: 'remote-branch',
+      branch
+    }));
+
+    const expired = cleanupSessions({
+      apply: true,
+      rootDir: fixture.repository,
+      stateRoot,
+      codexWorktreeRoot,
+      pullRequestProvider,
+      verifyRemoteAccount: () => {},
+      clock: () => new Date('2026-08-01T00:00:00Z')
+    });
+    expect(expired.bundles).toHaveLength(1);
+    expect(existsSync(expired.bundles[0])).toBe(true);
+    expect(() => git(fixture.repository, 'bundle', 'verify', expired.bundles[0])).not.toThrow();
     expect(git(fixture.repository, 'ls-remote', '--heads', 'origin', `refs/heads/${branch}`)).toBe('');
     expect(git(fixture.repository, 'ls-remote', '--heads', 'origin', `refs/heads/${ancestorBranch}`)).toBe('');
+    expect(readdirSync(join(stateRoot, 'receipts')).length).toBeGreaterThanOrEqual(2);
+    expect(readManifests(stateRoot).find((manifest) => manifest.branch === branch)).toBeUndefined();
   });
 
   it('does not move generated worktrees in dry-run and quarantines them only with apply', () => {
@@ -522,5 +559,147 @@ describe('manifest v2, repository lock, and status', () => {
     const rendered = formatStatus(status);
     expect(rendered).toContain('PHASE');
     expect(rendered).toContain('worktree-residue-legacy');
+  });
+});
+
+describe('7-day branch retention lifecycle', () => {
+  const DAY0 = () => new Date('2026-07-24T00:00:00Z');
+  const DAY8 = () => new Date('2026-08-01T00:00:00Z');
+
+  function mergeLocalBranch(fixture, branch) {
+    git(fixture.repository, 'switch', '-c', branch);
+    write(join(fixture.repository, `${branch.replace(/\W+/g, '-')}.txt`));
+    git(fixture.repository, 'add', '.');
+    git(fixture.repository, 'commit', '-m', `work on ${branch}`);
+    git(fixture.repository, 'switch', 'main');
+    git(fixture.repository, 'merge', '--no-ff', branch, '-m', `merge ${branch}`);
+    git(fixture.repository, 'push', 'origin', 'main');
+  }
+
+  function cleanup(fixture, stateRoot, codexWorktreeRoot, clock) {
+    return cleanupSessions({
+      apply: true,
+      rootDir: fixture.repository,
+      stateRoot,
+      codexWorktreeRoot,
+      includePullRequests: false,
+      verifyRemoteAccount: () => {},
+      clock
+    });
+  }
+
+  it('removes the worktree at merge, retains branches, and deletes only after expiry', () => {
+    const fixture = createRepository();
+    const stateRoot = join(fixture.root, 'state');
+    const codexWorktreeRoot = join(fixture.root, 'worktrees');
+    const branch = 'feat/retained';
+    const worktreePath = join(codexWorktreeRoot, 'wt1', 'repository');
+    mkdirSync(dirname(worktreePath), { recursive: true });
+    git(fixture.repository, 'worktree', 'add', '-b', branch, worktreePath, 'main');
+    write(join(worktreePath, 'change.txt'));
+    git(worktreePath, 'add', 'change.txt');
+    git(worktreePath, 'commit', '-m', 'retained work');
+    git(fixture.repository, 'push', 'origin', `refs/heads/${branch}:refs/heads/${branch}`);
+    git(fixture.repository, 'merge', '--no-ff', branch, '-m', `merge ${branch}`);
+    git(fixture.repository, 'push', 'origin', 'main');
+
+    const started = cleanup(fixture, stateRoot, codexWorktreeRoot, DAY0);
+    expect(started.lifecycleActions.map((action) => action.outcome)).toContain('RETENTION_STARTED');
+    expect(existsSync(worktreePath)).toBe(false);
+    expect(git(fixture.repository, 'branch', '--list', branch)).not.toBe('');
+    expect(git(fixture.repository, 'ls-remote', '--heads', 'origin', `refs/heads/${branch}`)).not.toBe('');
+    const manifest = readManifests(stateRoot).find((entry) => entry.branch === branch);
+    expect(manifest.lifecyclePhase).toBe('RETENTION');
+    expect(manifest.worktreeRemovedAt).toBeTruthy();
+    expect(manifest.branchExpiresAt).toBe('2026-07-31T00:00:00.000Z');
+
+    const expired = cleanup(fixture, stateRoot, codexWorktreeRoot, DAY8);
+    expect(expired.lifecycleActions.map((action) => action.outcome)).toContain('CLOSED');
+    expect(git(fixture.repository, 'branch', '--list', branch)).toBe('');
+    expect(git(fixture.repository, 'ls-remote', '--heads', 'origin', `refs/heads/${branch}`)).toBe('');
+    expect(readdirSync(join(stateRoot, 'receipts')).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('suspends expiry for pinned branches until unpinned', () => {
+    const fixture = createRepository();
+    const stateRoot = join(fixture.root, 'state');
+    const codexWorktreeRoot = join(fixture.root, 'worktrees');
+    const branch = 'feat/pinned';
+    mergeLocalBranch(fixture, branch);
+
+    cleanup(fixture, stateRoot, codexWorktreeRoot, DAY0);
+    pinBranch({ branch, rootDir: fixture.repository, stateRoot, clock: DAY0 });
+
+    cleanup(fixture, stateRoot, codexWorktreeRoot, DAY8);
+    expect(git(fixture.repository, 'branch', '--list', branch)).not.toBe('');
+    const heldAudit = collectAudit({
+      rootDir: fixture.repository,
+      stateRoot,
+      codexWorktreeRoot,
+      includePullRequests: false,
+      clock: DAY8
+    });
+    expect(heldAudit.items).toContainEqual(expect.objectContaining({
+      classification: 'RETENTION_HOLD',
+      branch,
+      detail: expect.stringContaining('pinned')
+    }));
+
+    pinBranch({ branch, unpin: true, rootDir: fixture.repository, stateRoot, clock: DAY8 });
+    cleanup(fixture, stateRoot, codexWorktreeRoot, DAY8);
+    expect(git(fixture.repository, 'branch', '--list', branch)).toBe('');
+  });
+
+  it('turns retained-branch drift into RECOVERY_REQUIRED and never deletes it', () => {
+    const fixture = createRepository();
+    const stateRoot = join(fixture.root, 'state');
+    const codexWorktreeRoot = join(fixture.root, 'worktrees');
+    const branch = 'feat/drifted';
+    mergeLocalBranch(fixture, branch);
+
+    cleanup(fixture, stateRoot, codexWorktreeRoot, DAY0);
+    const mainSha = git(fixture.repository, 'rev-parse', 'main');
+    git(fixture.repository, 'update-ref', `refs/heads/${branch}`, mainSha);
+
+    const expired = cleanup(fixture, stateRoot, codexWorktreeRoot, DAY8);
+    expect(git(fixture.repository, 'branch', '--list', branch)).not.toBe('');
+    const manifest = readManifests(stateRoot).find((entry) => entry.branch === branch);
+    expect(manifest.lifecyclePhase).toBe('RECOVERY');
+    const audit = collectAudit({
+      rootDir: fixture.repository,
+      stateRoot,
+      codexWorktreeRoot,
+      includePullRequests: false,
+      clock: DAY8
+    });
+    expect(audit.items).toContainEqual(expect.objectContaining({
+      classification: 'RECOVERY_REQUIRED',
+      branch
+    }));
+    expect(expired.lifecycleActions).toContainEqual(expect.objectContaining({
+      outcome: 'RECOVERY',
+      branch
+    }));
+  });
+
+  it('reconciles externally merged branches into retention without deleting anything', () => {
+    const fixture = createRepository();
+    const stateRoot = join(fixture.root, 'state');
+    const codexWorktreeRoot = join(fixture.root, 'worktrees');
+    const branch = 'feat/external-merge';
+    mergeLocalBranch(fixture, branch);
+
+    const result = reconcileSessions({
+      rootDir: fixture.repository,
+      stateRoot,
+      codexWorktreeRoot,
+      includePullRequests: false,
+      clock: DAY0
+    });
+    expect(result.retentionStarted).toContain(branch);
+    expect(git(fixture.repository, 'branch', '--list', branch)).not.toBe('');
+    const manifest = readManifests(stateRoot).find((entry) => entry.branch === branch);
+    expect(manifest.lifecyclePhase).toBe('RETENTION');
+    expect(manifest.remoteDeletedByGitHub).toBe(true);
   });
 });

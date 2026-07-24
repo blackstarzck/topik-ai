@@ -28,6 +28,8 @@ export const CLASSIFICATIONS = Object.freeze([
   'DETACHED_PROBE',
   'ACTIVE',
   'MERGED_CLEANUP',
+  'RETENTION_HOLD',
+  'RETRY_PENDING',
   'ORPHAN_REVIEW',
   'DIRTY_BLOCKED',
   'SAFE_QUARANTINE',
@@ -40,6 +42,7 @@ export const RETENTION_DAYS = 7;
 
 const STRICT_CLASSIFICATIONS = new Set([
   'MERGED_CLEANUP',
+  'RETRY_PENDING',
   'ORPHAN_REVIEW',
   'DIRTY_BLOCKED',
   'SAFE_QUARANTINE',
@@ -525,13 +528,40 @@ function staleOriginRefs(run, root) {
     .filter(Boolean);
 }
 
+// A merged branch inside its 7-day retention window stays visible but must not be
+// deleted: pinned or unexpired holds read as RETENTION_HOLD, a head that drifted
+// from the recorded PR head becomes RECOVERY_REQUIRED, and only an expired,
+// unpinned hold falls back to MERGED_CLEANUP for the finalize pass.
+export function applyRetentionOverlay({ classification, manifest, currentSha = null, clock = () => new Date() }) {
+  if (!manifest) return { classification, detail: null };
+  if (manifest.lifecyclePhase === 'RECOVERY') {
+    return { classification: 'RECOVERY_REQUIRED', detail: 'retention recovery review required' };
+  }
+  if (manifest.lifecyclePhase !== 'RETENTION') return { classification, detail: null };
+  if (manifest.pinned) {
+    return { classification: 'RETENTION_HOLD', detail: 'pinned retained branch (expiry suspended)' };
+  }
+  if (currentSha && manifest.prHeadSha && currentSha !== manifest.prHeadSha) {
+    return {
+      classification: 'RECOVERY_REQUIRED',
+      detail: `retained branch drifted from recorded head ${manifest.prHeadSha.slice(0, 7)}`
+    };
+  }
+  const expiresMs = manifest.branchExpiresAt ? Date.parse(manifest.branchExpiresAt) : NaN;
+  if (Number.isFinite(expiresMs) && clock().getTime() >= expiresMs) {
+    return { classification: 'MERGED_CLEANUP', detail: 'retention window expired' };
+  }
+  return { classification: 'RETENTION_HOLD', detail: `retained until ${manifest.branchExpiresAt ?? 'unknown'}` };
+}
+
 export function collectAudit({
   run = defaultRun,
   rootDir = process.cwd(),
   stateRoot = defaultStateRoot(),
   codexWorktreeRoot = defaultCodexWorktreeRoot(),
   includePullRequests = true,
-  pullRequestProvider = null
+  pullRequestProvider = null,
+  clock = () => new Date()
 } = {}) {
   const root = repositoryRoot(run, rootDir);
   const repository = repositoryIdentity(run, root);
@@ -583,14 +613,22 @@ export function collectAudit({
     const manifest = findManifestForBranch(manifests, branch.branch);
     const pr = pullRequest(branch.branch);
     const mergedIntoMain = branchMergedIntoMain(run, root, branch.branch);
+    let classification = classifySession({ branch: branch.branch, dirty: false, detached: false, pr, mergedIntoMain, manifest });
+    let detail = pr ? `PR #${pr.number} ${pr.state.toLowerCase()}` : 'local branch without a worktree';
+    if (classification === 'MERGED_CLEANUP' && manifest) {
+      const currentSha = git(run, root, ['rev-parse', `refs/heads/${branch.branch}`], { allowFailure: true }).stdout.trim() || null;
+      const overlay = applyRetentionOverlay({ classification, manifest, currentSha, clock });
+      classification = overlay.classification;
+      if (overlay.detail) detail = overlay.detail;
+    }
     items.push({
-      classification: classifySession({ branch: branch.branch, dirty: false, detached: false, pr, mergedIntoMain, manifest }),
+      classification,
       kind: 'branch',
       id: branch.branch,
       path: null,
       branch: branch.branch,
       prNumber: pr?.number || null,
-      detail: pr ? `PR #${pr.number} ${pr.state.toLowerCase()}` : 'local branch without a worktree'
+      detail
     });
   }
 
@@ -599,11 +637,23 @@ export function collectAudit({
     if (remoteBranch.branch === 'main' || localBranchNames.has(remoteBranch.branch)) continue;
     const pr = pullRequest(remoteBranch.branch);
     const mergedIntoMain = branchMergedIntoMain(run, root, `origin/${remoteBranch.branch}`);
-    const classification = pr?.state === 'MERGED' || (!pr && mergedIntoMain)
+    let classification = pr?.state === 'MERGED' || (!pr && mergedIntoMain)
       ? 'MERGED_CLEANUP'
       : pr?.state === 'OPEN'
         ? 'ACTIVE'
         : 'ORPHAN_REVIEW';
+    let detail = pr
+      ? `remote head for PR #${pr.number} ${pr.state.toLowerCase()}`
+      : mergedIntoMain
+        ? 'remote head is already an ancestor of origin/main'
+        : 'remote head without a matching PR';
+    const manifest = findManifestForBranch(manifests, remoteBranch.branch);
+    if (classification === 'MERGED_CLEANUP' && manifest) {
+      const currentSha = git(run, root, ['rev-parse', `refs/remotes/origin/${remoteBranch.branch}`], { allowFailure: true }).stdout.trim() || null;
+      const overlay = applyRetentionOverlay({ classification, manifest, currentSha, clock });
+      classification = overlay.classification;
+      if (overlay.detail) detail = overlay.detail;
+    }
     items.push({
       classification,
       kind: 'remote-branch',
@@ -611,11 +661,7 @@ export function collectAudit({
       path: null,
       branch: remoteBranch.branch,
       prNumber: pr?.number || null,
-      detail: pr
-        ? `remote head for PR #${pr.number} ${pr.state.toLowerCase()}`
-        : mergedIntoMain
-          ? 'remote head is already an ancestor of origin/main'
-          : 'remote head without a matching PR'
+      detail
     });
   }
 
@@ -855,6 +901,23 @@ export function startSession({
   const lock = acquireRepoLock({ stateRoot, repository, command: 'start', clock });
   try {
   git(run, root, ['fetch', 'origin', '--prune']);
+  try {
+    // Best-effort reconciliation of PRs merged on the web or another machine —
+    // never blocks session start.
+    reconcileCore({
+      run,
+      root,
+      repository,
+      stateRoot,
+      codexWorktreeRoot,
+      includePullRequests: true,
+      pullRequestProvider: null,
+      clock,
+      executionRoot: root
+    });
+  } catch {
+    // fall through to a normal session start
+  }
   const branches = branchRecords(run, root).filter((record) => record.branch !== 'main');
   let continuation = existing?.branch
     ? branches.find((record) => record.branch === existing.branch)
@@ -1099,11 +1162,6 @@ function ensureExpectedRemoteActor(run, repository) {
   }
 }
 
-function remoteBranchExists(run, root, branch) {
-  const result = git(run, root, ['ls-remote', '--heads', 'origin', `refs/heads/${branch}`], { allowFailure: true });
-  return result.status === 0 && result.stdout.trim().length > 0;
-}
-
 function alignMainHistory({ run, root, stateRoot, mainHistory, clock }) {
   if (!mainHistory.alignable) throw new Error('main history does not satisfy guarded alignment conditions');
   const bundlePath = createVerifiedBundle({ run, root, branch: 'main', recoveryRoot: join(stateRoot, 'recovery'), clock });
@@ -1220,6 +1278,205 @@ function buildSessionScope(manifests, sessionId) {
   };
 }
 
+function remoteHeadShaOf(run, root, branch) {
+  const result = git(run, root, ['ls-remote', '--heads', 'origin', `refs/heads/${branch}`], { allowFailure: true });
+  if (result.status !== 0) return null;
+  return result.stdout.trim().split(/\s+/)[0] || null;
+}
+
+function localHeadShaOf(run, root, branch) {
+  const result = git(run, root, ['rev-parse', `refs/heads/${branch}`], { allowFailure: true });
+  return result.status === 0 ? (result.stdout.trim() || null) : null;
+}
+
+function writeManifestFields(manifest, fields, clock) {
+  const file = manifest.manifestFile;
+  const next = { ...manifest, ...fields, updatedAt: nowIso(clock) };
+  delete next.manifestFile;
+  writeJson(file, next);
+  return { ...next, manifestFile: file };
+}
+
+function writeReceipt(stateRoot, receipt, clock) {
+  const receiptsRoot = join(stateRoot, 'receipts');
+  const file = join(receiptsRoot, `${sanitizeName(receipt.branch)}-${timestampForFile(clock)}.json`);
+  writeJson(file, receipt);
+  return file;
+}
+
+function removeExpiredReceipts(receiptsRoot, cutoffMs) {
+  const removed = [];
+  if (!existsSync(receiptsRoot)) return removed;
+  for (const entry of readdirSync(receiptsRoot, { withFileTypes: true })) {
+    if (!entry.isFile() || !entry.name.endsWith('.json')) continue;
+    const path = join(receiptsRoot, entry.name);
+    let deletedAtMs = NaN;
+    try {
+      deletedAtMs = Date.parse(readJson(path).deletedAt);
+    } catch {
+      deletedAtMs = NaN;
+    }
+    if (!Number.isFinite(deletedAtMs)) deletedAtMs = statSync(path).mtimeMs;
+    if (deletedAtMs >= cutoffMs) continue;
+    assertDirectChild(receiptsRoot, path);
+    rmSync(path, { force: true });
+    removed.push(path);
+  }
+  return removed;
+}
+
+// Merge observed: remove the worktree immediately, keep the local and remote
+// branches read-only for RETENTION_DAYS, and record every fact the expiry pass
+// needs. Deleting nothing here is the §4 contract — deletions happen only in
+// finalizeRetainedBranch after the window closes.
+function beginRetention({ run, root, repository, stateRoot, branch, pr, clock, executionRoot }) {
+  const manifests = readManifests(stateRoot);
+  const existing = findManifestForBranch(manifests, branch);
+  const record = branchRecords(run, root).find((item) => item.branch === branch) ?? null;
+  const localHeadSha = record ? localHeadShaOf(run, root, branch) : null;
+  const remoteHeadSha = remoteHeadShaOf(run, root, branch);
+  const prHeadSha = pr?.headRefOid ?? existing?.prHeadSha ?? localHeadSha ?? remoteHeadSha;
+  let worktreeRemoved = false;
+  if (record?.worktreePath) {
+    if (pathsEqual(record.worktreePath, executionRoot)) {
+      return { outcome: 'RETRY_PENDING', branch, detail: 'run cleanup from a control workspace outside this worktree' };
+    }
+    const status = git(run, record.worktreePath, ['status', '--porcelain'], { allowFailure: true });
+    if (status.status !== 0 || status.stdout.trim()) {
+      return { outcome: 'DIRTY_BLOCKED', branch };
+    }
+    if (prHeadSha && localHeadSha && localHeadSha !== prHeadSha) {
+      if (existing) {
+        writeManifestFields(existing, { lifecyclePhase: 'RECOVERY', status: 'RECOVERY_REQUIRED' }, clock);
+      }
+      return { outcome: 'RECOVERY', branch, detail: 'worktree tip differs from the merged PR head' };
+    }
+    git(run, root, ['worktree', 'remove', record.worktreePath]);
+    worktreeRemoved = true;
+  }
+  if (!localHeadSha && !remoteHeadSha) {
+    removeManifestsForBranchOrWorktree(stateRoot, branch, existing?.worktreePath ?? null);
+    return { outcome: 'CLOSED', branch, detail: 'no local or remote ref left to retain' };
+  }
+  const startedAt = clock();
+  const base = existing
+    ? { ...upgradeManifest(existing) }
+    : makeManifest({
+      repository,
+      repositoryRoot: root,
+      worktreeId: `branch-${sanitizeName(branch)}`,
+      worktreePath: null,
+      agent: existing?.agent ?? 'codex',
+      taskSummary: `retention for ${branch}`,
+      branch,
+      pr,
+      status: 'RETENTION_HOLD',
+      dirty: false,
+      clock
+    });
+  const manifestFile = existing?.manifestFile ?? manifestPathForId(stateRoot, base.worktreeId);
+  const next = {
+    ...base,
+    schemaVersion: MANIFEST_SCHEMA_VERSION,
+    branch,
+    worktreePath: null,
+    worktreeRemovedAt: worktreeRemoved ? nowIso(clock) : base.worktreeRemovedAt ?? null,
+    status: 'RETENTION_HOLD',
+    lifecyclePhase: 'RETENTION',
+    cleanupStep: 'RETENTION_RECORDED',
+    pullRequestNumber: pr?.number ?? base.pullRequestNumber ?? null,
+    pullRequestUrl: pr?.url ?? base.pullRequestUrl ?? null,
+    prHeadSha: prHeadSha ?? null,
+    prBaseRef: pr?.baseRefName ?? base.prBaseRef ?? null,
+    mergedAt: pr?.mergedAt ?? base.mergedAt ?? null,
+    retentionStartedAt: nowIso(clock),
+    branchExpiresAt: new Date(startedAt.getTime() + RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString(),
+    localHeadSha,
+    remoteHeadSha,
+    remoteDeletedByGitHub: !remoteHeadSha,
+    updatedAt: nowIso(clock)
+  };
+  delete next.manifestFile;
+  writeJson(manifestFile, next);
+  return { outcome: 'RETENTION_STARTED', branch, worktreeRemoved, manifest: { ...next, manifestFile } };
+}
+
+// Expired, unpinned hold: re-verify the §4 contract, bundle only commits that
+// squash/rebase made unreachable from origin/main, delete local then remote, and
+// close with a receipt that outlives the branch by another RETENTION_DAYS.
+function finalizeRetainedBranch({
+  run,
+  root,
+  repository,
+  stateRoot,
+  manifest,
+  pr,
+  verifyRemoteAccount,
+  clock,
+  bundles
+}) {
+  const branch = manifest.branch;
+  if (pr && pr.state !== 'MERGED') {
+    writeManifestFields(manifest, { lifecyclePhase: 'RECOVERY', status: 'RECOVERY_REQUIRED' }, clock);
+    return { outcome: 'RECOVERY', branch, detail: 'PR is no longer merged' };
+  }
+  const record = branchRecords(run, root).find((item) => item.branch === branch) ?? null;
+  if (record?.worktreePath) {
+    return { outcome: 'RETRY_PENDING', branch, detail: 'a worktree still holds the retained branch' };
+  }
+  const localHeadSha = record ? localHeadShaOf(run, root, branch) : null;
+  const remoteHeadSha = remoteHeadShaOf(run, root, branch);
+  const drifted = (localHeadSha && manifest.prHeadSha && localHeadSha !== manifest.prHeadSha)
+    || (remoteHeadSha && manifest.prHeadSha && remoteHeadSha !== manifest.prHeadSha);
+  if (drifted) {
+    writeManifestFields(manifest, { lifecyclePhase: 'RECOVERY', status: 'RECOVERY_REQUIRED' }, clock);
+    return { outcome: 'RECOVERY', branch, detail: 'retained ref drifted during the window' };
+  }
+  let current = manifest;
+  let bundlePath = null;
+  const reachAnchor = localHeadSha ?? remoteHeadSha;
+  if (reachAnchor && !branchMergedIntoMain(run, root, reachAnchor)) {
+    bundlePath = createVerifiedBundle({
+      run,
+      root,
+      branch,
+      sourceRef: localHeadSha ? `refs/heads/${branch}` : `refs/remotes/origin/${branch}`,
+      recoveryRoot: join(stateRoot, 'recovery'),
+      clock
+    });
+    bundles.push(bundlePath);
+    current = writeManifestFields(current, { cleanupStep: 'BUNDLED' }, clock);
+  }
+  let localDeleted = false;
+  if (record) {
+    git(run, root, ['branch', branchMergedIntoMain(run, root, branch) ? '-d' : '-D', branch]);
+    localDeleted = true;
+    current = writeManifestFields(current, { cleanupStep: 'LOCAL_DELETED' }, clock);
+  }
+  let remoteDeleted = false;
+  if (remoteHeadSha) {
+    verifyRemoteAccount(run, repository);
+    git(run, root, ['push', 'origin', '--delete', branch]);
+    remoteDeleted = true;
+    current = writeManifestFields(current, { cleanupStep: 'REMOTE_DELETED' }, clock);
+  }
+  const receiptPath = writeReceipt(stateRoot, {
+    schemaVersion: 1,
+    repository,
+    worktreeId: current.worktreeId ?? null,
+    branch,
+    prNumber: current.pullRequestNumber ?? null,
+    prHeadSha: current.prHeadSha ?? null,
+    bundlePath,
+    localDeleted,
+    remoteDeleted,
+    remoteDeletedByGitHub: Boolean(current.remoteDeletedByGitHub),
+    deletedAt: nowIso(clock)
+  }, clock);
+  removeManifestsForBranchOrWorktree(stateRoot, branch, null);
+  return { outcome: 'CLOSED', branch, bundlePath, receiptPath };
+}
+
 export function cleanupSessions({
   apply = false,
   sessionId = null,
@@ -1232,7 +1489,7 @@ export function cleanupSessions({
   verifyRemoteAccount = ensureExpectedRemoteActor,
   clock = () => new Date()
 } = {}) {
-  const initialAudit = collectAudit({ run, rootDir, stateRoot, codexWorktreeRoot, includePullRequests, pullRequestProvider });
+  const initialAudit = collectAudit({ run, rootDir, stateRoot, codexWorktreeRoot, includePullRequests, pullRequestProvider, clock });
   const sessionScope = sessionId ? buildSessionScope(readManifests(stateRoot), sessionId) : null;
   if (sessionId && !sessionScope) throw new Error(`unknown session id: ${sessionId}`);
   const inScope = (item) => {
@@ -1248,15 +1505,16 @@ export function cleanupSessions({
       return item.classification === 'SAFE_QUARANTINE' || (item.classification === 'MAIN_HISTORY_DRIFT' && item.alignable);
     })
     .map((item) => ({ classification: item.classification, kind: item.kind, target: item.branch || item.path || item.id }));
-  if (!apply) return { applied: false, plannedActions, initialAudit, finalAudit: initialAudit, bundles: [], quarantined: [], removedExpired: [] };
+  if (!apply) return { applied: false, plannedActions, initialAudit, finalAudit: initialAudit, bundles: [], quarantined: [], lifecycleActions: [], removedExpired: [] };
 
   const lock = acquireRepoLock({ stateRoot, repository: initialAudit.repository, command: 'cleanup', clock });
   try {
   const root = initialAudit.repositoryRoot;
   git(run, root, ['fetch', 'origin', '--prune']);
-  const freshAudit = collectAudit({ run, rootDir: root, stateRoot, codexWorktreeRoot, includePullRequests, pullRequestProvider });
+  const freshAudit = collectAudit({ run, rootDir: root, stateRoot, codexWorktreeRoot, includePullRequests, pullRequestProvider, clock });
   const bundles = [];
   const quarantined = [];
+  const lifecycleActions = [];
   const processedBranches = new Set();
 
   const mainHistory = evaluateMainHistory({ run, rootDir: root });
@@ -1264,52 +1522,56 @@ export function cleanupSessions({
     bundles.push(alignMainHistory({ run, root, stateRoot, mainHistory, clock }));
   }
 
+  const executionRoot = repositoryRoot(run, rootDir);
+  // Persist drift transitions first: a retained branch whose head moved is parked
+  // in RECOVERY (never auto-deleted) until a human resolves it.
   for (const item of freshAudit.items) {
-    if (item.classification !== 'MERGED_CLEANUP' || item.kind === 'stale-ref') continue;
+    if (item.classification !== 'RECOVERY_REQUIRED' || !item.branch) continue;
+    if (!inScope(item)) continue;
+    const manifest = findManifestForBranch(readManifests(stateRoot), item.branch);
+    if (manifest?.lifecyclePhase === 'RETENTION') {
+      writeManifestFields(manifest, { lifecyclePhase: 'RECOVERY', status: 'RECOVERY_REQUIRED' }, clock);
+      lifecycleActions.push({ outcome: 'RECOVERY', branch: item.branch, detail: item.detail ?? null });
+    }
+  }
+  for (const item of freshAudit.items) {
+    if (item.classification !== 'MERGED_CLEANUP' || item.kind === 'stale-ref' || item.kind === 'manifest') continue;
     if (!inScope(item)) continue;
     const branch = item.branch;
     if (!branch || branch === 'main' || processedBranches.has(branch)) continue;
     processedBranches.add(branch);
-    if (item.kind === 'remote-branch') {
-      const remoteRef = `origin/${branch}`;
-      if (!branchMergedIntoMain(run, root, remoteRef)) {
-        bundles.push(createVerifiedBundle({
-          run,
-          root,
-          branch,
-          sourceRef: `refs/remotes/origin/${branch}`,
-          recoveryRoot: join(stateRoot, 'recovery'),
-          clock
-        }));
-      }
-      verifyRemoteAccount(run, freshAudit.repository);
-      git(run, root, ['push', 'origin', '--delete', branch]);
-      removeManifestsForBranchOrWorktree(stateRoot, branch, null);
-      continue;
-    }
-    const record = branchRecords(run, root).find((candidate) => candidate.branch === branch);
-    if (!record) continue;
-    if (record.worktreePath) {
-      const status = git(run, record.worktreePath, ['status', '--porcelain'], { allowFailure: true });
-      if (status.status !== 0 || status.stdout.trim()) continue;
-    }
-    if (!branchMergedIntoMain(run, root, branch)) {
-      bundles.push(createVerifiedBundle({ run, root, branch, recoveryRoot: join(stateRoot, 'recovery'), clock }));
-    }
-    if (record.worktreePath && !pathsEqual(record.worktreePath, root)) {
-      git(run, root, ['worktree', 'remove', record.worktreePath]);
-    }
-    git(run, root, ['branch', branchMergedIntoMain(run, root, branch) ? '-d' : '-D', branch]);
+    const manifest = findManifestForBranch(readManifests(stateRoot), branch);
     const pr = includePullRequests
       ? (pullRequestProvider
           ? pullRequestProvider({ branch, repository: freshAudit.repository, root })
           : getPullRequest(run, freshAudit.repository, branch))
       : null;
-    if (pr?.state === 'MERGED' && remoteBranchExists(run, root, branch)) {
-      verifyRemoteAccount(run, freshAudit.repository);
-      git(run, root, ['push', 'origin', '--delete', branch]);
+    if (manifest?.lifecyclePhase === 'RETENTION') {
+      // The audit overlay keeps unexpired holds out of MERGED_CLEANUP, so reaching
+      // here means the retention window expired for an unpinned branch.
+      lifecycleActions.push(finalizeRetainedBranch({
+        run,
+        root,
+        repository: freshAudit.repository,
+        stateRoot,
+        manifest,
+        pr,
+        verifyRemoteAccount,
+        clock,
+        bundles
+      }));
+      continue;
     }
-    removeManifestsForBranchOrWorktree(stateRoot, branch, record.worktreePath);
+    lifecycleActions.push(beginRetention({
+      run,
+      root,
+      repository: freshAudit.repository,
+      stateRoot,
+      branch,
+      pr,
+      clock,
+      executionRoot
+    }));
   }
 
   for (const item of freshAudit.items) {
@@ -1323,11 +1585,130 @@ export function cleanupSessions({
   const cutoffMs = clock().getTime() - RETENTION_DAYS * 24 * 60 * 60 * 1000;
   const removedExpired = sessionId ? [] : [
     ...removeExpiredEntries(join(stateRoot, 'quarantine'), cutoffMs, (entry) => entry.isDirectory()),
-    ...removeExpiredEntries(join(stateRoot, 'recovery'), cutoffMs, (entry) => entry.isFile() && entry.name.endsWith('.bundle')),
-    ...removeExpiredEntries(join(stateRoot, 'locks'), cutoffMs, (entry) => entry.isDirectory() && entry.name.startsWith('stale-'))
+    ...removeExpiredEntries(
+      join(stateRoot, 'recovery'),
+      cutoffMs,
+      // Never sweep a bundle created by this very run, whatever the clock says.
+      (entry, path) => entry.isFile() && entry.name.endsWith('.bundle')
+        && !bundles.some((bundlePath) => pathsEqual(bundlePath, path))
+    ),
+    ...removeExpiredEntries(join(stateRoot, 'locks'), cutoffMs, (entry) => entry.isDirectory() && entry.name.startsWith('stale-')),
+    ...removeExpiredReceipts(join(stateRoot, 'receipts'), cutoffMs)
   ];
-  const finalAudit = collectAudit({ run, rootDir: root, stateRoot, codexWorktreeRoot, includePullRequests, pullRequestProvider });
-  return { applied: true, plannedActions, initialAudit: freshAudit, finalAudit, bundles, quarantined, removedExpired };
+  const finalAudit = collectAudit({ run, rootDir: root, stateRoot, codexWorktreeRoot, includePullRequests, pullRequestProvider, clock });
+  return { applied: true, plannedActions, initialAudit: freshAudit, finalAudit, bundles, quarantined, lifecycleActions, removedExpired };
+  } finally {
+    lock.release();
+  }
+}
+
+// Reconciliation converges sessions whose PRs merged outside this machine (web UI
+// or another PC): it starts retention windows and removes eligible worktrees, but
+// never deletes a branch — expiry finalization stays exclusive to cleanup --apply.
+function reconcileCore({
+  run,
+  root,
+  repository,
+  stateRoot,
+  codexWorktreeRoot,
+  includePullRequests,
+  pullRequestProvider,
+  clock,
+  executionRoot
+}) {
+  git(run, root, ['fetch', 'origin', '--prune']);
+  const result = { retentionStarted: [], worktreesRemoved: [], upgraded: [], blocked: [] };
+  for (const manifest of readManifests(stateRoot)) {
+    if (manifest.manifestError || !manifest.manifestFile) continue;
+    if (manifest.repository && manifest.repository !== repository) continue;
+    let rawVersion = null;
+    try {
+      rawVersion = readJson(manifest.manifestFile).schemaVersion ?? 1;
+    } catch {
+      continue;
+    }
+    if (rawVersion < MANIFEST_SCHEMA_VERSION) {
+      const upgraded = { ...manifest };
+      delete upgraded.manifestFile;
+      writeJson(manifest.manifestFile, upgraded);
+      result.upgraded.push(manifest.worktreeId ?? basename(manifest.manifestFile, '.json'));
+    }
+  }
+  const audit = collectAudit({ run, rootDir: root, stateRoot, codexWorktreeRoot, includePullRequests, pullRequestProvider, clock });
+  const processed = new Set();
+  for (const item of audit.items) {
+    if (item.classification !== 'MERGED_CLEANUP' || item.kind === 'stale-ref' || item.kind === 'manifest') continue;
+    const branch = item.branch;
+    if (!branch || branch === 'main' || processed.has(branch)) continue;
+    processed.add(branch);
+    const manifest = findManifestForBranch(readManifests(stateRoot), branch);
+    if (manifest?.lifecyclePhase === 'RETENTION') continue;
+    const pr = includePullRequests
+      ? (pullRequestProvider
+          ? pullRequestProvider({ branch, repository, root })
+          : getPullRequest(run, repository, branch))
+      : null;
+    const action = beginRetention({ run, root, repository, stateRoot, branch, pr, clock, executionRoot });
+    if (action.outcome === 'RETENTION_STARTED') {
+      result.retentionStarted.push(branch);
+      if (action.worktreeRemoved) result.worktreesRemoved.push(branch);
+    } else if (action.outcome !== 'CLOSED') {
+      result.blocked.push({ branch, reason: action.outcome, detail: action.detail ?? null });
+    }
+  }
+  return result;
+}
+
+export function reconcileSessions({
+  run = defaultRun,
+  rootDir = process.cwd(),
+  stateRoot = defaultStateRoot(),
+  codexWorktreeRoot = defaultCodexWorktreeRoot(),
+  includePullRequests = true,
+  pullRequestProvider = null,
+  clock = () => new Date()
+} = {}) {
+  const root = repositoryRoot(run, rootDir);
+  const repository = repositoryIdentity(run, root);
+  const lock = acquireRepoLock({ stateRoot, repository, command: 'reconcile', clock });
+  try {
+    return reconcileCore({
+      run,
+      root,
+      repository,
+      stateRoot,
+      codexWorktreeRoot,
+      includePullRequests,
+      pullRequestProvider,
+      clock,
+      executionRoot: repositoryRoot(run, rootDir)
+    });
+  } finally {
+    lock.release();
+  }
+}
+
+export function pinBranch({
+  branch,
+  unpin = false,
+  run = defaultRun,
+  rootDir = process.cwd(),
+  stateRoot = defaultStateRoot(),
+  clock = () => new Date()
+}) {
+  if (!branch) throw new Error('--branch is required');
+  const root = repositoryRoot(run, rootDir);
+  const repository = repositoryIdentity(run, root);
+  const lock = acquireRepoLock({ stateRoot, repository, command: 'pin', clock });
+  try {
+    const existing = findManifestForBranch(readManifests(stateRoot), branch);
+    if (!existing || !existing.manifestFile) {
+      throw new Error(`no session manifest for branch ${branch}; register it with git:session -- sync --branch first`);
+    }
+    return writeManifestFields(existing, {
+      pinned: !unpin,
+      pinnedAt: unpin ? null : nowIso(clock)
+    }, clock);
   } finally {
     lock.release();
   }
@@ -1432,10 +1813,13 @@ function usage() {
     '  npm run git:session -- sync [--branch <existing> --agent <codex|claude> --task <summary>]',
     '  npm run git:sessions:audit -- [--json] [--strict]',
     '  npm run git:sessions:status -- [--json]',
+    '  npm run git:sessions:reconcile',
     '  npm run git:sessions:cleanup -- [--apply] [--session <worktreeId>]',
+    '  npm run git:branch:pin -- --branch <name> [--unpin]',
     '  npm run git:session -- archive --branch <name> [--apply]',
     '',
-    'cleanup and archive are dry-run unless --apply is supplied.'
+    'cleanup and archive are dry-run unless --apply is supplied.',
+    'merged branches are retained read-only for 7 days before deletion; pin exempts a branch from expiry.'
   ].join('\n');
 }
 
@@ -1462,6 +1846,16 @@ async function main(argv) {
   if (command === 'status') {
     const status = statusSessions();
     console.log(options.json ? JSON.stringify(status, null, 2) : formatStatus(status));
+    return 0;
+  }
+  if (command === 'reconcile') {
+    const result = reconcileSessions();
+    console.log(JSON.stringify(result, null, 2));
+    return 0;
+  }
+  if (command === 'pin') {
+    const result = pinBranch({ branch: options.branch, unpin: Boolean(options.unpin) });
+    console.log(JSON.stringify(result, null, 2));
     return 0;
   }
   if (command === 'cleanup') {
