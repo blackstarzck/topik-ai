@@ -13,6 +13,7 @@ import { verifyDevelopmentEvidence } from './verify-development-evidence.mjs';
 import { computeMigrationDigest } from './compute-migration-digest.mjs';
 import { parseReleaseSource } from './resolve-previous-release.mjs';
 import { extractJsonFromZip, fetchDevelopmentEvidence } from './company-promotion-gate.mjs';
+import { verifyMcpEvidence } from './verify-mcp-evidence.mjs';
 
 const ATTESTOR = 'blackstarzck';
 const SHA_PATTERN = /^[0-9a-f]{40}$/;
@@ -109,6 +110,7 @@ async function main() {
     // The merged PR whose merge commit is exactly this tip.
     const pulls = await githubApi(`/repos/${repository}/commits/${tipSha}/pulls`, repoToken);
     const pr = pulls.find((entry) => entry.merge_commit_sha === tipSha && entry.base?.ref === 'main');
+    const mergedPrNumber = pr?.number ?? null;
     if (!pr) {
       issues.push('direct-main-push:no-merged-pr');
     } else {
@@ -174,8 +176,20 @@ async function main() {
         issues.push('staging-evidence-binding-mismatch');
       }
       releasePlan = staging.releasePlan;
-      if (staging.releasePlan !== 'sync-only' && staging.mcpVerified !== true) {
-        issues.push('missing-mcp-staging-verification');
+      if (staging.releasePlan !== 'sync-only') {
+        if (!mergedPrNumber) {
+          issues.push('missing-mcp-staging-verification');
+        } else {
+          const comments = await githubApi(
+            `/repos/${repository}/issues/${mergedPrNumber}/comments?per_page=100`,
+            repoToken
+          );
+          const { issues: mcpIssues } = verifyMcpEvidence({
+            comments: comments.map((comment) => ({ author: comment.user?.login, body: comment.body })),
+            expected: { sourceSha, stgMergeSha: stgTipSha, deploymentUrl: null }
+          });
+          issues.push(...mcpIssues);
+        }
       }
     }
 

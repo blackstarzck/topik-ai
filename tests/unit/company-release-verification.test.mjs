@@ -10,6 +10,8 @@ import {
   verifyReleaseShape
 } from '../../scripts/ci/verify-company-release.mjs';
 import { buildStagingEvidence } from '../../scripts/ci/write-stg-evidence.mjs';
+import { parseMcpComment, verifyMcpEvidence } from '../../scripts/ci/verify-mcp-evidence.mjs';
+import { buildStgEvidenceComment } from '../../scripts/ci/release-manifest.mjs';
 
 const SHA_A = 'a'.repeat(40);
 const SHA_B = 'b'.repeat(40);
@@ -127,8 +129,7 @@ describe('company release verification', () => {
     expect(staging).toEqual(expect.objectContaining({
       stage: 'staging',
       stgMergeSha: SHA_B,
-      sourceSha: SHA_A,
-      mcpVerified: false
+      sourceSha: SHA_A
     }));
     expect(staging.checks.trackerReuse).toBe('passed');
     expect(buildStagingEvidence({
@@ -138,5 +139,89 @@ describe('company release verification', () => {
       migrationDigest: DIGEST,
       releasePlan: 'sync-only'
     }).checks.trackerReuse).toBe('not-required');
+  });
+});
+
+describe('MCP staging verification evidence', () => {
+  function mcpComment(overrides = {}) {
+    const payload = {
+      kind: 'mcp-stg-evidence',
+      sourceSha: SHA_A,
+      stgMergeSha: SHA_B,
+      deploymentUrl: 'https://preview.example.test',
+      checklist: {
+        login: 'pass',
+        coreFlows: 'pass',
+        consoleErrors: 'pass',
+        failedRequests: 'pass',
+        baselineCompared: 'pass',
+        shaMatch: 'pass',
+        screenshotsSaved: 'pass'
+      },
+      verdict: 'pass',
+      verifiedAt: '2026-07-24T00:00:00.000Z',
+      ...overrides
+    };
+    return {
+      author: 'guestkeduall-design',
+      body: `MCP-STG-EVIDENCE summary\n\n\`\`\`json\n${JSON.stringify(payload, null, 2)}\n\`\`\``
+    };
+  }
+
+  it('accepts a bound passing comment from an allowed author only', () => {
+    const expected = { sourceSha: SHA_A, stgMergeSha: SHA_B, deploymentUrl: null };
+    expect(verifyMcpEvidence({ comments: [mcpComment()], expected }).issues).toEqual([]);
+    expect(verifyMcpEvidence({
+      comments: [{ ...mcpComment(), author: 'random-user' }],
+      expected
+    }).issues).toEqual(['missing-mcp-evidence-comment']);
+    expect(verifyMcpEvidence({ comments: [], expected }).issues)
+      .toEqual(['missing-mcp-evidence-comment']);
+  });
+
+  it('rejects SHA mismatches, failed verdicts, and incomplete checklists', () => {
+    const expected = { sourceSha: SHA_A, stgMergeSha: SHA_B, deploymentUrl: null };
+    expect(verifyMcpEvidence({
+      comments: [mcpComment({ sourceSha: SHA_C })],
+      expected
+    }).issues).toContain('mcp-evidence:source-sha-mismatch');
+    expect(verifyMcpEvidence({
+      comments: [mcpComment({ verdict: 'fail' })],
+      expected
+    }).issues).toContain('mcp-evidence:verdict-not-pass');
+    expect(verifyMcpEvidence({
+      comments: [mcpComment({ checklist: { login: 'pass' } })],
+      expected
+    }).issues).toContain('mcp-evidence:checklist-consoleErrors');
+    expect(parseMcpComment('plain comment')).toBeNull();
+  });
+
+  it('renders a postable comment only from a completed manifest stage', () => {
+    const manifest = {
+      sourceSha: SHA_A,
+      stgMergeSha: SHA_B,
+      stg: {
+        deploymentUrl: 'https://preview.example.test',
+        deploymentId: 'dpl_1',
+        checklist: {
+          login: 'pass',
+          coreFlows: 'pass',
+          consoleErrors: 'pass',
+          failedRequests: 'pass',
+          baselineCompared: 'pass',
+          shaMatch: 'pass',
+          screenshotsSaved: 'pass'
+        },
+        screenshots: ['abc123'],
+        verdict: 'pass',
+        verifiedAt: '2026-07-24T00:00:00.000Z',
+        summary: 'all core flows verified'
+      }
+    };
+    const body = buildStgEvidenceComment(manifest);
+    expect(parseMcpComment(body)).toEqual(expect.objectContaining({ sourceSha: SHA_A }));
+
+    manifest.stg.checklist.shaMatch = 'pending';
+    expect(() => buildStgEvidenceComment(manifest)).toThrow('not complete');
   });
 });

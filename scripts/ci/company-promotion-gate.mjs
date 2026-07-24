@@ -14,6 +14,7 @@ import { inflateRawSync } from 'node:zlib';
 import { verifyDevelopmentEvidence } from './verify-development-evidence.mjs';
 import { computeMigrationDigest } from './compute-migration-digest.mjs';
 import { parseReleaseSource } from './resolve-previous-release.mjs';
+import { verifyMcpEvidence } from './verify-mcp-evidence.mjs';
 
 const SOURCE_REPOSITORY = process.env.SOURCE_REPOSITORY || 'blackstarzck/topik-ai';
 const SHA_PATTERN = /^[0-9a-f]{40}$/;
@@ -198,8 +199,20 @@ async function main() {
     if (staging.sourceSha !== sourceSha || staging.stgMergeSha !== headSha) {
       throw new Error('staging evidence does not bind to this source and stg tip.');
     }
-    if (staging.releasePlan !== 'sync-only' && staging.mcpVerified !== true) {
-      throw new Error('MCP staging verification evidence is required before a main promotion for release plans that deploy.');
+    if (staging.releasePlan !== 'sync-only') {
+      // Deploying plans additionally need the Playwright MCP staging verification
+      // posted on this PR by a release controller session.
+      const comments = await githubApi(
+        `/repos/${process.env.GITHUB_REPOSITORY}/issues/${prNumber}/comments?per_page=100`,
+        ghToken
+      );
+      const { issues: mcpIssues } = verifyMcpEvidence({
+        comments: comments.map((comment) => ({ author: comment.user?.login, body: comment.body })),
+        expected: { sourceSha, stgMergeSha: headSha, deploymentUrl: null }
+      });
+      if (mcpIssues.length > 0) {
+        throw new Error(`MCP staging verification failed: ${mcpIssues.join(', ')}`);
+      }
     }
   }
 

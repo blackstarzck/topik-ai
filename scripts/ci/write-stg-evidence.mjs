@@ -41,9 +41,6 @@ export function buildStagingEvidence({ stgSha, sourceSha, sourceTreeSha, migrati
     sourceTreeSha,
     migrationDigest,
     releasePlan,
-    // The MCP browser verification updates this to true via the release manifest
-    // tooling before a deploying plan may promote to main.
-    mcpVerified: false,
     checks: {
       sourceBinding: 'passed',
       trackerReuse: releasesRuntime ? 'passed' : 'not-required',
