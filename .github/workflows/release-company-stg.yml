@@ -63,6 +63,8 @@ jobs:
           npm run db:users-contract -- --expected-project-ref "$SUPABASE_EXPECTED_PROJECT_REF" --json-out staging-evidence/users-contract.json
       - name: Write the PII-free staging evidence
         shell: bash
+        env:
+          EVIDENCE_GITHUB_TOKEN: ${{ secrets.EVIDENCE_GITHUB_TOKEN }}
         run: |
           node scripts/ci/write-stg-evidence.mjs \
             --mode write \
