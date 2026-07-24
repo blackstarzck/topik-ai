@@ -95,13 +95,16 @@ async function main() {
     );
   }
   const deploymentUrl = value(args, '--deployment-url', { required: false });
-  if (evidence.releasePlan !== 'sync-only' && !deploymentUrl) {
-    throw new Error(
-      `a deploying release plan (${evidence.releasePlan}) must record a staging preview deployment URL — the preview deploy step did not produce one.`
-    );
-  }
   const jsonOut = value(args, '--json-out', { required: false });
   if (jsonOut) {
+    // Only the write mode (which persists the evidence artifact) requires the
+    // preview URL. The verify-source mode runs before the preview deploy, so it
+    // must not demand one.
+    if (evidence.releasePlan !== 'sync-only' && !deploymentUrl) {
+      throw new Error(
+        `a deploying release plan (${evidence.releasePlan}) must record a staging preview deployment URL — the preview deploy step did not produce one.`
+      );
+    }
     const report = buildStagingEvidence({
       stgSha,
       sourceSha,
