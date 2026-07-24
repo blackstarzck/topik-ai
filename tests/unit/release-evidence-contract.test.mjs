@@ -50,6 +50,7 @@ describe('development evidence v4', () => {
     expect(report.checks.tracker).toBe('passed');
     expect(report.checks.crud).toBe('not-required');
     expect(report.checks.shadow).toBe('not-required');
+    expect(report.checks.upgradeReplay).toBe('not-required');
     expect(report.deployApp).toBe(true);
     expect(report.applyMigrations).toBe(false);
     expect(verifyDevelopmentEvidence(report, expected)).toEqual([]);
@@ -57,6 +58,7 @@ describe('development evidence v4', () => {
 
   it.each(['db-only', 'app-db'])('requires every development DB gate for %s', (plan) => {
     const report = evidence(plan, 'full');
+    expect(report.checks.upgradeReplay).toBe('passed');
     expect(Object.values(report.checks)).not.toContain('not-required');
     expect(report.applyMigrations).toBe(true);
     expect(report.deployApp).toBe(plan === 'app-db');
