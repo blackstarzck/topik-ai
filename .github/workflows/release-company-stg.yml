@@ -1,0 +1,77 @@
+name: Company stg validation
+
+on:
+  push:
+    branches: [stg]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: topik-admin-company-stg
+  queue: max
+
+env:
+  NODE_VERSION: '24.x'
+  SOURCE_REPOSITORY: blackstarzck/topik-ai
+  DEVELOPMENT_PROJECT_REF: fglggyfvzjdsbyckinqa
+  STG_SHA: ${{ github.sha }}
+
+jobs:
+  verify-stg-merge:
+    name: verify-stg-merge
+    if: ${{ github.repository == 'keduall/topik-admin' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: staging
+    outputs:
+      release_plan: ${{ steps.verify.outputs.release_plan }}
+      source_sha: ${{ steps.verify.outputs.source_sha }}
+    env:
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      SUPABASE_EXPECTED_PROJECT_REF: ${{ vars.SUPABASE_EXPECTED_PROJECT_REF }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.STG_SHA }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Verify the stg merge binds to the validated source
+        id: verify
+        shell: bash
+        env:
+          EVIDENCE_GITHUB_TOKEN: ${{ secrets.EVIDENCE_GITHUB_TOKEN }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$STG_SHA"
+          test "$SUPABASE_PROJECT_REF" = "$DEVELOPMENT_PROJECT_REF"
+          mkdir -p staging-evidence
+          node scripts/ci/write-stg-evidence.mjs \
+            --mode verify-source \
+            --stg-sha "$STG_SHA" \
+            --github-output "$GITHUB_OUTPUT"
+      - name: Confirm topik-dev trackers already carry this migration set (no re-apply)
+        if: ${{ steps.verify.outputs.release_plan != 'sync-only' }}
+        shell: bash
+        run: |
+          npm run db:migrate -- --verify-all --require-clean --manifest scripts/db/manifests/writing-development-release.json --batch release-all --json-out staging-evidence/writing-migrations.json
+          npm run db:admin:migrate -- --verify-all --require-clean --manifest scripts/db/manifests/admin-development-reconciliation.json --batch release-all --json-out staging-evidence/admin-migrations.json
+          npm run db:users-contract -- --expected-project-ref "$SUPABASE_EXPECTED_PROJECT_REF" --json-out staging-evidence/users-contract.json
+      - name: Write the PII-free staging evidence
+        shell: bash
+        run: |
+          node scripts/ci/write-stg-evidence.mjs \
+            --mode write \
+            --stg-sha "$STG_SHA" \
+            --json-out staging-evidence/staging.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: staging-evidence-${{ env.STG_SHA }}
+          path: staging-evidence/*.json
+          if-no-files-found: error
+          retention-days: 90

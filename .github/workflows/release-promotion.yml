@@ -1,0 +1,115 @@
+name: Release promotion
+
+on:
+  workflow_run:
+    workflows: [Validate development]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: topik-admin-promotion
+  queue: max
+
+env:
+  NODE_VERSION: '24.x'
+  V13_CONTRACT_SHA: 81e2ed7d0845194224ebe6f156c697560d70de65
+  DEVELOPMENT_PROJECT_REF: fglggyfvzjdsbyckinqa
+  COMPANY_REPOSITORY: keduall/topik-admin
+  RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+
+jobs:
+  promote:
+    name: promote-validated-source
+    if: ${{ github.repository == 'blackstarzck/topik-ai' && github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: development-evidence-${{ env.RELEASE_SHA }}
+          path: development-evidence
+          github-token: ${{ github.token }}
+          run-id: ${{ github.event.workflow_run.id }}
+      - name: Verify the exact development evidence for this source SHA
+        shell: bash
+        run: |
+          test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
+          node scripts/ci/verify-development-evidence.mjs \
+            --input development-evidence/development.json \
+            --commit-sha "$RELEASE_SHA" \
+            --v13-sha "$V13_CONTRACT_SHA" \
+            --project-ref "$DEVELOPMENT_PROJECT_REF" \
+            --tree-sha "$(git rev-parse "HEAD^{tree}")" \
+            --migration-digest "$(node scripts/ci/compute-migration-digest.mjs)" \
+            --github-output "$GITHUB_OUTPUT"
+      - name: Hold promotion while the legacy production path is still active
+        id: interlock
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          legacy_state="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/release-production.yml" --jq .state 2>/dev/null || echo 'absent')"
+          echo "legacy_state=$legacy_state" >> "$GITHUB_OUTPUT"
+          if [ "$legacy_state" = "active" ]; then
+            echo "::notice::Legacy Release production is active; promotion is held to keep exactly one release path."
+          fi
+      - name: Push the validated SHA to the company promote branch and open the stg PR
+        if: ${{ steps.interlock.outputs.legacy_state != 'active' }}
+        shell: bash
+        env:
+          PROMOTION_GITHUB_TOKEN: ${{ secrets.PROMOTION_GITHUB_TOKEN }}
+        run: |
+          if [ -z "$PROMOTION_GITHUB_TOKEN" ]; then
+            echo "::notice::PROMOTION_GITHUB_TOKEN is not configured yet; promotion is held (Phase 8 secret registration pending)."
+            exit 0
+          fi
+          test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
+          export GIT_ASKPASS="$RUNNER_TEMP/github-promotion-askpass.sh"
+          export GIT_TERMINAL_PROMPT=0
+          node <<'NODE'
+          const fs = require('node:fs');
+          fs.writeFileSync(
+            process.env.GIT_ASKPASS,
+            `#!/bin/sh
+          case "$1" in
+            *Username*) printf '%s\\n' 'x-access-token' ;;
+            *) printf '%s\\n' "$PROMOTION_GITHUB_TOKEN" ;;
+          esac
+          `,
+            { mode: 0o700 }
+          );
+          NODE
+          trap 'rm -f "$GIT_ASKPASS"' EXIT
+          git remote add company "https://github.com/$COMPANY_REPOSITORY.git"
+          git fetch company "+refs/heads/promote/$RELEASE_SHA:refs/remotes/company/promote/$RELEASE_SHA" 2>/dev/null || true
+          existing="$(git rev-parse --quiet --verify "refs/remotes/company/promote/$RELEASE_SHA" || true)"
+          if [ "$existing" = "$RELEASE_SHA" ]; then
+            echo "promote branch already present"
+          else
+            git push company "$RELEASE_SHA:refs/heads/promote/$RELEASE_SHA"
+          fi
+          release_plan="$(node -e "console.log(require('./development-evidence/development.json').releasePlan)")"
+          tree_sha="$(git rev-parse "HEAD^{tree}")"
+          migration_digest="$(node scripts/ci/compute-migration-digest.mjs)"
+          export GH_TOKEN="$PROMOTION_GITHUB_TOKEN"
+          if gh pr list --repo "$COMPANY_REPOSITORY" --base stg --head "promote/$RELEASE_SHA" --state open --json number --jq 'length' | grep -qv '^0$'; then
+            echo "stg promotion PR already open"
+          else
+            gh pr create --repo "$COMPANY_REPOSITORY" --base stg --head "promote/$RELEASE_SHA" \
+              --title "release: promote $release_plan ${RELEASE_SHA:0:7} to stg" \
+              --body "\`\`\`json
+          {\"kind\":\"promotion-request\",\"sourceSha\":\"$RELEASE_SHA\",\"sourceTreeSha\":\"$tree_sha\",\"migrationDigest\":\"$migration_digest\",\"releasePlan\":\"$release_plan\",\"developmentRunUrl\":\"${{ github.event.workflow_run.html_url }}\"}
+          \`\`\`"
+          fi

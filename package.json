@@ -38,6 +38,7 @@
     "git:sessions:reconcile": "node ./scripts/git/session-lifecycle.mjs reconcile",
     "git:sessions:cleanup": "node ./scripts/git/session-lifecycle.mjs cleanup",
     "git:branch:pin": "node ./scripts/git/session-lifecycle.mjs pin",
+    "release:promote": "node ./scripts/git/release-promote.mjs",
     "db:migrate": "node ./scripts/db/migrate.mjs",
     "db:migrate:status": "node ./scripts/db/migrate.mjs --status",
     "db:admin:migrate": "node ./scripts/db/admin-migrate.mjs",

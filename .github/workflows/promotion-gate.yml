@@ -1,0 +1,67 @@
+name: Promotion gate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [stg, main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: topik-admin-promotion-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '24.x'
+  SOURCE_REPOSITORY: blackstarzck/topik-ai
+
+jobs:
+  gate:
+    name: promotion-gate
+    if: ${{ github.repository == 'keduall/topik-admin' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Verify source, tree, digest, drift, and stage evidence
+        shell: bash
+        env:
+          EVIDENCE_GITHUB_TOKEN: ${{ secrets.EVIDENCE_GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$HEAD_SHA"
+          node scripts/ci/company-promotion-gate.mjs \
+            --base-ref "$BASE_REF" \
+            --base-sha "$BASE_SHA" \
+            --head-sha "$HEAD_SHA" \
+            --pr-number "$PR_NUMBER" \
+            --json-out gate-evidence/promotion-gate.json
+      - name: Attest the verified head as blackstarzck
+        shell: bash
+        env:
+          ATTESTATION_GITHUB_TOKEN: ${{ secrets.ATTESTATION_GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          test -n "$ATTESTATION_GITHUB_TOKEN"
+          body="$(node scripts/ci/company-promotion-gate.mjs --print-attestation gate-evidence/promotion-gate.json)"
+          GH_TOKEN="$ATTESTATION_GITHUB_TOKEN" gh pr review "$PR_NUMBER" \
+            --repo "$GITHUB_REPOSITORY" --approve --body "$body"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: promotion-gate-${{ github.event.pull_request.head.sha }}
+          path: gate-evidence/*.json
+          if-no-files-found: error
+          retention-days: 90
