@@ -810,3 +810,9 @@
 - Reason: 전역 `gh auth switch`는 병렬 Codex/Claude 세션의 활성 계정을 서로 뒤집는 공유 상태 변이라 개편안 §5.3이 폐지를 지정했다. 이 머신 실측으로 `gh auth token --user X`(keyring 읽기)와 `GH_TOKEN` env 주입이 gh API·git push(gh credential helper) 신원을 결정론적으로 지배함을 확인했다.
 - Contract: 스크립트 mutation의 계정 선택은 `account-context.mjs`의 `withAccount`/`runGhAs`/`runGitPushAs`로만 한다 — 대상 계정 토큰을 spawn env `GH_TOKEN`으로만 주입(디스크/로그 기록 금지, 에러 텍스트 토큰 마스킹), 실행 전 `gh api user` preflight로 wrong-account 차단. 저장소→계정 매핑 단일 출처는 `ACCOUNTS`(origin=blackstarzck, 회사=guestkeduall-design). session-lifecycle의 원격 브랜치 삭제 게이트는 하드코딩 대신 이 매핑을 대조하고, `defaultRun`은 상속 env에서 자격 env(GH_TOKEN 등)를 위생 제거한다.
 - Validation: account-context 단위 9건(매핑·env 위생·토큰 마스킹·preflight 차단·주입 push·author/head 대조), session-lifecycle 기존 스위트, harness:check.
+## 2026-07-24 머지 브랜치 7일 보관·reconcile·pin 도입 (PR-F)
+
+- Updated `AGENTS.md` §11.2/§11.3, `scripts/git/session-lifecycle.mjs`, `package.json`(git:sessions:reconcile·git:branch:pin), `tests/unit/session-lifecycle.test.mjs`.
+- Reason: 개편안 §4 — 머지 직후 worktree만 즉시 제거하고 local·remote 브랜치는 협업 참조용으로 7일 읽기 전용 보관 후 삭제한다. 웹/다른 PC에서 머지된 PR은 다음 세션이 reconcile로 수렴한다.
+- Contract: 감사 분류에 `RETENTION_HOLD`(non-strict)·`RETRY_PENDING`(strict) 추가. cleanup --apply = 보관 개시(worktree 제거·브랜치 보존·manifest에 prHeadSha/만료일 기록) 또는 만료 확정(PR·SHA 재검증 → 도달 불가 commit만 bundle → 로컬·원격 삭제 → receipt, receipt/bundle 추가 7일 보존). 보관 중 SHA 드리프트=RECOVERY 전환·자동 삭제 금지. pin은 만료 제외. reconcile은 브랜치를 절대 삭제하지 않으며 session start가 best-effort 자동 수행. 같은 실행에서 생성된 bundle은 만료 스위프에서 제외(클록 스큐 보호). 문서의 cleanup 순서 서술을 실제 구현 순서(main 정렬이 브랜치 처리보다 먼저)로 정정.
+- Validation: session-lifecycle 19건(신규: 보관→만료 2단계·pin 정지/해제·드리프트 RECOVERY·외부 머지 reconcile·worktree 즉시 제거, 기존 squash 시나리오를 2단계 흐름으로 재작성) 전부 통과, clock 주입으로 결정적. harness:check·전체 unit은 커밋 게이트에서 실행.
