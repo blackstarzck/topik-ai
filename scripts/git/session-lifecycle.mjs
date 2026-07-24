@@ -9,7 +9,7 @@ import {
   unlinkSync,
   writeFileSync
 } from 'node:fs';
-import { homedir } from 'node:os';
+import { homedir, hostname } from 'node:os';
 import {
   basename,
   dirname,
@@ -167,7 +167,21 @@ function readJson(file) {
 
 function writeJson(file, value) {
   mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
+  const tempFile = `${file}.tmp-${process.pid}-${randomUUID().slice(0, 8)}`;
+  writeFileSync(tempFile, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
+  // Windows AV/indexers can hold the destination briefly; bounded retries keep the
+  // replace atomic without ever leaving a torn ledger file behind.
+  let lastError = null;
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    try {
+      renameSync(tempFile, file);
+      return;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  rmSync(tempFile, { force: true });
+  throw lastError;
 }
 
 function manifestFiles(stateRoot) {
@@ -181,7 +195,7 @@ export function readManifests(stateRoot = defaultStateRoot()) {
   const manifests = [];
   for (const file of manifestFiles(stateRoot)) {
     try {
-      manifests.push({ ...readJson(file), manifestFile: file });
+      manifests.push({ ...upgradeManifest(readJson(file)), manifestFile: file });
     } catch (error) {
       manifests.push({
         manifestFile: file,
@@ -282,7 +296,7 @@ function getPullRequest(run, repository, branch) {
   if (!repository.includes('/')) return null;
   const result = gh(run, [
     'pr', 'list', '--repo', repository, '--state', 'all', '--head', branch, '--limit', '20',
-    '--json', 'number,state,isDraft,mergedAt,baseRefName,headRefName,title,url'
+    '--json', 'number,state,isDraft,mergedAt,baseRefName,headRefName,headRefOid,title,url'
   ], { allowFailure: true });
   if (result.status !== 0) return null;
   try {
@@ -739,10 +753,45 @@ function createDetachedWorktree({ run, root, codexWorktreeRoot }) {
   return { worktreeId, worktreePath };
 }
 
-function makeManifest({ repository, repositoryRoot: root, worktreeId, worktreePath, agent, taskSummary, branch, pr, status, dirty, createdAt, clock }) {
+export const MANIFEST_SCHEMA_VERSION = 2;
+export const LIFECYCLE_PHASES = Object.freeze(['ACTIVE', 'RETENTION', 'RECOVERY', 'CLOSED']);
+
+// Test fixture repositories are not in the AGENTS §11.1 account mapping, so the
+// expected actor degrades to null instead of failing session bookkeeping.
+function safeExpectedActor(repositorySlug) {
+  try {
+    return expectedActorFor(repositorySlug);
+  } catch {
+    return null;
+  }
+}
+
+export function upgradeManifest(manifest) {
+  if (!manifest || (manifest.schemaVersion ?? 0) >= MANIFEST_SCHEMA_VERSION) return manifest;
+  return {
+    ...manifest,
+    schemaVersion: MANIFEST_SCHEMA_VERSION,
+    expectedActor: manifest.expectedActor ?? safeExpectedActor(manifest.repository),
+    lifecyclePhase: manifest.lifecyclePhase ?? 'ACTIVE',
+    cleanupStep: manifest.cleanupStep ?? 'NONE',
+    prHeadSha: manifest.prHeadSha ?? null,
+    prBaseRef: manifest.prBaseRef ?? null,
+    mergedAt: manifest.mergedAt ?? null,
+    retentionStartedAt: manifest.retentionStartedAt ?? null,
+    branchExpiresAt: manifest.branchExpiresAt ?? null,
+    pinned: manifest.pinned ?? false,
+    pinnedAt: manifest.pinnedAt ?? null,
+    localHeadSha: manifest.localHeadSha ?? null,
+    remoteHeadSha: manifest.remoteHeadSha ?? null,
+    remoteDeletedByGitHub: manifest.remoteDeletedByGitHub ?? false,
+    worktreeRemovedAt: manifest.worktreeRemovedAt ?? null
+  };
+}
+
+function makeManifest({ repository, repositoryRoot: root, worktreeId, worktreePath, agent, taskSummary, branch, pr, status, dirty, createdAt, clock, previous = null }) {
   const timestamp = nowIso(clock);
   return {
-    schemaVersion: 1,
+    schemaVersion: MANIFEST_SCHEMA_VERSION,
     repository,
     repositoryRoot: root,
     worktreeId,
@@ -750,10 +799,24 @@ function makeManifest({ repository, repositoryRoot: root, worktreeId, worktreePa
     agent,
     taskSummary,
     branch: branch || null,
-    pullRequestNumber: pr?.number || null,
-    pullRequestUrl: pr?.url || null,
+    pullRequestNumber: pr?.number || previous?.pullRequestNumber || null,
+    pullRequestUrl: pr?.url || previous?.pullRequestUrl || null,
     status,
     dirty: Boolean(dirty),
+    expectedActor: previous?.expectedActor ?? safeExpectedActor(repository),
+    lifecyclePhase: previous?.lifecyclePhase ?? 'ACTIVE',
+    cleanupStep: previous?.cleanupStep ?? 'NONE',
+    prHeadSha: pr?.headRefOid ?? previous?.prHeadSha ?? null,
+    prBaseRef: pr?.baseRefName ?? previous?.prBaseRef ?? null,
+    mergedAt: pr?.mergedAt ?? previous?.mergedAt ?? null,
+    retentionStartedAt: previous?.retentionStartedAt ?? null,
+    branchExpiresAt: previous?.branchExpiresAt ?? null,
+    pinned: previous?.pinned ?? false,
+    pinnedAt: previous?.pinnedAt ?? null,
+    localHeadSha: previous?.localHeadSha ?? null,
+    remoteHeadSha: previous?.remoteHeadSha ?? null,
+    remoteDeletedByGitHub: previous?.remoteDeletedByGitHub ?? false,
+    worktreeRemovedAt: previous?.worktreeRemovedAt ?? null,
     createdAt: createdAt || timestamp,
     updatedAt: timestamp
   };
@@ -789,6 +852,8 @@ export function startSession({
     return { reused: true, manifest: existing, message: `Reusing ${existing.worktreePath}` };
   }
 
+  const lock = acquireRepoLock({ stateRoot, repository, command: 'start', clock });
+  try {
   git(run, root, ['fetch', 'origin', '--prune']);
   const branches = branchRecords(run, root).filter((record) => record.branch !== 'main');
   let continuation = existing?.branch
@@ -817,7 +882,8 @@ export function startSession({
       status: dirty ? 'DIRTY_BLOCKED' : 'ACTIVE',
       dirty,
       createdAt: existing?.createdAt,
-      clock
+      clock,
+      previous: existing
     });
     const manifestFile = manifestPathForId(stateRoot, worktreeId);
     if (existing?.manifestFile && existing.manifestFile !== manifestFile && existsSync(existing.manifestFile)) {
@@ -856,7 +922,8 @@ export function startSession({
     pr: continuationPr,
     status: continuation ? 'ACTIVE' : 'DETACHED_PROBE',
     dirty: false,
-    clock
+    clock,
+    previous: existing
   });
   if (existing?.manifestFile && existsSync(existing.manifestFile)) unlinkSync(existing.manifestFile);
   writeJson(manifestPathForId(stateRoot, worktreeId), manifest);
@@ -867,6 +934,9 @@ export function startSession({
       ? `Created detached worktree and attached existing branch ${continuation.branch}`
       : `Created detached worktree ${worktreePath}`
   };
+  } finally {
+    lock.release();
+  }
 }
 
 export function syncSession({
@@ -902,7 +972,8 @@ export function syncSession({
     status,
     dirty,
     createdAt: existing?.createdAt,
-    clock
+    clock,
+    previous: existing
   });
   writeJson(existing?.manifestFile || manifestPathForId(stateRoot, worktreeId), manifest);
   return manifest;
@@ -1005,11 +1076,16 @@ export function archiveBranch({
     `delete local branch ${branch}`
   ];
   if (!apply) return { applied: false, branch, actions, bundlePath: null };
-  const bundlePath = createVerifiedBundle({ run, root, branch, recoveryRoot, clock });
-  if (record.worktreePath) git(run, root, ['worktree', 'remove', record.worktreePath]);
-  git(run, root, ['branch', '-D', branch]);
-  removeManifestsForBranchOrWorktree(stateRoot, branch, record.worktreePath);
-  return { applied: true, branch, actions, bundlePath };
+  const lock = acquireRepoLock({ stateRoot, repository: repositoryIdentity(run, root), command: 'archive', clock });
+  try {
+    const bundlePath = createVerifiedBundle({ run, root, branch, recoveryRoot, clock });
+    if (record.worktreePath) git(run, root, ['worktree', 'remove', record.worktreePath]);
+    git(run, root, ['branch', '-D', branch]);
+    removeManifestsForBranchOrWorktree(stateRoot, branch, record.worktreePath);
+    return { applied: true, branch, actions, bundlePath };
+  } finally {
+    lock.release();
+  }
 }
 
 // Remote branch deletion still rides the ambient credential (active gh account),
@@ -1060,8 +1136,93 @@ function removeExpiredEntries(root, cutoffMs, filter = () => true) {
   return removed;
 }
 
+const LOCK_STALE_MS = 15 * 60 * 1000;
+
+function processAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error.code === 'EPERM';
+  }
+}
+
+// Windows has no flock, so the per-repository mutation lock is an atomically
+// created directory. A live owner fails the caller immediately (no waiting, no
+// takeover); only a dead or stale owner is evicted, and eviction itself is an
+// atomic rename so exactly one contender wins.
+export function acquireRepoLock({
+  stateRoot = defaultStateRoot(),
+  repository,
+  command,
+  clock = () => new Date()
+}) {
+  const locksRoot = join(stateRoot, 'locks');
+  mkdirSync(locksRoot, { recursive: true });
+  const lockDir = join(locksRoot, `${sanitizeName(repository)}.lock`);
+  const ownerFile = join(lockDir, 'owner.json');
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      mkdirSync(lockDir);
+      writeJson(ownerFile, {
+        pid: process.pid,
+        host: hostname(),
+        command,
+        acquiredAt: nowIso(clock)
+      });
+      return {
+        lockDir,
+        release: () => rmSync(lockDir, { recursive: true, force: true })
+      };
+    } catch (error) {
+      if (error.code !== 'EEXIST') throw error;
+      let owner = null;
+      try {
+        owner = readJson(ownerFile);
+      } catch {
+        owner = null;
+      }
+      const alive = owner?.pid ? processAlive(owner.pid) : false;
+      if (alive) {
+        throw new Error(
+          `repository lock held by pid ${owner.pid} (${owner.command ?? 'unknown'}) since ${owner.acquiredAt ?? 'unknown'}`
+        );
+      }
+      const stale = owner
+        ? true // dead owner: safe to evict regardless of age
+        : (() => {
+          try {
+            return clock().getTime() - statSync(lockDir).mtimeMs >= LOCK_STALE_MS;
+          } catch {
+            return true;
+          }
+        })();
+      if (!stale) {
+        throw new Error('repository lock is contended; retry shortly');
+      }
+      const evicted = join(locksRoot, `stale-${timestampForFile(clock)}-${randomUUID().slice(0, 8)}`);
+      try {
+        renameSync(lockDir, evicted);
+      } catch {
+        // Another contender evicted first; loop and retry the acquisition once.
+      }
+    }
+  }
+  throw new Error('unable to acquire the repository lock');
+}
+
+function buildSessionScope(manifests, sessionId) {
+  const matches = manifests.filter((manifest) => manifest.worktreeId === sessionId);
+  if (matches.length === 0) return null;
+  return {
+    branches: new Set(matches.map((manifest) => manifest.branch).filter(Boolean)),
+    paths: matches.map((manifest) => manifest.worktreePath).filter(Boolean)
+  };
+}
+
 export function cleanupSessions({
   apply = false,
+  sessionId = null,
   run = defaultRun,
   rootDir = process.cwd(),
   stateRoot = defaultStateRoot(),
@@ -1072,11 +1233,25 @@ export function cleanupSessions({
   clock = () => new Date()
 } = {}) {
   const initialAudit = collectAudit({ run, rootDir, stateRoot, codexWorktreeRoot, includePullRequests, pullRequestProvider });
+  const sessionScope = sessionId ? buildSessionScope(readManifests(stateRoot), sessionId) : null;
+  if (sessionId && !sessionScope) throw new Error(`unknown session id: ${sessionId}`);
+  const inScope = (item) => {
+    if (!sessionScope) return true;
+    if (item.branch && sessionScope.branches.has(item.branch)) return true;
+    if (item.path && sessionScope.paths.some((path) => pathsEqual(path, item.path))) return true;
+    return false;
+  };
   const plannedActions = initialAudit.items
-    .filter((item) => item.classification === 'MERGED_CLEANUP' || item.classification === 'SAFE_QUARANTINE' || (item.classification === 'MAIN_HISTORY_DRIFT' && item.alignable))
+    .filter((item) => {
+      if (item.classification === 'MERGED_CLEANUP') return inScope(item);
+      if (sessionId) return false;
+      return item.classification === 'SAFE_QUARANTINE' || (item.classification === 'MAIN_HISTORY_DRIFT' && item.alignable);
+    })
     .map((item) => ({ classification: item.classification, kind: item.kind, target: item.branch || item.path || item.id }));
   if (!apply) return { applied: false, plannedActions, initialAudit, finalAudit: initialAudit, bundles: [], quarantined: [], removedExpired: [] };
 
+  const lock = acquireRepoLock({ stateRoot, repository: initialAudit.repository, command: 'cleanup', clock });
+  try {
   const root = initialAudit.repositoryRoot;
   git(run, root, ['fetch', 'origin', '--prune']);
   const freshAudit = collectAudit({ run, rootDir: root, stateRoot, codexWorktreeRoot, includePullRequests, pullRequestProvider });
@@ -1085,12 +1260,13 @@ export function cleanupSessions({
   const processedBranches = new Set();
 
   const mainHistory = evaluateMainHistory({ run, rootDir: root });
-  if (mainHistory.drift && mainHistory.alignable) {
+  if (!sessionId && mainHistory.drift && mainHistory.alignable) {
     bundles.push(alignMainHistory({ run, root, stateRoot, mainHistory, clock }));
   }
 
   for (const item of freshAudit.items) {
     if (item.classification !== 'MERGED_CLEANUP' || item.kind === 'stale-ref') continue;
+    if (!inScope(item)) continue;
     const branch = item.branch;
     if (!branch || branch === 'main' || processedBranches.has(branch)) continue;
     processedBranches.add(branch);
@@ -1137,6 +1313,7 @@ export function cleanupSessions({
   }
 
   for (const item of freshAudit.items) {
+    if (sessionId) break;
     if (item.classification !== 'SAFE_QUARANTINE' || item.kind !== 'physical-directory' || !item.path) continue;
     const rechecked = classifyPhysicalCandidate({ candidate: item.path, run, currentCommonGitDir: commonGitDirectory(run, root) });
     if (rechecked.classification !== 'SAFE_QUARANTINE') continue;
@@ -1144,12 +1321,108 @@ export function cleanupSessions({
   }
 
   const cutoffMs = clock().getTime() - RETENTION_DAYS * 24 * 60 * 60 * 1000;
-  const removedExpired = [
+  const removedExpired = sessionId ? [] : [
     ...removeExpiredEntries(join(stateRoot, 'quarantine'), cutoffMs, (entry) => entry.isDirectory()),
-    ...removeExpiredEntries(join(stateRoot, 'recovery'), cutoffMs, (entry) => entry.isFile() && entry.name.endsWith('.bundle'))
+    ...removeExpiredEntries(join(stateRoot, 'recovery'), cutoffMs, (entry) => entry.isFile() && entry.name.endsWith('.bundle')),
+    ...removeExpiredEntries(join(stateRoot, 'locks'), cutoffMs, (entry) => entry.isDirectory() && entry.name.startsWith('stale-'))
   ];
   const finalAudit = collectAudit({ run, rootDir: root, stateRoot, codexWorktreeRoot, includePullRequests, pullRequestProvider });
   return { applied: true, plannedActions, initialAudit: freshAudit, finalAudit, bundles, quarantined, removedExpired };
+  } finally {
+    lock.release();
+  }
+}
+
+export function statusSessions({
+  run = defaultRun,
+  rootDir = process.cwd(),
+  stateRoot = defaultStateRoot(),
+  codexWorktreeRoot = defaultCodexWorktreeRoot(),
+  includePullRequests = false,
+  pullRequestProvider = null,
+  clock = () => new Date()
+} = {}) {
+  const audit = collectAudit({ run, rootDir, stateRoot, codexWorktreeRoot, includePullRequests, pullRequestProvider });
+  const manifests = readManifests(stateRoot).filter((manifest) => !manifest.repository || manifest.repository === audit.repository);
+  const auditByBranch = new Map();
+  const auditByPath = new Map();
+  for (const item of audit.items) {
+    if (item.branch && !auditByBranch.has(item.branch)) auditByBranch.set(item.branch, item);
+    if (item.path && !auditByPath.has(normalizedPath(item.path))) auditByPath.set(normalizedPath(item.path), item);
+  }
+  const sessions = manifests.map((manifest) => {
+    const item = (manifest.branch && auditByBranch.get(manifest.branch))
+      || (manifest.worktreePath && auditByPath.get(normalizedPath(manifest.worktreePath)))
+      || null;
+    return {
+      worktreeId: manifest.worktreeId ?? null,
+      agent: manifest.agent ?? null,
+      branch: manifest.branch ?? null,
+      worktreePath: manifest.worktreePath ?? null,
+      pullRequestNumber: manifest.pullRequestNumber ?? null,
+      lifecyclePhase: manifest.lifecyclePhase ?? 'ACTIVE',
+      classification: item?.classification ?? manifest.status ?? null,
+      prHeadSha: manifest.prHeadSha ?? null,
+      branchExpiresAt: manifest.branchExpiresAt ?? null,
+      pinned: Boolean(manifest.pinned),
+      dirty: manifest.dirty ?? null
+    };
+  });
+  const recoveryRoot = join(stateRoot, 'recovery');
+  const residues = existsSync(recoveryRoot)
+    ? readdirSync(recoveryRoot, { withFileTypes: true })
+      .filter((entry) => !(entry.isFile() && entry.name.endsWith('.bundle')))
+      .map((entry) => entry.name)
+    : [];
+  const receiptsRoot = join(stateRoot, 'receipts');
+  const receipts = existsSync(receiptsRoot) ? readdirSync(receiptsRoot).length : 0;
+  const lockDir = join(stateRoot, 'locks', `${sanitizeName(audit.repository)}.lock`);
+  let lockOwner = null;
+  if (existsSync(lockDir)) {
+    try {
+      lockOwner = readJson(join(lockDir, 'owner.json'));
+    } catch {
+      lockOwner = { unreadable: true };
+    }
+  }
+  return {
+    repository: audit.repository,
+    generatedAt: nowIso(clock),
+    counts: audit.counts,
+    strictFailureCount: audit.strictFailureCount,
+    lock: { held: Boolean(lockOwner), owner: lockOwner },
+    sessions,
+    receipts,
+    residues
+  };
+}
+
+export function formatStatus(status) {
+  const columns = [
+    ['ID', (row) => row.worktreeId ?? '-'],
+    ['AGENT', (row) => row.agent ?? '-'],
+    ['PHASE', (row) => row.lifecyclePhase ?? '-'],
+    ['CLASS', (row) => row.classification ?? '-'],
+    ['BRANCH', (row) => row.branch ?? '-'],
+    ['PR', (row) => (row.pullRequestNumber ? `#${row.pullRequestNumber}` : '-')],
+    ['HEAD', (row) => (row.prHeadSha ? row.prHeadSha.slice(0, 7) : '-')],
+    ['EXPIRES', (row) => row.branchExpiresAt ?? '-'],
+    ['PIN', (row) => (row.pinned ? 'pin' : '-')],
+    ['DIRTY', (row) => (row.dirty === null ? '-' : row.dirty ? 'yes' : 'no')]
+  ];
+  const rows = status.sessions.map((session) => columns.map(([, pick]) => String(pick(session))));
+  const widths = columns.map(([header], index) => Math.max(header.length, ...rows.map((row) => row[index].length), 1));
+  const lines = [
+    columns.map(([header], index) => header.padEnd(widths[index])).join('  '),
+    ...rows.map((row) => row.map((cell, index) => cell.padEnd(widths[index])).join('  '))
+  ];
+  lines.push('');
+  lines.push(`repository=${status.repository} strictFailures=${status.strictFailureCount} receipts=${status.receipts}`);
+  lines.push(`lock=${status.lock.held ? `held by pid ${status.lock.owner?.pid ?? '?'} (${status.lock.owner?.command ?? '?'})` : 'free'}`);
+  if (status.residues.length > 0) {
+    lines.push(`recovery residues (manual review, never auto-deleted): ${status.residues.join(', ')}`);
+  }
+  return lines.join('\n');
 }
 
 function usage() {
@@ -1158,7 +1431,8 @@ function usage() {
     '  npm run git:session -- start --agent <codex|claude> --task <summary>',
     '  npm run git:session -- sync [--branch <existing> --agent <codex|claude> --task <summary>]',
     '  npm run git:sessions:audit -- [--json] [--strict]',
-    '  npm run git:sessions:cleanup -- [--apply]',
+    '  npm run git:sessions:status -- [--json]',
+    '  npm run git:sessions:cleanup -- [--apply] [--session <worktreeId>]',
     '  npm run git:session -- archive --branch <name> [--apply]',
     '',
     'cleanup and archive are dry-run unless --apply is supplied.'
@@ -1185,8 +1459,16 @@ async function main(argv) {
     console.log(options.json ? JSON.stringify(audit, null, 2) : formatAudit(audit));
     return options.strict && audit.strictFailureCount > 0 ? 2 : 0;
   }
+  if (command === 'status') {
+    const status = statusSessions();
+    console.log(options.json ? JSON.stringify(status, null, 2) : formatStatus(status));
+    return 0;
+  }
   if (command === 'cleanup') {
-    const result = cleanupSessions({ apply: Boolean(options.apply) });
+    const result = cleanupSessions({
+      apply: Boolean(options.apply),
+      sessionId: typeof options.session === 'string' ? options.session : null
+    });
     console.log(JSON.stringify(result, null, 2));
     return 0;
   }
