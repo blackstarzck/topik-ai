@@ -61,7 +61,17 @@ node scripts/ci/release-manifest.mjs comment --source-sha <sha>   # → stg→ma
 
 ## 6. 시크릿·환경 (오너 등록, 위치 요약)
 
-- 개인 repo secrets: `PROMOTION_GITHUB_TOKEN`(guest PAT — keduall/topik-admin contents+PR write).
-- 회사 repo secrets: `EVIDENCE_GITHUB_TOKEN`(blackstarzck PAT — topik-ai actions:read), `ATTESTATION_GITHUB_TOKEN`(blackstarzck PAT — topik-admin PR write).
+- 개인 repo secrets: `PROMOTION_GITHUB_TOKEN`(guest PAT — keduall/topik-admin contents+PR write **+ `workflow` 스코프**). 워크플로 파일을 포함한 소스 커밋을 무-재작성으로 promote 브랜치에 push하므로 `workflow` 스코프가 없으면 CI/워크플로를 건드리는 릴리스가 거부된다(classic이면 `repo`+`workflow`).
+- 회사 repo secrets: `EVIDENCE_GITHUB_TOKEN`(blackstarzck PAT — topik-ai actions:read), `ATTESTATION_GITHUB_TOKEN`(blackstarzck PAT — topik-admin PR write; 조직 repo 접근 가능한 종류여야 함 — 개인 계정 fine-grained는 조직 repo를 못 봄).
 - 회사 environments: `staging`(topik-dev 자격) / `Production`(운영 자격) — 상세 값 출처는 오너 체크리스트 문서.
+- GITHUB_TOKEN 권한: main 대상 게이트는 회사 staging-evidence 아티팩트를 REST로 읽으므로 `promotion-gate.yml`·`release-company-production.yml` 모두 `permissions`에 `actions: read`가 선언돼 있어야 한다(명시 블록이 repo 기본값을 덮는다).
 - PAT 만료 시 재발급·재등록(만료가 릴리스 실패로 나타나면 이 항목부터 확인).
+
+## 7. Dry-run 검증 로그
+
+- 2026-07-24 Phase 9 sync-only dry-run으로 전 체인(개인 검증 → promote → gate → attestation → guest stg merge → stg validation → stg→main → production verify 무배포)을 실제 실행해 검증했다. 이 과정에서 발견·수정된 환경/계약 결함:
+  - promotion-gate의 아티팩트 파서가 GitHub 아티팩트 zip(데이터 디스크립터)의 로컬 헤더 크기를 신뢰해 실패 → 중앙 디렉터리 기반 파서로 교체.
+  - `ATTESTATION_GITHUB_TOKEN`이 조직 repo를 못 보는 종류라 attestation 게시 실패 → 조직 repo 접근 가능한 PAT로 교체.
+  - `PROMOTION_GITHUB_TOKEN`에 `workflow` 스코프 부재로 워크플로 변경 커밋 push 거부 → 스코프 추가.
+  - `promotion-gate.yml` `permissions`에 `actions: read` 부재로 main 게이트의 staging 아티팩트 조회가 403 → 권한 추가.
+- 교훈: 위 4건은 모두 "실배포 전이었다면 릴리스를 막았을" 설정/계약 결함이며, sync-only dry-run이 무배포로 이를 선제 포착했다. canary(실배포) 진입 전 이 로그의 재발 방지 계약 테스트가 유지되는지 확인한다.
