@@ -828,3 +828,6 @@
 ## 2026-07-24 승격 파이프라인 dry-run 재실행 (Phase 9, gate 수정 후)
 
 - promotion-gate 단일라인 수정(afc237a) 후 승격 체인 전체를 무배포로 재실증하는 sync-only 마커.
+## 2026-07-24 dry-run 3 (fixed gate v2 검증)
+
+- promotion-gate 리다이렉트-캡처 재구성 후 승격 게이트 실동작 검증용 sync-only 마커.
