@@ -13,6 +13,7 @@ concurrency:
 
 env:
   NODE_VERSION: '24.x'
+  VERCEL_CLI_VERSION: '48.12.0'
   SOURCE_REPOSITORY: blackstarzck/topik-ai
   DEVELOPMENT_PROJECT_REF: fglggyfvzjdsbyckinqa
   STG_SHA: ${{ github.sha }}
@@ -27,10 +28,17 @@ jobs:
     outputs:
       release_plan: ${{ steps.verify.outputs.release_plan }}
       source_sha: ${{ steps.verify.outputs.source_sha }}
+      preview_url: ${{ steps.preview.outputs.deployment_url }}
     env:
       SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
       SUPABASE_EXPECTED_PROJECT_REF: ${{ vars.SUPABASE_EXPECTED_PROJECT_REF }}
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+      E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+      E2E_TARGET_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -61,15 +69,69 @@ jobs:
           npm run db:migrate -- --verify-all --require-clean --manifest scripts/db/manifests/writing-development-release.json --batch release-all --json-out staging-evidence/writing-migrations.json
           npm run db:admin:migrate -- --verify-all --require-clean --manifest scripts/db/manifests/admin-development-reconciliation.json --batch release-all --json-out staging-evidence/admin-migrations.json
           npm run db:users-contract -- --expected-project-ref "$SUPABASE_EXPECTED_PROJECT_REF" --json-out staging-evidence/users-contract.json
+      - name: Install Chromium for staging browser verification
+        if: ${{ steps.verify.outputs.release_plan != 'sync-only' }}
+        run: npx playwright install --with-deps chromium
+      - name: Install the pinned Vercel CLI
+        if: ${{ steps.verify.outputs.release_plan != 'sync-only' }}
+        run: npm install --global vercel@$VERCEL_CLI_VERSION
+      - name: Configure ephemeral Vercel CLI authentication
+        if: ${{ steps.verify.outputs.release_plan != 'sync-only' }}
+        shell: bash
+        run: |
+          export VERCEL_GLOBAL_CONFIG="$RUNNER_TEMP/vercel-cli"
+          install -m 700 -d "$VERCEL_GLOBAL_CONFIG"
+          node -e "const fs=require('node:fs'); fs.writeFileSync(process.env.VERCEL_GLOBAL_CONFIG + '/auth.json', JSON.stringify({token:process.env.VERCEL_TOKEN}), {mode:0o600})"
+          echo "VERCEL_GLOBAL_CONFIG=$VERCEL_GLOBAL_CONFIG" >> "$GITHUB_ENV"
+          vercel whoami --global-config "$VERCEL_GLOBAL_CONFIG"
+      - name: Require the preview browser bypass secret
+        if: ${{ steps.verify.outputs.release_plan != 'sync-only' }}
+        shell: bash
+        env:
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          if [ -z "$VERCEL_AUTOMATION_BYPASS_SECRET" ]; then
+            echo "::error::Missing staging environment secret VERCEL_AUTOMATION_BYPASS_SECRET."
+            exit 1
+          fi
+      - name: Build and deploy an unaliased topik-dev preview
+        id: preview
+        if: ${{ steps.verify.outputs.release_plan != 'sync-only' }}
+        shell: bash
+        env:
+          VITE_RELEASE_SHA: ${{ steps.verify.outputs.source_sha }}
+        run: |
+          rm -rf .vercel
+          vercel pull --yes --environment=preview --global-config "$VERCEL_GLOBAL_CONFIG"
+          node -e "const p=require('./.vercel/project.json'); if(p.orgId!==process.env.VERCEL_ORG_ID||p.projectId!==process.env.VERCEL_PROJECT_ID) process.exit(1)"
+          vercel build --global-config "$VERCEL_GLOBAL_CONFIG"
+          preview_url="$(vercel deploy --prebuilt --skip-domain --yes --global-config "$VERCEL_GLOBAL_CONFIG" | tail -n 1)"
+          vercel inspect "$preview_url" --wait --timeout 10m --global-config "$VERCEL_GLOBAL_CONFIG"
+          node scripts/ci/capture-vercel-production.mjs \
+            --domain "$preview_url" \
+            --team-id "$VERCEL_ORG_ID" \
+            --json-out staging-evidence/preview-deployment.json
+      - name: Verify the topik-dev preview with the configured administrator
+        if: ${{ steps.verify.outputs.release_plan != 'sync-only' }}
+        run: >-
+          node scripts/ci/run-release-e2e.mjs
+          --target candidate
+          --suite operational-smoke
+          --json-out staging-evidence/preview-e2e.json
+        env:
+          ADMIN_E2E_BASE_URL: ${{ steps.preview.outputs.deployment_url }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
       - name: Write the PII-free staging evidence
         shell: bash
         env:
           EVIDENCE_GITHUB_TOKEN: ${{ secrets.EVIDENCE_GITHUB_TOKEN }}
+          PREVIEW_URL: ${{ steps.preview.outputs.deployment_url }}
         run: |
-          node scripts/ci/write-stg-evidence.mjs \
-            --mode write \
-            --stg-sha "$STG_SHA" \
-            --json-out staging-evidence/staging.json
+          args=(--mode write --stg-sha "$STG_SHA" --json-out staging-evidence/staging.json)
+          if [ -n "${PREVIEW_URL:-}" ]; then
+            args+=(--deployment-url "$PREVIEW_URL")
+          fi
+          node scripts/ci/write-stg-evidence.mjs "${args[@]}"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

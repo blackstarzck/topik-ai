@@ -155,14 +155,17 @@ describe('company release verification', () => {
       sourceSha: SHA_A,
       sourceTreeSha: TREE,
       migrationDigest: DIGEST,
-      releasePlan: 'db-only'
+      releasePlan: 'db-only',
+      deploymentUrl: 'https://preview.example.test'
     });
     expect(staging).toEqual(expect.objectContaining({
       stage: 'staging',
       stgMergeSha: SHA_B,
-      sourceSha: SHA_A
+      sourceSha: SHA_A,
+      stagingDeploymentUrl: 'https://preview.example.test'
     }));
     expect(staging.checks.trackerReuse).toBe('passed');
+    expect(staging.checks.previewDeploy).toBe('passed');
     expect(buildStagingEvidence({
       stgSha: SHA_B,
       sourceSha: SHA_A,

@@ -221,7 +221,7 @@ async function main() {
       );
       const { issues: mcpIssues } = verifyMcpEvidence({
         comments: comments.map((comment) => ({ author: comment.user?.login, body: comment.body })),
-        expected: { sourceSha, stgMergeSha: headSha, deploymentUrl: null }
+        expected: { sourceSha, stgMergeSha: headSha, deploymentUrl: staging.stagingDeploymentUrl ?? null }
       });
       if (mcpIssues.length > 0) {
         throw new Error(`MCP staging verification failed: ${mcpIssues.join(', ')}`);

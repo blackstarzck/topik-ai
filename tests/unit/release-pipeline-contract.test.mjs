@@ -289,7 +289,7 @@ describe('company promotion pipeline contract', () => {
     expect(gateWorkflow).not.toContain('vercel');
   });
 
-  it('reuses topik-dev on stg without applying migrations', () => {
+  it('reuses topik-dev on stg and browser-verifies an unaliased preview without applying migrations', () => {
     expect(companyStgWorkflow).toContain('branches: [stg]');
     expect(companyStgWorkflow).toContain('environment: staging');
     expect(companyStgWorkflow).toContain('node scripts/ci/write-stg-evidence.mjs');
@@ -301,6 +301,16 @@ describe('company promotion pipeline contract', () => {
     expect(
       companyStgWorkflow.split('EVIDENCE_GITHUB_TOKEN: ${{ secrets.EVIDENCE_GITHUB_TOKEN }}').length - 1,
     ).toBeGreaterThanOrEqual(2);
+    // Deploying plans must build and browser-verify an unaliased topik-dev
+    // preview so the main gate has a real MCP browser-verification target.
+    expect(companyStgWorkflow).toContain('--environment=preview');
+    expect(companyStgWorkflow).toContain('vercel deploy --prebuilt --skip-domain');
+    expect(companyStgWorkflow).toContain('scripts/ci/run-release-e2e.mjs');
+    expect(companyStgWorkflow).toContain('--target candidate');
+    expect(companyStgWorkflow).toContain('--deployment-url');
+    // stg must never touch the Production alias.
+    expect(companyStgWorkflow).not.toContain('vercel promote');
+    expect(companyStgWorkflow).not.toContain('--prod');
     expect(companyStgWorkflow).not.toContain('--apply');
     expect(companyStgWorkflow).not.toContain('db:shadow:verify');
   });

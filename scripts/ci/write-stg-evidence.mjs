@@ -30,7 +30,14 @@ function git(args) {
   return result.stdout.trim();
 }
 
-export function buildStagingEvidence({ stgSha, sourceSha, sourceTreeSha, migrationDigest, releasePlan }) {
+export function buildStagingEvidence({
+  stgSha,
+  sourceSha,
+  sourceTreeSha,
+  migrationDigest,
+  releasePlan,
+  deploymentUrl = null
+}) {
   const releasesRuntime = releasePlan !== 'sync-only';
   return {
     schemaVersion: 1,
@@ -41,10 +48,13 @@ export function buildStagingEvidence({ stgSha, sourceSha, sourceTreeSha, migrati
     sourceTreeSha,
     migrationDigest,
     releasePlan,
+    stagingDeploymentUrl: deploymentUrl ?? null,
     checks: {
       sourceBinding: 'passed',
       trackerReuse: releasesRuntime ? 'passed' : 'not-required',
-      usersContract: releasesRuntime ? 'passed' : 'not-required'
+      usersContract: releasesRuntime ? 'passed' : 'not-required',
+      previewDeploy: releasesRuntime ? 'passed' : 'not-required',
+      previewE2e: releasesRuntime ? 'passed' : 'not-required'
     }
   };
 }
@@ -84,6 +94,12 @@ async function main() {
       'utf8'
     );
   }
+  const deploymentUrl = value(args, '--deployment-url', { required: false });
+  if (evidence.releasePlan !== 'sync-only' && !deploymentUrl) {
+    throw new Error(
+      `a deploying release plan (${evidence.releasePlan}) must record a staging preview deployment URL — the preview deploy step did not produce one.`
+    );
+  }
   const jsonOut = value(args, '--json-out', { required: false });
   if (jsonOut) {
     const report = buildStagingEvidence({
@@ -91,7 +107,8 @@ async function main() {
       sourceSha,
       sourceTreeSha,
       migrationDigest,
-      releasePlan: evidence.releasePlan
+      releasePlan: evidence.releasePlan,
+      deploymentUrl
     });
     const absolutePath = resolve(jsonOut);
     mkdirSync(dirname(absolutePath), { recursive: true });
