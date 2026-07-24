@@ -100,10 +100,26 @@ jobs:
         shell: bash
         env:
           VITE_RELEASE_SHA: ${{ steps.verify.outputs.source_sha }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_SUPABASE_DISABLED: ''
         run: |
           rm -rf .vercel
           vercel pull --yes --environment=preview --global-config "$VERCEL_GLOBAL_CONFIG"
           node -e "const p=require('./.vercel/project.json'); if(p.orgId!==process.env.VERCEL_ORG_ID||p.projectId!==process.env.VERCEL_PROJECT_ID) process.exit(1)"
+          # Pin the preview build to topik-dev regardless of the Vercel Preview
+          # environment's own (possibly blank) Supabase values, so the browser
+          # verification exercises a real topik-dev-backed app.
+          touch .vercel/.env.preview.local
+          grep -vE '^(VITE_SUPABASE_URL|VITE_SUPABASE_PUBLISHABLE_KEY|VITE_SUPABASE_ANON_KEY|VITE_SUPABASE_DISABLED)=' .vercel/.env.preview.local > .vercel/.env.preview.local.next || true
+          {
+            printf 'VITE_SUPABASE_URL="%s"\n' "$VITE_SUPABASE_URL"
+            printf 'VITE_SUPABASE_PUBLISHABLE_KEY="%s"\n' "$VITE_SUPABASE_PUBLISHABLE_KEY"
+            printf 'VITE_SUPABASE_ANON_KEY="%s"\n' "$VITE_SUPABASE_ANON_KEY"
+            printf 'VITE_SUPABASE_DISABLED=""\n'
+          } >> .vercel/.env.preview.local.next
+          mv .vercel/.env.preview.local.next .vercel/.env.preview.local
           vercel build --global-config "$VERCEL_GLOBAL_CONFIG"
           preview_url="$(vercel deploy --prebuilt --skip-domain --yes --global-config "$VERCEL_GLOBAL_CONFIG" | tail -n 1)"
           vercel inspect "$preview_url" --wait --timeout 10m --global-config "$VERCEL_GLOBAL_CONFIG"
