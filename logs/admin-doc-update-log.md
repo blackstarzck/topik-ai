@@ -822,3 +822,6 @@
 - Reason: 개편안 §2·§3 — 검증된 개인 main SHA를 재작성 없이 회사 stg/main으로 승격하고, GitHub Free의 서버 강제 부재를 "회사 production verify의 매회 전량 재검증"으로 보완하는 배포 권위 이관.
 - Contract: 같은 워크플로 파일이 양 저장소에 존재하며 잡 가드로 실행 위치를 분리한다(파일별 기대 가드를 계약 테스트가 강제). 승격은 promote/<sha> push→gate(source/tree/digest/evidence 대조·COMPANY_DRIFT 차단·blackstarzck attestation)→guest --match-head-commit merge(Release-Source trailer)→stg 검증(topik-dev 재사용, 재적용 없음)→main gate(배포 플랜은 MCP-STG-EVIDENCE 코멘트 필수)→production verify(직접 push·stale attestation·미해결 thread·evidence·digest 전량 재검증) 후에만 DB/Vercel 변이. MCP 증거는 불변 CI 아티팩트가 아니라 PR 코멘트 채널이며 release manifest(~/.topik-ai/release-manifests)는 세션 인계를 지원한다. 인터록(레거시 active 또는 토큰 미등록 시 승격 보류)으로 활성 경로는 항상 하나다.
 - Validation: company-release-verification 9건(소스 해석·zip·direct-push·attestation·staging·MCP 코멘트·manifest 코멘트 렌더), release-pipeline-contract 20건(신규 워크플로 계약+가드 8종), 신규 스크립트 node --check, unit 전체, harness:check. 실제 체인은 Phase 8(오너 시크릿·stg 브랜치·부트스트랩) 후 §5.6 dry-run에서 검증한다.
+## 2026-07-24 승격 파이프라인 dry-run 마커 (Phase 9)
+
+- 개편안 §5.6 dry-run: docs-only(sync-only) 변경으로 개인 main→회사 promote/stg/main 승격 체인 전체를 무배포로 실증한다. 이 커밋은 파이프라인 검증용 마커이며 코드/스키마/운영 동작을 바꾸지 않는다.
