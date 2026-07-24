@@ -1,3 +1,5 @@
+// Release pipeline canary: exercises the company promotion + production deploy
+// path end-to-end with no functional or visual change to the application.
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 
