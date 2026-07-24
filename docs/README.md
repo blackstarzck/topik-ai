@@ -104,6 +104,7 @@
 - `dev-to-prod-data-recovery.md` — Supabase dev → prod 사용자·학습·정책·Storage 데이터 복구 절차와 재실행 안전장치, 검증 기준을 기록한 운영 runbook
 - `notification-worker-production-verification.md` — v13 transition email worker를 topik-ai production worker로 넘기기 전/후 SOT, Vercel readiness, smoke, cross-app state evidence를 기록하는 운영 검증 runbook
 - `notification-worker-production-evidence.example.md` — 실제 production evidence 파일 작성 시 secret 값을 남기지 않도록 돕는 redacted 예시 문서
+- `release-promotion-runbook.md` — 개인 main→회사 promote/stg/main 승격 릴리스의 자동 체인·guest merge 절차·Playwright MCP 검증 프로토콜·긴급 수동 릴리스·컷오버/롤백을 기록한 운영 runbook
 - `admin-account-separation-prod-cutover.md` — 관리자 계정 분리 production cutover 적용 순서·검증·롤백 runbook
 - `topik-prod-onprem-backup.md` — topik-prod 온프레미스 백업·복원 점검(드릴) 현행 runbook. 전용 읽기 롤, 컨테이너 pg_dump 방식, 드릴 스택 구성, 2026-07-21 실증 기록과 초안 대비 변경 근거를 포함
 

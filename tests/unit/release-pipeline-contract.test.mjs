@@ -251,13 +251,88 @@ describe('evidence v4 source binding contract', () => {
   });
 });
 
+const promotionWorkflow = readFileSync(resolve('.github/workflows/release-promotion.yml'), 'utf8');
+const gateWorkflow = readFileSync(resolve('.github/workflows/promotion-gate.yml'), 'utf8');
+const companyStgWorkflow = readFileSync(
+  resolve('.github/workflows/release-company-stg.yml'),
+  'utf8'
+);
+const companyProductionWorkflow = readFileSync(
+  resolve('.github/workflows/release-company-production.yml'),
+  'utf8'
+);
+
+describe('company promotion pipeline contract', () => {
+  it('promotes only validated sources and holds while the legacy path is active', () => {
+    expect(promotionWorkflow).toContain('workflows: [Validate development]');
+    expect(promotionWorkflow).toContain("github.event.workflow_run.conclusion == 'success'");
+    expect(promotionWorkflow).toContain('actions/workflows/release-production.yml');
+    expect(promotionWorkflow).toContain("steps.interlock.outputs.legacy_state != 'active'");
+    expect(promotionWorkflow).toContain('$RELEASE_SHA:refs/heads/promote/$RELEASE_SHA');
+    expect(promotionWorkflow).toContain('--base stg --head "promote/$RELEASE_SHA"');
+    expect(promotionWorkflow).toContain('--tree-sha "$(git rev-parse "HEAD^{tree}")"');
+    expect(promotionWorkflow).toContain('PROMOTION_GITHUB_TOKEN');
+    expect(promotionWorkflow).not.toContain('vercel');
+    expect(promotionWorkflow).not.toContain('--apply');
+  });
+
+  it('gates stg and main promotions with drift checks and a blackstarzck attestation', () => {
+    expect(gateWorkflow).toContain('branches: [stg, main]');
+    expect(gateWorkflow).toContain('node scripts/ci/company-promotion-gate.mjs');
+    expect(gateWorkflow).toContain('EVIDENCE_GITHUB_TOKEN: ${{ secrets.EVIDENCE_GITHUB_TOKEN }}');
+    expect(gateWorkflow).toContain('ATTESTATION_GITHUB_TOKEN: ${{ secrets.ATTESTATION_GITHUB_TOKEN }}');
+    expect(gateWorkflow).toContain('--approve');
+    expect(gateWorkflow).not.toContain('--apply');
+    expect(gateWorkflow).not.toContain('vercel');
+  });
+
+  it('reuses topik-dev on stg without applying migrations', () => {
+    expect(companyStgWorkflow).toContain('branches: [stg]');
+    expect(companyStgWorkflow).toContain('environment: staging');
+    expect(companyStgWorkflow).toContain('node scripts/ci/write-stg-evidence.mjs');
+    expect(companyStgWorkflow).toContain('--verify-all --require-clean');
+    expect(companyStgWorkflow).toContain('staging-evidence-${{ env.STG_SHA }}');
+    expect(companyStgWorkflow).not.toContain('--apply');
+    expect(companyStgWorkflow).not.toContain('db:shadow:verify');
+  });
+
+  it('re-verifies the full promotion contract before any production mutation', () => {
+    const verify = job(companyProductionWorkflow, 'verify', 'release-database-only');
+    expect(verify).toContain('node scripts/ci/verify-company-release.mjs');
+    expect(verify).not.toContain('--apply');
+    expect(verify).not.toContain('vercel');
+
+    const database = job(companyProductionWorkflow, 'release-database-only', 'release-app');
+    expect(database).toContain('needs: verify');
+    const dbPreflight = position(database, 'Compare topik-prod trackers read-only before any mutation');
+    const dbApply = position(database, 'Apply topik-prod expand migrations in ownership order');
+    expect(dbPreflight).toBeLessThan(dbApply);
+    expect(database).not.toContain('vercel build');
+
+    const app = job(companyProductionWorkflow, 'release-app');
+    expect(app).toContain('needs: verify');
+    expect(app).toContain('VITE_RELEASE_SHA: ${{ needs.verify.outputs.source_sha }}');
+    const appPreflight = position(app, 'Compare topik-prod trackers read-only before any mutation');
+    const appApply = position(app, 'Apply topik-prod expand migrations for an app-db release');
+    const promote = position(app, 'Promote the verified candidate without rebuilding');
+    expect(appPreflight).toBeLessThan(appApply);
+    expect(appApply).toBeLessThan(promote);
+    expect(app).toContain('Roll back the Production alias when post-promotion checks fail');
+  });
+});
+
 describe('repository execution guards', () => {
   const SOURCE_GUARD = "github.repository == 'blackstarzck/topik-ai'";
+  const COMPANY_GUARD = "github.repository == 'keduall/topik-admin'";
   const workflows = [
-    ['ci.yml', ciWorkflow],
-    ['release-development.yml', developmentWorkflow],
-    ['release-production.yml', productionWorkflow],
-    ['database-health.yml', healthWorkflow],
+    ['ci.yml', ciWorkflow, SOURCE_GUARD],
+    ['release-development.yml', developmentWorkflow, SOURCE_GUARD],
+    ['release-production.yml', productionWorkflow, SOURCE_GUARD],
+    ['database-health.yml', healthWorkflow, SOURCE_GUARD],
+    ['release-promotion.yml', promotionWorkflow, SOURCE_GUARD],
+    ['promotion-gate.yml', gateWorkflow, COMPANY_GUARD],
+    ['release-company-stg.yml', companyStgWorkflow, COMPANY_GUARD],
+    ['release-company-production.yml', companyProductionWorkflow, COMPANY_GUARD],
   ];
 
   function jobEntries(workflow) {
@@ -271,10 +346,10 @@ describe('repository execution guards', () => {
     }));
   }
 
-  it('guards every job so mirrored workflow copies never run outside the source repository', () => {
-    for (const [name, workflow] of workflows) {
+  it('guards every job so mirrored workflow copies never run outside their home repository', () => {
+    for (const [name, workflow, expectedGuard] of workflows) {
       for (const { id, block } of jobEntries(workflow)) {
-        expect(block, `${name}#${id} must guard on github.repository`).toContain(SOURCE_GUARD);
+        expect(block, `${name}#${id} must guard on github.repository`).toContain(expectedGuard);
       }
     }
   });
