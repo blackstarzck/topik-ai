@@ -34,6 +34,7 @@
     "harness:full": "npm run harness:check && npm run build && npm run harness:e2e:smoke",
     "git:session": "node ./scripts/git/session-lifecycle.mjs",
     "git:sessions:audit": "node ./scripts/git/session-lifecycle.mjs audit",
+    "git:sessions:status": "node ./scripts/git/session-lifecycle.mjs status",
     "git:sessions:cleanup": "node ./scripts/git/session-lifecycle.mjs cleanup",
     "db:migrate": "node ./scripts/db/migrate.mjs",
     "db:migrate:status": "node ./scripts/db/migrate.mjs --status",
