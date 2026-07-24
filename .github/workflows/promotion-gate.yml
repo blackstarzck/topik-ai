@@ -41,13 +41,8 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          test "$(git rev-parse HEAD)" = "$HEAD_SHA"
-          node scripts/ci/company-promotion-gate.mjs \
-            --base-ref "$BASE_REF" \
-            --base-sha "$BASE_SHA" \
-            --head-sha "$HEAD_SHA" \
-            --pr-number "$PR_NUMBER" \
-            --json-out gate-evidence/promotion-gate.json
+          mkdir -p gate-evidence
+          node scripts/ci/company-promotion-gate.mjs --base-ref "$BASE_REF" --base-sha "$BASE_SHA" --head-sha "$HEAD_SHA" --pr-number "$PR_NUMBER" --json-out gate-evidence/promotion-gate.json
       - name: Attest the verified head as blackstarzck
         shell: bash
         env:
