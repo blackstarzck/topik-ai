@@ -315,6 +315,43 @@ describe('company promotion pipeline contract', () => {
     expect(companyStgWorkflow).not.toContain('db:shadow:verify');
   });
 
+  // Vercel keeps VITE_SUPABASE_* as sensitive project variables, so a candidate
+  // build that trusts `vercel pull` ships a bundle with no Supabase endpoint and
+  // fails only at the candidate E2E. Both deploying builds must pin the values
+  // themselves, and each must target its own Supabase project.
+  it('pins Supabase build inputs for every deploying build and guards the built bundle', () => {
+    const candidate = companyProductionWorkflow.slice(
+      position(companyProductionWorkflow, 'Build an unaliased Production candidate'),
+      position(companyProductionWorkflow, 'Verify the current Production app before any database change')
+    );
+    expect(candidate).toContain(
+      'VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}'
+    );
+    expect(candidate).toContain('.vercel/.env.production.local');
+    expect(candidate).toContain('VITE_SUPABASE_URL="https://%s.supabase.co"');
+    expect(candidate).toContain('VITE_SUPABASE_ANON_KEY');
+    expect(candidate).toContain('VITE_SUPABASE_DISABLED=""');
+    // The URL is derived from the already-locked project ref rather than stored
+    // separately, so a Production build cannot be pointed somewhere else.
+    expect(candidate).toContain('"$SUPABASE_PROJECT_REF"');
+    expect(candidate).not.toContain('secrets.VITE_SUPABASE_URL');
+    // The bundle guard must run after the build and before the deploy.
+    const build = position(candidate, 'vercel build --prod');
+    const guard = position(candidate, 'scripts/ci/assert-bundle-supabase-target.mjs');
+    const deploy = position(candidate, 'vercel deploy --prebuilt --prod');
+    expect(build).toBeLessThan(guard);
+    expect(guard).toBeLessThan(deploy);
+  });
+
+  it('keeps the stg preview and the Production candidate on different Supabase projects', () => {
+    expect(companyStgWorkflow).toContain('DEVELOPMENT_PROJECT_REF: fglggyfvzjdsbyckinqa');
+    expect(companyStgWorkflow).toContain('.vercel/.env.preview.local');
+    // A Production release must never hardcode or fall back to the development
+    // project ref anywhere in its workflow.
+    expect(companyProductionWorkflow).not.toContain('fglggyfvzjdsbyckinqa');
+    expect(companyProductionWorkflow).not.toContain('DEVELOPMENT_PROJECT_REF');
+  });
+
   it('re-verifies the full promotion contract before any production mutation', () => {
     const verify = job(companyProductionWorkflow, 'verify', 'release-database-only');
     expect(verify).toContain('node scripts/ci/verify-company-release.mjs');
