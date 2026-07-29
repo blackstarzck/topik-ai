@@ -14,7 +14,7 @@ function add(...paths) {
   return classifyChangedFiles(paths.map((path) => ({ status: 'A', path })));
 }
 
-describe('release change classifier v4', () => {
+describe('release change classifier v5', () => {
   it('keeps documentation and offline tests on the light sync-only path', () => {
     const docs = classify('docs/architecture/admin-cicd-pipeline.md', 'AGENTS.md');
     expect(docs.releasePlan).toBe('sync-only');
@@ -71,10 +71,7 @@ describe('release change classifier v4', () => {
       'scripts/db/migrate-core.mjs',
       'supabase/migrations-admin/down/20260721000000_example.sql',
       'playwright.release-admin.config.ts',
-      // 'supabase/README.md' is intentionally absent: pathKind() tests the
-      // documentation rule before isControlPlanePath(), so the generic /\.md$/
-      // match shadows that path's explicit control-plane entry and it lands on
-      // 'light'. That shadowing is a separate defect, tracked on its own.
+      'supabase/README.md',
     ]) {
       const report = classify('src/main.tsx', controlPlanePath);
       expect(report.validationProfile, controlPlanePath).toBe('full');
@@ -95,12 +92,48 @@ describe('release change classifier v4', () => {
       'scripts/db/manifests/v13-shared-dev.json',
       'scripts/db/migrate-core.mjs',
       'src/main.tsx',
+      'supabase/README.md',
       'tests/unit/apply-v13-migration.test.mjs'
     );
     expect(report.releasePlan).toBe('app-only');
     expect(report.validationProfile).toBe('full');
     expect(report.applyMigrations).toBe(false);
     expect(report.runUnit).toBe(true);
+  });
+
+  it('treats supabase/README.md as control plane despite being markdown', () => {
+    // It is the single source of truth for the tracker separation, the runner
+    // contract, and the boundary rules. pathKind() checks documentation before the
+    // control-plane rule, so the generic markdown match used to shadow it.
+    const alone = classify('supabase/README.md');
+    expect(alone.releasePlan).toBe('sync-only');
+    expect(alone.validationProfile).toBe('full');
+    expect(alone.deployApp).toBe(false);
+    expect(alone.applyMigrations).toBe(false);
+    expect(alone.blockedReasons).toEqual([]);
+
+    const mixed = classify('supabase/README.md', 'src/main.tsx');
+    expect(mixed.releasePlan).toBe('app-only');
+    expect(mixed.validationProfile).toBe('full');
+    expect(mixed.applyMigrations).toBe(false);
+  });
+
+  it('leaves every other markdown file on the light path', () => {
+    for (const path of [
+      'AGENTS.md',
+      '.claude/CLAUDE.md',
+      'MOVED_DOCS.md',
+      'docs/architecture/shared-supabase-schema-ownership.md',
+      'logs/admin-doc-update-log.md',
+      // Inside the otherwise control-plane .github/ tree, but a PR template
+      // carries no validation contract, so escalating it would only cost time.
+      '.github/pull_request_template.md',
+    ]) {
+      const report = classify(path);
+      expect(report.releasePlan, path).toBe('sync-only');
+      expect(report.validationProfile, path).toBe('light');
+      expect(report.blockedReasons, path).toEqual([]);
+    }
   });
 
   it('keeps a migration manifest edit out of the migration-applying plans', () => {

@@ -8,9 +8,12 @@ import { pathToFileURL } from 'node:url';
 import { loadRewriteAllowlist } from '../db/check-expand-migrations.mjs';
 
 // 4: a control-plane touch escalates the validation profile even when the same
-// change also touches an app path. Recorded in release evidence, so a bump keeps
-// pre-fix classifications distinguishable from post-fix ones.
-export const CLASSIFIER_VERSION = 4;
+// change also touches an app path.
+// 5: supabase/README.md resolves to control-plane instead of being shadowed by the
+// generic markdown rule.
+// Recorded in release evidence, so a bump keeps pre-fix classifications
+// distinguishable from post-fix ones.
+export const CLASSIFIER_VERSION = 5;
 
 const ZERO_SHA = /^0+$/;
 const RELEASE_PLANS = new Set([
@@ -33,6 +36,23 @@ function value(args, flag, { required = true } = {}) {
 
 function normalizePath(filePath) {
   return filePath.replaceAll('\\', '/').replace(/^\.\//, '');
+}
+
+// Markdown that carries a validation contract rather than prose. pathKind() tests
+// documentation before the control-plane rule and isDocumentationPath() matches any
+// `.md`, so without an explicit check ahead of it these paths land on 'light' and
+// isControlPlanePath() is never consulted for them.
+//
+// supabase/README.md is the single source of truth for the migration tracker
+// separation, the runner contract, and the boundary rules, so a change to it must
+// pull in db-contract. Every other markdown file stays on the light path on
+// purpose — including .github/pull_request_template.md, which is inside the
+// otherwise control-plane .github/ tree but carries no validation contract, and
+// AGENTS.md / docs/**, which are prose.
+const CONTROL_PLANE_DOCUMENT_PATHS = new Set(['supabase/README.md']);
+
+function isControlPlaneDocumentPath(filePath) {
+  return CONTROL_PLANE_DOCUMENT_PATHS.has(filePath);
 }
 
 function isDocumentationPath(filePath) {
@@ -58,10 +78,10 @@ function isDownMigrationPath(filePath) {
 
 function isControlPlanePath(filePath) {
   return (
-    /^\.github\//.test(filePath)
+    isControlPlaneDocumentPath(filePath)
+    || /^\.github\//.test(filePath)
     || /^scripts\//.test(filePath)
     || /^tests\//.test(filePath)
-    || filePath === 'supabase/README.md'
     || isDownMigrationPath(filePath)
     || filePath === '.env.example'
     || filePath === '.nvmrc'
@@ -90,6 +110,7 @@ function isAppPath(filePath) {
 }
 
 function pathKind(filePath) {
+  if (isControlPlaneDocumentPath(filePath)) return 'control-plane';
   if (isDocumentationPath(filePath) || isOfflineTestPath(filePath)) return 'light';
   if (isForwardMigrationPath(filePath)) return 'migration';
   if (isControlPlanePath(filePath)) return 'control-plane';
