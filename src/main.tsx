@@ -4,6 +4,8 @@
 // The preview build is pinned to the topik-dev Supabase project for verification.
 // The company production workflow now pins V13_CONTRACT_SHA, so this canary
 // re-runs the app-only chain that previously stopped at the release env lock.
+// The candidate build now pins its own Supabase target and asserts the built
+// bundle, so this canary proves the production promote step end-to-end.
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 
