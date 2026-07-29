@@ -14,7 +14,7 @@ function add(...paths) {
   return classifyChangedFiles(paths.map((path) => ({ status: 'A', path })));
 }
 
-describe('release change classifier v3', () => {
+describe('release change classifier v4', () => {
   it('keeps documentation and offline tests on the light sync-only path', () => {
     const docs = classify('docs/architecture/admin-cicd-pipeline.md', 'AGENTS.md');
     expect(docs.releasePlan).toBe('sync-only');
@@ -59,6 +59,58 @@ describe('release change classifier v3', () => {
       expect(report.applyMigrations, path).toBe(false);
       expect(report.validationProfile, path).toBe('app');
     }
+  });
+
+  it('still validates the control plane when the same change also touches app code', () => {
+    // db-contract is the only job gated on the full profile, so an app touch used
+    // to silently drop control-plane validation from a mixed change.
+    for (const controlPlanePath of [
+      '.github/workflows/ci.yml',
+      'scripts/ci/classify-release-change.mjs',
+      'scripts/db/manifests/writing-development-release.json',
+      'scripts/db/migrate-core.mjs',
+      'supabase/migrations-admin/down/20260721000000_example.sql',
+      'playwright.release-admin.config.ts',
+      // 'supabase/README.md' is intentionally absent: pathKind() tests the
+      // documentation rule before isControlPlanePath(), so the generic /\.md$/
+      // match shadows that path's explicit control-plane entry and it lands on
+      // 'light'. That shadowing is a separate defect, tracked on its own.
+    ]) {
+      const report = classify('src/main.tsx', controlPlanePath);
+      expect(report.validationProfile, controlPlanePath).toBe('full');
+      // Escalating how hard we check must not change what the release ships.
+      expect(report.releasePlan, controlPlanePath).toBe('app-only');
+      expect(report.deployApp, controlPlanePath).toBe(true);
+      expect(report.applyMigrations, controlPlanePath).toBe(false);
+      expect(report.blockedReasons, controlPlanePath).toEqual([]);
+    }
+  });
+
+  it('reproduces the mixed change that skipped db-contract on PR #58', () => {
+    const report = classify(
+      '.github/workflows/release-company-production.yml',
+      'logs/admin-doc-update-log.md',
+      'scripts/check-migration-ownership-boundary.mjs',
+      'scripts/db/apply-v13-migration.mjs',
+      'scripts/db/manifests/v13-shared-dev.json',
+      'scripts/db/migrate-core.mjs',
+      'src/main.tsx',
+      'tests/unit/apply-v13-migration.test.mjs'
+    );
+    expect(report.releasePlan).toBe('app-only');
+    expect(report.validationProfile).toBe('full');
+    expect(report.applyMigrations).toBe(false);
+    expect(report.runUnit).toBe(true);
+  });
+
+  it('keeps a migration manifest edit out of the migration-applying plans', () => {
+    // The manifest declares which migrations a batch releases; editing it must
+    // raise validation without telling the pipeline to apply anything.
+    const report = classify('scripts/db/manifests/admin-production-cutover.json');
+    expect(report.releasePlan).toBe('sync-only');
+    expect(report.validationProfile).toBe('full');
+    expect(report.applyMigrations).toBe(false);
+    expect(report.deployApp).toBe(false);
   });
 
   it('routes a newly added forward migration through the db-only path', () => {

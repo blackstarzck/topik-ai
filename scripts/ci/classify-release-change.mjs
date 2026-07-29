@@ -7,7 +7,10 @@ import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { loadRewriteAllowlist } from '../db/check-expand-migrations.mjs';
 
-export const CLASSIFIER_VERSION = 3;
+// 4: a control-plane touch escalates the validation profile even when the same
+// change also touches an app path. Recorded in release evidence, so a bump keeps
+// pre-fix classifications distinguishable from post-fix ones.
+export const CLASSIFIER_VERSION = 4;
 
 const ZERO_SHA = /^0+$/;
 const RELEASE_PLANS = new Set([
@@ -102,12 +105,22 @@ function deriveReleasePlan({ appTouched, databaseTouched, blockedReasons }) {
   return 'sync-only';
 }
 
+// The validation profile answers "how hard do we check this change", which is a
+// separate question from the release plan's "what does this change ship". A
+// control-plane touch always demands the strong profile, including when the same
+// change also touches an app path — `app-only` used to return early here, so a PR
+// that edited a workflow, a release script, a migration manifest, or a down
+// migration alongside any src/ file silently lost the control-plane validation
+// (`db-contract` is the only job gated on `full`). Escalating the profile leaves
+// releasePlan, deployApp, and applyMigrations untouched, so release behavior is
+// unchanged — only the amount of checking goes up.
 function deriveValidationProfile({ releasePlan, controlPlaneTouched }) {
   if (releasePlan === 'blocked' || releasePlan === 'db-only' || releasePlan === 'app-db') {
     return 'full';
   }
+  if (controlPlaneTouched) return 'full';
   if (releasePlan === 'app-only') return 'app';
-  return controlPlaneTouched ? 'full' : 'light';
+  return 'light';
 }
 
 export function applyManualReleasePlan(report, requestedReleasePlan) {
