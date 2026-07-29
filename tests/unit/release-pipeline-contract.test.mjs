@@ -380,3 +380,67 @@ describe('repository execution guards', () => {
     );
   });
 });
+
+const releaseEnvValidator = readFileSync(
+  resolve('scripts/ci/validate-release-env.mjs'),
+  'utf8'
+);
+const developmentEnvValidator = readFileSync(
+  resolve('scripts/ci/validate-development-env.mjs'),
+  'utf8'
+);
+
+describe('v13 contract pin contract', () => {
+  const allWorkflows = [
+    ['ci.yml', ciWorkflow],
+    ['release-development.yml', developmentWorkflow],
+    ['release-production.yml', productionWorkflow],
+    ['database-health.yml', healthWorkflow],
+    ['release-promotion.yml', promotionWorkflow],
+    ['promotion-gate.yml', gateWorkflow],
+    ['release-company-stg.yml', companyStgWorkflow],
+    ['release-company-production.yml', companyProductionWorkflow],
+  ];
+
+  function workflowPin(workflow) {
+    return /^\s+V13_CONTRACT_SHA:\s*([0-9a-f]{40})\s*$/m.exec(workflow)?.[1] ?? null;
+  }
+
+  function validatorPin(validator, label) {
+    const match = /V13_CONTRACT_SHA:\s*'([0-9a-f]{40})'/.exec(validator);
+    expect(match, `${label} must pin V13_CONTRACT_SHA`).not.toBeNull();
+    return match[1];
+  }
+
+  it('pins the same contract sha in both environment validators', () => {
+    expect(validatorPin(developmentEnvValidator, 'validate-development-env.mjs')).toBe(
+      validatorPin(releaseEnvValidator, 'validate-release-env.mjs')
+    );
+  });
+
+  // A workflow that runs an environment validator but omits the env entry fails
+  // closed at the first release step with missing:V13_CONTRACT_SHA, which blocks
+  // every company production release until the env block is restored.
+  it('defines the env entry in every workflow that runs an environment validator', () => {
+    const expectedSha = validatorPin(releaseEnvValidator, 'validate-release-env.mjs');
+    const validating = allWorkflows.filter(
+      ([, workflow]) => /validate-(?:release|development)-env\.mjs/.test(workflow)
+    );
+    expect(validating.length).toBeGreaterThan(0);
+    for (const [name, workflow] of validating) {
+      expect(
+        workflowPin(workflow),
+        `${name} runs an environment validator so it must pin V13_CONTRACT_SHA`
+      ).toBe(expectedSha);
+    }
+  });
+
+  it('keeps every workflow pin on the validator sha', () => {
+    const expectedSha = validatorPin(releaseEnvValidator, 'validate-release-env.mjs');
+    for (const [name, workflow] of allWorkflows) {
+      const pinned = workflowPin(workflow);
+      if (pinned === null) continue;
+      expect(pinned, `${name} must pin the validator contract sha`).toBe(expectedSha);
+    }
+  });
+});
