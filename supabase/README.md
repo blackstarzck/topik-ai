@@ -108,10 +108,38 @@
   `prepare -> verify -> finalize -> verify` 순서를 사용한다. 최종 관리자 권한 SoT는
   `admin_accounts`이고 `profiles.app_role`은 `learner`로 복원한다.
 
+## 3.2 v13 소유 마이그레이션 적용 러너 (`apply-v13-migration.mjs`)
+
+v13은 작업면에서 원격 apply를 하지 않고(`v13/AGENTS.md`, `v13/supabase/README.md`)
+마이그레이션별 위임을 `v13/supabase/migrations/INDEX.md`에 기록한다. 그 위임분을
+topik-ai 운영면에서 적용하는 전용 러너다. 선례는 v13 `20260707120000`을
+`run-sql.mjs`로 적용하고 v13 CLI tracker에 repair 행을 넣은 2026-07-07 건이다
+(`docs/architecture/shared-supabase-schema-ownership.md`).
+
+- **러너**: `scripts/db/apply-v13-migration.mjs`
+- **manifest**: `scripts/db/manifests/v13-shared-dev.json` (`--batch` 단위, `sequence` 순서)
+- **tracker**: v13 CLI 장부 `supabase_migrations.schema_migrations` — **세 번째 흐름**이며
+  `topik_writing_schema_migrations`·`admin_schema_migrations`와 혼입하지 않는다.
+- **기본 동작은 read-only `--status`**. `--dry-run`은 생성 SQL만 출력하고,
+  쓰기는 `--write` + `SUPABASE_EXPECTED_PROJECT_REF` 일치 + `SUPABASE_SQL_MAX_ATTEMPTS=1`을
+  모두 요구한다. production project ref는 어떤 동작에서도 거부한다.
+- 마이그레이션 본문은 워킹트리가 아니라 `git show <--v13-sha>:<path>`로 읽어 dirty
+  체크아웃이 적용에 새지 않게 한다. 파일별 sha256·배치명·v13 commit·운영자를
+  tracker `statements`에 provenance 마커로 남긴다.
+- `db:migrate`/`db:admin:migrate`를 재사용하지 않는 이유: 두 러너는 tracker를
+  `public.<table>`로만 참조하고(`requireIdentifier`가 점을 거부) `ensureTracker()`가
+  tracker에 DDL을 실행하므로, v13 CLI 장부에 붙이면 v13의 장부 스키마를 변조한다.
+  따라서 `migrate-core.mjs`에서 `stripOuterTransaction`·`runSql`·`sha256`·`loadLocalEnv`만
+  재사용한다.
+- **manifest의 `blockedMigrations`는 장부에 기록하지 않는다.** 실행되지 않은 것이
+  사실이므로 스탬프하면 거짓 기록이 된다. 선택 시 러너가 사유와 함께 중단한다.
+- 워크트리에서 실행할 때는 `--env-file`로 다른 워크트리의 `.env.local`을 지정한다
+  (비밀값을 워크트리마다 복제하지 않는다). v13 경로는 `--v13-root`로 지정한다.
+
 ## 4. 경계 규칙 (중요)
 
-- 두 네임스페이스의 추적 테이블을 **섞지 않는다** — `topik_writing`은 `db:migrate`,
-  admin 운영은 `db:admin:migrate`로만 적용한다.
+- 세 추적 테이블을 **섞지 않는다** — `topik_writing`은 `db:migrate`,
+  admin 운영은 `db:admin:migrate`, v13 소유분은 `apply-v13-migration.mjs`로만 적용한다.
 - 이 repo가 소유하지 않는 **기존 v13 테이블의 DDL 변경은 금지**한다.
 - 공유 Supabase 스키마 소유권은 앱 기준이 아니라 **도메인 기준**으로 정한다.
   양쪽 앱이 읽거나 쓰는 공유 객체의 경계·승인 절차는
