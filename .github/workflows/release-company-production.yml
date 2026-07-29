@@ -17,6 +17,9 @@ env:
   NODE_VERSION: '24.x'
   VERCEL_CLI_VERSION: '48.12.0'
   TIP_SHA: ${{ github.sha }}
+  # validate-release-env.mjs locks this against its own pinned constant, so the
+  # value must stay a literal here and match every other workflow's pin.
+  V13_CONTRACT_SHA: 81e2ed7d0845194224ebe6f156c697560d70de65
 
 jobs:
   verify:
