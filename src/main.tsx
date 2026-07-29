@@ -6,6 +6,8 @@
 // re-runs the app-only chain that previously stopped at the release env lock.
 // The candidate build now pins its own Supabase target and asserts the built
 // bundle, so this canary proves the production promote step end-to-end.
+// promote/rollback/logs now pin the team scope as well, so this run should
+// reach the Production alias switch.
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 
