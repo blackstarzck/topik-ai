@@ -164,6 +164,7 @@
 - `page-ia/system-audit-logs-page-ia.md`
 - `page-ia/system-logs-page-ia.md`
 - `page-ia/system-backups-page-ia.md` — 백업 상태·실행 이력·검사 결과·시스템 로그 연결을 제공하는 조회 전용 화면
+- `page-ia/system-reports-page-ia.md` — 학습자 앱 접수 리포트를 조회하고 사유와 함께 단건 삭제하는 화면
 - `page-ia/system-metadata-page-ia.md`
 - `page-ia/system-permissions-page-ia.md`
 - `page-ia/users-detail-page-ia.md`
