@@ -343,6 +343,26 @@ describe('company promotion pipeline contract', () => {
     expect(guard).toBeLessThan(deploy);
   });
 
+  // vercel promote/rollback/logs address a deployment id or a domain directly
+  // rather than through the pulled project link, so an implicit scope resolves
+  // against the token's default account and fails with "Deployment belongs to a
+  // different team" — after the candidate has already been built and verified.
+  it('scopes every Vercel command that addresses a deployment outside the project link', () => {
+    const scoped = [
+      'vercel promote',
+      'vercel rollback',
+      'vercel logs',
+    ];
+    for (const command of scoped) {
+      const index = position(companyProductionWorkflow, command);
+      const invocation = companyProductionWorkflow.slice(index, index + 400);
+      expect(
+        invocation,
+        `${command} must pin --scope so it cannot resolve against the wrong team`
+      ).toContain('--scope "$VERCEL_ORG_ID"');
+    }
+  });
+
   it('keeps the stg preview and the Production candidate on different Supabase projects', () => {
     expect(companyStgWorkflow).toContain('DEVELOPMENT_PROJECT_REF: fglggyfvzjdsbyckinqa');
     expect(companyStgWorkflow).toContain('.vercel/.env.preview.local');
