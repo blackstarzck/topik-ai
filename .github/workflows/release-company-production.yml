@@ -304,16 +304,21 @@ jobs:
         env:
           ADMIN_E2E_BASE_URL: ${{ steps.candidate.outputs.deployment_url }}
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      # promote/rollback/logs resolve a deployment id or domain directly instead
+      # of going through the pulled project link, so without an explicit scope
+      # they fall back to the token's default account and fail with
+      # "Deployment belongs to a different team".
       - name: Promote the verified candidate without rebuilding
         id: promote
         run: >-
           vercel promote "${{ steps.candidate.outputs.deployment_id }}"
+          --scope "$VERCEL_ORG_ID"
           --yes --timeout 10m --global-config "$VERCEL_GLOBAL_CONFIG"
       - name: Verify the Production domain and runtime error stream
         id: production_smoke
         shell: bash
         run: |
-          vercel logs "$PROD_ADMIN_DOMAIN" --json --global-config "$VERCEL_GLOBAL_CONFIG" > .vercel-runtime.ndjson 2> .vercel-runtime.stderr &
+          vercel logs "$PROD_ADMIN_DOMAIN" --json --scope "$VERCEL_ORG_ID" --global-config "$VERCEL_GLOBAL_CONFIG" > .vercel-runtime.ndjson 2> .vercel-runtime.stderr &
           log_pid=$!
           sleep 2
           set +e
@@ -328,7 +333,7 @@ jobs:
         if: always() && steps.promote.outcome == 'success' && steps.production_smoke.outcome == 'failure'
         shell: bash
         run: |
-          vercel rollback "${{ steps.previous.outputs.deployment_id }}" --yes --timeout 10m --global-config "$VERCEL_GLOBAL_CONFIG"
+          vercel rollback "${{ steps.previous.outputs.deployment_id }}" --scope "$VERCEL_ORG_ID" --yes --timeout 10m --global-config "$VERCEL_GLOBAL_CONFIG"
           node scripts/ci/capture-vercel-production.mjs \
             --domain "$PROD_ADMIN_DOMAIN" \
             --team-id "$VERCEL_ORG_ID" \
