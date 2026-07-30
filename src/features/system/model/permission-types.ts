@@ -340,6 +340,20 @@ export const permissionCatalog: PermissionDefinition[] = [
     module: '시스템',
     scopeDescription: '온프레미스 백업 실행 결과와 복원 점검 상세를 조회합니다.',
     risk: 'medium'
+  },
+  {
+    key: 'system.reports.read',
+    name: '사용자 리포트 조회',
+    module: '시스템',
+    scopeDescription: '학습자 앱에서 접수된 오류 신고·문의·제안의 내용과 진단 정보를 조회합니다.',
+    risk: 'medium'
+  },
+  {
+    key: 'system.reports.delete',
+    name: '사용자 리포트 삭제',
+    module: '시스템',
+    scopeDescription: '접수된 사용자 리포트를 사유와 함께 단건 영구 삭제합니다.',
+    risk: 'high'
   }
 ];
 

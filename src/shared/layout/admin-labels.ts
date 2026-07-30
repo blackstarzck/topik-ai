@@ -52,7 +52,8 @@ export const adminMenuLabels = {
   systemMetadata: '메타데이터 관리',
   systemBackups: '백업 관리',
   systemAuditLogs: '감사 로그',
-  systemLogs: '시스템 로그'
+  systemLogs: '시스템 로그',
+  systemReports: '사용자 리포트'
 } as const;
 
 export const adminRoleLabels: Record<RoleKey, string> = {
