@@ -253,6 +253,22 @@ describe('runSql retry knob', () => {
 describe('v13-shared-dev manifest integrity', () => {
   const { manifest } = readManifest('scripts/db/manifests/v13-shared-dev.json');
 
+  it('only declares expectPresent where a cross-batch dependency justifies it', () => {
+    // expectPresent is a precondition: the runner probes it before writing and
+    // aborts when it is missing. Objects the batch itself creates belong in
+    // expectPresentAfter. Five batches originally listed their own outputs under
+    // expectPresent, so the very first --write aborted its own preflight.
+    for (const batchName of manifest.sequence) {
+      const batch = manifest.batches[batchName];
+      if ((batch.expectPresent ?? []).length === 0) continue;
+      expect(
+        batch.requires,
+        `${batchName} declares preconditions but no requires — are those its own outputs?`
+      ).toBeTruthy();
+      expect(batch.requires.length, batchName).toBeGreaterThan(0);
+    }
+  });
+
   it('targets development and the v13 CLI ledger, never a topik-ai tracker', () => {
     expect(manifest.projectRef).toBe(DEV_REF);
     expect(manifest.trackerTable).toBe('supabase_migrations.schema_migrations');
