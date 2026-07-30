@@ -324,9 +324,21 @@ export function formatMigrationOwnershipBoundaryReport(result) {
   return lines.join('\n');
 }
 
+// DEFAULT_V13_ROOT is relative to this repo root, so it only resolves from the
+// main workspace. Sessions run from `~/.codex/worktrees/<id>/topik-ai` (AGENTS.md
+// §11.3), where the default points at a directory that does not exist — and this
+// gate runs argument-less inside `harness:admin-boundary`, a commit gate for
+// boundary work. TOPIK_V13_ROOT matches the override already used by
+// check-transfer-sot-checklist.mjs so the harness is runnable from a worktree.
+export function resolveV13Root(argv = process.argv, env = process.env) {
+  const arg = argv.find((value) => value.startsWith('--v13-root='));
+  if (arg) return path.resolve(arg.slice('--v13-root='.length));
+  if (env.TOPIK_V13_ROOT) return path.resolve(env.TOPIK_V13_ROOT);
+  return DEFAULT_V13_ROOT;
+}
+
 function main() {
-  const v13RootArg = process.argv.find((arg) => arg.startsWith('--v13-root='));
-  const v13Root = v13RootArg ? path.resolve(v13RootArg.slice('--v13-root='.length)) : DEFAULT_V13_ROOT;
+  const v13Root = resolveV13Root();
   const result = evaluateMigrationOwnershipBoundary({ v13Root });
   const report = formatMigrationOwnershipBoundaryReport(result);
 

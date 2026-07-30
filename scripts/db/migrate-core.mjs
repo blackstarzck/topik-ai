@@ -9,6 +9,7 @@ import {
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 
 const PRODUCTION_PROJECT_REF = 'eymlabowhfgtxbiqwxqh';
+const DEFAULT_SQL_MAX_ATTEMPTS = 4;
 const IDENTIFIER_PATTERN = /^[a-z_][a-z0-9_]*$/;
 const MIGRATION_NAME_PATTERN = /^\d{14}_[a-z0-9_]+\.sql$/;
 
@@ -393,9 +394,24 @@ export function assertManifestProjectRef(manifestProjectRef, targetProjectRef) {
   }
 }
 
+// Retrying a committed statement re-runs non-idempotent DDL (`alter function ...
+// set schema`, `alter column ... set not null`), so a batch that actually
+// succeeded can report failure and then abort on the second pass. Callers that
+// send such batches set SUPABASE_SQL_MAX_ATTEMPTS=1.
+export function resolveSqlMaxAttempts(env = process.env) {
+  const raw = env.SUPABASE_SQL_MAX_ATTEMPTS;
+  if (raw === undefined || raw === '') return DEFAULT_SQL_MAX_ATTEMPTS;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isInteger(parsed) || parsed < 1 || String(parsed) !== raw.trim()) {
+    fail(`SUPABASE_SQL_MAX_ATTEMPTS must be a positive integer: ${raw}`);
+  }
+  return parsed;
+}
+
 export async function runSql({ projectRef, token, sql }) {
   const url = `https://api.supabase.com/v1/projects/${projectRef}/database/query`;
-  for (let attempt = 1; attempt <= 4; attempt += 1) {
+  const maxAttempts = resolveSqlMaxAttempts();
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -414,7 +430,7 @@ export async function runSql({ projectRef, token, sql }) {
     }
 
     const retryable = response.status === 429 || response.status >= 500;
-    if (retryable && attempt < 4) {
+    if (retryable && attempt < maxAttempts) {
       await new Promise((resolveWait) => setTimeout(resolveWait, attempt * 750));
       continue;
     }

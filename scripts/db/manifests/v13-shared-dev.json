@@ -1,0 +1,157 @@
+{
+  "$comment": "v13-owned pending migrations applied to the shared development project by topik-ai operations. v13 does not apply remotely (v13 AGENTS.md, v13 supabase/README.md); the delegation is recorded per migration in v13 supabase/migrations/INDEX.md. Precedent: v13 20260707120000 was applied with topik-ai run-sql.mjs plus a v13 CLI tracker repair row under owner approval 2026-07-07 (docs/architecture/shared-supabase-schema-ownership.md). This manifest is consumed by scripts/db/apply-v13-migration.mjs only; it never touches topik_writing_schema_migrations or admin_schema_migrations.",
+  "namespace": "v13_user_facing",
+  "environment": "development",
+  "projectRef": "fglggyfvzjdsbyckinqa",
+  "trackerTable": "supabase_migrations.schema_migrations",
+  "sourceRepo": "blackstarzck/topik-project-v13",
+  "sourceMigrationsDir": "supabase/migrations",
+  "sourceGitSha": null,
+  "sourceGitShaComment": "Set with --v13-sha at run time. Must be the merged v13 commit that contains every migration named below, including the list_user_problems repair. v13 origin/main was a29076543f655a1aae5d895a0218901594637357 when this manifest was written; that tree does NOT yet contain the repair migration.",
+  "sequence": ["B1", "B2", "B3", "B4", "B6", "B7", "B8", "B9"],
+  "adoptedElsewhere": [
+    {
+      "name": "20260723170000_system_reports.sql",
+      "formerBatch": "B5",
+      "adoptedAs": "supabase/migrations-admin/20260723170000_system_reports.sql",
+      "tracker": "admin_schema_migrations",
+      "runner": "npm run db:admin:migrate",
+      "reason": "topik-ai adopted the v13 canonical file byte for byte into the admin namespace (identical git blob 4e28b61f55536f1ecb8a4f9e20cdb734006baf3d, supabase/README.md 2.3). Applying it here as well would record one migration in two trackers, which the boundary rule forbids. Nothing in this sequence depends on it: the ledger it creates is private.system_reports plus a service-role-only submit RPC, and no later batch references either."
+    }
+  ],
+  "batches": {
+    "B1": {
+      "reason": "Restore private.is_email_confirmed(uuid). The tracker records 20260527113000 as applied but neither the function nor its three storage policies were ever created, so the live complete_auth_gate chain raises 42883 and B6 would abort while creating policies that name it.",
+      "migrations": ["20260527113000_storage_email_confirmed_hardening.sql"],
+      "expectPresent": [
+        { "kind": "function", "identity": "private.is_email_confirmed(uuid)" }
+      ]
+    },
+    "B2": {
+      "reason": "Close a live anon exposure: the six-argument complete_auth_gate overload still grants EXECUTE to anon. 20260718120000 revoked the 4/7/9-argument overloads but missed this one. Two drop/revoke statements, no data effect.",
+      "migrations": ["20260710093000_revoke_anon_superseded_auth_gate.sql"],
+      "expectAbsent": [
+        {
+          "kind": "function",
+          "identity": "public.complete_auth_gate(text,text,text,boolean,text,text)"
+        }
+      ]
+    },
+    "B3": {
+      "reason": "Create public.accept_affiliation_invite(text,boolean). B8 revokes it unconditionally (REVOKE has no IF EXISTS), so B8 aborts with 42883 while the function is missing. B8 drops both functions this migration defines, so the net effect across the window is zero.",
+      "migrations": ["20260701140000_accept_affiliation_invite.sql"],
+      "expectPresent": [
+        { "kind": "function", "identity": "public.accept_affiliation_invite(text,boolean)" },
+        { "kind": "function", "identity": "public.claim_affiliation_code(text)" }
+      ]
+    },
+    "B4": {
+      "reason": "20260722120000 recreates list_user_problems from the pre-cutover definition and calls two helpers that 20260714140000 dropped, so the function applies cleanly and then raises 42883 on every call. The repair migration restores the post-cutover catalog CTE. Both run in one transaction so the broken definition is never committed.",
+      "migrations": [
+        "20260722120000_writing_completion_and_pdf_outcomes.sql",
+        "20260729120000_list_user_problems_canonical_catalog_fix.sql"
+      ],
+      "expectPresent": [
+        { "kind": "column", "identity": "public.export_files.failure_code" },
+        { "kind": "column", "identity": "public.export_files.failed_at" },
+        { "kind": "function", "identity": "public.list_user_problems(jsonb,text,integer,integer)" }
+      ]
+    },
+    "B6": {
+      "reason": "Largest batch (799 lines). Creates get_my_account_state(), which the workspace layout needs; without it every workspace route bounces between /auth/account-inactive and /dashboard. Requires B1 for is_email_confirmed and B4 for get_dashboard_kpi, which this migration moves into private.",
+      "requires": ["B1", "B4"],
+      "expectPresent": [
+        { "kind": "function", "identity": "private.is_email_confirmed(uuid)" },
+        { "kind": "function", "identity": "public.request_account_deletion()" },
+        { "kind": "function", "identity": "public.get_dashboard_kpi()" },
+        { "kind": "function", "identity": "public.get_writing_submission_history_context(uuid[])" },
+        { "kind": "function", "identity": "public.replace_stale_writing_draft(uuid,text,bigint,text)" },
+        {
+          "kind": "function",
+          "identity": "public.create_comparison_report_with_metrics(uuid,uuid,jsonb,text,text)"
+        },
+        { "kind": "function", "identity": "public.claim_pdf_export_quota(uuid,uuid[])" },
+        { "kind": "function", "identity": "public.is_nickname_available(text)" },
+        { "kind": "function", "identity": "public.list_user_library_problem_items()" }
+      ],
+      "migrations": ["20260723234527_consent_account_deletion_rls.sql"],
+      "expectPresentAfter": [
+        { "kind": "function", "identity": "private.is_active_user()" },
+        { "kind": "function", "identity": "public.get_my_account_state()" }
+      ],
+      "nonIdempotent": "Seven `alter function ... set schema private` plus rename pairs. On failure count private.*_unchecked before retrying: 0 means a clean rollback, 1..6 means a partial commit that must be reversed by hand."
+    },
+    "B7": {
+      "reason": "Reference integrity guard for learner-owned rows.",
+      "migrations": ["20260724120000_user_data_reference_integrity.sql"],
+      "expectPresent": [
+        {
+          "kind": "trigger",
+          "identity": "public.study_events.trg_validate_review_set_study_event"
+        }
+      ]
+    },
+    "B8": {
+      "reason": "Stops handle_new_user() from trusting raw affiliation_code metadata and removes the legacy browser invite RPCs. Requires B3 because of the unconditional REVOKE.",
+      "requires": ["B3"],
+      "migrations": ["20260724130000_institution_invite_trust_boundary.sql"],
+      "expectAbsent": [
+        { "kind": "function", "identity": "public.accept_affiliation_invite(text,boolean)" },
+        { "kind": "function", "identity": "public.claim_affiliation_code(text)" }
+      ],
+      "note": "This file carries its own top-level begin;/commit; pair. stripOuterTransaction removes it so the runner wrapper stays the only transaction."
+    },
+    "B9": {
+      "reason": "The original request: JWT-bound idempotent PDF export requests. Restores PDF export, which currently fails at the first ledger call because acquire_pdf_export_attempt does not exist.",
+      "migrations": ["20260724140000_pdf_export_request_idempotency.sql"],
+      "expectPresent": [
+        { "kind": "table", "identity": "public.pdf_export_request_periods" },
+        { "kind": "column", "identity": "public.pdf_export_quota_usages.request_id" },
+        { "kind": "column", "identity": "public.export_files.request_id" },
+        {
+          "kind": "function",
+          "identity": "public.acquire_pdf_export_attempt(uuid,text,uuid,jsonb,text)"
+        },
+        { "kind": "function", "identity": "public.claim_pdf_export_quota(uuid,uuid[],uuid)" }
+      ],
+      "nonIdempotent": "`alter column request_id set not null` plus a unique index. On failure check whether pdf_export_quota_usages.request_id exists before retrying."
+    }
+  },
+  "blockedMigrations": [
+    {
+      "name": "20260629110000_institution_assigned_only_writing_access.sql",
+      "reason": "Redefines is_writing_problem_visible_to_caller from public.problems.materials->>'question_id'. 20260714140000 deleted the writing rows from public.problems, so every lookup would resolve to false and hide the whole writing pool."
+    },
+    {
+      "name": "20260629170000_non_institution_writing_full_exposure.sql",
+      "reason": "Same predicate and the same deleted source rows."
+    },
+    {
+      "name": "20260701160000_institution_retry_availability.sql",
+      "reason": "Redefines list_user_library_problem_items without the canonical reader. The live definition carries the writing_catalog CTE that 20260714140000 substituted in, so applying this file would silently drop writing items from the library list."
+    },
+    {
+      "name": "20260629120000_auth_email_verified_access_gate.sql",
+      "reason": "Superseded by 20260718120000. Applying it re-grants the boolean-only complete_auth_gate overloads that 20260718120000 deliberately revoked, and recreates user_consents_owner_insert, which B6 replaces with user_consents_no_direct_insert."
+    },
+    {
+      "name": "20260710094000_auth_gate_trusted_consent_docs.sql",
+      "reason": "Superseded by 20260718120000 exact consent snapshots, and re-grants the same revoked overload."
+    }
+  ],
+  "blockedComment": "These files are NOT recorded in the tracker and must stay that way: they were never executed, and stamping them would repeat the false-record failure that 20260527113000 already caused. The institution exposure gating they carried is genuinely inert today; restoring it needs a new forward migration written against the post-cutover structure, not these files.",
+  "deferredMigrations": [
+    {
+      "name": "20260629153000_enforce_same_problem_comparison.sql",
+      "reason": "Real gap: private.enforce_comparison_report_same_problem and its trigger are absent. Deferred because installing the guard blocks updates to the 21 existing cross-problem comparison_reports rows, which is an owner decision unrelated to this window."
+    },
+    {
+      "name": "20260629215000_feedback_retry_parent_submission.sql",
+      "reason": "create_external_writing_submission is absent but has zero callers in v13 src/. Applying it would only add unreferenced SECURITY DEFINER surface."
+    },
+    {
+      "name": "20260710095000_profiles_country_code_iso_check.sql",
+      "reason": "is_supported_country_code is absent, so profiles.phone_country_code accepts non-ISO values. Independent hardening; deferred to keep this window narrow."
+    }
+  ]
+}
