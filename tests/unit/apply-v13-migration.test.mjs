@@ -277,7 +277,7 @@ describe('v13-shared-dev manifest integrity', () => {
   });
 
   it('declares the approved batches in order', () => {
-    expect(manifest.sequence).toEqual(['B1', 'B2', 'B3', 'B4', 'B6', 'B7', 'B8', 'B9']);
+    expect(manifest.sequence).toEqual(['B1', 'B2', 'B3', 'B4', 'B6', 'B7', 'B8', 'B9', 'B10']);
     expect(Object.keys(manifest.batches).sort()).toEqual([...manifest.sequence].sort());
     for (const batchName of manifest.sequence) {
       expect(() => resolveBatch(manifest, batchName)).not.toThrow();
@@ -306,7 +306,7 @@ describe('v13-shared-dev manifest integrity', () => {
     const blocked = new Set(normalizeBlocked(manifest).keys());
     const deferred = new Set((manifest.deferredMigrations ?? []).map((entry) => entry.name));
     expect(blocked.size).toBe(5);
-    expect(deferred.size).toBe(3);
+    expect(deferred.size).toBe(2);
     const selected = manifest.sequence
       .flatMap((batchName) => manifest.batches[batchName].migrations);
     for (const fileName of selected) {
