@@ -301,7 +301,8 @@ async function removeQuestionTag(payload: RemoveQuestionTagPayload): Promise<voi
 
 /**
  * 기관별 노출 매핑 — 문항 N건의 허용 기관 집합을 동기화(set)하거나 전부 제거(clear)
- * 한다(공개 기본 + 기관 한정). 사유 필수·문항별 격리·멱등·감사는 RPC가 책임지고,
+ * 한다(기관 할당제: 매핑=그 기관 학습자에게 허용, 무소속 학습자는 매핑과 무관하게
+ * available 전체를 본다). 사유 필수·문항별 격리·멱등·감사는 RPC가 책임지고,
  * mock은 결과 shape만 재현한다(감사 미기록). 단건/일괄 공용(questionIds 배열).
  */
 async function loadQuestionInstitutions(

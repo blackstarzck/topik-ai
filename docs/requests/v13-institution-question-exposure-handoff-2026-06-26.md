@@ -1,5 +1,24 @@
 # v13 기관별 TOPIK 쓰기 문항 노출 적용 handoff (2026-06-26)
 
+> **[2026-07-30 정정 — 아래 본문의 노출 규칙은 채택되지 않았다. 인용하지 말 것.]**
+>
+> 이 문서가 요청한 규칙은 **전용 잠금 모델**이다: `매핑 없음 = 전체 공개`, `매핑 있음 = 그 기관 회원에게만 노출`. 이 모델은 **구현된 적이 없다.**
+>
+> 실제로 구현·강제되고 있는 규칙은 **기관 할당제**다:
+>
+> - 무소속 학습자(`profiles.affiliation_code` 없음) = `service_status='available'` 문항 **전체**
+> - 기관 소속 학습자 = 자기 `institution_code`에 **매핑된 문항만** (미매핑 문항은 보이지 않는다)
+>
+> 즉 매핑 행은 "다른 학습자에게 잠그는 장치"가 아니라 "그 기관 학습자에게 **허용**하는 목록"이다. 매핑된 문항도 무소속 학습자에게는 계속 보인다.
+>
+> 강제 지점은 `private.is_writing_question_visible_to_user`(topik-ai `supabase/migrations/20260713080015_topik_writing_canonical_read_contract.sql`) 단 하나이며, `public.get_available_writing_questions`(canonical reader)의 WHERE 절이 문제목록·상세·라이브러리·RLS 정책·제출 guard를 모두 이 predicate로 통과시킨다. dev 실측(2026-07-30): 무소속 700/700, `convention-vn` 소속 130명 18/700.
+>
+> 아래 §5의 예시 SQL(`return not exists (...) or exists (...)`)과 §7·§9의 검증 기준은 전부 잠금 모델 기준이므로 **그대로 쓰면 안 된다.** 특히 §7·§9의 "`affiliation_code`가 null인 사용자는 매핑 없는 문항만 볼 수 있다"는 라이브 동작과 정반대다.
+>
+> 오너 결정(2026-07-30)으로 라이브 규칙을 계약으로 확정했다. 확정 계약의 SoT는 `topik_writing_question_institution_exposure` 테이블 comment이며, 정정 마이그는 `supabase/migrations/20260730120000_topik_writing_institution_exposure_contract_correction.sql`이다. 이 문서는 **2026-06-26에 무엇을 요청했는지의 역사 기록**으로만 보존한다.
+>
+> 또한 아래 §5가 재정의를 제안한 v13 마이그 3건(`20260629110000`, `20260629170000`, `20260701160000`)은 `scripts/db/manifests/v13-shared-dev.json`의 `blockedMigrations`에 등재된 **적용 금지** 파일이다. `public.problems.materials->>'question_id'`를 읽는 구조인데 `20260714140000` cutover가 `public.problems`의 writing 행을 삭제했으므로, 적용하면 쓰기 문항이 전면 차단된다.
+
 ## 1. 목적
 
 topik-ai admin에서 기관 코드별로 TOPIK 쓰기 문항을 전용 노출할 수 있게 되었다. v13 사용자 화면은 같은 Supabase 호스트의 `problems` 미러를 사용하므로, 사용자에게 문항을 보여주는 모든 경로에 기관 노출 조건을 적용해야 한다.

@@ -170,7 +170,7 @@ export default function InstitutionCodesPage(): JSX.Element {
   const [cancelInviteTarget, setCancelInviteTarget] =
     useState<InstitutionInvitation | null>(null);
 
-  // 노출 문항 관리 모달(기관별 전용 노출 문항 추가/제거).
+  // 노출 문항 관리 모달(기관 소속 학습자에게 배정할 문항 추가/제거).
   const [questionExposureTarget, setQuestionExposureTarget] =
     useState<InstitutionCode | null>(null);
 
