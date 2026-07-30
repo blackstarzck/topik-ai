@@ -23,7 +23,7 @@
     "B1": {
       "reason": "Restore private.is_email_confirmed(uuid). The tracker records 20260527113000 as applied but neither the function nor its three storage policies were ever created, so the live complete_auth_gate chain raises 42883 and B6 would abort while creating policies that name it.",
       "migrations": ["20260527113000_storage_email_confirmed_hardening.sql"],
-      "expectPresent": [
+      "expectPresentAfter": [
         { "kind": "function", "identity": "private.is_email_confirmed(uuid)" }
       ]
     },
@@ -40,7 +40,7 @@
     "B3": {
       "reason": "Create public.accept_affiliation_invite(text,boolean). B8 revokes it unconditionally (REVOKE has no IF EXISTS), so B8 aborts with 42883 while the function is missing. B8 drops both functions this migration defines, so the net effect across the window is zero.",
       "migrations": ["20260701140000_accept_affiliation_invite.sql"],
-      "expectPresent": [
+      "expectPresentAfter": [
         { "kind": "function", "identity": "public.accept_affiliation_invite(text,boolean)" },
         { "kind": "function", "identity": "public.claim_affiliation_code(text)" }
       ]
@@ -51,7 +51,7 @@
         "20260722120000_writing_completion_and_pdf_outcomes.sql",
         "20260729120000_list_user_problems_canonical_catalog_fix.sql"
       ],
-      "expectPresent": [
+      "expectPresentAfter": [
         { "kind": "column", "identity": "public.export_files.failure_code" },
         { "kind": "column", "identity": "public.export_files.failed_at" },
         { "kind": "function", "identity": "public.list_user_problems(jsonb,text,integer,integer)" }
@@ -84,7 +84,7 @@
     "B7": {
       "reason": "Reference integrity guard for learner-owned rows.",
       "migrations": ["20260724120000_user_data_reference_integrity.sql"],
-      "expectPresent": [
+      "expectPresentAfter": [
         {
           "kind": "trigger",
           "identity": "public.study_events.trg_validate_review_set_study_event"
@@ -104,7 +104,7 @@
     "B9": {
       "reason": "The original request: JWT-bound idempotent PDF export requests. Restores PDF export, which currently fails at the first ledger call because acquire_pdf_export_attempt does not exist.",
       "migrations": ["20260724140000_pdf_export_request_idempotency.sql"],
-      "expectPresent": [
+      "expectPresentAfter": [
         { "kind": "table", "identity": "public.pdf_export_request_periods" },
         { "kind": "column", "identity": "public.pdf_export_quota_usages.request_id" },
         { "kind": "column", "identity": "public.export_files.request_id" },
