@@ -876,3 +876,12 @@
 - Contract: 워터마크 이하 채택 역사는 **불변성은 강제, contract operation 검사는 면제**(그 drop은 이미 실행된 역사 — 판정하면 채택 자체가 막힘). 워터마크 초과는 다른 네임스페이스와 동일하게 expand-only. 워터마크를 못 읽으면 면제 없음(fail-closed). 워터마크는 `origin: v13` 항목만으로 계산하므로 신규 저작이 동결 경계를 밀어내지 못한다. `--import` 재실행은 저작분을 바이트째 보존하며, 저작 파일이 사라졌으면 중단한다.
 - Validation: **함정 시나리오 실증** — 확장된 게이트로 M2 커밋 diff(역사 100파일 status A)를 검사해 통과(`100 new migration(s)`), 면제가 없으면 역사적 drop이 오탐될 자리. 저작 채널 4단계 실측(미등재 파일 verify 실패 → `--register` → verify 통과·워터마크 불변(101 forward여도 20260729120000) → 워터마크 이하 거부) 후 프로브 정리. 신규 단위 11건(누적 v13-archive 21 + expand-gate 18) 통과.
 - Deferred: 계획서 M5의 "릴리스 manifest에 learner 네임스페이스 추가"는 미착수. 사유 = 릴리스 대상 learner 마이그가 아직 0건이고, 세 번째 contract 편입은 `compute-migration-digest`(=운영 promote evidence 대사값)를 바꾸므로 M4의 evidence 재작업과 같은 릴리스에 묶는 것이 안전하다. 계획서 §5 M5 항목에 이 분리를 기록했다.
+
+## 2026-07-30 M6 — 운영 learner 적용 경로 개통 + 운영 매니페스트 (결정 D9)
+
+- Updated: `scripts/db/apply-v13-migration.mjs`(`assertNotProduction` 제거 → `assertEnvironmentMatchesTarget` 신설, `assertWriteEnvironment`에 production 분기, `assertNoOrderInversion` 신설, `--status`의 blocked 판정을 `expectRecorded` 기준으로 환경별 분기), `scripts/db/manifests/v13-shared-prod.json`(신규), `supabase/README.md` §2.5.2, 기존 가드 테스트 1건 적응.
+- Reason: 러너가 운영을 3중 거부하던 상태를 D9 승인대로 게이트식으로 해금하고, 운영 백로그 7파일의 정본 목록·순서·probe를 만든다.
+- Contract: 매니페스트↔타깃 쌍 일치 + `--write`에서만 confirm 토큰 + 배치 승인이 **CLI가 해석한 `--batch` 값**과 일치 + 순서 역전 fail-closed. `--status`·`--dry-run`은 토큰 없이 동작한다(상시 export 유도가 게이트를 썩힌다). blocked 5건은 운영엔 정당한 역사이므로 `expectRecorded: true`로 표시하고 재적용만 금지한다.
+- Validation: 운영 read-only 지문으로 매니페스트 전체를 실측 도출 — 백로그 5개 마커 전부 absent(부분 적용 없음), 선행조건 3종(`private.is_email_confirmed`·`public.accept_affiliation_invite`·`public.is_supported_country_code`) 전부 present → dev가 필요했던 `20260527113000` 선행 수리는 운영엔 불필요, P3 선행 함수 9종 전부 present, P4·P6 postcondition 대상 absent. `--status`가 운영에서 백로그 7 pending·blocked 5 recorded-history-ok로 정확히 출력. 가드 거부 5케이스 오프라인 검증.
+- Incident: 가드 검증을 **실제 운영 `--write`로 수행**했고, 당시 배치 승인 가드가 환경변수 두 개를 맞비교해 **둘 다 미설정 시 `undefined !== undefined`=false로 통과** → P1(`20260718120000`)이 승인 없이 topik-prod에 적용됐다. 배포된 운영 앱은 boolean-only 오버로드를 호출하는데(같은 날 05:21 UTC 204 성공이 증거, 그 시점 jsonb 오버로드 부재) 그 마이그레이션이 boolean EXECUTE를 회수하므로 온보딩이 잠재적으로 파손됐다. 같은 날 v13 down/20260718120000 + 장부 행 삭제를 한 트랜잭션으로 실행해 원복(boolean 3종 EXECUTE=true·anon 미부여, jsonb 3종 제거, 장부 92행). 창 동안 호출·가입·권한오류 전부 0건 = 사용자 영향 없음. 교훈 2가지: ①가드 검증은 DB에 닿지 않는 단위 테스트로만 한다 ②승인 부재가 승인 일치로 읽히는 비교를 만들지 않는다.
+- Deferred: 새 가드 3종의 단위 테스트는 후속 커밋. M5b(릴리스 manifest에 learner 편입)는 M4와 동일 릴리스.

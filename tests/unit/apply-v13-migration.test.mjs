@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
-  assertNotProduction,
+  assertEnvironmentMatchesTarget,
   assertQualifiedTracker,
   assertTransactionSafe,
   assertWriteEnvironment,
@@ -39,9 +39,19 @@ function manifestWith(overrides = {}) {
 }
 
 describe('apply-v13-migration guards', () => {
-  it('refuses the production project ref outright', () => {
-    expect(() => assertNotProduction(PROD_REF)).toThrow(/production project/i);
-    expect(() => assertNotProduction(DEV_REF)).not.toThrow();
+  it('refuses a development manifest pointed at the production project', () => {
+    // Superseded assertNotProduction: production is now reachable, but only through
+    // the production manifest and its own approval (ownership transfer D9).
+    expect(() => assertEnvironmentMatchesTarget({
+      projectRef: PROD_REF,
+      manifest: manifestWith(),
+      env: {},
+    })).toThrow(/development manifest/i);
+    expect(assertEnvironmentMatchesTarget({
+      projectRef: DEV_REF,
+      manifest: manifestWith(),
+      env: {},
+    })).toEqual({ target: 'development' });
   });
 
   it('requires a schema-qualified tracker built from plain identifiers', () => {

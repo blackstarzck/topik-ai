@@ -140,7 +140,26 @@
   `--source git`은 기존 경로이며 두 소스는 동일한 SQL을 생성한다(B9 dry-run 1191줄 동일 확인).
   tracker provenance에 `body_source=`가 추가된다.
 
-### 2.5.2 신규 learner 마이그레이션 저작 (2026-07-30, M5)
+### 2.5.2 운영(topik-prod) learner 적용 경로 (2026-07-30, M6 · 결정 D9)
+
+러너는 이제 운영을 **거부하지 않고 게이트로 통과**시킨다. dev 기본 동작은 무변경이다.
+
+| 게이트 | 요구 | 통과 실패 시 |
+| --- | --- | --- |
+| 매니페스트 ↔ 타깃 | `environment: production` 매니페스트 + 운영 ref 쌍만 성립 | dev 매니페스트로 운영 조준, 운영 매니페스트로 dev 조준 모두 거부 |
+| confirm 토큰 | `--write`에서만 `SUPABASE_PRODUCTION_CONFIRM=<운영 ref>` | 쓰기 거부. `--status`·`--dry-run`은 토큰 없이 동작(상시 export 유도 방지) |
+| 배치 승인 | `SUPABASE_PRODUCTION_APPROVED_BATCH`가 **실제 `--batch` 값**과 일치 | 미설정·공백·불일치 전부 거부. 승인 1회로 시퀀스 전체를 걷지 못한다 |
+| 순서 역전 | 매니페스트에 더 낮은 pending 버전이 남아 있으면 상위 버전 적용 금지 | fail-closed |
+
+⚠️ 배치 승인은 환경변수 두 개를 맞비교하지 않는다. 초기 구현이 그렇게 했고, **둘 다 미설정일 때 `undefined !== undefined`가 false가 되어 가드가 통과**했다. 그 결과 2026-07-30 운영에 P1이 승인 없이 적용됐다(같은 날 down으로 원복, 사용자 영향 0). 승인 부재가 승인 일치로 읽히면 안 되므로, 비교 대상은 항상 CLI가 해석한 배치명이다.
+
+운영 매니페스트는 `scripts/db/manifests/v13-shared-prod.json`이다. dev 매니페스트의 복사본이 **아니다** — 운영 라이브 집합이 달라 배치·probe를 운영 실측(2026-07-30 read-only 지문)에서 재도출했다. 백로그 7파일 6배치(P1~P6)이며, dev가 필요했던 `20260527113000` false-record 선행 수리는 운영엔 불필요하다(선행조건 3종 전부 present로 측정).
+
+blocked 5건은 dev와 반대로 **운영엔 정당한 역사로 기록돼 있다**. 항목의 `expectRecorded: true`가 그 사실을 표시하고, `--status`는 기록돼 있으면 정상으로, 없으면 조사 대상으로 출력한다. 재적용은 여전히 금지다.
+
+절차서(백업 확인·유지보수 창·롤백 순서)는 운영 적용 runbook — docs/runbooks/v13-prod-migration-apply-runbook.md — 가 담당한다(별도 세션 작성분, 아직 미머지이므로 백틱 경로로 승격하지 않는다).
+
+### 2.5.3 신규 learner 마이그레이션 저작 (2026-07-30, M5)
 
 워터마크(`20260729120000`) **초과** 타임스탬프로 이 저장소에서 저작한다. v13 저장소에는 더 이상 작성하지 않는다.
 

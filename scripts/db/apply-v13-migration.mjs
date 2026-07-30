@@ -65,13 +65,57 @@ export function parseMigrationFileName(fileName) {
   return { version: match[1], name: match[2], fileName };
 }
 
-export function assertNotProduction(projectRef) {
-  if (projectRef === PRODUCTION_PROJECT_REF) {
+// Production is reachable only through a manifest that declares itself production
+// AND the confirm variable naming that same project (ownership transfer D9). A
+// development manifest can never be pointed at production by changing env vars,
+// and a production manifest can never be applied without the confirm token.
+export function assertEnvironmentMatchesTarget({ projectRef, manifest, env }) {
+  const declared = manifest?.environment ?? 'development';
+  const isProductionTarget = projectRef === PRODUCTION_PROJECT_REF;
+  if (declared !== 'production') {
+    if (isProductionTarget) {
+      fail(
+        `Refusing to target the production project ${projectRef} with a ${declared} manifest. `
+        + 'Production apply requires the production manifest and its own approval.'
+      );
+    }
+    if (env.SUPABASE_PRODUCTION_CONFIRM) {
+      fail('SUPABASE_PRODUCTION_CONFIRM must not be set for a development manifest.');
+    }
+    return { target: 'development' };
+  }
+  if (!isProductionTarget) {
     fail(
-      `Refusing to target the production project ${projectRef}. `
-      + 'This runner is development-only; production apply is a separate approved procedure.'
+      `The production manifest may only target ${PRODUCTION_PROJECT_REF}, got ${projectRef}.`
     );
   }
+  // The confirm token is checked in assertWriteEnvironment, not here: --status and
+  // --dry-run must stay usable without it. Requiring it for read-only work would
+  // train operators to keep it exported, which is exactly how a write gate rots.
+  return { target: 'production' };
+}
+
+// A migration whose version is below an already-recorded one must not be applied
+// after it: the learner history is replayed in timestamp order, so filling a gap
+// late produces a tracker whose order no clean replay can reproduce. Pending
+// lower-version work has to be applied first — or explicitly reclassified.
+export function assertNoOrderInversion({ batchName, files, recordedVersions, pendingVersions }) {
+  const recorded = [...recordedVersions].sort();
+  const highestRecorded = recorded.at(-1);
+  if (!highestRecorded) return { checked: true, highestRecorded: null };
+  for (const file of files) {
+    const earlierPending = [...pendingVersions]
+      .filter((version) => version < file.version && version !== file.version)
+      .sort();
+    if (earlierPending.length > 0 && file.version > highestRecorded) {
+      fail(
+        `Batch ${batchName} would apply ${file.fileName} while lower unapplied version(s) remain `
+        + `pending in this manifest: ${earlierPending.join(', ')}. Apply those first so the tracker `
+        + 'stays replayable in timestamp order.'
+      );
+    }
+  }
+  return { checked: true, highestRecorded };
 }
 
 export function assertQualifiedTracker(trackerTable) {
@@ -310,7 +354,7 @@ export function resolveAction(args) {
   return (actions[0] ?? '--status').replace('--', '');
 }
 
-export function assertWriteEnvironment(env) {
+export function assertWriteEnvironment(env, { target = 'development', batchName = null } = {}) {
   const projectRef = env.SUPABASE_PROJECT_REF;
   if (env.SUPABASE_EXPECTED_PROJECT_REF !== projectRef) {
     fail('Writes require SUPABASE_EXPECTED_PROJECT_REF to match SUPABASE_PROJECT_REF.');
@@ -320,6 +364,39 @@ export function assertWriteEnvironment(env) {
       'Writes require SUPABASE_SQL_MAX_ATTEMPTS=1. Retrying a committed batch would '
       + 're-run non-idempotent DDL and report a successful apply as a failure.'
     );
+  }
+  if (target === 'production') {
+    if (env.SUPABASE_PRODUCTION_CONFIRM !== PRODUCTION_PROJECT_REF) {
+      fail(
+        `Production writes require SUPABASE_PRODUCTION_CONFIRM=${PRODUCTION_PROJECT_REF}. `
+        + 'This is a deliberate second key, not a formality.'
+      );
+    }
+    // Approval must name the batch actually being applied, so one approval cannot
+    // walk the whole sequence (ownership transfer D9: per-batch approval).
+    //
+    // This is compared against the CLI's --batch value, never against a second env
+    // var. An earlier revision compared two env vars, and with both unset the
+    // comparison `undefined !== undefined` was false — the guard passed and a
+    // production batch was applied unapproved. Absent approval must never read as
+    // matching approval.
+    const approved = env.SUPABASE_PRODUCTION_APPROVED_BATCH;
+    if (typeof approved !== 'string' || approved.trim().length === 0) {
+      fail(
+        'Production writes require SUPABASE_PRODUCTION_APPROVED_BATCH to name the batch being '
+        + 'applied. Approval is per batch and must be set explicitly.'
+      );
+    }
+    if (typeof batchName !== 'string' || batchName.trim().length === 0) {
+      fail('Production writes require a resolved --batch name to check approval against.');
+    }
+    if (approved.trim() !== batchName.trim()) {
+      fail(
+        `SUPABASE_PRODUCTION_APPROVED_BATCH=${approved} does not match the batch being applied `
+        + `(${batchName}). Approval is per batch.`
+      );
+    }
+    return;
   }
   if (env.SUPABASE_PRODUCTION_CONFIRM) {
     fail('SUPABASE_PRODUCTION_CONFIRM must not be set for this runner.');
@@ -382,7 +459,11 @@ export async function main(argv = process.argv.slice(2)) {
   const projectRef = process.env.SUPABASE_PROJECT_REF;
   const token = process.env.SUPABASE_ACCESS_TOKEN;
   if (!projectRef || !token) fail('SUPABASE_PROJECT_REF and SUPABASE_ACCESS_TOKEN are required.');
-  assertNotProduction(projectRef);
+  const { target } = assertEnvironmentMatchesTarget({
+    projectRef,
+    manifest,
+    env: process.env,
+  });
   assertManifestProjectRef(manifest.projectRef, projectRef);
 
   const trackerTable = assertQualifiedTracker(manifest.trackerTable);
@@ -415,7 +496,7 @@ export async function main(argv = process.argv.slice(2)) {
   }
 
   console.log(`manifest=${manifestPath}`);
-  console.log(`target=${projectRef} tracker=${trackerTable}`);
+  console.log(`target=${projectRef} (${target}) tracker=${trackerTable}`);
   console.log(
     bodySource === 'archive'
       ? `bodies=archive ${archiveDir} (adopted from v13 ${sourceGitSha})`
@@ -448,12 +529,30 @@ export async function main(argv = process.argv.slice(2)) {
         console.log(`  ${batchName}  ${state.padEnd(18)}  ${file.fileName}`);
       }
     }
-    console.log('\nblocked (must stay unrecorded):');
+    // Whether a blocked file is recorded is environment-specific. Development
+    // never ran them, so a record there is a false stamp. Production applied them
+    // in order before the writing cutover, so the record is true history and only
+    // re-application is forbidden. `expectRecorded` says which case this is.
+    const expectRecorded = new Map(
+      (manifest.blockedMigrations ?? [])
+        .filter((entry) => typeof entry === 'object')
+        .map((entry) => [entry.name, entry.expectRecorded === true])
+    );
+    console.log('\nblocked (never re-apply):');
     for (const [name, reason] of blocked) {
       const version = parseMigrationFileName(name).version;
       const row = recorded.get(version);
-      console.log(`  ${row ? 'RECORDED — investigate' : 'unrecorded ok        '}  ${name}`);
-      if (row) console.log(`      reason it is blocked: ${reason}`);
+      const shouldBeRecorded = expectRecorded.get(name) === true;
+      let state;
+      if (shouldBeRecorded) {
+        state = row ? 'recorded history ok  ' : 'MISSING — investigate';
+      } else {
+        state = row ? 'RECORDED — investigate' : 'unrecorded ok        ';
+      }
+      console.log(`  ${state}  ${name}`);
+      if ((shouldBeRecorded && !row) || (!shouldBeRecorded && row)) {
+        console.log(`      reason it is blocked: ${reason}`);
+      }
     }
     for (const entry of manifest.deferredMigrations ?? []) {
       console.log(`\ndeferred: ${entry.name}\n      ${entry.reason}`);
@@ -509,7 +608,27 @@ export async function main(argv = process.argv.slice(2)) {
     return 0;
   }
 
-  assertWriteEnvironment(process.env);
+  assertWriteEnvironment(process.env, { target, batchName });
+
+  // Order-inversion guard: read the tracker for every version this manifest
+  // manages, then refuse a batch that jumps ahead of still-pending lower versions.
+  const managedVersions = manifest.sequence
+    .flatMap((name) => resolveBatch(manifest, name).files.map((file) => file.version));
+  const recordedRows = await runSql({
+    projectRef,
+    token,
+    sql: `select version from ${trackerTable}`
+      + ` where version in (${managedVersions.map(sqlLiteral).join(', ')}) order by version;`,
+  });
+  const recordedVersions = new Set(
+    (Array.isArray(recordedRows) ? recordedRows : []).map((row) => row.version)
+  );
+  assertNoOrderInversion({
+    batchName,
+    files,
+    recordedVersions,
+    pendingVersions: managedVersions.filter((version) => !recordedVersions.has(version)),
+  });
 
   if (batch.expectPresent?.length || batch.expectAbsent?.length) {
     console.log('\npreflight:');
