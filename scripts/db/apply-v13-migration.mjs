@@ -222,6 +222,7 @@ export function buildBatchSql({
   sourceGitSha,
   operator,
   appliedAt,
+  bodySource = 'archive',
   lockTimeout = '5s',
   statementTimeout = '180s',
 }) {
@@ -242,6 +243,7 @@ export function buildBatchSql({
       `batch=${batchName};`,
       `file_sha256=${file.checksum};`,
       `v13_git_sha=${sourceGitSha};`,
+      `body_source=${bodySource};`,
       `operator=${operator}`,
     ].join(' ');
     lines.push(`-- ${file.fileName} (sha256 ${file.checksum})`);
@@ -266,6 +268,32 @@ export function readMigrationFromGit({ v13Root, sourceGitSha, migrationsDir, fil
     fail(`Cannot read ${target} from ${v13Root}: ${error.message.split('\n')[0]}`);
   }
   return raw.replace(/^﻿/, '').replace(/\r\n/g, '\n');
+}
+
+// The learner history is vendored in this repo (ownership transfer M2), so the
+// default body source is the archive rather than another repository's git store.
+// The archive manifest's per-file sha256 is re-checked here: the archive verifier
+// is a separate gate, and an apply must never trust bytes it did not hash itself.
+export function readMigrationFromArchive({ archiveDir, manifest, fileName }) {
+  const entry = (manifest.files ?? []).find((file) => file.name === fileName);
+  if (!entry) fail(`${fileName} is not listed in the learner archive manifest.`);
+  if (entry.disposition === 'blocked' || entry.disposition === 'deferred') {
+    fail(`${fileName} is ${entry.disposition} in the archive and must not be applied: ${entry.reason}`);
+  }
+  if (entry.replayOnly) {
+    fail(
+      `${fileName} is replay-only in the archive because ${entry.adoptedAs} owns its apply and `
+      + 'tracker record. Applying it here would record one migration in two trackers.'
+    );
+  }
+  const path = resolve(archiveDir, fileName);
+  if (!existsSync(path)) fail(`${fileName} is missing from the archive at ${archiveDir}.`);
+  const bytes = readFileSync(path);
+  const actual = sha256(bytes);
+  if (actual !== entry.sha256) {
+    fail(`${fileName} sha256 drift: manifest ${entry.sha256}, archive ${actual}.`);
+  }
+  return bytes.toString('utf8').replace(/^﻿/, '').replace(/\r\n/g, '\n');
 }
 
 function getArgValue(args, flag) {
@@ -319,13 +347,18 @@ async function probe({ entries, projectRef, token, label }) {
 
 function usage() {
   console.log(`Usage:
-  node scripts/db/apply-v13-migration.mjs --manifest <path> --v13-root <path> --v13-sha <sha40> \\
-    [--batch <name>] [--status | --dry-run | --write] [--operator <name>] [--env-file <path>]
+  node scripts/db/apply-v13-migration.mjs --manifest <path> \\
+    [--batch <name>] [--status | --dry-run | --write] [--operator <name>] [--env-file <path>] \\
+    [--source archive|git] [--v13-root <path> --v13-sha <sha40>]
 
   --status    (default) read-only: tracker state for the whole sequence
   --dry-run   print the generated SQL for one batch, no network
   --write     apply one batch. Requires SUPABASE_EXPECTED_PROJECT_REF and
               SUPABASE_SQL_MAX_ATTEMPTS=1.
+  --source    archive (default) reads bodies from supabase/migrations-v13 and
+              re-hashes them against scripts/db/manifests/v13-archive.json;
+              blocked, deferred and replay-only files are refused. git reads from
+              a v13 checkout's object store and needs --v13-root/--v13-sha.
 
 Environment: SUPABASE_PROJECT_REF, SUPABASE_ACCESS_TOKEN.
   --env-file defaults to ./.env.local; point it at another worktree's file
@@ -353,10 +386,29 @@ export async function main(argv = process.argv.slice(2)) {
   assertManifestProjectRef(manifest.projectRef, projectRef);
 
   const trackerTable = assertQualifiedTracker(manifest.trackerTable);
+  // Default source is the in-repo learner archive; `--source git` keeps the
+  // original path for as long as a v13 checkout is still the reference.
+  const bodySource = getArgValue(argv, '--source') ?? 'archive';
+  if (bodySource !== 'archive' && bodySource !== 'git') {
+    fail(`--source must be archive or git, got: ${bodySource}`);
+  }
+  const archiveDir = resolve(getArgValue(argv, '--archive-dir') ?? 'supabase/migrations-v13');
+  const archiveManifestPath = resolve(
+    getArgValue(argv, '--archive-manifest') ?? 'scripts/db/manifests/v13-archive.json'
+  );
+  const archiveManifest = bodySource === 'archive'
+    ? JSON.parse(readFileSync(archiveManifestPath, 'utf8'))
+    : null;
   const v13Root = resolve(getArgValue(argv, '--v13-root') ?? '../topik-project/v13');
-  const sourceGitSha = getArgValue(argv, '--v13-sha');
+  const sourceGitSha = getArgValue(argv, '--v13-sha') ?? archiveManifest?.sourceGitSha ?? null;
   if (!sourceGitSha || !FULL_SHA_PATTERN.test(sourceGitSha)) {
     fail('--v13-sha requires a full 40-character commit sha.');
+  }
+  if (archiveManifest && archiveManifest.sourceGitSha !== sourceGitSha) {
+    fail(
+      `Archive was adopted from ${archiveManifest.sourceGitSha} but ${sourceGitSha} was requested. `
+      + 'Re-import the archive or pass --source git.'
+    );
   }
   if (manifest.sourceGitSha && manifest.sourceGitSha !== sourceGitSha) {
     fail(`Manifest pins sourceGitSha ${manifest.sourceGitSha}, got ${sourceGitSha}.`);
@@ -364,7 +416,11 @@ export async function main(argv = process.argv.slice(2)) {
 
   console.log(`manifest=${manifestPath}`);
   console.log(`target=${projectRef} tracker=${trackerTable}`);
-  console.log(`v13=${v13Root}@${sourceGitSha}`);
+  console.log(
+    bodySource === 'archive'
+      ? `bodies=archive ${archiveDir} (adopted from v13 ${sourceGitSha})`
+      : `bodies=git ${v13Root}@${sourceGitSha}`
+  );
 
   if (action === 'status') {
     const versions = manifest.sequence
@@ -410,12 +466,18 @@ export async function main(argv = process.argv.slice(2)) {
   const { batch, files } = resolveBatch(manifest, batchName);
 
   for (const file of files) {
-    const raw = readMigrationFromGit({
-      v13Root,
-      sourceGitSha,
-      migrationsDir: manifest.sourceMigrationsDir,
-      fileName: file.fileName,
-    });
+    const raw = bodySource === 'archive'
+      ? readMigrationFromArchive({
+        archiveDir,
+        manifest: archiveManifest,
+        fileName: file.fileName,
+      })
+      : readMigrationFromGit({
+        v13Root,
+        sourceGitSha,
+        migrationsDir: manifest.sourceMigrationsDir,
+        fileName: file.fileName,
+      });
     file.checksum = sha256(raw);
     file.body = stripOuterTransaction(raw);
     assertTransactionSafe(file.fileName, file.body);
@@ -432,6 +494,7 @@ export async function main(argv = process.argv.slice(2)) {
     sourceGitSha,
     operator,
     appliedAt,
+    bodySource,
   });
 
   console.log(`\nbatch=${batchName}`);

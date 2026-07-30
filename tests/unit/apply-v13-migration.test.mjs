@@ -1,4 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   assertNotProduction,
@@ -11,11 +14,12 @@ import {
   normalizeBlocked,
   parseMigrationFileName,
   readManifest,
+  readMigrationFromArchive,
   resolveAction,
   resolveBatch,
   sqlLiteral,
 } from '../../scripts/db/apply-v13-migration.mjs';
-import { resolveSqlMaxAttempts } from '../../scripts/db/migrate-core.mjs';
+import { resolveSqlMaxAttempts, sha256 } from '../../scripts/db/migrate-core.mjs';
 
 const SHA = 'a'.repeat(40);
 const DEV_REF = 'fglggyfvzjdsbyckinqa';
@@ -339,6 +343,94 @@ describe('v13-shared-dev manifest integrity', () => {
     }
     for (const entry of manifest.deferredMigrations) {
       expect(entry.reason, entry.name).toBeTruthy();
+    }
+  });
+});
+
+describe('readMigrationFromArchive', () => {
+  const APPLIED = '20260520120000_extensions_and_schemas.sql';
+  let archiveDir;
+  let tempRoots = [];
+
+  function seed(body, overrides = {}) {
+    archiveDir = mkdtempSync(join(tmpdir(), 'v13-apply-archive-'));
+    tempRoots.push(archiveDir);
+    mkdirSync(archiveDir, { recursive: true });
+    writeFileSync(join(archiveDir, APPLIED), body);
+    return {
+      files: [
+        {
+          name: APPLIED,
+          sha256: sha256(Buffer.from(body)),
+          disposition: 'applied',
+          ...overrides,
+        },
+      ],
+    };
+  }
+
+  afterEach(() => {
+    for (const root of tempRoots) rmSync(root, { recursive: true, force: true });
+    tempRoots = [];
+  });
+
+  it('returns the archived body with the BOM stripped and line endings normalized', () => {
+    const manifest = seed('\uFEFFselect 1;\r\nselect 2;\r\n');
+    const body = readMigrationFromArchive({ archiveDir, manifest, fileName: APPLIED });
+    expect(body).toBe('select 1;\nselect 2;\n');
+  });
+
+  it('refuses a file whose bytes drifted from the manifest', () => {
+    const manifest = seed('select 1;\n');
+    writeFileSync(join(archiveDir, APPLIED), 'select 1; -- edited\n');
+    expect(() => readMigrationFromArchive({ archiveDir, manifest, fileName: APPLIED }))
+      .toThrow(/sha256 drift/);
+  });
+
+  it('refuses blocked and deferred migrations with their recorded reason', () => {
+    for (const disposition of ['blocked', 'deferred']) {
+      const manifest = seed('select 1;\n', { disposition, reason: 'would regress the cutover' });
+      expect(() => readMigrationFromArchive({ archiveDir, manifest, fileName: APPLIED }))
+        .toThrow(/would regress the cutover/);
+    }
+  });
+
+  it('refuses a replay-only migration another namespace owns', () => {
+    const manifest = seed('select 1;\n', {
+      disposition: 'adopted-elsewhere',
+      replayOnly: true,
+      adoptedAs: 'supabase/migrations-admin/20260723170000_system_reports.sql',
+      reason: 'adopted byte for byte',
+    });
+    expect(() => readMigrationFromArchive({ archiveDir, manifest, fileName: APPLIED }))
+      .toThrow(/two trackers/);
+  });
+
+  it('refuses a file the manifest does not list and one missing from disk', () => {
+    const manifest = seed('select 1;\n');
+    expect(() => readMigrationFromArchive({ archiveDir, manifest, fileName: 'nope.sql' }))
+      .toThrow(/not listed in the learner archive manifest/);
+    rmSync(join(archiveDir, APPLIED));
+    expect(() => readMigrationFromArchive({ archiveDir, manifest, fileName: APPLIED }))
+      .toThrow(/missing from the archive/);
+  });
+});
+
+describe('batch provenance records the body source', () => {
+  it('marks whether the bodies came from the archive or a v13 checkout', () => {
+    const file = { version: '20260520120000', name: 'x', fileName: 'x.sql', checksum: 'c', body: 'select 1;' };
+    for (const bodySource of ['archive', 'git']) {
+      const sql = buildBatchSql({
+        trackerTable: 'supabase_migrations.schema_migrations',
+        batchName: 'B1',
+        files: [file],
+        sourceGitSha: SHA,
+        operator: 'tester',
+        appliedAt: '2026-07-30T00:00:00.000Z',
+        bodySource,
+      });
+      expect(sql).toContain(`body_source=${bodySource};`);
+      expect(sql).toContain(`v13_git_sha=${SHA};`);
     }
   });
 });

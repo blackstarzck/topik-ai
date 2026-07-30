@@ -45,6 +45,10 @@ jobs:
         run: |
           mkdir -p database-health
           npm run db:contracts:verify -- --json-out database-health/migration-contracts.json
+          npm run check:v13-archive -- \
+            --v13-root .ci/v13 \
+            --v13-sha "$V13_CONTRACT_SHA" \
+            --json-out database-health/v13-archive.json
           npm run db:shadow:verify -- \
             --v13-dir .ci/v13 \
             --v13-sha "$V13_CONTRACT_SHA" \

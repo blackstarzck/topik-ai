@@ -4,7 +4,7 @@ import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const TOPIK_AI_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const DEFAULT_V13_ROOT = path.resolve(TOPIK_AI_ROOT, '..', 'topik-project', 'v13');
+const LEARNER_ARCHIVE_RELATIVE_DIR = 'supabase/migrations-v13';
 
 const REMOVED_V13_ADMIN_OBJECTS = [
   'admin_update_problem',
@@ -232,18 +232,37 @@ function collectForbiddenV13AdminWrites(rootDir, files) {
   return findings;
 }
 
+// The learner migration history now lives in this repo (ownership transfer M2).
+// An external v13 checkout stays supported as a transition source so the
+// dual-verification release can point the same checks at both trees.
+export function resolveLearnerMigrationsRoot({
+  topikAiRoot = TOPIK_AI_ROOT,
+  v13Root = null,
+  v13MigrationsDir = null
+} = {}) {
+  if (v13MigrationsDir) {
+    return { dir: path.resolve(v13MigrationsDir), source: 'explicit-dir' };
+  }
+  if (v13Root) {
+    return { dir: path.join(path.resolve(v13Root), 'supabase', 'migrations'), source: 'v13-checkout' };
+  }
+  return { dir: path.join(topikAiRoot, ...LEARNER_ARCHIVE_RELATIVE_DIR.split('/')), source: 'archive' };
+}
+
 export function evaluateMigrationOwnershipBoundary({
   topikAiRoot = TOPIK_AI_ROOT,
-  v13Root = DEFAULT_V13_ROOT
+  v13Root = null,
+  v13MigrationsDir = null
 } = {}) {
   const failures = [];
   const warnings = [];
+  const learner = resolveLearnerMigrationsRoot({ topikAiRoot, v13Root, v13MigrationsDir });
 
-  const v13RemovalMigration = 'supabase/migrations/20260609130000_remove_v13_admin_island.sql';
-  if (!hasFile(v13Root, v13RemovalMigration)) {
-    failures.push(`v13 ${v13RemovalMigration} is missing.`);
+  const v13RemovalMigration = '20260609130000_remove_v13_admin_island.sql';
+  if (!hasFile(learner.dir, v13RemovalMigration)) {
+    failures.push(`v13 ${v13RemovalMigration} is missing from ${learner.source}.`);
   } else {
-    const removalSql = readProjectFile(v13Root, v13RemovalMigration);
+    const removalSql = readProjectFile(learner.dir, v13RemovalMigration);
     for (const term of REMOVED_V13_ADMIN_OBJECTS) {
       if (!contentHasTerm(removalSql, term)) {
         failures.push(`v13 removal migration must mention removed admin object ${term}.`);
@@ -269,10 +288,10 @@ export function evaluateMigrationOwnershipBoundary({
     failures.push('topik-ai topik writing migrations must contain topik_writing question tables.');
   }
 
-  const v13MigrationFiles = listSqlFiles(v13Root, 'supabase/migrations').filter((file) => !file.includes('/down/'));
-  const v13MigrationSql = concatFiles(v13Root, v13MigrationFiles);
+  const v13MigrationFiles = listSqlFiles(learner.dir, '.').filter((file) => !file.includes('/down/'));
+  const v13MigrationSql = concatFiles(learner.dir, v13MigrationFiles);
   const v13HistoricalAdminSql = concatFiles(
-    v13Root,
+    learner.dir,
     v13MigrationFiles.filter((file) => file !== v13RemovalMigration)
   );
   for (const term of V13_USER_SHARED_OBJECTS) {
@@ -324,24 +343,27 @@ export function formatMigrationOwnershipBoundaryReport(result) {
   return lines.join('\n');
 }
 
-// DEFAULT_V13_ROOT is relative to this repo root, so it only resolves from the
-// main workspace. Sessions run from `~/.codex/worktrees/<id>/topik-ai` (AGENTS.md
-// §11.3), where the default points at a directory that does not exist — and this
-// gate runs argument-less inside `harness:admin-boundary`, a commit gate for
-// boundary work. TOPIK_V13_ROOT matches the override already used by
-// check-transfer-sot-checklist.mjs so the harness is runnable from a worktree.
+// Returns an external v13 checkout only when one is explicitly requested. The
+// default learner source is the in-repo archive, so this gate now runs
+// argument-less from any worktree — previously it resolved a sibling path that
+// does not exist outside the main workspace and crashed inside
+// `harness:admin-boundary`. `--v13-root=`/`TOPIK_V13_ROOT` remain the transition
+// override used by the dual-verification release, which points the same checks
+// at the v13 tree while both sources still exist.
 export function resolveV13Root(argv = process.argv, env = process.env) {
   const arg = argv.find((value) => value.startsWith('--v13-root='));
   if (arg) return path.resolve(arg.slice('--v13-root='.length));
   if (env.TOPIK_V13_ROOT) return path.resolve(env.TOPIK_V13_ROOT);
-  return DEFAULT_V13_ROOT;
+  return null;
 }
 
 function main() {
   const v13Root = resolveV13Root();
   const result = evaluateMigrationOwnershipBoundary({ v13Root });
+  const learner = resolveLearnerMigrationsRoot({ v13Root });
   const report = formatMigrationOwnershipBoundaryReport(result);
 
+  console.log(`learner migration source: ${learner.source} (${learner.dir})`);
   if (result.failures.length > 0) {
     console.error(report);
     process.exit(1);

@@ -859,3 +859,12 @@
 - Reason: 이전 프로그램 M2. CI 재생과 원격 적용이 외부 저장소 체크아웃에 의존하지 않게 커스터디를 옮긴다. DB 무접촉(적용·재기록 0), 장부 소속 변경 0.
 - Contract: 아카이브 존재 ≠ 적용 가능 — `disposition`(applied 92·blocked 5·deferred 2·adopted-elsewhere 1)이 단일 권위. `20260723170000`은 admin 네임스페이스가 적용·기록을 소유하므로 `replayOnly`로 잠가 이중 기록을 원천 차단. 바이트 동일성은 sha256 + **git blob sha 재계산**으로 v13 체크아웃 없이도 증명된다(M4 핀 제거 전제). 워터마크 `20260729120000` 이하=v13 저작, 초과=topik-ai 저작.
 - Validation: `--import` 후 오프라인 `--verify`(100+18, watermark 일치)와 v13 원본 대조 `--v13-root/--v13-sha` byte parity 모두 통과. disposition 분해가 dev 장부 92행과 정확히 일치(러너가 불일치 시 fail-closed). 신규 단위 17건 통과.
+
+## 2026-07-30 M3 — learner 소스를 아카이브로 전환하고 v13 체크아웃을 대조 대상으로 격하
+
+- Updated: `scripts/ci/run-shadow-contract.mjs`(재생 입력=아카이브, `--v13-dir`는 대조용·선택, config.toml 벤더링, N-1 분기), `scripts/check-migration-ownership-boundary.mjs`(`resolveLearnerMigrationsRoot` 신설·기본 아카이브·`resolveV13Root`는 외부 요청 시에만 경로 반환), `scripts/db/apply-v13-migration.mjs`(`--source archive` 기본 + 매니페스트 sha256 재해시 + blocked/deferred/replayOnly 거부 + `body_source` provenance), `.github/workflows/{ci,database-health,release-development}.yml`(아카이브 패리티 어서션 추가), `supabase/README.md` §2.5.1, 테스트 3종.
+- Added: `scripts/ci/fixtures/v13-supabase-config.toml`(계약 SHA 시점 v13 config 바이트 벤더링 — shadow의 마지막 v13 의존 제거).
+- Reason: C2 이중검증. 재생·경계·적용의 기본 소스를 내부로 옮기되, 두 소스가 공존하는 동안 바이트 동일성을 릴리스 증거로 남긴다. 부수 효과로 `check:migration-boundary`가 워크트리에서 실행 가능해졌다(종전 crash).
+- Contract: `--v13-dir` 없이도 shadow가 성립하므로 M4는 "배선 삭제"만 남는다. N-1 업그레이드 재생은 N-1 트리에 아카이브가 있으면 그것을 쓰고 없으면 핀으로 v13 fetch — 회사 promote가 M4 이후 릴리스에 도달할 때까지 이 분기를 유지한다. `V13_CONTRACT_SHA`와 migration digest는 M3에서 건드리지 않는다(evidence 체인 유지).
+- Validation: 러너 `--status` 아카이브 소스로 dev 장부 조회 성공, B9 dry-run 아카이브 vs git **1191줄 동일 SQL·동일 sha256**, blocked/deferred/replayOnly 3종 거부 + 정상 1건 허용 실측, boundary 인자 없이(archive)·`--v13-root`(v13-checkout) 양쪽 통과, 아카이브 패리티 검증 통과, 단위 65건(신규 12건 포함).
+- Not-tested: shadow replay 전량 실행은 Docker+Supabase CLI 2.105.0 필요 — CI(db-contract/database-health)에서 검증한다. 로컬은 코드 경로·패리티까지.

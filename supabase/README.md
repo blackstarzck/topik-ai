@@ -125,6 +125,21 @@
 - 아카이브 파일은 **수정하지 않는다**(§2.3 정본 채택과 동일 계약). 교정이 필요하면 워터마크 초과 신규
   forward를 만든다.
 
+### 2.5.1 이중검증 전환 (2026-07-30, M3)
+
+- **shadow replay와 경계 검사, 적용 러너의 기본 learner 소스가 아카이브로 바뀌었다.** v13 체크아웃은
+  이제 *대조 대상*이며 재생 입력이 아니다.
+- `scripts/ci/run-shadow-contract.mjs`: `--v13-dir`가 주어지면 재생 전에 아카이브 전량(파일별 blob·바이트)과
+  벤더링한 `scripts/ci/fixtures/v13-supabase-config.toml`을 그 체크아웃과 대조하고, 하나라도 다르면 중단한다.
+  `--v13-dir` 없이도 재생이 성립한다(핀 제거 M4의 전제). N-1 업그레이드 재생은 N-1 트리에 아카이브가 있으면
+  그것을 쓰고, 없으면 종전처럼 N-1 트리의 핀으로 v13을 fetch한다.
+- `npm run check:migration-boundary`는 인자 없이 아카이브를 읽으므로 **워크트리에서도 실행된다**(종전에는
+  존재하지 않는 형제 경로를 참조해 crash). `--v13-root=`/`TOPIK_V13_ROOT`는 과도기 대조 옵션으로 남는다.
+- `scripts/db/apply-v13-migration.mjs`는 `--source archive`(기본)에서 본문을 아카이브에서 읽고 매니페스트
+  sha256으로 **재해시 검증**한다. `blocked`·`deferred`·`replayOnly` 파일은 선택 자체가 거부된다.
+  `--source git`은 기존 경로이며 두 소스는 동일한 SQL을 생성한다(B9 dry-run 1191줄 동일 확인).
+  tracker provenance에 `body_source=`가 추가된다.
+
 ## 3. 공통 실행 메커니즘
 
 - 두 러너는 동일한 `scripts/db/migrate-core.mjs`를 사용하고, `trackTable`과

@@ -146,6 +146,15 @@ jobs:
         run: |
           npm run check:migration-boundary -- --v13-root=.ci/v13
           npm run check:client-source-secrets
+      # Dual verification (ownership transfer M3): the replay below reads the
+      # learner history from the in-repo archive, so prove the archive is still
+      # byte-identical to the pinned v13 checkout while both sources exist.
+      - name: Verify the learner archive against the pinned v13 checkout
+        run: >-
+          npm run check:v13-archive --
+          --v13-root .ci/v13
+          --v13-sha $V13_CONTRACT_SHA
+          --json-out ci-artifacts/v13-archive.json
       - name: Verify migration manifests and immutable expand changes
         shell: bash
         run: |
