@@ -843,3 +843,17 @@
 - Contract: tracker는 `supabase_migrations.schema_migrations`(세 번째 흐름)이며 기존 두 tracker와 혼입하지 않는다. 기본 동작 read-only, 쓰기는 expected-ref 일치 + `SUPABASE_SQL_MAX_ATTEMPTS=1` 요구, production ref는 전면 거부. 마이그 본문은 `git show <sha>:<path>`로만 읽는다. `blockedMigrations`는 장부에 스탬프하지 않는다.
 - Validation: 신규 unit 27건 + `resolveV13Root` 2건, `npm run test:unit` 516건, `harness:check`(mojibake·doc-crosslinks·route-doc·message-history·lint·typecheck), `check:migration-boundary`(인자 없이 통과 — `TOPIK_V13_ROOT` 오버라이드 추가), `check:expand-migrations --base origin/main`, `db:contracts:verify`, `harness:admin-boundary` 구성 게이트 6/7(`check:admin-verification-env`는 워크트리 `.env.local` 부재로 미실행). 러너 실동작은 dev DB read-only `--status`와 9개 배치 `--dry-run`으로 확인(8개 SQL 생성 성공, B4는 v13 수리 마이그 미머지로 fail-closed).
 - Not-updated: `docs/architecture/shared-supabase-schema-ownership.md` decision record는 오너 승인일이 필요해 승인 후 별도 반영한다.
+
+## 2026-07-30 v13 운영 적용 runbook 초안 + v13 down/ 롤백 파일 보강
+
+- Added: `docs/runbooks/v13-prod-migration-apply-runbook.md` — v13 소유 마이그 9배치 10파일(manifest `v13-shared-dev.json` sequence 정본)의 topik-prod 적용 runbook 초안. `docs/README.md` runbooks 인덱스에 등재.
+- Reason: dev 적용 창 종료(2026-07-30) 후 운영 적용의 명문화된 선행 조건이 down/ 롤백 자산 부재였다. v13 `supabase/migrations/down/`에 sequence 10파일 전부의 down을 작성(v13 저장소, 미커밋)하고, 운영 경로 개방(러너는 현재 3중 거부: 무조건 assertNotProduction + manifest ref 고정 + SUPABASE_PRODUCTION_CONFIRM 설정 시에도 거부)을 오너 결정 항목 D-1(러너 확장 권장 vs 별도 수동 절차)로 올렸다.
+- Contract: 차단 5건(20260629110000·20260629120000·20260629170000·20260701160000·20260710094000)은 운영에서도 적용·장부 기록 모두 금지. 롤백은 적용 역순(B10→…→B1), B4 쌍은 단일 트랜잭션, down/B6 rename 7쌍은 비멱등(부분 커밋 판정 후 재시도). 운영 상태는 장부가 아니라 스키마 지문으로 실측하며 `20260718120000` 부재 시 적용 중단.
+- Validation: down 10파일은 up 원문과 선행 정의(20260520121300·20260619140000·20260622120000·20260625113000·20260709165000·20260617195000·20260709120000·20260713083000+20260714140000 치환·20260707120000·20260608120000) 대조로 정적 검증. DB 실행 검증은 오너 승인 전이라 미실시(Not-tested: 운영·dev 롤백 리허설).
+
+## 2026-07-30 v13 운영 적용 runbook 정정 (10파일 → 실측 7파일)
+
+- Updated: `docs/runbooks/v13-prod-migration-apply-runbook.md` 전면 정정 + `docs/README.md` 인덱스 설명 갱신. Added(v13, 미커밋): `supabase/migrations/down/20260718120000_auth_gate_exact_consent_snapshots.sql`.
+- Reason: 같은 날 승인된 소유권 이전 프로그램(`docs/plans/v13-db-ownership-transfer-program-plan.md`, 커밋 4ee94f2)의 운영 실측이 초안 전제를 뒤집었다. dev/운영 장부는 둘 다 92행이지만 집합이 다르다 — 운영 백로그는 dev-only **7파일**이고 `20260718120000` 은 이미 적용된 게 아니라 백로그의 첫 항목이다. dev 의 B1·B2·B3·B10 은 운영에 이미 기록돼 있어 백로그가 아니라 선행조건이다. 백로그 7파일 중 `20260718120000` 만 down 이 없어 신규 작성했다.
+- Contract: 이 런북은 프로그램 M6 실행 절차서이며 충돌 시 프로그램 계획이 우선. 적용 경로는 D9(러너 v2 = PRODUCTION_CONFIRM + expected-ref + 배치 승인, M2 이후) 확정. 차단 5건은 "운영에 컷오버 전 적용된 정당한 역사 → 재적용·재기록 금지"(종전 "운영에도 미적용" 기술은 오류). deferred 2건은 운영에 살아 있고 dev 엔 없어 M6 로 해소되지 않는다. 운영 지문 게이트가 판정 근거이며 선행조건 3종(`private.is_email_confirmed`·`public.accept_affiliation_invite`·`public.is_supported_country_code`) 중 부재 항목은 false record 로 보고 해당 v13 파일을 선행 적용한다. 롤백 역순 = 20260724140000→130000→120000→20260723234527→(20260729120000 no-op + 20260722120000 1트랜잭션)→20260718120000→(조건부 20260527113000).
+- Validation: 신규 down 은 forward 원문(jsonb 오버로드 3개 생성 + 4/7/9-arg 회수)과 직전 권한 상태(4-arg=20260623103000/20260625001257·20260710094000, 7·9-arg=20260709165000) 대조로 작성 — authenticated EXECUTE 만 복원하고 public·anon 은 forward 이전에도 회수 상태였으므로 재부여하지 않는다. 운영 라이브 4-인자 base 가 `20260710094000` 판이며 두 판 모두 이메일 가드를 호출하지 않는 점을 grep 으로 확인해 헤더에 명시. `harness:docs`(mojibake·doc-crosslinks 167문서·route-doc) PASS, 신규·정정 파일 UTF-8·mojibake 0. Not-tested: 운영/dev DB 롤백 리허설(오너 승인 전).
