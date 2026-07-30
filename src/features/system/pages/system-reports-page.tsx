@@ -46,6 +46,7 @@ import {
 import { useSearchBarDateDraft } from '../../../shared/ui/search-bar/use-search-bar-date-draft';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import { createTextSorter } from '../../../shared/ui/table/table-column-utils';
+import { UserNavigationLink } from '../../../shared/ui/user/user-reference';
 
 const { Paragraph, Text } = Typography;
 const PAGE_SIZE = 20;
@@ -366,7 +367,22 @@ export default function SystemReportsPage(): JSX.Element {
                   { key: 'category', label: '유형', children: systemReportCategoryLabels[selectedReport.category] },
                   { key: 'created', label: '접수 시각', children: formatSystemReportDateTime(selectedReport.createdAt) },
                   { key: 'email', label: '회신 이메일', children: selectedReport.email },
-                  { key: 'reporter', label: '제출자', children: formatSystemReportReporter(selectedReport) }
+                  {
+                    key: 'reporter',
+                    label: '제출자',
+                    children: selectedReport.reporterUserId ? (
+                      <Space size={8} wrap>
+                        <Text>{formatSystemReportReporter(selectedReport)}</Text>
+                        <UserNavigationLink
+                          userId={selectedReport.reporterUserId}
+                          userName="회원 상세 보기"
+                          withId={false}
+                        />
+                      </Space>
+                    ) : (
+                      formatSystemReportReporter(selectedReport)
+                    )
+                  }
                 ]}
               />
             </DetailDrawerSection>
