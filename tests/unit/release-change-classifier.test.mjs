@@ -14,7 +14,7 @@ function add(...paths) {
   return classifyChangedFiles(paths.map((path) => ({ status: 'A', path })));
 }
 
-describe('release change classifier v3', () => {
+describe('release change classifier v5', () => {
   it('keeps documentation and offline tests on the light sync-only path', () => {
     const docs = classify('docs/architecture/admin-cicd-pipeline.md', 'AGENTS.md');
     expect(docs.releasePlan).toBe('sync-only');
@@ -59,6 +59,91 @@ describe('release change classifier v3', () => {
       expect(report.applyMigrations, path).toBe(false);
       expect(report.validationProfile, path).toBe('app');
     }
+  });
+
+  it('still validates the control plane when the same change also touches app code', () => {
+    // db-contract is the only job gated on the full profile, so an app touch used
+    // to silently drop control-plane validation from a mixed change.
+    for (const controlPlanePath of [
+      '.github/workflows/ci.yml',
+      'scripts/ci/classify-release-change.mjs',
+      'scripts/db/manifests/writing-development-release.json',
+      'scripts/db/migrate-core.mjs',
+      'supabase/migrations-admin/down/20260721000000_example.sql',
+      'playwright.release-admin.config.ts',
+      'supabase/README.md',
+    ]) {
+      const report = classify('src/main.tsx', controlPlanePath);
+      expect(report.validationProfile, controlPlanePath).toBe('full');
+      // Escalating how hard we check must not change what the release ships.
+      expect(report.releasePlan, controlPlanePath).toBe('app-only');
+      expect(report.deployApp, controlPlanePath).toBe(true);
+      expect(report.applyMigrations, controlPlanePath).toBe(false);
+      expect(report.blockedReasons, controlPlanePath).toEqual([]);
+    }
+  });
+
+  it('reproduces the mixed change that skipped db-contract on PR #58', () => {
+    const report = classify(
+      '.github/workflows/release-company-production.yml',
+      'logs/admin-doc-update-log.md',
+      'scripts/check-migration-ownership-boundary.mjs',
+      'scripts/db/apply-v13-migration.mjs',
+      'scripts/db/manifests/v13-shared-dev.json',
+      'scripts/db/migrate-core.mjs',
+      'src/main.tsx',
+      'supabase/README.md',
+      'tests/unit/apply-v13-migration.test.mjs'
+    );
+    expect(report.releasePlan).toBe('app-only');
+    expect(report.validationProfile).toBe('full');
+    expect(report.applyMigrations).toBe(false);
+    expect(report.runUnit).toBe(true);
+  });
+
+  it('treats supabase/README.md as control plane despite being markdown', () => {
+    // It is the single source of truth for the tracker separation, the runner
+    // contract, and the boundary rules. pathKind() checks documentation before the
+    // control-plane rule, so the generic markdown match used to shadow it.
+    const alone = classify('supabase/README.md');
+    expect(alone.releasePlan).toBe('sync-only');
+    expect(alone.validationProfile).toBe('full');
+    expect(alone.deployApp).toBe(false);
+    expect(alone.applyMigrations).toBe(false);
+    expect(alone.blockedReasons).toEqual([]);
+
+    const mixed = classify('supabase/README.md', 'src/main.tsx');
+    expect(mixed.releasePlan).toBe('app-only');
+    expect(mixed.validationProfile).toBe('full');
+    expect(mixed.applyMigrations).toBe(false);
+  });
+
+  it('leaves every other markdown file on the light path', () => {
+    for (const path of [
+      'AGENTS.md',
+      '.claude/CLAUDE.md',
+      'MOVED_DOCS.md',
+      'docs/architecture/shared-supabase-schema-ownership.md',
+      'logs/admin-doc-update-log.md',
+      // Inside the otherwise control-plane .github/ tree, but a PR template
+      // carries no validation contract, so escalating it would only cost time.
+      '.github/pull_request_template.md',
+    ]) {
+      const report = classify(path);
+      expect(report.releasePlan, path).toBe('sync-only');
+      expect(report.validationProfile, path).toBe('light');
+      expect(report.blockedReasons, path).toEqual([]);
+    }
+  });
+
+  it('keeps a migration manifest edit out of the migration-applying plans', () => {
+    // The manifest declares which migrations a batch releases; editing it must
+    // raise validation without telling the pipeline to apply anything.
+    const report = classify('scripts/db/manifests/admin-production-cutover.json');
+    expect(report.releasePlan).toBe('sync-only');
+    expect(report.validationProfile).toBe('full');
+    expect(report.applyMigrations).toBe(false);
+    expect(report.deployApp).toBe(false);
   });
 
   it('routes a newly added forward migration through the db-only path', () => {
