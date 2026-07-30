@@ -10,6 +10,7 @@ import {
   gitBlobSha,
   listArchive,
   parseForwardName,
+  registerAuthoredMigrations,
   sha256Hex,
 } from '../../scripts/db/v13-archive.mjs';
 
@@ -75,6 +76,7 @@ describe('hashing helpers', () => {
     expect(Object.keys(DISPOSITIONS).sort()).toEqual([
       'adopted-elsewhere',
       'applied',
+      'authored',
       'blocked',
       'deferred',
     ]);
@@ -215,5 +217,77 @@ describe('evaluateDevManifestAgreement', () => {
     const manifest = { files: [{ name: 'a.sql', disposition: 'blocked' }] };
     const devManifest = { blockedMigrations: ['a.sql'] };
     expect(evaluateDevManifestAgreement({ manifest, devManifest }).failures).toEqual([]);
+  });
+});
+
+describe('authoring channel', () => {
+  let archiveDir;
+
+  beforeEach(() => {
+    archiveDir = mkdtempSync(join(tmpdir(), 'v13-archive-authoring-'));
+  });
+
+  afterEach(() => {
+    rmSync(archiveDir, { recursive: true, force: true });
+  });
+
+  it('registers a file authored above the watermark as topik-ai origin', () => {
+    const manifest = baseManifest(archiveDir);
+    const authoredBody = 'create table public.later (id int);\n';
+    const bytes = writeArchiveFile(archiveDir, '20260801000000_new_learner_change.sql', authoredBody);
+    writeArchiveFile(archiveDir, 'down/20260801000000_new_learner_change.sql', 'drop table public.later;\n');
+
+    const { manifest: updated, registered } = registerAuthoredMigrations({ archiveDir, manifest });
+    expect(registered.map((entry) => entry.name)).toEqual([
+      '20260801000000_new_learner_change.sql',
+      'down/20260801000000_new_learner_change.sql',
+    ]);
+    const forward = registered.find((entry) => !entry.name.startsWith('down/'));
+    expect(forward).toMatchObject({
+      origin: 'topik-ai',
+      disposition: 'authored',
+      ledger: { dev: 'absent', prod: 'absent' },
+      sha256: sha256Hex(bytes),
+      blob: gitBlobSha(bytes),
+    });
+    // Down entries carry no disposition or ledger: they are never applied forward.
+    expect(registered.find((entry) => entry.name.startsWith('down/'))).not.toHaveProperty('disposition');
+
+    const result = evaluateArchive({ archiveDir, manifest: updated });
+    expect(result.failures).toEqual([]);
+    // The watermark stays on the v13 history even though a later file exists.
+    expect(result.watermark).toBe('20260520120000');
+    expect(result.forwardCount).toBe(2);
+  });
+
+  it('refuses to register a file at or below the v13 watermark', () => {
+    const manifest = baseManifest(archiveDir);
+    writeArchiveFile(archiveDir, '20260101000000_too_early.sql', 'select 1;\n');
+    expect(() => registerAuthoredMigrations({ archiveDir, manifest }))
+      .toThrow(/at or below the v13 watermark/);
+  });
+
+  it('rejects an origin/disposition combination that misstates authorship', () => {
+    const manifest = baseManifest(archiveDir);
+    manifest.files[0].origin = 'topik-ai';
+    const asV13History = evaluateArchive({ archiveDir, manifest });
+    expect(asV13History.failures.some((issue) => issue.includes("must be 'authored'"))).toBe(true);
+    // With origin topik-ai the v13 watermark no longer has a source file, so the
+    // manifest's declared watermark must also stop matching.
+    expect(asV13History.failures.some((issue) => issue.includes('authoringWatermark'))).toBe(true);
+
+    const claimedAuthored = baseManifest(archiveDir);
+    claimedAuthored.files[0].disposition = 'authored';
+    const { failures } = evaluateArchive({ archiveDir, manifest: claimedAuthored });
+    expect(failures).toContain(
+      `${FORWARD} is marked authored but its origin is 'v13'.`
+    );
+  });
+
+  it('rejects an unknown origin', () => {
+    const manifest = baseManifest(archiveDir);
+    manifest.files[0].origin = 'somewhere-else';
+    const { failures } = evaluateArchive({ archiveDir, manifest });
+    expect(failures).toContain(`${FORWARD} has an unknown origin: somewhere-else.`);
   });
 });

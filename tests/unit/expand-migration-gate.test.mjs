@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   classifyMigrationDiff,
   findContractOperations,
+  isLearnerHistoryPath,
 } from '../../scripts/db/check-expand-migrations.mjs';
 
 describe('automatic release expand-migration gate', () => {
@@ -219,6 +220,66 @@ describe('automatic release expand-migration gate', () => {
 
     expect(issues).toEqual([
       'supabase/migrations-admin/20260101000000_pending_rewrite.sql: applied migrations are immutable (D)',
+    ]);
+  });
+});
+
+describe('adopted learner history in the expand gate', () => {
+  const WATERMARK = '20260729120000';
+  const HISTORY = 'supabase/migrations-v13/20260714140000_writing_problem_identity_registry_cutover.sql';
+  const AUTHORED = 'supabase/migrations-v13/20260801000000_new_learner_change.sql';
+  // Real shape of the adopted history: the identity cutover drops functions and
+  // deletes rows. That ran months ago, so re-judging it would block the adoption.
+  const HISTORICAL_SQL = 'drop function if exists private.retired_helper();\nalter table public.problems drop column legacy_anchor;\n';
+
+  function classify(entries, bodies) {
+    return classifyMigrationDiff(
+      entries,
+      (path) => bodies[path],
+      { learnerHistoryWatermark: WATERMARK }
+    );
+  }
+
+  it('identifies learner paths at or below the watermark as history', () => {
+    expect(isLearnerHistoryPath(HISTORY, WATERMARK)).toBe(true);
+    expect(isLearnerHistoryPath(`supabase/migrations-v13/${WATERMARK}_edge.sql`, WATERMARK)).toBe(true);
+    expect(isLearnerHistoryPath(AUTHORED, WATERMARK)).toBe(false);
+    expect(isLearnerHistoryPath('supabase/migrations-admin/20260101000000_x.sql', WATERMARK)).toBe(false);
+    // Without a watermark nothing is exempt, so the gate fails closed.
+    expect(isLearnerHistoryPath(HISTORY, null)).toBe(false);
+  });
+
+  it('admits adopted history whose contract operations already ran', () => {
+    expect(classify([{ status: 'A', path: HISTORY }], { [HISTORY]: HISTORICAL_SQL })).toEqual([]);
+  });
+
+  it('still refuses to let adopted history be edited or deleted', () => {
+    for (const status of ['M', 'D']) {
+      expect(classify([{ status, path: HISTORY }], { [HISTORY]: HISTORICAL_SQL })).toEqual([
+        `${HISTORY}: applied migrations are immutable (${status})`,
+      ]);
+    }
+  });
+
+  it('holds learner migrations authored above the watermark to the expand-only rule', () => {
+    const issues = classify([{ status: 'A', path: AUTHORED }], {
+      [AUTHORED]: 'drop table public.something;\n',
+    });
+    expect(issues).toEqual([`${AUTHORED}: contract operation detected (drop-table)`]);
+  });
+
+  it('accepts an additive learner migration authored above the watermark', () => {
+    const issues = classify([{ status: 'A', path: AUTHORED }], {
+      [AUTHORED]: 'alter table public.profiles add column if not exists nickname text;\n',
+    });
+    expect(issues).toEqual([]);
+  });
+
+  it('covers learner down migrations with the same immutability rule', () => {
+    const down = 'supabase/migrations-v13/down/20260801000000_new_learner_change.sql';
+    expect(classify([{ status: 'A', path: down }], { [down]: 'select 1;' })).toEqual([]);
+    expect(classify([{ status: 'M', path: down }], { [down]: 'select 1;' })).toEqual([
+      `${down}: applied migrations are immutable (M)`,
     ]);
   });
 });

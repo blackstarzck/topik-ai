@@ -140,6 +140,25 @@
   `--source git`은 기존 경로이며 두 소스는 동일한 SQL을 생성한다(B9 dry-run 1191줄 동일 확인).
   tracker provenance에 `body_source=`가 추가된다.
 
+### 2.5.2 신규 learner 마이그레이션 저작 (2026-07-30, M5)
+
+워터마크(`20260729120000`) **초과** 타임스탬프로 이 저장소에서 저작한다. v13 저장소에는 더 이상 작성하지 않는다.
+
+1. `supabase/migrations-v13/<YYYYMMDDHHMMSS>_<snake_case>.sql`에 forward를 쓰고,
+   `supabase/migrations-v13/down/`에 같은 파일명으로 롤백을 짝지어 둔다.
+2. `node scripts/db/v13-archive.mjs --register` — 매니페스트에 `origin: topik-ai`,
+   `disposition: authored`, 양 환경 `absent`로 등재된다. 워터마크 이하 타임스탬프는 거부된다
+   (동결 역사 경계가 모호해지고 재생 순서가 뒤집히므로).
+3. 적용은 종전과 같이 러너 + 환경 manifest 경유이며 장부는 `supabase_migrations.schema_migrations`다
+   (결정 D3 — 장부 유지, 쓰기 주체만 이 저장소).
+4. 게이트: `npm run check:v13-archive`(등재·해시), `npm run check:expand-migrations`(expand-only 규칙).
+
+**expand-gate 적용 범위**: `migrations-v13/`도 이제 검사 대상이다.
+- **채택된 v13 역사(워터마크 이하)**: 수정·삭제는 계속 차단(불변)하되, contract operation 검사는 면제한다.
+  그 `drop`은 몇 달 전에 이미 실행된 역사이므로 지금 판정하면 채택 자체가 막힌다.
+- **워터마크 초과(이 저장소 저작)**: 다른 두 네임스페이스와 동일하게 expand-only 규칙을 적용한다.
+- 워터마크를 못 읽으면 면제 없이 전부 신규 저작으로 판정한다(fail-closed).
+
 ## 3. 공통 실행 메커니즘
 
 - 두 러너는 동일한 `scripts/db/migrate-core.mjs`를 사용하고, `trackTable`과

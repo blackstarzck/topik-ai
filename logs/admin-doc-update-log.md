@@ -868,3 +868,11 @@
 - Contract: `--v13-dir` 없이도 shadow가 성립하므로 M4는 "배선 삭제"만 남는다. N-1 업그레이드 재생은 N-1 트리에 아카이브가 있으면 그것을 쓰고 없으면 핀으로 v13 fetch — 회사 promote가 M4 이후 릴리스에 도달할 때까지 이 분기를 유지한다. `V13_CONTRACT_SHA`와 migration digest는 M3에서 건드리지 않는다(evidence 체인 유지).
 - Validation: 러너 `--status` 아카이브 소스로 dev 장부 조회 성공, B9 dry-run 아카이브 vs git **1191줄 동일 SQL·동일 sha256**, blocked/deferred/replayOnly 3종 거부 + 정상 1건 허용 실측, boundary 인자 없이(archive)·`--v13-root`(v13-checkout) 양쪽 통과, 아카이브 패리티 검증 통과, 단위 65건(신규 12건 포함).
 - Not-tested: shadow replay 전량 실행은 Docker+Supabase CLI 2.105.0 필요 — CI(db-contract/database-health)에서 검증한다. 로컬은 코드 경로·패리티까지.
+
+## 2026-07-30 M5 — expand-gate 범위 확장 + 신규 learner 저작 개통
+
+- Updated: `scripts/db/check-expand-migrations.mjs`(`migrations-v13` 편입 + `isLearnerHistoryPath`/`loadLearnerHistoryWatermark` 신설), `scripts/db/v13-archive.mjs`(`origin` 필드·`authored` disposition·`--register` 모드·워터마크를 v13-origin 한정으로 계산), `scripts/db/manifests/v13-archive.json`(전 항목 `origin: v13`), `supabase/README.md` §2.5.2, 테스트 2종.
+- Reason: M2 아카이브를 게이트 사각지대로 남기지 않고(수정·삭제 차단), 신규 learner 마이그를 이 저장소에서 저작할 수 있는 경로를 실제로 개통한다.
+- Contract: 워터마크 이하 채택 역사는 **불변성은 강제, contract operation 검사는 면제**(그 drop은 이미 실행된 역사 — 판정하면 채택 자체가 막힘). 워터마크 초과는 다른 네임스페이스와 동일하게 expand-only. 워터마크를 못 읽으면 면제 없음(fail-closed). 워터마크는 `origin: v13` 항목만으로 계산하므로 신규 저작이 동결 경계를 밀어내지 못한다. `--import` 재실행은 저작분을 바이트째 보존하며, 저작 파일이 사라졌으면 중단한다.
+- Validation: **함정 시나리오 실증** — 확장된 게이트로 M2 커밋 diff(역사 100파일 status A)를 검사해 통과(`100 new migration(s)`), 면제가 없으면 역사적 drop이 오탐될 자리. 저작 채널 4단계 실측(미등재 파일 verify 실패 → `--register` → verify 통과·워터마크 불변(101 forward여도 20260729120000) → 워터마크 이하 거부) 후 프로브 정리. 신규 단위 11건(누적 v13-archive 21 + expand-gate 18) 통과.
+- Deferred: 계획서 M5의 "릴리스 manifest에 learner 네임스페이스 추가"는 미착수. 사유 = 릴리스 대상 learner 마이그가 아직 0건이고, 세 번째 contract 편입은 `compute-migration-digest`(=운영 promote evidence 대사값)를 바꾸므로 M4의 evidence 재작업과 같은 릴리스에 묶는 것이 안전하다. 계획서 §5 M5 항목에 이 분리를 기록했다.

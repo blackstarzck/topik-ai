@@ -191,7 +191,8 @@ F1 보충:
 | **M2** | 아카이브 import: `supabase/migrations-v13/` 100파일 바이트 채택 + sha256/환경지위 매니페스트 + byte-diff 1회 검증 (=§4.3 C1) | topik-ai | M0 | 없음 |
 | **M3** | 이중검증 릴리스: shadow 소스 전환 + `.ci/v13` 대조 어서션, 러너 v2(소스=자기 repo·`--v13-root` 대체), boundary `resolveV13Root` 확장 (=C2) | topik-ai | M2 | 없음 |
 | **M4** | 핀 제거 릴리스: sparse-checkout·`V13_CONTRACT_SHA` 8곳·계약 테스트 개정, evidence를 아카이브 digest로. N-1 분기 유지 (=C3) | topik-ai | M3 릴리스가 N-1이 된 후 | 없음 |
-| **M5** | 신규 저작 개통: 첫 topik-ai발 learner 마이그부터 `migrations-v13/` 연속 저작 + v13 장부(F1) 기록. expand-gate 범위 확장(별도 PR — §4.3 함정), 릴리스 manifest에 learner 네임스페이스 추가 | topik-ai | M2 (M3~4와 병행 가능) | dev |
+| **M5** | 신규 저작 개통: 첫 topik-ai발 learner 마이그부터 `migrations-v13/` 연속 저작 + v13 장부(F1) 기록. expand-gate 범위 확장(별도 PR — §4.3 함정) | topik-ai | M2 (M3~4와 병행 가능) | dev |
+| **M5b** | 릴리스 manifest에 learner 네임스페이스 추가(자동 운영 적용 편입) | topik-ai | **M4와 동일 릴리스** — 세 번째 contract 편입은 `compute-migration-digest`를 바꾸고 그 값이 운영 promote evidence의 대사값이다. M4의 evidence 재작업과 같은 릴리스에 묶어야 체인이 끊기지 않는다. 릴리스 대상 learner 마이그가 0건인 동안은 실익도 없다 | 없음 |
 | **M6** | 운영 catch-up: `v13-shared-prod.json` + 러너 운영 해금(D9) + 선행 프로브 → 백로그 7건 배치 적용 | topik-ai | M2, D9 | **운영** |
 | **M7** | 마무리: 자격증명 회전(D8), v13 `supabase/` 최종 처분(D6), 문서 일괄 개정(§9), N-1 분기 제거(회사 promote가 M4 이후 릴리스에 도달한 뒤) | 양쪽 | M4·M6 | 없음 |
 

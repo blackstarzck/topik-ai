@@ -42,7 +42,13 @@ export const DISPOSITIONS = Object.freeze({
   blocked: 'Never apply. Applying today would regress the post-cutover structure.',
   deferred: 'Owner decision pending. Not applied to development.',
   'adopted-elsewhere': 'Applied and tracked from another namespace in this repo.',
+  authored: 'Authored in this repo above the watermark. Apply through the learner runner.',
 });
+
+// `origin` separates adopted v13 history from this repo's own new authoring. The
+// watermark is derived from v13-origin files only, so authoring above it cannot
+// move the line that decides which files are frozen history.
+export const ORIGINS = Object.freeze(['v13', 'topik-ai']);
 
 export function sha256Hex(buffer) {
   return createHash('sha256').update(buffer).digest('hex');
@@ -144,11 +150,15 @@ export function evaluateArchive({ archiveDir, manifest, readFile = readFileSync 
       failures.push(`${entry.name} does not match the migration file name contract.`);
       continue;
     }
+    const origin = entry.origin ?? 'v13';
+    if (!ORIGINS.includes(origin)) {
+      failures.push(`${entry.name} has an unknown origin: ${entry.origin}.`);
+    }
     if (isDown) {
       downCount += 1;
     } else {
       forwardCount += 1;
-      if (parsed.version > watermark) watermark = parsed.version;
+      if (origin === 'v13' && parsed.version > watermark) watermark = parsed.version;
     }
 
     if (!SHA256.test(entry.sha256 ?? '')) failures.push(`${entry.name} has no valid sha256.`);
@@ -201,8 +211,31 @@ export function evaluateArchive({ archiveDir, manifest, readFile = readFileSync 
         );
       }
     }
-    if (entry.disposition !== 'applied' && !entry.reason) {
+    if (entry.disposition !== 'applied' && entry.disposition !== 'authored' && !entry.reason) {
       failures.push(`${entry.name} is ${entry.disposition} but records no reason.`);
+    }
+    if (origin === 'topik-ai' && entry.disposition !== 'authored') {
+      failures.push(
+        `${entry.name} is authored in this repo so its disposition must be 'authored', `
+        + `got '${entry.disposition}'.`
+      );
+    }
+    if (entry.disposition === 'authored' && origin !== 'topik-ai') {
+      failures.push(`${entry.name} is marked authored but its origin is '${origin}'.`);
+    }
+  }
+
+  // Authoring must sit strictly above the watermark: reusing a v13-era timestamp
+  // would make the frozen-history boundary ambiguous and reorder the replay.
+  for (const entry of entries) {
+    if ((entry.origin ?? 'v13') !== 'topik-ai') continue;
+    const bareName = entry.name.startsWith('down/') ? entry.name.slice('down/'.length) : entry.name;
+    const version = parseForwardName(bareName)?.version;
+    if (version && watermark && version <= watermark) {
+      failures.push(
+        `${entry.name} is authored here but its version is at or below the v13 watermark `
+        + `${watermark}; authoring must use a later timestamp.`
+      );
     }
   }
 
@@ -265,6 +298,8 @@ export function evaluateSourceParity({ archiveDir, manifest, repoRoot, sourceGit
   );
 
   for (const entry of manifest.files ?? []) {
+    // Files authored in this repo have no counterpart in the v13 history.
+    if ((entry.origin ?? 'v13') === 'topik-ai') continue;
     const sourceBlob = tree.get(entry.name);
     if (!sourceBlob) {
       failures.push(`${entry.name} is archived but absent from ${sourceGitSha}:${sourceDir}.`);
@@ -288,14 +323,26 @@ export function evaluateSourceParity({ archiveDir, manifest, repoRoot, sourceGit
       + `${unarchived.length > 5 ? ', …' : ''}. The archive must be complete or the replay diverges.`
     );
   }
-  return { failures, comparedFiles: (manifest.files ?? []).length };
+  return {
+    failures,
+    comparedFiles: (manifest.files ?? []).filter((entry) => (entry.origin ?? 'v13') === 'v13').length,
+  };
 }
 
 // ---------------------------------------------------------------------------
 // Import
 // ---------------------------------------------------------------------------
 
-function buildManifest({ repoRoot, sourceGitSha, sourceDir, tree, devManifest, ledger, archiveDir }) {
+function buildManifest({
+  repoRoot,
+  sourceGitSha,
+  sourceDir,
+  tree,
+  devManifest,
+  ledger,
+  archiveDir,
+  authoredEntries = [],
+}) {
   const blocked = new Map(
     (devManifest.blockedMigrations ?? []).map((entry) => [entry.name, entry.reason])
   );
@@ -330,6 +377,7 @@ function buildManifest({ repoRoot, sourceGitSha, sourceDir, tree, devManifest, l
 
     const entry = {
       name: relativeName,
+      origin: 'v13',
       sha256: sha256Hex(bytes),
       blob,
       bytes: bytes.length,
@@ -363,13 +411,16 @@ function buildManifest({ repoRoot, sourceGitSha, sourceDir, tree, devManifest, l
     files.push(entry);
   }
 
+  // Re-importing the v13 history must not discard this repo's own authoring.
+  files.push(...authoredEntries);
   files.sort((left, right) => left.name.localeCompare(right.name));
 
-  // The four dispositions must partition the forward set exactly, and the
-  // `applied` subset must equal the development ledger. If these disagree the
-  // archive is describing a history that no environment actually has.
-  const appliedNames = files.filter((entry) => entry.disposition === 'applied');
-  const devApplied = files.filter((entry) => entry.ledger?.dev === 'applied');
+  // Among v13-origin files the dispositions must partition the forward set
+  // exactly, and the `applied` subset must equal the development ledger. If these
+  // disagree the archive is describing a history that no environment actually has.
+  const v13Files = files.filter((entry) => (entry.origin ?? 'v13') === 'v13');
+  const appliedNames = v13Files.filter((entry) => entry.disposition === 'applied');
+  const devApplied = v13Files.filter((entry) => entry.ledger?.dev === 'applied');
   if (appliedNames.length !== devApplied.length) {
     fail(
       `Disposition/ledger disagreement: ${appliedNames.length} files are 'applied' but `
@@ -416,8 +467,28 @@ function importArchive({ repoRoot, sourceGitSha, archiveDir, manifestPath, devMa
   const sourceDir = devManifest.sourceMigrationsDir ?? 'supabase/migrations';
   const tree = listGitTree({ repoRoot, sha: sourceGitSha, path: sourceDir });
 
+  // Re-import replaces the adopted v13 history. Files this repo authored are
+  // carried over with their bytes, so a re-import cannot silently delete them.
+  const previous = existsSync(manifestPath)
+    ? JSON.parse(readFileSync(manifestPath, 'utf8'))
+    : { files: [] };
+  const authoredEntries = (previous.files ?? []).filter(
+    (entry) => (entry.origin ?? 'v13') === 'topik-ai'
+  );
+  const carried = new Map();
+  for (const entry of authoredEntries) {
+    const source = join(archiveDir, entry.name);
+    if (!existsSync(source)) fail(`Authored migration ${entry.name} is missing from the archive.`);
+    carried.set(entry.name, readFileSync(source));
+  }
+
   rmSync(archiveDir, { recursive: true, force: true });
   mkdirSync(archiveDir, { recursive: true });
+  for (const [name, bytes] of carried) {
+    const target = join(archiveDir, name);
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, bytes);
+  }
   const manifest = buildManifest({
     repoRoot,
     sourceGitSha,
@@ -426,6 +497,7 @@ function importArchive({ repoRoot, sourceGitSha, archiveDir, manifestPath, devMa
     devManifest,
     ledger,
     archiveDir,
+    authoredEntries,
   });
 
   // INDEX.md travels with the archive as the human-readable change log. It is
@@ -441,6 +513,53 @@ function importArchive({ repoRoot, sourceGitSha, archiveDir, manifestPath, devMa
 
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
   return manifest;
+}
+
+// Opens the authoring channel: a learner migration written in this repo is
+// registered into the manifest so the verifier stops calling it a stray file. It
+// must sit above the v13 watermark, and it starts unapplied in both environments —
+// applying it stays the runner's job through the environment manifests.
+export function registerAuthoredMigrations({ archiveDir, manifest, readFile = readFileSync }) {
+  const known = new Set((manifest.files ?? []).map((entry) => entry.name));
+  const onDisk = listArchive(archiveDir);
+  const candidates = [
+    ...onDisk.forward,
+    ...onDisk.down.map((name) => `down/${name}`),
+  ].filter((name) => !known.has(name));
+
+  const registered = [];
+  for (const name of candidates) {
+    const bareName = name.startsWith('down/') ? name.slice('down/'.length) : name;
+    const parsed = parseForwardName(bareName);
+    if (!parsed) fail(`${name} does not match the migration file name contract.`);
+    if (manifest.authoringWatermark && parsed.version <= manifest.authoringWatermark) {
+      fail(
+        `${name} is at or below the v13 watermark ${manifest.authoringWatermark}. `
+        + 'A new learner migration must use a later timestamp so the frozen history stays unambiguous.'
+      );
+    }
+    const bytes = readFile(join(archiveDir, name));
+    const entry = {
+      name,
+      origin: 'topik-ai',
+      sha256: sha256Hex(bytes),
+      blob: gitBlobSha(bytes),
+      bytes: bytes.length,
+    };
+    if (!name.startsWith('down/')) {
+      entry.ledger = { dev: 'absent', prod: 'absent' };
+      entry.disposition = 'authored';
+    }
+    registered.push(entry);
+  }
+
+  const files = [...(manifest.files ?? []), ...registered]
+    .sort((left, right) => left.name.localeCompare(right.name));
+  const counts = {
+    forward: files.filter((entry) => !entry.name.startsWith('down/')).length,
+    down: files.filter((entry) => entry.name.startsWith('down/')).length,
+  };
+  return { manifest: { ...manifest, counts, files }, registered };
 }
 
 // ---------------------------------------------------------------------------
@@ -465,8 +584,13 @@ function usage() {
   --verify  (default) recompute sha256 and git blob sha for every archived file,
             cross-check dispositions against the dev apply manifest, and — when
             --v13-root is given — diff every file against the v13 git objects.
-  --import  re-materialize the archive and manifest from a v13 commit. Requires a
-            ledger snapshot: {"dev":[versions],"prod":[versions],"measuredAt":"…"}.`);
+  --import  re-materialize the adopted v13 history and manifest from a v13 commit.
+            Requires a ledger snapshot:
+            {"dev":[versions],"prod":[versions],"measuredAt":"…"}. Files this repo
+            authored are carried over untouched.
+  --register register learner migrations authored in this repo that are present in
+            the archive but not yet in the manifest. They must be timestamped
+            above the v13 watermark and start unapplied in both environments.`);
 }
 
 export async function main(argv = process.argv.slice(2)) {
@@ -479,6 +603,19 @@ export async function main(argv = process.argv.slice(2)) {
   const devManifestPath = resolve(getArgValue(argv, '--dev-manifest') ?? DEFAULT_DEV_MANIFEST);
   const v13Root = getArgValue(argv, '--v13-root');
   const v13Sha = getArgValue(argv, '--v13-sha');
+
+  if (argv.includes('--register')) {
+    const current = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    const { manifest, registered } = registerAuthoredMigrations({ archiveDir, manifest: current });
+    if (registered.length === 0) {
+      console.log('No unregistered learner migrations found.');
+      return 0;
+    }
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+    console.log(`Registered ${registered.length} authored learner migration(s):`);
+    for (const entry of registered) console.log(`  ${entry.name}  sha256=${entry.sha256}`);
+    return 0;
+  }
 
   if (argv.includes('--import')) {
     if (!v13Root || !v13Sha) fail('--import requires --v13-root and --v13-sha.');
