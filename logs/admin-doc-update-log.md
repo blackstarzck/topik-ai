@@ -843,3 +843,11 @@
 - Contract: tracker는 `supabase_migrations.schema_migrations`(세 번째 흐름)이며 기존 두 tracker와 혼입하지 않는다. 기본 동작 read-only, 쓰기는 expected-ref 일치 + `SUPABASE_SQL_MAX_ATTEMPTS=1` 요구, production ref는 전면 거부. 마이그 본문은 `git show <sha>:<path>`로만 읽는다. `blockedMigrations`는 장부에 스탬프하지 않는다.
 - Validation: 신규 unit 27건 + `resolveV13Root` 2건, `npm run test:unit` 516건, `harness:check`(mojibake·doc-crosslinks·route-doc·message-history·lint·typecheck), `check:migration-boundary`(인자 없이 통과 — `TOPIK_V13_ROOT` 오버라이드 추가), `check:expand-migrations --base origin/main`, `db:contracts:verify`, `harness:admin-boundary` 구성 게이트 6/7(`check:admin-verification-env`는 워크트리 `.env.local` 부재로 미실행). 러너 실동작은 dev DB read-only `--status`와 9개 배치 `--dry-run`으로 확인(8개 SQL 생성 성공, B4는 v13 수리 마이그 미머지로 fail-closed).
 - Not-updated: `docs/architecture/shared-supabase-schema-ownership.md` decision record는 오너 승인일이 필요해 승인 후 별도 반영한다.
+
+## 2026-07-30 v13 → topik-ai DB 마이그레이션 소유권 이전 프로그램 설계안
+
+- Added: `docs/plans/v13-db-ownership-transfer-program-plan.md` — 오너 확정 목표(v13=사용자 화면 코드만, DB 관리 권한 전부 topik-ai, 런타임 쓰기는 유지 — 해석 A)의 이행 프로그램 설계안. 다섯 설계 질문(이전 단위·장부 전략·CI 계약·v13 차단 가드·운영 적용 순서)별 옵션/권고 + 오너 결정 표 D1~D10 + 단계 로드맵 M0~M7.
+- Updated: `docs/README.md` `docs/plans` 인덱스에 신규 문서 1행 추가.
+- Reason: 구현이 아니라 설계·결정 요청 단계. 핵심 실측 — v13 파일 100 = dev 장부 92 + blocked 5 + deferred 2 + adopted 1; 운영 장부도 92행이나 집합이 달라 dev-only 7 = 운영 catch-up 백로그, 운영-only 7 = blocked/deferred가 컷오버 전 순서로 적용된 정당한 역사. V13_CONTRACT_SHA 소비처 전수(워크플로 6 + 밸리데이터 2 + 계약 테스트 + N-1 업그레이드 경로)와 expand-gate 범위(신규 디렉터리는 범위 밖) 확인.
+- Validation: 문서 작업만(코드·DB 무변경). 장부 실측은 read-only `run-sql.mjs` 쿼리(dev/운영 각 1회 + version 목록 대사).
+- Decision: 오너 승인(2026-07-30) — D1~D10 전 항목 권고안 채택(일괄 아카이브 import · 즉시 동결 · 장부 유지+쓰기 주체 이전 · `migrations-v13/` 연속 저작 · 이중검증 릴리스 경유 · v13 supabase/ 당분간 보존 · CI 가드 우선 · 자격증명 M1 직후 회전 · 운영 catch-up M2 직후 게이트식 · blocked 확정+deferred 개별). 문서 상태를 "승인 완료"로 갱신.
