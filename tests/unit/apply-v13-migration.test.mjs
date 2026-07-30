@@ -1,10 +1,11 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   assertEnvironmentMatchesTarget,
+  assertNoOrderInversion,
   assertQualifiedTracker,
   assertTransactionSafe,
   assertWriteEnvironment,
@@ -441,6 +442,234 @@ describe('batch provenance records the body source', () => {
       });
       expect(sql).toContain(`body_source=${bodySource};`);
       expect(sql).toContain(`v13_git_sha=${SHA};`);
+    }
+  });
+});
+
+describe('production apply gates (ownership transfer D9)', () => {
+  const prodManifest = { environment: 'production', projectRef: PROD_REF };
+  const prodWriteBase = {
+    SUPABASE_PROJECT_REF: PROD_REF,
+    SUPABASE_EXPECTED_PROJECT_REF: PROD_REF,
+    SUPABASE_SQL_MAX_ATTEMPTS: '1',
+    SUPABASE_PRODUCTION_CONFIRM: PROD_REF,
+  };
+
+  it('pairs a manifest with exactly one target environment', () => {
+    expect(assertEnvironmentMatchesTarget({
+      projectRef: PROD_REF,
+      manifest: prodManifest,
+      env: {},
+    })).toEqual({ target: 'production' });
+    // A production manifest may not be aimed anywhere else, and a development
+    // manifest may not be aimed at production. Env vars alone cannot cross over.
+    expect(() => assertEnvironmentMatchesTarget({
+      projectRef: DEV_REF,
+      manifest: prodManifest,
+      env: {},
+    })).toThrow(new RegExp(`may only target ${PROD_REF}`));
+    expect(() => assertEnvironmentMatchesTarget({
+      projectRef: PROD_REF,
+      manifest: manifestWith(),
+      env: {},
+    })).toThrow(/development manifest/i);
+  });
+
+  it('keeps read-only actions usable without the confirm token', () => {
+    // --status and --dry-run must not need it: requiring it for read-only work
+    // trains operators to keep it exported, which is how a write gate rots.
+    expect(() => assertEnvironmentMatchesTarget({
+      projectRef: PROD_REF,
+      manifest: prodManifest,
+      env: {},
+    })).not.toThrow();
+  });
+
+  it('refuses a development manifest when the confirm token is exported at all', () => {
+    expect(() => assertEnvironmentMatchesTarget({
+      projectRef: DEV_REF,
+      manifest: manifestWith(),
+      env: { SUPABASE_PRODUCTION_CONFIRM: PROD_REF },
+    })).toThrow(/must not be set/i);
+  });
+
+  it('requires the confirm token for a production write', () => {
+    expect(() => assertWriteEnvironment(
+      { ...prodWriteBase, SUPABASE_PRODUCTION_CONFIRM: undefined },
+      { target: 'production', batchName: 'P1' }
+    )).toThrow(/SUPABASE_PRODUCTION_CONFIRM/);
+    expect(() => assertWriteEnvironment(
+      { ...prodWriteBase, SUPABASE_PRODUCTION_CONFIRM: DEV_REF },
+      { target: 'production', batchName: 'P1' }
+    )).toThrow(/SUPABASE_PRODUCTION_CONFIRM/);
+  });
+
+  it('treats absent batch approval as absent, never as a match', () => {
+    // Regression: approval used to be compared against a second env var, so with
+    // both unset `undefined !== undefined` was false and the gate passed. That hole
+    // applied a production batch unapproved on 2026-07-30.
+    expect(() => assertWriteEnvironment(
+      { ...prodWriteBase },
+      { target: 'production', batchName: 'P1' }
+    )).toThrow(/SUPABASE_PRODUCTION_APPROVED_BATCH/);
+    for (const approved of ['', '   ']) {
+      expect(() => assertWriteEnvironment(
+        { ...prodWriteBase, SUPABASE_PRODUCTION_APPROVED_BATCH: approved },
+        { target: 'production', batchName: 'P1' }
+      )).toThrow(/SUPABASE_PRODUCTION_APPROVED_BATCH/);
+    }
+    // A resolved batch name is equally mandatory: nothing to check against is not approval.
+    expect(() => assertWriteEnvironment(
+      { ...prodWriteBase, SUPABASE_PRODUCTION_APPROVED_BATCH: 'P1' },
+      { target: 'production', batchName: null }
+    )).toThrow(/resolved --batch name/);
+  });
+
+  it('scopes batch approval to the batch actually being applied', () => {
+    expect(() => assertWriteEnvironment(
+      { ...prodWriteBase, SUPABASE_PRODUCTION_APPROVED_BATCH: 'P6' },
+      { target: 'production', batchName: 'P1' }
+    )).toThrow(/does not match the batch being applied/);
+    expect(() => assertWriteEnvironment(
+      { ...prodWriteBase, SUPABASE_PRODUCTION_APPROVED_BATCH: 'P1' },
+      { target: 'production', batchName: 'P1' }
+    )).not.toThrow();
+    expect(() => assertWriteEnvironment(
+      { ...prodWriteBase, SUPABASE_PRODUCTION_APPROVED_BATCH: ' P1 ' },
+      { target: 'production', batchName: 'P1' }
+    )).not.toThrow();
+  });
+
+  it('does not leak production requirements into a development write', () => {
+    expect(() => assertWriteEnvironment({
+      SUPABASE_PROJECT_REF: DEV_REF,
+      SUPABASE_EXPECTED_PROJECT_REF: DEV_REF,
+      SUPABASE_SQL_MAX_ATTEMPTS: '1',
+    }, { target: 'development', batchName: 'B1' })).not.toThrow();
+  });
+});
+
+describe('order inversion guard', () => {
+  const file = (version) => ({ version, fileName: `${version}_x.sql` });
+
+  it('allows the lowest pending version to go first', () => {
+    expect(assertNoOrderInversion({
+      batchName: 'P1',
+      files: [file('20260718120000')],
+      recordedVersions: ['20260714160000'],
+      pendingVersions: ['20260718120000', '20260722120000'],
+    })).toEqual({ checked: true, highestRecorded: '20260714160000' });
+  });
+
+  it('refuses a batch that jumps ahead of a lower pending version', () => {
+    expect(() => assertNoOrderInversion({
+      batchName: 'P6',
+      files: [file('20260724140000')],
+      recordedVersions: ['20260714160000'],
+      pendingVersions: ['20260718120000', '20260724140000'],
+    })).toThrow(/lower unapplied version\(s\) remain pending/);
+  });
+
+  it('allows a gap fill that stays at or below the recorded high-water mark', () => {
+    // Applying a version below what is already recorded is the repair case; the
+    // guard only stops jumping past pending work.
+    expect(() => assertNoOrderInversion({
+      batchName: 'B1',
+      files: [file('20260527113000')],
+      recordedVersions: ['20260714160000'],
+      pendingVersions: ['20260527113000', '20260718120000'],
+    })).not.toThrow();
+  });
+
+  it('is inert on an empty tracker', () => {
+    expect(assertNoOrderInversion({
+      batchName: 'P1',
+      files: [file('20260718120000')],
+      recordedVersions: [],
+      pendingVersions: ['20260718120000'],
+    })).toEqual({ checked: true, highestRecorded: null });
+  });
+});
+
+describe('shipped production manifest', () => {
+  const manifest = JSON.parse(
+    readFileSync('scripts/db/manifests/v13-shared-prod.json', 'utf8')
+  );
+
+  it('declares the production pair the runner gates on', () => {
+    expect(manifest.environment).toBe('production');
+    expect(manifest.projectRef).toBe(PROD_REF);
+    expect(manifest.trackerTable).toBe('supabase_migrations.schema_migrations');
+    expect(assertEnvironmentMatchesTarget({
+      projectRef: PROD_REF,
+      manifest,
+      env: {},
+    })).toEqual({ target: 'production' });
+  });
+
+  it('resolves every sequenced batch to parseable migration files', () => {
+    for (const batchName of manifest.sequence) {
+      const { files } = resolveBatch(manifest, batchName);
+      expect(files.length).toBeGreaterThan(0);
+      for (const file of files) expect(file.version).toMatch(/^\d{14}$/);
+    }
+  });
+
+  it('orders the sequence by version, with the B4 repair inside its own batch', () => {
+    const versions = manifest.sequence
+      .flatMap((name) => resolveBatch(manifest, name).files.map((file) => file.version));
+    // 20260729120000 repairs 20260722120000 and shares its transaction, so the flat
+    // list is not globally sorted. Sorting per batch, then across batches, must be.
+    const batchFirsts = manifest.sequence
+      .map((name) => resolveBatch(manifest, name).files[0].version);
+    expect(batchFirsts).toEqual([...batchFirsts].sort());
+    expect(versions).toContain('20260729120000');
+    const repairBatch = manifest.sequence
+      .find((name) => resolveBatch(manifest, name).files.some((f) => f.version === '20260729120000'));
+    expect(resolveBatch(manifest, repairBatch).files.map((f) => f.version))
+      .toEqual(['20260722120000', '20260729120000']);
+  });
+
+  it('keeps blocked files out of the sequence and marks them as production history', () => {
+    const sequenced = new Set(manifest.sequence
+      .flatMap((name) => resolveBatch(manifest, name).files.map((file) => file.fileName)));
+    const blocked = normalizeBlocked(manifest);
+    expect(blocked.size).toBe(5);
+    for (const [name, reason] of blocked) {
+      expect(sequenced.has(name)).toBe(false);
+      expect(reason.length).toBeGreaterThan(20);
+    }
+    // Production applied all five before the writing cutover, so every entry must
+    // say so — otherwise --status reports true history as a false stamp.
+    for (const entry of manifest.blockedMigrations) {
+      expect(entry.expectRecorded).toBe(true);
+    }
+  });
+
+  it('records the measured production asymmetry for both deferred files', () => {
+    expect(manifest.deferredMigrations).toHaveLength(2);
+    const byName = new Map(manifest.deferredMigrations.map((entry) => [entry.name, entry]));
+    // Recorded on production but only one is actually live there. Losing this
+    // distinction is how a false record gets mistaken for a real dependency.
+    for (const entry of manifest.deferredMigrations) {
+      expect(entry.expectRecorded).toBe(true);
+      expect(typeof entry.liveOnProduction).toBe('boolean');
+    }
+    expect(byName.get('20260629153000_enforce_same_problem_comparison.sql').liveOnProduction)
+      .toBe(true);
+    expect(byName.get('20260629215000_feedback_retry_parent_submission.sql').liveOnProduction)
+      .toBe(false);
+  });
+
+  it('builds a probe for every batch that declares expectations', () => {
+    for (const batchName of manifest.sequence) {
+      const { batch } = resolveBatch(manifest, batchName);
+      for (const key of ['expectPresent', 'expectAbsent', 'expectPresentAfter']) {
+        if (!batch[key]) continue;
+        const probe = buildProbeSql(batch[key]);
+        expect(probe.sql).toContain('select');
+        expect(probe.keys).toHaveLength(batch[key].length);
+      }
     }
   });
 });
