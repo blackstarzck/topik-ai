@@ -835,3 +835,11 @@
 ## 2026-07-24 dry-run 4 (zip 파서 근본 수정 후 게이트 검증)
 
 - zip 중앙디렉터리 파서 수정 후 승격 게이트 실통과 검증용 sync-only 마커.
+
+## 2026-07-29 v13 소유 마이그레이션 적용 러너 도입
+
+- Updated: `supabase/README.md` §3.2 신설(v13 소유 마이그 적용 러너·manifest·tracker 3분리), §4 경계 규칙을 "두 추적 테이블"→"세 추적 테이블"로 정정.
+- Reason: v13은 작업면에서 원격 apply를 금지하고 마이그레이션별로 topik-ai 운영면에 위임한다. 기존 러너 2종은 tracker를 `public.<table>`로만 참조하고 `ensureTracker()`가 tracker에 DDL을 실행해 v13 CLI 장부에 붙일 수 없으므로 전용 러너가 필요했다.
+- Contract: tracker는 `supabase_migrations.schema_migrations`(세 번째 흐름)이며 기존 두 tracker와 혼입하지 않는다. 기본 동작 read-only, 쓰기는 expected-ref 일치 + `SUPABASE_SQL_MAX_ATTEMPTS=1` 요구, production ref는 전면 거부. 마이그 본문은 `git show <sha>:<path>`로만 읽는다. `blockedMigrations`는 장부에 스탬프하지 않는다.
+- Validation: 신규 unit 27건 + `resolveV13Root` 2건, `npm run test:unit` 516건, `harness:check`(mojibake·doc-crosslinks·route-doc·message-history·lint·typecheck), `check:migration-boundary`(인자 없이 통과 — `TOPIK_V13_ROOT` 오버라이드 추가), `check:expand-migrations --base origin/main`, `db:contracts:verify`, `harness:admin-boundary` 구성 게이트 6/7(`check:admin-verification-env`는 워크트리 `.env.local` 부재로 미실행). 러너 실동작은 dev DB read-only `--status`와 9개 배치 `--dry-run`으로 확인(8개 SQL 생성 성공, B4는 v13 수리 마이그 미머지로 fail-closed).
+- Not-updated: `docs/architecture/shared-supabase-schema-ownership.md` decision record는 오너 승인일이 필요해 승인 후 별도 반영한다.

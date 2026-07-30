@@ -81,6 +81,23 @@
   라이브에 재적용하면 default 제거로 실패한다(42P13). 미적용 migration의 승인된 in-place 재작성은
   `scripts/db/manifests/unapplied-rewrites.json` 선언으로만 expand gate를 통과하며, 실제 적용 여부는
   러너의 tracker checksum이 fail-closed로 재검증한다.
+- 이 재작성 허용 항목은 dev·prod 양쪽 적용과 checksum 일치가 확인된 2026-07-29에 제거했다.
+  allowlist는 미적용 상태에서만 유효하므로 적용 후에도 남겨 두면 이후 릴리스가 checksum
+  mismatch로 dev·prod 동시에 멈춘다.
+
+### 2.3 사용자 리포트 인수 (`20260723170000`, `20260729120000`)
+
+- `20260723170000_system_reports.sql`은 학습자 앱이 작성한 정본을 **바이트 그대로** 채택한 파일이다.
+  handoff가 경로·version·checksum을 handback 증거로 요구하므로 주석 추가·개행 변환·BOM 삽입까지
+  금지한다. 수정이 필요하면 새 forward migration을 만든다.
+- 정본은 `private.system_reports`(RLS enable+force, 정책 0건, 전 role 직접 권한 회수)와
+  `public.submit_system_report`(service_role 전용 접수 RPC)만 만든다.
+- `20260729120000_admin_system_reports_console.sql`이 관리자 조회·단건 삭제 RPC를 더한다. 정본
+  테이블에 컬럼·트리거·인덱스를 추가하지 않고, 자동 retention이나 일괄 삭제도 만들지 않는다.
+- 삭제 감사는 Target Type `SystemReport`, Target ID 접수번호를 쓰고 payload에 제출자 이메일·제목·
+  본문·사용자 식별자를 담지 않는다. `admin_audit_logs`는 조회 권한이 더 넓어 삭제가 개인정보를
+  감사 테이블로 옮기는 결과가 되면 안 된다.
+- 소유권 근거: `docs/architecture/shared-supabase-schema-ownership.md` §2
 
 ## 3. 공통 실행 메커니즘
 
@@ -108,10 +125,42 @@
   `prepare -> verify -> finalize -> verify` 순서를 사용한다. 최종 관리자 권한 SoT는
   `admin_accounts`이고 `profiles.app_role`은 `learner`로 복원한다.
 
+## 3.2 v13 소유 마이그레이션 적용 러너 (`apply-v13-migration.mjs`)
+
+v13은 작업면에서 원격 apply를 하지 않고(`v13/AGENTS.md`, `v13/supabase/README.md`)
+마이그레이션별 위임을 `v13/supabase/migrations/INDEX.md`에 기록한다. 그 위임분을
+topik-ai 운영면에서 적용하는 전용 러너다. 선례는 v13 `20260707120000`을
+`run-sql.mjs`로 적용하고 v13 CLI tracker에 repair 행을 넣은 2026-07-07 건이다
+(`docs/architecture/shared-supabase-schema-ownership.md`).
+
+- **러너**: `scripts/db/apply-v13-migration.mjs`
+- **manifest**: `scripts/db/manifests/v13-shared-dev.json` (`--batch` 단위, `sequence` 순서)
+- **tracker**: v13 CLI 장부 `supabase_migrations.schema_migrations` — **세 번째 흐름**이며
+  `topik_writing_schema_migrations`·`admin_schema_migrations`와 혼입하지 않는다.
+- **기본 동작은 read-only `--status`**. `--dry-run`은 생성 SQL만 출력하고,
+  쓰기는 `--write` + `SUPABASE_EXPECTED_PROJECT_REF` 일치 + `SUPABASE_SQL_MAX_ATTEMPTS=1`을
+  모두 요구한다. production project ref는 어떤 동작에서도 거부한다.
+- 마이그레이션 본문은 워킹트리가 아니라 `git show <--v13-sha>:<path>`로 읽어 dirty
+  체크아웃이 적용에 새지 않게 한다. 파일별 sha256·배치명·v13 commit·운영자를
+  tracker `statements`에 provenance 마커로 남긴다.
+- `db:migrate`/`db:admin:migrate`를 재사용하지 않는 이유: 두 러너는 tracker를
+  `public.<table>`로만 참조하고(`requireIdentifier`가 점을 거부) `ensureTracker()`가
+  tracker에 DDL을 실행하므로, v13 CLI 장부에 붙이면 v13의 장부 스키마를 변조한다.
+  따라서 `migrate-core.mjs`에서 `stripOuterTransaction`·`runSql`·`sha256`·`loadLocalEnv`만
+  재사용한다.
+- **manifest의 `blockedMigrations`는 장부에 기록하지 않는다.** 실행되지 않은 것이
+  사실이므로 스탬프하면 거짓 기록이 된다. 선택 시 러너가 사유와 함께 중단한다.
+- **`adoptedElsewhere`**: v13 정본을 `migrations-admin/`이 바이트 그대로 채택한 파일은
+  이 러너로 적용하지 않는다. 같은 마이그레이션이 두 tracker에 기록되면 §4 경계 규칙
+  위반이다. `20260723170000_system_reports.sql`이 그 경우이며(§2.3), admin tracker와
+  `db:admin:migrate`가 소유한다.
+- 워크트리에서 실행할 때는 `--env-file`로 다른 워크트리의 `.env.local`을 지정한다
+  (비밀값을 워크트리마다 복제하지 않는다). v13 경로는 `--v13-root`로 지정한다.
+
 ## 4. 경계 규칙 (중요)
 
-- 두 네임스페이스의 추적 테이블을 **섞지 않는다** — `topik_writing`은 `db:migrate`,
-  admin 운영은 `db:admin:migrate`로만 적용한다.
+- 세 추적 테이블을 **섞지 않는다** — `topik_writing`은 `db:migrate`,
+  admin 운영은 `db:admin:migrate`, v13 소유분은 `apply-v13-migration.mjs`로만 적용한다.
 - 이 repo가 소유하지 않는 **기존 v13 테이블의 DDL 변경은 금지**한다.
 - 공유 Supabase 스키마 소유권은 앱 기준이 아니라 **도메인 기준**으로 정한다.
   양쪽 앱이 읽거나 쓰는 공유 객체의 경계·승인 절차는
@@ -121,7 +170,14 @@
 
 - `topik-prod` admin tracker: canonical 83개 적용, checksum 누락 0.
 - `topik-prod` TOPIK 쓰기 tracker: 32개 적용. `20260716052957_topik_writing_source_updated_at_version_tracking.sql`은 공급 `updated_at` 전제조건 미충족으로 차단.
-- `topik-dev` admin tracker: canonical 88개 + superseded remote-only 이력 1개, checksum 누락 0. 백업 관리 3개 migration은 적용됐고 관리자 요약·목록 읽기 함수의 실제 호출을 확인했다. 로컬 canonical 89번째인 `20260723011242` 알림 파이프라인 소유권 이관은 아직 dev/production에 적용하지 않았다.
+- `topik-dev` admin tracker: canonical 88개 + superseded remote-only 이력 1개, checksum 누락 0. 백업 관리 3개 migration은 적용됐고 관리자 요약·목록 읽기 함수의 실제 호출을 확인했다. 로컬 canonical 89번째인 `20260723011242` 알림 파이프라인 소유권 이관은 이 시점에는 미적용이었다 — **2026-07-29 실측으로 정정: dev·prod 양쪽에 2026-07-23 CI 적용 완료, checksum 로컬 파일과 일치**(§5.1 참조). 장부가 진실이며 이 절의 날짜 기준 서술을 그대로 인용하지 말 것.
 - `topik-prod`의 백업 관리 3개 migration은 아직 미적용이다. 운영 백업 수신을 켜기 전에 별도 운영 적용과 확인이 필요하다.
 - admin 보안 마이그레이션 `20260716130000`/`20260716131000`은 admin 소유 public 함수의 anon/PUBLIC execute를 회수한다. 운영 검증에서 표본 anon executable admin function은 0건이다.
 - 운영 DB 적용 완료와 Vercel 웹 배포 완료는 별도다. 최신 소스+운영 DB E2E가 통과했더라도 Production alias의 실제 bundle과 source switch를 다시 검증해야 한다. 2026-07-16 관리자 컷오버는 두 단계를 각각 검증해 `topik-prod` tracker/권한과 Production `admin_get_self` 로그인·쿠폰 CRUD·감사 로그까지 통과했다.
+
+## 5.1 2026-07-29 환경 적용 상태 (admin 네임스페이스)
+
+- `20260723011242` 알림 파이프라인 소유권 이관: **dev·prod 양쪽 적용 완료**(2026-07-23 CI, `applied_by=github-actions-{development,production}`). 로컬 파일 checksum과 장부 값이 일치하며 `unapplied-rewrites.json` 항목은 이에 따라 제거했다.
+- 사용자 리포트 인수 2건(`20260723170000`, `20260729120000`): **`topik-dev` 적용 완료**, `--verify-all --require-clean` clean. `topik-prod`는 미적용이며 릴리스 파이프라인의 별도 단계다.
+- dev 적용 후 검증: v13 handoff 카탈로그 14개 `*_ok` 열 전부 통과(테이블 owner/RLS enable+force/정책 0/직접 권한 0, 접수 RPC owner·SECURITY DEFINER·`search_path=pg_catalog, private`·EXECUTE allowlist), 접수→목록→삭제→감사 왕복(롤백 트랜잭션), 감사 payload 제출자 정보 부재, 미인증·사유 누락·잘못된 필터 거부, `anon` EXECUTE 3함수 전부 부재.
+- manifest 두 개의 `expectedLocalCount`는 91이며 `baseline-all`·`release-all`의 `to`는 `20260729120000_admin_system_reports_console.sql`이다. 한쪽만 갱신하면 다른 contract에서 count mismatch로 실패한다.

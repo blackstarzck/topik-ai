@@ -2,7 +2,7 @@
   "namespace": "admin",
   "environment": "production",
   "projectRef": "eymlabowhfgtxbiqwxqh",
-  "expectedLocalCount": 89,
+  "expectedLocalCount": 91,
   "batches": {
     "notification-baseline": {
       "from": "20260612170000_notification_admin_tables.sql",
@@ -74,11 +74,11 @@
     },
     "baseline-all": {
       "from": "20260612170000_notification_admin_tables.sql",
-      "to": "20260723011242_notification_pipeline_ownership_transfer.sql"
+      "to": "20260729120000_admin_system_reports_console.sql"
     },
     "release-all": {
       "from": "20260612170000_notification_admin_tables.sql",
-      "to": "20260723011242_notification_pipeline_ownership_transfer.sql"
+      "to": "20260729120000_admin_system_reports_console.sql"
     }
   }
 }

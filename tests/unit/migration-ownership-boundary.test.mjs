@@ -5,7 +5,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   evaluateMigrationOwnershipBoundary,
-  formatMigrationOwnershipBoundaryReport
+  formatMigrationOwnershipBoundaryReport,
+  resolveV13Root
 } from '../../scripts/check-migration-ownership-boundary.mjs';
 
 const REMOVED_V13_ADMIN_OBJECTS = [
@@ -282,5 +283,29 @@ describe('check-migration-ownership-boundary', () => {
       failure.includes('supabase/migrations-admin/20260617210000_admin_users_directory.sql:') &&
       failure.includes('may update profiles.status only, found profiles.display_name')
     )).toBe(true);
+  });
+});
+
+describe('v13 root resolution', () => {
+  // This gate runs argument-less inside harness:admin-boundary, and sessions run
+  // from ~/.codex/worktrees/<id>/topik-ai where the repo-relative default does
+  // not resolve. Without the env override the commit gate is unrunnable there.
+  it('prefers the flag, then TOPIK_V13_ROOT, then the repo-relative default', () => {
+    const flagged = resolveV13Root(
+      ['node', 'check.mjs', '--v13-root=/from/flag'],
+      { TOPIK_V13_ROOT: '/from/env' }
+    );
+    expect(flagged.replaceAll('\\', '/')).toMatch(/\/from\/flag$/);
+
+    const fromEnv = resolveV13Root(['node', 'check.mjs'], { TOPIK_V13_ROOT: '/from/env' });
+    expect(fromEnv.replaceAll('\\', '/')).toMatch(/\/from\/env$/);
+
+    const fallback = resolveV13Root(['node', 'check.mjs'], {});
+    expect(fallback.replaceAll('\\', '/')).toMatch(/topik-project\/v13$/);
+  });
+
+  it('ignores an empty TOPIK_V13_ROOT instead of resolving to the cwd', () => {
+    const fallback = resolveV13Root(['node', 'check.mjs'], { TOPIK_V13_ROOT: '' });
+    expect(fallback.replaceAll('\\', '/')).toMatch(/topik-project\/v13$/);
   });
 });

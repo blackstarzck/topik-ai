@@ -122,6 +122,9 @@ const SystemAuditLogsPage = lazy(
 const SystemLogsPage = lazy(
   () => import('../../features/system/pages/system-logs-page')
 );
+const SystemReportsPage = lazy(
+  () => import('../../features/system/pages/system-reports-page')
+);
 const AdminPlaceholderPage = lazy(
   () => import('../../shared/ui/placeholder-page/admin-placeholder-page')
 );
@@ -206,6 +209,8 @@ function renderPageRouteElement(route: PageRouteDefinition): JSX.Element {
       return <SystemAuditLogsPage />;
     case 'system-logs':
       return <SystemLogsPage />;
+    case 'system-reports':
+      return <SystemReportsPage />;
     default: {
       const exhaustivePage: never = route;
       throw new Error(`Unknown admin page route: ${JSON.stringify(exhaustivePage)}`);

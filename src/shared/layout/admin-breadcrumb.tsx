@@ -381,5 +381,12 @@ export function buildAdminBreadcrumbItems(
     ];
   }
 
+  if (pathname.startsWith('/system/reports')) {
+    return [
+      breadcrumbLinkItem(adminMenuLabels.system, '/system/admins'),
+      breadcrumbTextItem(adminMenuLabels.systemReports)
+    ];
+  }
+
   return [breadcrumbTextItem(adminMenuLabels.dashboard)];
 }
