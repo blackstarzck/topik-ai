@@ -350,6 +350,12 @@ const menuConfig: MenuNode[] = [
         label: adminMenuLabels.systemLogs,
         to: '/system/logs',
         permissionKeys: ['system.logs.read']
+      },
+      {
+        key: '/system/reports',
+        label: adminMenuLabels.systemReports,
+        to: '/system/reports',
+        permissionKeys: ['system.reports.read']
       }
     ]
   }
@@ -510,6 +516,9 @@ function resolveSelectedKey(pathname: string): string {
   }
   if (pathname.startsWith('/system/logs')) {
     return '/system/logs';
+  }
+  if (pathname.startsWith('/system/reports')) {
+    return '/system/reports';
   }
   if (pathname.startsWith('/system/backups')) {
     return '/system/backups';

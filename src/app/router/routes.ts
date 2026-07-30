@@ -47,7 +47,8 @@ export type SimplePageRouteKey =
   | 'system-metadata'
   | 'system-backups'
   | 'system-audit-logs'
-  | 'system-logs';
+  | 'system-logs'
+  | 'system-reports';
 
 export type SimplePageRouteDefinition = {
   kind: 'page';
@@ -373,6 +374,7 @@ export const adminRouteDefinitions = [
   { kind: 'page', path: '/system/backups', page: 'system-backups' },
   { kind: 'page', path: '/system/audit-logs', page: 'system-audit-logs' },
   { kind: 'page', path: '/system/logs', page: 'system-logs' },
+  { kind: 'page', path: '/system/reports', page: 'system-reports' },
 
   {
     kind: 'redirect',

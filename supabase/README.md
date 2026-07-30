@@ -81,6 +81,23 @@
   라이브에 재적용하면 default 제거로 실패한다(42P13). 미적용 migration의 승인된 in-place 재작성은
   `scripts/db/manifests/unapplied-rewrites.json` 선언으로만 expand gate를 통과하며, 실제 적용 여부는
   러너의 tracker checksum이 fail-closed로 재검증한다.
+- 이 재작성 허용 항목은 dev·prod 양쪽 적용과 checksum 일치가 확인된 2026-07-29에 제거했다.
+  allowlist는 미적용 상태에서만 유효하므로 적용 후에도 남겨 두면 이후 릴리스가 checksum
+  mismatch로 dev·prod 동시에 멈춘다.
+
+### 2.3 사용자 리포트 인수 (`20260723170000`, `20260729120000`)
+
+- `20260723170000_system_reports.sql`은 학습자 앱이 작성한 정본을 **바이트 그대로** 채택한 파일이다.
+  handoff가 경로·version·checksum을 handback 증거로 요구하므로 주석 추가·개행 변환·BOM 삽입까지
+  금지한다. 수정이 필요하면 새 forward migration을 만든다.
+- 정본은 `private.system_reports`(RLS enable+force, 정책 0건, 전 role 직접 권한 회수)와
+  `public.submit_system_report`(service_role 전용 접수 RPC)만 만든다.
+- `20260729120000_admin_system_reports_console.sql`이 관리자 조회·단건 삭제 RPC를 더한다. 정본
+  테이블에 컬럼·트리거·인덱스를 추가하지 않고, 자동 retention이나 일괄 삭제도 만들지 않는다.
+- 삭제 감사는 Target Type `SystemReport`, Target ID 접수번호를 쓰고 payload에 제출자 이메일·제목·
+  본문·사용자 식별자를 담지 않는다. `admin_audit_logs`는 조회 권한이 더 넓어 삭제가 개인정보를
+  감사 테이블로 옮기는 결과가 되면 안 된다.
+- 소유권 근거: `docs/architecture/shared-supabase-schema-ownership.md` §2
 
 ## 3. 공통 실행 메커니즘
 
@@ -149,7 +166,14 @@ topik-ai 운영면에서 적용하는 전용 러너다. 선례는 v13 `202607071
 
 - `topik-prod` admin tracker: canonical 83개 적용, checksum 누락 0.
 - `topik-prod` TOPIK 쓰기 tracker: 32개 적용. `20260716052957_topik_writing_source_updated_at_version_tracking.sql`은 공급 `updated_at` 전제조건 미충족으로 차단.
-- `topik-dev` admin tracker: canonical 88개 + superseded remote-only 이력 1개, checksum 누락 0. 백업 관리 3개 migration은 적용됐고 관리자 요약·목록 읽기 함수의 실제 호출을 확인했다. 로컬 canonical 89번째인 `20260723011242` 알림 파이프라인 소유권 이관은 아직 dev/production에 적용하지 않았다.
+- `topik-dev` admin tracker: canonical 88개 + superseded remote-only 이력 1개, checksum 누락 0. 백업 관리 3개 migration은 적용됐고 관리자 요약·목록 읽기 함수의 실제 호출을 확인했다. 로컬 canonical 89번째인 `20260723011242` 알림 파이프라인 소유권 이관은 이 시점에는 미적용이었다 — **2026-07-29 실측으로 정정: dev·prod 양쪽에 2026-07-23 CI 적용 완료, checksum 로컬 파일과 일치**(§5.1 참조). 장부가 진실이며 이 절의 날짜 기준 서술을 그대로 인용하지 말 것.
 - `topik-prod`의 백업 관리 3개 migration은 아직 미적용이다. 운영 백업 수신을 켜기 전에 별도 운영 적용과 확인이 필요하다.
 - admin 보안 마이그레이션 `20260716130000`/`20260716131000`은 admin 소유 public 함수의 anon/PUBLIC execute를 회수한다. 운영 검증에서 표본 anon executable admin function은 0건이다.
 - 운영 DB 적용 완료와 Vercel 웹 배포 완료는 별도다. 최신 소스+운영 DB E2E가 통과했더라도 Production alias의 실제 bundle과 source switch를 다시 검증해야 한다. 2026-07-16 관리자 컷오버는 두 단계를 각각 검증해 `topik-prod` tracker/권한과 Production `admin_get_self` 로그인·쿠폰 CRUD·감사 로그까지 통과했다.
+
+## 5.1 2026-07-29 환경 적용 상태 (admin 네임스페이스)
+
+- `20260723011242` 알림 파이프라인 소유권 이관: **dev·prod 양쪽 적용 완료**(2026-07-23 CI, `applied_by=github-actions-{development,production}`). 로컬 파일 checksum과 장부 값이 일치하며 `unapplied-rewrites.json` 항목은 이에 따라 제거했다.
+- 사용자 리포트 인수 2건(`20260723170000`, `20260729120000`): **`topik-dev` 적용 완료**, `--verify-all --require-clean` clean. `topik-prod`는 미적용이며 릴리스 파이프라인의 별도 단계다.
+- dev 적용 후 검증: v13 handoff 카탈로그 14개 `*_ok` 열 전부 통과(테이블 owner/RLS enable+force/정책 0/직접 권한 0, 접수 RPC owner·SECURITY DEFINER·`search_path=pg_catalog, private`·EXECUTE allowlist), 접수→목록→삭제→감사 왕복(롤백 트랜잭션), 감사 payload 제출자 정보 부재, 미인증·사유 누락·잘못된 필터 거부, `anon` EXECUTE 3함수 전부 부재.
+- manifest 두 개의 `expectedLocalCount`는 91이며 `baseline-all`·`release-all`의 `to`는 `20260729120000_admin_system_reports_console.sql`이다. 한쪽만 갱신하면 다른 contract에서 count mismatch로 실패한다.
