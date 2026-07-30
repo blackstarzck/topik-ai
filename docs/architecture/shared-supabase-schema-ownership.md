@@ -65,6 +65,28 @@
   남는다. topik-ai 파이프라인은 본 문서에 명시된 service-role writer/reader 권한만 사용한다.
 - 원격 DB 적용은 이 결정과 별도 운영 승인·dev 선적용·권한/건수 대사 후 수행한다.
 
+### 2.2 learner 마이그레이션 관리 권한 이전 결정 (2026-07-30)
+
+- 오너 확정: **v13은 사용자 화면 코드만 관리하고, DB 스키마/DDL/관리 권한은 전부 topik-ai로 이전한다.**
+  이전 대상은 **관리 권한**(저작·원격 적용·장부 쓰기·CI 계약·운영 절차)이며 **실사용자 런타임 쓰기(RPC 경유)는
+  그대로 유지**한다(오너 해석 A). 프로그램 설계·결정 표는
+  `docs/plans/v13-db-ownership-transfer-program-plan.md`(D1~D10 전 항목 승인).
+- **§2 표의 owner 열 해석 변경**: v13 소유로 표기된 learner 객체의 *도메인 소유권*은 유지되지만,
+  그 객체를 만드는 **마이그레이션의 저작·보관·적용 주체는 topik-ai**다. migration home은
+  `supabase/migrations-v13/`이고 tracker는 `supabase_migrations.schema_migrations` 그대로다
+  (장부 이전이 아니라 **쓰기 주체 이전** — 결정 D3).
+- **M2 완료(2026-07-30)**: 계약 SHA `0ee14993` 시점 v13 `supabase/migrations`의 forward 100 + down 18을
+  `supabase/migrations-v13/`에 바이트 그대로 채택했다. 파일별 sha256·git blob sha·dev/운영 장부 지위·
+  disposition은 `scripts/db/manifests/v13-archive.json`이 보관하고 `npm run check:v13-archive`가 검증한다.
+  DB 무접촉(적용·재기록 0건), 장부 소속 변경 0건.
+- **저작 워터마크 `20260729120000`**: 이하 = v13 저작 역사, 초과 = topik-ai 저작. 신규 learner
+  마이그레이션도 같은 장부에 기록하되 저작·적용은 이 저장소가 수행한다.
+- **이중 기록 금지 불변식 유지**: `20260723170000_system_reports.sql`은 §2.3대로 admin 네임스페이스가
+  적용·기록을 소유하므로, 아카이브 사본은 `disposition: adopted-elsewhere` + `replayOnly`로 표시되어
+  어떤 러너도 선택할 수 없다.
+- 후속 단계: v13 저작 동결 가드(M1), CI 계약을 내부 아카이브로 전환(M3~M4), 신규 저작 개통(M5),
+  운영 catch-up 7건(M6). 운영 DB 적용은 종전대로 별도 승인 게이트다.
+
 ## 3. 변경 절차
 
 1. 새 객체 추가: owner repo의 migration home에 migration+down 작성 → 본 문서 §2에 행 추가 → 적용.

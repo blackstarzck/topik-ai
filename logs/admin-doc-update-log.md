@@ -851,3 +851,11 @@
 - Reason: 구현이 아니라 설계·결정 요청 단계. 핵심 실측 — v13 파일 100 = dev 장부 92 + blocked 5 + deferred 2 + adopted 1; 운영 장부도 92행이나 집합이 달라 dev-only 7 = 운영 catch-up 백로그, 운영-only 7 = blocked/deferred가 컷오버 전 순서로 적용된 정당한 역사. V13_CONTRACT_SHA 소비처 전수(워크플로 6 + 밸리데이터 2 + 계약 테스트 + N-1 업그레이드 경로)와 expand-gate 범위(신규 디렉터리는 범위 밖) 확인.
 - Validation: 문서 작업만(코드·DB 무변경). 장부 실측은 read-only `run-sql.mjs` 쿼리(dev/운영 각 1회 + version 목록 대사).
 - Decision: 오너 승인(2026-07-30) — D1~D10 전 항목 권고안 채택(일괄 아카이브 import · 즉시 동결 · 장부 유지+쓰기 주체 이전 · `migrations-v13/` 연속 저작 · 이중검증 릴리스 경유 · v13 supabase/ 당분간 보존 · CI 가드 우선 · 자격증명 M1 직후 회전 · 운영 catch-up M2 직후 게이트식 · blocked 확정+deferred 개별). 문서 상태를 "승인 완료"로 갱신.
+
+## 2026-07-30 M2 — v13 저작 learner 마이그레이션 아카이브 채택
+
+- Added: `supabase/migrations-v13/`(forward 100 + down 18 + INDEX.md, 계약 SHA `0ee14993` 바이트 채택), `scripts/db/v13-archive.mjs`(import/verify 러너), `scripts/db/manifests/v13-archive.json`, `tests/unit/v13-archive.test.mjs`(17건).
+- Updated: `supabase/README.md` §2.5 신설(아카이브는 적용 대상 아님·disposition 단일 권위·워터마크), `docs/architecture/shared-supabase-schema-ownership.md` §2.2 decision record(관리 권한 이전·owner 열 해석·M2 완료), `package.json`(`check:v13-archive` + `harness:admin-boundary:local` 체인 편입).
+- Reason: 이전 프로그램 M2. CI 재생과 원격 적용이 외부 저장소 체크아웃에 의존하지 않게 커스터디를 옮긴다. DB 무접촉(적용·재기록 0), 장부 소속 변경 0.
+- Contract: 아카이브 존재 ≠ 적용 가능 — `disposition`(applied 92·blocked 5·deferred 2·adopted-elsewhere 1)이 단일 권위. `20260723170000`은 admin 네임스페이스가 적용·기록을 소유하므로 `replayOnly`로 잠가 이중 기록을 원천 차단. 바이트 동일성은 sha256 + **git blob sha 재계산**으로 v13 체크아웃 없이도 증명된다(M4 핀 제거 전제). 워터마크 `20260729120000` 이하=v13 저작, 초과=topik-ai 저작.
+- Validation: `--import` 후 오프라인 `--verify`(100+18, watermark 일치)와 v13 원본 대조 `--v13-root/--v13-sha` byte parity 모두 통과. disposition 분해가 dev 장부 92행과 정확히 일치(러너가 불일치 시 fail-closed). 신규 단위 17건 통과.

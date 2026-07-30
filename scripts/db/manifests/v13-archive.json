@@ -1,0 +1,1244 @@
+{
+  "$comment": "Byte-exact archive of the v13-authored learner migration history, adopted into this repo by ownership transfer program M2 (docs/plans/v13-db-ownership-transfer-program-plan.md). Files here are custody and CI replay input only: nothing is re-applied and no tracker assignment changes. Verify with scripts/db/v13-archive.mjs. `disposition` is the sole authority on whether a runner may select a file — presence in this archive never implies it is safe to apply.",
+  "namespace": "v13_user_facing",
+  "sourceRepo": "blackstarzck/topik-project-v13",
+  "sourceMigrationsDir": "supabase/migrations",
+  "sourceGitSha": "0ee149930019c8a6f97644824c390d7d2ec76067",
+  "archiveDir": "supabase/migrations-v13",
+  "tracker": "supabase_migrations.schema_migrations",
+  "runner": "scripts/db/apply-v13-migration.mjs",
+  "authoringWatermark": "20260729120000",
+  "authoringWatermarkComment": "The highest v13-authored forward version. At or below this version a migration is v13-authored history and keeps its tracker; above it, the migration is topik-ai-authored in this directory.",
+  "ledgerMeasuredAt": "2026-07-30",
+  "counts": {
+    "forward": 100,
+    "down": 18
+  },
+  "dispositions": {
+    "applied": "Normal learner history. Recorded in the learner tracker.",
+    "blocked": "Never apply. Applying today would regress the post-cutover structure.",
+    "deferred": "Owner decision pending. Not applied to development.",
+    "adopted-elsewhere": "Applied and tracked from another namespace in this repo."
+  },
+  "files": [
+    {
+      "name": "20260520120000_extensions_and_schemas.sql",
+      "sha256": "6a9f900df57e4f9165a71506ada1866d1f9353b3cdc08c8ae594b44e5fcd6518",
+      "blob": "3c83a3728aaeaa2903e00a4dd6465b369e5980b7",
+      "bytes": 581,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260520120100_profiles_goals.sql",
+      "sha256": "d41fd757e4a5442e620b4c0fcc9425b22d092ea4ed41076b786c6f892833cf3f",
+      "blob": "47f3992f3820d4ad70d05ed8b9fe717677e6e3bf",
+      "bytes": 2492,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260520120200_problems.sql",
+      "sha256": "3b1905e5aef55ec630e446663e9887d3e002c9a0d6528900c164c60508348809",
+      "blob": "97b4b85bd8f77c4a68d19b08466183ee73f80439",
+      "bytes": 3102,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260520120300_attempts.sql",
+      "sha256": "3f27076664a202c487dd868337857f49fd6733b41a58ad612a78a30977170122",
+      "blob": "d646e37983f4d8033bc4b45c3bea88ad3b43781e",
+      "bytes": 1575,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260520120400_writing.sql",
+      "sha256": "6cffbf57681080b59ff392169e4931ae41a2cb1d9308c6e9fd8885c35dc85c85",
+      "blob": "0517c67c02ac656a981eb8f6b256bdfb3c12521c",
+      "bytes": 3600,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260520120500_feedback.sql",
+      "sha256": "aa6110d11ce8fe6b2ae588dbc39cdaebee993273e83da362a20a1e4ab4208268",
+      "blob": "50a49b2af458adf210dc7a772c0ad00c713e4740",
+      "bytes": 4623,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260520120600_recommendations.sql",
+      "sha256": "68a1982e781603cd26e1c72f6232d0508e9b97e76e15dc152780ba6b6435e2b5",
+      "blob": "1b7dc8183b05d334f973591a78eada5e5f87d3ce",
+      "bytes": 2559,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260520120700_library_events_exports.sql",
+      "sha256": "4ae7714445e0f96cdef04d1316f8e3dc7f97f906a0c22643e5f49b72df999c6f",
+      "blob": "79252c8fe94c236b0b3ba33dba9b544d3cfd368b",
+      "bytes": 6028,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260520120800_audit.sql",
+      "sha256": "10d808454ceaa00d5f6e8611ff6c0e27a4f4b0da9c8640ae11dfb4d8d40ce3f3",
+      "blob": "0807a8888636471d5d1999b2abe418b47f1126f4",
+      "bytes": 1063,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260520120900_functions.sql",
+      "sha256": "d6ff2b45d689f02ae3bce409d7c90e216bb151320e6cc11470c305e5fe3d4a5e",
+      "blob": "43a7749e7f41de06fbb32a810fe7c288260e8205",
+      "bytes": 2955,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260520121000_triggers.sql",
+      "sha256": "9d01ec866dfcc035e00a310623a580988b50d9f98c85edac70be83117ed9c40f",
+      "blob": "2a49165fb3ca792279a30b50f93f6fd1ee031ca2",
+      "bytes": 1932,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260520121100_rls_policies.sql",
+      "sha256": "5b0b6bcdc40fde412ea27c8d96e4ba9ceeb7b9913c645d3de7d65de3cd98d324",
+      "blob": "53c4532e4c01c1819049de7d8c38a27bc412edb6",
+      "bytes": 14206,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260520121200_storage_buckets.sql",
+      "sha256": "2c3822d26a2390a0daf28c36b3713b35500e6d2a66ca0d0a2858c36af9aacd22",
+      "blob": "33d9c0f398e295c20f004c23194f8634f016d524",
+      "bytes": 986,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260520121300_storage_policies.sql",
+      "sha256": "92081a2346b04ec0df65b352b82994d18d9a9c3d6cf5ec87c90fc6ae1883bd02",
+      "blob": "350412e426776de8a1d9ef62ec5fb8cc66c9a3a8",
+      "bytes": 4226,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260520121400_profiles_protected_columns.sql",
+      "sha256": "2b748253307b613471adafe4a39d5001611b34cdc0ad897b1368fc80af999ac6",
+      "blob": "1b59230357d4ce752070754585815dc0bedb18de",
+      "bytes": 2729,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260520121500_submission_status_function.sql",
+      "sha256": "4f6a19095ed964b5342954a188503283ac3bd72336ac8a98996b290772a1361b",
+      "blob": "7a5fc071a2aa609d3def82f5eea2564fd897781b",
+      "bytes": 2323,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260521120000_auth_user_profile_bootstrap.sql",
+      "sha256": "199faa416b0ea5590d5951c88a2bf475dac54ed288be087bfcca88812611192a",
+      "blob": "9f544e09087d68883befe0ba4a545625f1c04633",
+      "bytes": 1734,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260521130000_phase_5_writing_rpc.sql",
+      "sha256": "d24630f02f11cfe35ba5684af878a1c8743676ed72ee16c50f6757e1fd55220f",
+      "blob": "10e41942d07e830f8d0d204e4af01a06cf01a313",
+      "bytes": 6034,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260521140000_phase_6_rpc_and_admin.sql",
+      "sha256": "40d426ddf845d3a513a84db87a286f7f9f52cbff363af757928a3f6e5a975dbc",
+      "blob": "960092f09a0fafae19681d78a7c6196d768ee842",
+      "bytes": 26635,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260521141000_phase_6_notification_prefs.sql",
+      "sha256": "50eac9790ef5a48e39e9160ed7a43a7cbbced8175755e99e07f514abaf29c423",
+      "blob": "884b64a8ab9ba2cd155e15e043d379b31d4bdd59",
+      "bytes": 1154,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260526170000_phase_7_profile_bio.sql",
+      "sha256": "e881233795ef1e586be4bf991fa0da79943b8eba9e3a497905f88244490c8528",
+      "blob": "527e153a25e95818aaf5bed2e4fb6246375e1756",
+      "bytes": 1205,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260526180000_cleanup_unconfirmed_users.sql",
+      "sha256": "373f715d695c3066c78c34f2e1b1e74fe4315d4ff4ad66c28d0463358d99ab28",
+      "blob": "93c9717b4adc6d59d27812cf9a34c529b20331d2",
+      "bytes": 2948,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260527110000_register_cleanup_cron.sql",
+      "sha256": "0e869746854d46f6ad8f16cc68f060055e8e93b03b9281b859391dd038da3733",
+      "blob": "4b6d7264281e04addb06337dca3435918191f42e",
+      "bytes": 2438,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260527113000_storage_email_confirmed_hardening.sql",
+      "sha256": "af3b37637e908e5c54ad410d7fad5c2dd8040fc90fe864981f54c9ba1ad4b613",
+      "blob": "c37fb9b52af85bef80128609cfa5a0e30b6111f4",
+      "bytes": 4098,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260527140000_cleanup_retention_floor.sql",
+      "sha256": "df72f8ac36804f7710b59ff968ff985d69c3e6f7989956a074ed5926f172b06c",
+      "blob": "a2dfbfed4a59c998a8853ccb9a5b4e0692897322",
+      "bytes": 3449,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260602120000_handle_new_user_display_name.sql",
+      "sha256": "31c2871e57bc0ebac5caab8427e781890790e6ba838422214bddcb990e90b41a",
+      "blob": "67b002650d7f65a02d96883050658fe84675bafd",
+      "bytes": 2168,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260602120100_billing.sql",
+      "sha256": "b4976a6f0c8418bd62419b5ea394e9ecb01f4858d7d5b2dcfe5597eca00e48ec",
+      "blob": "545a0df48d9e103902510b1f25bd62e325ac811c",
+      "bytes": 8383,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260602120200_notifications_and_settings.sql",
+      "sha256": "b5469f0f2ef87769696792c1d3c9fadeba3df73bafcaa563f6c1dac1b3f29c9a",
+      "blob": "cbd29da741be4d1b4b64076d55b68b26778a0253",
+      "bytes": 6419,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260602120300_org.sql",
+      "sha256": "f540484d4f8b46035f1284a33e0e3a5d81fa9a75195cbf72fb4e17c1cd415731",
+      "blob": "011a7ce791c0a436cc014616c238dd213b6c828e",
+      "bytes": 10209,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260602120400_admin_and_user_rpcs.sql",
+      "sha256": "4776967ec31b462661a0e1717e93eb97be238a33d42c2271991904e9226ae4df",
+      "blob": "e1b72413b07d301b08ea97ee07fc6d74d1948fa8",
+      "bytes": 29410,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260608120000_legal_documents_and_consents.sql",
+      "sha256": "1adf20ee00e0bb48732aaba3b8d9c5a8775f50995a2ad8804531c48633b6968b",
+      "blob": "e61a9cd86d231b3b086b45e4d35f5bdd9ece5cbb",
+      "bytes": 7047,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260608120100_problems_lifecycle_expiry.sql",
+      "sha256": "105dda74b0dfadb827f8181b445c7b0299e23bbd5703f6de04a3fd5d62ea7546",
+      "blob": "37efe30f80a13fa778d98b6158de49ab10aab2a2",
+      "bytes": 4058,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260608120200_seed_writing_problem_fixtures.sql",
+      "sha256": "425f46e7aa1d704fbdecdb5e7fbe93d429c55b0f80f21c938e7fafc9cd5e5300",
+      "blob": "0b3926b1ef96645a5af8693e74eb28a6546b9ab6",
+      "bytes": 5049973,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260608120300_problems_topic_category_review_workflow.sql",
+      "sha256": "3581a65a9bf4085bf0a129a637b697d673d2b114dfbd588484b8d759df3deb6b",
+      "blob": "d4400b33ea68e643bebcf3fe2faf027f0c8f228a",
+      "bytes": 9926,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260608120400_admin_update_problem_audit_note.sql",
+      "sha256": "8d8fdf96674d9d49bba48b55c55b5645aba6a8393df011a63c6fdaae44521292",
+      "blob": "4538114fbbb30f02616d353a34ecb5bb099bf251",
+      "bytes": 8310,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260609120000_list_user_problems_writing_state.sql",
+      "sha256": "718bf08e175505dae9a8c620de9c0c7d79de3a3d683a71ac977c1e39eb19f329",
+      "blob": "f9a22da52c3bde8082ca4ec763e1cc582dc8e281",
+      "bytes": 6991,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260609130000_remove_v13_admin_island.sql",
+      "sha256": "8926920edf01f2b3cb7b0b098600008a4fb7f9fb2c8b443c454a51c286cb885a",
+      "blob": "77ac1bcbbe68fc5d30e48f95afc6757dcb6b988a",
+      "bytes": 4245,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260610104017_seed_initial_legal_documents.sql",
+      "sha256": "a12ac3855244a3e1e365ef9b62af06f4e09818f074de0a6eda5dac6eddf68b8b",
+      "blob": "7618bf9c63058eba8d7b901c9565448e084e10fb",
+      "bytes": 3451,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260612160000_user_notifications.sql",
+      "sha256": "027a5a5570ca98097dd653b9242fae3f576bf83bf13850955bfd06860591835b",
+      "blob": "90cda4fc25519d54776663e55dee56ff5c7ece6a",
+      "bytes": 3668,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260612180000_notification_dispatcher.sql",
+      "sha256": "2b7dbab8bd3e27c6b94676b51388136e594062c6d5f9e4ca35f8048305bdb63f",
+      "blob": "e62dde174b4a4277bf602e996e9008379092307e",
+      "bytes": 540,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260612180100_register_notification_cron.sql",
+      "sha256": "2b7dbab8bd3e27c6b94676b51388136e594062c6d5f9e4ca35f8048305bdb63f",
+      "blob": "e62dde174b4a4277bf602e996e9008379092307e",
+      "bytes": 540,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260612190000_notification_email_pipeline.sql",
+      "sha256": "2b7dbab8bd3e27c6b94676b51388136e594062c6d5f9e4ca35f8048305bdb63f",
+      "blob": "e62dde174b4a4277bf602e996e9008379092307e",
+      "bytes": 540,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260612190100_email_transport_fail_user.sql",
+      "sha256": "2b7dbab8bd3e27c6b94676b51388136e594062c6d5f9e4ca35f8048305bdb63f",
+      "blob": "e62dde174b4a4277bf602e996e9008379092307e",
+      "bytes": 540,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260612190200_email_live_defer.sql",
+      "sha256": "2b7dbab8bd3e27c6b94676b51388136e594062c6d5f9e4ca35f8048305bdb63f",
+      "blob": "e62dde174b4a4277bf602e996e9008379092307e",
+      "bytes": 540,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260612200000_user_marketing_consent.sql",
+      "sha256": "70e73b0ae5bcc256df78475054183f38f27a22bc479a6f76267a6b83a5407bc0",
+      "blob": "593d468703afc7fb26af64644f1402674a0bd699",
+      "bytes": 4527,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260612200100_marketing_consent_in_dispatch.sql",
+      "sha256": "2b7dbab8bd3e27c6b94676b51388136e594062c6d5f9e4ca35f8048305bdb63f",
+      "blob": "e62dde174b4a4277bf602e996e9008379092307e",
+      "bytes": 540,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260612221000_fix_legal_documents_public_read_policy.sql",
+      "sha256": "3a73411bcda9a76f2fe31c8235bc3e7345e06c7698a3bdc0a47ac6ac180d95b5",
+      "blob": "867e03117182d19f3cc55d91512531200c255cdc",
+      "bytes": 1039,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260617055040_guard_writing_submission_problem_visibility.sql",
+      "sha256": "059a4d4ff4dff2d5db05e59ac0904b235c257c1b5ed36668e1bf9f10942adc38",
+      "blob": "af3b0656014a8fc952db945f736d6c3521585513",
+      "bytes": 5096,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260617183000_list_user_problems_recommended_sort.sql",
+      "sha256": "56f803bd5246f6786299b38484a3765d7a2d74647ad7f45b23a5910a5dc8f6a4",
+      "blob": "90e3350be60fd0660c81157a1f0042cde7572a8e",
+      "bytes": 8639,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260617195000_profiles_nationality.sql",
+      "sha256": "4f46d1ffffcd5d27d0a2b36259ea1da327bfc4158172488c63a0a179d9b885f0",
+      "blob": "3b2f61c22d9476f6b68a89b607c1a930970659fe",
+      "bytes": 5459,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260617213000_required_random_nickname.sql",
+      "sha256": "b8f8a8e9c1d3a44d279c4ee0bbea73f837567387afa0e95d77d7eafeacac61cf",
+      "blob": "66efc1597f368a7c278f47ff149fd48131c7eeaf",
+      "bytes": 2223,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260617214000_nickname_availability_rpc.sql",
+      "sha256": "9653ee68ccf4c208f55f85033fc6f1d1a9bb436b3f5c1535c19086d22a23784d",
+      "blob": "fb96104558e4a8b545eca00260c879159d749e23",
+      "bytes": 1112,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260618143000_external_writing_submission_sync.sql",
+      "sha256": "20e3827ce0eb78897efa957571e3b9b3a0fb27ae380c2016b6fb457ffa6c9e67",
+      "blob": "c9a1fcdc7f3ab4ce8ed1dd8f6aeaba13d2442324",
+      "bytes": 7247,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260619140000_profiles_affiliation_code.sql",
+      "sha256": "4c3f894e0b1e30822d0e8add249cf37c05ce94dbf5660e857d1c7704202c9a1a",
+      "blob": "859a844fd3d9c4318251933edd6334cdce2dc43e",
+      "bytes": 6292,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260619150000_writing_submission_draft_dedup.sql",
+      "sha256": "858dc7f66495480b062153b016f64affbf7d1efd22bac02d2f9b35797d0a98b3",
+      "blob": "bd4f1850c68dd0464ebf6c84736a8687976d9016",
+      "bytes": 6189,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260622120000_account_deletion_soft_delete.sql",
+      "sha256": "4b69967a5f41b3ffc38849b31d1dd7ff1337d25879c8035ef81aef2f3a1110ad",
+      "blob": "874579836a2b13b919b9d473ef7a00f2d9f33fa0",
+      "bytes": 5996,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260622150000_legal_documents_projection.sql",
+      "sha256": "cd430f1345ba335c42cdca0d8abd668a6625dca9901c1f4291bf54747c16d54b",
+      "blob": "85f4caa63468ee959bff48068ab948d88a194f36",
+      "bytes": 6950,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260622154000_archive_seed_writing_fixtures.sql",
+      "sha256": "327f050968656165aca3ccbb26f58388a9e7eca2e2e996bc111021adede52985",
+      "blob": "37d33578eaa303ddaac6a05ad205f86a154f9e5b",
+      "bytes": 661,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260623103000_auth_completion_gate.sql",
+      "sha256": "3c22ab98ccef7157cf14703ed748943f1ba5ef95a0e40498a0f20e23c9d9fb19",
+      "blob": "336101b18ffd20d507584632f67d5c38090ab68b",
+      "bytes": 8202,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260623170000_library_problem_availability_rpc.sql",
+      "sha256": "5a8d013f67101eec0238710f321b8e13154aa8bcf6b35af600b0b88d68a48905",
+      "blob": "7d585f39519cf302a8c33df5cb5f082dae9d54c2",
+      "bytes": 2553,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260624110000_sync_available_writing_problems.sql",
+      "sha256": "acbfd55800d31c5f3833dd0e5403031c48a3d44a0dcc8a464a0c6a25795d397b",
+      "blob": "d5a4bc5b8c14afeace4372726b0924b0678dc96d",
+      "bytes": 6570,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260625001257_restrict_auth_completion_gate_anon.sql",
+      "sha256": "43731eb8b30a6cb8ff853e4341a3e8a6b41b88989077880a023b1d54220937bd",
+      "blob": "c6eb5eb1e13056d1be811587eab0339d3378adf5",
+      "bytes": 733,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260625113000_auto_locale_detection.sql",
+      "sha256": "97e70b335f8a094d81b3cfb12c7fe388ed5ea59943aec2d4a3ffe4d0b6ba6c1f",
+      "blob": "c7b6b3f9eb534483ea55ee8aaf9a8fbc83e57422",
+      "bytes": 4785,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260625120000_feedback_language_dimension.sql",
+      "sha256": "ed8371a8da8b49a2ebd02aa57dd1e9bd6fb7231172f81aaac50d181e89330c48",
+      "blob": "c36a491cb42f24c2d46739762e0d4d8e7361ceb6",
+      "bytes": 5305,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260625153000_auto_submission_library_item.sql",
+      "sha256": "ca07eeeea9977e81096f887187aae5a05d6f66b9192701d0d864bb1352be4d19",
+      "blob": "795af76b6d94e42bd9d1098ca30deeca5d11b763",
+      "bytes": 5366,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260625185000_stabilize_user_problem_sort.sql",
+      "sha256": "81c5d5bb773dc784f2a3502d5679f8fbaee3bb9df1b0db128586635e9ed8c5b4",
+      "blob": "3f3c6145f9908a173bf88af7d0a8f58cf94fe24a",
+      "bytes": 8606,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260626110000_writing_institution_visibility_predicate.sql",
+      "sha256": "4c70d79d2a9172cd489c703a96605df3896d52440d868c577c3323ff8f929e46",
+      "blob": "b7c8b173951028dff14bc5ab6afc74a3aaac5810",
+      "bytes": 20040,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260629110000_institution_assigned_only_writing_access.sql",
+      "sha256": "3dd3000bcca29acd368d7afee2763ef056c38d1a7209fe1216ea01f9fce8802f",
+      "blob": "ff6bbc573fc1831213a50a8340fde62318a68116",
+      "bytes": 4029,
+      "ledger": {
+        "dev": "absent",
+        "prod": "applied"
+      },
+      "disposition": "blocked",
+      "reason": "Redefines is_writing_problem_visible_to_caller from public.problems.materials->>'question_id'. 20260714140000 deleted the writing rows from public.problems, so every lookup would resolve to false and hide the whole writing pool."
+    },
+    {
+      "name": "20260629120000_auth_email_verified_access_gate.sql",
+      "sha256": "b446b7e245582bf9d648ceaa78b54f77d44ff55b5ffd3373ad268cab151991e0",
+      "blob": "a29edf8144da2add9649dfaaefd10159d68a0897",
+      "bytes": 6955,
+      "ledger": {
+        "dev": "absent",
+        "prod": "applied"
+      },
+      "disposition": "blocked",
+      "reason": "Superseded by 20260718120000. Applying it re-grants the boolean-only complete_auth_gate overloads that 20260718120000 deliberately revoked, and recreates user_consents_owner_insert, which B6 replaces with user_consents_no_direct_insert."
+    },
+    {
+      "name": "20260629153000_enforce_same_problem_comparison.sql",
+      "sha256": "0c17e8198948d72428ff1168bf38fe81d1210743072baab65ae5f923334b9897",
+      "blob": "9dd2b85da9d0fd0ed61a5d0cecc90d5bd5f1bb29",
+      "bytes": 4748,
+      "ledger": {
+        "dev": "absent",
+        "prod": "applied"
+      },
+      "disposition": "deferred",
+      "reason": "Real gap: private.enforce_comparison_report_same_problem and its trigger are absent. Deferred because installing the guard blocks updates to the 21 existing cross-problem comparison_reports rows, which is an owner decision unrelated to this window."
+    },
+    {
+      "name": "20260629170000_non_institution_writing_full_exposure.sql",
+      "sha256": "72ec8b0044cc3b0483b7595908e4f7b906c9173b6275379c2e6c92a0aa2371ca",
+      "blob": "b69824f38e0478464e386910c6e1d4e109ffba8f",
+      "bytes": 3760,
+      "ledger": {
+        "dev": "absent",
+        "prod": "applied"
+      },
+      "disposition": "blocked",
+      "reason": "Same predicate and the same deleted source rows."
+    },
+    {
+      "name": "20260629215000_feedback_retry_parent_submission.sql",
+      "sha256": "28711e80d9ea7745d7dd981e1867b9a6b11ea476e88cb7dcd7b7f9d5e69cb62b",
+      "blob": "f75818129ec74d4a9878dd8bb9023c24dcd99531",
+      "bytes": 5116,
+      "ledger": {
+        "dev": "absent",
+        "prod": "applied"
+      },
+      "disposition": "deferred",
+      "reason": "create_external_writing_submission is absent but has zero callers in v13 src/. Applying it would only add unreferenced SECURITY DEFINER surface."
+    },
+    {
+      "name": "20260701140000_accept_affiliation_invite.sql",
+      "sha256": "0f45df0f006cf297c700bb639f85fff2130dadf4e5ce2105e22132e6541fc2d7",
+      "blob": "4495dc3275987a3c382bbab05e6880eb122efd91",
+      "bytes": 3838,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260701160000_institution_retry_availability.sql",
+      "sha256": "e79b4cf327a76436160aeef6760bd7fca59dc5515be9e111ca1e99b162214046",
+      "blob": "9e3126d42dff387da4d61fbd597b289b3098e56a",
+      "bytes": 3512,
+      "ledger": {
+        "dev": "absent",
+        "prod": "applied"
+      },
+      "disposition": "blocked",
+      "reason": "Redefines list_user_library_problem_items without the canonical reader. The live definition carries the writing_catalog CTE that 20260714140000 substituted in, so applying this file would silently drop writing items from the library list."
+    },
+    {
+      "name": "20260707120000_pdf_export_quota.sql",
+      "sha256": "a8eb5396b23dfcc5003a84206019d8e675fbc4c89a392f13dfdac6850ff59bd8",
+      "blob": "6a1e83555d57d3334ebafb7766e370a9693a5e50",
+      "bytes": 16685,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260708113000_writing_submission_metrics.sql",
+      "sha256": "8a9df8fe401ac97a2bbde2eee85e540c67c7a8960325557505ae6a6b00703fa2",
+      "blob": "25c0d7ca9cb55bde4aa4ec3666342d2a96c0482a",
+      "bytes": 4307,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260709120000_dashboard_kpi_writing_source.sql",
+      "sha256": "595bba64ef0281fda6547f16c2286a45310b33c649e044a0663ceff80ab0370b",
+      "blob": "761c4cc3c346bf7ed6947b207efd69f7b01ef8d4",
+      "bytes": 2742,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260709153000_profiles_optional_gender_phone.sql",
+      "sha256": "51feb28e4d695a97aa0042f2f6398eaa0c1be39aa0b0b525c421f1cbb6f3c84d",
+      "blob": "7e9a1dbe40afcbe4f3a80f563b332fd2e4e929e2",
+      "bytes": 9551,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260709154000_profiles_phone_prompt_dismissed.sql",
+      "sha256": "4494349f1ff27798a9c8441783f938f16459a2fed8ed6c92cfb1e088880a5521",
+      "blob": "5d2b4072c2e8d6d63a2c12f9619016fb2027f89f",
+      "bytes": 1316,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260709165000_profiles_split_phone_country_code.sql",
+      "sha256": "dd09cc09063086f30b03bf245d111dfe697928c391f13a68ec5d1da488624797",
+      "blob": "485882aa152cfeb4f7ffa6f0b7cf110d9ddff5b0",
+      "bytes": 8826,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260709170000_library_problem_answer_preview.sql",
+      "sha256": "62528784c34b09f3f23d58a73bbec93adef97c1e50f063a8e3e9cd5dae397522",
+      "blob": "39c3ac3fbb32af3518390635e23f13327fbb6580",
+      "bytes": 4621,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260710093000_revoke_anon_superseded_auth_gate.sql",
+      "sha256": "5f647207775814028cea30bc6b5fd73f067f1be802730a7eae64d23f8ab8189b",
+      "blob": "6ec6c04cbca03009677a62fa8eb4fe8ff9f6ef08",
+      "bytes": 2104,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260710094000_auth_gate_trusted_consent_docs.sql",
+      "sha256": "6831174021e192f7276304a280c3a55f3bfb9584e6a892dac94f92d2ac6589fd",
+      "blob": "fc0e879b454e42f93a59ef62eaa741e4248561ac",
+      "bytes": 8210,
+      "ledger": {
+        "dev": "absent",
+        "prod": "applied"
+      },
+      "disposition": "blocked",
+      "reason": "Superseded by 20260718120000 exact consent snapshots, and re-grants the same revoked overload."
+    },
+    {
+      "name": "20260710095000_profiles_country_code_iso_check.sql",
+      "sha256": "e9333da43e3ffd4afcc17242c73acec59fba089da6f71882b07a0e95fe497d41",
+      "blob": "93d80667d31ff0364b56264b902a33530e3354b1",
+      "bytes": 8285,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260713080015_writing_problem_identity_anchor.sql",
+      "sha256": "c640b3611fc4324ce83be13e53aba22b891bc23d615dd4e9593e803ec7a7b5e9",
+      "blob": "20444273da8cb3fc34f92964aa77619a5476a28c",
+      "bytes": 3171,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260713081559_writing_question_version_snapshot.sql",
+      "sha256": "5bd966c089598b801ea34bcabfdf59c06705ec9e9e16ae31b3c52a3b4c6a555d",
+      "blob": "7aabd49ed34e8bd1007b9f76a8ebed4a8f0feebe",
+      "bytes": 24520,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260713083000_writing_canonical_read_security_gate.sql",
+      "sha256": "72401054d8fc081eb2b1faa0f927b46875483ad3bd3ac44d2533f6f1862d83b6",
+      "blob": "603a035f4ea60aa317ab98ad2cd8cebe5c4bfe27",
+      "bytes": 69589,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260713084000_writing_cutover_serialization_guard.sql",
+      "sha256": "052a0744e6d07aa5f95cd7e679eecd410884b54cf2011b4d49296b8b517c1983",
+      "blob": "82e796bf66b77941d83642d22dde16129f96e498",
+      "bytes": 15847,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260713084500_retire_writing_problem_mirror_cron.sql",
+      "sha256": "d0d273e3f800651fb4e8cb0f368f5769dd153ec39086f3d2070926c103ef6091",
+      "blob": "75da95b1265cca82a3500f6afdcc184f4ea50961",
+      "bytes": 10130,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260714140000_writing_problem_identity_registry_cutover.sql",
+      "sha256": "ee5b5b4f4c923f64f847a5424fd0a8386e601d1ae9e1b4ae663e5f9fe1f3b0f1",
+      "blob": "4945656ace4c0136dd2fdf026a855c8114fc0360",
+      "bytes": 69736,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260714141000_writing_submission_outbox.sql",
+      "sha256": "5001c9b5644093b60edbbe697812f5aa48fb6653b417b9b0e95c7a26c99bd787",
+      "blob": "99b8284f4c19e578481485b38a1eb85f79e1b4c1",
+      "bytes": 65768,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260714160000_writing_snapshot_constraint_execution_fix.sql",
+      "sha256": "9f8f05132085042ecc95ca2819ff42568d9b6fd35401211fb32061713f7416c1",
+      "blob": "5d44187c200ff9ba9494dd6e07a54651fd678dcc",
+      "bytes": 2426,
+      "ledger": {
+        "dev": "applied",
+        "prod": "applied"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260718120000_auth_gate_exact_consent_snapshots.sql",
+      "sha256": "e7dcb7b07d612af4c7748191e19dc0c979c193b4c91b0f0ab54671147b49413f",
+      "blob": "64ed151be87b946154362a5bfa430845c885201a",
+      "bytes": 14792,
+      "ledger": {
+        "dev": "applied",
+        "prod": "absent"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260722120000_writing_completion_and_pdf_outcomes.sql",
+      "sha256": "a024a0eaabc25ed1eca8dc70e56b8414e4f68fd0da612e400cf50486e0034c5b",
+      "blob": "0a055ed4226d681c0dcdbb454710cb90afe57578",
+      "bytes": 16575,
+      "ledger": {
+        "dev": "applied",
+        "prod": "absent"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260723170000_system_reports.sql",
+      "sha256": "fce34f3fa4c60c9adbd23c937833969dcae72ed0df030feda91cbe6444763abb",
+      "blob": "4e28b61f55536f1ecb8a4f9e20cdb734006baf3d",
+      "bytes": 4843,
+      "ledger": {
+        "dev": "absent",
+        "prod": "absent"
+      },
+      "disposition": "adopted-elsewhere",
+      "adoptedAs": "supabase/migrations-admin/20260723170000_system_reports.sql",
+      "adoptedTracker": "admin_schema_migrations",
+      "replayOnly": true,
+      "reason": "topik-ai adopted the v13 canonical file byte for byte into the admin namespace (identical git blob 4e28b61f55536f1ecb8a4f9e20cdb734006baf3d, supabase/README.md 2.3). Applying it here as well would record one migration in two trackers, which the boundary rule forbids. Nothing in this sequence depends on it: the ledger it creates is private.system_reports plus a service-role-only submit RPC, and no later batch references either."
+    },
+    {
+      "name": "20260723234527_consent_account_deletion_rls.sql",
+      "sha256": "865575f94815fc91ec2632aad30e68359949d098ab6ba5784a1ccc97b7a4950b",
+      "blob": "ab4f04c7ececea01d9edebd758b81212303e7c24",
+      "bytes": 26923,
+      "ledger": {
+        "dev": "applied",
+        "prod": "absent"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260724120000_user_data_reference_integrity.sql",
+      "sha256": "06c981133ecec7946d12fececb24dba417de9e5d008e89910d3a95eeadd3f521",
+      "blob": "9c213bd64e25ec8de81c0d932a73efae74658b91",
+      "bytes": 5561,
+      "ledger": {
+        "dev": "applied",
+        "prod": "absent"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260724130000_institution_invite_trust_boundary.sql",
+      "sha256": "fcbe58fcdc35008bafd47de558905f5e158aa9140342a961f07858afb56f65c7",
+      "blob": "70cee229f100145b8cd0147903fc4513fdb705b9",
+      "bytes": 4043,
+      "ledger": {
+        "dev": "applied",
+        "prod": "absent"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260724140000_pdf_export_request_idempotency.sql",
+      "sha256": "29962915c6c7fbadf26d34dff0f5bf278f5dab62fab1a65e4a2547e3a41bdcad",
+      "blob": "17d1d846f814dcc05cfda27f0b97fb179298c13c",
+      "bytes": 37467,
+      "ledger": {
+        "dev": "applied",
+        "prod": "absent"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "20260729120000_list_user_problems_canonical_catalog_fix.sql",
+      "sha256": "3633e1421e54649465f353b20d95543e8312b803a2d48321057a7b4c688d0d30",
+      "blob": "7041d5e86acb18d39bca410409837448670a8718",
+      "bytes": 12895,
+      "ledger": {
+        "dev": "applied",
+        "prod": "absent"
+      },
+      "disposition": "applied"
+    },
+    {
+      "name": "down/20260612190000_notification_email_pipeline.sql",
+      "sha256": "910c1679e82c4cd1a2cb7b95b1bf5d12b670bb391722840717094ae190d6510e",
+      "blob": "455410e6f34813f2585e68ce1737b305832b6e99",
+      "bytes": 542
+    },
+    {
+      "name": "down/20260612190100_email_transport_fail_user.sql",
+      "sha256": "910c1679e82c4cd1a2cb7b95b1bf5d12b670bb391722840717094ae190d6510e",
+      "blob": "455410e6f34813f2585e68ce1737b305832b6e99",
+      "bytes": 542
+    },
+    {
+      "name": "down/20260612190200_email_live_defer.sql",
+      "sha256": "910c1679e82c4cd1a2cb7b95b1bf5d12b670bb391722840717094ae190d6510e",
+      "blob": "455410e6f34813f2585e68ce1737b305832b6e99",
+      "bytes": 542
+    },
+    {
+      "name": "down/20260612200000_user_marketing_consent.sql",
+      "sha256": "2c8290939a8164925beb638825bf9485f8285e907139e4db1be5c36945c5fc49",
+      "blob": "9390af98d2a4d5404185aac0662928cf2c3eebde",
+      "bytes": 643
+    },
+    {
+      "name": "down/20260612200100_marketing_consent_in_dispatch.sql",
+      "sha256": "910c1679e82c4cd1a2cb7b95b1bf5d12b670bb391722840717094ae190d6510e",
+      "blob": "455410e6f34813f2585e68ce1737b305832b6e99",
+      "bytes": 542
+    },
+    {
+      "name": "down/20260619140000_profiles_affiliation_code.sql",
+      "sha256": "097b17b22dd63a171720672419e93f16db7815c83895896472aab0e9412c7f4b",
+      "blob": "b62d40e507fb377e887ba1d173ee3bfc9210b9e3",
+      "bytes": 2161
+    },
+    {
+      "name": "down/20260622120000_account_deletion_soft_delete.sql",
+      "sha256": "c6c29c1bc7ada566c4f57f2d559afb29ff4e3e934669afee3de6e88720e52966",
+      "blob": "6addb81b7ceba76f1ad16d6f061c238b9c614418",
+      "bytes": 1785
+    },
+    {
+      "name": "down/20260622150000_legal_documents_projection.sql",
+      "sha256": "9304577e66f84ecaf4cafa7558f70db23c44296a22e6919ab516d0f2b3b4a844",
+      "blob": "6e178a6e116b6295c9acb6cf9e26d17f47ec62f3",
+      "bytes": 403
+    },
+    {
+      "name": "down/20260624110000_sync_available_writing_problems.sql",
+      "sha256": "766694ede013b1882f83567c37768c7e770babdcad0243acd460aaabcfc56166",
+      "blob": "75826576f895fcb405e0085687acd4b7a85e3da8",
+      "bytes": 385
+    },
+    {
+      "name": "down/20260707120000_pdf_export_quota.sql",
+      "sha256": "de9ab892155a7ae71e9271f2e2f1e960704a9b13238de7d77010b7840367116c",
+      "blob": "7619ff98024af7a1af91bdb501b8d1539e481d4e",
+      "bytes": 655
+    },
+    {
+      "name": "down/20260713080015_writing_problem_identity_anchor.sql",
+      "sha256": "15b8b64de527653dad599960dcc2b7df769b847e4e49b7cb8c7e38d2a707de4d",
+      "blob": "54c57dbe4d6f344390c43ef03790feaac2e914ae",
+      "bytes": 245
+    },
+    {
+      "name": "down/20260713081559_writing_question_version_snapshot.sql",
+      "sha256": "2f9c4d33f0046235c98f10c14f008f3d2bdbfbff1753fa5777e892235a237470",
+      "blob": "ec5b7b1570a2064ea5463b05cad4bc7b98eb246f",
+      "bytes": 1021
+    },
+    {
+      "name": "down/20260713083000_writing_canonical_read_security_gate.sql",
+      "sha256": "85fbafa11ebfff22bba319339ba88ba91175077c319a14b768ba6ce3eafb518b",
+      "blob": "ef815c49564b245afb43e82d6cda1e40c7d4122d",
+      "bytes": 12734
+    },
+    {
+      "name": "down/20260713084000_writing_cutover_serialization_guard.sql",
+      "sha256": "764a12a8f408df42e9a6b16a9e209f0cdfe33fa663a295d15b64b34144e26a67",
+      "blob": "7669d454d6b554109aefc7d0fe90518372f1f361",
+      "bytes": 3170
+    },
+    {
+      "name": "down/20260713084500_retire_writing_problem_mirror_cron.sql",
+      "sha256": "fa69b6fc04dd753cd095d6447f67857092e11d8de954bd7f2fc31116764d19a4",
+      "blob": "0672a4b4c624dbc713928a2bba5177cf1e93b49c",
+      "bytes": 5128
+    },
+    {
+      "name": "down/20260714140000_writing_problem_identity_registry_cutover.sql",
+      "sha256": "72d5ff9507c829acb75eaad217f8b02347ca6816329402d2367b12ad7affbab2",
+      "blob": "d447a1c425ce51701347681fc22c828a1ec94e7b",
+      "bytes": 15060
+    },
+    {
+      "name": "down/20260714141000_writing_submission_outbox.sql",
+      "sha256": "38d19ab9e9e51ed425c632c3a40ca081b26eb47220297a864029f0d426f8b99c",
+      "blob": "ffbcac241b835cb811da8171e38de16b7a597dff",
+      "bytes": 8332
+    },
+    {
+      "name": "down/20260714160000_writing_snapshot_constraint_execution_fix.sql",
+      "sha256": "af19011b609824f62a4bd508c355d34095703d159d9902ff506591d255ad396b",
+      "blob": "8632a7b6f565471c63cf5903a7c876f2b8842f5b",
+      "bytes": 404
+    }
+  ]
+}

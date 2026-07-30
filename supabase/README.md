@@ -99,6 +99,32 @@
   감사 테이블로 옮기는 결과가 되면 안 된다.
 - 소유권 근거: `docs/architecture/shared-supabase-schema-ownership.md` §2
 
+## 2.5 `migrations-v13/` — v13 저작 learner 마이그레이션 아카이브 (2026-07-30, 이전 프로그램 M2)
+
+- **성격**: 소유권 이전 프로그램(`docs/plans/v13-db-ownership-transfer-program-plan.md`)의 M2 산출물.
+  v13이 저작한 learner 마이그레이션 역사를 **바이트 그대로** 이 저장소가 보관한다. 계약 SHA
+  `0ee14993` 시점의 forward 100 + down 18 + `INDEX.md`.
+- **이 디렉터리는 적용 대상이 아니다.** 옮긴 것은 커스터디(파일 보관)와 CI 재생 입력이며 DB 상태·객체·
+  장부 소속은 변하지 않는다. learner 장부는 계속 `supabase_migrations.schema_migrations`이고 쓰기 주체는
+  `scripts/db/apply-v13-migration.mjs` 단독이다.
+- **적용 가능 여부의 단일 권위는 매니페스트의 `disposition`이다.** 아카이브에 있다는 사실이 적용 가능을
+  뜻하지 않는다: `applied` 92 · `blocked` 5(적용하면 컷오버 회귀) · `deferred` 2(오너 결정 대기) ·
+  `adopted-elsewhere` 1(`20260723170000` — 실제 적용·장부는 §2.3의 admin 네임스페이스, 여기 사본은
+  재생 전용 `replayOnly`).
+- **매니페스트**: `scripts/db/manifests/v13-archive.json` — 파일별 sha256, git blob sha, 바이트 수,
+  dev/운영 장부 지위, disposition, 사유.
+- **검증**: `npm run check:v13-archive` (오프라인 자기검증 — sha256·blob 재계산 + dev 매니페스트와
+  disposition 대사). v13 체크아웃이 있을 때는
+  `node scripts/db/v13-archive.mjs --v13-root <path> --v13-sha <sha40>`로 원본 git 객체와 바이트 대조까지
+  수행한다.
+- **바이트 동일성 증명이 v13 없이도 성립한다**: 아카이브 바이트에서 git blob sha를 재계산해 매니페스트
+  값과 대조하면, 그 바이트가 v13 역사의 동일 객체로 해시된다는 사실이 확인된다. 계약 SHA 핀 제거(M4) 이후
+  에도 증명이 유지되는 근거다.
+- **저작 워터마크 `20260729120000`**: 이 버전 **이하**는 v13 저작 역사(장부 소속 불변), **초과**는
+  topik-ai 저작이다. 신규 learner 마이그레이션의 저작 개통은 M5에서 다룬다.
+- 아카이브 파일은 **수정하지 않는다**(§2.3 정본 채택과 동일 계약). 교정이 필요하면 워터마크 초과 신규
+  forward를 만든다.
+
 ## 3. 공통 실행 메커니즘
 
 - 두 러너는 동일한 `scripts/db/migrate-core.mjs`를 사용하고, `trackTable`과
