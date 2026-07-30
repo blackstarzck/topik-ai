@@ -260,10 +260,29 @@ describe('v13-shared-dev manifest integrity', () => {
     expect(manifest.trackerTable).not.toContain('admin_schema_migrations');
   });
 
-  it('declares the nine approved batches in order', () => {
-    expect(manifest.sequence).toEqual(['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9']);
+  it('declares the approved batches in order', () => {
+    expect(manifest.sequence).toEqual(['B1', 'B2', 'B3', 'B4', 'B6', 'B7', 'B8', 'B9']);
+    expect(Object.keys(manifest.batches).sort()).toEqual([...manifest.sequence].sort());
     for (const batchName of manifest.sequence) {
       expect(() => resolveBatch(manifest, batchName)).not.toThrow();
+    }
+  });
+
+  it('leaves system_reports to the admin namespace instead of a second tracker', () => {
+    // topik-ai adopted the v13 canonical file byte for byte into
+    // supabase/migrations-admin, so applying it here too would record one
+    // migration in both admin_schema_migrations and the v13 CLI ledger.
+    const selected = manifest.sequence.flatMap((batchName) => manifest.batches[batchName].migrations);
+    expect(selected.some((fileName) => fileName.includes('system_reports'))).toBe(false);
+
+    const adopted = manifest.adoptedElsewhere ?? [];
+    const entry = adopted.find((item) => item.name === '20260723170000_system_reports.sql');
+    expect(entry, 'system_reports must stay recorded as adopted elsewhere').toBeTruthy();
+    expect(entry.tracker).toBe('admin_schema_migrations');
+    expect(entry.reason).toBeTruthy();
+    for (const item of adopted) {
+      expect(() => parseMigrationFileName(item.name)).not.toThrow();
+      expect(manifest.batches[item.formerBatch], `${item.name} batch must be gone`).toBeUndefined();
     }
   });
 

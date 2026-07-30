@@ -8,7 +8,17 @@
   "sourceMigrationsDir": "supabase/migrations",
   "sourceGitSha": null,
   "sourceGitShaComment": "Set with --v13-sha at run time. Must be the merged v13 commit that contains every migration named below, including the list_user_problems repair. v13 origin/main was a29076543f655a1aae5d895a0218901594637357 when this manifest was written; that tree does NOT yet contain the repair migration.",
-  "sequence": ["B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9"],
+  "sequence": ["B1", "B2", "B3", "B4", "B6", "B7", "B8", "B9"],
+  "adoptedElsewhere": [
+    {
+      "name": "20260723170000_system_reports.sql",
+      "formerBatch": "B5",
+      "adoptedAs": "supabase/migrations-admin/20260723170000_system_reports.sql",
+      "tracker": "admin_schema_migrations",
+      "runner": "npm run db:admin:migrate",
+      "reason": "topik-ai adopted the v13 canonical file byte for byte into the admin namespace (identical git blob 4e28b61f55536f1ecb8a4f9e20cdb734006baf3d, supabase/README.md 2.3). Applying it here as well would record one migration in two trackers, which the boundary rule forbids. Nothing in this sequence depends on it: the ledger it creates is private.system_reports plus a service-role-only submit RPC, and no later batch references either."
+    }
+  ],
   "batches": {
     "B1": {
       "reason": "Restore private.is_email_confirmed(uuid). The tracker records 20260527113000 as applied but neither the function nor its three storage policies were ever created, so the live complete_auth_gate chain raises 42883 and B6 would abort while creating policies that name it.",
@@ -46,11 +56,6 @@
         { "kind": "column", "identity": "public.export_files.failed_at" },
         { "kind": "function", "identity": "public.list_user_problems(jsonb,text,integer,integer)" }
       ]
-    },
-    "B5": {
-      "reason": "Create the system report ledger and its service-role-only submission RPC. The global report launcher is mounted on every v13 page and currently answers 503.",
-      "migrations": ["20260723170000_system_reports.sql"],
-      "expectPresent": [{ "kind": "table", "identity": "private.system_reports" }]
     },
     "B6": {
       "reason": "Largest batch (799 lines). Creates get_my_account_state(), which the workspace layout needs; without it every workspace route bounces between /auth/account-inactive and /dashboard. Requires B1 for is_email_confirmed and B4 for get_dashboard_kpi, which this migration moves into private.",

@@ -150,6 +150,10 @@ topik-ai 운영면에서 적용하는 전용 러너다. 선례는 v13 `202607071
   재사용한다.
 - **manifest의 `blockedMigrations`는 장부에 기록하지 않는다.** 실행되지 않은 것이
   사실이므로 스탬프하면 거짓 기록이 된다. 선택 시 러너가 사유와 함께 중단한다.
+- **`adoptedElsewhere`**: v13 정본을 `migrations-admin/`이 바이트 그대로 채택한 파일은
+  이 러너로 적용하지 않는다. 같은 마이그레이션이 두 tracker에 기록되면 §4 경계 규칙
+  위반이다. `20260723170000_system_reports.sql`이 그 경우이며(§2.3), admin tracker와
+  `db:admin:migrate`가 소유한다.
 - 워크트리에서 실행할 때는 `--env-file`로 다른 워크트리의 `.env.local`을 지정한다
   (비밀값을 워크트리마다 복제하지 않는다). v13 경로는 `--v13-root`로 지정한다.
 
