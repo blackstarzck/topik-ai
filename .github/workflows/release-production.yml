@@ -17,7 +17,7 @@ concurrency:
 env:
   NODE_VERSION: '24.x'
   VERCEL_CLI_VERSION: '48.12.0'
-  V13_CONTRACT_SHA: 81e2ed7d0845194224ebe6f156c697560d70de65
+  V13_CONTRACT_SHA: 0ee149930019c8a6f97644824c390d7d2ec76067
   DEVELOPMENT_PROJECT_REF: fglggyfvzjdsbyckinqa
   RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
 
