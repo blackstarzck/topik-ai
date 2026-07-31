@@ -256,7 +256,11 @@ jobs:
               test "$DB_RESULT" = skipped
               test "$BROWSER_RESULT" = success
               ;;
-            sync-only:full|db-only:full|app-db:full)
+            # app-only:full is reachable whenever a control-plane touch escalates the
+            # profile on a change that also touches an app path (classifier v4). The
+            # required set is the same as the other full-profile plans: db-contract is
+            # gated on the profile, not on the plan.
+            app-only:full|sync-only:full|db-only:full|app-db:full)
               test "$BLOCKED_RESULT" = skipped
               test "$LIGHT_RESULT" = skipped
               test "$QUALITY_RESULT" = success

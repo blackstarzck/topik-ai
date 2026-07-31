@@ -430,6 +430,28 @@ describe('repository execution guards', () => {
     }
   });
 
+
+  it('covers every plan/profile combination the classifier can emit', () => {
+    // The gate fails closed on an unlisted combination, so a classifier rule that
+    // creates a new pair silently blocks every PR that hits it. app-only:full was
+    // exactly that: classifier v4 lets a control-plane touch escalate the profile
+    // on an app-touching change, and the gate had no case for the result.
+    const gate = job(ciWorkflow, 'ci-gate');
+    const covered = new Set(
+      [...gate.matchAll(/^\s+([a-z][a-z|:-]*)\)$/gmu)].flatMap((match) => match[1].split('|'))
+    );
+    const reachable = [
+      'blocked:full',
+      'sync-only:light',
+      'sync-only:full',
+      'app-only:app',
+      'app-only:full',
+      'db-only:full',
+      'app-db:full',
+    ];
+    expect(reachable.filter((combo) => !covered.has(combo))).toEqual([]);
+  });
+
   it('keeps result gates evaluating after failures alongside the repository guard', () => {
     expect(job(ciWorkflow, 'ci-gate')).toContain(`${SOURCE_GUARD} && always()`);
     expect(job(developmentWorkflow, 'development-gate')).toContain(
