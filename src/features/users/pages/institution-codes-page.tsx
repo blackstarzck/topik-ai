@@ -170,7 +170,7 @@ export default function InstitutionCodesPage(): JSX.Element {
   const [cancelInviteTarget, setCancelInviteTarget] =
     useState<InstitutionInvitation | null>(null);
 
-  // 노출 문항 관리 모달(기관별 전용 노출 문항 추가/제거).
+  // 노출 문항 관리 모달(기관 소속 학습자에게 배정할 문항 추가/제거).
   const [questionExposureTarget, setQuestionExposureTarget] =
     useState<InstitutionCode | null>(null);
 
@@ -1217,7 +1217,7 @@ export default function InstitutionCodesPage(): JSX.Element {
         <ConfirmAction
           open
           title="기관 코드 삭제"
-          description={`${deleteTarget.code} 코드를 삭제합니다. 가입 수가 1명 이상이면 서버에서 삭제를 차단하며, 삭제된 코드는 가입/QR 유입과 기관 전용 문항 노출 대상에서 더 이상 사용할 수 없습니다.`}
+          description={`${deleteTarget.code} 코드를 삭제합니다. 가입 수가 1명 이상이면 서버에서 삭제를 차단하며, 삭제된 코드는 가입/QR 유입과 기관별 쓰기 문항 배정 대상에서 더 이상 사용할 수 없습니다.`}
           targetType="InstitutionCode"
           targetId={deleteTarget.code}
           confirmText="삭제 실행"

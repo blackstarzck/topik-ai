@@ -844,6 +844,22 @@
 - Validation: 신규 unit 27건 + `resolveV13Root` 2건, `npm run test:unit` 516건, `harness:check`(mojibake·doc-crosslinks·route-doc·message-history·lint·typecheck), `check:migration-boundary`(인자 없이 통과 — `TOPIK_V13_ROOT` 오버라이드 추가), `check:expand-migrations --base origin/main`, `db:contracts:verify`, `harness:admin-boundary` 구성 게이트 6/7(`check:admin-verification-env`는 워크트리 `.env.local` 부재로 미실행). 러너 실동작은 dev DB read-only `--status`와 9개 배치 `--dry-run`으로 확인(8개 SQL 생성 성공, B4는 v13 수리 마이그 미머지로 fail-closed).
 - Not-updated: `docs/architecture/shared-supabase-schema-ownership.md` decision record는 오너 승인일이 필요해 승인 후 별도 반영한다.
 
+## 2026-07-30 기관별 문항 노출 — 학습자 계약 문구를 라이브 규칙(기관 할당제)으로 정정
+
+- Updated: `docs/requests/v13-institution-question-exposure-handoff-2026-06-26.md`(상단 정정 배너 신설), `docs/specs/admin-data-contract.md`, `docs/specs/admin-data-usage-map.md`, `docs/specs/page-ia/users-institution-codes-page-ia.md`, `docs/page-sync/users-institution-codes-page-sync.md`, `docs/page-sync/assessment-question-bank-page-sync.md`, `docs/specs/admin-page-gap-register.md`.
+- Reason: 7개 문서가 학습자 최종 노출 규칙을 `service_status='available' AND (매핑 없음 OR affiliation_code 매핑 존재)`(전용 잠금)으로 적고 있었으나 그 모델은 구현된 적이 없다. 라이브 강제 지점 `private.is_writing_question_visible_to_user`(20260713080015)는 기관 할당제 — 무소속 학습자는 available 전체, 기관 소속 학습자는 자기 코드 매핑분만 — 를 강제한다. 문구 불일치 자체가 2026-07-30 오진("게이팅 0건")의 원인이었다: 라이브 canonical reader 본문에 institution/affiliation 문자열이 없어(predicate 간접 호출) 키워드 grep 이 놓쳤다.
+- Contract: 확정 계약 SoT 는 `topik_writing_question_institution_exposure` 테이블 comment 이며 정정 마이그는 `supabase/migrations/20260730120000_topik_writing_institution_exposure_contract_correction.sql`(comment 3건만 재작성, 테이블·함수·정책·권한·데이터 무변경). 관리자측 RPC set/clear/list 계약은 무변경이다. 차단 마이그 3건(`20260629110000`·`20260629170000`·`20260701160000`)은 계속 적용 금지.
+- Validation: dev DB read-only 프로브로 라이브 predicate 본문·콜그래프·사용자별 가시 문항 수 실측(무소속 700/700, CAMPAIGN-01 700, PROFESSOR-KWON 700, convention-vn 18/700). 마이그는 `--plan`으로 단건 apply 확인(pending `20260716052957`은 manifest blockedMigrations 로 제외, 기존 24건 체크섬 드리프트 0).
+- Not-updated: 관리자 라벨 축 `전체 공개`/`기관 한정`은 할당제 의미와 어긋나지만(미매핑 문항은 기관 소속 학습자에게 안 보이고, 매핑 문항도 무소속 학습자에게 보인다) UI 문자열·e2e 스펙 결합이 있어 별건으로 남겼다 — `docs/page-sync/assessment-question-bank-page-sync.md` §13 및 gap-register 에 등재.
+
+## 2026-07-30 기관 노출 라벨 축을 기관 할당제 의미로 재정의
+
+- Updated: `docs/specs/admin-page-tables.md`, `docs/specs/page-ia/assessment-question-bank-page-ia.md`, `docs/page-sync/assessment-question-bank-page-sync.md`(§13 미확정 해소), `docs/specs/admin-page-gap-register.md`(§4.7 갭 해소 + 최근 해소 이력), `docs/specs/admin-page-ia-change-log.md`.
+- Reason: PR #64 로 학습자 규칙을 기관 할당제로 확정한 뒤, 관리자 라벨 `전체 공개`(미매핑)/`기관 한정`(매핑)이 양방향 모두 거짓으로 남았다. 미매핑 문항은 기관 소속 학습자에게 보이지 않으므로 "전체"가 거짓이고, 배정된 문항도 무소속 학습자에게 계속 보이므로 "한정"이 거짓이다. 라벨 축이 "누가 보는가"를 주장하는 한 어떤 단어를 골라도 거짓이 되므로, 축 자체를 "몇 개 기관에 배정했나"로 옮겼다.
+- Contract: 셀 라벨 `미배정`/`기관 N곳 배정`, 일괄 액션명 `기관 배정`/`배정 해제`, 컬럼 헤더에 규칙 한 줄 병기("소속 없는 학습자는 노출 허용한 문항을 모두 봅니다. 기관 소속 학습자는 그 기관에 배정한 문항만 봅니다"). `service_status` 기준 태그는 `전역 미노출`로 개명해 기관 단위 오독을 막았다. 감사 액션 코드(`question_institutions_changed`/`question_institutions_cleared`)와 RPC set/clear/add/remove 계약은 무변경이다.
+- Validation: `npm run harness:check`(mojibake·doc-crosslinks·route-doc·message-history·lint·typecheck), `tests/e2e/institution-question-exposure.spec.ts` 모크 모드 실행. 문구 결합 실측 — 그 spec 이 `실제 노출`/`현재 미노출` 을 8곳에서 정확 매칭하므로 같은 커밋에서 함께 고쳤다.
+- Not-updated: `/assessment/question-bank` 의 문항중심(Part1) 노출 UI 는 아직 main 에 없다(서비스 계층 wrapper 3종만 있고 호출자 0). 이번 문서 계약이 그 UI 의 최초 구현 기준이 되며, 라벨을 처음부터 할당제 문구로 심어야 한다.
+
 ## 2026-07-30 v13 운영 적용 runbook 초안 + v13 down/ 롤백 파일 보강
 
 - Added: `docs/runbooks/v13-prod-migration-apply-runbook.md` — v13 소유 마이그 9배치 10파일(manifest `v13-shared-dev.json` sequence 정본)의 topik-prod 적용 runbook 초안. `docs/README.md` runbooks 인덱스에 등재.

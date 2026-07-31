@@ -35,9 +35,9 @@ test('노출 문항 모달: 좌우 유형 트리를 렌더한다', async ({ page
     modal.getByText('추가 후보 · 3건 (추가 가능 2건 · 비활성 1건)')
   ).toBeVisible();
   await expect(
-    modal.getByText('노출 선택 · 실제 노출 0건 / 현재 미노출 1건')
+    modal.getByText('노출 선택 · 배정 0건 / 전역 미노출 1건')
   ).toBeVisible();
-  await expect(modal.getByText('현재 미노출')).toBeVisible();
+  await expect(modal.getByText('전역 미노출')).toBeVisible();
   await expect(modal.getByText('51번 · 빈칸 완성')).toBeVisible();
   await expect(modal.getByText('52번 · 연결 표현')).toBeVisible();
   // 변경 없으면 적용 비활성.
@@ -115,7 +115,7 @@ test('노출 문항 모달: 트리 체크 → › 이동 → 적용 왕복(모�
     .click();
   await modal.getByRole('button', { name: '노출에 추가' }).click();
   await expect(
-    modal.getByText('노출 선택 · 실제 노출 1건 / 현재 미노출 1건')
+    modal.getByText('노출 선택 · 배정 1건 / 전역 미노출 1건')
   ).toBeVisible();
   await expect(
     modal.getByText('추가 후보 · 2건 (추가 가능 1건 · 비활성 1건)')
@@ -129,7 +129,7 @@ test('노출 문항 모달: 트리 체크 → › 이동 → 적용 왕복(모�
 
   await expect(page.getByText(/노출 문항 추가 완료/)).toBeVisible();
   await expect(
-    modal.getByText('노출 선택 · 실제 노출 1건 / 현재 미노출 1건')
+    modal.getByText('노출 선택 · 배정 1건 / 전역 미노출 1건')
   ).toBeVisible();
 });
 
@@ -143,7 +143,7 @@ test('노출 문항 모달: 우측 트리에서 유형 단위로 노출 해제�
     .click();
   await modal.getByRole('button', { name: '불러오기' }).click();
   await expect(
-    modal.getByText('노출 선택 · 실제 노출 1건 / 현재 미노출 1건')
+    modal.getByText('노출 선택 · 배정 1건 / 전역 미노출 1건')
   ).toBeVisible();
 
   const rightTree = modal.locator('.ant-tree').last();
@@ -154,7 +154,7 @@ test('노출 문항 모달: 우측 트리에서 유형 단위로 노출 해제�
   await modal.getByRole('button', { name: '노출에서 제거' }).click();
 
   await expect(
-    modal.getByText('노출 선택 · 실제 노출 0건 / 현재 미노출 1건')
+    modal.getByText('노출 선택 · 배정 0건 / 전역 미노출 1건')
   ).toBeVisible();
   await expect(
     modal.getByText('추가 후보 · 3건 (추가 가능 2건 · 비활성 1건)')
@@ -166,7 +166,7 @@ test('노출 문항 모달: 우측 트리에서 유형 단위로 노출 해제�
 test('노출 문항 모달: 다른 기관 설정 불러오기(모크)', async ({ page }) => {
   const modal = await openModal(page);
   await expect(
-    modal.getByText('노출 선택 · 실제 노출 0건 / 현재 미노출 1건')
+    modal.getByText('노출 선택 · 배정 0건 / 전역 미노출 1건')
   ).toBeVisible();
 
   // 소스 기관(B부스, 시드 2건 중 excluded 1건) 선택 후 덮어쓰기 → available 1건만 반영.
@@ -181,7 +181,7 @@ test('노출 문항 모달: 다른 기관 설정 불러오기(모크)', async ({
   await expect(
     modal.getByText('전역 노출 상태가 노출 가능이 아닌 문항 1건은 불러오지 않았습니다.')
   ).toBeVisible();
-  await expect(modal.getByText('노출 선택 · 실제 노출 1건')).toBeVisible();
+  await expect(modal.getByText('노출 선택 · 배정 1건')).toBeVisible();
   await expect(
     modal.getByText('추가 후보 · 3건 (추가 가능 1건 · 비활성 2건)')
   ).toBeVisible();

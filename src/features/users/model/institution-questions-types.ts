@@ -13,7 +13,7 @@ export type InstitutionExposableQuestion = {
   situationSummary: string;
   questionTypeName: string;
   serviceStatus: string;
-  /** 이 기관에 전용 노출 중인지(false=추가 후보). */
+  /** 이 기관 소속 학습자에게 배정된 문항인지(false=추가 후보). */
   isExposed: boolean;
 };
 
