@@ -106,6 +106,7 @@
 - `notification-worker-production-evidence.example.md` — 실제 production evidence 파일 작성 시 secret 값을 남기지 않도록 돕는 redacted 예시 문서
 - `release-promotion-runbook.md` — 개인 main→회사 promote/stg/main 승격 릴리스의 자동 체인·guest merge 절차·Playwright MCP 검증 프로토콜·긴급 수동 릴리스·컷오버/롤백을 기록한 운영 runbook
 - `admin-account-separation-prod-cutover.md` — 관리자 계정 분리 production cutover 적용 순서·검증·롤백 runbook
+- `v13-prod-migration-apply-runbook.md` — v13 소유 마이그레이션 운영(topik-prod) 적용 runbook 초안. 소유권 이전 프로그램 M6 단계의 실행 절차서로, 운영 백로그 7파일·백업 확인·운영 지문 게이트(false record 판정)·러너 v2 게이트식 해금(D9)·차단 5건 재적용 금지·down/ 역순 롤백을 기록
 - `topik-prod-onprem-backup.md` — topik-prod 온프레미스 백업·복원 점검(드릴) 현행 runbook. 전용 읽기 롤, 컨테이너 pg_dump 방식, 드릴 스택 구성, 2026-07-21 실증 기록과 초안 대비 변경 근거를 포함
 
 ### `docs/swagger-api`
