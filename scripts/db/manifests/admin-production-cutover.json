@@ -2,7 +2,7 @@
   "namespace": "admin",
   "environment": "production",
   "projectRef": "eymlabowhfgtxbiqwxqh",
-  "expectedLocalCount": 92,
+  "expectedLocalCount": 93,
   "batches": {
     "notification-baseline": {
       "from": "20260612170000_notification_admin_tables.sql",
@@ -74,16 +74,28 @@
     },
     "baseline-all": {
       "from": "20260612170000_notification_admin_tables.sql",
-      "to": "20260731100000_institution_assignment_prerequisite_guard.sql"
+      "to": "20260801100100_institution_assignment_prerequisite_mode_aware.sql"
     },
     "release-all": {
       "from": "20260612170000_notification_admin_tables.sql",
-      "to": "20260731100000_institution_assignment_prerequisite_guard.sql"
+      "to": "20260801100100_institution_assignment_prerequisite_mode_aware.sql"
     },
     "institution-assignment-prerequisite": {
       "reason": "배정 0건 기관에 회원을 배정/초대하면 그 회원은 쓰기 문항을 하나도 보지 못한다(기관 할당제). admin_assign_institution_code 와 admin_invite_institution_members 에 선행조건 검사를 끼운다. 짝 가드는 topik_writing 네임스페이스 20260731100100.",
       "migrations": [
         "20260731100000_institution_assignment_prerequisite_guard.sql"
+      ],
+      "expectPresentAfter": [
+        {
+          "kind": "function",
+          "identity": "private.institution_has_writing_assignment(text)"
+        }
+      ]
+    },
+    "institution-exposure-mode": {
+      "reason": "기관 단위 노출 모드(제한 없음/배정분만) 도입에 맞춰 배정 선행조건 헬퍼를 모드 인지형으로 교체한다. 제한 없음 모드 기관은 배정 0건이어도 소속 학습자가 available 전체를 보므로 선행조건 검사 대상이 아니다. 짝 마이그는 topik_writing 네임스페이스 20260801100000.",
+      "migrations": [
+        "20260801100100_institution_assignment_prerequisite_mode_aware.sql"
       ],
       "expectPresentAfter": [
         {

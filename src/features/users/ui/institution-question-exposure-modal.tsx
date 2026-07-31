@@ -25,7 +25,11 @@ import type {
   InstitutionExposableQuestion,
   InstitutionQuestionMutationResult
 } from '../model/institution-questions-types';
-import type { InstitutionCode } from '../model/institution-codes-types';
+import type {
+  InstitutionCode,
+  InstitutionExposureMode
+} from '../model/institution-codes-types';
+import { InstitutionExposureModeTag } from './institution-exposure-mode-tag';
 import type { AsyncState } from '../../../shared/model/async-state';
 
 const { Text } = Typography;
@@ -220,6 +224,12 @@ export type InstitutionQuestionMutationSummary = {
 type InstitutionQuestionExposureModalProps = {
   open: boolean;
   institution: InstitutionCode;
+  /**
+   * 이 기관의 노출 모드. `제한 없음` 이면 아래 배정은 지금 학습자 화면에 영향을 주지 않으며
+   * 안내 문구가 그 사실을 밝힌다. 배정 편집 자체는 두 모드에서 모두 허용한다 — 의도된 동선이
+   * "먼저 배정 → 그다음 배정분만 전환"이라 여기서 잠그면 그 순서가 불가능해진다.
+   */
+  exposureMode: InstitutionExposureMode;
   canManage: boolean;
   isSupabase: boolean;
   onClose: () => void;
@@ -229,12 +239,14 @@ type InstitutionQuestionExposureModalProps = {
 export function InstitutionQuestionExposureModal({
   open,
   institution,
+  exposureMode,
   canManage,
   isSupabase,
   onClose,
   onMutated
 }: InstitutionQuestionExposureModalProps): JSX.Element {
   const code = institution.code;
+  const isUnrestricted = exposureMode === '제한 없음';
 
   const [state, setState] = useState<AsyncState<InstitutionExposableQuestion[]>>({
     status: 'pending',
@@ -554,16 +566,30 @@ export function InstitutionQuestionExposureModal({
       }
     >
       <Space direction="vertical" size={14} style={{ width: '100%' }}>
-        <Text type="secondary">{institution.label}</Text>
+        <Space size={8} wrap>
+          <Text type="secondary">{institution.label}</Text>
+          <InstitutionExposureModeTag mode={exposureMode} />
+        </Space>
 
         {/* 기관 할당제 규칙을 화면에 명시한다. 배정은 이 기관 학습자에게 문항을 허용하는
             목록이며 다른 학습자에게 잠그는 장치가 아니다(계약 SoT: 마이그
-            20260730120000). 이 안내가 없으면 배정 0건을 "제약 없음"으로 오해한다. */}
-        <Alert
-          type="info"
-          showIcon
-          message="소속 없는 학습자는 노출 허용한 문항을 모두 봅니다. 이 기관 소속 학습자는 여기서 배정한 문항만 봅니다."
-        />
+            20260730120000 + 모드 도입 20260801100000). 모드가 `제한 없음` 이면 아래 배정이
+            지금은 학습자 화면에 영향을 주지 않으므로, 관리자가 트리를 만지기 **전에** 알아야
+            한다 → info 가 아니라 warning 으로 승격한다. */}
+        {isUnrestricted ? (
+          <Alert
+            type="warning"
+            showIcon
+            message="제한 없음 모드입니다. 이 기관 소속 학습자도 노출 허용한 문항을 모두 보므로, 아래 배정은 지금 학습자 화면에 영향을 주지 않습니다."
+            description="배정분만으로 바꾸면 그때 적용됩니다. 모드는 기관 코드 목록의 수정에서 바꿉니다."
+          />
+        ) : (
+          <Alert
+            type="info"
+            showIcon
+            message="배정분만 모드입니다. 이 기관 소속 학습자는 여기서 배정한 문항만 봅니다. 소속 없는 학습자는 노출 허용한 문항을 모두 봅니다."
+          />
+        )}
 
         {errorMessage ? <Alert type="error" showIcon message={errorMessage} /> : null}
         {warningMessage ? <Alert type="warning" showIcon message={warningMessage} /> : null}
@@ -734,10 +760,11 @@ export function InstitutionQuestionExposureModal({
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
                   description={
                     exposedQuestions.length === 0
-                      ? // 할당제에서 배정 0건은 "제약 없음"이 아니라 "이 기관 학습자에게
-                        // 쓰기 문항이 하나도 안 보임"이다. 결과를 명시하지 않으면 관리자가
-                        // 정반대로 읽는다.
-                        '배정된 문항이 없습니다. 이 기관 소속 학습자에게는 쓰기 문항이 표시되지 않습니다.'
+                      ? // 배정 0건의 결과는 모드에 따라 정반대다. 명시하지 않으면 관리자가
+                        // 거꾸로 읽는다 — `배정분만` 이면 빈 화면, `제한 없음` 이면 제약 없음.
+                        isUnrestricted
+                        ? '배정된 문항이 없습니다. 지금은 제한 없음 모드라 소속 학습자도 노출 허용 문항을 모두 봅니다.'
+                        : '배정된 문항이 없습니다. 이 기관 소속 학습자에게는 쓰기 문항이 표시되지 않습니다.'
                       : '검색 결과가 없습니다.'
                   }
                 />

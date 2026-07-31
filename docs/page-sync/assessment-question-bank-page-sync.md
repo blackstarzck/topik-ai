@@ -101,7 +101,7 @@ last_reviewed_at: "2026-07-16"
 
 | 사용자 화면 후보 | 영향 상태 | 관리자 데이터 | 사용자 화면에 반영되는 방식 | 동기화 필요 시점 | 비고 |
 | --- | --- | --- | --- | --- | --- |
-| TOPIK 쓰기 시험 화면, 문제 풀이 화면, 현재 문항 보관함·추천 화면 | 확인됨(dev) | 번호별 정식 51~54 테이블의 학습자 허용 필드, `learner_problem_id`, `service_status`, 태그, 기관 매핑, `canonical_import_id`/`payload_hash` | v13은 `get_available_writing_questions`를 통해 read-only로 직접 소비합니다. `problem_id`는 `learner_problem_id=md5(question_id)::uuid`이며 `legacy_problem_id`를 사용하지 않습니다. 최종 노출 predicate는 `service_status='available' AND (사용자 affiliation_code 없음 OR 매핑.institution_code = 사용자 affiliation_code)`이며(무소속 학습자는 `available` 전체, 기관 소속 학습자는 자기 코드 매핑분만), 정답·채점표·원시 payload는 학습자 응답에서 제외합니다. 신규·기존 canonical identity는 v13 private registry가 소유합니다. | `service_status`/기관 매핑/정식 승격 버전 변경 다음 요청 | dev에 14:00/14:10/15:00/16:00 교정을 적용해 `public.problems` writing 0건과 registry FK를 확인했습니다. desktop/mobile headed E2E로 공개·제외의 다음 요청 반영, Q51~54·Q53 chart·추천·초안·history/PDF를 확인했고 실제 provider Q54 제출→피드백 canary도 통과했습니다. 운영 적용은 별도입니다. |
+| TOPIK 쓰기 시험 화면, 문제 풀이 화면, 현재 문항 보관함·추천 화면 | 확인됨(dev) | 번호별 정식 51~54 테이블의 학습자 허용 필드, `learner_problem_id`, `service_status`, 태그, 기관 매핑, `canonical_import_id`/`payload_hash` | v13은 `get_available_writing_questions`를 통해 read-only로 직접 소비합니다. `problem_id`는 `learner_problem_id=md5(question_id)::uuid`이며 `legacy_problem_id`를 사용하지 않습니다. 최종 노출 predicate는 `service_status='available' AND (사용자 affiliation_code 없음 OR 기관 노출 모드 = 제한 없음 OR 매핑.institution_code = 사용자 affiliation_code)`이며(무소속 학습자와 `제한 없음` 모드 기관 학습자는 `available` 전체, `배정분만` 모드 기관 학습자는 자기 코드 배정분만), 정답·채점표·원시 payload는 학습자 응답에서 제외합니다. 신규·기존 canonical identity는 v13 private registry가 소유합니다. | `service_status`/기관 매핑/정식 승격 버전 변경 다음 요청 | dev에 14:00/14:10/15:00/16:00 교정을 적용해 `public.problems` writing 0건과 registry FK를 확인했습니다. desktop/mobile headed E2E로 공개·제외의 다음 요청 반영, Q51~54·Q53 chart·추천·초안·history/PDF를 확인했고 실제 provider Q54 제출→피드백 canary도 통과했습니다. 운영 적용은 별도입니다. |
 
 ### 문항 수정 시 상태별 버전 동기화
 
@@ -145,7 +145,8 @@ last_reviewed_at: "2026-07-16"
 | 구분 | 표준 값/용어 | 내부 코드 후보 | 사용자 노출 라벨 | 비고 |
 | --- | --- | --- | --- | --- |
 | 노출 상태(노출 가능/노출 제외/내부 테스트) | available/excluded/internal_test | service_status | 사용자 직접 노출 라벨 아님(노출 on/off 결과로만 반영) | D-6 확정 — 유일한 물리 노출 상태, 기본 internal_test. 기관 노출보다 우선하는 전역 차단 조건 |
-| 기관 노출 상태 | 전체 공개/기관 한정/현재 미노출 | topik_writing_question_institution_exposure + service_status | 사용자 직접 노출 라벨 아님(최종 필터 결과로 반영) | 관리자 화면 라벨 축이며 학습자 노출 규칙과 1:1로 대응하지 않는다. 학습자 규칙은 기관 할당제 — 무소속 학습자는 `available` 전체를 보고, 기관 소속 학습자는 자기 코드 매핑분만 본다. 따라서 `전체 공개`(미매핑) 문항은 기관 소속 학습자에게는 보이지 않고, `기관 한정`(매핑) 문항도 무소속 학습자에게는 계속 보인다 — 라벨 재정의는 §13 미확정 항목. `service_status!='available'`이면 기존 매핑이 있어도 현재 미노출 |
+| 기관 배정 상태(문항 축) | 미배정 / 기관 N곳 배정 (+ 보조 태그 `전역 미노출`) | topik_writing_question_institution_exposure + service_status | 사용자 직접 노출 라벨 아님 | 라벨 축은 "누가 보는가"가 아니라 "몇 개 기관에 배정했나"다. 2026-07-30 재정의로 확정됐다(구 라벨 `전체 공개`/`기관 한정`은 양방향 모두 거짓이어서 폐기). `service_status!='available'`이면 기존 배정이 있어도 `전역 미노출` |
+| 기관 노출 모드(기관 축) | 제한 없음 / 배정분만 | topik_writing_institution_exposure_mode.exposure_mode | 사용자 직접 노출 라벨 아님 | **문항 축과 다른 축이다.** 기관 코드 단위 설정이며 `Users > 기관 코드`의 `수정`에서 바꾼다. `제한 없음`이면 그 기관 소속 학습자도 `available` 전체를 보고 배정 목록은 보존만 된다. `배정분만`이면 배정한 문항만 본다. 기본값은 `배정분만`(폴백은 항상 현행 동작). 폐기된 문항축 라벨 `전체 공개`와는 무관한 값이다 |
 | 태그 그룹(추천목적/반복방지/학습흐름/운영주의/대표문제/추천사용) | tag_master 사전(schema-rule §2) | question_tags | 사용자 비노출(내부 관리 포인트) | 부여/제거는 `/manage`에서 활성(P4 개방 완료), 별도 메모 필드 없음 |
 | 문항 번호 51~54 | 문항 번호 51~54 | page-specific enum candidate | 문항 번호 51~54 | 정확한 상태 세트는 IA와 데이터 계약 문서를 우선합니다. |
 | 정식 문항 버전 | 승격된 인박스 버전 | canonical_import_id + payload_hash | 사용자 직접 노출 없음 | 인박스 `is_latest`와 구분합니다. 제출 snapshot과 서버 guard가 동일 버전을 검증해야 합니다. |

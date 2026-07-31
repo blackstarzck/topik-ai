@@ -74,7 +74,7 @@ last_reviewed_at: "2026-06-26"
 | 사용자 화면 후보 | 영향 상태 | 관리자 데이터 | 사용자 화면에 반영되는 방식 | 동기화 필요 시점 | 비고 |
 | --- | --- | --- | --- | --- | --- |
 | 가입/QR 유입 | 확인됨 | InstitutionCode.code, profiles.affiliation_code | 사용자가 입력/QR로 유입된 코드가 회원 프로필에 기록됩니다. | 가입/코드 입력 시 | v13 가입 흐름과 연결 |
-| 기관 배정 TOPIK 쓰기 문항 | 확인됨 | InstitutionQuestionExposure + service_status | `service_status='available'`이고, 사용자 `affiliation_code`가 없거나(무소속) 매핑이 사용자 `affiliation_code`와 일치할 때 노출합니다. 즉 무소속 학습자는 전체를, 기관 소속 학습자는 자기 코드 매핑분만 봅니다. | 문항 목록 조회 시 | v13 학습자 경로에 `private.is_writing_question_visible_to_user`로 강제 적용 중(dev 실측 2026-07-30) |
+| 기관 배정 TOPIK 쓰기 문항 | 확인됨 | InstitutionQuestionExposure + service_status | `service_status='available'`이고, 사용자 `affiliation_code`가 없거나(무소속) 그 기관의 노출 모드가 `제한 없음` 이거나 배정이 사용자 `affiliation_code`와 일치할 때 노출합니다. 즉 무소속 학습자와 `제한 없음` 기관 학습자는 전체를, `배정분만` 기관 학습자는 자기 코드 배정분만 봅니다. | 문항 목록 조회 시 | v13 학습자 경로에 `private.is_writing_question_visible_to_user`로 강제 적용 중(dev 실측 2026-07-30) |
 | 회원 프로필/소속 표시 | 내부 전용 | profiles.affiliation_code | 관리자 운영 정보로 우선 사용합니다. | 관리자 조회 시 | 사용자 self-service 수정은 비목표 |
 
 ## 8. 연결되는 페이지
@@ -114,7 +114,7 @@ last_reviewed_at: "2026-06-26"
 - `src/features/users/pages/institution-codes-page.tsx`와 `docs/specs/page-ia/users-institution-codes-page-ia.md`를 함께 확인합니다.
 - 기관 코드 변경은 `Users`, `Assessment`, `System > 감사 로그` 영향이 있으므로 문서/테스트를 같이 평가합니다.
 - 코드 삭제는 `admin_delete_institution_code(p_code,p_reason)` 경로로만 수행하고, `profiles.affiliation_code`가 남은 회원은 먼저 회원 관리 모달에서 소속 해제해야 합니다.
-- 기관별 문항 필터 조건은 `service_status='available' AND (사용자 affiliation_code 없음 OR 매핑.institution_code = 사용자 affiliation_code)`입니다. v13 학습자 경로에는 이미 강제 적용되어 있습니다 — `docs/requests/v13-institution-question-exposure-handoff-2026-06-26.md`가 요청한 "매핑 없음=전체 공개" 잠금 모델은 채택되지 않았으니 그 문서의 상단 정정 안내를 함께 보십시오.
+- 기관별 문항 필터 조건은 `service_status='available' AND (사용자 affiliation_code 없음 OR 기관 노출 모드 = 제한 없음 OR 매핑.institution_code = 사용자 affiliation_code)`입니다. v13 학습자 경로에는 이미 강제 적용되어 있습니다 — `docs/requests/v13-institution-question-exposure-handoff-2026-06-26.md`가 요청한 "매핑 없음=전체 공개" 잠금 모델은 채택되지 않았으니 그 문서의 상단 정정 안내를 함께 보십시오.
 
 ## 13. 미확정 항목
 

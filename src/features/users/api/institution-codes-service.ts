@@ -3,10 +3,16 @@ import type {
   InstitutionCodeKind,
   InstitutionCodeMember,
   InstitutionCodeStatus,
+  InstitutionExposureMode,
+  InstitutionExposureModeRow,
   InstitutionInvitation,
   InstitutionInvitationStatus
 } from '../model/institution-codes-types';
-import { mockInstitutionCodes } from './mock-institution-codes';
+import {
+  mockInstitutionCodes,
+  mockInstitutionExposureModes,
+  patchMockInstitutionExposureMode
+} from './mock-institution-codes';
 import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
 import { institutionCodesDataSource } from './institution-codes-data-source';
 import {
@@ -17,7 +23,9 @@ import {
   inviteInstitutionMembersViaRpc,
   loadInstitutionCodeMembersFromSupabase,
   loadInstitutionCodesFromSupabase,
+  loadInstitutionExposureModesFromSupabase,
   loadInstitutionInvitationsFromSupabase,
+  setInstitutionExposureModeViaRpc,
   updateInstitutionCodeViaRpc
 } from './supabase-institution-codes-service';
 
@@ -44,6 +52,12 @@ export type UpdateInstitutionCodePayload = {
 
 export type DeleteInstitutionCodePayload = {
   code: string;
+  reason: string;
+};
+
+export type SetInstitutionExposureModePayload = {
+  code: string;
+  exposureMode: InstitutionExposureMode;
   reason: string;
 };
 
@@ -119,10 +133,50 @@ async function persistDelete(
   return payload.code;
 }
 
+async function loadInstitutionExposureModes(
+  signal?: AbortSignal
+): Promise<InstitutionExposureModeRow[]> {
+  if (isSupabaseSource) {
+    return loadInstitutionExposureModesFromSupabase(signal);
+  }
+
+  await sleep(180, signal);
+  return mockInstitutionExposureModes;
+}
+
+async function persistExposureMode(
+  payload: SetInstitutionExposureModePayload,
+  signal?: AbortSignal
+): Promise<string> {
+  if (isSupabaseSource) {
+    await setInstitutionExposureModeViaRpc(payload);
+    return payload.code;
+  }
+
+  await sleep(200, signal);
+  // mock 경로도 모드만 patch 한다 — 배정 건수는 건드리지 않는다(모드 전환이 배정을
+  // 지우지 않는다는 계약을 mock 에서도 성립시켜 e2e 로 증명할 수 있게).
+  patchMockInstitutionExposureMode(payload.code, payload.exposureMode, payload.reason);
+  return payload.code;
+}
+
 export function fetchInstitutionCodesSafe(signal?: AbortSignal) {
   return toSafeResult(() =>
     withRetry(() => loadInstitutionCodes(signal), { maxRetries: 1 })
   );
+}
+
+export function fetchInstitutionExposureModesSafe(signal?: AbortSignal) {
+  return toSafeResult(() =>
+    withRetry(() => loadInstitutionExposureModes(signal), { maxRetries: 1 })
+  );
+}
+
+export function setInstitutionExposureModeSafe(
+  payload: SetInstitutionExposureModePayload,
+  signal?: AbortSignal
+) {
+  return toSafeResult(() => persistExposureMode(payload, signal));
 }
 
 export function createInstitutionCodeSafe(

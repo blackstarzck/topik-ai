@@ -1,9 +1,15 @@
 import { supabaseClient } from '../../../shared/api/supabase-client';
+import {
+  defaultInstitutionExposureMode,
+  institutionExposureModes
+} from '../model/institution-codes-types';
 import type {
   InstitutionCode,
   InstitutionCodeKind,
   InstitutionCodeMember,
   InstitutionCodeStatus,
+  InstitutionExposureMode,
+  InstitutionExposureModeRow,
   InstitutionInvitation,
   InstitutionInvitationStatus
 } from '../model/institution-codes-types';
@@ -76,6 +82,69 @@ export async function loadInstitutionCodesFromSupabase(
   throwIfAborted(signal);
 
   return ((data as InstitutionCodeRow[] | null) ?? []).map(mapRow);
+}
+
+type InstitutionExposureModeRpcRow = {
+  code: string;
+  exposure_mode: string | null;
+  assigned_question_count: number | null;
+  reason: string | null;
+  updated_at: string | null;
+};
+
+/**
+ * 알 수 없는 값이 오면 현행 동작(`배정분만`)으로 좁힌다. UI 배포와 DB 마이그 사이의 창에서
+ * null 이 빈 Tag 로 새는 것을 막는다 — 폴백은 항상 `제한 없음` 이 아니어야 한다.
+ */
+function toExposureMode(value: string | null): InstitutionExposureMode {
+  return institutionExposureModes.includes(value as InstitutionExposureMode)
+    ? (value as InstitutionExposureMode)
+    : defaultInstitutionExposureMode;
+}
+
+function mapExposureModeRow(
+  row: InstitutionExposureModeRpcRow
+): InstitutionExposureModeRow {
+  return {
+    code: row.code,
+    exposureMode: toExposureMode(row.exposure_mode),
+    assignedQuestionCount: Number(row.assigned_question_count ?? 0),
+    reason: row.reason ?? '',
+    updatedAt: toDateText(row.updated_at)
+  };
+}
+
+export async function loadInstitutionExposureModesFromSupabase(
+  signal?: AbortSignal
+): Promise<InstitutionExposureModeRow[]> {
+  const client = requireClient();
+  throwIfAborted(signal);
+
+  const { data, error } = await client.rpc('admin_list_institution_exposure_modes', {
+    p_codes: null
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+  throwIfAborted(signal);
+
+  return ((data as InstitutionExposureModeRpcRow[] | null) ?? []).map(mapExposureModeRow);
+}
+
+export async function setInstitutionExposureModeViaRpc(input: {
+  code: string;
+  exposureMode: InstitutionExposureMode;
+  reason: string;
+}): Promise<void> {
+  const client = requireClient();
+  const { error } = await client.rpc('admin_set_institution_exposure_mode', {
+    p_code: input.code,
+    p_mode: input.exposureMode,
+    p_reason: input.reason
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
 }
 
 export async function createInstitutionCodeViaRpc(

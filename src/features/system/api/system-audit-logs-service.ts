@@ -51,6 +51,9 @@ function getAuditActionLabel(action: string): string {
   if (action === 'question_institutions_cleared') {
     return '기관 노출 설정 해제';
   }
+  if (action === 'institution_exposure_mode_changed') {
+    return '기관 노출 모드 변경';
+  }
   if (action === 'institution_code_created') {
     return '기관 코드 생성';
   }
