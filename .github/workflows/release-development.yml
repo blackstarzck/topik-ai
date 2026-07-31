@@ -135,6 +135,7 @@ jobs:
           npm run harness:check
           npm run check:migration-boundary -- --v13-root=.ci/v13
           npm run check:client-source-secrets
+          npm run check:v13-archive -- --v13-root .ci/v13 --v13-sha "$V13_CONTRACT_SHA" --json-out development-evidence/v13-archive.json
           npm run db:contracts:verify -- --json-out development-evidence/migration-contracts.json
           npm run test:unit
           npm run build
@@ -293,6 +294,7 @@ jobs:
           npm run harness:check
           npm run check:migration-boundary -- --v13-root=.ci/v13
           npm run check:client-source-secrets
+          npm run check:v13-archive -- --v13-root .ci/v13 --v13-sha "$V13_CONTRACT_SHA" --json-out development-evidence/v13-archive.json
           npm run db:contracts:verify -- --json-out development-evidence/migration-contracts.json
           npm run check:expand-migrations -- --base "${{ needs.classify.outputs.base_sha }}"
           npm run test:unit

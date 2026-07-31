@@ -183,6 +183,7 @@
 ### `docs/plans`
 - `plans/assessment-ia-consolidation-plan.md` — 평가 메뉴 IA 통합 실행계획(쓰기 3페이지 → 메뉴 1 + route-backed 탭 2: 문항/가져온 문항) — 2026-06-23
 - `plans/auth-email-template-management-plan.md` — 인증메일(Supabase Auth) 템플릿 관리와 커스텀 도메인 연동 실행 계획
+- `plans/v13-db-ownership-transfer-program-plan.md` — v13 → topik-ai DB 마이그레이션 소유권(저작·장부·CI 계약·운영 적용) 이전 프로그램 설계안 + 오너 결정 표(D1~D10) — 2026-07-30 오너 승인 완료(전 항목 권고안 채택)
 
 ## 운영 문서
 - 실행 지침: `AGENTS.md`

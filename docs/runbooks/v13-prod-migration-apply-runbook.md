@@ -4,7 +4,7 @@
 
 이 문서는 **v13→topik-ai DB 소유권 이전 프로그램의 M6(운영 catch-up) 실행 절차서**다. 전략·결정·로드맵의 단일 원문은 그 프로그램 계획서(오너 승인 2026-07-30, D1~D10 확정)이며 이 문서와 충돌하면 그 계획이 우선한다.
 
-> ⏳ 계획서는 아직 **미머지**다 — 커밋 `4ee94f2`, 브랜치 `claude/vibrant-moser-31cbe2`, 경로 docs/plans/v13-db-ownership-transfer-program-plan.md. 머지되면 이 문서의 두 참조(여기와 §8)를 백틱 경로로 승격한다(현재는 doc-crosslink 검사가 dangling 으로 잡는다).
+> 계획서는 main 에 머지됐다(PR #67, squash `8629ebf`) — [`docs/plans/v13-db-ownership-transfer-program-plan.md`](../plans/v13-db-ownership-transfer-program-plan.md).
 
 v13은 원격 적용을 하지 않는다(v13 AGENTS.md·v13 `supabase/README.md`). 적용 집행은 topik-ai 운영면이 담당한다.
 
@@ -192,7 +192,7 @@ manifest `blockedMigrations` 5건. **운영에는 컷오버 전에 순서대로 
 
 ## 8. 참고
 
-- 전략·로드맵 SoT: 소유권 이전 프로그램 계획서 — docs/plans/v13-db-ownership-transfer-program-plan.md (미머지: 커밋 `4ee94f2`)
+- 전략·로드맵 SoT: [`docs/plans/v13-db-ownership-transfer-program-plan.md`](../plans/v13-db-ownership-transfer-program-plan.md)
 - 파일 목록 모체: `scripts/db/manifests/v13-shared-dev.json` (운영판은 `v13-shared-prod.json` 신설 예정)
 - v13 이력: v13 `supabase/migrations/INDEX.md`, 롤백: v13 `supabase/migrations/down/`
 - 백업: `docs/runbooks/topik-prod-onprem-backup.md` · 소유권 경계: `docs/architecture/shared-supabase-schema-ownership.md`

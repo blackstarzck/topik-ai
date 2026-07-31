@@ -146,6 +146,15 @@ jobs:
         run: |
           npm run check:migration-boundary -- --v13-root=.ci/v13
           npm run check:client-source-secrets
+      # Dual verification (ownership transfer M3): the replay below reads the
+      # learner history from the in-repo archive, so prove the archive is still
+      # byte-identical to the pinned v13 checkout while both sources exist.
+      - name: Verify the learner archive against the pinned v13 checkout
+        run: >-
+          npm run check:v13-archive --
+          --v13-root .ci/v13
+          --v13-sha $V13_CONTRACT_SHA
+          --json-out ci-artifacts/v13-archive.json
       - name: Verify migration manifests and immutable expand changes
         shell: bash
         run: |
@@ -247,7 +256,11 @@ jobs:
               test "$DB_RESULT" = skipped
               test "$BROWSER_RESULT" = success
               ;;
-            sync-only:full|db-only:full|app-db:full)
+            # app-only:full is reachable whenever a control-plane touch escalates the
+            # profile on a change that also touches an app path (classifier v4). The
+            # required set is the same as the other full-profile plans: db-contract is
+            # gated on the profile, not on the plan.
+            app-only:full|sync-only:full|db-only:full|app-db:full)
               test "$BLOCKED_RESULT" = skipped
               test "$LIGHT_RESULT" = skipped
               test "$QUALITY_RESULT" = success

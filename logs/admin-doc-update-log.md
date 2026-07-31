@@ -867,6 +867,47 @@
 - Contract: 폴백으로 의미를 바꾸지 않고 **잘못된 상태를 도달 불가**하게 만들었다. 소속을 부여할 수 있는 라이브 경로는 `admin_assign_institution_code`와 `respond_institution_invitation` 둘뿐이고 초대는 `admin_invite_institution_members`가 만든다(가입·QR 경로는 `affiliation_code`를 쓰지 않음 — `handle_new_user` 실측 확인). 따라서 관리자 진입점 2곳에 선행조건 검사를 넣고, 반대 방향(배정 삭제)은 exposure 테이블 statement 트리거로 막았다. 트리거를 고른 이유는 배정을 지우는 RPC가 셋(set/clear/remove)이고 개별 패치는 미래 경로를 놓치기 때문이다.
 - Validation: dev 적용 후 실제 프로브 7종 전부 PASS — 헬퍼 판정, 배정 0건 배정·초대 거부, 배정 1건 후 통과(과차단 없음), 회원 있는 기관의 마지막 배정 삭제 거부, 회원 없으면 통과, 기존 2,118행/4기관 불변, 임시 흔적 정리 확인. 학습자 가시성 재실측 결과 적용 전과 동일(무소속 700/700 · CAMPAIGN-01 700 · PROFESSOR-KWON 700 · convention-vn 18/700) — 회귀 0. `harness:check`·`check:migration-boundary`·`db:contracts:verify`·`test:unit` 524/524 PASS.
 - Not-updated: 운영 DB 미적용. 그리고 이 1단계는 "제한 없음"을 표현하려면 여전히 문항을 전량 배정해야 하며, 이후 추가되는 신규 문항은 그 기관에 자동 포함되지 않는다(드리프트). 2단계(기관별 `전체 공개 / 배정분만` 스위치)에서 해소 대상으로 남겼다.
+## 2026-07-30 v13 → topik-ai DB 마이그레이션 소유권 이전 프로그램 설계안
+
+- Added: `docs/plans/v13-db-ownership-transfer-program-plan.md` — 오너 확정 목표(v13=사용자 화면 코드만, DB 관리 권한 전부 topik-ai, 런타임 쓰기는 유지 — 해석 A)의 이행 프로그램 설계안. 다섯 설계 질문(이전 단위·장부 전략·CI 계약·v13 차단 가드·운영 적용 순서)별 옵션/권고 + 오너 결정 표 D1~D10 + 단계 로드맵 M0~M7.
+- Updated: `docs/README.md` `docs/plans` 인덱스에 신규 문서 1행 추가.
+- Reason: 구현이 아니라 설계·결정 요청 단계. 핵심 실측 — v13 파일 100 = dev 장부 92 + blocked 5 + deferred 2 + adopted 1; 운영 장부도 92행이나 집합이 달라 dev-only 7 = 운영 catch-up 백로그, 운영-only 7 = blocked/deferred가 컷오버 전 순서로 적용된 정당한 역사. V13_CONTRACT_SHA 소비처 전수(워크플로 6 + 밸리데이터 2 + 계약 테스트 + N-1 업그레이드 경로)와 expand-gate 범위(신규 디렉터리는 범위 밖) 확인.
+- Validation: 문서 작업만(코드·DB 무변경). 장부 실측은 read-only `run-sql.mjs` 쿼리(dev/운영 각 1회 + version 목록 대사).
+- Decision: 오너 승인(2026-07-30) — D1~D10 전 항목 권고안 채택(일괄 아카이브 import · 즉시 동결 · 장부 유지+쓰기 주체 이전 · `migrations-v13/` 연속 저작 · 이중검증 릴리스 경유 · v13 supabase/ 당분간 보존 · CI 가드 우선 · 자격증명 M1 직후 회전 · 운영 catch-up M2 직후 게이트식 · blocked 확정+deferred 개별). 문서 상태를 "승인 완료"로 갱신.
+
+## 2026-07-30 M2 — v13 저작 learner 마이그레이션 아카이브 채택
+
+- Added: `supabase/migrations-v13/`(forward 100 + down 18 + INDEX.md, 계약 SHA `0ee14993` 바이트 채택), `scripts/db/v13-archive.mjs`(import/verify 러너), `scripts/db/manifests/v13-archive.json`, `tests/unit/v13-archive.test.mjs`(17건).
+- Updated: `supabase/README.md` §2.5 신설(아카이브는 적용 대상 아님·disposition 단일 권위·워터마크), `docs/architecture/shared-supabase-schema-ownership.md` §2.2 decision record(관리 권한 이전·owner 열 해석·M2 완료), `package.json`(`check:v13-archive` + `harness:admin-boundary:local` 체인 편입).
+- Reason: 이전 프로그램 M2. CI 재생과 원격 적용이 외부 저장소 체크아웃에 의존하지 않게 커스터디를 옮긴다. DB 무접촉(적용·재기록 0), 장부 소속 변경 0.
+- Contract: 아카이브 존재 ≠ 적용 가능 — `disposition`(applied 92·blocked 5·deferred 2·adopted-elsewhere 1)이 단일 권위. `20260723170000`은 admin 네임스페이스가 적용·기록을 소유하므로 `replayOnly`로 잠가 이중 기록을 원천 차단. 바이트 동일성은 sha256 + **git blob sha 재계산**으로 v13 체크아웃 없이도 증명된다(M4 핀 제거 전제). 워터마크 `20260729120000` 이하=v13 저작, 초과=topik-ai 저작.
+- Validation: `--import` 후 오프라인 `--verify`(100+18, watermark 일치)와 v13 원본 대조 `--v13-root/--v13-sha` byte parity 모두 통과. disposition 분해가 dev 장부 92행과 정확히 일치(러너가 불일치 시 fail-closed). 신규 단위 17건 통과.
+
+## 2026-07-30 M3 — learner 소스를 아카이브로 전환하고 v13 체크아웃을 대조 대상으로 격하
+
+- Updated: `scripts/ci/run-shadow-contract.mjs`(재생 입력=아카이브, `--v13-dir`는 대조용·선택, config.toml 벤더링, N-1 분기), `scripts/check-migration-ownership-boundary.mjs`(`resolveLearnerMigrationsRoot` 신설·기본 아카이브·`resolveV13Root`는 외부 요청 시에만 경로 반환), `scripts/db/apply-v13-migration.mjs`(`--source archive` 기본 + 매니페스트 sha256 재해시 + blocked/deferred/replayOnly 거부 + `body_source` provenance), `.github/workflows/{ci,database-health,release-development}.yml`(아카이브 패리티 어서션 추가), `supabase/README.md` §2.5.1, 테스트 3종.
+- Added: `scripts/ci/fixtures/v13-supabase-config.toml`(계약 SHA 시점 v13 config 바이트 벤더링 — shadow의 마지막 v13 의존 제거).
+- Reason: C2 이중검증. 재생·경계·적용의 기본 소스를 내부로 옮기되, 두 소스가 공존하는 동안 바이트 동일성을 릴리스 증거로 남긴다. 부수 효과로 `check:migration-boundary`가 워크트리에서 실행 가능해졌다(종전 crash).
+- Contract: `--v13-dir` 없이도 shadow가 성립하므로 M4는 "배선 삭제"만 남는다. N-1 업그레이드 재생은 N-1 트리에 아카이브가 있으면 그것을 쓰고 없으면 핀으로 v13 fetch — 회사 promote가 M4 이후 릴리스에 도달할 때까지 이 분기를 유지한다. `V13_CONTRACT_SHA`와 migration digest는 M3에서 건드리지 않는다(evidence 체인 유지).
+- Validation: 러너 `--status` 아카이브 소스로 dev 장부 조회 성공, B9 dry-run 아카이브 vs git **1191줄 동일 SQL·동일 sha256**, blocked/deferred/replayOnly 3종 거부 + 정상 1건 허용 실측, boundary 인자 없이(archive)·`--v13-root`(v13-checkout) 양쪽 통과, 아카이브 패리티 검증 통과, 단위 65건(신규 12건 포함).
+- Not-tested: shadow replay 전량 실행은 Docker+Supabase CLI 2.105.0 필요 — CI(db-contract/database-health)에서 검증한다. 로컬은 코드 경로·패리티까지.
+
+## 2026-07-30 M5 — expand-gate 범위 확장 + 신규 learner 저작 개통
+
+- Updated: `scripts/db/check-expand-migrations.mjs`(`migrations-v13` 편입 + `isLearnerHistoryPath`/`loadLearnerHistoryWatermark` 신설), `scripts/db/v13-archive.mjs`(`origin` 필드·`authored` disposition·`--register` 모드·워터마크를 v13-origin 한정으로 계산), `scripts/db/manifests/v13-archive.json`(전 항목 `origin: v13`), `supabase/README.md` §2.5.2, 테스트 2종.
+- Reason: M2 아카이브를 게이트 사각지대로 남기지 않고(수정·삭제 차단), 신규 learner 마이그를 이 저장소에서 저작할 수 있는 경로를 실제로 개통한다.
+- Contract: 워터마크 이하 채택 역사는 **불변성은 강제, contract operation 검사는 면제**(그 drop은 이미 실행된 역사 — 판정하면 채택 자체가 막힘). 워터마크 초과는 다른 네임스페이스와 동일하게 expand-only. 워터마크를 못 읽으면 면제 없음(fail-closed). 워터마크는 `origin: v13` 항목만으로 계산하므로 신규 저작이 동결 경계를 밀어내지 못한다. `--import` 재실행은 저작분을 바이트째 보존하며, 저작 파일이 사라졌으면 중단한다.
+- Validation: **함정 시나리오 실증** — 확장된 게이트로 M2 커밋 diff(역사 100파일 status A)를 검사해 통과(`100 new migration(s)`), 면제가 없으면 역사적 drop이 오탐될 자리. 저작 채널 4단계 실측(미등재 파일 verify 실패 → `--register` → verify 통과·워터마크 불변(101 forward여도 20260729120000) → 워터마크 이하 거부) 후 프로브 정리. 신규 단위 11건(누적 v13-archive 21 + expand-gate 18) 통과.
+- Deferred: 계획서 M5의 "릴리스 manifest에 learner 네임스페이스 추가"는 미착수. 사유 = 릴리스 대상 learner 마이그가 아직 0건이고, 세 번째 contract 편입은 `compute-migration-digest`(=운영 promote evidence 대사값)를 바꾸므로 M4의 evidence 재작업과 같은 릴리스에 묶는 것이 안전하다. 계획서 §5 M5 항목에 이 분리를 기록했다.
+
+## 2026-07-30 M6 — 운영 learner 적용 경로 개통 + 운영 매니페스트 (결정 D9)
+
+- Updated: `scripts/db/apply-v13-migration.mjs`(`assertNotProduction` 제거 → `assertEnvironmentMatchesTarget` 신설, `assertWriteEnvironment`에 production 분기, `assertNoOrderInversion` 신설, `--status`의 blocked 판정을 `expectRecorded` 기준으로 환경별 분기), `scripts/db/manifests/v13-shared-prod.json`(신규), `supabase/README.md` §2.5.2, 기존 가드 테스트 1건 적응.
+- Reason: 러너가 운영을 3중 거부하던 상태를 D9 승인대로 게이트식으로 해금하고, 운영 백로그 7파일의 정본 목록·순서·probe를 만든다.
+- Contract: 매니페스트↔타깃 쌍 일치 + `--write`에서만 confirm 토큰 + 배치 승인이 **CLI가 해석한 `--batch` 값**과 일치 + 순서 역전 fail-closed. `--status`·`--dry-run`은 토큰 없이 동작한다(상시 export 유도가 게이트를 썩힌다). blocked 5건은 운영엔 정당한 역사이므로 `expectRecorded: true`로 표시하고 재적용만 금지한다.
+- Validation: 운영 read-only 지문으로 매니페스트 전체를 실측 도출 — 백로그 5개 마커 전부 absent(부분 적용 없음), 선행조건 3종(`private.is_email_confirmed`·`public.accept_affiliation_invite`·`public.is_supported_country_code`) 전부 present → dev가 필요했던 `20260527113000` 선행 수리는 운영엔 불필요, P3 선행 함수 9종 전부 present, P4·P6 postcondition 대상 absent. `--status`가 운영에서 백로그 7 pending·blocked 5 recorded-history-ok로 정확히 출력. 가드 거부 5케이스 오프라인 검증.
+- Incident: 가드 검증을 **실제 운영 `--write`로 수행**했고, 당시 배치 승인 가드가 환경변수 두 개를 맞비교해 **둘 다 미설정 시 `undefined !== undefined`=false로 통과** → P1(`20260718120000`)이 승인 없이 topik-prod에 적용됐다. 배포된 운영 앱은 boolean-only 오버로드를 호출하는데(같은 날 05:21 UTC 204 성공이 증거, 그 시점 jsonb 오버로드 부재) 그 마이그레이션이 boolean EXECUTE를 회수하므로 온보딩이 잠재적으로 파손됐다. 같은 날 v13 down/20260718120000 + 장부 행 삭제를 한 트랜잭션으로 실행해 원복(boolean 3종 EXECUTE=true·anon 미부여, jsonb 3종 제거, 장부 92행). 창 동안 호출·가입·권한오류 전부 0건 = 사용자 영향 없음. 교훈 2가지: ①가드 검증은 DB에 닿지 않는 단위 테스트로만 한다 ②승인 부재가 승인 일치로 읽히는 비교를 만들지 않는다.
+- Deferred: 새 가드 3종의 단위 테스트는 후속 커밋. M5b(릴리스 manifest에 learner 편입)는 M4와 동일 릴리스.
 
 ## 2026-07-30 v13 운영 적용 runbook 초안 + v13 down/ 롤백 파일 보강
 

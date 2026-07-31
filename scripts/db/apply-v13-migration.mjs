@@ -65,13 +65,57 @@ export function parseMigrationFileName(fileName) {
   return { version: match[1], name: match[2], fileName };
 }
 
-export function assertNotProduction(projectRef) {
-  if (projectRef === PRODUCTION_PROJECT_REF) {
+// Production is reachable only through a manifest that declares itself production
+// AND the confirm variable naming that same project (ownership transfer D9). A
+// development manifest can never be pointed at production by changing env vars,
+// and a production manifest can never be applied without the confirm token.
+export function assertEnvironmentMatchesTarget({ projectRef, manifest, env }) {
+  const declared = manifest?.environment ?? 'development';
+  const isProductionTarget = projectRef === PRODUCTION_PROJECT_REF;
+  if (declared !== 'production') {
+    if (isProductionTarget) {
+      fail(
+        `Refusing to target the production project ${projectRef} with a ${declared} manifest. `
+        + 'Production apply requires the production manifest and its own approval.'
+      );
+    }
+    if (env.SUPABASE_PRODUCTION_CONFIRM) {
+      fail('SUPABASE_PRODUCTION_CONFIRM must not be set for a development manifest.');
+    }
+    return { target: 'development' };
+  }
+  if (!isProductionTarget) {
     fail(
-      `Refusing to target the production project ${projectRef}. `
-      + 'This runner is development-only; production apply is a separate approved procedure.'
+      `The production manifest may only target ${PRODUCTION_PROJECT_REF}, got ${projectRef}.`
     );
   }
+  // The confirm token is checked in assertWriteEnvironment, not here: --status and
+  // --dry-run must stay usable without it. Requiring it for read-only work would
+  // train operators to keep it exported, which is exactly how a write gate rots.
+  return { target: 'production' };
+}
+
+// A migration whose version is below an already-recorded one must not be applied
+// after it: the learner history is replayed in timestamp order, so filling a gap
+// late produces a tracker whose order no clean replay can reproduce. Pending
+// lower-version work has to be applied first — or explicitly reclassified.
+export function assertNoOrderInversion({ batchName, files, recordedVersions, pendingVersions }) {
+  const recorded = [...recordedVersions].sort();
+  const highestRecorded = recorded.at(-1);
+  if (!highestRecorded) return { checked: true, highestRecorded: null };
+  for (const file of files) {
+    const earlierPending = [...pendingVersions]
+      .filter((version) => version < file.version && version !== file.version)
+      .sort();
+    if (earlierPending.length > 0 && file.version > highestRecorded) {
+      fail(
+        `Batch ${batchName} would apply ${file.fileName} while lower unapplied version(s) remain `
+        + `pending in this manifest: ${earlierPending.join(', ')}. Apply those first so the tracker `
+        + 'stays replayable in timestamp order.'
+      );
+    }
+  }
+  return { checked: true, highestRecorded };
 }
 
 export function assertQualifiedTracker(trackerTable) {
@@ -222,6 +266,7 @@ export function buildBatchSql({
   sourceGitSha,
   operator,
   appliedAt,
+  bodySource = 'archive',
   lockTimeout = '5s',
   statementTimeout = '180s',
 }) {
@@ -242,6 +287,7 @@ export function buildBatchSql({
       `batch=${batchName};`,
       `file_sha256=${file.checksum};`,
       `v13_git_sha=${sourceGitSha};`,
+      `body_source=${bodySource};`,
       `operator=${operator}`,
     ].join(' ');
     lines.push(`-- ${file.fileName} (sha256 ${file.checksum})`);
@@ -268,6 +314,32 @@ export function readMigrationFromGit({ v13Root, sourceGitSha, migrationsDir, fil
   return raw.replace(/^﻿/, '').replace(/\r\n/g, '\n');
 }
 
+// The learner history is vendored in this repo (ownership transfer M2), so the
+// default body source is the archive rather than another repository's git store.
+// The archive manifest's per-file sha256 is re-checked here: the archive verifier
+// is a separate gate, and an apply must never trust bytes it did not hash itself.
+export function readMigrationFromArchive({ archiveDir, manifest, fileName }) {
+  const entry = (manifest.files ?? []).find((file) => file.name === fileName);
+  if (!entry) fail(`${fileName} is not listed in the learner archive manifest.`);
+  if (entry.disposition === 'blocked' || entry.disposition === 'deferred') {
+    fail(`${fileName} is ${entry.disposition} in the archive and must not be applied: ${entry.reason}`);
+  }
+  if (entry.replayOnly) {
+    fail(
+      `${fileName} is replay-only in the archive because ${entry.adoptedAs} owns its apply and `
+      + 'tracker record. Applying it here would record one migration in two trackers.'
+    );
+  }
+  const path = resolve(archiveDir, fileName);
+  if (!existsSync(path)) fail(`${fileName} is missing from the archive at ${archiveDir}.`);
+  const bytes = readFileSync(path);
+  const actual = sha256(bytes);
+  if (actual !== entry.sha256) {
+    fail(`${fileName} sha256 drift: manifest ${entry.sha256}, archive ${actual}.`);
+  }
+  return bytes.toString('utf8').replace(/^﻿/, '').replace(/\r\n/g, '\n');
+}
+
 function getArgValue(args, flag) {
   const index = args.indexOf(flag);
   if (index < 0) return null;
@@ -282,7 +354,7 @@ export function resolveAction(args) {
   return (actions[0] ?? '--status').replace('--', '');
 }
 
-export function assertWriteEnvironment(env) {
+export function assertWriteEnvironment(env, { target = 'development', batchName = null } = {}) {
   const projectRef = env.SUPABASE_PROJECT_REF;
   if (env.SUPABASE_EXPECTED_PROJECT_REF !== projectRef) {
     fail('Writes require SUPABASE_EXPECTED_PROJECT_REF to match SUPABASE_PROJECT_REF.');
@@ -292,6 +364,39 @@ export function assertWriteEnvironment(env) {
       'Writes require SUPABASE_SQL_MAX_ATTEMPTS=1. Retrying a committed batch would '
       + 're-run non-idempotent DDL and report a successful apply as a failure.'
     );
+  }
+  if (target === 'production') {
+    if (env.SUPABASE_PRODUCTION_CONFIRM !== PRODUCTION_PROJECT_REF) {
+      fail(
+        `Production writes require SUPABASE_PRODUCTION_CONFIRM=${PRODUCTION_PROJECT_REF}. `
+        + 'This is a deliberate second key, not a formality.'
+      );
+    }
+    // Approval must name the batch actually being applied, so one approval cannot
+    // walk the whole sequence (ownership transfer D9: per-batch approval).
+    //
+    // This is compared against the CLI's --batch value, never against a second env
+    // var. An earlier revision compared two env vars, and with both unset the
+    // comparison `undefined !== undefined` was false — the guard passed and a
+    // production batch was applied unapproved. Absent approval must never read as
+    // matching approval.
+    const approved = env.SUPABASE_PRODUCTION_APPROVED_BATCH;
+    if (typeof approved !== 'string' || approved.trim().length === 0) {
+      fail(
+        'Production writes require SUPABASE_PRODUCTION_APPROVED_BATCH to name the batch being '
+        + 'applied. Approval is per batch and must be set explicitly.'
+      );
+    }
+    if (typeof batchName !== 'string' || batchName.trim().length === 0) {
+      fail('Production writes require a resolved --batch name to check approval against.');
+    }
+    if (approved.trim() !== batchName.trim()) {
+      fail(
+        `SUPABASE_PRODUCTION_APPROVED_BATCH=${approved} does not match the batch being applied `
+        + `(${batchName}). Approval is per batch.`
+      );
+    }
+    return;
   }
   if (env.SUPABASE_PRODUCTION_CONFIRM) {
     fail('SUPABASE_PRODUCTION_CONFIRM must not be set for this runner.');
@@ -319,13 +424,18 @@ async function probe({ entries, projectRef, token, label }) {
 
 function usage() {
   console.log(`Usage:
-  node scripts/db/apply-v13-migration.mjs --manifest <path> --v13-root <path> --v13-sha <sha40> \\
-    [--batch <name>] [--status | --dry-run | --write] [--operator <name>] [--env-file <path>]
+  node scripts/db/apply-v13-migration.mjs --manifest <path> \\
+    [--batch <name>] [--status | --dry-run | --write] [--operator <name>] [--env-file <path>] \\
+    [--source archive|git] [--v13-root <path> --v13-sha <sha40>]
 
   --status    (default) read-only: tracker state for the whole sequence
   --dry-run   print the generated SQL for one batch, no network
   --write     apply one batch. Requires SUPABASE_EXPECTED_PROJECT_REF and
               SUPABASE_SQL_MAX_ATTEMPTS=1.
+  --source    archive (default) reads bodies from supabase/migrations-v13 and
+              re-hashes them against scripts/db/manifests/v13-archive.json;
+              blocked, deferred and replay-only files are refused. git reads from
+              a v13 checkout's object store and needs --v13-root/--v13-sha.
 
 Environment: SUPABASE_PROJECT_REF, SUPABASE_ACCESS_TOKEN.
   --env-file defaults to ./.env.local; point it at another worktree's file
@@ -349,22 +459,49 @@ export async function main(argv = process.argv.slice(2)) {
   const projectRef = process.env.SUPABASE_PROJECT_REF;
   const token = process.env.SUPABASE_ACCESS_TOKEN;
   if (!projectRef || !token) fail('SUPABASE_PROJECT_REF and SUPABASE_ACCESS_TOKEN are required.');
-  assertNotProduction(projectRef);
+  const { target } = assertEnvironmentMatchesTarget({
+    projectRef,
+    manifest,
+    env: process.env,
+  });
   assertManifestProjectRef(manifest.projectRef, projectRef);
 
   const trackerTable = assertQualifiedTracker(manifest.trackerTable);
+  // Default source is the in-repo learner archive; `--source git` keeps the
+  // original path for as long as a v13 checkout is still the reference.
+  const bodySource = getArgValue(argv, '--source') ?? 'archive';
+  if (bodySource !== 'archive' && bodySource !== 'git') {
+    fail(`--source must be archive or git, got: ${bodySource}`);
+  }
+  const archiveDir = resolve(getArgValue(argv, '--archive-dir') ?? 'supabase/migrations-v13');
+  const archiveManifestPath = resolve(
+    getArgValue(argv, '--archive-manifest') ?? 'scripts/db/manifests/v13-archive.json'
+  );
+  const archiveManifest = bodySource === 'archive'
+    ? JSON.parse(readFileSync(archiveManifestPath, 'utf8'))
+    : null;
   const v13Root = resolve(getArgValue(argv, '--v13-root') ?? '../topik-project/v13');
-  const sourceGitSha = getArgValue(argv, '--v13-sha');
+  const sourceGitSha = getArgValue(argv, '--v13-sha') ?? archiveManifest?.sourceGitSha ?? null;
   if (!sourceGitSha || !FULL_SHA_PATTERN.test(sourceGitSha)) {
     fail('--v13-sha requires a full 40-character commit sha.');
+  }
+  if (archiveManifest && archiveManifest.sourceGitSha !== sourceGitSha) {
+    fail(
+      `Archive was adopted from ${archiveManifest.sourceGitSha} but ${sourceGitSha} was requested. `
+      + 'Re-import the archive or pass --source git.'
+    );
   }
   if (manifest.sourceGitSha && manifest.sourceGitSha !== sourceGitSha) {
     fail(`Manifest pins sourceGitSha ${manifest.sourceGitSha}, got ${sourceGitSha}.`);
   }
 
   console.log(`manifest=${manifestPath}`);
-  console.log(`target=${projectRef} tracker=${trackerTable}`);
-  console.log(`v13=${v13Root}@${sourceGitSha}`);
+  console.log(`target=${projectRef} (${target}) tracker=${trackerTable}`);
+  console.log(
+    bodySource === 'archive'
+      ? `bodies=archive ${archiveDir} (adopted from v13 ${sourceGitSha})`
+      : `bodies=git ${v13Root}@${sourceGitSha}`
+  );
 
   if (action === 'status') {
     const versions = manifest.sequence
@@ -392,12 +529,30 @@ export async function main(argv = process.argv.slice(2)) {
         console.log(`  ${batchName}  ${state.padEnd(18)}  ${file.fileName}`);
       }
     }
-    console.log('\nblocked (must stay unrecorded):');
+    // Whether a blocked file is recorded is environment-specific. Development
+    // never ran them, so a record there is a false stamp. Production applied them
+    // in order before the writing cutover, so the record is true history and only
+    // re-application is forbidden. `expectRecorded` says which case this is.
+    const expectRecorded = new Map(
+      (manifest.blockedMigrations ?? [])
+        .filter((entry) => typeof entry === 'object')
+        .map((entry) => [entry.name, entry.expectRecorded === true])
+    );
+    console.log('\nblocked (never re-apply):');
     for (const [name, reason] of blocked) {
       const version = parseMigrationFileName(name).version;
       const row = recorded.get(version);
-      console.log(`  ${row ? 'RECORDED — investigate' : 'unrecorded ok        '}  ${name}`);
-      if (row) console.log(`      reason it is blocked: ${reason}`);
+      const shouldBeRecorded = expectRecorded.get(name) === true;
+      let state;
+      if (shouldBeRecorded) {
+        state = row ? 'recorded history ok  ' : 'MISSING — investigate';
+      } else {
+        state = row ? 'RECORDED — investigate' : 'unrecorded ok        ';
+      }
+      console.log(`  ${state}  ${name}`);
+      if ((shouldBeRecorded && !row) || (!shouldBeRecorded && row)) {
+        console.log(`      reason it is blocked: ${reason}`);
+      }
     }
     for (const entry of manifest.deferredMigrations ?? []) {
       console.log(`\ndeferred: ${entry.name}\n      ${entry.reason}`);
@@ -410,12 +565,18 @@ export async function main(argv = process.argv.slice(2)) {
   const { batch, files } = resolveBatch(manifest, batchName);
 
   for (const file of files) {
-    const raw = readMigrationFromGit({
-      v13Root,
-      sourceGitSha,
-      migrationsDir: manifest.sourceMigrationsDir,
-      fileName: file.fileName,
-    });
+    const raw = bodySource === 'archive'
+      ? readMigrationFromArchive({
+        archiveDir,
+        manifest: archiveManifest,
+        fileName: file.fileName,
+      })
+      : readMigrationFromGit({
+        v13Root,
+        sourceGitSha,
+        migrationsDir: manifest.sourceMigrationsDir,
+        fileName: file.fileName,
+      });
     file.checksum = sha256(raw);
     file.body = stripOuterTransaction(raw);
     assertTransactionSafe(file.fileName, file.body);
@@ -432,6 +593,7 @@ export async function main(argv = process.argv.slice(2)) {
     sourceGitSha,
     operator,
     appliedAt,
+    bodySource,
   });
 
   console.log(`\nbatch=${batchName}`);
@@ -446,7 +608,27 @@ export async function main(argv = process.argv.slice(2)) {
     return 0;
   }
 
-  assertWriteEnvironment(process.env);
+  assertWriteEnvironment(process.env, { target, batchName });
+
+  // Order-inversion guard: read the tracker for every version this manifest
+  // manages, then refuse a batch that jumps ahead of still-pending lower versions.
+  const managedVersions = manifest.sequence
+    .flatMap((name) => resolveBatch(manifest, name).files.map((file) => file.version));
+  const recordedRows = await runSql({
+    projectRef,
+    token,
+    sql: `select version from ${trackerTable}`
+      + ` where version in (${managedVersions.map(sqlLiteral).join(', ')}) order by version;`,
+  });
+  const recordedVersions = new Set(
+    (Array.isArray(recordedRows) ? recordedRows : []).map((row) => row.version)
+  );
+  assertNoOrderInversion({
+    batchName,
+    files,
+    recordedVersions,
+    pendingVersions: managedVersions.filter((version) => !recordedVersions.has(version)),
+  });
 
   if (batch.expectPresent?.length || batch.expectAbsent?.length) {
     console.log('\npreflight:');

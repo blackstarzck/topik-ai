@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   evaluateMigrationOwnershipBoundary,
   formatMigrationOwnershipBoundaryReport,
+  resolveLearnerMigrationsRoot,
   resolveV13Root
 } from '../../scripts/check-migration-ownership-boundary.mjs';
 
@@ -286,11 +287,13 @@ describe('check-migration-ownership-boundary', () => {
   });
 });
 
-describe('v13 root resolution', () => {
-  // This gate runs argument-less inside harness:admin-boundary, and sessions run
-  // from ~/.codex/worktrees/<id>/topik-ai where the repo-relative default does
-  // not resolve. Without the env override the commit gate is unrunnable there.
-  it('prefers the flag, then TOPIK_V13_ROOT, then the repo-relative default', () => {
+describe('learner migration source resolution', () => {
+  // The learner history is vendored in this repo (ownership transfer M2), so the
+  // default source is the in-repo archive. That is also what makes this gate
+  // runnable argument-less from a worktree: the previous repo-relative sibling
+  // default did not resolve outside the main workspace and crashed the commit
+  // gate. An external checkout is now opt-in for dual verification only.
+  it('requests an external v13 checkout only when one is asked for', () => {
     const flagged = resolveV13Root(
       ['node', 'check.mjs', '--v13-root=/from/flag'],
       { TOPIK_V13_ROOT: '/from/env' }
@@ -300,12 +303,58 @@ describe('v13 root resolution', () => {
     const fromEnv = resolveV13Root(['node', 'check.mjs'], { TOPIK_V13_ROOT: '/from/env' });
     expect(fromEnv.replaceAll('\\', '/')).toMatch(/\/from\/env$/);
 
-    const fallback = resolveV13Root(['node', 'check.mjs'], {});
-    expect(fallback.replaceAll('\\', '/')).toMatch(/topik-project\/v13$/);
+    expect(resolveV13Root(['node', 'check.mjs'], {})).toBeNull();
+    expect(resolveV13Root(['node', 'check.mjs'], { TOPIK_V13_ROOT: '' })).toBeNull();
   });
 
-  it('ignores an empty TOPIK_V13_ROOT instead of resolving to the cwd', () => {
-    const fallback = resolveV13Root(['node', 'check.mjs'], { TOPIK_V13_ROOT: '' });
-    expect(fallback.replaceAll('\\', '/')).toMatch(/topik-project\/v13$/);
+  it('defaults to the in-repo archive and maps an external root to its migrations dir', () => {
+    const archive = resolveLearnerMigrationsRoot({ topikAiRoot: '/repo' });
+    expect(archive.source).toBe('archive');
+    expect(archive.dir.replaceAll('\\', '/')).toBe('/repo/supabase/migrations-v13');
+
+    const checkout = resolveLearnerMigrationsRoot({ topikAiRoot: '/repo', v13Root: '/v13' });
+    expect(checkout.source).toBe('v13-checkout');
+    expect(checkout.dir.replaceAll('\\', '/')).toMatch(/\/v13\/supabase\/migrations$/);
+
+    const explicit = resolveLearnerMigrationsRoot({ v13MigrationsDir: '/somewhere/else' });
+    expect(explicit.source).toBe('explicit-dir');
+    expect(explicit.dir.replaceAll('\\', '/')).toMatch(/\/somewhere\/else$/);
+  });
+
+  it('evaluates the same contract against an archive-shaped directory', () => {
+    // The archive stores migrations flat, without the supabase/migrations
+    // prefix the v13 checkout has. Both layouts must reach the same verdict.
+    const topikAiRoot = createTempRoot('topik-ai-archive-layout-');
+    const v13Root = createTempRoot('v13-archive-layout-');
+    writeValidFixtures(topikAiRoot, v13Root);
+    const archiveDir = join(topikAiRoot, 'supabase', 'migrations-v13');
+    for (const name of [
+      '20260609130000_remove_v13_admin_island.sql',
+      '20260612160000_user_notifications.sql',
+      '20260612200000_user_marketing_consent.sql'
+    ]) {
+      writeProjectFile(
+        archiveDir,
+        name,
+        readFileSync(join(v13Root, 'supabase', 'migrations', name), 'utf8')
+      );
+    }
+
+    const fromArchive = evaluateMigrationOwnershipBoundary({ topikAiRoot });
+    expect(fromArchive.failures).toEqual([]);
+    const fromCheckout = evaluateMigrationOwnershipBoundary({ topikAiRoot, v13Root });
+    expect(fromCheckout.failures).toEqual([]);
+  });
+
+  it('names the source it could not find the removal migration in', () => {
+    const topikAiRoot = createTempRoot('topik-ai-missing-archive-');
+    const v13Root = createTempRoot('v13-missing-archive-');
+    writeValidFixtures(topikAiRoot, v13Root);
+    writeProjectFile(join(topikAiRoot, 'supabase', 'migrations-v13'), 'keep.txt', 'x');
+
+    const result = evaluateMigrationOwnershipBoundary({ topikAiRoot });
+    expect(result.failures).toContain(
+      'v13 20260609130000_remove_v13_admin_island.sql is missing from archive.'
+    );
   });
 });
