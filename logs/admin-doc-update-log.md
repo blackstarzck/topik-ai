@@ -860,6 +860,14 @@
 - Validation: `npm run harness:check`(mojibake·doc-crosslinks·route-doc·message-history·lint·typecheck), `tests/e2e/institution-question-exposure.spec.ts` 모크 모드 실행. 문구 결합 실측 — 그 spec 이 `실제 노출`/`현재 미노출` 을 8곳에서 정확 매칭하므로 같은 커밋에서 함께 고쳤다.
 - Not-updated: `/assessment/question-bank` 의 문항중심(Part1) 노출 UI 는 아직 main 에 없다(서비스 계층 wrapper 3종만 있고 호출자 0). 이번 문서 계약이 그 UI 의 최초 구현 기준이 되며, 라벨을 처음부터 할당제 문구로 심어야 한다.
 
+## 2026-07-31 기관 배정 0건 = 빈 화면 결함 차단 (1단계 · 절차 강제)
+
+- Updated: `docs/specs/page-ia/users-institution-codes-page-ia.md`, `docs/page-sync/users-institution-codes-page-sync.md`, `docs/specs/admin-data-contract.md`, `docs/specs/admin-page-ia-change-log.md`.
+- Reason: 기관 할당제에서 "소속 코드 있음 + 그 기관 배정 0건" = 쓰기 문항 0건이다. 기관 3곳이 available 전량(각 700행)을 배정해 둔 것이 사실은 "제한 없음"을 표현하려던 우회책이었고, 신규 기관을 만들어 회원을 넣으면 그 회원은 빈 화면을 본다. 실측(2026-07-31) 기준 `institution_codes` 4개가 전부 배정 1건 이상이라 아직 희생자는 없는 잠재 결함이었다.
+- Contract: 폴백으로 의미를 바꾸지 않고 **잘못된 상태를 도달 불가**하게 만들었다. 소속을 부여할 수 있는 라이브 경로는 `admin_assign_institution_code`와 `respond_institution_invitation` 둘뿐이고 초대는 `admin_invite_institution_members`가 만든다(가입·QR 경로는 `affiliation_code`를 쓰지 않음 — `handle_new_user` 실측 확인). 따라서 관리자 진입점 2곳에 선행조건 검사를 넣고, 반대 방향(배정 삭제)은 exposure 테이블 statement 트리거로 막았다. 트리거를 고른 이유는 배정을 지우는 RPC가 셋(set/clear/remove)이고 개별 패치는 미래 경로를 놓치기 때문이다.
+- Validation: dev 적용 후 실제 프로브 7종 전부 PASS — 헬퍼 판정, 배정 0건 배정·초대 거부, 배정 1건 후 통과(과차단 없음), 회원 있는 기관의 마지막 배정 삭제 거부, 회원 없으면 통과, 기존 2,118행/4기관 불변, 임시 흔적 정리 확인. 학습자 가시성 재실측 결과 적용 전과 동일(무소속 700/700 · CAMPAIGN-01 700 · PROFESSOR-KWON 700 · convention-vn 18/700) — 회귀 0. `harness:check`·`check:migration-boundary`·`db:contracts:verify`·`test:unit` 524/524 PASS.
+- Not-updated: 운영 DB 미적용. 그리고 이 1단계는 "제한 없음"을 표현하려면 여전히 문항을 전량 배정해야 하며, 이후 추가되는 신규 문항은 그 기관에 자동 포함되지 않는다(드리프트). 2단계(기관별 `전체 공개 / 배정분만` 스위치)에서 해소 대상으로 남겼다.
+
 ## 2026-07-30 v13 운영 적용 runbook 초안 + v13 down/ 롤백 파일 보강
 
 - Added: `docs/runbooks/v13-prod-migration-apply-runbook.md` — v13 소유 마이그 9배치 10파일(manifest `v13-shared-dev.json` sequence 정본)의 topik-prod 적용 runbook 초안. `docs/README.md` runbooks 인덱스에 등재.
