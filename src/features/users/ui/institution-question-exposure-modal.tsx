@@ -84,7 +84,7 @@ function renderQuestionTitle(
       <span>
         {shortId(question.questionId)} · {question.situationSummary || '(요약 없음)'}
       </span>
-      {options.inactive ? <Tag color="default">현재 미노출</Tag> : null}
+      {options.inactive ? <Tag color="default">전역 미노출</Tag> : null}
       {options.disabled ? <Tag color="warning">추가 불가</Tag> : null}
       {!isQuestionGloballyAvailable(question) ? (
         <Tag color="red">{getServiceStatusLabel(question.serviceStatus)}</Tag>
@@ -145,7 +145,7 @@ function buildExposureTree(
               question.topicMain,
               question.questionTypeName,
               statusLabel,
-              inactive ? '현재 미노출' : '',
+              inactive ? '전역 미노출' : '',
               disabled ? '추가 불가' : ''
             ]
               .filter(Boolean)
@@ -556,6 +556,15 @@ export function InstitutionQuestionExposureModal({
       <Space direction="vertical" size={14} style={{ width: '100%' }}>
         <Text type="secondary">{institution.label}</Text>
 
+        {/* 기관 할당제 규칙을 화면에 명시한다. 배정은 이 기관 학습자에게 문항을 허용하는
+            목록이며 다른 학습자에게 잠그는 장치가 아니다(계약 SoT: 마이그
+            20260730120000). 이 안내가 없으면 배정 0건을 "제약 없음"으로 오해한다. */}
+        <Alert
+          type="info"
+          showIcon
+          message="소속 없는 학습자는 노출 허용한 문항을 모두 봅니다. 이 기관 소속 학습자는 여기서 배정한 문항만 봅니다."
+        />
+
         {errorMessage ? <Alert type="error" showIcon message={errorMessage} /> : null}
         {warningMessage ? <Alert type="warning" showIcon message={warningMessage} /> : null}
 
@@ -695,9 +704,9 @@ export function InstitutionQuestionExposureModal({
           >
             <div style={{ padding: '8px 12px', borderBottom: '0.5px solid #f0f0f0' }}>
               <Text strong style={{ fontSize: 13 }}>
-                노출 선택 · 실제 노출 {effectiveExposedCount.toLocaleString()}건
+                노출 선택 · 배정 {effectiveExposedCount.toLocaleString()}건
                 {inactiveExposedCount > 0
-                  ? ` / 현재 미노출 ${inactiveExposedCount.toLocaleString()}건`
+                  ? ` / 전역 미노출 ${inactiveExposedCount.toLocaleString()}건`
                   : ''}
               </Text>
               <Input
@@ -725,7 +734,10 @@ export function InstitutionQuestionExposureModal({
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
                   description={
                     exposedQuestions.length === 0
-                      ? '노출로 선택된 문항이 없습니다.'
+                      ? // 할당제에서 배정 0건은 "제약 없음"이 아니라 "이 기관 학습자에게
+                        // 쓰기 문항이 하나도 안 보임"이다. 결과를 명시하지 않으면 관리자가
+                        // 정반대로 읽는다.
+                        '배정된 문항이 없습니다. 이 기관 소속 학습자에게는 쓰기 문항이 표시되지 않습니다.'
                       : '검색 결과가 없습니다.'
                   }
                 />

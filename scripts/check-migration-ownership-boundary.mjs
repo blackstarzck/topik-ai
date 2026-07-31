@@ -130,6 +130,14 @@ const ALLOWED_PROFILE_WRITE_FILES = new Map([
     // 위 respond RPC 재정의(초대 만료) — 동일한 사용자 동의 경로의 affiliation_code 쓰기.
     'supabase/migrations-admin/20260708120000_institution_invitation_expiry.sql',
     ['affiliation_code']
+  ],
+  [
+    // Users > 기관 배정 선행조건 가드 — admin_assign_institution_code 와
+    // admin_invite_institution_members 를 라이브 정의 문자열 수술로 패치한다. 패치 대상
+    // 본문에 기존 affiliation_code 쓰기가 그대로 남으므로 이 파일도 허용 목록이 필요하다
+    // (가드 자체는 profiles 를 읽지도 쓰지도 않고 배정 유무만 검사한다).
+    'supabase/migrations-admin/20260731100000_institution_assignment_prerequisite_guard.sql',
+    ['affiliation_code']
   ]
 ]);
 

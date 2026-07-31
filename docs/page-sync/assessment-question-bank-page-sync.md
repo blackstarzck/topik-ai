@@ -42,7 +42,7 @@ last_reviewed_at: "2026-07-16"
 - 이 페이지는 수신·적재(외부 API → Supabase `topik_writing_51/52/53/54_questions` + `question_source_map`)된 문항을 확인하고, 목록 단위 관리 포인트를 처리하는 관리자 기점입니다. 2depth 상세는 조회 전용입니다.
 - 성공적으로 승격된 내용 버전은 목록의 수정 횟수·확장 이력과 2depth 상세의 `버전 #<canonical_import_id>`/`변경 이력보기` 탭에서 원본 생성/수정 시각과 content/payload hash를 포함해 관리자 전용으로 조회합니다. 사용자 화면에는 버전 번호나 이력을 노출하지 않습니다.
 - 관리 포인트는 **태그**(schema-rule §2: tag_master 사전 기반 `question_tags` 부여/제거), 노출 통제는 **`service_status` 컬럼**(D-6 유지: available/excluded/internal_test, 기본 internal_test), 기관별 문항 매핑은 **`topik_writing_question_institution_exposure`**입니다. 2026-06-23 통합 이후 모두 `/assessment/question-bank`에서 처리합니다.
-- 2026-06-26 기준 기관 매핑은 이 페이지에도 노출합니다. 테이블 `기관 노출` 컬럼, 단건 `기관 노출 설정`, 일괄 `기관 한정 지정`/`기관 한정 해제`가 있으며, `Users > 기관 코드`는 기관 중심으로 같은 매핑을 관리합니다.
+- 2026-06-26 기준 기관 매핑은 이 페이지에도 노출합니다. 테이블 `기관 노출` 컬럼, 단건 `기관 노출 설정`, 일괄 `기관 배정`/`배정 해제`가 있으며, `Users > 기관 코드`는 기관 중심으로 같은 매핑을 관리합니다.
 - v13 사용자 기능은 read-only로 소비합니다. P2 백필 466행은 초기 코퍼스로 유지되며, 신규 문항은 외부 상세 API 수신·승격 경로로 추가됩니다.
 - 코드 현실: Supabase가 구성된 운영 환경은 `topik_writing` 신규 4테이블 + 추천 뷰만 조회하고, 2depth 상세는 조회 전용입니다. `VITE_QUESTION_BANK_SOURCE=legacy`와 `problems` 읽기 어댑터는 최종 canonical 전환에서 삭제했습니다. Supabase 미구성 CI·스모크 환경만 결정적 mock을 사용합니다.
 
@@ -61,7 +61,7 @@ last_reviewed_at: "2026-07-16"
 | 승격 버전 이력 조회 | 목록의 수정 횟수·확장 테이블과 상세 탭에서 현재/과거 승격 버전의 payload·수신 메타데이터를 확인합니다. | 조회 | AssessmentQuestionVersion | 관리자 역추적 | 불필요 |
 | 수신·적재 | `외부에서 가져오기` 또는 cron → 상류 상세 API → 인박스 무손실 적재 → §7 자동 승격. `question_received`를 인박스와 정식 문항 Target에 기록합니다. | 생성(수신) | AssessmentQuestionImport + AssessmentQuestion | 적재·승격 + 감사 로그 | 필요 |
 | 태그 부여/제거·노출 상태 변경 | 더보기 메뉴/일괄 조치에서 수행합니다(P4 개방 완료 — 2026-06-11, 2026-06-23 통합). | 수정 | AssessmentQuestion + questionId | 데이터 반영 | 필요 |
-| 기관 노출 설정/해제 | 문항 단건 또는 선택 문항 일괄로 기관 한정 매핑을 지정/해제합니다. `service_status!='available'` 문항의 신규 추가는 blocked로 안내합니다. | 수정 | AssessmentQuestion + questionId | 기관 매핑 반영 또는 차단 안내 | 필요 |
+| 기관 노출 설정/해제 | 문항 단건 또는 선택 문항 일괄로 기관 배정 매핑을 지정/해제합니다. `service_status!='available'` 문항의 신규 추가는 blocked로 안내합니다. | 수정 | AssessmentQuestion + questionId | 기관 매핑 반영 또는 차단 안내 | 필요 |
 
 - 제거 완료: 구 2depth 검수 페이지의 검수 메모 저장·검수 상태 변경 쓰기는 재정의 P3에서 제거 완료됐습니다(`202f905`). 현행 상세는 조회 전용입니다.
 
@@ -101,7 +101,7 @@ last_reviewed_at: "2026-07-16"
 
 | 사용자 화면 후보 | 영향 상태 | 관리자 데이터 | 사용자 화면에 반영되는 방식 | 동기화 필요 시점 | 비고 |
 | --- | --- | --- | --- | --- | --- |
-| TOPIK 쓰기 시험 화면, 문제 풀이 화면, 현재 문항 보관함·추천 화면 | 확인됨(dev) | 번호별 정식 51~54 테이블의 학습자 허용 필드, `learner_problem_id`, `service_status`, 태그, 기관 매핑, `canonical_import_id`/`payload_hash` | v13은 `get_available_writing_questions`를 통해 read-only로 직접 소비합니다. `problem_id`는 `learner_problem_id=md5(question_id)::uuid`이며 `legacy_problem_id`를 사용하지 않습니다. 최종 노출 predicate는 `service_status='available' AND (기관 매핑 없음 OR 사용자 affiliation_code 매핑 존재)`이며, 정답·채점표·원시 payload는 학습자 응답에서 제외합니다. 신규·기존 canonical identity는 v13 private registry가 소유합니다. | `service_status`/기관 매핑/정식 승격 버전 변경 다음 요청 | dev에 14:00/14:10/15:00/16:00 교정을 적용해 `public.problems` writing 0건과 registry FK를 확인했습니다. desktop/mobile headed E2E로 공개·제외의 다음 요청 반영, Q51~54·Q53 chart·추천·초안·history/PDF를 확인했고 실제 provider Q54 제출→피드백 canary도 통과했습니다. 운영 적용은 별도입니다. |
+| TOPIK 쓰기 시험 화면, 문제 풀이 화면, 현재 문항 보관함·추천 화면 | 확인됨(dev) | 번호별 정식 51~54 테이블의 학습자 허용 필드, `learner_problem_id`, `service_status`, 태그, 기관 매핑, `canonical_import_id`/`payload_hash` | v13은 `get_available_writing_questions`를 통해 read-only로 직접 소비합니다. `problem_id`는 `learner_problem_id=md5(question_id)::uuid`이며 `legacy_problem_id`를 사용하지 않습니다. 최종 노출 predicate는 `service_status='available' AND (사용자 affiliation_code 없음 OR 매핑.institution_code = 사용자 affiliation_code)`이며(무소속 학습자는 `available` 전체, 기관 소속 학습자는 자기 코드 매핑분만), 정답·채점표·원시 payload는 학습자 응답에서 제외합니다. 신규·기존 canonical identity는 v13 private registry가 소유합니다. | `service_status`/기관 매핑/정식 승격 버전 변경 다음 요청 | dev에 14:00/14:10/15:00/16:00 교정을 적용해 `public.problems` writing 0건과 registry FK를 확인했습니다. desktop/mobile headed E2E로 공개·제외의 다음 요청 반영, Q51~54·Q53 chart·추천·초안·history/PDF를 확인했고 실제 provider Q54 제출→피드백 canary도 통과했습니다. 운영 적용은 별도입니다. |
 
 ### 문항 수정 시 상태별 버전 동기화
 
@@ -145,7 +145,7 @@ last_reviewed_at: "2026-07-16"
 | 구분 | 표준 값/용어 | 내부 코드 후보 | 사용자 노출 라벨 | 비고 |
 | --- | --- | --- | --- | --- |
 | 노출 상태(노출 가능/노출 제외/내부 테스트) | available/excluded/internal_test | service_status | 사용자 직접 노출 라벨 아님(노출 on/off 결과로만 반영) | D-6 확정 — 유일한 물리 노출 상태, 기본 internal_test. 기관 노출보다 우선하는 전역 차단 조건 |
-| 기관 노출 상태 | 전체 공개/기관 한정/현재 미노출 | topik_writing_question_institution_exposure + service_status | 사용자 직접 노출 라벨 아님(최종 필터 결과로 반영) | 매핑 없음=전체 공개, 매핑 있음=기관 한정. `service_status!='available'`이면 기존 매핑이 있어도 현재 미노출 |
+| 기관 노출 상태 | 전체 공개/기관 한정/현재 미노출 | topik_writing_question_institution_exposure + service_status | 사용자 직접 노출 라벨 아님(최종 필터 결과로 반영) | 관리자 화면 라벨 축이며 학습자 노출 규칙과 1:1로 대응하지 않는다. 학습자 규칙은 기관 할당제 — 무소속 학습자는 `available` 전체를 보고, 기관 소속 학습자는 자기 코드 매핑분만 본다. 따라서 `전체 공개`(미매핑) 문항은 기관 소속 학습자에게는 보이지 않고, `기관 한정`(매핑) 문항도 무소속 학습자에게는 계속 보인다 — 라벨 재정의는 §13 미확정 항목. `service_status!='available'`이면 기존 매핑이 있어도 현재 미노출 |
 | 태그 그룹(추천목적/반복방지/학습흐름/운영주의/대표문제/추천사용) | tag_master 사전(schema-rule §2) | question_tags | 사용자 비노출(내부 관리 포인트) | 부여/제거는 `/manage`에서 활성(P4 개방 완료), 별도 메모 필드 없음 |
 | 문항 번호 51~54 | 문항 번호 51~54 | page-specific enum candidate | 문항 번호 51~54 | 정확한 상태 세트는 IA와 데이터 계약 문서를 우선합니다. |
 | 정식 문항 버전 | 승격된 인박스 버전 | canonical_import_id + payload_hash | 사용자 직접 노출 없음 | 인박스 `is_latest`와 구분합니다. 제출 snapshot과 서버 guard가 동일 버전을 검증해야 합니다. |
@@ -194,5 +194,6 @@ last_reviewed_at: "2026-07-16"
 | 외부 공급(인바운드) API 호환성 | 현재 타입별 상세 API와 서버 자격증명 인증 계약으로 수신·감사 결선이 구현됐습니다. 남은 항목은 상류 payload/식별자 변경 시 하위 호환성과 변경 통지 절차입니다. | 외부 공급측/백엔드 | 매퍼·승격 계약 변경 시 회귀 검증 | 신규 문항 유입 안정성 | docs/specs/admin-data-contract.md §12.6, docs/specs/page-ia/assessment-question-bank-imported-page-ia.md |
 | 이전 버전 대비 자동 필드 diff | 1차 관리자 이력 UI는 버전별 전체 payload 조회까지만 구현합니다. 필드 단위 변경 요약은 후속입니다. | admin/콘텐츠 운영 | 이력 탭에 diff 표현 추가 가능 | 사용자 영향 없음 | docs/architecture/writing-question-version-policy.md §7·§12, docs/specs/admin-page-gap-register.md §4.7 |
 | canonical source ↔ v13 읽기·제출 | dev의 canonical 읽기와 outbox 제출 검증을 완료했습니다. 14:00/14:10/15:00/16:00 적용, FK/snapshot/mirror 삭제 대사, migration down/up, 5종 fault-injection, 실제 provider canary와 desktop/mobile headed E2E를 통과했습니다. 검증 뒤 dev는 fail-close했습니다. | v13/백엔드/Admin | 관리자 표 변경 없음, 승격 버전 역추적 강화 | 운영 적용·evidence 기반 활성화·운영 smoke만 별도 승인 필요 | docs/specs/admin-data-contract.md §12.6.1, docs/specs/admin-page-gap-register.md §4.7 |
-| 기관 매핑 ↔ v13 노출 연동 | predicate `service_status='available' AND (기관 매핑 없음 OR 사용자 affiliation_code 매핑 존재)`가 learner RPC와 신규 초안 guard에 반영됐고 dev 역할별 DB·live E2E에서 확인했습니다. 운영 적용은 별도입니다. | v13/백엔드/프론트 | `/assessment/question-bank`와 `Users > 기관 코드`의 매핑 조치 활성화/감사 로그 계약 | 기관 회원 전용 문항 노출 | docs/requests/v13-institution-question-exposure-handoff-2026-06-26.md |
+| 기관 매핑 ↔ v13 노출 연동 | predicate `service_status='available' AND (사용자 affiliation_code 없음 OR 매핑.institution_code = 사용자 affiliation_code)`가 learner RPC(`private.is_writing_question_visible_to_user`)와 제출 guard에 반영됐고 dev 실측으로 확인했습니다(2026-07-30: 무소속 700/700, convention-vn 18/700). 운영 적용은 별도입니다. | v13/백엔드/프론트 | `/assessment/question-bank`와 `Users > 기관 코드`의 매핑 조치 활성화/감사 로그 계약 | 기관 소속 회원 대상 문항 배정 | docs/requests/v13-institution-question-exposure-handoff-2026-06-26.md |
+| 기관 노출 라벨 축 재정의 | **해소(2026-07-30)** — 오너 확정으로 셀 라벨을 `미배정`/`기관 N곳 배정`, 일괄 액션명을 `기관 배정`/`배정 해제`로 재정의했습니다. 라벨 축이 "누가 보는가"에서 "몇 개 기관에 배정했나"로 바뀌어 더 이상 거짓을 말하지 않습니다. 컬럼 헤더에 규칙 한 줄을 병기하고, `Users > 기관 코드` 모달에는 규칙 Alert·배정 0건 경고문을 신설했으며 `실제 노출`→`배정`·`현재 미노출`→`전역 미노출`로 개명(e2e 스펙 8곳 동시 수정)했습니다. | 오너/프론트 | `/assessment/question-bank` 컬럼·`Users > 기관 코드` 모달 문구 | 관리자 오해 방지 | 해소 |
 | 메타데이터·태그 스키마 전환(인바운드 재정의) | 2026-06-11 인바운드 전환(§0)으로 P3 이후 단계가 재정의됐습니다(검수 컷오버 → 조회 컷오버 + 검수 표면·컬럼 제거, push 트랙·P2-5 콘텐츠팀 게이트 폐기). 이 페이지는 재정의 P3에서 어댑터/타입/필터 축 전면 변경, 검수 표면 제거, 상세 라우트 개명, 본 문서 §5~§7 재검증이 수행됩니다. 세부 단계 정의는 실행계획안 2026-06-11 개정을 따릅니다. | admin(실행계획안 2026-06-11 개정 게이트) | 재정의 P3에서 어댑터/타입/필터 축 전면 변경(XL) + 검수 표면 제거 | 태그 기반 추천·노출 정책 신설 가능(후속) | docs/architecture/metadata-tag-schema-transition-decision-record.md §0, docs/메타데이터-태그-스키마-전환-실행계획안.md(2026-06-11 개정), docs/specs/admin-data-contract.md §12 |
