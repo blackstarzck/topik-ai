@@ -62,11 +62,11 @@
 | 코드 생성 | 생성 | `InstitutionCode + code` | 필수 필드 검증 | notification + 감사 로그 링크 | `/system/audit-logs?targetType=InstitutionCode&targetId={code}` |
 | 코드 수정 | 수정 | `InstitutionCode + code` | 사유 필수 | notification + 감사 로그 링크 | `/system/audit-logs?targetType=InstitutionCode&targetId={code}` |
 | 코드 삭제 | 파괴적 | `InstitutionCode + code` | 확인 + 사유 필수, 가입 회원 존재 시 차단 | notification + 감사 로그 링크 | `/system/audit-logs?targetType=InstitutionCode&targetId={code}` |
-| 회원 초대 | 수정 | `Users + userId[]` | 사유 필수 | 초대 발송 수 표시(기소속·기pending 스킵) | `/system/audit-logs?targetType=Users&targetId={userId}` |
+| 회원 초대 | 수정 | `Users + userId[]` | 사유 필수 + **문항 배정 1건 이상 선행** | 초대 발송 수 표시(기소속·기pending 스킵) | `/system/audit-logs?targetType=Users&targetId={userId}` |
 | 초대 취소 | 파괴적 | `Users + userId` | 확인 + 사유 필수 | 취소 대상 표시 | `/system/audit-logs?targetType=Users&targetId={userId}` |
 | 소속 해제 | 파괴적 | `Users + userId` | 확인 + 사유 필수 | 변경 대상 표시 | `/system/audit-logs?targetType=Users&targetId={userId}` |
 | 기관 노출 문항 추가 | 수정 | `InstitutionCode + code`, `AssessmentQuestion + questionId[]` | 사유 필수 | changed/unchanged/blocked/failed 집계 | `/system/audit-logs?targetType=InstitutionCode&targetId={code}` |
-| 기관 노출 문항 해제 | 수정 | `InstitutionCode + code`, `AssessmentQuestion + questionId[]` | 사유 필수 | changed/unchanged/failed 집계 | `/system/audit-logs?targetType=InstitutionCode&targetId={code}` |
+| 기관 노출 문항 해제 | 수정 | `InstitutionCode + code`, `AssessmentQuestion + questionId[]` | 사유 필수 + **회원·대기초대 있으면 마지막 1건 삭제 불가** | changed/unchanged/failed 집계 | `/system/audit-logs?targetType=InstitutionCode&targetId={code}` |
 
 ## 7. 상태값/정책/운영 규칙
 
@@ -126,5 +126,7 @@
 
 ## 13. 오픈 이슈
 
+- **회원 배정·초대 선행조건(2026-07-31)**: 기관에 쓰기 문항이 1건도 배정되지 않은 상태에서는 회원 직접 배정과 초대 발송이 서버에서 거부됩니다. 기관 할당제이므로 배정 0건 기관의 소속 학습자는 쓰기 문항을 하나도 보지 못하기 때문입니다. 먼저 `노출 문항` 모달에서 문항을 배정한 뒤 회원을 넣습니다.
+- **마지막 배정 삭제 차단(2026-07-31)**: 소속 회원 또는 대기 중 초대가 있는 기관은 배정을 0건으로 되돌릴 수 없습니다. 회원 소속을 먼저 해제하거나 초대를 취소해야 합니다. 코드 삭제(`admin_delete_institution_code`)는 회원 0건 확인·초대 취소를 먼저 하므로 이 차단에 걸리지 않습니다.
 - 기관 노출 문항의 predicate는 `service_status='available' AND (사용자 affiliation_code 없음 OR 매핑.institution_code = 사용자 affiliation_code)`입니다 — 무소속 학습자는 `available` 문항 전체를 보고, 기관 소속 학습자는 자기 코드에 매핑된 문항만 봅니다. v13 학습자 경로에는 `private.is_writing_question_visible_to_user`로 이미 강제 적용 중입니다(dev 실측 2026-07-30).
 - 회원 관리 모달의 회원 검색/페이지네이션은 대량 회원 환경에서 서버 검색으로 확장할 수 있습니다.
