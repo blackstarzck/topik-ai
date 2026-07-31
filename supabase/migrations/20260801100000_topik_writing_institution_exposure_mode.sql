@@ -425,7 +425,7 @@ revoke all on function public.admin_list_institution_exposure_modes(text[]) from
 grant execute on function public.admin_list_institution_exposure_modes(text[]) to authenticated;
 
 comment on function public.admin_list_institution_exposure_modes(text[]) is
-  '기관 코드별 실효 노출 모드와 배정 건수. institution_codes 기준 좌결합이라 모드 원장에 행이 없는 코드도 `배정분만` + 실제 배정 건수로 반환한다(모드 테이블만 훑으면 "행 없지만 배정 있는" 코드가 0건으로 보고되어 관리 화면 가드가 오작동한다). admin_list_institution_codes 는 반환 타입을 바꿀 수 없어(expand 게이트가 drop function 차단) 모드를 이 RPC 로 분리 조회하고 화면이 병합한다. 2026-08-01.';
+  '기관 코드별 실효 노출 모드와 배정 건수. institution_codes 기준 좌결합이라 모드 원장에 행이 없는 코드도 `배정분만` + 실제 배정 건수로 반환한다(모드 테이블만 훑으면 "행 없지만 배정 있는" 코드가 0건으로 보고되어 관리 화면 가드가 오작동한다). admin_list_institution_codes 는 반환 타입을 바꿀 수 없어(expand 게이트가 함수 삭제·재생성을 차단한다) 모드를 이 RPC 로 분리 조회하고 화면이 병합한다. 2026-08-01.';
 
 create or replace function public.admin_set_institution_exposure_mode(
   p_code text,
