@@ -14,7 +14,7 @@ function add(...paths) {
   return classifyChangedFiles(paths.map((path) => ({ status: 'A', path })));
 }
 
-describe('release change classifier v5', () => {
+describe('release change classifier v6', () => {
   it('keeps documentation and offline tests on the light sync-only path', () => {
     const docs = classify('docs/architecture/admin-cicd-pipeline.md', 'AGENTS.md');
     expect(docs.releasePlan).toBe('sync-only');
@@ -236,6 +236,39 @@ describe('release change classifier v5', () => {
       .toThrow('A blocked change cannot be manually released');
   });
 
+
+  it('routes the adopted v13 learner archive to control-plane, not unknown', () => {
+    // Every archived file used to land on 'unknown', which blocked the PR that
+    // adopted them. They must raise the validation profile without claiming the
+    // release pipeline applies them — the release manifest has no learner
+    // namespace until M5b.
+    const archive = add(
+      'supabase/migrations-v13/20260520120000_extensions_and_schemas.sql',
+      'supabase/migrations-v13/down/20260707120000_pdf_export_quota.sql',
+    );
+    expect(archive.blockedReasons).toEqual([]);
+    expect(archive.releasePlan).toBe('sync-only');
+    expect(archive.validationProfile).toBe('full');
+    expect(archive.applyMigrations).toBe(false);
+  });
+
+  it('does not let the archive turn an app change into a database release', () => {
+    const mixed = classify(
+      'src/app/page.tsx',
+      'supabase/migrations-v13/20260729120000_list_user_problems_canonical_catalog_fix.sql',
+    );
+    expect(mixed.releasePlan).toBe('app-only');
+    expect(mixed.validationProfile).toBe('full');
+  });
+
+  it('still routes the two release-managed namespaces to migration', () => {
+    const managed = add(
+      'supabase/migrations/20260801000000_x.sql',
+      'supabase/migrations-admin/20260801000000_y.sql',
+    );
+    expect(managed.releasePlan).toBe('db-only');
+    expect(managed.applyMigrations).toBe(true);
+  });
   it('produces a stable digest independent of git output order', () => {
     const left = classify('docs/a.md', 'tests/unit/a.test.ts');
     const right = classify('tests/unit/a.test.ts', 'docs/a.md');
