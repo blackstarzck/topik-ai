@@ -14,7 +14,7 @@ last_reviewed_at: "2026-06-26"
 
 ## 1. 문서 목적
 
-- `Users > 기관 코드` 관리자 페이지와 사용자 가입/기관 전용 문항 노출 흐름의 동기화 포인트를 정리합니다.
+- `Users > 기관 코드` 관리자 페이지와 사용자 가입/기관별 쓰기 문항 배정 흐름의 동기화 포인트를 정리합니다.
 - 이 문서는 확정 DB 스키마가 아니라 관리자 화면 기준 후보 계약입니다. 전역 SoT는 `docs/specs/admin-data-contract.md`, `docs/specs/admin-data-usage-map.md`, `docs/specs/admin-action-log.md`를 우선합니다.
 
 ## 2. 페이지 요약
@@ -55,7 +55,7 @@ last_reviewed_at: "2026-06-26"
 | InstitutionCode | institution_codes | Create, Read, Update, Delete | 본문 목록/생성/수정 모달, 삭제 확인 모달 | code, label, kind, status, note, member_count | InstitutionCode + code | 가입/QR 유입 코드 유효성 | 삭제는 가입 회원 존재 시 차단, 기관 노출 문항 매핑은 함께 정리 |
 | UserInstitutionAffiliation | profiles.affiliation_code | Read, Update(해제/사용자 수락) | 회원 관리 모달 | user_id, affiliation_code, status | Users + userId | 기관 회원 구분 | 부여는 사용자 수락 RPC(`respond_institution_invitation`) 경유, 관리자 직접 쓰기는 해제만 |
 | InstitutionInvitation | institution_code_invitations | Create, Read, Update(취소) | 회원 관리 모달 통합 로스터(소속 회원과 한 테이블, '초대 대기' 태그 행) / 회원 상세 기관탭 배너 | invitation_id, code, user_id, status, reason, created_at, expires_at(만료 — 태그 툴팁/배너 표시), email_status/email_error(초대 이메일 발송 상태 — 대기/발송됨/실패 태그) | Users + userId | 초대 수명주기(pending→accepted/declined/canceled/expired) | 알림 계약: `docs/specs/notification-contract.md` §3 `institution_invitation`. 종결(응답/취소) 시 미발송 이메일 attempt는 skipped 회수. 만료는 lazy 전환(respond/invite/list 접점) |
-| InstitutionQuestionExposure | topik_writing_question_institution_exposure | Create, Read, Delete | 노출 문항 모달 | institution_code, question_id, is_exposed, service_status(조회 표시) | InstitutionCode + code / AssessmentQuestion + questionId | 기관 전용 문항 노출 | `service_status='available'`이 전역 선행 조건이며, `excluded`/`internal_test` 신규 추가는 blocked |
+| InstitutionQuestionExposure | topik_writing_question_institution_exposure | Create, Read, Delete | 노출 문항 모달 | institution_code, question_id, is_exposed, service_status(조회 표시) | InstitutionCode + code / AssessmentQuestion + questionId | 기관 소속 회원 대상 문항 배정 | `service_status='available'`이 전역 선행 조건이며, `excluded`/`internal_test` 신규 추가는 blocked |
 
 ## 6. 관리자 조치와 감사 로그 계약
 
@@ -120,5 +120,5 @@ last_reviewed_at: "2026-06-26"
 
 | 항목 | 미확정 내용 | 필요한 결정 주체 | 관리자 페이지 영향 | 사용자 화면 영향 | 추적 문서 |
 | --- | --- | --- | --- | --- | --- |
-| 기관별 문항 노출 조건의 v13 적용 | admin/RPC predicate는 확정됐지만 v13 사용자 조회·추천·제출 guard 적용은 후속 | v13/백엔드 | handoff 문서 기준 구현 | 기관 전용 문항 목록 | `docs/requests/v13-institution-question-exposure-handoff-2026-06-26.md` |
+| ~~기관별 문항 노출 조건의 v13 적용~~ **해소(2026-07-30)** | predicate `private.is_writing_question_visible_to_user`가 canonical reader의 WHERE 절에서 학습자 목록·상세·라이브러리·RLS·제출 guard를 모두 게이팅하고 있음을 dev 실측으로 확인했습니다(무소속 700/700, `convention-vn` 18/700). 계약 SoT는 exposure 테이블 comment이며 정정 마이그는 `20260730120000`입니다. | — | 없음 | 기관 소속 회원 대상 문항 목록 | `supabase/migrations/20260730120000_topik_writing_institution_exposure_contract_correction.sql` |
 | 코드 상태 서버 정책 | 종료 코드의 신규 가입/배정 차단 수준 확인 필요 | 백엔드/운영 | 상태 변경 조치 영향 | 가입 실패/안내 문구 | `docs/specs/admin-data-contract.md` |
