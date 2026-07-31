@@ -1,0 +1,164 @@
+{
+  "$comment": "v13-authored learner migrations pending on the production project. Ownership transfer program M6 (docs/plans/v13-db-ownership-transfer-program-plan.md, owner decision D9). This is NOT a copy of v13-shared-dev.json: production's live set differs, so every batch and probe below was re-derived from a read-only production fingerprint on 2026-07-30. Consumed only by scripts/db/apply-v13-migration.mjs; it never touches topik_writing_schema_migrations or admin_schema_migrations. Writes additionally require SUPABASE_PRODUCTION_CONFIRM plus per-batch approval.",
+  "namespace": "v13_user_facing",
+  "environment": "production",
+  "projectRef": "eymlabowhfgtxbiqwxqh",
+  "trackerTable": "supabase_migrations.schema_migrations",
+  "sourceRepo": "blackstarzck/topik-project-v13",
+  "sourceMigrationsDir": "supabase/migrations",
+  "sourceGitSha": null,
+  "sourceGitShaComment": "Bodies come from the in-repo archive (supabase/migrations-v13) whose byte identity with v13 0ee149930019c8a6f97644824c390d7d2ec76067 is proven by scripts/db/v13-archive.mjs. Passing --source git with --v13-sha reads the v13 object store instead and produces identical SQL.",
+  "fingerprintMeasuredAt": "2026-07-30",
+  "fingerprintComment": "Read-only production probe: all five backlog markers absent (no partial apply), all three preconditions present (private.is_email_confirmed, public.accept_affiliation_invite, public.is_supported_country_code) so the conditional 20260527113000 repair that development needed is NOT required here, and every P3 precondition function present. Re-run the probe before opening the window; the ledger is not the authority, the live schema is.",
+  "sequence": ["P1", "P2", "P3", "P4", "P5", "P6"],
+  "sequenceComment": "Timestamp order, except 20260729120000 which is the repair for 20260722120000 and therefore shares P2's single transaction rather than trailing at the end.",
+  "batches": {
+    "P1": {
+      "reason": "Snapshot-aware complete_auth_gate. Production still runs the boolean-only 4/7/9-argument overloads with no jsonb overload, so onboarding has no exact-consent snapshot path and the email-confirmed guard is absent from the live gate. Adding the jsonb overloads switches onboarding, so the v13 app version must be deployed in step.",
+      "migrations": ["20260718120000_auth_gate_exact_consent_snapshots.sql"],
+      "expectPresent": [
+        { "kind": "function", "identity": "private.is_email_confirmed(uuid)" },
+        { "kind": "function", "identity": "public.is_supported_country_code(text)" }
+      ],
+      "expectPresentAfter": [
+        {
+          "kind": "function",
+          "identity": "public.complete_auth_gate(text,text,text,boolean,jsonb)"
+        },
+        {
+          "kind": "function",
+          "identity": "public.complete_auth_gate(text,text,text,text,text,text,boolean,jsonb)"
+        },
+        {
+          "kind": "function",
+          "identity": "public.complete_auth_gate(text,text,text,text,text,text,boolean,jsonb,text,text)"
+        }
+      ],
+      "note": "Both preconditions were measured present on 2026-07-30, so no false-record repair precedes this batch. If either turns absent at window time, apply its source migration first (20260527113000 for is_email_confirmed, 20260710095000 for is_supported_country_code) — the development window hit exactly that false record."
+    },
+    "P2": {
+      "reason": "20260722120000 recreates list_user_problems from the pre-cutover definition and calls two helpers 20260714140000 dropped, so it installs cleanly and then raises 42883 on every call. The repair restores the post-cutover catalog CTE. Both must run in one transaction so the broken definition is never committed.",
+      "migrations": [
+        "20260722120000_writing_completion_and_pdf_outcomes.sql",
+        "20260729120000_list_user_problems_canonical_catalog_fix.sql"
+      ],
+      "expectPresent": [
+        { "kind": "function", "identity": "public.list_user_problems(jsonb,text,integer,integer)" }
+      ],
+      "expectPresentAfter": [
+        { "kind": "column", "identity": "public.export_files.failure_code" },
+        { "kind": "column", "identity": "public.export_files.failed_at" },
+        { "kind": "function", "identity": "public.list_user_problems(jsonb,text,integer,integer)" }
+      ],
+      "singleTransaction": "Both files in one batch is mandatory, not an optimization. Splitting them commits a definition that fails on every problem-list request."
+    },
+    "P3": {
+      "reason": "Consent/account-deletion RLS plus get_my_account_state(), which the workspace layout needs. Requires P2 because this migration moves get_dashboard_kpi into private and the repaired list_user_problems must already be in place.",
+      "requires": ["P2"],
+      "migrations": ["20260723234527_consent_account_deletion_rls.sql"],
+      "expectPresent": [
+        { "kind": "function", "identity": "private.is_email_confirmed(uuid)" },
+        { "kind": "function", "identity": "public.request_account_deletion()" },
+        { "kind": "function", "identity": "public.get_dashboard_kpi()" },
+        { "kind": "function", "identity": "public.get_writing_submission_history_context(uuid[])" },
+        { "kind": "function", "identity": "public.replace_stale_writing_draft(uuid,text,bigint,text)" },
+        {
+          "kind": "function",
+          "identity": "public.create_comparison_report_with_metrics(uuid,uuid,jsonb,text,text)"
+        },
+        { "kind": "function", "identity": "public.claim_pdf_export_quota(uuid,uuid[])" },
+        { "kind": "function", "identity": "public.is_nickname_available(text)" },
+        { "kind": "function", "identity": "public.list_user_library_problem_items()" }
+      ],
+      "expectPresentAfter": [
+        { "kind": "function", "identity": "private.is_active_user()" },
+        { "kind": "function", "identity": "public.get_my_account_state()" }
+      ],
+      "nonIdempotent": "Seven `alter function ... set schema private` plus rename pairs. On failure count private.*_unchecked before retrying: 0 means a clean rollback, 1..6 means a partial commit that must be reversed by hand.",
+      "note": "All nine preconditions were measured present on production 2026-07-30. The dev batch also listed claim_pdf_export_quota(uuid,uuid[]) — production still has the two-argument form because P6 is unapplied, which is the expected ordering."
+    },
+    "P4": {
+      "reason": "Reference integrity guard for learner-owned rows.",
+      "migrations": ["20260724120000_user_data_reference_integrity.sql"],
+      "expectPresentAfter": [
+        {
+          "kind": "trigger",
+          "identity": "public.study_events.trg_validate_review_set_study_event"
+        }
+      ]
+    },
+    "P5": {
+      "reason": "Stops handle_new_user() from trusting raw affiliation_code metadata and removes the legacy browser invite RPCs. Unlike development, production already has both functions (20260701140000 is recorded and live), so no preparatory batch is needed for the unconditional REVOKE.",
+      "migrations": ["20260724130000_institution_invite_trust_boundary.sql"],
+      "expectPresent": [
+        { "kind": "function", "identity": "public.accept_affiliation_invite(text,boolean)" },
+        { "kind": "function", "identity": "public.claim_affiliation_code(text)" }
+      ],
+      "expectAbsent": [
+        { "kind": "function", "identity": "public.accept_affiliation_invite(text,boolean)" },
+        { "kind": "function", "identity": "public.claim_affiliation_code(text)" }
+      ],
+      "note": "This file carries its own top-level begin;/commit; pair. stripOuterTransaction removes it so the runner wrapper stays the only transaction. expectPresent and expectAbsent name the same two functions on purpose: they must exist before (the REVOKE has no IF EXISTS) and be gone after."
+    },
+    "P6": {
+      "reason": "JWT-bound idempotent PDF export requests. Production still exposes the two-argument claim_pdf_export_quota and has no attempt ledger, so exports have no idempotency key.",
+      "requires": ["P3"],
+      "migrations": ["20260724140000_pdf_export_request_idempotency.sql"],
+      "expectPresentAfter": [
+        { "kind": "table", "identity": "public.pdf_export_request_periods" },
+        { "kind": "column", "identity": "public.pdf_export_quota_usages.request_id" },
+        { "kind": "column", "identity": "public.export_files.request_id" },
+        {
+          "kind": "function",
+          "identity": "public.acquire_pdf_export_attempt(uuid,text,uuid,jsonb,text)"
+        },
+        { "kind": "function", "identity": "public.claim_pdf_export_quota(uuid,uuid[],uuid)" }
+      ],
+      "nonIdempotent": "`alter column request_id set not null` plus a unique index. On failure check whether pdf_export_quota_usages.request_id exists before retrying.",
+      "note": "Maintenance window required: quiesce PDF export requests, apply, deploy the app in step. The cutover closes legacy NULL-request queued exports as failed/legacy_unknown, which is one-way."
+    }
+  },
+  "blockedMigrations": [
+    {
+      "name": "20260629110000_institution_assigned_only_writing_access.sql",
+      "expectRecorded": true,
+      "reason": "Recorded on production as pre-cutover history. Re-applying it now would redefine is_writing_problem_visible_to_caller from public.problems.materials->>'question_id', whose rows 20260714140000 deleted, hiding the entire writing pool."
+    },
+    {
+      "name": "20260629170000_non_institution_writing_full_exposure.sql",
+      "expectRecorded": true,
+      "reason": "Same predicate and the same deleted source rows."
+    },
+    {
+      "name": "20260701160000_institution_retry_availability.sql",
+      "expectRecorded": true,
+      "reason": "Would restore a list_user_library_problem_items without the canonical reader, silently dropping writing items from the library list."
+    },
+    {
+      "name": "20260629120000_auth_email_verified_access_gate.sql",
+      "expectRecorded": true,
+      "reason": "Superseded by 20260718120000. Re-applying re-grants the boolean-only overloads P1 deliberately revokes and reinstates user_consents_owner_insert, which P3 replaces."
+    },
+    {
+      "name": "20260710094000_auth_gate_trusted_consent_docs.sql",
+      "expectRecorded": true,
+      "reason": "Superseded by 20260718120000 exact consent snapshots and re-grants the same revoked overloads. Production's live four-argument body happens to be this file's version, which does not make re-application safe."
+    }
+  ],
+  "blockedComment": "Unlike development, production HAS these five recorded: they were applied in timestamp order before the writing cutover, so the records are true history. `expectRecorded` marks that, and the runner still refuses to select them for apply. Restoring institution exposure gating needs a new forward migration written against the post-cutover structure, never these files.",
+  "deferredMigrations": [
+    {
+      "name": "20260629153000_enforce_same_problem_comparison.sql",
+      "expectRecorded": true,
+      "liveOnProduction": true,
+      "reason": "Recorded AND live on production: private.enforce_comparison_report_same_problem exists. Development never applied it. This asymmetry is not resolved by the backlog — keeping or removing the guard on production is a separate owner decision (program D10)."
+    },
+    {
+      "name": "20260629215000_feedback_retry_parent_submission.sql",
+      "expectRecorded": true,
+      "liveOnProduction": false,
+      "reason": "Recorded on production but public.create_external_writing_submission(jsonb) does NOT exist there (measured 2026-07-30 across every schema) — a false record of the same shape as the development 20260527113000 case. Nothing depends on it: the function has zero callers in v13 src/. Do not stamp or re-apply it as part of the backlog; resolving the record is a separate decision."
+    }
+  ],
+  "deferredComment": "Both deferred files are recorded in the production ledger. Only the comparison guard is actually live. Before deciding either way, grep the live function bodies (pg_proc.prosrc) for the objects each file creates — the development window learned that lesson when 20260710095000 turned out to be a hard runtime dependency of an already-applied migration."
+}

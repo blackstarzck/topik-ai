@@ -99,6 +99,85 @@
   감사 테이블로 옮기는 결과가 되면 안 된다.
 - 소유권 근거: `docs/architecture/shared-supabase-schema-ownership.md` §2
 
+## 2.5 `migrations-v13/` — v13 저작 learner 마이그레이션 아카이브 (2026-07-30, 이전 프로그램 M2)
+
+- **성격**: 소유권 이전 프로그램(`docs/plans/v13-db-ownership-transfer-program-plan.md`)의 M2 산출물.
+  v13이 저작한 learner 마이그레이션 역사를 **바이트 그대로** 이 저장소가 보관한다. 계약 SHA
+  `0ee14993` 시점의 forward 100 + down 18 + `INDEX.md`.
+- **이 디렉터리는 적용 대상이 아니다.** 옮긴 것은 커스터디(파일 보관)와 CI 재생 입력이며 DB 상태·객체·
+  장부 소속은 변하지 않는다. learner 장부는 계속 `supabase_migrations.schema_migrations`이고 쓰기 주체는
+  `scripts/db/apply-v13-migration.mjs` 단독이다.
+- **적용 가능 여부의 단일 권위는 매니페스트의 `disposition`이다.** 아카이브에 있다는 사실이 적용 가능을
+  뜻하지 않는다: `applied` 92 · `blocked` 5(적용하면 컷오버 회귀) · `deferred` 2(오너 결정 대기) ·
+  `adopted-elsewhere` 1(`20260723170000` — 실제 적용·장부는 §2.3의 admin 네임스페이스, 여기 사본은
+  재생 전용 `replayOnly`).
+- **매니페스트**: `scripts/db/manifests/v13-archive.json` — 파일별 sha256, git blob sha, 바이트 수,
+  dev/운영 장부 지위, disposition, 사유.
+- **검증**: `npm run check:v13-archive` (오프라인 자기검증 — sha256·blob 재계산 + dev 매니페스트와
+  disposition 대사). v13 체크아웃이 있을 때는
+  `node scripts/db/v13-archive.mjs --v13-root <path> --v13-sha <sha40>`로 원본 git 객체와 바이트 대조까지
+  수행한다.
+- **바이트 동일성 증명이 v13 없이도 성립한다**: 아카이브 바이트에서 git blob sha를 재계산해 매니페스트
+  값과 대조하면, 그 바이트가 v13 역사의 동일 객체로 해시된다는 사실이 확인된다. 계약 SHA 핀 제거(M4) 이후
+  에도 증명이 유지되는 근거다.
+- **저작 워터마크 `20260729120000`**: 이 버전 **이하**는 v13 저작 역사(장부 소속 불변), **초과**는
+  topik-ai 저작이다. 신규 learner 마이그레이션의 저작 개통은 M5에서 다룬다.
+- 아카이브 파일은 **수정하지 않는다**(§2.3 정본 채택과 동일 계약). 교정이 필요하면 워터마크 초과 신규
+  forward를 만든다.
+
+### 2.5.1 이중검증 전환 (2026-07-30, M3)
+
+- **shadow replay와 경계 검사, 적용 러너의 기본 learner 소스가 아카이브로 바뀌었다.** v13 체크아웃은
+  이제 *대조 대상*이며 재생 입력이 아니다.
+- `scripts/ci/run-shadow-contract.mjs`: `--v13-dir`가 주어지면 재생 전에 아카이브 전량(파일별 blob·바이트)과
+  벤더링한 `scripts/ci/fixtures/v13-supabase-config.toml`을 그 체크아웃과 대조하고, 하나라도 다르면 중단한다.
+  `--v13-dir` 없이도 재생이 성립한다(핀 제거 M4의 전제). N-1 업그레이드 재생은 N-1 트리에 아카이브가 있으면
+  그것을 쓰고, 없으면 종전처럼 N-1 트리의 핀으로 v13을 fetch한다.
+- `npm run check:migration-boundary`는 인자 없이 아카이브를 읽으므로 **워크트리에서도 실행된다**(종전에는
+  존재하지 않는 형제 경로를 참조해 crash). `--v13-root=`/`TOPIK_V13_ROOT`는 과도기 대조 옵션으로 남는다.
+- `scripts/db/apply-v13-migration.mjs`는 `--source archive`(기본)에서 본문을 아카이브에서 읽고 매니페스트
+  sha256으로 **재해시 검증**한다. `blocked`·`deferred`·`replayOnly` 파일은 선택 자체가 거부된다.
+  `--source git`은 기존 경로이며 두 소스는 동일한 SQL을 생성한다(B9 dry-run 1191줄 동일 확인).
+  tracker provenance에 `body_source=`가 추가된다.
+
+### 2.5.2 운영(topik-prod) learner 적용 경로 (2026-07-30, M6 · 결정 D9)
+
+러너는 이제 운영을 **거부하지 않고 게이트로 통과**시킨다. dev 기본 동작은 무변경이다.
+
+| 게이트 | 요구 | 통과 실패 시 |
+| --- | --- | --- |
+| 매니페스트 ↔ 타깃 | `environment: production` 매니페스트 + 운영 ref 쌍만 성립 | dev 매니페스트로 운영 조준, 운영 매니페스트로 dev 조준 모두 거부 |
+| confirm 토큰 | `--write`에서만 `SUPABASE_PRODUCTION_CONFIRM=<운영 ref>` | 쓰기 거부. `--status`·`--dry-run`은 토큰 없이 동작(상시 export 유도 방지) |
+| 배치 승인 | `SUPABASE_PRODUCTION_APPROVED_BATCH`가 **실제 `--batch` 값**과 일치 | 미설정·공백·불일치 전부 거부. 승인 1회로 시퀀스 전체를 걷지 못한다 |
+| 순서 역전 | 매니페스트에 더 낮은 pending 버전이 남아 있으면 상위 버전 적용 금지 | fail-closed |
+
+⚠️ 배치 승인은 환경변수 두 개를 맞비교하지 않는다. 초기 구현이 그렇게 했고, **둘 다 미설정일 때 `undefined !== undefined`가 false가 되어 가드가 통과**했다. 그 결과 2026-07-30 운영에 P1이 승인 없이 적용됐다(같은 날 down으로 원복, 사용자 영향 0). 승인 부재가 승인 일치로 읽히면 안 되므로, 비교 대상은 항상 CLI가 해석한 배치명이다.
+
+운영 매니페스트는 `scripts/db/manifests/v13-shared-prod.json`이다. dev 매니페스트의 복사본이 **아니다** — 운영 라이브 집합이 달라 배치·probe를 운영 실측(2026-07-30 read-only 지문)에서 재도출했다. 백로그 7파일 6배치(P1~P6)이며, dev가 필요했던 `20260527113000` false-record 선행 수리는 운영엔 불필요하다(선행조건 3종 전부 present로 측정).
+
+blocked 5건은 dev와 반대로 **운영엔 정당한 역사로 기록돼 있다**. 항목의 `expectRecorded: true`가 그 사실을 표시하고, `--status`는 기록돼 있으면 정상으로, 없으면 조사 대상으로 출력한다. 재적용은 여전히 금지다.
+
+절차서(백업 확인·유지보수 창·롤백 순서)는 운영 적용 runbook — docs/runbooks/v13-prod-migration-apply-runbook.md — 가 담당한다(별도 세션 작성분, 아직 미머지이므로 백틱 경로로 승격하지 않는다).
+
+### 2.5.3 신규 learner 마이그레이션 저작 (2026-07-30, M5)
+
+워터마크(`20260729120000`) **초과** 타임스탬프로 이 저장소에서 저작한다. v13 저장소에는 더 이상 작성하지 않는다.
+
+1. `supabase/migrations-v13/<YYYYMMDDHHMMSS>_<snake_case>.sql`에 forward를 쓰고,
+   `supabase/migrations-v13/down/`에 같은 파일명으로 롤백을 짝지어 둔다.
+2. `node scripts/db/v13-archive.mjs --register` — 매니페스트에 `origin: topik-ai`,
+   `disposition: authored`, 양 환경 `absent`로 등재된다. 워터마크 이하 타임스탬프는 거부된다
+   (동결 역사 경계가 모호해지고 재생 순서가 뒤집히므로).
+3. 적용은 종전과 같이 러너 + 환경 manifest 경유이며 장부는 `supabase_migrations.schema_migrations`다
+   (결정 D3 — 장부 유지, 쓰기 주체만 이 저장소).
+4. 게이트: `npm run check:v13-archive`(등재·해시), `npm run check:expand-migrations`(expand-only 규칙).
+
+**expand-gate 적용 범위**: `migrations-v13/`도 이제 검사 대상이다.
+- **채택된 v13 역사(워터마크 이하)**: 수정·삭제는 계속 차단(불변)하되, contract operation 검사는 면제한다.
+  그 `drop`은 몇 달 전에 이미 실행된 역사이므로 지금 판정하면 채택 자체가 막힌다.
+- **워터마크 초과(이 저장소 저작)**: 다른 두 네임스페이스와 동일하게 expand-only 규칙을 적용한다.
+- 워터마크를 못 읽으면 면제 없이 전부 신규 저작으로 판정한다(fail-closed).
+
 ## 3. 공통 실행 메커니즘
 
 - 두 러너는 동일한 `scripts/db/migrate-core.mjs`를 사용하고, `trackTable`과

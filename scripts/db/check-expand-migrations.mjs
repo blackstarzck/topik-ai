@@ -5,8 +5,15 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const FORWARD_MIGRATION = /^supabase\/(migrations|migrations-admin)\/\d{14}_[a-z0-9_]+\.sql$/;
-const DOWN_MIGRATION = /^supabase\/(migrations|migrations-admin)\/down\/\d{14}_[a-z0-9_]+\.sql$/;
+const FORWARD_MIGRATION =
+  /^supabase\/(migrations|migrations-admin|migrations-v13)\/\d{14}_[a-z0-9_]+\.sql$/;
+const DOWN_MIGRATION =
+  /^supabase\/(migrations|migrations-admin|migrations-v13)\/down\/\d{14}_[a-z0-9_]+\.sql$/;
+// The learner archive holds migrations v13 authored and already applied. They are
+// history: immutability still applies, but scanning them for contract operations
+// would flag drops that ran months ago. Only authoring above the watermark — this
+// repo's own new learner migrations — is held to the expand-only rule.
+const LEARNER_ARCHIVE_PREFIX = 'supabase/migrations-v13/';
 const CONTRACT_PATTERNS = [
   ['drop-table', /\bdrop\s+table\b/i],
   ['drop-column', /\bdrop\s+column\b/i],
@@ -89,7 +96,18 @@ export function findContractOperations(sql) {
     .map(([name]) => name);
 }
 
-export function classifyMigrationDiff(entries, readMigration, { allowedRewrites = new Set() } = {}) {
+export function isLearnerHistoryPath(path, learnerHistoryWatermark) {
+  if (!learnerHistoryWatermark) return false;
+  if (!path.startsWith(LEARNER_ARCHIVE_PREFIX)) return false;
+  const version = /(\d{14})_[a-z0-9_]+\.sql$/.exec(path)?.[1];
+  return Boolean(version) && version <= learnerHistoryWatermark;
+}
+
+export function classifyMigrationDiff(
+  entries,
+  readMigration,
+  { allowedRewrites = new Set(), learnerHistoryWatermark = null } = {}
+) {
   const issues = [];
   const introducedFunctions = new Set();
   const orderedEntries = [...entries].sort((left, right) => left.path.localeCompare(right.path));
@@ -110,6 +128,9 @@ export function classifyMigrationDiff(entries, readMigration, { allowedRewrites 
       }
     }
     if (!forward) continue;
+    // Adopted learner history stays immutable (checked above) but is not re-judged
+    // against the expand-only rule; its drops are already-applied history.
+    if (isLearnerHistoryPath(entry.path, learnerHistoryWatermark)) continue;
     const sql = readMigration(entry.path);
     const safeFunctionReplacement = isSafeIntraReleaseFunctionReplacement(
       sql,
@@ -141,6 +162,24 @@ const REWRITE_ALLOWLIST_PATH = resolve(
   'manifests',
   'unapplied-rewrites.json'
 );
+
+const LEARNER_ARCHIVE_MANIFEST_PATH = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  'manifests',
+  'v13-archive.json'
+);
+
+// Missing manifest means no adopted history to exempt, so every learner path is
+// judged as new authoring. That fails closed rather than waving files through.
+export function loadLearnerHistoryWatermark(path = LEARNER_ARCHIVE_MANIFEST_PATH) {
+  if (!existsSync(path)) return null;
+  const parsed = JSON.parse(readFileSync(path, 'utf8'));
+  const watermark = parsed?.authoringWatermark;
+  if (typeof watermark !== 'string' || !/^\d{14}$/.test(watermark)) {
+    throw new Error('v13-archive.json must carry a 14-digit authoringWatermark.');
+  }
+  return watermark;
+}
 
 export function loadRewriteAllowlist(path = REWRITE_ALLOWLIST_PATH) {
   if (!existsSync(path)) return new Set();
@@ -188,7 +227,10 @@ function main() {
   const issues = classifyMigrationDiff(
     entries,
     (path) => readFileSync(resolve(path), 'utf8'),
-    { allowedRewrites: loadRewriteAllowlist() }
+    {
+      allowedRewrites: loadRewriteAllowlist(),
+      learnerHistoryWatermark: loadLearnerHistoryWatermark(),
+    }
   );
   if (issues.length > 0) {
     throw new Error(`Only additive expand migrations may auto-release:\n${issues.join('\n')}`);

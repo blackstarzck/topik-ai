@@ -4,6 +4,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import {
   copyFileSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -19,9 +20,17 @@ import {
   listLocalMigrations,
   stripOuterTransaction,
 } from '../db/migrate-core.mjs';
+import { evaluateSourceParity } from '../db/v13-archive.mjs';
 import { verifyUsersContract } from '../db/verify-users-contract.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
+// The learner migration history and the Supabase project config the shadow
+// replay needs are both vendored here (ownership transfer M2/M3), so a replay no
+// longer requires checking out the v13 repository. While `--v13-dir` is still
+// passed, every vendored byte is diffed against that checkout first.
+const LEARNER_ARCHIVE_DIR = join(ROOT, 'supabase', 'migrations-v13');
+const LEARNER_ARCHIVE_MANIFEST = join(ROOT, 'scripts', 'db', 'manifests', 'v13-archive.json');
+const VENDORED_V13_CONFIG = join(ROOT, 'scripts', 'ci', 'fixtures', 'v13-supabase-config.toml');
 const FIXTURE = {
   adminEmail: 'shadow-admin@example.invalid',
   memberEmail: 'shadow-member@example.invalid',
@@ -71,17 +80,32 @@ function prepareUpgradeBase({ upgradeFrom, v13Dir, currentV13Sha }) {
   run('git', ['worktree', 'add', '--detach', n1Path, upgradeFrom]);
   cleanups.push(() => run('git', ['worktree', 'remove', '--force', n1Path]));
 
-  const v13Pin = extractV13Pin(
-    readFileSync(join(n1Path, '.github', 'workflows', 'release-development.yml'), 'utf8')
-  );
-  let v13BaseDir = v13Dir;
-  if (v13Pin !== currentV13Sha) {
-    run('git', ['-C', v13Dir, 'fetch', 'origin', v13Pin]);
-    const v13Root = mkdtempSync(join(tmpdir(), 'topik-ai-n1-v13-'));
-    cleanups.push(() => rmSync(v13Root, { recursive: true, force: true }));
-    v13BaseDir = join(v13Root, 'tree');
-    run('git', ['-C', v13Dir, 'worktree', 'add', '--detach', v13BaseDir, v13Pin]);
-    cleanups.push(() => run('git', ['-C', v13Dir, 'worktree', 'remove', '--force', v13BaseDir]));
+  // An N-1 tree from after the archive adoption carries its own learner history,
+  // so it needs no v13 checkout and pins no contract sha. Only fall back to
+  // fetching the pinned v13 commit when the N-1 tree predates the adoption.
+  const n1ArchiveDir = join(n1Path, 'supabase', 'migrations-v13');
+  let v13Pin = null;
+  let learnerMigrationsDir = n1ArchiveDir;
+  if (!existsSync(n1ArchiveDir)) {
+    if (!v13Dir) {
+      throw new Error(
+        `--upgrade-from ${upgradeFrom} predates the learner archive, so replaying it needs `
+        + '--v13-dir pointing at a v13 checkout.'
+      );
+    }
+    v13Pin = extractV13Pin(
+      readFileSync(join(n1Path, '.github', 'workflows', 'release-development.yml'), 'utf8')
+    );
+    let v13BaseDir = v13Dir;
+    if (v13Pin !== currentV13Sha) {
+      run('git', ['-C', v13Dir, 'fetch', 'origin', v13Pin]);
+      const v13Root = mkdtempSync(join(tmpdir(), 'topik-ai-n1-v13-'));
+      cleanups.push(() => rmSync(v13Root, { recursive: true, force: true }));
+      v13BaseDir = join(v13Root, 'tree');
+      run('git', ['-C', v13Dir, 'worktree', 'add', '--detach', v13BaseDir, v13Pin]);
+      cleanups.push(() => run('git', ['-C', v13Dir, 'worktree', 'remove', '--force', v13BaseDir]));
+    }
+    learnerMigrationsDir = join(v13BaseDir, 'supabase', 'migrations');
   }
 
   const writingFiles = loadReleaseMigrations(
@@ -92,7 +116,7 @@ function prepareUpgradeBase({ upgradeFrom, v13Dir, currentV13Sha }) {
     join(n1Path, 'scripts', 'db', 'manifests', 'admin-production-cutover.json'),
     join(n1Path, 'supabase', 'migrations-admin')
   );
-  const plan = buildMigrationPlan(v13BaseDir, writingFiles, adminFiles);
+  const plan = buildMigrationPlan(learnerMigrationsDir, writingFiles, adminFiles);
   return {
     v13Pin,
     plan,
@@ -157,8 +181,7 @@ function sourceMigrationFiles(source, migrationsDir, names) {
   return names.map((name) => ({ source, name, path: join(migrationsDir, name) }));
 }
 
-function buildMigrationPlan(v13Dir, writingFiles, adminFiles) {
-  const v13MigrationsDir = join(v13Dir, 'supabase', 'migrations');
+function buildMigrationPlan(v13MigrationsDir, writingFiles, adminFiles) {
   const v13Files = sourceMigrationFiles(
     'v13',
     v13MigrationsDir,
@@ -208,14 +231,13 @@ function generatedVersion(index) {
   return digits.join('');
 }
 
-function createShadowProject(v13Dir, bootstrapMigrations) {
+function createShadowProject(configPath, bootstrapMigrations) {
   const workdir = mkdtempSync(join(tmpdir(), 'topik-ai-shadow-'));
   const projectId = `topik-ai-ci-shadow-${process.pid}`;
   const supabaseDir = join(workdir, 'supabase');
   const migrationsDir = join(supabaseDir, 'migrations');
   mkdirSync(migrationsDir, { recursive: true });
-  const sourceConfig = join(v13Dir, 'supabase', 'config.toml');
-  let config = readFileSync(sourceConfig, 'utf8');
+  let config = readFileSync(configPath, 'utf8');
   config = config.replace(
     /^project_id\s*=\s*"[^"]+"/m,
     `project_id = "${projectId}"`
@@ -804,17 +826,56 @@ function applyMigrationFiles(entries, containerName) {
   });
 }
 
+// While the v13 checkout is still wired in, every vendored byte the replay uses
+// is diffed against it. A passing run is the evidence that dropping the checkout
+// (and the contract sha pin) changes nothing about what gets replayed.
+function verifyVendoredSourceParity({ v13Dir, sourceGitSha }) {
+  const manifest = JSON.parse(readFileSync(LEARNER_ARCHIVE_MANIFEST, 'utf8'));
+  const parity = evaluateSourceParity({
+    archiveDir: LEARNER_ARCHIVE_DIR,
+    manifest,
+    repoRoot: v13Dir,
+    sourceGitSha,
+  });
+  const failures = [...parity.failures];
+  const vendoredConfig = readFileSync(VENDORED_V13_CONFIG);
+  const sourceConfig = execFileSync(
+    'git',
+    ['-C', v13Dir, 'show', `${sourceGitSha}:supabase/config.toml`],
+    { encoding: 'buffer', maxBuffer: 16 * 1024 * 1024 }
+  );
+  if (!vendoredConfig.equals(sourceConfig)) {
+    failures.push('scripts/ci/fixtures/v13-supabase-config.toml differs from the v13 checkout.');
+  }
+  if (failures.length > 0) {
+    throw new Error(`Vendored v13 source parity failed:\n- ${failures.join('\n- ')}`);
+  }
+  return { comparedFiles: parity.comparedFiles, configCompared: true };
+}
+
 async function main() {
   const args = process.argv.slice(2);
-  const v13Dir = resolve(getArgValue(args, '--v13-dir') ?? '');
+  const v13DirArg = getArgValue(args, '--v13-dir');
+  const v13Dir = v13DirArg ? resolve(v13DirArg) : null;
   const expectedV13Sha = getArgValue(args, '--v13-sha');
   const jsonOut = getArgValue(args, '--json-out');
-  if (!expectedV13Sha) throw new Error('--v13-sha is required.');
-  const actualV13Sha = execFileSync('git', ['-C', v13Dir, 'rev-parse', 'HEAD'], {
-    encoding: 'utf8',
-  }).trim();
-  if (actualV13Sha !== expectedV13Sha) {
-    throw new Error(`v13 SHA mismatch: expected ${expectedV13Sha}, got ${actualV13Sha}.`);
+  const learnerManifest = JSON.parse(readFileSync(LEARNER_ARCHIVE_MANIFEST, 'utf8'));
+  let sourceParity = null;
+  if (v13Dir) {
+    if (!expectedV13Sha) throw new Error('--v13-dir requires --v13-sha.');
+    const actualV13Sha = execFileSync('git', ['-C', v13Dir, 'rev-parse', 'HEAD'], {
+      encoding: 'utf8',
+    }).trim();
+    if (actualV13Sha !== expectedV13Sha) {
+      throw new Error(`v13 SHA mismatch: expected ${expectedV13Sha}, got ${actualV13Sha}.`);
+    }
+    if (learnerManifest.sourceGitSha !== expectedV13Sha) {
+      throw new Error(
+        `Learner archive was adopted from ${learnerManifest.sourceGitSha} but the checkout is `
+        + `${expectedV13Sha}; re-import the archive before comparing.`
+      );
+    }
+    sourceParity = verifyVendoredSourceParity({ v13Dir, sourceGitSha: expectedV13Sha });
   }
   const cliVersion = supabase(['--version']).trim();
   if (cliVersion !== '2.105.0') {
@@ -829,13 +890,13 @@ async function main() {
     join(ROOT, 'scripts', 'db', 'manifests', 'admin-production-cutover.json'),
     join(ROOT, 'supabase', 'migrations-admin')
   );
-  const migrationPlan = buildMigrationPlan(v13Dir, writingFiles, adminFiles);
+  const migrationPlan = buildMigrationPlan(LEARNER_ARCHIVE_DIR, writingFiles, adminFiles);
   const upgradeFrom = getArgValue(args, '--upgrade-from');
   const upgradeBase = upgradeFrom
     ? prepareUpgradeBase({ upgradeFrom, v13Dir, currentV13Sha: expectedV13Sha })
     : null;
   const activePlan = upgradeBase ? upgradeBase.plan : migrationPlan;
-  const shadowProject = createShadowProject(v13Dir, activePlan.bootstrap);
+  const shadowProject = createShadowProject(VENDORED_V13_CONFIG, activePlan.bootstrap);
   const shadowWorkdir = shadowProject.workdir;
   const password = `Shadow-${randomBytes(18).toString('base64url')}!9`;
   let started = false;
@@ -912,7 +973,12 @@ async function main() {
       upgradeFrom: upgradeFrom ?? null,
       upgradeBaseV13Sha: upgradeBase?.v13Pin ?? null,
       upgradeDeltaCount: upgradeDelta ? upgradeDelta.length : null,
-      v13CommitSha: actualV13Sha,
+      v13CommitSha: learnerManifest.sourceGitSha,
+      learnerSource: 'archive',
+      learnerArchiveDir: learnerManifest.archiveDir,
+      learnerAuthoringWatermark: learnerManifest.authoringWatermark,
+      v13CheckoutCompared: Boolean(sourceParity),
+      sourceParity,
       supabaseCliVersion: cliVersion,
       v13MigrationCount: migrationPlan.v13Count,
       v13ExcludedFixtureMigrations: [...V13_SHADOW_EXCLUDED_MIGRATIONS],

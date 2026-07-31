@@ -11,9 +11,11 @@ import { loadRewriteAllowlist } from '../db/check-expand-migrations.mjs';
 // change also touches an app path.
 // 5: supabase/README.md resolves to control-plane instead of being shadowed by the
 // generic markdown rule.
+// 6: the adopted v13 learner archive (supabase/migrations-v13/) resolves to
+// control-plane instead of unknown, which blocked every PR that touched it.
 // Recorded in release evidence, so a bump keeps pre-fix classifications
 // distinguishable from post-fix ones.
-export const CLASSIFIER_VERSION = 5;
+export const CLASSIFIER_VERSION = 6;
 
 const ZERO_SHA = /^0+$/;
 const RELEASE_PLANS = new Set([
@@ -76,6 +78,16 @@ function isDownMigrationPath(filePath) {
   return /^supabase\/(migrations|migrations-admin)\/down\/[^/]+\.sql$/i.test(filePath);
 }
 
+// The adopted v13 learner archive. Deliberately NOT a migration path: the release
+// manifest does not carry the learner namespace yet (ownership transfer M5b, which
+// ships with M4), so calling these 'migration' would set databaseTouched and have a
+// release claim it applies files the pipeline never touches. Control-plane keeps the
+// full validation profile — db-contract runs check:v13-archive and the expand gate —
+// without that false claim. Flip this to isForwardMigrationPath when M5b lands.
+function isLearnerArchivePath(filePath) {
+  return /^supabase\/migrations-v13\//i.test(filePath);
+}
+
 function isControlPlanePath(filePath) {
   return (
     isControlPlaneDocumentPath(filePath)
@@ -83,6 +95,7 @@ function isControlPlanePath(filePath) {
     || /^scripts\//.test(filePath)
     || /^tests\//.test(filePath)
     || isDownMigrationPath(filePath)
+    || isLearnerArchivePath(filePath)
     || filePath === '.env.example'
     || filePath === '.nvmrc'
     || /^playwright\..+\.config\.ts$/.test(filePath)
