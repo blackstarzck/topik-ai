@@ -98,7 +98,7 @@
 | 사용자 화면 후보 | 영향 상태 | 이 페이지 데이터가 반영되는 방식 | 비고 |
 | --- | --- | --- | --- |
 | 가입/QR 유입 | 확인됨 | 가입 시 입력/저장되는 기관 코드가 `profiles.affiliation_code`로 남습니다. | v13 가입 흐름과 연결 |
-| 기관 소속 회원 대상 문항 | 확인됨 | 기관 코드별 배정 매핑이 학습자 문항 목록 필터에 강제 적용됩니다 — 무소속 학습자는 `available` 전체, 기관 소속 학습자는 자기 코드 배정분만 봅니다. | 강제 지점은 `private.is_writing_question_visible_to_user`(dev 실측 2026-07-30) |
+| 기관 소속 회원 대상 문항 | 확인됨 | 기관 코드별 배정 매핑이 학습자 문항 목록 필터에 강제 적용됩니다 — 무소속 학습자는 `available` 전체, 배정 1건 이상인 기관의 소속 학습자는 자기 코드 배정분만, 배정 0건인 기관의 소속 학습자는 제한 없이 전체를 봅니다. | 강제 지점은 `private.is_writing_question_visible_to_user`(dev 실측 2026-07-30·2026-07-31, 기관 단위 옵트인) |
 | 회원 프로필/관리 화면 | 내부 전용 | 기관 소속은 관리자 운영 정보로 우선 관리합니다. | 사용자 직접 수정은 비목표 |
 
 ## 10. URL/상태 복원
@@ -126,5 +126,5 @@
 
 ## 13. 오픈 이슈
 
-- 기관 노출 문항의 predicate는 `service_status='available' AND (사용자 affiliation_code 없음 OR 매핑.institution_code = 사용자 affiliation_code)`입니다 — 무소속 학습자는 `available` 문항 전체를 보고, 기관 소속 학습자는 자기 코드에 매핑된 문항만 봅니다. v13 학습자 경로에는 `private.is_writing_question_visible_to_user`로 이미 강제 적용 중입니다(dev 실측 2026-07-30).
+- 기관 노출 문항의 predicate는 `service_status='available' AND (사용자 affiliation_code 없음 OR 해당 기관의 매핑 0건 OR 매핑.institution_code = 사용자 affiliation_code)`입니다 — 무소속 학습자는 `available` 문항 전체를 보고, 배정을 1건 이상 가진 기관의 소속 학습자는 자기 코드에 매핑된 문항만 봅니다. **배정이 0건인 기관의 소속 학습자는 제한 없이 전체를 봅니다**(기관 단위 옵트인, `20260731011500`) — 기관 코드를 만들고 회원을 배정했다는 사실만으로는 문항이 가려지지 않으며 큐레이션은 매핑을 1건이라도 넣는 순간 시작됩니다. v13 학습자 경로에는 `private.is_writing_question_visible_to_user`로 이미 강제 적용 중입니다(dev 실측 2026-07-30·2026-07-31).
 - 회원 관리 모달의 회원 검색/페이지네이션은 대량 회원 환경에서 서버 검색으로 확장할 수 있습니다.

@@ -237,9 +237,11 @@ export type AssessmentQuestionAuditEvent = {
 
 /**
  * 문항 × 기관 노출 매핑 행 — admin_list_writing_question_institutions RPC와 1:1.
- * 기관 할당제: 매핑 행은 그 institutionCode 소속 학습자에게 문항을 허용하는 목록이며,
- * 다른 학습자에게 잠그는 장치가 아니다. 무소속 학습자는 available 문항 전체를 보고,
- * 기관 소속 학습자는 자기 코드 매핑분만 본다(미매핑 문항은 보이지 않는다).
+ * 기관 할당제 + 기관 단위 옵트인: 매핑 행은 그 institutionCode 소속 학습자에게 문항을
+ * 허용하는 목록이며, 다른 학습자에게 잠그는 장치가 아니다. 무소속 학습자는 available
+ * 문항 전체를 보고, 배정을 1건 이상 가진 기관의 소속 학습자는 자기 코드 매핑분만 본다
+ * (미매핑 문항은 보이지 않는다). 배정이 0건인 기관의 소속 학습자는 큐레이션 미설정으로
+ * 보아 제한 없이 전체를 본다(20260731011500 — 신규 기관 회원이 0문항을 보는 기본값 방지).
  * set/clear 결과는 BulkServiceStatusResult를 재사용한다(노출 상태 일괄 처리와 동일 shape).
  */
 export type WritingQuestionInstitutionRow = {
