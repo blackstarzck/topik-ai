@@ -126,5 +126,5 @@
 
 ## 13. 오픈 이슈
 
-- 기관 노출 문항의 admin 기준 predicate는 `service_status='available' AND (기관 매핑 없음 OR 사용자 affiliation_code 매핑 존재)`입니다. v13 사용자 화면 전체 적용은 별도 handoff 범위입니다.
+- 기관 노출 문항의 predicate는 `service_status='available' AND (사용자 affiliation_code 없음 OR 매핑.institution_code = 사용자 affiliation_code)`입니다 — 무소속 학습자는 `available` 문항 전체를 보고, 기관 소속 학습자는 자기 코드에 매핑된 문항만 봅니다. v13 학습자 경로에는 `private.is_writing_question_visible_to_user`로 이미 강제 적용 중입니다(dev 실측 2026-07-30).
 - 회원 관리 모달의 회원 검색/페이지네이션은 대량 회원 환경에서 서버 검색으로 확장할 수 있습니다.

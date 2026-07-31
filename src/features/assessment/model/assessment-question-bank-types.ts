@@ -237,7 +237,9 @@ export type AssessmentQuestionAuditEvent = {
 
 /**
  * 문항 × 기관 노출 매핑 행 — admin_list_writing_question_institutions RPC와 1:1.
- * 매핑 행이 있는 문항은 해당 institutionCode 회원에게만 노출된다(공개 기본 + 기관 한정).
+ * 기관 할당제: 매핑 행은 그 institutionCode 소속 학습자에게 문항을 허용하는 목록이며,
+ * 다른 학습자에게 잠그는 장치가 아니다. 무소속 학습자는 available 문항 전체를 보고,
+ * 기관 소속 학습자는 자기 코드 매핑분만 본다(미매핑 문항은 보이지 않는다).
  * set/clear 결과는 BulkServiceStatusResult를 재사용한다(노출 상태 일괄 처리와 동일 shape).
  */
 export type WritingQuestionInstitutionRow = {

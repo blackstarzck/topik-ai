@@ -768,7 +768,9 @@ export async function setTopikWritingTagMasterStatus(
 
 // ---------------------------------------------------------------------------
 // 기관별 노출 매핑 — admin_set/clear/list_writing_question_institutions.
-// 공개 기본 + 기관 한정: 매핑 행이 있는 문항은 해당 기관 회원에게만 노출된다.
+// 기관 할당제: 매핑 행은 그 기관 소속 학습자에게 문항을 허용하는 목록이며, 무소속
+// 학습자는 매핑 유무와 무관하게 available 문항 전체를 본다(강제 지점은 DB predicate
+// private.is_writing_question_visible_to_user 단 하나).
 // set 은 set-semantics(전달 코드 집합 = 그 문항의 최종 허용 집합), 문항별 격리·멱등·
 // self-verify·감사(batch_id 묶음)는 RPC 내장. 결과 jsonb 는 mapBulkResult 재사용 매핑.
 // ---------------------------------------------------------------------------
