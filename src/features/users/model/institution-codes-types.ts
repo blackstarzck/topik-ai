@@ -14,6 +14,38 @@ export const institutionCodeStatuses: readonly InstitutionCodeStatus[] = [
 ];
 
 /**
+ * 기관 단위 쓰기 문항 노출 모드. 문항 축 라벨(`미배정`/`기관 N곳 배정`)과 **다른 축**이며,
+ * 2026-07-30 에 폐기된 문항 축 라벨 `전체 공개` 와는 무관한 값이다.
+ * - `제한 없음`: 그 기관 소속 학습자도 노출 허용 문항 전체를 본다(신규 문항 자동 포함).
+ *   배정 목록은 보존되지만 게이팅에 참여하지 않는다.
+ * - `배정분만`: 그 기관에 배정된 문항만 본다.
+ */
+export type InstitutionExposureMode = '제한 없음' | '배정분만';
+
+export const institutionExposureModes: readonly InstitutionExposureMode[] = [
+  '제한 없음',
+  '배정분만'
+];
+
+/** 모드 원장에 행이 없는 기관의 해석값. 폴백은 항상 현행 동작(`배정분만`)이다. */
+export const defaultInstitutionExposureMode: InstitutionExposureMode = '배정분만';
+
+/**
+ * 기관별 노출 모드 행 — admin_list_institution_exposure_modes RPC와 1:1.
+ * admin_list_institution_codes 는 반환 타입을 바꿀 수 없어(expand 게이트가 drop function 을
+ * 차단) 모드를 이 RPC 로 분리 조회하고 화면이 코드 목록과 병합한다. 원장에 행이 없는 코드는
+ * 반환되지 않으므로 `defaultInstitutionExposureMode` 로 채운다.
+ */
+export type InstitutionExposureModeRow = {
+  code: string;
+  exposureMode: InstitutionExposureMode;
+  /** 그 기관에 배정된 문항 수. 모드와 무관하게 보존된다. */
+  assignedQuestionCount: number;
+  reason: string;
+  updatedAt: string;
+};
+
+/**
  * Users > 기관 코드(박람회/기관 유입 코드) 화면 모델. admin_list_institution_codes RPC와 1:1.
  * code 는 QR 주소에 실리는 문자열이고, v13 가입 시 profiles.affiliation_code 에 그대로 기록된다.
  */

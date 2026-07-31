@@ -6,6 +6,7 @@ import {
   Input,
   InputNumber,
   Modal,
+  Radio,
   Select,
   Space,
   Tag,
@@ -23,23 +24,30 @@ import {
   deleteInstitutionCodeSafe,
   fetchInstitutionCodeMembersSafe,
   fetchInstitutionCodesSafe,
+  fetchInstitutionExposureModesSafe,
   fetchInstitutionInvitationsSafe,
   inviteInstitutionMembersSafe,
   isInstitutionCodesSupabase,
+  setInstitutionExposureModeSafe,
   updateInstitutionCodeSafe
 } from '../api/institution-codes-service';
 import { fetchUsersSafe } from '../api/users-service';
 import { kickNotificationEmailDispatch } from '../../../shared/api/notification-email-kick';
 import { InvitationEmailStatusTag } from '../ui/invitation-email-status-tag';
+import { InstitutionExposureModeTag } from '../ui/institution-exposure-mode-tag';
 import {
+  defaultInstitutionExposureMode,
   institutionCodeKinds,
-  institutionCodeStatuses
+  institutionCodeStatuses,
+  institutionExposureModes
 } from '../model/institution-codes-types';
 import type {
   InstitutionCode,
   InstitutionCodeKind,
   InstitutionCodeMember,
   InstitutionCodeStatus,
+  InstitutionExposureMode,
+  InstitutionExposureModeRow,
   InstitutionInvitation
 } from '../model/institution-codes-types';
 import type { UserSummary } from '../model/types';
@@ -55,7 +63,10 @@ import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
-import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
+import {
+  createInfoColumnTitle,
+  createStatusColumnTitle
+} from '../../../shared/ui/table/status-column-title';
 import {
   TableActionMenu,
   type TableActionMenuItem
@@ -88,9 +99,24 @@ type EditFormValues = {
   label: string;
   kind: InstitutionCodeKind;
   status: InstitutionCodeStatus;
+  exposureMode: InstitutionExposureMode;
   note?: string;
   reason: string;
 };
+
+/**
+ * 노출 모드 변경 거부 사유를 운영자 언어로 바꾼다. 서버(빈 화면 가드)가 raw Postgres
+ * 메시지를 던지므로 그대로 노출하지 않는다. 알려진 패턴이 아니면 원문을 유지한다.
+ */
+function translateExposureModeError(message: string): string {
+  if (message.includes('cannot switch institution')) {
+    return '배정된 문항이 0건이어서 배정분만으로 바꿀 수 없습니다. 소속 회원 또는 대기 중 초대가 있으면 그 학습자에게 쓰기 문항이 하나도 보이지 않습니다. 노출 문항에서 먼저 배정하거나 회원 소속을 해제해 주세요.';
+  }
+  if (message.includes('missing permission')) {
+    return '노출 모드를 바꿀 권한이 없습니다(users.institution-codes.manage).';
+  }
+  return message;
+}
 
 // 회원 관리 모달 통합 로스터 행 — 대기 중 초대와 소속 회원을 한 테이블로 묶는다.
 type MemberRosterRow = {
@@ -174,6 +200,43 @@ export default function InstitutionCodesPage(): JSX.Element {
   const [questionExposureTarget, setQuestionExposureTarget] =
     useState<InstitutionCode | null>(null);
 
+  // 기관별 노출 모드 원장. admin_list_institution_codes 는 반환 타입을 바꿀 수 없어
+  // (expand 게이트가 drop function 차단) 별도 RPC 로 조회해 코드 목록과 병합한다.
+  // 원장에 행이 없는 코드는 기본값(`배정분만`)으로 해석한다.
+  const [exposureModes, setExposureModes] = useState<InstitutionExposureModeRow[]>([]);
+  const exposureModeByCode = useMemo(
+    () => new Map(exposureModes.map((row) => [row.code, row])),
+    [exposureModes]
+  );
+  const resolveExposureMode = useCallback(
+    (code: string): InstitutionExposureMode =>
+      exposureModeByCode.get(code)?.exposureMode ?? defaultInstitutionExposureMode,
+    [exposureModeByCode]
+  );
+  const resolveAssignedCount = useCallback(
+    (code: string): number => exposureModeByCode.get(code)?.assignedQuestionCount ?? 0,
+    [exposureModeByCode]
+  );
+
+  // 수정 모달의 노출 모드 선택을 감시한다. 배정 0건인데 `배정분만` 으로 바꾸려 하면
+  // 서버(빈 화면 가드)가 거부하므로, 왕복 전에 화면에서 막고 이유를 알린다.
+  const editExposureMode = Form.useWatch<InstitutionExposureMode | undefined>(
+    'exposureMode',
+    editForm
+  );
+  const editAssignedCount = editTarget ? resolveAssignedCount(editTarget.code) : 0;
+  const editModeBlocked =
+    editTarget !== null
+    && editExposureMode === '배정분만'
+    && editAssignedCount === 0
+    && editTarget.memberCount > 0;
+  // 회원이 아직 없으면 차단하지 않는다 — 앞으로 소속될 학습자에 대한 경고만 남긴다.
+  const editModeZeroAssignedWarning =
+    editTarget !== null
+    && editExposureMode === '배정분만'
+    && editAssignedCount === 0
+    && editTarget.memberCount === 0;
+
   // 회원 배정/해제 권한(메뉴 게이팅과 동일 키). 코드 생성/수정(is_admin)과 달리 회원 관리는
   // platform_admin RPC라, 권한 미보유자에겐 회원 관리 컨트롤을 숨긴다(다른 두 화면과 일관).
   const currentAdminId = usePermissionStore((state) => state.currentAdminId);
@@ -214,6 +277,15 @@ export default function InstitutionCodesPage(): JSX.Element {
         errorMessage: result.error.message,
         errorCode: result.error.code
       }));
+    });
+
+    // 모드 원장은 목록과 독립적으로 실패할 수 있다. 실패하면 전 코드가 기본값
+    // (`배정분만`)으로 표시되며 목록 자체는 계속 동작한다 — 노출 모드는 부가 정보다.
+    void fetchInstitutionExposureModesSafe(controller.signal).then((result) => {
+      if (controller.signal.aborted) {
+        return;
+      }
+      setExposureModes(result.ok ? result.data : []);
     });
 
     return () => {
@@ -639,6 +711,26 @@ export default function InstitutionCodesPage(): JSX.Element {
       const note = values.note?.trim() ?? '';
       const reason = values.reason.trim();
 
+      // 노출 모드를 먼저 반영한다. 서버가 빈 화면 가드로 거부하면(배정 0건 + 회원 있음)
+      // 코드 메타는 손대지 않은 채 중단되어야 한다 — 부분 적용 방지.
+      const nextMode = values.exposureMode;
+      if (nextMode !== resolveExposureMode(editTarget.code)) {
+        const modeResult = await setInstitutionExposureModeSafe({
+          code: editTarget.code,
+          exposureMode: nextMode,
+          reason
+        });
+        if (!modeResult.ok) {
+          notificationApi.error({
+            message: '노출 모드 변경 실패',
+            description: translateExposureModeError(modeResult.error.message)
+          });
+          // 화면의 배정 건수·회원 수가 stale 해서 막혔을 수 있다 → 스스로 교정한다.
+          setReloadKey((prev) => prev + 1);
+          return;
+        }
+      }
+
       const result = await updateInstitutionCodeSafe({
         code: editTarget.code,
         label,
@@ -673,6 +765,28 @@ export default function InstitutionCodesPage(): JSX.Element {
               : item
           )
         }));
+        // mock 경로: 모드만 반영한다. 배정 건수는 건드리지 않는다 — 모드 전환이 배정을
+        // 지우지 않는다는 계약이 화면에서도 성립해야 한다.
+        setExposureModes((prev) => {
+          const existing = prev.find((row) => row.code === editTarget.code);
+          if (existing) {
+            return prev.map((row) =>
+              row.code === editTarget.code
+                ? { ...row, exposureMode: nextMode, reason, updatedAt: todayText() }
+                : row
+            );
+          }
+          return [
+            ...prev,
+            {
+              code: editTarget.code,
+              exposureMode: nextMode,
+              assignedQuestionCount: 0,
+              reason,
+              updatedAt: todayText()
+            }
+          ];
+        });
       }
 
       notificationApi.success({
@@ -689,7 +803,7 @@ export default function InstitutionCodesPage(): JSX.Element {
     } finally {
       setSubmitting(false);
     }
-  }, [editForm, editTarget, notificationApi]);
+  }, [editForm, editTarget, notificationApi, resolveExposureMode]);
 
   const handleDeleteConfirm = useCallback(
     async (reason: string) => {
@@ -772,6 +886,34 @@ export default function InstitutionCodesPage(): JSX.Element {
         render: (status: InstitutionCodeStatus) => <StatusBadge status={status} />
       },
       {
+        // 기관 축 설정이다 — 문항 축 라벨(`미배정`/`기관 N곳 배정`)과 다른 축이라
+        // createStatusColumnTitle 의 전역 상태 사전을 쓰지 않고 값별 설명을 직접 준다.
+        title: createInfoColumnTitle('노출 모드', [
+          {
+            label: '제한 없음',
+            description:
+              '이 기관 소속 학습자도 노출 허용(available) 문항을 모두 봅니다. 이후 추가되는 문항도 자동 포함됩니다. 배정 목록은 보존만 됩니다.'
+          },
+          {
+            label: '배정분만',
+            description:
+              '이 기관 소속 학습자는 노출 문항에서 배정한 문항만 봅니다. 새 문항은 배정해야 보입니다.'
+          }
+        ]),
+        dataIndex: 'code',
+        key: 'exposureMode',
+        width: 190,
+        ...createDefinedColumnFilterProps(institutionExposureModes, (record) =>
+          resolveExposureMode(record.code)
+        ),
+        render: (_code: string, record: InstitutionCode) => (
+          <InstitutionExposureModeTag
+            mode={resolveExposureMode(record.code)}
+            assignedQuestionCount={resolveAssignedCount(record.code)}
+          />
+        )
+      },
+      {
         title: '가입 수',
         dataIndex: 'memberCount',
         width: 110,
@@ -797,7 +939,7 @@ export default function InstitutionCodesPage(): JSX.Element {
         render: (_, record) => <TableActionMenu items={buildCodeActionItems(record)} />
       }
     ],
-    [buildCodeActionItems]
+    [buildCodeActionItems, resolveAssignedCount, resolveExposureMode]
   );
 
   // 소속 회원 + 대기 중 초대를 한 테이블로 합친 로스터(오너 결정 2026-07-07).
@@ -994,6 +1136,18 @@ export default function InstitutionCodesPage(): JSX.Element {
                 <Select options={kindOptions} style={{ width: '100%' }} />
               </Form.Item>
             </Descriptions.Item>
+            <Descriptions.Item label="노출 모드">
+              {/*
+                생성 RPC는 모드 값을 받지 않으며 원장 행이 없는 코드의 안전 기본값은 `배정분만` 이다.
+                회원 소속·초대 전에 배정 또는 모드 전환을 끝내도록 서버 선행조건이 막으므로,
+                여기서는 실제 기본값을 읽기 전용으로 안내하고 전환은 수정 모달에서만 받는다.
+              */}
+              <InstitutionExposureModeTag mode={defaultInstitutionExposureMode} />
+              <Text type="secondary" style={{ display: 'block', marginTop: 6 }}>
+                새 코드는 배정분만으로 시작합니다. 회원 소속·초대 전에 노출 문항을 최소 1건
+                배정하거나, 수정에서 제한 없음으로 바꾸세요.
+              </Text>
+            </Descriptions.Item>
             <Descriptions.Item label="메모">
               <Form.Item name="note" style={{ margin: 0 }}>
                 <Input.TextArea rows={2} placeholder="현장 QR 가입 · A부스" />
@@ -1009,6 +1163,7 @@ export default function InstitutionCodesPage(): JSX.Element {
         okText="수정"
         cancelText="취소"
         confirmLoading={submitting}
+        okButtonProps={{ disabled: editModeBlocked }}
         onCancel={() => setEditTarget(null)}
         onOk={() => void handleEditSubmit()}
         destroyOnHidden
@@ -1022,6 +1177,7 @@ export default function InstitutionCodesPage(): JSX.Element {
                   label: editTarget.label,
                   kind: editTarget.kind,
                   status: editTarget.status,
+                  exposureMode: resolveExposureMode(editTarget.code),
                   note: editTarget.note,
                   reason: ''
                 }
@@ -1063,6 +1219,70 @@ export default function InstitutionCodesPage(): JSX.Element {
               >
                 <Select options={statusOptions} style={{ width: '100%' }} />
               </Form.Item>
+            </Descriptions.Item>
+            <Descriptions.Item label={requiredLabel('노출 모드')}>
+              {/*
+                Select 가 아니라 Radio 인 이유: 값이 2개뿐이고 각 값마다 "그래서 학습자에게
+                무엇이 보이는가"를 함께 읽혀야 한다. 소속 회원 전원의 노출 범위를 바꾸는
+                스위치라 선택지가 접혀 있으면 안 된다.
+              */}
+              <Form.Item
+                name="exposureMode"
+                style={{ margin: 0 }}
+                rules={[{ required: true, message: '노출 모드를 선택하세요.' }]}
+              >
+                <Radio.Group>
+                  <Space direction="vertical" size={8}>
+                    <Space direction="vertical" size={0}>
+                      <Radio value="제한 없음">제한 없음</Radio>
+                      <Text type="secondary" style={{ paddingInlineStart: 24 }}>
+                        이 기관 학습자도 노출 허용 문항을 모두 봅니다. 앞으로 추가되는 문항도
+                        자동 포함됩니다.
+                      </Text>
+                    </Space>
+                    <Space direction="vertical" size={0}>
+                      <Radio value="배정분만">배정분만</Radio>
+                      <Text type="secondary" style={{ paddingInlineStart: 24 }}>
+                        이 기관 학습자는 노출 문항에서 배정한 문항만 봅니다. 배정이 0건이면
+                        쓰기 문항이 하나도 보이지 않습니다.
+                      </Text>
+                    </Space>
+                  </Space>
+                </Radio.Group>
+              </Form.Item>
+              {editModeBlocked && editTarget ? (
+                <Alert
+                  type="error"
+                  showIcon
+                  style={{ marginTop: 10 }}
+                  message={`배정된 문항이 0건입니다. 지금 배정분만으로 바꾸면 이 코드 소속 학습자 ${editTarget.memberCount.toLocaleString()}명에게 쓰기 문항이 한 건도 보이지 않습니다.`}
+                  description={
+                    <Button
+                      type="link"
+                      style={{ padding: 0, height: 'auto' }}
+                      onClick={() => {
+                        const target = editTarget;
+                        setEditTarget(null);
+                        setQuestionExposureTarget(target);
+                      }}
+                    >
+                      노출 문항 열기
+                    </Button>
+                  }
+                />
+              ) : null}
+              {editModeZeroAssignedWarning && editTarget ? (
+                <Alert
+                  type="warning"
+                  showIcon
+                  style={{ marginTop: 10 }}
+                  message="배정된 문항이 0건입니다. 앞으로 이 코드로 소속되는 학습자에게는 쓰기 문항이 보이지 않습니다."
+                />
+              ) : null}
+              <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+                배정 목록은 모드와 무관하게 보존됩니다. 배정분만으로 되돌리면 기존 배정이 그대로
+                적용됩니다.
+              </Text>
             </Descriptions.Item>
             <Descriptions.Item label="메모">
               <Form.Item name="note" style={{ margin: 0 }}>
@@ -1231,6 +1451,7 @@ export default function InstitutionCodesPage(): JSX.Element {
         <InstitutionQuestionExposureModal
           open
           institution={questionExposureTarget}
+          exposureMode={resolveExposureMode(questionExposureTarget.code)}
           canManage={canManageMembers}
           isSupabase={isInstitutionCodesSupabase}
           onClose={() => setQuestionExposureTarget(null)}

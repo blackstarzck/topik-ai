@@ -107,12 +107,13 @@
 
 - 현재 상태: 구현됨 (mock/Supabase facade, `institution_codes` admin RPC 기반)
 - 상세 IA 문서: `docs/specs/page-ia/users-institution-codes-page-ia.md`
-- 구현 컬럼: 코드, 이름, 종류, 상태, 가입 수, 생성일, 액션
-- 구현 필터/정렬: 종류/상태 컬럼 필터, 코드/이름/가입 수/생성일 정렬
+- 구현 컬럼: 코드, 이름, 종류, 상태, 노출 모드, 가입 수, 생성일, 액션
+  - `노출 모드` 셀: `제한 없음` 또는 `배정분만` Tag + 배정 건수 종속 표기(`제한 없음` 이면 `배정 N건 보존` — 모드 복귀 시 살아난다는 의미). 기관 축 설정이며 문항 축 라벨(`미배정`/`기관 N곳 배정`)과 다른 축이다. 컬럼 헤더에 값별 설명을 병기한다. 전환은 `수정` 모달의 라디오 2안(사유 필수)이고, 배정 0건 + 회원 1명 이상으로 `배정분만` 전환은 차단한다. 생성 모달에는 실제 기본값인 `배정분만`을 읽기 전용으로 안내한다.
+- 구현 필터/정렬: 종류/상태/노출 모드 컬럼 필터, 코드/이름/가입 수/생성일 정렬
 - 구현 액션: `코드 생성`, 액션 셀 `더보기` 메뉴의 `회원 관리`, `노출 문항`, `수정`, 하단 분리 `삭제`
 - 레이아웃 메모: 별도 SearchBar 없이 `AdminListCard.toolbar` 오른쪽에 총 건수/활성 건수/누적 가입 수와 `코드 생성` 버튼을 같은 줄에 배치하며, `코드 생성` 버튼은 `large` 크기를 사용합니다.
 - 입력 모달: 생성/수정 모달은 `Descriptions` 기반 입력 테이블을 사용하고, 필수 필드 label에 빨간 `*`를 표시합니다. 수정은 사유 입력이 필수입니다.
-- 파괴적 액션: `삭제`는 shared `TableActionMenu` footer의 danger 버튼으로 최하단에 배치하고, footer 상단 구분선으로 일반 액션과 분리합니다. 클릭 후 `ConfirmAction`으로 확인 + 사유 입력을 요구합니다. 가입 수가 1명 이상인 코드는 삭제 전에 회원 관리 모달에서 소속 해제가 필요하며, 서버 RPC도 삭제를 차단합니다.
+- 파괴적 액션: `삭제`는 shared `TableActionMenu` footer의 danger 버튼으로 최하단에 배치하고, footer 상단 구분선으로 일반 액션과 분리합니다. 클릭 후 `ConfirmAction`으로 확인 + 사유 입력을 요구합니다. 가입 수가 1명 이상인 코드는 삭제 전에 회원 관리 모달에서 소속 해제가 필요하며, 서버 RPC도 삭제를 차단합니다. 삭제 성공 시 문항 배정과 기관 노출 모드 원장을 함께 제거해 같은 코드를 재생성해도 이전 설정이 되살아나지 않습니다.
 - 데이터 source: Supabase 모드는 `admin_list_institution_codes`, `admin_create_institution_code`, `admin_update_institution_code`, `admin_delete_institution_code` RPC를 사용합니다. mock 모드는 `mock-institution-codes.ts` 시드를 읽고 생성/수정/삭제는 화면 상태에만 반영합니다.
 - 감사 로그: 생성/수정/삭제는 `InstitutionCode + code` 계약을 사용하고, 확인 경로는 `/system/audit-logs?targetType=InstitutionCode&targetId={code}`입니다.
 

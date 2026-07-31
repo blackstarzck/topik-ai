@@ -44,6 +44,73 @@ test('노출 문항 모달: 좌우 유형 트리를 렌더한다', async ({ page
   await expect(modal.getByRole('button', { name: /적용/ })).toBeDisabled();
 });
 
+/**
+ * A부스는 모드 원장에 행이 없어 `배정분만` 로 해석된다(mock 시드 의도).
+ * 이 두 문구는 모드에 따라 거짓이 되는 지점이라 회귀 가치가 가장 높다.
+ */
+test('노출 문항 모달: 배정분만 모드 문구를 고정한다', async ({ page }) => {
+  const modal = await openModal(page);
+
+  await expect(
+    modal.getByText(
+      '배정분만 모드입니다. 이 기관 소속 학습자는 여기서 배정한 문항만 봅니다. 소속 없는 학습자는 노출 허용한 문항을 모두 봅니다.'
+    )
+  ).toBeVisible();
+  await expect(modal.getByText('배정분만', { exact: true })).toBeVisible();
+
+  // 우패널을 비워 빈 상태 문구를 드러낸다(시드 1건은 전역 미노출 항목).
+  await modal.getByPlaceholder('노출 문항 검색').fill('9901');
+  const rightPanel = modal.getByTestId('institution-question-right-panel');
+  await rightPanel.getByRole('treeitem', { name: /9901/ }).locator('.ant-tree-checkbox').click();
+  await modal.getByRole('button', { name: '노출에서 제거' }).click();
+  await modal.getByPlaceholder('노출 문항 검색').fill('');
+
+  await expect(
+    modal.getByText(
+      '배정된 문항이 없습니다. 이 기관 소속 학습자에게는 쓰기 문항이 표시되지 않습니다.'
+    )
+  ).toBeVisible();
+});
+
+/** B부스는 `제한 없음` 시드 → warning 승격 + 배정 편집이 여전히 가능해야 한다. */
+test('노출 문항 모달: 제한 없음 모드는 경고로 알리되 배정 편집은 막지 않는다', async ({
+  page
+}) => {
+  await page.goto('/users/institution-codes');
+  await skipIfAuthRequired(page);
+
+  const row = page.locator('tbody tr.ant-table-row').filter({ hasText: 'EXPO2026-BOOTH-B' });
+  await row.getByRole('button', { name: '더보기' }).click();
+  await page
+    .locator('.table-action-menu__popup:visible')
+    .getByRole('menuitem', { name: '노출 문항', exact: true })
+    .click();
+  const modal = page.locator('.ant-modal-content').filter({ hasText: '노출 문항 ·' });
+  await expect(modal).toBeVisible();
+
+  await expect(
+    modal.getByText(
+      '제한 없음 모드입니다. 이 기관 소속 학습자도 노출 허용한 문항을 모두 보므로, 아래 배정은 지금 학습자 화면에 영향을 주지 않습니다.'
+    )
+  ).toBeVisible();
+  await expect(
+    modal.getByText('배정분만으로 바꾸면 그때 적용됩니다. 모드는 기관 코드 목록의 수정에서 바꿉니다.')
+  ).toBeVisible();
+  await expect(modal.getByText('제한 없음', { exact: true })).toBeVisible();
+
+  // disable 하지 않기로 한 판단을 테스트로 고정한다 — `제한 없음` 이어도 배정 편집이
+  // 살아 있어야 한다(의도된 동선이 "먼저 배정 → 그다음 배정분만 전환"이라 잠그면 데드락).
+  // B부스는 시드 2건이 모두 배정돼 있어 좌패널에 추가 후보가 없다 → 우패널로 검증한다.
+  await modal.getByPlaceholder('노출 문항 검색').fill('9901');
+  await modal
+    .getByTestId('institution-question-right-panel')
+    .getByRole('treeitem', { name: /9901/ })
+    .first()
+    .locator('.ant-tree-checkbox')
+    .click();
+  await expect(modal.getByRole('button', { name: '노출에서 제거' })).toBeEnabled();
+});
+
 test('노출 문항 모달: 전역 비활성 문항은 추가 불가로 표시한다(모크)', async ({
   page
 }) => {
