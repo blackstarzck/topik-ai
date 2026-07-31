@@ -2,7 +2,7 @@
   "namespace": "topik_writing",
   "environment": "production",
   "projectRef": "eymlabowhfgtxbiqwxqh",
-  "expectedLocalCount": 34,
+  "expectedLocalCount": 35,
   "blockedMigrations": [
     "20260716052957_topik_writing_source_updated_at_version_tracking.sql"
   ],
@@ -19,7 +19,7 @@
     },
     "release-all": {
       "from": "20260610200100_topik_writing_topic_master.sql",
-      "to": "20260730120000_topik_writing_institution_exposure_contract_correction.sql",
+      "to": "20260731100100_institution_exposure_last_assignment_guard.sql",
       "exclude": [
         "20260716052957_topik_writing_source_updated_at_version_tracking.sql"
       ]
