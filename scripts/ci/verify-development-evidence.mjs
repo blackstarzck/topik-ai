@@ -19,7 +19,7 @@ function value(args, flag, { required = true } = {}) {
 
 export function verifyDevelopmentEvidence(report, expected) {
   const issues = [];
-  if (report.schemaVersion !== 4) issues.push('unsupported-schema-version');
+  if (report.schemaVersion !== 5) issues.push('unsupported-schema-version');
   if (report.stage !== 'development') issues.push('wrong-stage');
   if (report.passed !== true) issues.push('development-validation-failed');
   for (const [name, expectedValue] of Object.entries(expected)) {
@@ -73,7 +73,6 @@ async function main() {
   const report = JSON.parse(readFileSync(resolve(value(args, '--input')), 'utf8'));
   const expected = {
     commitSha: value(args, '--commit-sha'),
-    v13CommitSha: value(args, '--v13-sha'),
     projectRef: value(args, '--project-ref'),
   };
   const expectedTreeSha = value(args, '--tree-sha', { required: false });

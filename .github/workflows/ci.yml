@@ -11,7 +11,6 @@ permissions:
 env:
   NODE_VERSION: '24.x'
   SUPABASE_CLI_VERSION: '2.105.0'
-  V13_CONTRACT_SHA: 0ee149930019c8a6f97644824c390d7d2ec76067
 
 jobs:
   classify:
@@ -127,13 +126,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/checkout@v4
-        with:
-          repository: blackstarzck/topik-project-v13
-          ref: ${{ env.V13_CONTRACT_SHA }}
-          path: .ci/v13
-          sparse-checkout: supabase
-          sparse-checkout-cone-mode: true
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -144,16 +136,15 @@ jobs:
       - run: npm ci
       - name: Verify repository ownership and client secret boundaries
         run: |
-          npm run check:migration-boundary -- --v13-root=.ci/v13
+          npm run check:migration-boundary
           npm run check:client-source-secrets
-      # Dual verification (ownership transfer M3): the replay below reads the
-      # learner history from the in-repo archive, so prove the archive is still
-      # byte-identical to the pinned v13 checkout while both sources exist.
-      - name: Verify the learner archive against the pinned v13 checkout
+      # Ownership transfer M4: the pinned v13 checkout is gone, so the archive is
+      # verified against its own manifest — every file's sha256, git blob id and
+      # byte length. The manifest still records which v13 commit the bytes were
+      # adopted from, and the release evidence digest covers these same bytes.
+      - name: Verify the learner archive
         run: >-
           npm run check:v13-archive --
-          --v13-root .ci/v13
-          --v13-sha $V13_CONTRACT_SHA
           --json-out ci-artifacts/v13-archive.json
       - name: Verify migration manifests and immutable expand changes
         shell: bash
@@ -170,11 +161,9 @@ jobs:
           tests/unit/release-change-classifier.test.mjs
           tests/unit/release-evidence-contract.test.mjs
           tests/unit/release-pipeline-contract.test.mjs
-      - name: Rebuild the v13, writing, and admin schema in shadow Supabase
+      - name: Rebuild the learner, writing, and admin schema in shadow Supabase
         run: >-
           npm run db:shadow:verify --
-          --v13-dir .ci/v13
-          --v13-sha $V13_CONTRACT_SHA
           --json-out ci-artifacts/shadow-contract.json
       - uses: actions/upload-artifact@v4
         if: always()

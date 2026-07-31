@@ -16,7 +16,6 @@ concurrency:
 
 env:
   NODE_VERSION: '24.x'
-  V13_CONTRACT_SHA: 0ee149930019c8a6f97644824c390d7d2ec76067
   DEVELOPMENT_PROJECT_REF: fglggyfvzjdsbyckinqa
   COMPANY_REPOSITORY: keduall/topik-admin
   RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
@@ -49,7 +48,6 @@ jobs:
           node scripts/ci/verify-development-evidence.mjs \
             --input development-evidence/development.json \
             --commit-sha "$RELEASE_SHA" \
-            --v13-sha "$V13_CONTRACT_SHA" \
             --project-ref "$DEVELOPMENT_PROJECT_REF" \
             --tree-sha "$(git rev-parse "HEAD^{tree}")" \
             --migration-digest "$(node scripts/ci/compute-migration-digest.mjs)" \

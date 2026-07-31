@@ -29,7 +29,34 @@ export const PRODUCTION_MIGRATION_CONTRACTS = Object.freeze([
   }),
 ]);
 
-export function computeMigrationDigest({ contracts = PRODUCTION_MIGRATION_CONTRACTS } = {}) {
+// The adopted v13 learner history. It is NOT a release contract — the release
+// pipeline does not apply it (that is a separate, later step), so it has no
+// from/to batch. It is folded into the digest because the digest replaced the
+// `V13_CONTRACT_SHA` pin as the thing that proves *which* learner history was
+// validated: before adoption the pin identified it, now the bytes do.
+export const LEARNER_ARCHIVE_CONTRACT = Object.freeze({
+  namespace: 'v13_learner_archive',
+  archiveDir: join(ROOT, 'supabase', 'migrations-v13'),
+  manifestPath: join(ROOT, 'scripts', 'db', 'manifests', 'v13-archive.json'),
+});
+
+function learnerArchiveLines(contract) {
+  const manifest = JSON.parse(readFileSync(contract.manifestPath, 'utf8'));
+  if (!Array.isArray(manifest.files) || manifest.files.length === 0) {
+    throw new Error('The learner archive manifest declares no files.');
+  }
+  // Hashed from disk, not from the manifest's own sha256 fields, so a manifest
+  // edited to match a tampered file still moves the digest.
+  return manifest.files.map((entry) => {
+    const fileSha = sha256(readFileSync(join(contract.archiveDir, entry.name)));
+    return `${contract.namespace}\t${entry.name}\t${fileSha}`;
+  });
+}
+
+export function computeMigrationDigest({
+  contracts = PRODUCTION_MIGRATION_CONTRACTS,
+  learnerArchive = LEARNER_ARCHIVE_CONTRACT,
+} = {}) {
   const lines = [];
   for (const contract of contracts) {
     const manifest = JSON.parse(readFileSync(contract.manifestPath, 'utf8'));
@@ -45,6 +72,7 @@ export function computeMigrationDigest({ contracts = PRODUCTION_MIGRATION_CONTRA
       lines.push(`${contract.namespace}\t${entry.name}\t${fileSha}`);
     }
   }
+  if (learnerArchive) lines.push(...learnerArchiveLines(learnerArchive));
   lines.sort();
   return createHash('sha256').update(lines.join('\n')).digest('hex');
 }

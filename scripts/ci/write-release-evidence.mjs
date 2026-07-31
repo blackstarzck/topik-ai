@@ -32,7 +32,6 @@ const report = {
   deployApp,
   applyMigrations,
   commitSha: value(args, '--commit-sha'),
-  v13CommitSha: value(args, '--v13-sha'),
   productionDomain: value(args, '--production-domain'),
   ...deploymentFields,
   migrationOrder: ['topik_writing', 'admin'],

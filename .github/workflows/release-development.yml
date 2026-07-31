@@ -26,7 +26,6 @@ concurrency:
 env:
   NODE_VERSION: '24.x'
   SUPABASE_CLI_VERSION: '2.105.0'
-  V13_CONTRACT_SHA: 0ee149930019c8a6f97644824c390d7d2ec76067
   DEVELOPMENT_PROJECT_REF: fglggyfvzjdsbyckinqa
 
 jobs:
@@ -94,14 +93,6 @@ jobs:
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
-      - uses: actions/checkout@v4
-        if: ${{ needs.classify.outputs.validation_profile == 'full' }}
-        with:
-          repository: blackstarzck/topik-project-v13
-          ref: ${{ env.V13_CONTRACT_SHA }}
-          path: .ci/v13
-          sparse-checkout: supabase
-          sparse-checkout-cone-mode: true
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -133,22 +124,21 @@ jobs:
         shell: bash
         run: |
           npm run harness:check
-          npm run check:migration-boundary -- --v13-root=.ci/v13
+          npm run check:migration-boundary
           npm run check:client-source-secrets
-          npm run check:v13-archive -- --v13-root .ci/v13 --v13-sha "$V13_CONTRACT_SHA" --json-out development-evidence/v13-archive.json
+          npm run check:v13-archive -- --json-out development-evidence/v13-archive.json
           npm run db:contracts:verify -- --json-out development-evidence/migration-contracts.json
           npm run test:unit
           npm run build
           npx playwright install --with-deps chromium
           npm run test:e2e
-          npm run db:shadow:verify -- --v13-dir .ci/v13 --v13-sha "$V13_CONTRACT_SHA" --json-out development-evidence/shadow-contract.json
+          npm run db:shadow:verify -- --json-out development-evidence/shadow-contract.json
       - name: Write the PII-free sync evidence
         run: >-
           node scripts/ci/write-development-evidence.mjs
           --json-out development-evidence/development.json
           --base-sha "${{ needs.classify.outputs.base_sha }}"
           --commit-sha "$GITHUB_SHA"
-          --v13-sha "$V13_CONTRACT_SHA"
           --project-ref "$DEVELOPMENT_PROJECT_REF"
           --release-plan sync-only
           --validation-profile "${{ needs.classify.outputs.validation_profile }}"
@@ -226,7 +216,6 @@ jobs:
           --json-out development-evidence/development.json
           --base-sha "${{ needs.classify.outputs.base_sha }}"
           --commit-sha "$GITHUB_SHA"
-          --v13-sha "$V13_CONTRACT_SHA"
           --project-ref "$SUPABASE_PROJECT_REF"
           --release-plan app-only
           --validation-profile app
@@ -267,13 +256,6 @@ jobs:
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
-      - uses: actions/checkout@v4
-        with:
-          repository: blackstarzck/topik-project-v13
-          ref: ${{ env.V13_CONTRACT_SHA }}
-          path: .ci/v13
-          sparse-checkout: supabase
-          sparse-checkout-cone-mode: true
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -292,20 +274,18 @@ jobs:
         shell: bash
         run: |
           npm run harness:check
-          npm run check:migration-boundary -- --v13-root=.ci/v13
+          npm run check:migration-boundary
           npm run check:client-source-secrets
-          npm run check:v13-archive -- --v13-root .ci/v13 --v13-sha "$V13_CONTRACT_SHA" --json-out development-evidence/v13-archive.json
+          npm run check:v13-archive -- --json-out development-evidence/v13-archive.json
           npm run db:contracts:verify -- --json-out development-evidence/migration-contracts.json
           npm run check:expand-migrations -- --base "${{ needs.classify.outputs.base_sha }}"
           npm run test:unit
           npm run build
           npx playwright install --with-deps chromium
           npm run test:e2e
-      - name: Rebuild the pinned cross-repository shadow schema
+      - name: Rebuild the learner, writing, and admin shadow schema
         run: >-
           npm run db:shadow:verify --
-          --v13-dir .ci/v13
-          --v13-sha $V13_CONTRACT_SHA
           --json-out development-evidence/shadow-contract.json
       - name: Replay the previous release schema and upgrade it to this migration set
         shell: bash
@@ -315,8 +295,6 @@ jobs:
         run: |
           previous_release="$(node scripts/ci/resolve-previous-release.mjs)"
           npm run db:shadow:verify -- \
-            --v13-dir .ci/v13 \
-            --v13-sha "$V13_CONTRACT_SHA" \
             --upgrade-from "$previous_release" \
             --json-out development-evidence/upgrade-replay.json
       - name: Apply topik-dev migrations in ownership order
@@ -344,7 +322,6 @@ jobs:
           --json-out development-evidence/development.json
           --base-sha "${{ needs.classify.outputs.base_sha }}"
           --commit-sha "$GITHUB_SHA"
-          --v13-sha "$V13_CONTRACT_SHA"
           --project-ref "$SUPABASE_PROJECT_REF"
           --release-plan "$RELEASE_PLAN"
           --validation-profile full

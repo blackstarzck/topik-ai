@@ -7,7 +7,6 @@ import { verifyDevelopmentEvidence } from '../../scripts/ci/verify-development-e
 
 const expected = {
   commitSha: 'abc123',
-  v13CommitSha: 'def456',
   projectRef: 'fglggyfvzjdsbyckinqa',
 };
 
@@ -27,7 +26,7 @@ function evidence(releasePlan, validationProfile) {
   });
 }
 
-describe('development evidence v4', () => {
+describe('development evidence v5', () => {
   it('records a light sync without claiming build or hosted checks', () => {
     const report = evidence('sync-only', 'light');
     expect(report.checks).toEqual(expectedDevelopmentChecks('sync-only', 'light'));
@@ -126,5 +125,33 @@ describe('development evidence v4', () => {
       classifierVersion: 2,
       changedFilesDigest: 'a'.repeat(64),
     })).toThrow('sourceTreeSha');
+  });
+});
+
+describe('learner archive in the release digest (ownership transfer M4)', () => {
+  it('records schema 5 without a v13 contract sha', () => {
+    // M4 removed the pin, so the evidence no longer carries it. The learner history
+    // is bound by migrationDigest instead — see compute-migration-digest.
+    const report = evidence('app-db', 'full');
+    expect(report.schemaVersion).toBe(5);
+    expect(report).not.toHaveProperty('v13CommitSha');
+    expect(verifyDevelopmentEvidence(report, expected)).toEqual([]);
+  });
+
+  it('rejects evidence still declaring the retired schema version', () => {
+    const stale = { ...evidence('app-db', 'full'), schemaVersion: 4 };
+    expect(verifyDevelopmentEvidence(stale, expected)).toContain(
+      'unsupported-schema-version'
+    );
+  });
+
+  it('folds the learner archive bytes into the migration digest', async () => {
+    const digest = await import('../../scripts/ci/compute-migration-digest.mjs');
+    // Dropping the archive must move the digest; otherwise the archive is not
+    // actually covered and a tampered learner file would ship unnoticed.
+    expect(digest.computeMigrationDigest()).not.toBe(
+      digest.computeMigrationDigest({ learnerArchive: null })
+    );
+    expect(digest.LEARNER_ARCHIVE_CONTRACT.namespace).toBe('v13_learner_archive');
   });
 });

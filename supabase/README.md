@@ -137,8 +137,6 @@
   존재하지 않는 형제 경로를 참조해 crash). `--v13-root=`/`TOPIK_V13_ROOT`는 과도기 대조 옵션으로 남는다.
 - `scripts/db/apply-v13-migration.mjs`는 `--source archive`(기본)에서 본문을 아카이브에서 읽고 매니페스트
   sha256으로 **재해시 검증**한다. `blocked`·`deferred`·`replayOnly` 파일은 선택 자체가 거부된다.
-  `--source git`은 기존 경로이며 두 소스는 동일한 SQL을 생성한다(B9 dry-run 1191줄 동일 확인).
-  tracker provenance에 `body_source=`가 추가된다.
 
 ### 2.5.2 운영(topik-prod) learner 적용 경로 (2026-07-30, M6 · 결정 D9)
 
@@ -177,6 +175,24 @@ blocked 5건은 dev와 반대로 **운영엔 정당한 역사로 기록돼 있�
   그 `drop`은 몇 달 전에 이미 실행된 역사이므로 지금 판정하면 채택 자체가 막힌다.
 - **워터마크 초과(이 저장소 저작)**: 다른 두 네임스페이스와 동일하게 expand-only 규칙을 적용한다.
 - 워터마크를 못 읽으면 면제 없이 전부 신규 저작으로 판정한다(fail-closed).
+
+### 2.5.4 계약 SHA 핀 제거 (2026-07-31, M4)
+
+CI·릴리스 워크플로가 v13 저장소를 sparse-checkout 하던 배선과 `V13_CONTRACT_SHA` 핀을 **전부 제거**했다.
+
+| 이전 | 이후 |
+| --- | --- |
+| 워크플로 6개가 `V13_CONTRACT_SHA`를 선언하고 `.ci/v13`로 v13을 체크아웃 | 선언·체크아웃 없음. 검사는 아카이브만 읽는다 |
+| `check:v13-archive -- --v13-root .ci/v13 --v13-sha <핀>` | `check:v13-archive`(자기검증 — sha256·git blob·바이트수) |
+| `db:shadow:verify -- --v13-dir .ci/v13 --v13-sha <핀>` | `db:shadow:verify`(아카이브 재생) |
+| evidence 필드 `v13CommitSha`(스키마 4) | 필드 삭제(스키마 **5**). learner 역사는 `migrationDigest`가 묶는다 |
+| 환경 검증기 2종이 핀을 기대 | 기대 항목에서 제거 |
+
+- **`compute-migration-digest.mjs`가 learner 아카이브를 포함한다.** 릴리스 *적용* 집합(writing·admin)은 그대로이고, 아카이브는 별도 입력(`LEARNER_ARCHIVE_CONTRACT`)으로 더해진다 — 적용 대상이 아니라 **어떤 learner 역사를 검증했는지**를 증명하는 앵커다. 핀이 하던 그 역할을 바이트가 대신한다. 해시는 매니페스트의 sha256 필드가 아니라 **디스크에서 재계산**하므로, 파일과 매니페스트를 함께 위조해도 digest가 움직인다.
+- **`extractV13Pin`은 남긴다.** 채택 이전에 잘린 릴리스가 N-1이면 그 트리엔 아카이브가 없고 핀만 있다. 그 경우에만 종전 경로(핀 추출 → v13 fetch)로 폴백한다. 회사 promote가 M4 이후 릴리스에 도달하면 이 폴백과 v13 repo 보존 요구가 함께 해제된다.
+- 계약 테스트는 **반전**됐다: "핀이 존재한다"에서 "핀이 어디에도 없다 + v13을 체크아웃하지 않는다 + pre-adoption 폴백은 남아 있다"로 바뀌었다. 핀이 되살아나면 learner 역사를 다시 v13에서 읽기 시작했다는 뜻이므로 실패해야 한다.
+  `--source git`은 기존 경로이며 두 소스는 동일한 SQL을 생성한다(B9 dry-run 1191줄 동일 확인).
+  tracker provenance에 `body_source=`가 추가된다.
 
 ## 3. 공통 실행 메커니즘
 

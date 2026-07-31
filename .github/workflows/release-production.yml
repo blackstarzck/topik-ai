@@ -17,7 +17,6 @@ concurrency:
 env:
   NODE_VERSION: '24.x'
   VERCEL_CLI_VERSION: '48.12.0'
-  V13_CONTRACT_SHA: 0ee149930019c8a6f97644824c390d7d2ec76067
   DEVELOPMENT_PROJECT_REF: fglggyfvzjdsbyckinqa
   RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
 
@@ -54,7 +53,6 @@ jobs:
           node scripts/ci/verify-development-evidence.mjs \
             --input development-evidence/development.json \
             --commit-sha "$RELEASE_SHA" \
-            --v13-sha "$V13_CONTRACT_SHA" \
             --project-ref "$DEVELOPMENT_PROJECT_REF" \
             --tree-sha "$(git rev-parse "HEAD^{tree}")" \
             --migration-digest "$(node scripts/ci/compute-migration-digest.mjs)" \
@@ -160,7 +158,6 @@ jobs:
           node scripts/ci/verify-development-evidence.mjs \
             --input development-evidence/development.json \
             --commit-sha "$RELEASE_SHA" \
-            --v13-sha "$V13_CONTRACT_SHA" \
             --project-ref "$DEVELOPMENT_PROJECT_REF" \
             --tree-sha "$(git rev-parse "HEAD^{tree}")" \
             --migration-digest "$(node scripts/ci/compute-migration-digest.mjs)"
@@ -200,7 +197,6 @@ jobs:
           --json-out release-evidence/release.json
           --release-plan db-only
           --commit-sha "$RELEASE_SHA"
-          --v13-sha "$V13_CONTRACT_SHA"
           --production-domain "$PROD_ADMIN_DOMAIN"
       - uses: actions/upload-artifact@v4
         if: always()
@@ -258,7 +254,6 @@ jobs:
           node scripts/ci/verify-development-evidence.mjs \
             --input development-evidence/development.json \
             --commit-sha "$RELEASE_SHA" \
-            --v13-sha "$V13_CONTRACT_SHA" \
             --project-ref "$DEVELOPMENT_PROJECT_REF" \
             --tree-sha "$(git rev-parse "HEAD^{tree}")" \
             --migration-digest "$(node scripts/ci/compute-migration-digest.mjs)"
@@ -378,7 +373,6 @@ jobs:
           --json-out release-evidence/release.json
           --release-plan "$RELEASE_PLAN"
           --commit-sha "$RELEASE_SHA"
-          --v13-sha "$V13_CONTRACT_SHA"
           --previous-deployment-id "${{ steps.previous.outputs.deployment_id }}"
           --candidate-deployment-id "${{ steps.candidate.outputs.deployment_id }}"
           --candidate-deployment-url "${{ steps.candidate.outputs.deployment_url }}"

@@ -19,7 +19,6 @@ env:
   TIP_SHA: ${{ github.sha }}
   # validate-release-env.mjs locks this against its own pinned constant, so the
   # value must stay a literal here and match every other workflow's pin.
-  V13_CONTRACT_SHA: 0ee149930019c8a6f97644824c390d7d2ec76067
 
 jobs:
   verify:

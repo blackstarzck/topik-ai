@@ -69,7 +69,7 @@ describe('four-path release pipeline contract', () => {
 
   it('migrates and fully verifies topik-dev for db-only and app-db', () => {
     const database = job(developmentWorkflow, 'validate-database', 'development-gate');
-    const shadow = position(database, 'Rebuild the pinned cross-repository shadow schema');
+    const shadow = position(database, 'Rebuild the learner, writing, and admin shadow schema');
     const migration = position(database, 'Apply topik-dev migrations in ownership order');
     const contract = position(database, 'Verify topik-dev trackers, Users schema, and permissions');
     const browser = position(
@@ -227,7 +227,7 @@ describe('evidence v4 source binding contract', () => {
 
   it('replays the previous release schema before applying migrations to topik-dev', () => {
     const database = job(developmentWorkflow, 'validate-database', 'development-gate');
-    const shadowIndex = position(database, 'Rebuild the pinned cross-repository shadow schema');
+    const shadowIndex = position(database, 'Rebuild the learner, writing, and admin shadow schema');
     const upgradeIndex = position(database, 'Replay the previous release schema and upgrade it to this migration set');
     const applyIndex = position(database, 'Apply topik-dev migrations in ownership order');
     expect(shadowIndex).toBeLessThan(upgradeIndex);
@@ -468,6 +468,10 @@ const developmentEnvValidator = readFileSync(
   resolve('scripts/ci/validate-development-env.mjs'),
   'utf8'
 );
+const shadowContractRunner = readFileSync(
+  resolve('scripts/ci/run-shadow-contract.mjs'),
+  'utf8'
+);
 
 describe('v13 contract pin contract', () => {
   const allWorkflows = [
@@ -485,41 +489,40 @@ describe('v13 contract pin contract', () => {
     return /^\s+V13_CONTRACT_SHA:\s*([0-9a-f]{40})\s*$/m.exec(workflow)?.[1] ?? null;
   }
 
-  function validatorPin(validator, label) {
-    const match = /V13_CONTRACT_SHA:\s*'([0-9a-f]{40})'/.exec(validator);
-    expect(match, `${label} must pin V13_CONTRACT_SHA`).not.toBeNull();
-    return match[1];
-  }
-
-  it('pins the same contract sha in both environment validators', () => {
-    expect(validatorPin(developmentEnvValidator, 'validate-development-env.mjs')).toBe(
-      validatorPin(releaseEnvValidator, 'validate-release-env.mjs')
-    );
-  });
-
-  // A workflow that runs an environment validator but omits the env entry fails
-  // closed at the first release step with missing:V13_CONTRACT_SHA, which blocks
-  // every company production release until the env block is restored.
-  it('defines the env entry in every workflow that runs an environment validator', () => {
-    const expectedSha = validatorPin(releaseEnvValidator, 'validate-release-env.mjs');
-    const validating = allWorkflows.filter(
-      ([, workflow]) => /validate-(?:release|development)-env\.mjs/.test(workflow)
-    );
-    expect(validating.length).toBeGreaterThan(0);
-    for (const [name, workflow] of validating) {
-      expect(
-        workflowPin(workflow),
-        `${name} runs an environment validator so it must pin V13_CONTRACT_SHA`
-      ).toBe(expectedSha);
-    }
-  });
-
-  it('keeps every workflow pin on the validator sha', () => {
-    const expectedSha = validatorPin(releaseEnvValidator, 'validate-release-env.mjs');
+  // Ownership transfer M4 inverted this contract. The learner history now lives in
+  // this repository, so the pin and the v13 checkout are gone and the guard is that
+  // they do not come back: a reintroduced pin means something started reading the
+  // learner history from the v13 repository again, splitting the source of truth.
+  it('pins the contract sha nowhere', () => {
     for (const [name, workflow] of allWorkflows) {
-      const pinned = workflowPin(workflow);
-      if (pinned === null) continue;
-      expect(pinned, `${name} must pin the validator contract sha`).toBe(expectedSha);
+      expect(workflowPin(workflow), `${name} must not pin V13_CONTRACT_SHA`).toBeNull();
     }
+    for (const [label, validator] of [
+      ['validate-development-env.mjs', developmentEnvValidator],
+      ['validate-release-env.mjs', releaseEnvValidator],
+    ]) {
+      expect(
+        /V13_CONTRACT_SHA/.test(validator),
+        `${label} must not expect V13_CONTRACT_SHA`
+      ).toBe(false);
+    }
+  });
+
+  it('checks out no v13 working tree', () => {
+    for (const [name, workflow] of allWorkflows) {
+      expect(
+        /topik-project-v13/.test(workflow),
+        `${name} must not check out the v13 repository`
+      ).toBe(false);
+      expect(/\.ci\/v13/.test(workflow), `${name} must not reference .ci/v13`).toBe(false);
+    }
+  });
+
+  it('keeps the pre-adoption fallback so an older N-1 can still be replayed', () => {
+    // The N-1 tree of a release cut before the adoption still pins the sha and has
+    // no in-repo archive. run-shadow-contract must keep reading that pin, or the
+    // upgrade replay gate breaks for exactly the releases it needs to compare.
+    expect(shadowContractRunner).toContain('export function extractV13Pin');
+    expect(shadowContractRunner).toContain('V13_CONTRACT_SHA:');
   });
 });

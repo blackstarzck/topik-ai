@@ -15,7 +15,6 @@ concurrency:
 env:
   NODE_VERSION: '24.x'
   SUPABASE_CLI_VERSION: '2.105.0'
-  V13_CONTRACT_SHA: 0ee149930019c8a6f97644824c390d7d2ec76067
 
 jobs:
   shadow:
@@ -25,13 +24,6 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        with:
-          repository: blackstarzck/topik-project-v13
-          ref: ${{ env.V13_CONTRACT_SHA }}
-          path: .ci/v13
-          sparse-checkout: supabase
-          sparse-checkout-cone-mode: true
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -46,12 +38,8 @@ jobs:
           mkdir -p database-health
           npm run db:contracts:verify -- --json-out database-health/migration-contracts.json
           npm run check:v13-archive -- \
-            --v13-root .ci/v13 \
-            --v13-sha "$V13_CONTRACT_SHA" \
             --json-out database-health/v13-archive.json
           npm run db:shadow:verify -- \
-            --v13-dir .ci/v13 \
-            --v13-sha "$V13_CONTRACT_SHA" \
             --json-out database-health/shadow-contract.json
       - uses: actions/upload-artifact@v4
         if: always()

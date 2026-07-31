@@ -48,7 +48,6 @@ export function expectedDevelopmentChecks(releasePlan, validationProfile) {
 export function buildDevelopmentEvidence({
   baseSha,
   commitSha,
-  v13CommitSha,
   projectRef,
   releasePlan,
   validationProfile,
@@ -72,14 +71,13 @@ export function buildDevelopmentEvidence({
   }
   const flags = releaseFlags(releasePlan);
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     validatedAt: new Date().toISOString(),
     stage: 'development',
     passed: true,
     baseSha,
     commitSha,
     sourceTreeSha,
-    v13CommitSha,
     projectRef,
     releasePlan,
     ...flags,
@@ -98,7 +96,6 @@ async function main() {
   const report = buildDevelopmentEvidence({
     baseSha: value(args, '--base-sha'),
     commitSha: value(args, '--commit-sha'),
-    v13CommitSha: value(args, '--v13-sha'),
     projectRef: value(args, '--project-ref'),
     releasePlan: value(args, '--release-plan'),
     validationProfile: value(args, '--validation-profile'),
