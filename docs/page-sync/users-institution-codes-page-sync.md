@@ -43,7 +43,7 @@ last_reviewed_at: "2026-06-26"
 | --- | --- | --- | --- | --- | --- |
 | 기관 코드 조회 | 코드, 이름, 유형, 상태, 회원 수를 확인합니다. | 조회 | InstitutionCode | 현재 상태 확인 | 불필요 |
 | 기관 코드 생성/수정 | 코드 메타데이터와 상태를 관리합니다. | 생성/수정 | InstitutionCode + code | 코드 목록 반영 | 필요 |
-| 기관 코드 삭제 | 가입 회원이 없는 기관 코드를 제거합니다. | 삭제/파괴적 | InstitutionCode + code | 코드 목록 제거, 기관 노출 문항 매핑 정리 | 필요 |
+| 기관 코드 삭제 | 가입 회원이 없는 기관 코드를 제거합니다. | 삭제/파괴적 | InstitutionCode + code | 코드 목록 제거, 기관 노출 문항 매핑·노출 모드 원장 정리 | 필요 |
 | 회원 초대/해제 | 선택 회원에게 기관 초대(인앱+이메일 알림)를 보내거나 소속을 해제합니다. **문항 배정이 1건도 없는 기관에는 초대·직접배정이 서버에서 거부됩니다**(배정 0건 기관의 소속 학습자는 쓰기 문항을 하나도 보지 못함). 초대 수락 시에만 affiliation이 적용되며, 만료 기간(기본 7일, 1~365일 지정)이 지나면 초대가 무효(expired)됩니다(lazy 전환 — cron 없음). 이메일은 초대 직후 워커 즉시 kick(관리자 JWT)으로 수 초 내 발송되며, kick 실패 시 15분 cron이 수거합니다. | 수정/파괴적 | Users + userId | 초대 생성(pending)·알림 발송 / 해제 시 affiliation 제거 | 필요 |
 | 초대 취소 | 대기 중(pending) 초대를 회수합니다. 미발송 초대 이메일은 skipped로 종결됩니다. | 수정 | Users + userId | 초대 canceled 전환 | 필요 |
 | 기관 노출 문항 추가/해제 | 기관 코드에 연결된 문항 배정 매핑을 변경합니다. 소속 회원 또는 대기 중 초대가 있는 기관은 배정을 0건으로 되돌릴 수 없습니다(빈 화면 방지 — exposure 테이블 statement 트리거). | 수정 | InstitutionCode + questionId[] | 기관 문항 노출 반영 | 필요 |
@@ -52,10 +52,11 @@ last_reviewed_at: "2026-06-26"
 
 | 엔티티 후보 | 테이블 후보 | CRUD | 관리자 UI 진입점 | 주요 필드 후보 | 감사 로그 Target | 사용자 화면 영향 | 미확정/차이 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| InstitutionCode | institution_codes | Create, Read, Update, Delete | 본문 목록/생성/수정 모달, 삭제 확인 모달 | code, label, kind, status, note, member_count | InstitutionCode + code | 가입/QR 유입 코드 유효성 | 삭제는 가입 회원 존재 시 차단, 기관 노출 문항 매핑은 함께 정리 |
+| InstitutionCode | institution_codes | Create, Read, Update, Delete | 본문 목록/생성/수정 모달, 삭제 확인 모달 | code, label, kind, status, note, member_count | InstitutionCode + code | 가입/QR 유입 코드 유효성 | 삭제는 가입 회원 존재 시 차단, 기관 노출 문항 매핑과 노출 모드 원장은 함께 정리 |
 | UserInstitutionAffiliation | profiles.affiliation_code | Read, Update(해제/사용자 수락) | 회원 관리 모달 | user_id, affiliation_code, status | Users + userId | 기관 회원 구분 | 부여는 사용자 수락 RPC(`respond_institution_invitation`) 경유, 관리자 직접 쓰기는 해제만 |
 | InstitutionInvitation | institution_code_invitations | Create, Read, Update(취소) | 회원 관리 모달 통합 로스터(소속 회원과 한 테이블, '초대 대기' 태그 행) / 회원 상세 기관탭 배너 | invitation_id, code, user_id, status, reason, created_at, expires_at(만료 — 태그 툴팁/배너 표시), email_status/email_error(초대 이메일 발송 상태 — 대기/발송됨/실패 태그) | Users + userId | 초대 수명주기(pending→accepted/declined/canceled/expired) | 알림 계약: `docs/specs/notification-contract.md` §3 `institution_invitation`. 종결(응답/취소) 시 미발송 이메일 attempt는 skipped 회수. 만료는 lazy 전환(respond/invite/list 접점) |
 | InstitutionQuestionExposure | topik_writing_question_institution_exposure | Create, Read, Delete | 노출 문항 모달 | institution_code, question_id, is_exposed, service_status(조회 표시) | InstitutionCode + code / AssessmentQuestion + questionId | 기관 소속 회원 대상 문항 배정 | `service_status='available'`이 전역 선행 조건이며, `excluded`/`internal_test` 신규 추가는 blocked |
+| InstitutionExposureMode | topik_writing_institution_exposure_mode | Create, Read, Update, Delete | 목록 노출 모드 컬럼, 수정 모달 | institution_code, exposure_mode, reason, updated_by, updated_at | InstitutionCode + code | 기관 소속 회원의 쓰기 문항 가시 범위 | 행이 없으면 `배정분만`; 코드 삭제 시 원장을 함께 삭제해 같은 code 재생성 시 stale 모드 부활을 차단 |
 
 ## 6. 관리자 조치와 감사 로그 계약
 
@@ -113,7 +114,7 @@ last_reviewed_at: "2026-06-26"
 
 - `src/features/users/pages/institution-codes-page.tsx`와 `docs/specs/page-ia/users-institution-codes-page-ia.md`를 함께 확인합니다.
 - 기관 코드 변경은 `Users`, `Assessment`, `System > 감사 로그` 영향이 있으므로 문서/테스트를 같이 평가합니다.
-- 코드 삭제는 `admin_delete_institution_code(p_code,p_reason)` 경로로만 수행하고, `profiles.affiliation_code`가 남은 회원은 먼저 회원 관리 모달에서 소속 해제해야 합니다.
+- 코드 삭제는 `admin_delete_institution_code(p_code,p_reason)` 경로로만 수행하고, `profiles.affiliation_code`가 남은 회원은 먼저 회원 관리 모달에서 소속 해제해야 합니다. RPC는 pending 초대, 문항 배정, 기관 노출 모드 원장을 같은 트랜잭션에서 정리합니다.
 - 기관별 문항 필터 조건은 `service_status='available' AND (사용자 affiliation_code 없음 OR 기관 노출 모드 = 제한 없음 OR 매핑.institution_code = 사용자 affiliation_code)`입니다. v13 학습자 경로에는 이미 강제 적용되어 있습니다 — `docs/requests/v13-institution-question-exposure-handoff-2026-06-26.md`가 요청한 "매핑 없음=전체 공개" 잠금 모델은 채택되지 않았으니 그 문서의 상단 정정 안내를 함께 보십시오.
 
 ## 13. 미확정 항목

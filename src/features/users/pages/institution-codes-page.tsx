@@ -1138,14 +1138,14 @@ export default function InstitutionCodesPage(): JSX.Element {
             </Descriptions.Item>
             <Descriptions.Item label="노출 모드">
               {/*
-                생성 시점에는 배정이 항상 0건이므로 여기서 `배정분만` 을 고를 수 있게 하면
-                "배정 전에 소속된 학습자는 빈 화면" 상태를 정식 경로로 열어주게 된다.
-                입력이 아니라 안내만 두고, 전환은 수정 모달(사유 필수)에서만 받는다.
+                생성 RPC는 모드 값을 받지 않으며 원장 행이 없는 코드의 안전 기본값은 `배정분만` 이다.
+                회원 소속·초대 전에 배정 또는 모드 전환을 끝내도록 서버 선행조건이 막으므로,
+                여기서는 실제 기본값을 읽기 전용으로 안내하고 전환은 수정 모달에서만 받는다.
               */}
-              <InstitutionExposureModeTag mode="제한 없음" />
+              <InstitutionExposureModeTag mode={defaultInstitutionExposureMode} />
               <Text type="secondary" style={{ display: 'block', marginTop: 6 }}>
-                새 코드는 제한 없음으로 시작합니다. 특정 문항만 보이게 하려면 생성 후 노출
-                문항에서 배정하고, 수정에서 배정분만으로 바꾸세요.
+                새 코드는 배정분만으로 시작합니다. 회원 소속·초대 전에 노출 문항을 최소 1건
+                배정하거나, 수정에서 제한 없음으로 바꾸세요.
               </Text>
             </Descriptions.Item>
             <Descriptions.Item label="메모">

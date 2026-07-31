@@ -186,9 +186,9 @@
   - table/API 후보: `institution_codes` + admin RPC `admin_list_institution_codes`, `admin_create_institution_code`, `admin_update_institution_code`, `admin_delete_institution_code`
   - query 후보: `page`, `pageSize`, `kind`, `status`, `selected`, `modal`
   - 핵심 필드: `code`, `label`, `kind`, `status`, `note`, `memberCount`, `createdAt`, `updatedAt`
-  - 연동 필드: v13 `profiles.affiliation_code`는 `InstitutionCode.code`를 값으로 참조하며 하드 FK는 두지 않습니다. 기관 전용 문항 매핑은 `topik_writing_question_institution_exposure.institution_code`가 같은 code를 소프트 참조합니다.
+  - 연동 필드: v13 `profiles.affiliation_code`는 `InstitutionCode.code`를 값으로 참조하며 하드 FK는 두지 않습니다. 기관 전용 문항 매핑 `topik_writing_question_institution_exposure.institution_code`와 기관 노출 모드 원장 `topik_writing_institution_exposure_mode.institution_code`도 같은 code를 소프트 참조합니다.
   - enum/code table 후보: `kind`는 `박람회/기관/캠페인/기타`, `status`는 `활성/종료` 한글 라벨을 유지합니다.
-  - write 계약: 생성/수정/삭제는 `InstitutionCode + code` 감사 로그를 남깁니다. 삭제는 reason 필수, 가입 회원 존재 시 차단, 기관 전용 문항 매핑은 삭제 시 함께 정리합니다.
+  - write 계약: 생성/수정/삭제는 `InstitutionCode + code` 감사 로그를 남깁니다. 신규 코드는 모드 원장 행 없이 생성되어 안전 기본값 `배정분만`으로 해석합니다. 삭제는 reason 필수, 가입 회원 존재 시 차단하며 기관 전용 문항 매핑과 기관 노출 모드 원장을 같은 트랜잭션에서 정리합니다. 모드 변경과 코드 삭제는 같은 `institution_codes` 행의 `FOR UPDATE` 잠금을 공유해 최초 모드 생성과 삭제도 직렬화합니다.
 - `Users > 회원 상세`
   - URL: `tab`
   - 하위 컬렉션 후보: `activities`, `payments`, `communityPosts`, `accessLogs`, `adminMemos`

@@ -100,19 +100,25 @@ test('수정 모달: 모드를 바꿔도 배정 건수는 보존된다(모크)',
   await expect(row(page, 'EXPO2026-BOOTH-B').getByText('배정 2건')).toBeVisible();
 });
 
-test('생성 모달: 노출 모드는 읽기 전용 안내로만 노출한다', async ({ page }) => {
+test('생성: 실제 기본값인 배정분만을 안내하고 생성 행에도 그대로 반영한다', async ({ page }) => {
   await openList(page);
   await page.getByRole('button', { name: '코드 생성' }).click();
 
   const modal = page.locator('.ant-modal-content').filter({ hasText: '기관 코드 생성' });
   await expect(modal).toBeVisible();
-  // `제한 없음` 은 Tag 와 아래 설명문에 모두 등장한다 → exact 로 Tag 만 집는다.
-  await expect(modal.getByText('제한 없음', { exact: true })).toBeVisible();
+  await expect(modal.getByText('배정분만', { exact: true })).toBeVisible();
   await expect(
     modal.getByText(
-      '새 코드는 제한 없음으로 시작합니다. 특정 문항만 보이게 하려면 생성 후 노출 문항에서 배정하고, 수정에서 배정분만으로 바꾸세요.'
+      '새 코드는 배정분만으로 시작합니다. 회원 소속·초대 전에 노출 문항을 최소 1건 배정하거나, 수정에서 제한 없음으로 바꾸세요.'
     )
   ).toBeVisible();
   // 입력 컨트롤이 아니어야 한다(라디오 없음).
   await expect(modal.getByRole('radio', { name: '배정분만' })).toHaveCount(0);
+
+  await modal.getByPlaceholder('EXPO2026-BOOTH-A').fill('EXPO2026-NEW');
+  await modal.getByPlaceholder('2026 한국어교육 박람회 · A부스').fill('2026 신규 박람회');
+  await modal.getByRole('button', { name: '생성' }).click();
+
+  await expect(page.getByText(/기관 코드 생성 완료/)).toBeVisible();
+  await expect(row(page, 'EXPO2026-NEW').getByText('배정분만')).toBeVisible();
 });
