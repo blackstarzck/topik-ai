@@ -937,3 +937,11 @@
 - Contract: 신규 코드는 원장 행 없이 생성되어 안전 기본값 `배정분만`으로 해석한다. `admin_delete_institution_code`는 가입 회원 0건 확인과 pending 초대 취소 후 문항 배정·기관 노출 모드 원장을 같은 트랜잭션에서 제거하고, 감사 payload에 `deleted_exposure_mode_count`를 기록한다. `admin_set_institution_exposure_mode`와 삭제 RPC는 같은 `institution_codes` 행 잠금을 공유해 최초 모드 INSERT와 삭제의 경쟁도 직렬화한다. 기존에 dev에 적용된 20260801100000/100100은 수정하지 않고 신규 forward admin 마이그레이션 20260801100200으로 보완한다.
 - Validation: 신규 삭제 수명주기 단위 5건과 전체 단위 67파일·584건, `check:migration-boundary`, `db:contracts:verify`(dev/prod admin 94/94 contract clean), `check:expand-migrations -- --base origin/main`, v13 경로 지정 `check:transfer-sot-checklist`, `harness:check`, production build, 기관 노출 mock E2E 13건이 통과했다. E2E는 생성 행의 `배정분만` 표시와 기존 수정·배정 보존·삭제·노출 문항 흐름을 함께 확인했다. 로컬 전체 shadow 재생은 Docker Desktop 엔진이 실행 중이지 않아 시작 전 차단됐으며, GitHub `db-contract` 검사를 최종 merge gate로 사용한다.
 - Not-updated: 운영 DB 미적용(§11.6 대로 별도 게이트). `20260731100000` 이 두 RPC 본문에 문자열 수술로 심은 에러 문구는 그대로 뒀다 — 앵커를 깨면 그 마이그의 down 짝이 어긋나므로 문구 정정은 별건이다(헬퍼 comment 에는 모드 인지 사실을 반영했다). 컬럼 필터는 e2e 로 덮지 않았다(형제 컬럼 `종류`·`상태`도 미커버이고 antd 위젯 구동은 취약하다). `종료` 상태 코드의 모드 해석은 gap register 잔여 갭으로 등재했다 — 현재 predicate 는 `institution_codes.status` 를 보지 않는다.
+
+## 2026-07-31 M5 후속 — AGENTS.md 소유권 모순 정정 + 경계 역방향 규칙
+
+- Updated: `AGENTS.md` §2(learner 네임스페이스 항목 신설, 모순 문장 2개 정정, 양방향 경계 명시), `scripts/check-migration-ownership-boundary.mjs`(`collectForbiddenLearnerAdminDefinitions`·`isLearnerAuthoredAboveWatermark` 신설), `tests/unit/migration-ownership-boundary.test.mjs`(신규 5건).
+- Reason: 계획서 §9의 M5 시점 항목 2개가 미완이었다. ①`AGENTS.md`가 여전히 "기존 v13 테이블 DDL 변경은 금지한다"고 못박아 M5가 연 저작 경로와 **정면 모순**이었다 — 최상위 계약이 틀리면 다음 세션이 규칙대로 하다가 막힌다. ②경계 검사가 admin→learner 방향만 강제하고 learner→admin 방향이 없었다.
+- Contract: 역방향 규칙은 **워터마크 초과 신규 저작에만** 적용한다. 워터마크 이하는 채택한 v13 역사이고 그 역사에는 admin 객체가 정당하게 들어 있다(v13이 분리 전 알림 파이프라인을 소유했고, 아카이브에는 그 객체들을 제거하는 파일도 있다). 역사를 판정하면 채택 자체가 실패한다 — expand-gate 의 역사 면제와 같은 논리다.
+- Validation: 단위 590건(신규 5 — 워터마크 스코프, 위반 검출, 역사 면제, 정상 통과, **출하된 아카이브가 실제 규칙 아래 깨끗한지 회귀 앵커**). `check:migration-boundary` 실행에서 역사 파일 오탐 0(기존 advisory 3줄은 무관). lint, harness:docs, mojibake.
+- Not-tested: 실제 워터마크 초과 learner 마이그레이션은 아직 0건이라 규칙은 현재 무부하로 대기한다.

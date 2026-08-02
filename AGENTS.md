@@ -8,9 +8,11 @@
 ## 2. 적용 범위
 - 대상 모듈: `Dashboard`, `Users`, `Community`, `Message`, `Operation`, `Commerce`, `Assessment`, `Content`, `Analytics`, `System`
 - 대상 작업: 프론트엔드 구현/리팩토링/코드리뷰/테스트 보강
-- 대상 작업(2026-06-10 추가): `topik_writing_*` 네임스페이스의 Supabase 스키마 자산(`supabase/migrations`, 시드, RLS/RPC)과 백필 ETL 스크립트(`scripts/etl`) — 메타데이터·태그 스키마 전환(D-1)으로 이 repo가 해당 네임스페이스의 DDL을 소유·관리한다. 경계·승인 절차는 `docs/architecture/metadata-tag-schema-transition-decision-record.md` §2를 따르고, 기존 v13 테이블 DDL 변경은 금지한다.
-- 대상 작업(2026-06-12 추가): admin 운영 네임스페이스의 Supabase 스키마 자산 — 알림 운영 객체(`notification_templates`, `notification_groups`, `notification_dispatches`, `notification_delivery_attempts`)와 관련 admin RPC. 공유 Supabase 스키마 소유권은 앱 기준이 아니라 **도메인 기준**으로 정하며, 경계는 `docs/architecture/shared-supabase-schema-ownership.md`를 따른다. 적용 이력은 `topik_writing_schema_migrations`와 분리된 `admin_schema_migrations` tracker로 추적한다. 기존 v13 테이블 DDL 변경 금지는 동일하게 유지한다.
-- 제외 범위: 백엔드 아키텍처, 배포/인프라, v13 소유 테이블의 DB 스키마 설계(이 repo 소유 네임스페이스 외). 양쪽 앱이 읽거나 쓰는 공유 객체는 `docs/architecture/shared-supabase-schema-ownership.md`의 decision record를 따른다.
+- 대상 작업(2026-06-10 추가): `topik_writing_*` 네임스페이스의 Supabase 스키마 자산(`supabase/migrations`, 시드, RLS/RPC)과 백필 ETL 스크립트(`scripts/etl`) — 메타데이터·태그 스키마 전환(D-1)으로 이 repo가 해당 네임스페이스의 DDL을 소유·관리한다. 경계·승인 절차는 `docs/architecture/metadata-tag-schema-transition-decision-record.md` §2를 따른다. learner 테이블 DDL 은 이 네임스페이스가 아니라 아래 2026-07-31 항목의 `supabase/migrations-v13/` 에서 다룬다.
+- 대상 작업(2026-06-12 추가): admin 운영 네임스페이스의 Supabase 스키마 자산 — 알림 운영 객체(`notification_templates`, `notification_groups`, `notification_dispatches`, `notification_delivery_attempts`)와 관련 admin RPC. 공유 Supabase 스키마 소유권은 앱 기준이 아니라 **도메인 기준**으로 정하며, 경계는 `docs/architecture/shared-supabase-schema-ownership.md`를 따른다. 적용 이력은 `topik_writing_schema_migrations`와 분리된 `admin_schema_migrations` tracker로 추적한다. **admin 네임스페이스에서 learner 객체를 정의하지 않는다** — learner DDL 은 `supabase/migrations-v13/` 소관이다.
+- 대상 작업(2026-07-31 추가): **learner 네임스페이스의 Supabase 스키마 자산** — 소유권 이전 프로그램(`docs/plans/v13-db-ownership-transfer-program-plan.md`)으로 v13 저작이 워터마크 `20260729120000`에서 동결되고 저작·적용 소유권이 이 repo로 넘어왔다. 신규 learner DDL은 `supabase/migrations-v13/`에 워터마크 **초과** timestamp로 작성한다(절차: `supabase/README.md` §2.5.3). 워터마크 **이하** 아카이브 파일은 **불변**이다 — v13 역사와의 바이트 동일성이 채택의 증명 근거이므로 수정·이름변경·삭제하지 않고, 교정이 필요하면 새 forward를 만든다. 장부는 종전대로 `supabase_migrations.schema_migrations`이며 쓰기 주체만 이 repo다.
+- 제외 범위: 백엔드 아키텍처, 배포/인프라. 양쪽 앱이 읽거나 쓰는 공유 객체는 `docs/architecture/shared-supabase-schema-ownership.md`의 decision record를 따른다.
+- **네임스페이스 경계는 양방향이다**: admin 마이그레이션이 learner 객체를 정의·기록하지 않고, learner 마이그레이션이 admin 운영 객체를 정의하지 않는다. `npm run check:migration-boundary`가 양쪽을 강제한다.
 
 ## 3. 문서 계약 (용어/구조 고정)
 - 메뉴명은 항상 `Users`(복수형) 사용, `User` 단수형 금지
