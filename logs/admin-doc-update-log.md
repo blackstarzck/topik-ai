@@ -938,6 +938,14 @@
 - Validation: 신규 삭제 수명주기 단위 5건과 전체 단위 67파일·584건, `check:migration-boundary`, `db:contracts:verify`(dev/prod admin 94/94 contract clean), `check:expand-migrations -- --base origin/main`, v13 경로 지정 `check:transfer-sot-checklist`, `harness:check`, production build, 기관 노출 mock E2E 13건이 통과했다. E2E는 생성 행의 `배정분만` 표시와 기존 수정·배정 보존·삭제·노출 문항 흐름을 함께 확인했다. 로컬 전체 shadow 재생은 Docker Desktop 엔진이 실행 중이지 않아 시작 전 차단됐으며, GitHub `db-contract` 검사를 최종 merge gate로 사용한다.
 - Not-updated: 운영 DB 미적용(§11.6 대로 별도 게이트). `20260731100000` 이 두 RPC 본문에 문자열 수술로 심은 에러 문구는 그대로 뒀다 — 앵커를 깨면 그 마이그의 down 짝이 어긋나므로 문구 정정은 별건이다(헬퍼 comment 에는 모드 인지 사실을 반영했다). 컬럼 필터는 e2e 로 덮지 않았다(형제 컬럼 `종류`·`상태`도 미커버이고 antd 위젯 구동은 취약하다). `종료` 상태 코드의 모드 해석은 gap register 잔여 갭으로 등재했다 — 현재 predicate 는 `institution_codes.status` 를 보지 않는다.
 
+## 2026-08-01 문항 중심 기관 배정 진입점 미제공 확정 — 문서 철회
+
+- Updated: `docs/specs/page-ia/assessment-question-bank-page-ia.md`, `docs/specs/admin-page-tables.md`, `docs/page-sync/assessment-question-bank-page-sync.md`, `docs/specs/admin-page-gap-register.md`, `docs/specs/admin-page-ia-change-log.md`, `src/features/assessment/api/assessment-question-bank-service.ts`(주석만).
+- Reason: 2026-06-26 이후 계약 문서 다수가 `/assessment/question-bank` 에 기관 컬럼·`기관 노출 설정`·일괄 배정 진입점이 **있다고 현재형으로** 기술해 왔으나 구현된 적이 없다 — `src/features/assessment/pages/` 에 `institutionExposure`·`기관 노출` 문자열 0건, 서비스 계층 wrapper 3종만 존재하고 외부 호출자 0건. 지금까지는 "곧 만들 예정"으로 방치했지만 오너가 만들지 않기로 확정(2026-08-01)하면서 그냥 거짓 서술이 됐다. 문서가 없는 기능을 있다고 말하는 상태는 2026-07-30 오진(문서·라이브 불일치로 "기관 게이팅이 죽었다"는 잘못된 결론)을 낳은 것과 같은 결함 유형이라 즉시 정정한다.
+- Contract: 기관별 배정은 `Users > 기관 코드`의 `노출 문항` 모달(기관 중심, `admin_add/remove_institution_writing_questions`) **단일 경로**다. 문항 축 진입점은 제공하지 않는다. 감사 액션 `question_institutions_changed`/`question_institutions_cleared` 는 Target 이 `AssessmentQuestion + questionId` 이지만 발생 경로는 기관 중심 화면이다. 문항 축 라벨 계약(`미배정`/`기관 N곳 배정`)과 셀/모달 스펙은 삭제하지 않고 "되살릴 경우의 참고"로 표기해 남겼다 — 나중에 되살릴 때 폐기된 구 라벨(`전체 공개`/`기관 한정`)이 재도입되는 것을 막기 위해서다.
+- Validation: `harness:check`(mojibake·doc-crosslinks·route-doc·message-history·lint·typecheck). 코드 변경은 JSDoc 주석 1건뿐이라 동작 영향 0.
+- Not-updated: 서비스 wrapper 3종(`fetchWritingQuestionInstitutionsSafe`/`setWritingQuestionInstitutionsSafe`/`clearWritingQuestionInstitutionsSafe`)과 대응 RPC 2종은 삭제하지 않았다. 문항 축 UI 를 되살릴 경우의 진입점이고, forward 마이그의 `drop function` 은 expand 게이트가 차단한다. 대신 "호출자 0건은 미완성이 아니라 결정" 주석을 달아 다음 사람이 오독하지 않게 했다.
+
 ## 2026-07-31 M5 후속 — AGENTS.md 소유권 모순 정정 + 경계 역방향 규칙
 
 - Updated: `AGENTS.md` §2(learner 네임스페이스 항목 신설, 모순 문장 2개 정정, 양방향 경계 명시), `scripts/check-migration-ownership-boundary.mjs`(`collectForbiddenLearnerAdminDefinitions`·`isLearnerAuthoredAboveWatermark` 신설), `tests/unit/migration-ownership-boundary.test.mjs`(신규 5건).
