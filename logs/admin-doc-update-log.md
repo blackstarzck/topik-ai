@@ -945,3 +945,11 @@
 - Contract: 기관별 배정은 `Users > 기관 코드`의 `노출 문항` 모달(기관 중심, `admin_add/remove_institution_writing_questions`) **단일 경로**다. 문항 축 진입점은 제공하지 않는다. 감사 액션 `question_institutions_changed`/`question_institutions_cleared` 는 Target 이 `AssessmentQuestion + questionId` 이지만 발생 경로는 기관 중심 화면이다. 문항 축 라벨 계약(`미배정`/`기관 N곳 배정`)과 셀/모달 스펙은 삭제하지 않고 "되살릴 경우의 참고"로 표기해 남겼다 — 나중에 되살릴 때 폐기된 구 라벨(`전체 공개`/`기관 한정`)이 재도입되는 것을 막기 위해서다.
 - Validation: `harness:check`(mojibake·doc-crosslinks·route-doc·message-history·lint·typecheck). 코드 변경은 JSDoc 주석 1건뿐이라 동작 영향 0.
 - Not-updated: 서비스 wrapper 3종(`fetchWritingQuestionInstitutionsSafe`/`setWritingQuestionInstitutionsSafe`/`clearWritingQuestionInstitutionsSafe`)과 대응 RPC 2종은 삭제하지 않았다. 문항 축 UI 를 되살릴 경우의 진입점이고, forward 마이그의 `drop function` 은 expand 게이트가 차단한다. 대신 "호출자 0건은 미완성이 아니라 결정" 주석을 달아 다음 사람이 오독하지 않게 했다.
+
+## 2026-07-31 M5 후속 — AGENTS.md 소유권 모순 정정 + 경계 역방향 규칙
+
+- Updated: `AGENTS.md` §2(learner 네임스페이스 항목 신설, 모순 문장 2개 정정, 양방향 경계 명시), `scripts/check-migration-ownership-boundary.mjs`(`collectForbiddenLearnerAdminDefinitions`·`isLearnerAuthoredAboveWatermark` 신설), `tests/unit/migration-ownership-boundary.test.mjs`(신규 5건).
+- Reason: 계획서 §9의 M5 시점 항목 2개가 미완이었다. ①`AGENTS.md`가 여전히 "기존 v13 테이블 DDL 변경은 금지한다"고 못박아 M5가 연 저작 경로와 **정면 모순**이었다 — 최상위 계약이 틀리면 다음 세션이 규칙대로 하다가 막힌다. ②경계 검사가 admin→learner 방향만 강제하고 learner→admin 방향이 없었다.
+- Contract: 역방향 규칙은 **워터마크 초과 신규 저작에만** 적용한다. 워터마크 이하는 채택한 v13 역사이고 그 역사에는 admin 객체가 정당하게 들어 있다(v13이 분리 전 알림 파이프라인을 소유했고, 아카이브에는 그 객체들을 제거하는 파일도 있다). 역사를 판정하면 채택 자체가 실패한다 — expand-gate 의 역사 면제와 같은 논리다.
+- Validation: 단위 590건(신규 5 — 워터마크 스코프, 위반 검출, 역사 면제, 정상 통과, **출하된 아카이브가 실제 규칙 아래 깨끗한지 회귀 앵커**). `check:migration-boundary` 실행에서 역사 파일 오탐 0(기존 advisory 3줄은 무관). lint, harness:docs, mojibake.
+- Not-tested: 실제 워터마크 초과 learner 마이그레이션은 아직 0건이라 규칙은 현재 무부하로 대기한다.

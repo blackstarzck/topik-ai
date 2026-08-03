@@ -240,6 +240,41 @@ function collectForbiddenV13AdminWrites(rootDir, files) {
   return findings;
 }
 
+// The boundary is two-way (ownership transfer M5). admin migrations must not write
+// learner-owned objects — that direction is collectForbiddenV13AdminWrites — and
+// learner migrations must not define admin operational objects.
+//
+// Scope: only migrations authored ABOVE the freeze watermark. Everything at or below
+// it is adopted v13 history, and that history legitimately contains admin objects —
+// v13 owned the notification pipeline before the ownership split and one archived
+// file exists precisely to remove those objects. Judging history here would fail the
+// adoption itself, exactly like the expand gate's historical exemption.
+export const LEARNER_AUTHORING_WATERMARK = '20260729120000';
+
+export function isLearnerAuthoredAboveWatermark(fileName, watermark = LEARNER_AUTHORING_WATERMARK) {
+  const match = /^(?:\.[\\/])?(\d{14})_[a-z0-9_]+\.sql$/.exec(fileName.replaceAll('\\', '/'));
+  return match ? match[1] > watermark : false;
+}
+
+export function collectForbiddenLearnerAdminDefinitions(learnerDir, files, adminObjects) {
+  const findings = [];
+  for (const file of files) {
+    if (!isLearnerAuthoredAboveWatermark(file)) continue;
+    const lines = readProjectFile(learnerDir, file).split(/\r?\n/);
+    lines.forEach((line, index) => {
+      for (const objectName of adminObjects) {
+        if (lineMatchesWriteToObject(line, objectName)) {
+          findings.push(
+            `${file}:${index + 1} must not define or write admin-owned object ${objectName} — `
+            + 'admin DDL belongs in supabase/migrations-admin.'
+          );
+        }
+      }
+    });
+  }
+  return findings;
+}
+
 // The learner migration history now lives in this repo (ownership transfer M2).
 // An external v13 checkout stays supported as a transition source so the
 // dual-verification release can point the same checks at both trees.
@@ -307,6 +342,14 @@ export function evaluateMigrationOwnershipBoundary({
       failures.push(`v13 migrations must preserve user-facing/shared object ${term}.`);
     }
   }
+
+  failures.push(
+    ...collectForbiddenLearnerAdminDefinitions(
+      learner.dir,
+      v13MigrationFiles,
+      TOPIK_AI_ADMIN_OBJECTS
+    )
+  );
 
   for (const term of TOPIK_AI_REFERENCE_ONLY_OBJECTS) {
     if (!contentHasTerm(topikAiAdminSql, term)) {

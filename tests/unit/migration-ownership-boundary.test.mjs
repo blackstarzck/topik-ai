@@ -4,7 +4,10 @@ import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
+  collectForbiddenLearnerAdminDefinitions,
   evaluateMigrationOwnershipBoundary,
+  isLearnerAuthoredAboveWatermark,
+  LEARNER_AUTHORING_WATERMARK,
   formatMigrationOwnershipBoundaryReport,
   resolveLearnerMigrationsRoot,
   resolveV13Root
@@ -356,5 +359,82 @@ describe('learner migration source resolution', () => {
     expect(result.failures).toContain(
       'v13 20260609130000_remove_v13_admin_island.sql is missing from archive.'
     );
+  });
+});
+
+describe('learner → admin 역방향 경계 (ownership transfer M5)', () => {
+  let root;
+
+  afterEach(() => {
+    if (root) rmSync(root, { recursive: true, force: true });
+    root = null;
+  });
+
+  function learnerDir(files) {
+    root = mkdtempSync(join(tmpdir(), 'learner-boundary-'));
+    for (const [name, sql] of Object.entries(files)) {
+      writeFileSync(join(root, name), sql);
+    }
+    return root;
+  }
+
+  it('scopes the rule to migrations authored above the freeze watermark', () => {
+    expect(LEARNER_AUTHORING_WATERMARK).toBe('20260729120000');
+    expect(isLearnerAuthoredAboveWatermark('20260801000000_new_learner_change.sql')).toBe(true);
+    expect(isLearnerAuthoredAboveWatermark(`${LEARNER_AUTHORING_WATERMARK}_edge.sql`)).toBe(false);
+    expect(isLearnerAuthoredAboveWatermark('20260612180000_notification_dispatcher.sql')).toBe(false);
+  });
+
+  it('refuses a newly authored learner migration that defines an admin object', () => {
+    const dir = learnerDir({
+      '20260801000000_learner_oversteps.sql':
+        'create table public.notification_templates (id uuid primary key);\n',
+    });
+    const findings = collectForbiddenLearnerAdminDefinitions(
+      dir,
+      ['20260801000000_learner_oversteps.sql'],
+      ['notification_templates']
+    );
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toContain('must not define or write admin-owned object notification_templates');
+    expect(findings[0]).toContain('supabase/migrations-admin');
+  });
+
+  it('exempts adopted history that legitimately touches admin objects', () => {
+    // v13 owned the notification pipeline before the split, and one archived file
+    // exists to remove those objects. Judging that history would fail the adoption.
+    const dir = learnerDir({
+      '20260612180000_notification_dispatcher.sql':
+        'create table public.notification_templates (id uuid primary key);\n',
+      '20260609130000_remove_v13_admin_island.sql':
+        'drop table public.admin_audit_logs;\n',
+    });
+    expect(
+      collectForbiddenLearnerAdminDefinitions(
+        dir,
+        ['20260612180000_notification_dispatcher.sql', '20260609130000_remove_v13_admin_island.sql'],
+        ['notification_templates', 'admin_audit_logs']
+      )
+    ).toEqual([]);
+  });
+
+  it('leaves a new learner migration that stays in its own namespace alone', () => {
+    const dir = learnerDir({
+      '20260801000000_learner_only.sql':
+        'alter table public.profiles add column if not exists nickname text;\n',
+    });
+    expect(
+      collectForbiddenLearnerAdminDefinitions(
+        dir,
+        ['20260801000000_learner_only.sql'],
+        ['notification_templates', 'admin_audit_logs']
+      )
+    ).toEqual([]);
+  });
+
+  it('keeps the shipped archive clean under the live rule', () => {
+    // Regression anchor: the real archive must pass, or the exemption is wrong.
+    const { errors } = { errors: evaluateMigrationOwnershipBoundary().failures ?? [] };
+    expect(errors.filter((issue) => issue.includes('must not define or write admin-owned'))).toEqual([]);
   });
 });
