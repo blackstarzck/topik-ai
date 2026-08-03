@@ -72,3 +72,10 @@ export const userDetailTabLabels: Record<string, string> = {
   logs: '로그',
   'admin-memo': '관리자 메모'
 };
+
+/** 기관 코드 상세(`/users/institution-codes/:code`)의 `?tab=` 라벨. */
+export const institutionCodeDetailTabLabels: Record<string, string> = {
+  info: '기본 정보',
+  members: '회원',
+  questions: '노출 문항'
+};

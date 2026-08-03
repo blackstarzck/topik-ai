@@ -111,3 +111,61 @@ export function resolveMockExposureMode(code: string): InstitutionExposureMode {
     ?? defaultInstitutionExposureMode
   );
 }
+
+/**
+ * mock 경로의 코드 생성. **배열 끝에만 추가한다** — 파일 상단 주석의 e2e 암묵 계약(`.first()` 행은
+ * 항상 A부스)을 지켜야 한다. 모드 원장 행은 만들지 않는다: 생성 RPC 가 모드를 받지 않고
+ * 원장 행 없음 = `배정분만` 이라는 폴백 계약이 mock 에서도 그대로 성립해야 한다.
+ *
+ * 페이지 이동으로 컴포넌트가 리마운트되어도 방금 만든 코드가 살아 있어야 하므로
+ * 모듈 메모리에 반영한다(페이지 로컬 상태 patch 로는 라우트 이동 시 증발한다).
+ */
+export function addMockInstitutionCode(input: {
+  code: string;
+  label: string;
+  kind: InstitutionCode['kind'];
+  note: string;
+  today: string;
+}): void {
+  if (mockInstitutionCodes.some((row) => row.code === input.code)) return;
+  mockInstitutionCodes.push({
+    code: input.code,
+    label: input.label,
+    kind: input.kind,
+    status: '활성',
+    note: input.note,
+    memberCount: 0,
+    createdAt: input.today,
+    updatedAt: input.today
+  });
+}
+
+/** mock 경로의 코드 메타 수정. 존재하지 않는 코드는 no-op(서버도 not-found 로 실패한다). */
+export function updateMockInstitutionCode(input: {
+  code: string;
+  label: string;
+  kind: InstitutionCode['kind'];
+  status: InstitutionCode['status'];
+  note: string;
+  today: string;
+}): void {
+  const existing = mockInstitutionCodes.find((row) => row.code === input.code);
+  if (!existing) return;
+  existing.label = input.label;
+  existing.kind = input.kind;
+  existing.status = input.status;
+  existing.note = input.note;
+  existing.updatedAt = input.today;
+}
+
+/**
+ * mock 경로의 코드 삭제. 모드 원장 행도 함께 지운다 — `admin_delete_institution_code` 가
+ * 원장을 정리하므로 같은 코드를 재생성했을 때 이전 모드가 되살아나지 않아야 한다.
+ */
+export function removeMockInstitutionCode(code: string): void {
+  const codeIndex = mockInstitutionCodes.findIndex((row) => row.code === code);
+  if (codeIndex >= 0) mockInstitutionCodes.splice(codeIndex, 1);
+
+  const modeIndex = mockInstitutionExposureModes.findIndex((row) => row.code === code);
+  if (modeIndex >= 0) mockInstitutionExposureModes.splice(modeIndex, 1);
+}

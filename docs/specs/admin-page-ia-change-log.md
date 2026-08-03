@@ -15,6 +15,7 @@
 
 | Date | Page | Change Type | Updated Files | Summary |
 | --- | --- | --- | --- | --- |
+| 2026-08-03 | `Users > 기관 코드` | 모달 조치형 → 전용 생성/상세(탭) 페이지 전환 | `docs/specs/page-ia/users-institution-codes-page-ia.md`, `docs/page-sync/users-institution-codes-page-sync.md`, `docs/specs/admin-page-gap-register.md` | 라우트를 목록·`/create`·`/:code?tab=info\|members\|questions` 3종으로 확정했다. 노출 모드 전환 지점을 `수정` 모달에서 `노출 문항` 탭으로 옮겨 배정 현황과 같은 화면에서 판단하게 했고, 삭제는 행 단위 파괴적 액션이라 목록에 남겼다. `create` 는 상세 라우트를 가리므로 생성 폼에서 예약어로 거부한다. 감사 로그의 죽은 `?selected=` 딥링크를 상세로 리다이렉트해 살렸다. 계약 기간·정원 등 기관 설정은 DB 원장 신설이 선행이라 후속 PR 로 남겼다. |
 | 2026-07-23 | `Message > 인앱 알림 관리` | 알림 파이프라인 migration home 정합화 | `docs/specs/page-ia/message-inapp-page-ia.md`, `docs/page-sync/message-inapp-page-sync.md`, `docs/page-sync/message-mail-page-sync.md` | DB dispatcher/email/marketing/pg_cron 소유권을 v13에서 topik-ai `admin_schema_migrations`로 정정했다. v13은 사용자 수신함·설정·동의 객체와 사용자 UI 소유권을 유지한다. |
 | 2026-07-20 | `Dashboard > 대시보드`, `System > 백업 관리` | 백업 상태 카드·조회 전용 운영 화면 추가 | `docs/specs/page-ia/dashboard-page-ia.md`, `docs/specs/page-ia/system-backups-page-ia.md`, 관련 데이터·화면·운영 문서 | 대시보드에 장애 격리된 백업 요약을 추가하고, 권한 기반 상세 목록·Drawer·시스템 로그 연결·상태 임계값·URL 복원 계약을 확정했다. 자동 작업은 감사 로그가 아니라 시스템 로그로 추적한다. |
 | 2026-07-20 | `Dashboard > 대시보드`, `System > 백업 관리` | localhost 개발환경 복사본 안내 | `docs/specs/page-ia/dashboard-page-ia.md`, `docs/specs/page-ia/system-backups-page-ia.md` | 실제 백업 대상은 `topik-prod`만 유지하고, localhost가 `topik-dev`에 독립 저장된 보고 복사본을 읽는다는 안내와 마지막 복사 시각을 추가했다. |

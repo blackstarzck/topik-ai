@@ -1,7 +1,11 @@
 import type { BreadcrumbProps } from 'antd';
 import { Link } from 'react-router-dom';
 
-import { adminMenuLabels, userDetailTabLabels } from './admin-labels';
+import {
+  adminMenuLabels,
+  institutionCodeDetailTabLabels,
+  userDetailTabLabels
+} from './admin-labels';
 
 function breadcrumbLinkItem(
   label: string,
@@ -35,6 +39,40 @@ export function buildAdminBreadcrumbItems(
     return [
       breadcrumbLinkItem(adminMenuLabels.users, '/users'),
       breadcrumbTextItem(adminMenuLabels.usersReferrals)
+    ];
+  }
+
+  // 기관 코드 3분기는 아래 범용 `/users/` 분기(회원 상세)보다 반드시 위에 둔다 —
+  // 그렇지 않으면 `상세 (institution-codes)` 로 잘못 렌더된다. 구체적인 것부터:
+  // create(정적) → :code(동적) → 목록.
+  if (pathname.startsWith('/users/institution-codes/create')) {
+    return [
+      breadcrumbLinkItem(adminMenuLabels.users, '/users'),
+      breadcrumbLinkItem(adminMenuLabels.usersInstitutionCodes, '/users/institution-codes'),
+      breadcrumbTextItem('등록 상세')
+    ];
+  }
+
+  if (/^\/users\/institution-codes\/[^/]+/.test(pathname)) {
+    const code = pathname.split('/')[3] ?? '';
+    const tab = new URLSearchParams(search).get('tab');
+    const items = [
+      breadcrumbLinkItem(adminMenuLabels.users, '/users'),
+      breadcrumbLinkItem(adminMenuLabels.usersInstitutionCodes, '/users/institution-codes'),
+      breadcrumbTextItem(`상세 (${code})`)
+    ];
+
+    if (tab && institutionCodeDetailTabLabels[tab]) {
+      items.push(breadcrumbTextItem(institutionCodeDetailTabLabels[tab]));
+    }
+
+    return items;
+  }
+
+  if (pathname.startsWith('/users/institution-codes')) {
+    return [
+      breadcrumbLinkItem(adminMenuLabels.users, '/users'),
+      breadcrumbTextItem(adminMenuLabels.usersInstitutionCodes)
     ];
   }
 

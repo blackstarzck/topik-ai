@@ -9,9 +9,12 @@ import type {
   InstitutionInvitationStatus
 } from '../model/institution-codes-types';
 import {
+  addMockInstitutionCode,
   mockInstitutionCodes,
   mockInstitutionExposureModes,
-  patchMockInstitutionExposureMode
+  patchMockInstitutionExposureMode,
+  removeMockInstitutionCode,
+  updateMockInstitutionCode
 } from './mock-institution-codes';
 import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
 import { institutionCodesDataSource } from './institution-codes-data-source';
@@ -87,13 +90,40 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   });
 }
 
+function todayText(): string {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 async function loadInstitutionCodes(signal?: AbortSignal): Promise<InstitutionCode[]> {
   if (isSupabaseSource) {
     return loadInstitutionCodesFromSupabase(undefined, null, signal);
   }
 
   await sleep(280, signal);
-  return mockInstitutionCodes;
+  // 라이브 배열이 아니라 스냅샷을 돌려준다. 같은 배열 참조를 넘기면 삭제/수정 후 재조회에서
+  // dataSource 식별자가 그대로라 antd Table 이 행을 다시 그리지 않는다.
+  return mockInstitutionCodes.map((row) => ({ ...row }));
+}
+
+/**
+ * 코드 단건 조회. 목록 RPC 를 재사용해 정확 일치를 고른다 — 관리 데이터 규모(수십 건)에서
+ * 단건 RPC 를 새로 만드는 것보다 계약이 하나 적다. 없는 코드는 not-found 로 실패시켜
+ * 상세 페이지가 빈 상태를 그릴 수 있게 한다.
+ */
+async function loadInstitutionCode(
+  code: string,
+  signal?: AbortSignal
+): Promise<InstitutionCode> {
+  const codes = await loadInstitutionCodes(signal);
+  const found = codes.find((item) => item.code === code);
+  if (!found) {
+    throw new Error(`기관 코드를 찾을 수 없습니다: ${code}`);
+  }
+  return found;
 }
 
 async function persistCreate(
@@ -104,9 +134,19 @@ async function persistCreate(
     return createInstitutionCodeViaRpc(payload, signal);
   }
 
-  // mock 경로: 정적 시드라 영속화 없음. 화면이 로컬 상태로 시각 반영한다.
   await sleep(200, signal);
-  return payload.code.trim();
+  // mock 경로도 모듈 메모리에 영속화한다. 생성/수정/삭제 화면이 별도 라우트가 되어
+  // 목록으로 돌아올 때 리마운트 재조회가 일어나므로, 페이지 로컬 상태 patch 로는
+  // 방금 만든 코드가 사라진다.
+  const code = payload.code.trim();
+  addMockInstitutionCode({
+    code,
+    label: payload.label.trim(),
+    kind: payload.kind,
+    note: payload.note.trim(),
+    today: todayText()
+  });
+  return code;
 }
 
 async function persistUpdate(
@@ -118,6 +158,14 @@ async function persistUpdate(
   }
 
   await sleep(200, signal);
+  updateMockInstitutionCode({
+    code: payload.code,
+    label: payload.label.trim(),
+    kind: payload.kind,
+    status: payload.status,
+    note: payload.note.trim(),
+    today: todayText()
+  });
   return payload.code;
 }
 
@@ -130,6 +178,7 @@ async function persistDelete(
   }
 
   await sleep(200, signal);
+  removeMockInstitutionCode(payload.code);
   return payload.code;
 }
 
@@ -141,7 +190,7 @@ async function loadInstitutionExposureModes(
   }
 
   await sleep(180, signal);
-  return mockInstitutionExposureModes;
+  return mockInstitutionExposureModes.map((row) => ({ ...row }));
 }
 
 async function persistExposureMode(
@@ -163,6 +212,13 @@ async function persistExposureMode(
 export function fetchInstitutionCodesSafe(signal?: AbortSignal) {
   return toSafeResult(() =>
     withRetry(() => loadInstitutionCodes(signal), { maxRetries: 1 })
+  );
+}
+
+/** 기관 코드 상세 페이지용 단건 조회. 없는 코드는 error 로 떨어져 빈 상태를 그린다. */
+export function fetchInstitutionCodeSafe(code: string, signal?: AbortSignal) {
+  return toSafeResult(() =>
+    withRetry(() => loadInstitutionCode(code, signal), { maxRetries: 1 })
   );
 }
 

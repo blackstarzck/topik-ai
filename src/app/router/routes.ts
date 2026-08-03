@@ -16,6 +16,8 @@ export type SimplePageRouteKey =
   | 'instructor-management'
   | 'users-referrals'
   | 'institution-codes'
+  | 'institution-code-create'
+  | 'institution-code-detail'
   | 'community-posts'
   | 'community-reports'
   | 'message-mail'
@@ -92,6 +94,18 @@ export const adminRouteDefinitions = [
   { kind: 'page', path: '/users/groups', page: 'instructor-management' },
   { kind: 'page', path: '/users/referrals', page: 'users-referrals' },
   { kind: 'page', path: '/users/institution-codes', page: 'institution-codes' },
+  // 정적 `create` 세그먼트가 동적 `:code` 보다 우선 매칭된다(React Router v6 랭킹).
+  // 코드 정규식이 `create` 를 허용하므로 생성 폼에서 예약어로 거부한다.
+  {
+    kind: 'page',
+    path: '/users/institution-codes/create',
+    page: 'institution-code-create'
+  },
+  {
+    kind: 'page',
+    path: '/users/institution-codes/:code',
+    page: 'institution-code-detail'
+  },
 
   { kind: 'page', path: '/community/posts', page: 'community-posts' },
   { kind: 'page', path: '/community/reports', page: 'community-reports' },

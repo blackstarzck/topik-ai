@@ -23,11 +23,11 @@ last_reviewed_at: "2026-06-26"
 | --- | --- |
 | 모듈 | `Users` |
 | 페이지명 | `기관 코드` |
-| 라우트 | `/users/institution-codes` |
+| 라우트 | `/users/institution-codes`, `/users/institution-codes/create`, `/users/institution-codes/:code` |
 | 현재 상태 | `구현됨` |
-| 페이지 유형 | `목록 운영형 + 모달 조치형` |
+| 페이지 유형 | `목록 운영형 + 전용 생성/상세(탭) 페이지` |
 | 주요 권한 | `users.institution-codes.manage` |
-| 코드 근거 | `src/features/users/pages/institution-codes-page.tsx` |
+| 코드 근거 | `src/features/users/pages/institution-codes-page.tsx`, `src/features/users/pages/institution-code-create-page.tsx`, `src/features/users/pages/institution-code-detail-page.tsx`, `src/features/users/ui/institution-code-detail/` |
 | 연관 SoT 문서 | `docs/specs/page-ia/users-institution-codes-page-ia.md`, `docs/specs/admin-data-contract.md`, `docs/specs/admin-data-usage-map.md`, `docs/specs/admin-action-log.md` |
 
 ## 3. 관리자 페이지 목적
@@ -52,11 +52,11 @@ last_reviewed_at: "2026-06-26"
 
 | 엔티티 후보 | 테이블 후보 | CRUD | 관리자 UI 진입점 | 주요 필드 후보 | 감사 로그 Target | 사용자 화면 영향 | 미확정/차이 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| InstitutionCode | institution_codes | Create, Read, Update, Delete | 본문 목록/생성/수정 모달, 삭제 확인 모달 | code, label, kind, status, note, member_count | InstitutionCode + code | 가입/QR 유입 코드 유효성 | 삭제는 가입 회원 존재 시 차단, 기관 노출 문항 매핑과 노출 모드 원장은 함께 정리 |
-| UserInstitutionAffiliation | profiles.affiliation_code | Read, Update(해제/사용자 수락) | 회원 관리 모달 | user_id, affiliation_code, status | Users + userId | 기관 회원 구분 | 부여는 사용자 수락 RPC(`respond_institution_invitation`) 경유, 관리자 직접 쓰기는 해제만 |
-| InstitutionInvitation | institution_code_invitations | Create, Read, Update(취소) | 회원 관리 모달 통합 로스터(소속 회원과 한 테이블, '초대 대기' 태그 행) / 회원 상세 기관탭 배너 | invitation_id, code, user_id, status, reason, created_at, expires_at(만료 — 태그 툴팁/배너 표시), email_status/email_error(초대 이메일 발송 상태 — 대기/발송됨/실패 태그) | Users + userId | 초대 수명주기(pending→accepted/declined/canceled/expired) | 알림 계약: `docs/specs/notification-contract.md` §3 `institution_invitation`. 종결(응답/취소) 시 미발송 이메일 attempt는 skipped 회수. 만료는 lazy 전환(respond/invite/list 접점) |
-| InstitutionQuestionExposure | topik_writing_question_institution_exposure | Create, Read, Delete | 노출 문항 모달 | institution_code, question_id, is_exposed, service_status(조회 표시) | InstitutionCode + code / AssessmentQuestion + questionId | 기관 소속 회원 대상 문항 배정 | `service_status='available'`이 전역 선행 조건이며, `excluded`/`internal_test` 신규 추가는 blocked |
-| InstitutionExposureMode | topik_writing_institution_exposure_mode | Create, Read, Update, Delete | 목록 노출 모드 컬럼, 수정 모달 | institution_code, exposure_mode, reason, updated_by, updated_at | InstitutionCode + code | 기관 소속 회원의 쓰기 문항 가시 범위 | 행이 없으면 `배정분만`; 코드 삭제 시 원장을 함께 삭제해 같은 code 재생성 시 stale 모드 부활을 차단 |
+| InstitutionCode | institution_codes | Create, Read, Update, Delete | 본문 목록/삭제 확인 모달, 생성 페이지, 상세 기본 정보 탭 | code, label, kind, status, note, member_count | InstitutionCode + code | 가입/QR 유입 코드 유효성 | 삭제는 가입 회원 존재 시 차단, 기관 노출 문항 매핑과 노출 모드 원장은 함께 정리 |
+| UserInstitutionAffiliation | profiles.affiliation_code | Read, Update(해제/사용자 수락) | 상세 회원 탭 | user_id, affiliation_code, status | Users + userId | 기관 회원 구분 | 부여는 사용자 수락 RPC(`respond_institution_invitation`) 경유, 관리자 직접 쓰기는 해제만 |
+| InstitutionInvitation | institution_code_invitations | Create, Read, Update(취소) | 상세 회원 탭 통합 로스터(소속 회원과 한 테이블, '초대 대기' 태그 행) / 회원 상세 기관탭 배너 | invitation_id, code, user_id, status, reason, created_at, expires_at(만료 — 태그 툴팁/배너 표시), email_status/email_error(초대 이메일 발송 상태 — 대기/발송됨/실패 태그) | Users + userId | 초대 수명주기(pending→accepted/declined/canceled/expired) | 알림 계약: `docs/specs/notification-contract.md` §3 `institution_invitation`. 종결(응답/취소) 시 미발송 이메일 attempt는 skipped 회수. 만료는 lazy 전환(respond/invite/list 접점) |
+| InstitutionQuestionExposure | topik_writing_question_institution_exposure | Create, Read, Delete | 상세 노출 문항 탭 | institution_code, question_id, is_exposed, service_status(조회 표시) | InstitutionCode + code / AssessmentQuestion + questionId | 기관 소속 회원 대상 문항 배정 | `service_status='available'`이 전역 선행 조건이며, `excluded`/`internal_test` 신규 추가는 blocked |
+| InstitutionExposureMode | topik_writing_institution_exposure_mode | Create, Read, Update, Delete | 목록 노출 모드 컬럼, 상세 노출 문항 탭 | institution_code, exposure_mode, reason, updated_by, updated_at | InstitutionCode + code | 기관 소속 회원의 쓰기 문항 가시 범위 | 행이 없으면 `배정분만`; 코드 삭제 시 원장을 함께 삭제해 같은 code 재생성 시 stale 모드 부활을 차단 |
 
 ## 6. 관리자 조치와 감사 로그 계약
 
@@ -65,10 +65,10 @@ last_reviewed_at: "2026-06-26"
 | 코드 생성 | 아니오 | 필드 검증 | 선택/서버 기록 | InstitutionCode | code | `/system/audit-logs?targetType=InstitutionCode&targetId={code}` |
 | 코드 수정 | 아니오 | 필드 검증 | 필수 | InstitutionCode | code | `/system/audit-logs?targetType=InstitutionCode&targetId={code}` |
 | 코드 삭제 | 예 | 확인 모달 | 필수 | InstitutionCode | code | `/system/audit-logs?targetType=InstitutionCode&targetId={code}` |
-| 회원 초대 | 아니오 | 모달 확인 | 필수 | Users | userId | `/system/audit-logs?targetType=Users&targetId={userId}` |
+| 회원 초대 | 아니오 | 탭 내 폼 확인 | 필수 | Users | userId | `/system/audit-logs?targetType=Users&targetId={userId}` |
 | 초대 취소 | 예 | 확인 모달 | 필수 | Users | userId | `/system/audit-logs?targetType=Users&targetId={userId}` |
 | 소속 해제 | 예 | 확인 모달 | 필수 | Users | userId | `/system/audit-logs?targetType=Users&targetId={userId}` |
-| 노출 문항 추가/해제 | 아니오 | 모달 확인 | 필수 | InstitutionCode | code | `/system/audit-logs?targetType=InstitutionCode&targetId={code}` |
+| 노출 문항 추가/해제 | 아니오 | 탭 내 사유 확인 | 필수 | InstitutionCode | code | `/system/audit-logs?targetType=InstitutionCode&targetId={code}` |
 
 ## 7. 사용자 화면 동기화 포인트
 
@@ -97,15 +97,16 @@ last_reviewed_at: "2026-06-26"
 
 ## 10. URL/검색 복원 규칙
 
-- 기본 라우트: `/users/institution-codes`
-- 선택 쿼리 후보: `page`, `pageSize`, `kind`, `status`, `selected`, `modal`.
-- 목록/필터/모달 복원은 후속 개선 후보입니다.
+- 기본 라우트: 목록 `/users/institution-codes`, 생성 `/users/institution-codes/create`, 상세 `/users/institution-codes/:code`.
+- 상세 탭은 `?tab=info|members|questions` 로 복원합니다(미지정·미지원 값은 `info`).
+- 목록의 구 딥링크 `?selected={code}` 는 상세로 replace 리다이렉트합니다(감사 로그 북마크 호환).
+- 선택 쿼리 후보: `page`, `pageSize`, `kind`, `status`.
 
 ## 11. 네트워크 상태와 fail-safe
 
 | 상태 | UI 노출 | 운영자가 할 수 있는 것 | 사용자 화면 동기화 영향 |
 | --- | --- | --- | --- |
-| pending | 목록/모달 loading | 대기 또는 닫기 | 동기화 지연 |
+| pending | 목록/상세 탭 loading | 대기 또는 목록 복귀 | 동기화 지연 |
 | success | 데이터 표시 | 후속 조치 | 동기화 가능 |
 | empty | 빈 상태 안내 | 코드 생성 또는 필터 변경 | 직접 영향 없음 |
 | error | 오류 Alert 또는 notification | 재시도 또는 마지막 성공 상태 확인 | 동기화 보류 |
@@ -114,7 +115,7 @@ last_reviewed_at: "2026-06-26"
 
 - `src/features/users/pages/institution-codes-page.tsx`와 `docs/specs/page-ia/users-institution-codes-page-ia.md`를 함께 확인합니다.
 - 기관 코드 변경은 `Users`, `Assessment`, `System > 감사 로그` 영향이 있으므로 문서/테스트를 같이 평가합니다.
-- 코드 삭제는 `admin_delete_institution_code(p_code,p_reason)` 경로로만 수행하고, `profiles.affiliation_code`가 남은 회원은 먼저 회원 관리 모달에서 소속 해제해야 합니다. RPC는 pending 초대, 문항 배정, 기관 노출 모드 원장을 같은 트랜잭션에서 정리합니다.
+- 코드 삭제는 `admin_delete_institution_code(p_code,p_reason)` 경로로만 수행하고, `profiles.affiliation_code`가 남은 회원은 먼저 상세 회원 탭에서 소속 해제해야 합니다. RPC는 pending 초대, 문항 배정, 기관 노출 모드 원장을 같은 트랜잭션에서 정리합니다.
 - 기관별 문항 필터 조건은 `service_status='available' AND (사용자 affiliation_code 없음 OR 기관 노출 모드 = 제한 없음 OR 매핑.institution_code = 사용자 affiliation_code)`입니다. v13 학습자 경로에는 이미 강제 적용되어 있습니다 — `docs/requests/v13-institution-question-exposure-handoff-2026-06-26.md`가 요청한 "매핑 없음=전체 공개" 잠금 모델은 채택되지 않았으니 그 문서의 상단 정정 안내를 함께 보십시오.
 
 ## 13. 미확정 항목
