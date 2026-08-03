@@ -35,6 +35,7 @@ import {
   operationPolicyTypeValues
 } from '../model/policy-types';
 import type { AsyncState } from '../../../shared/model/async-state';
+import { routerSavedState } from '../../../shared/model/router-saved-state';
 import {
   AdminEditorForm,
   AdminEditorFormSection
@@ -987,17 +988,15 @@ export default function OperationPolicyCreatePage(): JSX.Element {
 
     navigate(`/operation/policies${listSearch}`, {
       replace: true,
-      state: {
-        operationPolicySaved: {
-          policyId: result.data.id,
-          mode:
-            editorMode === 'edit'
-              ? 'edit'
-              : editorMode === 'version'
-                ? 'version'
-                : 'create'
-        }
-      }
+      state: routerSavedState('operationPolicySaved', {
+        policyId: result.data.id,
+        mode:
+          editorMode === 'edit'
+            ? 'edit'
+            : editorMode === 'version'
+              ? 'version'
+              : 'create'
+      })
     });
   }, [editorMode, form, isEdit, listSearch, navigate, policyState.data]);
 

@@ -37,6 +37,7 @@ import type {
 } from "../model/coupon-template-types";
 import { formatCouponTemplateSchedule } from "../model/coupon-template-types";
 import type { AsyncState } from "../../../shared/model/async-state";
+import { routerSavedState } from "../../../shared/model/router-saved-state";
 import {
   AdminEditorForm,
   AdminEditorFormSection,
@@ -1097,12 +1098,10 @@ export default function CommerceCouponTemplateCreatePage(): JSX.Element {
     const nextSearch = nextSearchParams.toString();
 
     navigate(`/commerce/coupons?${nextSearch}`, {
-      state: {
-        commerceCouponTemplateSaved: {
-          templateId: result.data.id,
-          mode: isEdit ? "edit" : "create",
-        },
-      },
+      state: routerSavedState("commerceCouponTemplateSaved", {
+        templateId: result.data.id,
+        mode: isEdit ? "edit" : "create",
+      }),
     });
   }, [
     form,

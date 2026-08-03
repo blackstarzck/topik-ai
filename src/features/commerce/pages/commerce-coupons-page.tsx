@@ -26,7 +26,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
 } from "react";
-import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import {
   deleteCouponSafe,
@@ -67,6 +67,7 @@ import {
   getCouponValiditySummary,
 } from "../model/coupon-types";
 import type { AsyncState } from "../../../shared/model/async-state";
+import { useRouterStateNotice } from "../../../shared/model/use-router-state-notice";
 import { AuditLogLink } from "../../../shared/ui/audit-log-link/audit-log-link";
 import { ConfirmAction } from "../../../shared/ui/confirm-action/confirm-action";
 import {
@@ -415,7 +416,6 @@ function canControlIssueState(coupon: CommerceCoupon): boolean {
 }
 
 export default function CommerceCouponsPage(): JSX.Element {
-  const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [planTier, setPlanTier] = useState<CouponPlanTier>("pro");
@@ -455,7 +455,6 @@ export default function CommerceCouponsPage(): JSX.Element {
   const [emptyGuideOpen, setEmptyGuideOpen] = useState(false);
   const [notificationApi, notificationContextHolder] =
     notification.useNotification();
-  const handledSavedStateRef = useRef<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -582,71 +581,46 @@ export default function CommerceCouponsPage(): JSX.Element {
     return () => controller.abort();
   }, [reloadKey]);
 
-  useEffect(() => {
-    const state = location.state as {
-      commerceCouponSaved?: {
-        couponId: string;
-        mode: "create" | "edit";
-      };
-      commerceCouponTemplateSaved?: {
-        templateId: string;
-        mode: "create" | "edit";
-      };
-    } | null;
-
-    if (!state?.commerceCouponSaved && !state?.commerceCouponTemplateSaved) {
-      return;
-    }
-
-    const savedStateKey = state.commerceCouponSaved
-      ? `coupon:${state.commerceCouponSaved.mode}:${state.commerceCouponSaved.couponId}`
-      : `template:${state?.commerceCouponTemplateSaved?.mode}:${state?.commerceCouponTemplateSaved?.templateId}`;
-
-    if (handledSavedStateRef.current === savedStateKey) {
-      return;
-    }
-
-    handledSavedStateRef.current = savedStateKey;
-
-    if (state.commerceCouponSaved) {
+  // 생산자는 두 키 중 하나만 싣는다 — 키마다 훅을 한 번씩 호출한다.
+  useRouterStateNotice(
+    "commerceCouponSaved",
+    (saved) => `coupon:${saved.mode}:${saved.couponId}`,
+    (saved) => {
       notificationApi.success({
-        message:
-          state.commerceCouponSaved.mode === "create"
-            ? "쿠폰 생성했어요"
-            : "쿠폰 수정했어요",
+        message: saved.mode === "create" ? "쿠폰 생성했어요" : "쿠폰 수정했어요",
         description: (
           <Space direction="vertical">
             <Text>대상 유형: 쿠폰</Text>
-            <Text>대상 ID: {state.commerceCouponSaved.couponId}</Text>
-            <AuditLogLink
-              targetType="CommerceCoupon"
-              targetId={state.commerceCouponSaved.couponId}
-            />
+            <Text>대상 ID: {saved.couponId}</Text>
+            <AuditLogLink targetType="CommerceCoupon" targetId={saved.couponId} />
           </Space>
         ),
       });
-      return;
-    }
+    },
+  );
 
-    if (state.commerceCouponTemplateSaved) {
+  useRouterStateNotice(
+    "commerceCouponTemplateSaved",
+    (saved) => `template:${saved.mode}:${saved.templateId}`,
+    (saved) => {
       notificationApi.success({
         message:
-          state.commerceCouponTemplateSaved.mode === "create"
+          saved.mode === "create"
             ? "정기 쿠폰 템플릿을 생성했어요"
             : "정기 쿠폰 템플릿을 수정했어요",
         description: (
           <Space direction="vertical">
             <Text>대상 유형: 정기 쿠폰 템플릿</Text>
-            <Text>대상 ID: {state.commerceCouponTemplateSaved.templateId}</Text>
+            <Text>대상 ID: {saved.templateId}</Text>
             <AuditLogLink
               targetType="CommerceCouponTemplate"
-              targetId={state.commerceCouponTemplateSaved.templateId}
+              targetId={saved.templateId}
             />
           </Space>
         ),
       });
-    }
-  }, [location.state, notificationApi]);
+    },
+  );
 
   const filteredCoupons = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();

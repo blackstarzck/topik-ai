@@ -15,7 +15,7 @@ import {
 import type { TableColumnsType } from 'antd';
 import type { Dayjs } from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { messageDataSource } from '../api/message-data-source';
 import {
@@ -42,6 +42,7 @@ import {
 } from '../ui/message-template-form-fields';
 import type { AsyncState } from '../../../shared/model/async-state';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
+import { useRouterStateNotice } from '../../../shared/model/use-router-state-notice';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
 import { markRequiredDescriptionItems } from '../../../shared/ui/descriptions/description-label';
@@ -118,7 +119,6 @@ export function MessageChannelPage({
   const isSupabaseSource = messageDataSource === 'supabase';
   // 푸시 provider 미연동(contract §1) — supabase 모드에서 발송 액션만 봉인.
   const isSendBlocked = isSupabaseSource && channel === 'push';
-  const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeMode = parseMessageTemplateMode(searchParams.get('tab'));
@@ -262,51 +262,26 @@ export function MessageChannelPage({
     searchField
   ]);
 
-  useEffect(() => {
-    const state = location.state as
-      | {
-        messageTemplateContentSaved?: {
-          templateId: string;
-          mode: 'auto' | 'manual';
-        };
-      }
-      | null;
-
-    if (!state?.messageTemplateContentSaved) {
-      return;
+  useRouterStateNotice(
+    'messageTemplateContentSaved',
+    (saved) => `${saved.templateId}:${saved.mode}`,
+    (saved) => {
+      notificationApi.success({
+        message: `${meta.title} 본문 저장 완료`,
+        description: (
+          <Space direction="vertical">
+            <Text>대상 유형: {getTargetTypeLabel('Message')}</Text>
+            <Text>대상 ID: {saved.templateId}</Text>
+            <Text>
+              조치:{' '}
+              {saved.mode === 'auto' ? '자동 발송 본문 작성' : '수동 발송 본문 작성'}
+            </Text>
+            <AuditLogLink targetType="Message" targetId={saved.templateId} />
+          </Space>
+        )
+      });
     }
-
-    notificationApi.success({
-      message: `${meta.title} 본문 저장 완료`,
-      description: (
-        <Space direction="vertical">
-          <Text>대상 유형: {getTargetTypeLabel('Message')}</Text>
-          <Text>대상 ID: {state.messageTemplateContentSaved.templateId}</Text>
-          <Text>
-            조치:{' '}
-            {state.messageTemplateContentSaved.mode === 'auto'
-              ? '자동 발송 본문 작성'
-              : '수동 발송 본문 작성'}
-          </Text>
-          <AuditLogLink
-            targetType="Message"
-            targetId={state.messageTemplateContentSaved.templateId}
-          />
-        </Space>
-      )
-    });
-
-    navigate(
-      {
-        pathname: location.pathname,
-        search: location.search
-      },
-      {
-        replace: true,
-        state: null
-      }
-    );
-  }, [location.pathname, location.search, location.state, meta.title, navigate, notificationApi]);
+  );
 
   const openCreateModal = useCallback(() => {
     templateForm.setFieldsValue(createTemplateMetaDefaults(channel, activeMode, groups));

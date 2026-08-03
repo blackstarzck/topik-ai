@@ -95,6 +95,28 @@
 - 우선순위: `P0 Vercel 서버 환경 + P1 발송 수 정합성`
 - 필요 조치: Vercel Production/Preview의 canonical 서버 env를 `topik-prod` URL과 활성 secret key로 다시 저장하고 새 배포 후 관리자 JWT `POST` smoke를 2xx로 통과시킨다. 이후 같은 attempt를 재발송하지 말고 pending 0건 상태에서 워커 no-op과 신규 통제 발송을 각각 검증한다. recipient count는 v13 소유 디스패처 경계에서 수정 제안/적용한다.
 
+### 3.8 저장 완료 알림(router state 소비)이 중복 발화 — **해소 (2026-08-03)**
+
+- 등록/수정 페이지가 목록으로 돌아올 때 `navigate(..., { state })` 로 "저장 완료" 신호를 넘기고 목록이 그것을 읽어 알림을 띄우는 패턴이 5개 화면 6개 키에 있었다(공지·정책·메시지 채널·이벤트·쿠폰). 그런데 구현이 **두 갈래로 갈려 각각 절반만** 갖고 있었고, 둘 다 갖춘 화면은 하나도 없었다.
+- `해소`: 클리어형(공지·정책·메시지) — 소비 기록이 없어 StrictMode 가 마운트 시 effect 를 두 번 실행하면 두 번째 실행이 `state: null` 반영 전의 `location.state` 를 다시 읽어 **알림이 2개** 떴다. dev 전용이지만 e2e 가 dev 서버를 쓰므로 Playwright strict-mode locator 위반까지 일으켰다(실측: dev 2개 / 프로덕션 빌드 1개).
+- `해소`: 가드형(이벤트·쿠폰) — `useRef` 로 같은 도착을 막았지만 state 를 지우지 않아 history 엔트리에 남았다. 다른 화면에 갔다 뒤로 오면 컴포넌트가 리마운트되며 ref 가 리셋되고 살아 있는 state 를 다시 읽어 **오래된 성공 알림이 재발화**했다. 이쪽은 StrictMode 와 무관해 **프로덕션 빌드에서도 재현**된다(실측). commerce 쪽 생산자 2곳은 `replace: true` 가 없어 push 로 남아 브라우저 뒤로/앞으로 왕복만으로도 도달한다.
+- 조치: `src/shared/model/use-router-state-notice.ts` 를 신설해 "소비 기록 ref + 소비 즉시 state 초기화"를 한 곳에 묶고 6개 호출부를 전부 전환했다. 두 장치가 **함께** 있어야 하며 하나만 있으면 서로 다른 환경에서 깨진다는 사실을 훅 주석에 계약으로 남겼다.
+- 초기화는 `navigate` 가 아니라 `history.replaceState` 로 **그 키만** 지운다. `navigate({pathname, search}, {state: null})` 로 지우면 세 가지가 조용히 깨진다: ①다른 키까지 날아가 지연 마운트 서브트리가 소비할 알림이 영구 소실, ②소비 시점에 캡처한 `search` 를 되쓰므로 같은 커밋에서 쿼리를 정규화하는 effect 보다 훅이 아래에 선언되면 그 정규화를 되돌린다, ③`hash` 가 사라진다. 실측으로 `?keyword=CPN#anchor-section` 유지·다른 키 보존·react-router 의 `key`/`idx` 부기 보존을 확인했다.
+- 키 오타 침묵 차단: `src/shared/model/router-saved-state.ts` 의 `RouterSavedStateMap` 이 키와 payload 를 함께 묶고, 생산은 `routerSavedState(key, value)` 헬퍼로만 한다. 전에는 생산·소비가 각자 인라인 객체 리터럴로 키를 적어 한쪽 오타가 "알림이 안 뜬다"로만 나타났고 어떤 게이트도 잡지 못했다. `src/shared/model/target-type-label.ts` 가 이미 전 도메인 target type 을 shared 에서 열거하는 선례다.
+- 경계 고정: `scripts/check-router-state-notice-boundary.mjs` — ①훅 파일 외에서 `location.state` 직접 읽기 금지, ②저장 신호 키를 객체 리터럴 속성으로 적기 금지. `harness:check` 와 `harness:e2e:smoke` 에 배선했다(저장소에 `check-*.mjs` 가 15개인데 `harness:check` 가 실제로 도는 건 소수라, 만들고 배선하지 않으면 돌지 않는다).
+- 이 경계 검사가 곧바로 일했다: 같은 날 별도 PR 로 들어온 기관 코드 상세 페이지의 `institutionCodeCreated` 소비부가 인라인 ref 가드로 `location.state` 를 직접 읽고 있어 리베이스 직후 게이트가 걸렸고, 같은 훅으로 전환했다. 이때 키 추출 정규식이 접미사(`*Saved`)로 좁혀 있어 새 키(`institutionCodeCreated`)를 놓치는 상태였던 것도 드러나 최상위 키 전량 추출로 고쳤다 — **명명 규약에 의존하는 검사는 규약을 벗어난 항목에서 조용히 빈 통과가 된다.**
+- 회귀 고정: `tests/e2e/router-state-notice.spec.ts` — 공지 등록 후 알림 개수 1건(클리어형), 쿠폰 템플릿 생성 후 다른 화면 왕복 시 0건(가드형). 수정 전 코드에서 두 테스트가 각각 `Expected 1, Received 2` 와 `usr` 잔존으로 실패함을 확인했다(red→green).
+- ⚠️ **키 오타의 컴파일 오류 전환은 `npm run typecheck` 로는 검증되지 않는다.** 그 스크립트가 빈 통과라서다(§3.9). `npx tsc -b --noEmit` 으로는 `TS2345: Argument of type '"operationNoticSaved"' is not assignable to parameter of type 'keyof RouterSavedStateMap'` 가 정확히 나오는 것을 확인했다.
+- 잔여: commerce 생산자 2곳의 `replace: true` 누락은 이제 무해하다(state 를 지우므로). 저장 후 뒤로 가면 생성 페이지로 돌아가는 동선 자체는 별건 UX 판단으로 남긴다.
+
+### 3.9 `npm run typecheck` 가 아무 파일도 검사하지 않음
+
+- 루트 `tsconfig.json` 이 `files: []` + `references` 만 가진 solution-style 파일이다. `tsc --noEmit` 은 project reference 를 따라가지 않으므로 검사 대상이 0개다. `npm run build` 도 `tsc --noEmit && vite build` 이고 vite 는 esbuild 로 타입을 벗겨내므로, **저장소에 동작하는 타입 검사가 없다.**
+- 재현: `src/**` 아무 파일에 `const x: number = "s";` 를 넣어도 `npm run typecheck` 가 통과한다. `npx tsc -b --noEmit` 은 잡는다.
+- 파급: AGENTS.md §11.5 가 커밋 전 필수로 지정한 `harness:check` 의 typecheck 단계가 그동안 빈 통과였다. `npx tsc -b --noEmit` 실측 결과 **기존 타입 오류가 다수** 있다(`analytics-learning-service.ts` TS2345·TS18046 다수, `assessment-question-bank-toolbar.tsx:62` TS18048, `master-catalog-section.tsx:180` TS2322, `operation-notices-page.tsx:3` TS2305 `antd` 의 `SortOrder` 미export).
+- 우선순위: `P1 게이트 복구`
+- 필요 조치: 기존 오류를 먼저 정리한 뒤 `typecheck` 를 `tsc -b --noEmit` 으로 교체하고 `build` 도 함께 정정한다. 스크립트만 먼저 바꾸면 CI 가 즉시 빨개진다. 복구 후에는 위 재현 절차로 빈 통과가 사라졌음을 역검증한다.
+
 ## 4. 모듈별 레지스트리
 
 ### 4.1 Dashboard

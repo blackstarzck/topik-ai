@@ -12,6 +12,7 @@ import {
 } from '../model/institution-codes-types';
 import type { InstitutionCodeKind } from '../model/institution-codes-types';
 import { InstitutionExposureModeTag } from '../ui/institution-exposure-mode-tag';
+import { routerSavedState } from '../../../shared/model/router-saved-state';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import { createDescriptionLabel } from '../../../shared/ui/descriptions/description-label';
@@ -82,7 +83,7 @@ export default function InstitutionCodeCreatePage(): JSX.Element {
       // unmount 되어 알림이 사라진다. 공지 등록 선례처럼 router state 로 넘겨 목적지에서 띄운다.
       navigate(`${listPath}/${code}?tab=questions`, {
         replace: true,
-        state: { institutionCodeCreated: { code, label } }
+        state: routerSavedState('institutionCodeCreated', { code, label })
       });
     } finally {
       setSubmitting(false);

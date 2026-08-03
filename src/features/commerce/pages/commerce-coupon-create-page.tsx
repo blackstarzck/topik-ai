@@ -44,6 +44,7 @@ import {
   type CouponValidityMode,
 } from "../model/coupon-types";
 import type { AsyncState } from "../../../shared/model/async-state";
+import { routerSavedState } from "../../../shared/model/router-saved-state";
 import {
   AdminEditorForm,
   AdminEditorFormSection,
@@ -884,12 +885,10 @@ export default function CommerceCouponCreatePage(): JSX.Element {
     });
 
     navigate(`/commerce/coupons${listSearch}`, {
-      state: {
-        commerceCouponSaved: {
-          couponId: result.data.id,
-          mode: isEdit ? "edit" : "create",
-        },
-      },
+      state: routerSavedState("commerceCouponSaved", {
+        couponId: result.data.id,
+        mode: isEdit ? "edit" : "create",
+      }),
     });
   };
 

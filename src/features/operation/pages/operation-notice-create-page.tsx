@@ -12,6 +12,7 @@ import {
 } from '../api/notices-service';
 import type { OperationNotice } from '../model/types';
 import type { AsyncState } from '../../../shared/model/async-state';
+import { routerSavedState } from '../../../shared/model/router-saved-state';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
@@ -157,12 +158,10 @@ export default function OperationNoticeCreatePage(): JSX.Element {
 
     navigate(`${listPath}${listSearch}`, {
       replace: true,
-      state: {
-        operationNoticeSaved: {
-          noticeId: result.data.id,
-          mode: isEdit ? 'edit' : 'create'
-        }
-      }
+      state: routerSavedState('operationNoticeSaved', {
+        noticeId: result.data.id,
+        mode: isEdit ? 'edit' : 'create'
+      })
     });
   }, [contentForm, isEdit, listPath, listSearch, navigate, notice]);
 

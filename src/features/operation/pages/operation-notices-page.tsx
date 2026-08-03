@@ -2,7 +2,7 @@ import { DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { Alert, Button, Space, Tooltip, Typography, notification } from 'antd';
 import type { SortOrder, TableColumnsType, TableProps } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 import {
   deleteNoticeSafe,
@@ -12,6 +12,7 @@ import {
 import type { OperationNotice } from '../model/types';
 import type { AsyncState } from '../../../shared/model/async-state';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
+import { useRouterStateNotice } from '../../../shared/model/use-router-state-notice';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
 import { HtmlPreviewModal } from '../../../shared/ui/html-preview-modal/html-preview-modal';
@@ -72,7 +73,6 @@ function parseSortOrder(value: string | null): SortOrder | null {
 }
 
 export default function OperationNoticesPage(): JSX.Element {
-  const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const statusFilter = parseStatusFilter(searchParams.get('status'));
@@ -154,52 +154,28 @@ export default function OperationNoticesPage(): JSX.Element {
     };
   }, [reloadKey]);
 
-  useEffect(() => {
-    const state = location.state as
-      | {
-          operationNoticeSaved?: {
-            noticeId: string;
-            mode: 'create' | 'edit';
-          };
-        }
-      | null;
-
-    if (!state?.operationNoticeSaved) {
-      return;
+  useRouterStateNotice(
+    'operationNoticeSaved',
+    (saved) => `${saved.noticeId}:${saved.mode}`,
+    (saved) => {
+      notificationApi.success({
+        message: saved.mode === 'create' ? '공지 등록 완료' : '공지 수정 완료',
+        description: (
+          <Space direction="vertical">
+            <Text>대상 유형: {getTargetTypeLabel('OperationNotice')}</Text>
+            <Text>대상 ID: {saved.noticeId}</Text>
+            <Text>
+              사유/근거:{' '}
+              {saved.mode === 'create'
+                ? '신규 공지 저장(초기 상태: 숨김)'
+                : '공지 제목/본문 수정'}
+            </Text>
+            <AuditLogLink targetType="OperationNotice" targetId={saved.noticeId} />
+          </Space>
+        )
+      });
     }
-
-    notificationApi.success({
-      message:
-        state.operationNoticeSaved.mode === 'create' ? '공지 등록 완료' : '공지 수정 완료',
-      description: (
-        <Space direction="vertical">
-          <Text>대상 유형: {getTargetTypeLabel('OperationNotice')}</Text>
-          <Text>대상 ID: {state.operationNoticeSaved.noticeId}</Text>
-          <Text>
-            사유/근거:{' '}
-            {state.operationNoticeSaved.mode === 'create'
-              ? '신규 공지 저장(초기 상태: 숨김)'
-              : '공지 제목/본문 수정'}
-          </Text>
-          <AuditLogLink
-            targetType="OperationNotice"
-            targetId={state.operationNoticeSaved.noticeId}
-          />
-        </Space>
-      )
-    });
-
-    navigate(
-      {
-        pathname: location.pathname,
-        search: location.search
-      },
-      {
-        replace: true,
-        state: null
-      }
-    );
-  }, [location.pathname, location.search, location.state, navigate, notificationApi]);
+  );
 
   useEffect(() => {
     if (!previewNoticeId) {
