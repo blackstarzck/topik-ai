@@ -53,7 +53,8 @@ function getTargetRoute(targetType: string, targetId: string): string | null {
     return `/users/referrals?selected=${targetId}`;
   }
   if (targetType === 'InstitutionCode') {
-    return `/users/institution-codes?selected=${targetId}`;
+    // 코드 정규식이 URL-safe 문자만 허용하므로 인코딩 없이 세그먼트로 쓴다.
+    return `/users/institution-codes/${targetId}?tab=info`;
   }
   if (targetType === 'Community') {
     return '/community/posts';

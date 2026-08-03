@@ -19,6 +19,12 @@ const UsersReferralsPage = lazy(
 const InstitutionCodesPage = lazy(
   () => import('../../features/users/pages/institution-codes-page')
 );
+const InstitutionCodeCreatePage = lazy(
+  () => import('../../features/users/pages/institution-code-create-page')
+);
+const InstitutionCodeDetailPage = lazy(
+  () => import('../../features/users/pages/institution-code-detail-page')
+);
 const UserDetailPage = lazy(
   () => import('../../features/users/pages/user-detail-page')
 );
@@ -143,6 +149,10 @@ function renderPageRouteElement(route: PageRouteDefinition): JSX.Element {
       return <UsersReferralsPage />;
     case 'institution-codes':
       return <InstitutionCodesPage />;
+    case 'institution-code-create':
+      return <InstitutionCodeCreatePage />;
+    case 'institution-code-detail':
+      return <InstitutionCodeDetailPage />;
     case 'community-posts':
       return <CommunityPostsPage />;
     case 'community-reports':

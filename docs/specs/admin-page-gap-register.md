@@ -172,10 +172,11 @@
 
 #### 4.2.5 기관 코드
 
-- 대상 파일: `src/features/users/pages/institution-codes-page.tsx`, `src/features/users/ui/institution-question-exposure-modal.tsx`, `src/features/users/ui/institution-exposure-mode-tag.tsx`
+- 대상 파일: `src/features/users/pages/institution-codes-page.tsx`, `src/features/users/pages/institution-code-create-page.tsx`, `src/features/users/pages/institution-code-detail-page.tsx`, `src/features/users/ui/institution-code-detail/`, `src/features/users/ui/institution-question-exposure-panel.tsx`, `src/features/users/ui/institution-exposure-mode-tag.tsx`
 - 미확정/누락/오구현
   - `기관 단위 노출 모드 부재로 "제한 없음"을 전량 배정으로 흉내내야 함` — **[2026-08-01 등재와 동시에 해소]** 기관 할당제에서는 배정 목록이 유일한 스위치라, 어떤 기관 학습자에게 노출 허용 문항 전부를 보이려면 노출 가능 문항을 전량 배정해야 했다(dev 실측: 기관 3곳이 각 700건). 그 결과 ①이후 승격되는 신규 문항이 자동 포함되지 않아 관리자가 매번 재배정해야 하고(무소속 학습자와 노출 범위가 조용히 어긋난다), ②기관을 새로 만들 때마다 같은 우회책을 반복해야 했다. 이 드리프트는 그때까지 어느 문서에도 등재되지 않았다 — 2026-07-30 라벨 축 재정의는 표시 문제만 다뤘다. `topik_writing_institution_exposure_mode`(`제한 없음`/`배정분만`, 기본 `배정분만`)를 도입해 `제한 없음` 기관은 predicate 에서 배정 조건을 건너뛰고 신규 문항을 자동 포함한다. 배정 목록은 모드와 무관하게 보존되며 `배정분만` 복귀 시 그대로 적용된다. 기존 코드 초기값은 규칙 기반 백필(적용 시점 노출 가능 풀 전량이 배정된 기관만 승급)로 정해 **가시 문항 수가 불변**임을 증명했다. 관리자 전환 지점은 `수정` 모달(사유 필수)이며 배정 0건 + 회원 1명 이상으로 `배정분만` 전환은 화면·서버 양쪽에서 차단한다. 신규 코드는 안전 폴백과 같은 `배정분만`으로 시작하고, 코드 삭제 시 모드 원장을 함께 제거한다. 모드 변경과 삭제가 같은 코드 행 잠금을 공유하므로 동시 최초 설정까지 포함해 같은 code 재생성으로 stale `제한 없음`이 되살아나는 경로를 닫았다.
-  - 잔여 갭: ①전량 배정으로 우회하던 기관 3곳의 stale 배정 정리 시점(`제한 없음` 동안은 무해하나 `배정분만` 복귀 시 의미가 되살아난다), ②`종료` 상태 코드의 모드 해석 — 현재 학습자 predicate 는 `institution_codes.status` 를 아예 보지 않아 종료된 코드의 소속 회원도 계속 문항을 본다(별건).
+  - `모달 조치형이라 기관 설정을 넓힐 자리가 없음` — **[2026-08-03 해소]** 코드 생성·수정·회원 관리·노출 문항이 목록 화면의 모달 4개에 갇혀 있어 한 화면이 1,463줄로 커지고, 계약 기간·정원 같은 기관 설정을 더 붙일 자리가 없었다. 생성 전용 페이지(`/create`)와 상세 탭 페이지(`/:code?tab=info|members|questions`)로 승격했다. 노출 모드는 배정 현황과 같은 화면에서 판단해야 하므로 `수정`에서 `노출 문항` 탭으로 옮겼고, 그 결과 구 수정 모달의 "모드 먼저 반영 → 실패 시 메타 미변경" 2단계 시퀀싱과 "노출 문항 열기" 탈출 버튼이 함께 사라졌다. 삭제는 행 단위 파괴적 액션이라 목록에 남겼다. 감사 로그의 `?selected=` 딥링크는 그때까지 아무 것도 열지 못하는 죽은 링크였는데 상세 라우트로 살렸다.
+  - 잔여 갭: ①전량 배정으로 우회하던 기관 3곳의 stale 배정 정리 시점(`제한 없음` 동안은 무해하나 `배정분만` 복귀 시 의미가 되살아난다), ②`종료` 상태 코드의 모드 해석 — 현재 학습자 predicate 는 `institution_codes.status` 를 아예 보지 않아 종료된 코드의 소속 회원도 계속 문항을 본다(별건), ③기관 계약 기간·계약 히스토리·만료 시 자동 비노출·신규 문항 자동 배정·정원·기관별 초대 유효기간·담당자 정보 — DB 원장 신설이 선행이라 상세 페이지에 `계약` 탭과 회원 정책 섹션이 붙는 형태로 후속 PR 대기.
 
 ### 4.3 Community
 

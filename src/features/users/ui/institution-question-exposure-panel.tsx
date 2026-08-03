@@ -3,7 +3,6 @@ import {
   Button,
   Empty,
   Input,
-  Modal,
   Radio,
   Select,
   Space,
@@ -35,7 +34,8 @@ import type { AsyncState } from '../../../shared/model/async-state';
 const { Text } = Typography;
 
 /**
- * 기관 중심 노출 문항 관리 — 좌우 antd Tree(유형>주제>문항) 기반 Transfer형 모달.
+ * 기관 중심 노출 문항 관리 — 좌우 antd Tree(유형>주제>문항) 기반 Transfer형 패널.
+ * 기관 코드 상세 페이지 `노출 문항` 탭의 본문으로 임베드된다(구 모달에서 승격).
  *
  * 좌측 트리에서 유형/주제를 체크하면 하위 문항이 일괄 체크되고(상위 indeterminate),
  * › 로 노출에 추가, 우측 트리에서 유형/주제/문항을 골라 ‹ 로 제거한다. 선택 단일 소스는 노출 문항 id 집합
@@ -221,8 +221,7 @@ export type InstitutionQuestionMutationSummary = {
   result: InstitutionQuestionMutationResult;
 };
 
-type InstitutionQuestionExposureModalProps = {
-  open: boolean;
+type InstitutionQuestionExposurePanelProps = {
   institution: InstitutionCode;
   /**
    * 이 기관의 노출 모드. `제한 없음` 이면 아래 배정은 지금 학습자 화면에 영향을 주지 않으며
@@ -232,19 +231,16 @@ type InstitutionQuestionExposureModalProps = {
   exposureMode: InstitutionExposureMode;
   canManage: boolean;
   isSupabase: boolean;
-  onClose: () => void;
   onMutated: (summary: InstitutionQuestionMutationSummary) => void;
 };
 
-export function InstitutionQuestionExposureModal({
-  open,
+export function InstitutionQuestionExposurePanel({
   institution,
   exposureMode,
   canManage,
   isSupabase,
-  onClose,
   onMutated
-}: InstitutionQuestionExposureModalProps): JSX.Element {
+}: InstitutionQuestionExposurePanelProps): JSX.Element {
   const code = institution.code;
   const isUnrestricted = exposureMode === '제한 없음';
 
@@ -305,10 +301,10 @@ export function InstitutionQuestionExposureModal({
     return () => controller.abort();
   }, [code, reloadKey]);
 
+  // 구 모달의 `open` 기반 로드/리셋을 마운트·`code` 기반으로 옮겼다. 탭이
+  // `destroyOnHidden` 이라 탭 전환이 리마운트를 일으키고, 모달 `destroyOnHidden` 과
+  // 같은 초기화 의미를 유지한다.
   useEffect(() => {
-    if (!open) {
-      return;
-    }
     const controller = new AbortController();
     void fetchInstitutionCodesSafe(controller.signal).then((result) => {
       if (controller.signal.aborted || !result.ok) {
@@ -317,19 +313,17 @@ export function InstitutionQuestionExposureModal({
       setCodeOptions(result.data);
     });
     return () => controller.abort();
-  }, [open]);
+  }, []);
 
   useEffect(() => {
-    if (open) {
-      setReason('');
-      setLeftSearch('');
-      setRightSearch('');
-      setSourceCode(undefined);
-      setLoadMode('merge');
-      setErrorMessage(null);
-      setWarningMessage(null);
-    }
-  }, [open, code]);
+    setReason('');
+    setLeftSearch('');
+    setRightSearch('');
+    setSourceCode(undefined);
+    setLoadMode('merge');
+    setErrorMessage(null);
+    setWarningMessage(null);
+  }, [code]);
 
   const questionById = useMemo(
     () => new Map(state.data.map((question) => [question.questionId, question])),
@@ -542,29 +536,7 @@ export function InstitutionQuestionExposureModal({
   );
 
   return (
-    <Modal
-      open={open}
-      width={920}
-      title={`노출 문항 · ${code}`}
-      onCancel={onClose}
-      destroyOnHidden
-      styles={{ body: { maxHeight: 'calc(100vh - 160px)', overflowY: 'auto' } }}
-      footer={
-        <Space>
-          <Button onClick={onClose}>닫기</Button>
-          {canManage ? (
-            <Button
-              type="primary"
-              loading={applying}
-              disabled={!hasChanges || !reason.trim()}
-              onClick={() => void handleApply()}
-            >
-              적용{hasChanges ? ` — 노출 ${exposed.size.toLocaleString()}건` : ''}
-            </Button>
-          ) : null}
-        </Space>
-      }
-    >
+    <div data-testid="institution-question-exposure-panel">
       <Space direction="vertical" size={14} style={{ width: '100%' }}>
         <Space size={8} wrap>
           <Text type="secondary">{institution.label}</Text>
@@ -581,7 +553,7 @@ export function InstitutionQuestionExposureModal({
             type="warning"
             showIcon
             message="제한 없음 모드입니다. 이 기관 소속 학습자도 노출 허용한 문항을 모두 보므로, 아래 배정은 지금 학습자 화면에 영향을 주지 않습니다."
-            description="배정분만으로 바꾸면 그때 적용됩니다. 모드는 기관 코드 목록의 수정에서 바꿉니다."
+            description="배정분만으로 바꾸면 그때 적용됩니다. 모드는 이 탭 위쪽 노출 모드에서 바꿉니다."
           />
         ) : (
           <Alert
@@ -809,12 +781,27 @@ export function InstitutionQuestionExposureModal({
           </div>
         ) : null}
 
+        {/* 구 모달 footer 의 적용 버튼. 페이지에서는 사유 입력 바로 아래에 둔다 —
+            닫기 버튼은 탭이라 필요 없다. */}
+        {canManage ? (
+          <div>
+            <Button
+              type="primary"
+              loading={applying}
+              disabled={!hasChanges || !reason.trim()}
+              onClick={() => void handleApply()}
+            >
+              적용{hasChanges ? ` — 노출 ${exposed.size.toLocaleString()}건` : ''}
+            </Button>
+          </div>
+        ) : null}
+
         {!isSupabase ? (
           <Text type="secondary" style={{ fontSize: 12 }}>
             현재 mock 데이터 — 추가/제거는 화면에만 반영됩니다.
           </Text>
         ) : null}
       </Space>
-    </Modal>
+    </div>
   );
 }
