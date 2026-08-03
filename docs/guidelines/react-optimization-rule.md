@@ -104,6 +104,18 @@
 * `useEffect`에서 state set이 발생하면 “의도된 재실행 조건”을 코드로 설명 가능해야 함
 * 의존성 배열 생략 금지(정당한 이유 없으면)
 * 구독/타이머/이벤트는 반드시 cleanup 작성
+* **effect가 "한 번만" 일어나야 하는 일을 한다면 StrictMode 이중 실행을 전제로 설계한다.** dev에서 effect는 마운트마다 두 번 실행되고, 두 번째 실행은 첫 실행이 만든 상태 변경이 반영되기 전의 값을 다시 읽는다. 알림 발송처럼 멱등하지 않은 작업은 이미 처리한 대상을 ref에 기록하고 조기 return 해야 한다.
+
+### 3-4. router state 1회 소비(강제)
+
+등록/수정 화면이 router state로 넘긴 신호를 목록에서 읽어 알림을 띄우는 패턴은 **소비 `src/shared/model/use-router-state-notice.ts` / 생산 `src/shared/model/router-saved-state.ts`의 `routerSavedState()`** 로만 한다. 직접 `location.state`를 읽는 effect를 새로 만들거나, 저장 신호 키를 객체 리터럴 속성으로 적지 않는다 — `scripts/check-router-state-notice-boundary.mjs`가 `harness:check`에서 막는다.
+
+* 이 패턴은 **소비 기록 ref + 소비 즉시 해당 키 초기화**가 함께 있어야 한다. 하나만 있으면 서로 다른 환경에서 깨진다.
+  * ref 없이 초기화만: StrictMode 이중 실행으로 **dev에서 알림 2개**
+  * ref만 두고 초기화 없이: state가 history 엔트리에 남아, 다른 화면에 갔다 뒤로 오면 리마운트로 ref가 리셋되고 **오래된 알림이 재발화**(프로덕션에서도 재현). `navigate` 없이 로컬 state로 조건부 마운트하는 화면에서는 토글마다 반복된다.
+* 초기화는 `navigate`가 아니라 `history.replaceState`로 **그 키만** 지운다. `navigate({pathname, search}, {state: null})`은 다른 키까지 날리고, 소비 시점에 캡처한 `search`를 되써서 같은 커밋의 쿼리 정규화를 되돌릴 수 있고, `hash`를 잃는다.
+* 새 저장 신호를 추가할 때는 `RouterSavedStateMap`에 키와 payload를 함께 등재한다. 그래야 키 오타가 컴파일 오류가 된다.
+* 배경과 실측은 `docs/specs/admin-page-gap-register.md` §3.8, 회귀 고정은 `tests/e2e/router-state-notice.spec.ts`.
 
 ---
 

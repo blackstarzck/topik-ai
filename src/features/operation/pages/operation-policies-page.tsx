@@ -9,7 +9,7 @@ import {
 } from 'antd';
 import type { SortOrder, TableColumnsType, TableProps } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 import {
   deletePolicySafe,
@@ -34,6 +34,7 @@ import {
 } from '../model/policy-types';
 import type { AsyncState } from '../../../shared/model/async-state';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
+import { useRouterStateNotice } from '../../../shared/model/use-router-state-notice';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
 import {
@@ -230,7 +231,6 @@ function createInitialHistoryState(): AsyncState<OperationPolicyHistoryEntry[]> 
 }
 
 export default function OperationPoliciesPage(): JSX.Element {
-  const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const statusFilter = parsePolicyStatus(searchParams.get('status'));
@@ -359,59 +359,36 @@ export default function OperationPoliciesPage(): JSX.Element {
     };
   }, [reloadKey]);
 
-  useEffect(() => {
-    const state = location.state as
-      | {
-        operationPolicySaved?: {
-          policyId: string;
-          mode: 'create' | 'edit' | 'version';
-        };
-      }
-      | null;
+  useRouterStateNotice(
+    'operationPolicySaved',
+    (saved) => `${saved.policyId}:${saved.mode}`,
+    (saved) => {
+      const successMessage =
+        saved.mode === 'create'
+          ? '정책 등록 완료'
+          : saved.mode === 'version'
+            ? '정책 새 버전 등록 완료'
+            : '정책 내용 수정 완료';
+      const successReason =
+        saved.mode === 'create'
+          ? '신규 정책 저장(초기 상태: 숨김)'
+          : saved.mode === 'version'
+            ? '기존 정책 기준 새 버전 등록(초기 상태: 숨김)'
+            : '정책 메타/본문 내용 수정';
 
-    if (!state?.operationPolicySaved) {
-      return;
+      notificationApi.success({
+        message: successMessage,
+        description: (
+          <Space direction="vertical">
+            <Text>대상 유형: {getTargetTypeLabel('OperationPolicy')}</Text>
+            <Text>대상 ID: {saved.policyId}</Text>
+            <Text>사유/근거: {successReason}</Text>
+            <AuditLogLink targetType="OperationPolicy" targetId={saved.policyId} />
+          </Space>
+        )
+      });
     }
-
-    const successMessage =
-      state.operationPolicySaved.mode === 'create'
-        ? '정책 등록 완료'
-        : state.operationPolicySaved.mode === 'version'
-          ? '정책 새 버전 등록 완료'
-          : '정책 내용 수정 완료';
-    const successReason =
-      state.operationPolicySaved.mode === 'create'
-        ? '신규 정책 저장(초기 상태: 숨김)'
-        : state.operationPolicySaved.mode === 'version'
-          ? '기존 정책 기준 새 버전 등록(초기 상태: 숨김)'
-          : '정책 메타/본문 내용 수정';
-
-    notificationApi.success({
-      message: successMessage,
-      description: (
-        <Space direction="vertical">
-          <Text>대상 유형: {getTargetTypeLabel('OperationPolicy')}</Text>
-          <Text>대상 ID: {state.operationPolicySaved.policyId}</Text>
-          <Text>사유/근거: {successReason}</Text>
-          <AuditLogLink
-            targetType="OperationPolicy"
-            targetId={state.operationPolicySaved.policyId}
-          />
-        </Space>
-      )
-    });
-
-    navigate(
-      {
-        pathname: location.pathname,
-        search: location.search
-      },
-      {
-        replace: true,
-        state: null
-      }
-    );
-  }, [location.pathname, location.search, location.state, navigate, notificationApi]);
+  );
 
   useEffect(() => {
     setDraftCategory(categoryFilter ?? '');

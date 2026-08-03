@@ -8,8 +8,8 @@ import {
   notification
 } from 'antd';
 import type { SortOrder, TableColumnsType, TableProps } from 'antd';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 import {
   endEventSafe,
@@ -24,6 +24,7 @@ import {
 } from '../model/types';
 import type { AsyncState } from '../../../shared/model/async-state';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
+import { useRouterStateNotice } from '../../../shared/model/use-router-state-notice';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
 import {
@@ -142,7 +143,6 @@ function getActionCopy(type: NonNullable<EventActionState>['type']) {
 }
 
 export default function OperationEventsPage(): JSX.Element {
-  const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const searchField = searchParams.get('searchField') ?? 'all';
@@ -174,7 +174,6 @@ export default function OperationEventsPage(): JSX.Element {
   const [actionState, setActionState] = useState<EventActionState>(null);
   const [previewEvent, setPreviewEvent] = useState<OperationEvent | null>(null);
   const [notificationApi, notificationContextHolder] = notification.useNotification();
-  const handledSavedStateRef = useRef<string | null>(null);
 
   const listSearch = useMemo(() => {
     const nextSearchParams = new URLSearchParams(searchParams);
@@ -239,60 +238,35 @@ export default function OperationEventsPage(): JSX.Element {
     };
   }, [reloadKey]);
 
-  useEffect(() => {
-    const state = location.state as
-      | {
-          operationEventSaved?: {
-            eventId: string;
-            mode: 'create' | 'edit';
-            action: 'save' | 'schedule';
-          };
-        }
-      | null;
-
-    if (!state?.operationEventSaved) {
-      return;
+  useRouterStateNotice(
+    'operationEventSaved',
+    (saved) => [saved.eventId, saved.mode, saved.action].join(':'),
+    (saved) => {
+      notificationApi.success({
+        message:
+          saved.action === 'schedule'
+            ? '이벤트 게시 예약 완료'
+            : saved.mode === 'create'
+              ? '이벤트 임시 저장 완료'
+              : '이벤트 수정 완료',
+        description: (
+          <Space direction="vertical">
+            <Text>대상 유형: {getTargetTypeLabel('OperationEvent')}</Text>
+            <Text>대상 ID: {saved.eventId}</Text>
+            <Text>
+              조치:{' '}
+              {saved.action === 'schedule'
+                ? '등록 상세에서 게시 예약 실행'
+                : saved.mode === 'create'
+                  ? '이벤트 신규 임시 저장'
+                  : '이벤트 정보 수정'}
+            </Text>
+            <AuditLogLink targetType="OperationEvent" targetId={saved.eventId} />
+          </Space>
+        )
+      });
     }
-
-    const savedStateKey = [
-      state.operationEventSaved.eventId,
-      state.operationEventSaved.mode,
-      state.operationEventSaved.action
-    ].join(':');
-
-    if (handledSavedStateRef.current === savedStateKey) {
-      return;
-    }
-
-    handledSavedStateRef.current = savedStateKey;
-
-    notificationApi.success({
-      message:
-        state.operationEventSaved.action === 'schedule'
-          ? '이벤트 게시 예약 완료'
-          : state.operationEventSaved.mode === 'create'
-            ? '이벤트 임시 저장 완료'
-            : '이벤트 수정 완료',
-      description: (
-        <Space direction="vertical">
-          <Text>대상 유형: {getTargetTypeLabel('OperationEvent')}</Text>
-          <Text>대상 ID: {state.operationEventSaved.eventId}</Text>
-          <Text>
-            조치:{' '}
-            {state.operationEventSaved.action === 'schedule'
-              ? '등록 상세에서 게시 예약 실행'
-              : state.operationEventSaved.mode === 'create'
-                ? '이벤트 신규 임시 저장'
-                : '이벤트 정보 수정'}
-          </Text>
-          <AuditLogLink
-            targetType="OperationEvent"
-            targetId={state.operationEventSaved.eventId}
-          />
-        </Space>
-      )
-    });
-  }, [location.state, notificationApi]);
+  );
 
   const filteredEvents = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();

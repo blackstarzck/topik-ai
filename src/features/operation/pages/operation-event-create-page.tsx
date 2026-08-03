@@ -58,6 +58,7 @@ import {
   getOperationEventRewardPolicyOptionsByType,
 } from "../model/event-form-schema";
 import type { AsyncState } from "../../../shared/model/async-state";
+import { routerSavedState } from "../../../shared/model/router-saved-state";
 import {
   DEFAULT_TINYMCE_PLUGINS,
   DEFAULT_TINYMCE_TOOLBAR,
@@ -813,13 +814,11 @@ export default function OperationEventCreatePage(): JSX.Element {
 
       navigate(`${listPath}${nextSearch ? `?${nextSearch}` : ""}`, {
         replace: true,
-        state: {
-          operationEventSaved: {
-            eventId: saveResult.data.id,
-            mode: isEdit ? "edit" : "create",
-            action: mode,
-          },
-        },
+        state: routerSavedState("operationEventSaved", {
+          eventId: saveResult.data.id,
+          mode: isEdit ? "edit" : "create",
+          action: mode,
+        }),
       });
     },
     [

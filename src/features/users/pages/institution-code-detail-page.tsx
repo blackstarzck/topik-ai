@@ -1,6 +1,6 @@
 import { Alert, Button, Space, Tabs, Tag, Typography, notification } from 'antd';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import {
   fetchInstitutionCodeSafe,
@@ -17,6 +17,7 @@ import { InstitutionCodeMembersTab } from '../ui/institution-code-detail/institu
 import { InstitutionCodeQuestionsTab } from '../ui/institution-code-detail/institution-code-questions-tab';
 import { usePermissionStore } from '../../system/model/permission-store';
 import type { AsyncState } from '../../../shared/model/async-state';
+import { useRouterStateNotice } from '../../../shared/model/use-router-state-notice';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
@@ -41,7 +42,6 @@ function isDetailTab(value: string | null): value is InstitutionCodeDetailTabKey
 export default function InstitutionCodeDetailPage(): JSX.Element {
   const { code = '' } = useParams<{ code: string }>();
   const navigate = useNavigate();
-  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [notificationApi, notificationContextHolder] = notification.useNotification();
 
@@ -118,37 +118,24 @@ export default function InstitutionCodeDetailPage(): JSX.Element {
   }, [code, reloadKey]);
 
   // 생성 페이지는 성공 알림을 자기 화면에서 띄울 수 없다(즉시 이동으로 contextHolder 가
-  // 사라진다). 공지 등록 선례처럼 router state 로 받아 여기서 띄운다.
-  //
-  // ref 가드가 필요한 이유: StrictMode 는 effect 를 두 번 실행하고, 두 번째 실행은
-  // `navigate(state: null)` 이 반영되기 전에 같은 state 를 다시 본다 → 알림 2개.
-  // (같은 패턴의 공지 목록 화면에는 이 가드가 없어 dev 에서 2개가 뜬다.)
-  const notifiedCreatedCodeRef = useRef<string | null>(null);
-  useEffect(() => {
-    const state = location.state as
-      | { institutionCodeCreated?: { code: string; label: string } }
-      | null;
-    if (!state?.institutionCodeCreated) {
-      return;
+  // 사라진다). router state 로 받아 여기서 한 번만 띄운다 — 소비 기록과 state 초기화 계약은
+  // 공용 훅이 담당한다(gap-register §3.8).
+  useRouterStateNotice(
+    'institutionCodeCreated',
+    (created) => created.code,
+    (created) => {
+      notificationApi.success({
+        message: '기관 코드 생성 완료',
+        description: (
+          <Space direction="vertical">
+            <Text>코드: {created.code}</Text>
+            <Text>이름: {created.label}</Text>
+            <AuditLogLink targetType="InstitutionCode" targetId={created.code} />
+          </Space>
+        )
+      });
     }
-    const created = state.institutionCodeCreated;
-    if (notifiedCreatedCodeRef.current === created.code) {
-      return;
-    }
-    notifiedCreatedCodeRef.current = created.code;
-    notificationApi.success({
-      message: '기관 코드 생성 완료',
-      description: (
-        <Space direction="vertical">
-          <Text>코드: {created.code}</Text>
-          <Text>이름: {created.label}</Text>
-          <AuditLogLink targetType="InstitutionCode" targetId={created.code} />
-        </Space>
-      )
-    });
-    // 새로고침·뒤로 가기에서 같은 알림이 되살아나지 않게 state 를 비운다.
-    navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
-  }, [location.pathname, location.search, location.state, navigate, notificationApi]);
+  );
 
   const activeTab = useMemo<InstitutionCodeDetailTabKey>(() => {
     const tab = searchParams.get('tab');
