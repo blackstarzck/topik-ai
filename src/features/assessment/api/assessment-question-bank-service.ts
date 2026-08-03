@@ -304,6 +304,11 @@ async function removeQuestionTag(payload: RemoveQuestionTagPayload): Promise<voi
  * 한다(기관 할당제: 매핑=그 기관 학습자에게 허용, 무소속 학습자는 매핑과 무관하게
  * available 전체를 본다). 사유 필수·문항별 격리·멱등·감사는 RPC가 책임지고,
  * mock은 결과 shape만 재현한다(감사 미기록). 단건/일괄 공용(questionIds 배열).
+ *
+ * ⚠️ **호출자 0건은 미완성이 아니라 결정이다(2026-08-01).** 문항 중심 기관 배정 UI 는
+ * 만들지 않기로 확정했고, 기관별 배정은 `Users > 기관 코드`의 `노출 문항` 모달(기관 중심,
+ * admin_add/remove_institution_writing_questions) 단일 경로로만 관리한다. 이 wrapper 3종은
+ * 문항 축 UI 를 되살릴 경우의 진입점으로 남겨 둔다 — 지우기 전에 그 결정부터 확인할 것.
  */
 async function loadQuestionInstitutions(
   questionId?: string,

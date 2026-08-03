@@ -42,7 +42,7 @@ last_reviewed_at: "2026-07-16"
 - 이 페이지는 수신·적재(외부 API → Supabase `topik_writing_51/52/53/54_questions` + `question_source_map`)된 문항을 확인하고, 목록 단위 관리 포인트를 처리하는 관리자 기점입니다. 2depth 상세는 조회 전용입니다.
 - 성공적으로 승격된 내용 버전은 목록의 수정 횟수·확장 이력과 2depth 상세의 `버전 #<canonical_import_id>`/`변경 이력보기` 탭에서 원본 생성/수정 시각과 content/payload hash를 포함해 관리자 전용으로 조회합니다. 사용자 화면에는 버전 번호나 이력을 노출하지 않습니다.
 - 관리 포인트는 **태그**(schema-rule §2: tag_master 사전 기반 `question_tags` 부여/제거), 노출 통제는 **`service_status` 컬럼**(D-6 유지: available/excluded/internal_test, 기본 internal_test), 기관별 문항 매핑은 **`topik_writing_question_institution_exposure`**입니다. 2026-06-23 통합 이후 모두 `/assessment/question-bank`에서 처리합니다.
-- 2026-06-26 기준 기관 매핑은 이 페이지에도 노출합니다. 테이블 `기관 노출` 컬럼, 단건 `기관 노출 설정`, 일괄 `기관 배정`/`배정 해제`가 있으며, `Users > 기관 코드`는 기관 중심으로 같은 매핑을 관리합니다.
+- **기관 배정은 이 페이지에서 다루지 않습니다.** 2026-06-26 에 문항 중심 진입점(기관 컬럼·단건 설정·일괄 배정)을 제공하기로 문서화했으나 구현된 적이 없고, 문항 중심 진입점은 만들지 않기로 확정했다(2026-08-01 오너 결정). 기관별 배정은 `Users > 기관 코드`의 `노출 문항` 모달(기관 중심) 단일 경로로만 관리한다.
 - v13 사용자 기능은 read-only로 소비합니다. P2 백필 466행은 초기 코퍼스로 유지되며, 신규 문항은 외부 상세 API 수신·승격 경로로 추가됩니다.
 - 코드 현실: Supabase가 구성된 운영 환경은 `topik_writing` 신규 4테이블 + 추천 뷰만 조회하고, 2depth 상세는 조회 전용입니다. `VITE_QUESTION_BANK_SOURCE=legacy`와 `problems` 읽기 어댑터는 최종 canonical 전환에서 삭제했습니다. Supabase 미구성 CI·스모크 환경만 결정적 mock을 사용합니다.
 
@@ -61,7 +61,7 @@ last_reviewed_at: "2026-07-16"
 | 승격 버전 이력 조회 | 목록의 수정 횟수·확장 테이블과 상세 탭에서 현재/과거 승격 버전의 payload·수신 메타데이터를 확인합니다. | 조회 | AssessmentQuestionVersion | 관리자 역추적 | 불필요 |
 | 수신·적재 | `외부에서 가져오기` 또는 cron → 상류 상세 API → 인박스 무손실 적재 → §7 자동 승격. `question_received`를 인박스와 정식 문항 Target에 기록합니다. | 생성(수신) | AssessmentQuestionImport + AssessmentQuestion | 적재·승격 + 감사 로그 | 필요 |
 | 태그 부여/제거·노출 상태 변경 | 더보기 메뉴/일괄 조치에서 수행합니다(P4 개방 완료 — 2026-06-11, 2026-06-23 통합). | 수정 | AssessmentQuestion + questionId | 데이터 반영 | 필요 |
-| 기관 노출 설정/해제 | 문항 단건 또는 선택 문항 일괄로 기관 배정 매핑을 지정/해제합니다. `service_status!='available'` 문항의 신규 추가는 blocked로 안내합니다. | 수정 | AssessmentQuestion + questionId | 기관 매핑 반영 또는 차단 안내 | 필요 |
+| ~~기관 노출 설정/해제~~ **미제공(2026-08-01 확정)** | 이 페이지에는 기관 배정 진입점이 없다. 문항 중심 진입점은 만들지 않기로 확정했다(2026-08-01 오너 결정). 기관별 배정은 `Users > 기관 코드`의 `노출 문항` 모달(기관 중심) 단일 경로로만 관리한다. `service_status!='available'` 문항의 신규 배정이 blocked 로 안내되는 규칙은 그 기관 중심 경로에서 적용된다. | — | — | — | — |
 
 - 제거 완료: 구 2depth 검수 페이지의 검수 메모 저장·검수 상태 변경 쓰기는 재정의 P3에서 제거 완료됐습니다(`202f905`). 현행 상세는 조회 전용입니다.
 
@@ -81,7 +81,7 @@ last_reviewed_at: "2026-07-16"
 | --- | --- | --- | --- | --- | --- |
 | Create | `지원(수신 적재/자동 승격)` | 운영자가 가져오기 버튼을 실행하거나 cron이 호출하며, 화면에서 문항을 직접 저작하지 않음 | `api/writing-tasks/ingest.ts` → 50건 단위 `admin_ingest_writing_tasks_bulk` 전부 성공 → 50개 ID 단위 `admin_promote_writing_questions` | 인박스 목록, 정식 목록/상세, 감사 로그(`question_received`) | `updated_at + content_hash` 이중 조건으로만 승격. metadata-only/시각·식별 충돌은 인박스 held, 동일 payload는 수신 횟수만 갱신. 청크 실패 시 승격 시작 전 중단 |
 | Read | `지원` | 문항 목록(추천 뷰)/상세(번호별 테이블)와 승격 버전 요약·이력·과거 payload 조회 | 신규 4테이블 + 추천 뷰 + 버전 요약 뷰 + import 단일 canonical 경로 | URL/필터/`detailTab`/`versionId` 복원 | 버전 오류는 기존 목록/현재 상세와 격리, `problems`/JSON fallback 없음 |
-| Update | `지원` | 태그 부여/제거, `service_status` 변경, 기관 노출 설정을 이 페이지에서 수행한다. 검수 상태 변경 쓰기는 화면·facade에서 제거 완료(재정의 P3 — `202f905`), DB측 RPC의 검수 화이트리스트도 마이그레이션 `0013`에서 제거 완료(2026-06-11 적용) | `admin_update_topik_question`(service_status)/`admin_assign_question_tag`/`admin_remove_question_tag`/`admin_set_writing_question_institutions`/`admin_clear_writing_question_institutions` | 목록, 상세, 감사 로그 | 실패 또는 blocked 안내 후 재조회 |
+| Update | `지원` | 태그 부여/제거와 `service_status` 변경을 이 페이지에서 수행한다. 기관 배정은 이 페이지에 진입점이 없다(2026-08-01 확정 — `Users > 기관 코드` 단일 경로). 검수 상태 변경 쓰기는 화면·facade에서 제거 완료(재정의 P3 — `202f905`), DB측 RPC의 검수 화이트리스트도 마이그레이션 `0013`에서 제거 완료(2026-06-11 적용) | `admin_update_topik_question`(service_status)/`admin_assign_question_tag`/`admin_remove_question_tag`/`admin_set_writing_question_institutions`/`admin_clear_writing_question_institutions` | 목록, 상세, 감사 로그 | 실패 또는 blocked 안내 후 재조회 |
 | Delete | `미지원` | 물리 삭제 없음. 노출 제외는 `/manage`의 `service_status='excluded'` 전환으로 처리 | 없음 | 목록, 상세, 감사 로그, 사용자 노출 | 확인 모달, 사유 필수(`/manage` 계약) |
 
 ## 6. 관리자 조치와 감사 로그 계약
