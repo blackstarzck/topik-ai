@@ -931,3 +931,11 @@
 - Validation: 단위 583건(신규 3), lint, typecheck, `check:v13-archive`, `check:migration-boundary`, `harness:docs`, mojibake. 워크플로 8개 구조 검사(탭·빈 스텝·매달린 셸 continuation 0건). digest 대조 실증 — 아카이브 포함 시 `7979c26e…`, 제외 시 `9286c32e…`로 실제로 갈린다. 계약 테스트는 반전(핀 부재·v13 체크아웃 부재·pre-adoption 폴백 존재)했고 스텝 이름 변경까지 테스트가 따라오게 갱신했다.
 - Deferred: **M5b(릴리스 매니페스트에 learner 편입)는 이 커밋에 넣지 않았다.** 매니페스트의 `release-all`이 `from~to` 범위형이라 learner 를 그대로 추가하면 **미적용 백로그 7건까지 자동 적용**되고, 그 첫 파일이 운영 앱이 호출하는 boolean 오버로드를 회수해 회원가입이 즉시 깨진다. 계획서는 M4·M5b 동일 릴리스를 지시하지만 이 순서 위험이 우선이다 — M6 적용(앱 배포 선행) 후로 미루거나, 범위를 워터마크 초과로 한정하는 설계 결정이 필요하다.
 - Blocked: 이 브랜치는 **머지 대기**다. 계획서 M4 선행 조건이 "M3 릴리스가 N-1이 된 후"이고, 회사 운영 N-1 은 아직 `f7aed9c2`(2026-07-30 승격분)로 M3(`8629ebf`)를 포함하지 않는다. 승격 1회가 선행이다.
+
+## 2026-07-31 D10 — deferred 2건 운영 처분 확정
+
+- Updated: `scripts/db/manifests/v13-shared-prod.json`(`20260629215000` deferred→blocked 승격, `20260629153000` 에 `disposition: keep` 명시, `deferredResolvedMigrations` 신설), `tests/unit/apply-v13-migration.test.mjs`(단정 개정 + 신규 2건).
+- Reason: 계획서 D10 이 개별 결정으로 남겨 둔 항목. 런북이 요구한 라이브 prosrc 역방향 grep 을 수행해 근거를 확보했다.
+- 근거(운영 read-only, 2026-07-31): ①`20260629153000` — 함수 live + `public.comparison_reports` 에 **enabled 트리거 1개 실제 부착**. 지금 교차 문항 비교 행을 거부하고 있으므로 제거하면 라이브 무결성 보호가 사라진다 → **존치**. ②`20260629215000` — `create_external_writing_submission` 이 **전 스키마에 부재**(v1·v2 모두). 게다가 `private.assert_writing_outbox_contract_evidence` 가 그 직접 writer 가 **존재하면** `writing_submission_direct_writer_still_present` 를 raise 한다. 즉 부재가 라이브 계약의 요구사항이다 → 재적용은 무용이 아니라 **계약 파손** → blocked 승격.
+- 함정: 처음 역방향 grep 은 `create_external_writing_submission_v2` 를 부분일치로 잡아 "호출자 있음" 처럼 보였다. 실제로는 **부재를 강제하는 문자열 리터럴**이었다. 부분일치 히트는 문맥 라인을 반드시 열어 확인한다.
+- Validation: 단위 584건(신규 2 — 직접 writer 차단 근거 문자열 고정, 남은 가드가 트리거를 근거로 존치한다는 점 고정). 매니페스트 JSON 유효·blocked 6·시퀀스 겹침 0. lint, mojibake.

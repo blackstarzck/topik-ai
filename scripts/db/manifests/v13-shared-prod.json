@@ -143,22 +143,31 @@
       "name": "20260710094000_auth_gate_trusted_consent_docs.sql",
       "expectRecorded": true,
       "reason": "Superseded by 20260718120000 exact consent snapshots and re-grants the same revoked overloads. Production's live four-argument body happens to be this file's version, which does not make re-application safe."
-    }
-  ],
-  "blockedComment": "Unlike development, production HAS these five recorded: they were applied in timestamp order before the writing cutover, so the records are true history. `expectRecorded` marks that, and the runner still refuses to select them for apply. Restoring institution exposure gating needs a new forward migration written against the post-cutover structure, never these files.",
-  "deferredMigrations": [
-    {
-      "name": "20260629153000_enforce_same_problem_comparison.sql",
-      "expectRecorded": true,
-      "liveOnProduction": true,
-      "reason": "Recorded AND live on production: private.enforce_comparison_report_same_problem exists. Development never applied it. This asymmetry is not resolved by the backlog — keeping or removing the guard on production is a separate owner decision (program D10)."
     },
     {
       "name": "20260629215000_feedback_retry_parent_submission.sql",
       "expectRecorded": true,
       "liveOnProduction": false,
-      "reason": "Recorded on production but public.create_external_writing_submission(jsonb) does NOT exist there (measured 2026-07-30 across every schema) — a false record of the same shape as the development 20260527113000 case. Nothing depends on it: the function has zero callers in v13 src/. Do not stamp or re-apply it as part of the backlog; resolving the record is a separate decision."
+      "reason": "Promoted from deferred by owner decision 2026-07-31 (program D10). The ledger row is a false record — public.create_external_writing_submission exists in no schema on production. Re-applying it would break the live outbox contract: private.assert_writing_outbox_contract_evidence raises writing_submission_direct_writer_still_present when that direct writer exists, so its absence is required, not incidental."
     }
   ],
-  "deferredComment": "Both deferred files are recorded in the production ledger. Only the comparison guard is actually live. Before deciding either way, grep the live function bodies (pg_proc.prosrc) for the objects each file creates — the development window learned that lesson when 20260710095000 turned out to be a hard runtime dependency of an already-applied migration."
+  "blockedComment": "Unlike development, production HAS the first five recorded: they were applied in timestamp order before the writing cutover, so those records are true history. `expectRecorded` marks that, and the runner still refuses to select them for apply. The sixth (20260629215000) is recorded but was never really applied — kept here because re-applying it is what must never happen. Restoring institution exposure gating needs a new forward migration written against the post-cutover structure, never these files.",
+  "deferredMigrations": [
+    {
+      "name": "20260629153000_enforce_same_problem_comparison.sql",
+      "expectRecorded": true,
+      "liveOnProduction": true,
+      "disposition": "keep",
+      "reason": "Owner decision 2026-07-31 (program D10): keep. Recorded AND live on production — private.enforce_comparison_report_same_problem exists and is attached as one enabled trigger on public.comparison_reports, so it is actively rejecting cross-problem comparison rows right now. Development never applied it; that asymmetry stands on purpose. Removing the guard would drop live data-integrity enforcement, so it is never selected for apply and never dropped."
+    }
+  ],
+  "deferredComment": "One deferred file remains. It is recorded in the production ledger, live, and deliberately kept. Before revisiting, re-probe the trigger attachment (pg_trigger on public.comparison_reports) rather than the function alone — a function can exist with no trigger bound and enforce nothing.",
+  "deferredResolvedMigrations": [
+    {
+      "name": "20260629215000_feedback_retry_parent_submission.sql",
+      "resolvedAt": "2026-07-31",
+      "resolution": "promoted-to-blocked",
+      "reason": "Owner decision 2026-07-31 (program D10). It was a false record — recorded on production while public.create_external_writing_submission does not exist in any schema. Re-applying it is not merely useless but actively breaking: private.assert_writing_outbox_contract_evidence raises writing_submission_direct_writer_still_present when the direct writer is present, so the live outbox contract requires its absence. Moved to blockedMigrations so the runner refuses it permanently instead of leaving it selectable-looking."
+    }
+  ]
 }

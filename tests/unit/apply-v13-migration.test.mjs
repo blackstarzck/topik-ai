@@ -634,31 +634,42 @@ describe('shipped production manifest', () => {
     const sequenced = new Set(manifest.sequence
       .flatMap((name) => resolveBatch(manifest, name).files.map((file) => file.fileName)));
     const blocked = normalizeBlocked(manifest);
-    expect(blocked.size).toBe(5);
+    expect(blocked.size).toBe(6);
     for (const [name, reason] of blocked) {
       expect(sequenced.has(name)).toBe(false);
       expect(reason.length).toBeGreaterThan(20);
     }
-    // Production applied all five before the writing cutover, so every entry must
-    // say so — otherwise --status reports true history as a false stamp.
+    // Every entry is recorded on production, so every entry must say so —
+    // otherwise --status reports an existing ledger row as a false stamp.
     for (const entry of manifest.blockedMigrations) {
       expect(entry.expectRecorded).toBe(true);
     }
   });
 
-  it('records the measured production asymmetry for both deferred files', () => {
-    expect(manifest.deferredMigrations).toHaveLength(2);
-    const byName = new Map(manifest.deferredMigrations.map((entry) => [entry.name, entry]));
-    // Recorded on production but only one is actually live there. Losing this
-    // distinction is how a false record gets mistaken for a real dependency.
-    for (const entry of manifest.deferredMigrations) {
-      expect(entry.expectRecorded).toBe(true);
-      expect(typeof entry.liveOnProduction).toBe('boolean');
-    }
-    expect(byName.get('20260629153000_enforce_same_problem_comparison.sql').liveOnProduction)
-      .toBe(true);
-    expect(byName.get('20260629215000_feedback_retry_parent_submission.sql').liveOnProduction)
-      .toBe(false);
+  it('blocks the retired direct writer whose absence the outbox contract requires', () => {
+    // Owner decision D10 (2026-07-31): promoted from deferred. Its ledger row is a
+    // false record, and re-applying it would trip
+    // private.assert_writing_outbox_contract_evidence, which raises when the direct
+    // writer exists. Blocked, not deferred, so the runner refuses it permanently.
+    const entry = manifest.blockedMigrations.find(
+      (candidate) => candidate.name === '20260629215000_feedback_retry_parent_submission.sql'
+    );
+    expect(entry).toBeDefined();
+    expect(entry.liveOnProduction).toBe(false);
+    expect(entry.reason).toContain('writing_submission_direct_writer_still_present');
+    expect(manifest.deferredResolvedMigrations.map((item) => item.name)).toContain(entry.name);
+  });
+
+  it('keeps the one live guard deferred and records why it stays', () => {
+    expect(manifest.deferredMigrations).toHaveLength(1);
+    const [entry] = manifest.deferredMigrations;
+    expect(entry.name).toBe('20260629153000_enforce_same_problem_comparison.sql');
+    expect(entry.expectRecorded).toBe(true);
+    expect(entry.liveOnProduction).toBe(true);
+    expect(entry.disposition).toBe('keep');
+    // The reason must point at the trigger, not just the function: a function can
+    // exist with nothing bound to it and enforce nothing.
+    expect(entry.reason).toContain('trigger');
   });
 
   it('builds a probe for every batch that declares expectations', () => {
