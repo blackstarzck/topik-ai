@@ -2,16 +2,57 @@
   "namespace": "topik_writing",
   "environment": "development",
   "projectRef": "fglggyfvzjdsbyckinqa",
-  "expectedLocalCount": 36,
+  "expectedLocalCount": 38,
   "blockedMigrations": [
     "20260716052957_topik_writing_source_updated_at_version_tracking.sql"
   ],
   "batches": {
     "release-all": {
       "from": "20260610200100_topik_writing_topic_master.sql",
-      "to": "20260801100000_topik_writing_institution_exposure_mode.sql",
+      "to": "20260804100100_topik_writing_auto_assign_new_questions.sql",
       "exclude": [
         "20260716052957_topik_writing_source_updated_at_version_tracking.sql"
+      ]
+    },
+    "institution-contracts": {
+      "reason": "기관 계약 원장을 도입하고 학습자 predicate 에 만료 자동 비노출 분기를 끼운다. 만료 판정은 배정 데이터를 지우지 않는 lazy 방식이라 계약 연장 시 배정 행 수 불변으로 즉시 복구된다. 계약 행이 없는 기관은 유효로 보므로 옵션만 켜도 가려지지 않는다. 신규 문항 자동 배정은 service_status 가 available 로 바뀌는 전환에만 걸린다(승격 DELETE+INSERT 는 신규·갱신을 구분할 수 없어 UPDATE 훅을 쓴다). 짝 마이그는 admin 네임스페이스 20260804100200~20260804100400.",
+      "migrations": [
+        "20260804100000_topik_writing_institution_contracts.sql",
+        "20260804100100_topik_writing_auto_assign_new_questions.sql"
+      ],
+      "expectPresentAfter": [
+        {
+          "kind": "table",
+          "identity": "public.topik_writing_institution_contracts"
+        },
+        {
+          "kind": "function",
+          "identity": "private.institution_writing_contract_active(text)"
+        },
+        {
+          "kind": "column",
+          "identity": "public.topik_writing_institution_exposure_mode.auto_hide_on_expiry"
+        },
+        {
+          "kind": "column",
+          "identity": "public.topik_writing_institution_exposure_mode.auto_assign_new_questions"
+        },
+        {
+          "kind": "function",
+          "identity": "public.admin_list_institution_contract_status(text[])"
+        },
+        {
+          "kind": "function",
+          "identity": "public.admin_set_institution_auto_hide_on_expiry(text,boolean,text)"
+        },
+        {
+          "kind": "trigger",
+          "identity": "public.topik_writing_51_questions.topik_writing_51_auto_assign_on_available"
+        },
+        {
+          "kind": "trigger",
+          "identity": "public.topik_writing_54_questions.topik_writing_54_auto_assign_on_available"
+        }
       ]
     }
   }
