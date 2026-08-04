@@ -2,7 +2,7 @@
   "namespace": "admin",
   "environment": "development",
   "projectRef": "fglggyfvzjdsbyckinqa",
-  "expectedLocalCount": 94,
+  "expectedLocalCount": 97,
   "knownRemoteOnly": {
     "20260713140000_admin_learning_analytics_dual_id_coverage.sql": {
       "status": "superseded",
@@ -88,11 +88,11 @@
     },
     "baseline-all": {
       "from": "20260612170000_notification_admin_tables.sql",
-      "to": "20260801100200_institution_exposure_mode_delete_cleanup.sql"
+      "to": "20260804100400_institution_intake_guards.sql"
     },
     "release-all": {
       "from": "20260612170000_notification_admin_tables.sql",
-      "to": "20260801100200_institution_exposure_mode_delete_cleanup.sql"
+      "to": "20260804100400_institution_intake_guards.sql"
     },
     "institution-assignment-prerequisite": {
       "reason": "배정 0건 기관에 회원을 배정/초대하면 그 회원은 쓰기 문항을 하나도 보지 못한다(기관 할당제). admin_assign_institution_code 와 admin_invite_institution_members 에 선행조건 검사를 끼운다. 짝 가드는 topik_writing 네임스페이스 20260731100100.",
@@ -131,6 +131,78 @@
         {
           "kind": "function",
           "identity": "public.admin_set_institution_exposure_mode(text,text,text)"
+        }
+      ]
+    },
+    "institution-code-settings": {
+      "reason": "기관 운영 설정(정원·기관별 초대 유효기간 기본값·만료 시 intake 차단·담당자)을 도입한다. 행이 없는 기관은 전 항목 기본값으로 해석하므로 적용만으로는 동작이 바뀌지 않는다. 좌석 계수는 private.institution_seat_usage 단일 정의이며 institution_learner_population 과 달리 만료 경과 대기 초대를 제외한다(정원 용도에서는 과대 계상이 위험한 방향). 담당자 값은 감사 payload 에 기록하지 않는다.",
+      "migrations": [
+        "20260804100200_institution_code_settings.sql"
+      ],
+      "expectPresentAfter": [
+        {
+          "kind": "table",
+          "identity": "public.institution_code_settings"
+        },
+        {
+          "kind": "function",
+          "identity": "private.institution_seat_usage(text)"
+        },
+        {
+          "kind": "function",
+          "identity": "public.admin_list_institution_settings(text[])"
+        },
+        {
+          "kind": "function",
+          "identity": "public.admin_update_institution_settings(text,integer,integer,boolean,text,text,text)"
+        }
+      ]
+    },
+    "institution-contract-delete-cleanup": {
+      "reason": "기관 코드 삭제 시 계약 원장과 운영 설정을 같은 트랜잭션에서 제거해 같은 code 재생성 시 이전 계약 기간·정원·담당자가 되살아나지 않게 한다. 함께 admin_set_institution_exposure_mode 의 권한 함수 스키마 한정을 수리한다 — private.admin_has_permission 은 존재하지 않아(public 에만 있다) 기관 노출 모드의 유일한 쓰기 경로가 42883 으로 죽어 있었다.",
+      "migrations": [
+        "20260804100300_institution_contract_delete_cleanup.sql"
+      ],
+      "expectPresentAfter": [
+        {
+          "kind": "function",
+          "identity": "public.admin_delete_institution_code(text,text)"
+        },
+        {
+          "kind": "function",
+          "identity": "public.admin_set_institution_exposure_mode(text,text,text)"
+        },
+        {
+          "kind": "function",
+          "identity": "public.admin_has_permission(uuid,text)"
+        }
+      ]
+    },
+    "institution-intake-guards": {
+      "reason": "정원·계약 만료 차단·기관별 초대 유효기간 기본값을 intake 경로에 배선한다. 문자열 수술로 가드가 심어진 admin_assign_institution_code 와 admin_invite_institution_members 는 재정의하지 않고 헬퍼 교체 + wrapper RPC 2종 + 초대 정원 백스톱 트리거로만 확장한다.",
+      "migrations": [
+        "20260804100400_institution_intake_guards.sql"
+      ],
+      "expectPresentAfter": [
+        {
+          "kind": "function",
+          "identity": "private.institution_has_writing_assignment(text)"
+        },
+        {
+          "kind": "function",
+          "identity": "private.assert_institution_intake_allowed(text,bigint)"
+        },
+        {
+          "kind": "function",
+          "identity": "public.admin_assign_institution_code_guarded(uuid[],text,text)"
+        },
+        {
+          "kind": "function",
+          "identity": "public.admin_invite_institution_members_guarded(uuid[],text,text,integer)"
+        },
+        {
+          "kind": "trigger",
+          "identity": "public.institution_code_invitations.institution_code_invitations_seat_limit_guard"
         }
       ]
     }
