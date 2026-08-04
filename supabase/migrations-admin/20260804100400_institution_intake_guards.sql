@@ -395,7 +395,7 @@ begin
     'institution_has_writing_assignment' in
     pg_get_functiondef(to_regprocedure('public.admin_assign_institution_code(uuid[],text,text)'))
   ) = 0 then
-    v_missing := v_missing || 'admin_assign_institution_code';
+    v_missing := v_missing || 'admin_assign_institution_code'::text;
   end if;
   if position(
     'institution_has_writing_assignment' in
@@ -403,7 +403,7 @@ begin
       to_regprocedure('public.admin_invite_institution_members(uuid[],text,text,integer)')
     )
   ) = 0 then
-    v_missing := v_missing || 'admin_invite_institution_members';
+    v_missing := v_missing || 'admin_invite_institution_members'::text;
   end if;
   if cardinality(v_missing) > 0 then
     raise exception 'institution_assignment_guard_callsite_lost: %', array_to_string(v_missing, ', ');

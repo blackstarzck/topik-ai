@@ -267,22 +267,22 @@ begin
   -- 변경된 **필드명만** 모은다. 담당자 항목은 값이 개인정보라 이름만 남기고,
   -- 나머지 항목은 운영 판단에 필요하므로 diff 에 전후 값을 남긴다.
   if v_old.institution_code is null then
-    v_changed := v_changed || 'created';
+    v_changed := v_changed || 'created'::text;
   else
     if v_old.max_members is distinct from p_max_members then
-      v_changed := v_changed || 'max_members';
+      v_changed := v_changed || 'max_members'::text;
     end if;
     if v_old.default_invite_expiry_days is distinct from p_default_invite_expiry_days then
-      v_changed := v_changed || 'default_invite_expiry_days';
+      v_changed := v_changed || 'default_invite_expiry_days'::text;
     end if;
     if v_old.block_intake_on_expiry is distinct from v_block then
-      v_changed := v_changed || 'block_intake_on_expiry';
+      v_changed := v_changed || 'block_intake_on_expiry'::text;
     end if;
     if v_old.contact_name is distinct from v_name then
-      v_changed := v_changed || 'contact_name';
+      v_changed := v_changed || 'contact_name'::text;
     end if;
     if v_old.contact_email is distinct from v_email then
-      v_changed := v_changed || 'contact_email';
+      v_changed := v_changed || 'contact_email'::text;
     end if;
   end if;
 
