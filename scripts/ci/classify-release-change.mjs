@@ -13,9 +13,11 @@ import { loadRewriteAllowlist } from '../db/check-expand-migrations.mjs';
 // generic markdown rule.
 // 6: the adopted v13 learner archive (supabase/migrations-v13/) resolves to
 // control-plane instead of unknown, which blocked every PR that touched it.
+// 7: Playwright run artifacts (test-results/, playwright-report/) resolve to light
+// instead of unknown, which blocked the commit that untracked test-results/.
 // Recorded in release evidence, so a bump keeps pre-fix classifications
 // distinguishable from post-fix ones.
-export const CLASSIFIER_VERSION = 6;
+export const CLASSIFIER_VERSION = 7;
 
 const ZERO_SHA = /^0+$/;
 const RELEASE_PLANS = new Set([
@@ -68,6 +70,15 @@ function isDocumentationPath(filePath) {
 
 function isOfflineTestPath(filePath) {
   return /^tests\/(unit|e2e)\//.test(filePath);
+}
+
+// Playwright's local run artifacts. They carry no validation contract and no release
+// meaning, but they resolved to 'unknown' — so the single commit that removed the
+// tracked `test-results/.last-run.json` from git blocked its own release. A path only
+// has to be reachable by a diff to need a rule here; gitignoring it afterwards does
+// not help the commit that does the removing.
+function isTestArtifactPath(filePath) {
+  return /^(test-results|playwright-report)\//.test(filePath);
 }
 
 export function isForwardMigrationPath(filePath) {
@@ -124,7 +135,13 @@ function isAppPath(filePath) {
 
 function pathKind(filePath) {
   if (isControlPlaneDocumentPath(filePath)) return 'control-plane';
-  if (isDocumentationPath(filePath) || isOfflineTestPath(filePath)) return 'light';
+  if (
+    isDocumentationPath(filePath)
+    || isOfflineTestPath(filePath)
+    || isTestArtifactPath(filePath)
+  ) {
+    return 'light';
+  }
   if (isForwardMigrationPath(filePath)) return 'migration';
   if (isControlPlanePath(filePath)) return 'control-plane';
   if (isAppPath(filePath)) return 'app';
