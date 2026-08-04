@@ -71,8 +71,11 @@ describe('institution exposure mode deletion lifecycle', () => {
     ['development', developmentManifest],
     ['production', productionManifest]
   ])('registers the forward migration in the %s release manifest', (_, manifest) => {
-    expect(manifest.expectedLocalCount).toBe(94);
-    expect(manifest.batches['release-all'].to).toBe(migrationName);
+    expect(manifest.expectedLocalCount).toBe(97);
+    // 이 마이그는 더 이상 release-all 의 끝이 아니다(20260804100200~400 이 뒤에 붙었다).
+    // 끝을 고정하면 뒤에 파일이 붙을 때마다 무관한 테스트가 깨지므로, "릴리스 범위에
+    // 포함된다" 는 원래 의도만 남긴다.
+    expect(manifest.batches['release-all'].to >= migrationName).toBe(true);
     expect(manifest.batches['institution-exposure-mode-delete-cleanup'].migrations).toEqual([
       migrationName
     ]);
