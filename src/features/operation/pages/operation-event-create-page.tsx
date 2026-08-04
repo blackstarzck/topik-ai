@@ -88,6 +88,11 @@ type EventFormValues = {
   rewardPolicyId: string;
   messageTemplateId: string;
   bannerImages: OperationEventBannerImage[];
+  // 대표 배너(bannerImages[0])의 파생값. 다중 배너 도입 후에도 `useWatch` 로 읽고 저장
+  // payload 에 실려 나가므로 폼 값의 일부다 — 타입에서만 빠져 있었다.
+  bannerImageUrl: string;
+  bannerImageSourceType: OperationEvent["bannerImageSourceType"];
+  bannerImageFileName: string;
   landingUrl: string;
   slug: string;
   metaTitle: string;

@@ -84,7 +84,10 @@ import { StatusBadge } from "../../../shared/ui/status-badge/status-badge";
 import { AdminDataTable } from "../../../shared/ui/table/admin-data-table";
 import { BinaryStatusSwitch } from "../../../shared/ui/table/binary-status-switch";
 import { createStatusColumnTitle } from "../../../shared/ui/table/status-column-title";
-import { TableActionMenu } from "../../../shared/ui/table/table-action-menu";
+import {
+  TableActionMenu,
+  type TableActionMenuItem,
+} from "../../../shared/ui/table/table-action-menu";
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -1166,10 +1169,13 @@ export default function CommerceCouponsPage(): JSX.Element {
       }
 
       if (dangerState.entity === "coupon") {
+          // `result` 는 위 삼항에서 entity 로 갈라졌으므로 이 분기의 결과는 확정이다.
+          // TS 는 두 조건(생성 시점 entity, 여기 entity)의 상관관계를 좁히지 못한다.
+        const savedCoupon = result.data as CommerceCoupon;
         setCouponsState((prev) => {
           if (dangerState.type === "delete") {
             const nextData = prev.data.filter(
-              (coupon) => coupon.id !== result.data.id,
+              (coupon) => coupon.id !== savedCoupon.id,
             );
             return {
               status: nextData.length === 0 ? "empty" : "success",
@@ -1182,17 +1188,20 @@ export default function CommerceCouponsPage(): JSX.Element {
           return {
             status: prev.data.length === 0 ? "empty" : "success",
             data: prev.data.map((coupon) =>
-              coupon.id === result.data.id ? result.data : coupon,
+              coupon.id === savedCoupon.id ? savedCoupon : coupon,
             ),
             errorMessage: null,
             errorCode: null,
           };
         });
       } else {
+          // `result` 는 위 삼항에서 entity 로 갈라졌으므로 이 분기의 결과는 확정이다.
+          // TS 는 두 조건(생성 시점 entity, 여기 entity)의 상관관계를 좁히지 못한다.
+        const savedTemplate = result.data as CommerceCouponSubscriptionTemplate;
         setTemplatesState((prev) => {
           if (dangerState.type === "delete") {
             const nextData = prev.data.filter(
-              (template) => template.id !== result.data.id,
+              (template) => template.id !== savedTemplate.id,
             );
             return {
               status: nextData.length === 0 ? "empty" : "success",
@@ -1205,7 +1214,7 @@ export default function CommerceCouponsPage(): JSX.Element {
           return {
             status: prev.data.length === 0 ? "empty" : "success",
             data: prev.data.map((template) =>
-              template.id === result.data.id ? result.data : template,
+              template.id === savedTemplate.id ? savedTemplate : template,
             ),
             errorMessage: null,
             errorCode: null,
@@ -1270,7 +1279,7 @@ export default function CommerceCouponsPage(): JSX.Element {
 
   const createActionMenuItems = useCallback(
     (coupon: CommerceCoupon) => {
-      const items = [
+      const items: TableActionMenuItem[] = [
         {
           key: "edit",
           label: "수정",

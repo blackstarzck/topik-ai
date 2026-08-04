@@ -1,6 +1,7 @@
 import { DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { Alert, Button, Space, Tooltip, Typography, notification } from 'antd';
-import type { SortOrder, TableColumnsType, TableProps } from 'antd';
+import type { TableColumnsType, TableProps } from 'antd';
+import type { SortOrder } from 'antd/es/table/interface';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 

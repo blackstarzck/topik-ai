@@ -652,7 +652,7 @@ export default function InstructorManagementPage(): JSX.Element {
 
   const courseColumns = useMemo<TableColumnsType<InstructorCourseSummary>>(
     () =>
-      fixDrawerTableFirstColumn([
+      fixDrawerTableFirstColumn<InstructorCourseSummary>([
         {
           title: '과정 ID',
           dataIndex: 'id',
@@ -696,7 +696,7 @@ export default function InstructorManagementPage(): JSX.Element {
 
   const messageColumns = useMemo<TableColumnsType<InstructorMessageHistory>>(
     () =>
-      fixDrawerTableFirstColumn([
+      fixDrawerTableFirstColumn<InstructorMessageHistory>([
         {
           title: '발송 ID',
           dataIndex: 'id',
@@ -735,7 +735,7 @@ export default function InstructorManagementPage(): JSX.Element {
 
   const adminNoteColumns = useMemo<TableColumnsType<InstructorAdminNote>>(
     () =>
-      fixDrawerTableFirstColumn([
+      fixDrawerTableFirstColumn<InstructorAdminNote>([
         {
           title: '메모 ID',
           dataIndex: 'id',

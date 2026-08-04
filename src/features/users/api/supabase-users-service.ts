@@ -283,7 +283,7 @@ function mapUserGender(value: string | null | undefined): string {
   if (['unknown', 'prefer_not_to_say', '미입력', '비공개'].includes(normalized)) {
     return '';
   }
-  return original;
+  return original ?? '';
 }
 
 function mapRowToUserSummary(row: AdminUserRow): UserSummary {

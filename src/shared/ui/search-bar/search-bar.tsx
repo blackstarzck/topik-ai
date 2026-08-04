@@ -41,7 +41,7 @@ type SearchBarProps = {
 };
 
 type SearchBarDetailFieldProps = {
-  label: string;
+  label: ReactNode;
   children: ReactNode;
 };
 

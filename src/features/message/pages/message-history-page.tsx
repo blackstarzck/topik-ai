@@ -503,7 +503,7 @@ function MockMessageHistoryPage(): JSX.Element {
 
   const recipientColumns = useMemo<TableColumnsType<MessageHistory['recipients'][number]>>(
     () =>
-      fixDrawerTableFirstColumn([
+      fixDrawerTableFirstColumn<MessageHistory['recipients'][number]>([
         {
           title: '사용자',
           key: 'user',
@@ -1052,7 +1052,7 @@ function NotificationDispatchHistoryPage(): JSX.Element {
 
   const attemptColumns = useMemo<TableColumnsType<NotificationDeliveryAttemptItem>>(
     () =>
-      fixDrawerTableFirstColumn([
+      fixDrawerTableFirstColumn<NotificationDeliveryAttemptItem>([
         {
           title: '사용자 ID',
           dataIndex: 'userId',

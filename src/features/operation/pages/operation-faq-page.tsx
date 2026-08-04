@@ -15,11 +15,11 @@ import {
   notification
 } from 'antd';
 import type {
-  SortOrder,
   TableColumnsType,
   TableProps,
   TabsProps
 } from 'antd';
+import type { SortOrder } from 'antd/es/table/interface';
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';

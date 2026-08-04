@@ -271,7 +271,7 @@ type MetadataTreeItemTitleProps = {
   item: SystemMetadataItem;
   hovered: boolean;
   onHoverChange: (hovered: boolean) => void;
-  onDelete: (item: SystemMetadataItem, event: ReactMouseEvent<HTMLButtonElement>) => void;
+  onDelete: (item: SystemMetadataItem, event: ReactMouseEvent<HTMLElement>) => void;
 };
 
 type MetadataTreeAddTitleProps = {
@@ -1404,12 +1404,12 @@ export default function SystemMetadataPage(): JSX.Element {
   );
 
   const drawerItemColumns = useMemo(
-    () => fixDrawerTableFirstColumn(itemColumns),
+    () => fixDrawerTableFirstColumn<SystemMetadataItem>(itemColumns),
     [itemColumns]
   );
 
   const drawerHistoryColumns = useMemo(
-    () => fixDrawerTableFirstColumn(historyColumns),
+    () => fixDrawerTableFirstColumn<SystemMetadataHistoryEntry>(historyColumns),
     [historyColumns]
   );
 
@@ -1672,7 +1672,7 @@ export default function SystemMetadataPage(): JSX.Element {
             name="isDefault"
             rules={[{ required: true, message: '기본값 여부를 선택해 주세요.' }]}
           >
-            <Select options={DEFAULT_VALUE_SELECT_OPTIONS} />
+            <Select options={[...DEFAULT_VALUE_SELECT_OPTIONS]} />
           </Form.Item>
         )
       },

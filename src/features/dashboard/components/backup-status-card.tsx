@@ -61,7 +61,7 @@ export function BackupStatusCard(): JSX.Element {
   // 요약(Descriptions) 보기로 폴백한다.
   const [runsState, setRunsState] = useState<AsyncState<BackupRun[]>>({
     status: 'pending',
-    data: null,
+    data: [],
     errorMessage: null,
     errorCode: null
   });

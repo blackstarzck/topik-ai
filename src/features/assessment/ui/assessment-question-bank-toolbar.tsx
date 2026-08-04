@@ -59,7 +59,7 @@ export function AssessmentQuestionBankToolbar({
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
       <div role="group" aria-label="문제 번호 필터">
         <Space wrap size={[16, 8]}>
-          {assessmentQuestionNumberTabItems.map((item) => (
+          {(assessmentQuestionNumberTabItems ?? []).map((item) => (
             <Checkbox
               key={item.key}
               checked={activeQuestionNumbers.includes(

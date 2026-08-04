@@ -109,13 +109,29 @@
 - ⚠️ **키 오타의 컴파일 오류 전환은 `npm run typecheck` 로는 검증되지 않는다.** 그 스크립트가 빈 통과라서다(§3.9). `npx tsc -b --noEmit` 으로는 `TS2345: Argument of type '"operationNoticSaved"' is not assignable to parameter of type 'keyof RouterSavedStateMap'` 가 정확히 나오는 것을 확인했다.
 - 잔여: commerce 생산자 2곳의 `replace: true` 누락은 이제 무해하다(state 를 지우므로). 저장 후 뒤로 가면 생성 페이지로 돌아가는 동선 자체는 별건 UX 판단으로 남긴다.
 
-### 3.9 `npm run typecheck` 가 아무 파일도 검사하지 않음
+### 3.9 `npm run typecheck` 가 아무 파일도 검사하지 않음 — **해소 (2026-08-04)**
 
-- 루트 `tsconfig.json` 이 `files: []` + `references` 만 가진 solution-style 파일이다. `tsc --noEmit` 은 project reference 를 따라가지 않으므로 검사 대상이 0개다. `npm run build` 도 `tsc --noEmit && vite build` 이고 vite 는 esbuild 로 타입을 벗겨내므로, **저장소에 동작하는 타입 검사가 없다.**
-- 재현: `src/**` 아무 파일에 `const x: number = "s";` 를 넣어도 `npm run typecheck` 가 통과한다. `npx tsc -b --noEmit` 은 잡는다.
-- 파급: AGENTS.md §11.5 가 커밋 전 필수로 지정한 `harness:check` 의 typecheck 단계가 그동안 빈 통과였다. `npx tsc -b --noEmit` 실측 결과 **기존 타입 오류가 다수** 있다(`analytics-learning-service.ts` TS2345·TS18046 다수, `assessment-question-bank-toolbar.tsx:62` TS18048, `master-catalog-section.tsx:180` TS2322, `operation-notices-page.tsx:3` TS2305 `antd` 의 `SortOrder` 미export).
-- 우선순위: `P1 게이트 복구`
-- 필요 조치: 기존 오류를 먼저 정리한 뒤 `typecheck` 를 `tsc -b --noEmit` 으로 교체하고 `build` 도 함께 정정한다. 스크립트만 먼저 바꾸면 CI 가 즉시 빨개진다. 복구 후에는 위 재현 절차로 빈 통과가 사라졌음을 역검증한다.
+- 루트 `tsconfig.json` 이 `files: []` + `references` 만 가진 solution-style 파일이다. `tsc --noEmit` 은 project reference 를 따라가지 않으므로 검사 대상이 0개였다. `npm run build` 도 `tsc --noEmit && vite build` 이고 vite 는 esbuild 로 타입을 벗겨내므로, **저장소에 동작하는 타입 검사가 없었다.** AGENTS.md §11.5 가 커밋 전 필수로 지정한 `harness:check` 의 typecheck 단계가 그동안 빈 통과였다.
+- 재현(수정 전): `src/**` 아무 파일에 `const x: number = "s";` 를 넣어도 `npm run typecheck` 가 exit 0. `npx tsc -b --noEmit` 은 잡는다.
+- 조치: `typecheck` 와 `build` 를 `tsc -b --noEmit` 으로 교체했다. 그 전에 드러난 **기존 타입 오류 134건을 0건으로 정리**했다.
+- **역검증(가장 중요)**: 같은 위반을 다시 주입해 `npm run typecheck` 가 `TS2322` 를 출력하고 **exit 1** 로 끝나는 것을 확인했다(출력만 보면 게이트가 CI 를 실패시키는지 알 수 없다). 복원 후 exit 0.
+
+#### 3.9.1 정리한 134건의 성격 (재발 방지용 분류)
+
+절반 이상이 개별 코드 실수가 아니라 **공용 유틸·설정 한 곳**에서 나왔다. 파일 수로 겁먹지 말고 뿌리를 먼저 찾을 것.
+
+| 뿌리 | 성격 | 감소 |
+| --- | --- | --- |
+| `shared/ui/table/table-column-utils.ts` 의 `onFilter` 파라미터 | React 19 타입의 `Key` 에 `bigint` 가 포함돼 `string \| number \| boolean` 으로 좁히면 반공변성 위반 → 컬럼 배열 전체가 `ColumnType` 에 할당되지 않았다 | 134 → 101 |
+| `tsconfig.app.json` `lib` ES2020→ES2022·`composite` 신설, `tsconfig.node.json` `target`/`lib`/`include` | **코드가 아니라 설정 문제**였다. `String.replaceAll`(TS2550)·`Set` 순회(TS2802)·`api/` 의 `src/` 크로스 import(TS6307) | 101 → 94 |
+| `antd` 의 `SortOrder` import 경로(5파일) | antd 는 루트에서 export 하지 않는다 → `antd/es/table/interface` | 94 → 90 |
+| `fixDrawerTableFirstColumn` 호출부 9곳의 타입 인자 생략 | 생략하면 `RecordType` 이 제약(`object`)으로 폴백해 레코드 타입이 소실되고 `render`/`sorter` 안에서 모든 속성 접근이 깨졌다 | 88 → 60 |
+| 옵션 헬퍼 14개의 `SelectProps['options']` 반환 타입 | `DefaultOptionType` 은 `label` 이 옵셔널이라 `Radio.Group` 의 `CheckboxOptionType`(label 필수)에 할당되지 않는다 → `CouponLabeledOption` 신설 | 49 → 41 |
+| 배열·조건부 spread 의 리터럴 위드닝 | `as const` 혼용 또는 누락으로 리터럴 유니온이 `string` 으로 넓어졌다(mock 원장 `entryType`, `stepKeys`, setState 갱신본) | 개별 |
+
+- 조용히 넘어가면 안 되는 발견 2건: ①`operation-event-create-page.tsx` 의 폼 값 타입에 `bannerImageUrl`·`bannerImageSourceType`·`bannerImageFileName` 이 빠져 있었다. 세 필드는 `useWatch` 로 읽고 저장 payload 에 실려 나가므로 **타입이 낡은 것**이었다(필드를 지우면 동작이 깨진다). ②`api/notifications/dispatch-email.ts` 의 로컬 `WorkerSchema` 에 `channel`·`status` 가 없어 `.eq()` 필터 키 타입이 select 목록으로 좁혀졌다. DB 에는 있는 컬럼이라 선언을 채웠다.
+- 동작을 바꿀 수 있었던 지점은 보수적으로 처리했다: `faqs-service` 의 비표준 코드 `'INVALID_STATE'`(소비처 0건)는 형제 서비스와 같은 `'VALIDATION_ERROR'` 로, `InputNumber` 의 `parser` 는 `Number("") = 0` 이 되는 동작 변경을 피하려고 런타임 표현식을 유지하고 타입만 맞췄다(rc-input-number 는 숫자 문자열도 파싱한다).
+- 남은 관련 사실: `*.tsbuildinfo` 는 `tsc -b` 가 만드는 증분 캐시이며 §3.10 에서 gitignore 했다.
 
 ### 3.10 테스트 산출물이 git 에 추적되어 워킹트리를 오염시킴 — **해소 (2026-08-04)**
 

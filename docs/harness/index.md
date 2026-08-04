@@ -51,12 +51,15 @@
   - 인코딩 검사
   - 문서 교차참조 검사
   - 라우트-IA 커버리지 검사
+  - 발송 이력 경계 검사
+  - router state 저장 알림 경계 검사
   - lint
-  - typecheck
+  - typecheck (`tsc -b --noEmit`. 루트 `tsconfig.json` 이 solution-style 이라 `-b` 없이는 **아무 파일도 검사하지 않는다** — 배경은 `docs/specs/admin-page-gap-register.md` §3.9)
 - `npm run harness:e2e:smoke`
   - 공통 테이블 정렬 baseline
   - 공통 액션 컬럼 baseline
   - `Operation > 정책 관리`
+  - router state 저장 알림 1회 소비
   - `System > 메타데이터 관리`
 - `npm run harness:full`
   - `harness:check`

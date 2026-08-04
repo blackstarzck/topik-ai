@@ -16,6 +16,10 @@ type WorkerSchema = {
           template_key: string;
           retry_count: number;
           created_at: string;
+          // select 하지 않고 `.eq()` 필터로만 쓰는 컬럼. Row 에 없으면 필터 키 타입이
+          // select 목록으로 좁혀져 "컬럼이 없다"는 오류가 난다.
+          channel: string;
+          status: string;
         };
         Insert: never;
         Update: {

@@ -10,7 +10,7 @@ import {
   Typography,
   notification
 } from 'antd';
-import type { AlertProps, TableColumnsType } from 'antd';
+import type { AlertProps, DescriptionsProps, TableColumnsType } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
