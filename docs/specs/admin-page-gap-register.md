@@ -117,6 +117,13 @@
 - 우선순위: `P1 게이트 복구`
 - 필요 조치: 기존 오류를 먼저 정리한 뒤 `typecheck` 를 `tsc -b --noEmit` 으로 교체하고 `build` 도 함께 정정한다. 스크립트만 먼저 바꾸면 CI 가 즉시 빨개진다. 복구 후에는 위 재현 절차로 빈 통과가 사라졌음을 역검증한다.
 
+### 3.10 테스트 산출물이 git 에 추적되어 워킹트리를 오염시킴 — **해소 (2026-08-04)**
+
+- `test-results/.last-run.json` 이 초기 대량 커밋(`63727e2`)에 우발적으로 포함돼 추적되고 있었고 `.gitignore` 에 `test-results/` 항목이 없었다. e2e 를 돌릴 때마다 이 파일이 변경되고, 실패 시에는 `test-results/<테스트명>/` 아래에 스크린샷·trace·`error-context.md` 가 생겨 `git status` 가 산출물로 덮였다. 다른 작업 중 `git add -A` 로 산출물을 함께 스테이징할 위험이 실제로 있었다.
+- 조치: 추적 해제 + `.gitignore` 에 `test-results/`·`playwright-report/`·`.playwright-mcp/`·`*.tsbuildinfo` 추가. `playwright.config.ts` 는 `outputDir` 을 지정하지 않아 기본값 `test-results/` 를 쓴다. `*.tsbuildinfo` 는 §3.9 복구에 필요한 `tsc -b` 가 만드는 증분 캐시다.
+- CI 무영향 확인: `.github/workflows/ci.yml` 의 아티팩트 업로드는 `if: failure()` + `if-no-files-found: ignore` 이고 파일시스템을 직접 읽으므로 gitignore 와 무관하다.
+- 검증: e2e 를 실행한 뒤 `git status` 에 산출물이 나타나지 않음을 확인했다(이전에는 `M test-results/.last-run.json` 이 떴다).
+
 ## 4. 모듈별 레지스트리
 
 ### 4.1 Dashboard
