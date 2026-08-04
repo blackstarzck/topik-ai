@@ -181,7 +181,7 @@ function filterTree(nodes: ExposureTreeNode[], term: string): ExposureTreeNode[]
   nodes.forEach((typeNode) => {
     const topicNodes: ExposureTreeNode[] = [];
     (typeNode.children ?? []).forEach((topicNode) => {
-      const leaves = (topicNode.children ?? []).filter(
+      const leaves = ((topicNode.children ?? []) as ExposureTreeNode[]).filter(
         (leaf) => {
           const searchText = leaf.searchText ?? String(leaf.title);
           return (

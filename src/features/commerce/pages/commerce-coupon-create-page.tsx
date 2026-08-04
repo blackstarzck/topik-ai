@@ -1188,16 +1188,22 @@ export default function CommerceCouponCreatePage(): JSX.Element {
                     formatter={
                       selectedBenefitType === "rateDiscount"
                         ? (value) =>
-                            value === undefined ||
-                            value === null ||
-                            value === ""
+                            // antd 가 넘기는 값은 number | undefined 라 빈 문자열 비교는
+                            // 도달할 수 없다(남기면 number 와 string 대조가 된다).
+                            value === undefined || value === null
                               ? ""
                               : `${value}%`
                         : undefined
                     }
                     parser={
                       selectedBenefitType === "rateDiscount"
-                        ? (value) => value?.replaceAll("%", "") ?? ""
+                        ? // antd 타입은 number 반환을 요구하지만 rc-input-number 는 숫자
+                          // 문자열도 그대로 파싱한다(공식 예제도 문자열을 돌려준다).
+                          // 빈 입력에서 Number("") = 0 이 되어 0 이 찍히는 동작 변경을
+                          // 피하려고 런타임 표현식은 유지하고 타입만 맞춘다.
+                          ((value: string | undefined) => value?.replaceAll("%", "") ?? "") as unknown as (
+                            displayValue: string | undefined,
+                          ) => number
                         : undefined
                     }
                   />
@@ -1626,7 +1632,7 @@ export default function CommerceCouponCreatePage(): JSX.Element {
       "basic",
       "benefit",
       "operation",
-      ...(hasAlertSection ? ["alert"] : []),
+      ...(hasAlertSection ? (["alert"] as const) : []),
       "memo",
     ],
     [hasAlertSection],

@@ -18,3 +18,13 @@ pnpm-debug.log*
 
 # supabase CLI temp
 supabase/.temp/
+
+# Playwright 로컬 실행 산출물. outputDir 을 지정하지 않아 기본값 test-results/ 를 쓰고,
+# 실패 시 그 아래에 테스트별 스크린샷·trace·error-context 디렉터리가 생긴다.
+# 커밋되면 e2e 를 돌릴 때마다 워킹트리가 더러워져 다른 작업의 스테이징을 오염시킨다.
+test-results/
+playwright-report/
+.playwright-mcp/
+
+# tsc --build 증분 캐시(tsc -b 실행 시 생성)
+*.tsbuildinfo

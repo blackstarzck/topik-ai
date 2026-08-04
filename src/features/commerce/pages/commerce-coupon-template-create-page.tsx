@@ -953,7 +953,7 @@ export default function CommerceCouponTemplateCreatePage(): JSX.Element {
       "basic",
       "benefit",
       "operation",
-      ...(hasAlertSection ? ["alert"] : []),
+      ...(hasAlertSection ? (["alert"] as const) : []),
       "memo",
     ],
     [hasAlertSection],

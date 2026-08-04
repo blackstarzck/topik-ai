@@ -323,7 +323,7 @@ function replaceCountryRules(
       hasCountryRule = true;
       return {
         ...child,
-        operator: 'equals',
+        operator: 'equals' as const,
         value: country
       };
     }

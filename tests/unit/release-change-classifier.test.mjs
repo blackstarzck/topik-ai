@@ -14,7 +14,7 @@ function add(...paths) {
   return classifyChangedFiles(paths.map((path) => ({ status: 'A', path })));
 }
 
-describe('release change classifier v6', () => {
+describe('release change classifier v7', () => {
   it('keeps documentation and offline tests on the light sync-only path', () => {
     const docs = classify('docs/architecture/admin-cicd-pipeline.md', 'AGENTS.md');
     expect(docs.releasePlan).toBe('sync-only');
@@ -26,6 +26,17 @@ describe('release change classifier v6', () => {
     expect(tests.releasePlan).toBe('sync-only');
     expect(tests.runUnit).toBe(true);
     expect(tests.runE2e).toBe(true);
+  });
+
+  // 삭제만으로도 blocked 가 됐던 회귀. gitignore 는 삭제하는 커밋을 구해주지 못한다.
+  it('keeps Playwright run artifacts on the light path even when removed', () => {
+    const removed = classifyChangedFiles([
+      { status: 'D', path: 'test-results/.last-run.json' },
+      { status: 'A', path: 'playwright-report/index.html' },
+    ]);
+    expect(removed.blockedReasons).toEqual([]);
+    expect(removed.releasePlan).toBe('sync-only');
+    expect(removed.validationProfile).toBe('light');
   });
 
   it('strongly validates release control-plane changes without releasing', () => {

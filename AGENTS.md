@@ -255,7 +255,8 @@ DO NOT
 ### 11.5 커밋 / 푸시 정책 (게이트)
 - 커밋·푸시는 사용자가 요청하거나 필요성이 확인될 때만 한다. 필요하다고 판단되면 메시지·범위를 제안하고 진행 여부를 확인한다(§9 계승).
 - **커밋 전 게이트**:
-  - `npm run harness:check` (mojibake · doc-crosslinks · route-doc-coverage · message-history-boundary · lint · typecheck)
+  - `npm run harness:check` (mojibake · doc-crosslinks · route-doc-coverage · message-history-boundary · router-state-notice-boundary · lint · typecheck)
+  - **typecheck 는 `tsc -b --noEmit` 이다.** 루트 `tsconfig.json` 이 solution-style(`files: []` + `references`)이라 `-b` 를 빼면 아무 파일도 검사하지 않는다. 스크립트를 손댈 때 이 사실을 잊지 말 것(2026-08-04 복구, 배경은 `docs/specs/admin-page-gap-register.md` §3.9).
   - 경계/마이그레이션 작업이면 `npm run harness:admin-boundary` (migration-boundary · client-source-secrets · notification-cross-app-state 등)
   - 변경 영향 핵심 플로우 **e2e**(§6.1·§9 DoD)
 - **mojibake 검사 필수** — 특히 Codex가 `.sql`/`.tsx`를 편집한 직후. `npm run check:mojibake`는 fragment 한정이라 불완전하므로 lint + 수동 `?+한글` 스캔을 병행하고, 깨졌으면 UTF-8로 재작성한다. 한글이 많은 파일은 Codex보다 직접 작성이 안전하다.

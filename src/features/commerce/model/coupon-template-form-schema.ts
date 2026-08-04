@@ -1,4 +1,3 @@
-import type { SelectProps } from "antd";
 
 import type { CommerceCouponSubscriptionTemplate } from "./coupon-template-types";
 import { getCouponTemplateAlertChannelLabel } from "./coupon-template-types";
@@ -7,6 +6,8 @@ import {
   getCouponApplicableScopeLabel,
   getCouponBenefitTypeLabel,
 } from "./coupon-types";
+
+import type { CouponLabeledOption } from "./coupon-form-schema";
 
 export type CouponTemplateReferenceOption = {
   id: string;
@@ -96,7 +97,7 @@ export function createCouponTemplateDraftDefaults(): CouponTemplateDraftDefaults
   };
 }
 
-export function getCouponTemplateBenefitTypeOptions(): SelectProps["options"] {
+export function getCouponTemplateBenefitTypeOptions(): CouponLabeledOption[] {
   return (
     [
       "amountDiscount",
@@ -110,7 +111,7 @@ export function getCouponTemplateBenefitTypeOptions(): SelectProps["options"] {
   }));
 }
 
-export function getCouponTemplateScopeOptions(): SelectProps["options"] {
+export function getCouponTemplateScopeOptions(): CouponLabeledOption[] {
   return (
     [
       "allProducts",
@@ -123,28 +124,28 @@ export function getCouponTemplateScopeOptions(): SelectProps["options"] {
   }));
 }
 
-export function getCouponTemplateShoppingGradeSelectOptions(): SelectProps["options"] {
+export function getCouponTemplateShoppingGradeSelectOptions(): CouponLabeledOption[] {
   return couponTemplateShoppingGradeOptions.map((option) => ({
     label: `${option.name} (${option.id})`,
     value: option.id,
   }));
 }
 
-export function getCouponTemplateCategorySelectOptions(): SelectProps["options"] {
+export function getCouponTemplateCategorySelectOptions(): CouponLabeledOption[] {
   return couponTemplateCategoryOptions.map((option) => ({
     label: `${option.name} (${option.id})`,
     value: option.id,
   }));
 }
 
-export function getCouponTemplateProductSelectOptions(): SelectProps["options"] {
+export function getCouponTemplateProductSelectOptions(): CouponLabeledOption[] {
   return couponTemplateProductOptions.map((option) => ({
     label: `${option.name} (${option.id})`,
     value: option.id,
   }));
 }
 
-export function getCouponTemplateAlertChannelOptions(): SelectProps["options"] {
+export function getCouponTemplateAlertChannelOptions(): CouponLabeledOption[] {
   return [
     {
       label: getCouponTemplateAlertChannelLabel("webAppPush"),

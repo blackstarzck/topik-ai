@@ -145,7 +145,11 @@ function sumWeights<T extends string>(values: T[], weightMap: Record<T, number>,
     return fallback;
   }
 
-  const total = Object.values(weightMap).reduce((sum, weight) => sum + weight, 0);
+  // 제네릭 키(Record<T, number>)에서는 Object.values 가 unknown[] 로 추론된다.
+  const total = (Object.values(weightMap) as number[]).reduce(
+    (sum, weight) => sum + weight,
+    0
+  );
   const selected = values.reduce((sum, value) => sum + weightMap[value], 0);
   return Math.max(selected / total, 0.08);
 }

@@ -146,7 +146,7 @@ function createFaqCurationConflictError(): AppApiError {
 
 function createFaqCurationVisibilityError(): AppApiError {
   return new AppApiError('비공개 FAQ는 노출 중 상태로 등록할 수 없습니다.', {
-    code: 'INVALID_STATE',
+    code: 'VALIDATION_ERROR',
     status: 400,
     retryable: false
   });

@@ -588,7 +588,8 @@ export default function UsersReferralsPage(): JSX.Element {
             if (actionState.type === 'review-anomaly') {
               return {
                 ...item,
-                anomalyStatus: '검토 완료',
+                // as const 없이는 리터럴이 string 으로 넓어져 ReferralSummary 에 안 맞는다.
+                anomalyStatus: '검토 완료' as const,
                 lastActionAt: formatCurrentDateTime(),
                 adminMemo: `${item.adminMemo}\n- ${formatCurrentDateTime()} 이상치 검토 완료: ${reason}`
               };
@@ -596,7 +597,10 @@ export default function UsersReferralsPage(): JSX.Element {
 
             return {
               ...item,
-              status: actionState.type === 'deactivate' ? '비활성' : '활성',
+              status:
+                actionState.type === 'deactivate'
+                  ? ('비활성' as const)
+                  : ('활성' as const),
               lastActionAt: formatCurrentDateTime()
             };
           });
@@ -911,7 +915,7 @@ export default function UsersReferralsPage(): JSX.Element {
 
   const relationColumns = useMemo<TableColumnsType<ReferralRelation>>(
     () =>
-      fixDrawerTableFirstColumn([
+      fixDrawerTableFirstColumn<ReferralRelation>([
       {
         title: '피추천인',
         dataIndex: 'referredUserName',
@@ -1013,7 +1017,7 @@ export default function UsersReferralsPage(): JSX.Element {
 
   const codeLevelRewardLedgerColumns =
     useMemo<TableColumnsType<ReferralRewardLedgerEntry>>(
-      () => fixDrawerTableFirstColumn(rewardLedgerColumns),
+      () => fixDrawerTableFirstColumn<ReferralRewardLedgerEntry>(rewardLedgerColumns),
       [rewardLedgerColumns]
     );
 

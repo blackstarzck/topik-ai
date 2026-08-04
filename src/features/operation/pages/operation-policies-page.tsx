@@ -7,7 +7,8 @@ import {
   Typography,
   notification
 } from 'antd';
-import type { SortOrder, TableColumnsType, TableProps } from 'antd';
+import type { TableColumnsType, TableProps } from 'antd';
+import type { SortOrder } from 'antd/es/table/interface';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -1283,6 +1284,9 @@ export default function OperationPoliciesPage(): JSX.Element {
     policiesState.data.length > 0 &&
     filteredPolicies.length === 0;
 
+  // JSX 콜백 안에서는 previewState?.editTarget 좁힘이 유지되지 않아 지역 변수로 캡처한다.
+  const previewEditTarget = previewState?.editTarget;
+
   return (
     <div>
       {notificationContextHolder}
@@ -1800,12 +1804,12 @@ export default function OperationPoliciesPage(): JSX.Element {
         descriptionItems={undefined}
         bodyHtml={previewState?.bodyHtml}
         footerActions={
-          previewState?.editTarget
+          previewEditTarget
             ? [
               <Button
                 key="edit"
                 type="primary"
-                onClick={() => openEditDetail(previewState.editTarget)}
+                onClick={() => openEditDetail(previewEditTarget)}
               >
                 내용 수정
               </Button>

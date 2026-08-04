@@ -135,7 +135,9 @@ function buildRewardLedger(
   anomalyStatus: ReferralAnomalyStatus
 ): ReferralRewardLedgerEntry[] {
   const baseAmount = 4000 + (index % 3) * 1000;
-  const entries = relations.map((relation, offset) => {
+  // 요소 타입을 명시한다. 없으면 map 결과가 `지급`·`취소` 두 리터럴로 좁혀져 아래
+  // unshift/push 의 `수동 보정`·`회수` 가 할당되지 않는다(도메인 유니온은 4값 전부 허용).
+  const entries: ReferralRewardLedgerEntry[] = relations.map((relation, offset) => {
     if (relation.status === '완료') {
       return {
         id: `RWD-${String(index + 1).padStart(4, '0')}-${offset + 1}`,

@@ -34,8 +34,12 @@ function isActionColumn<RecordType extends object>(
 
   const normalizedKey =
     typeof column.key === 'string' ? column.key.trim().toLowerCase() : null;
+  // `dataIndex` 는 `ColumnType` 에만 있고 `ColumnGroupType` 에는 없다. 위 children 가드는
+  // 유니온을 좁히지 못하므로 속성 존재를 직접 확인한다.
   const normalizedDataIndex =
-    getColumnIdentifier(column.dataIndex)?.trim().toLowerCase() ?? null;
+    ('dataIndex' in column
+      ? getColumnIdentifier(column.dataIndex)?.trim().toLowerCase()
+      : undefined) ?? null;
   const normalizedTitle =
     typeof column.title === 'string' ? column.title.replace(/\s+/g, '') : null;
 

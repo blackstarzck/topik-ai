@@ -527,8 +527,10 @@ export function createMockLearningAnalytics(
         avgScoreNormalizedPrev: compareEnabled ? round(previous - questionIndex * 1.1, 1) : null
       }))
     );
+  // 두 분기의 반환 형태가 달라(주제 없음 = null 리터럴 / 주제 있음 = 리터럴 유니온)
+  // 추론이 합쳐지지 않고 `unknown[]` 으로 무너진다 → 요소 타입을 명시한다.
   const pdfTopicUsage = perQuestion
-    .flatMap((question) => {
+    .flatMap<LearningAnalyticsPdfTopicUsage>((question) => {
       const questionTopics = topicStats.filter(
         (topic) => topic.questionNo === question.questionNo
       );

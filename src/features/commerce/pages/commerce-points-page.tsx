@@ -7,7 +7,6 @@ import {
   InputNumber,
   Modal,
   Select,
-  type SortOrder,
   Space,
   type TableProps,
   Tabs,
@@ -16,6 +15,7 @@ import {
   notification
 } from 'antd';
 import type { DescriptionsProps, TableColumnsType, TabsProps } from 'antd';
+import type { SortOrder } from 'antd/es/table/interface';
 import type { ChangeEvent } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';

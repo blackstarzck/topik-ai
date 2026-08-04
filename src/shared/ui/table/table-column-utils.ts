@@ -1,3 +1,5 @@
+import type { Key } from 'react';
+
 type Primitive = string | number;
 
 type AccessorValue = Primitive | readonly Primitive[] | null | undefined;
@@ -13,11 +15,14 @@ function normalizeValue(value: Primitive | null | undefined): string {
 }
 
 function normalizeValues(value: AccessorValue): string[] {
+  // `Array.isArray` 는 `readonly T[]` 를 좁히지 못해 else 분기에 배열 타입이 남는다.
+  // 배열 여부를 먼저 분기한 값으로 다시 넘기지 않고 지역 변수로 좁힌다.
   if (Array.isArray(value)) {
-    return value.map((item) => normalizeValue(item)).filter(Boolean);
+    const items = value as readonly Primitive[];
+    return items.map((item) => normalizeValue(item)).filter(Boolean);
   }
 
-  const normalized = normalizeValue(value);
+  const normalized = normalizeValue(value as Primitive | null | undefined);
   return normalized ? [normalized] : [];
 }
 
@@ -44,7 +49,10 @@ export function createDefinedColumnFilterProps<RecordType>(
   accessor: Accessor<RecordType>
 ): {
   filters: { text: string; value: string }[];
-  onFilter: (value: string | number | boolean, record: RecordType) => boolean;
+  // antd 의 `ColumnType.onFilter` 는 `(value: React.Key | boolean, ...)` 를 넘긴다.
+  // React 19 타입의 `Key` 에는 `bigint` 가 포함되므로 파라미터를 `string | number | boolean`
+  // 으로 좁히면 반공변성 위반으로 컬럼 배열 전체가 `ColumnType` 에 할당되지 않는다.
+  onFilter: (value: Key | boolean, record: RecordType) => boolean;
 } {
   const uniqueValues = Array.from(
     new Set(values.map((value) => normalizeValue(value)).filter(Boolean))

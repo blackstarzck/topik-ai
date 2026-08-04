@@ -645,7 +645,7 @@ export default function UsersPage(): JSX.Element {
     const result = await exportUsersSafe({
       reason: values.reason.trim(),
       includeFullPhone,
-      affiliation: query.affiliation || null,
+      affiliation: query.affiliation || undefined,
       scope,
       selectedUserIds,
       filters: exportFilters,

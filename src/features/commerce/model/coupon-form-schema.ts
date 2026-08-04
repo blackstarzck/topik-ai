@@ -1,4 +1,3 @@
-import type { SelectProps } from 'antd';
 
 import type {
   CommerceCoupon,
@@ -89,14 +88,24 @@ export const couponKindCardItems: Array<{
   }
 ];
 
-export function getCouponKindOptions(): SelectProps['options'] {
+/**
+ * 옵션 헬퍼 반환 타입. `SelectProps['options']`(=`DefaultOptionType[] | undefined`)은 `label` 이
+ * 옵셔널이라 `Radio.Group` 의 `CheckboxOptionType`(label 필수)에 할당되지 않는다.
+ * 실제로 모든 헬퍼가 항상 label·value 를 채우므로 그대로 선언한다.
+ */
+export type CouponLabeledOption = {
+  label: string;
+  value: string;
+};
+
+export function getCouponKindOptions(): CouponLabeledOption[] {
   return couponKindCardItems.map((item) => ({
     label: getCouponKindLabel(item.value),
     value: item.value
   }));
 }
 
-export function getCouponIssueTargetOptions(): SelectProps['options'] {
+export function getCouponIssueTargetOptions(): CouponLabeledOption[] {
   return (['allMembers', 'specificGroup', 'specificMembers'] as const).map(
     (value) => ({
       label: getCouponIssueTargetTypeLabel(value),
@@ -105,7 +114,7 @@ export function getCouponIssueTargetOptions(): SelectProps['options'] {
   );
 }
 
-export function getCouponAutoIssueTriggerOptions(): SelectProps['options'] {
+export function getCouponAutoIssueTriggerOptions(): CouponLabeledOption[] {
   return (
     [
       'firstSignup',
@@ -119,7 +128,7 @@ export function getCouponAutoIssueTriggerOptions(): SelectProps['options'] {
   }));
 }
 
-export function getCouponBenefitTypeOptions(): SelectProps['options'] {
+export function getCouponBenefitTypeOptions(): CouponLabeledOption[] {
   return (
     ['amountDiscount', 'rateDiscount', 'freeShipping', 'fixedPrice'] as const
   ).map((value) => ({
@@ -128,7 +137,7 @@ export function getCouponBenefitTypeOptions(): SelectProps['options'] {
   }));
 }
 
-export function getCouponScopeOptions(): SelectProps['options'] {
+export function getCouponScopeOptions(): CouponLabeledOption[] {
   return (
     ['allProducts', 'specificCategory', 'specificProduct'] as const
   ).map((value) => ({
@@ -137,7 +146,7 @@ export function getCouponScopeOptions(): SelectProps['options'] {
   }));
 }
 
-export function getCouponCodeGenerationOptions(): SelectProps['options'] {
+export function getCouponCodeGenerationOptions(): CouponLabeledOption[] {
   return (
     ['single', 'bulk'] as const
   ).map((value) => ({
@@ -146,14 +155,14 @@ export function getCouponCodeGenerationOptions(): SelectProps['options'] {
   }));
 }
 
-export function getCouponAudienceOptions(): SelectProps['options'] {
+export function getCouponAudienceOptions(): CouponLabeledOption[] {
   return (['memberOnly', 'memberAndGuest'] as const).map((value) => ({
     label: getCouponAudienceLabel(value),
     value
   }));
 }
 
-export function getCouponValidityModeOptions(): SelectProps['options'] {
+export function getCouponValidityModeOptions(): CouponLabeledOption[] {
   return (['fixedDate', 'afterIssued', 'unlimited'] as const).map((value) => ({
     label: getCouponValidityModeLabel(value),
     value

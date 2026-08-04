@@ -154,30 +154,32 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
     return clonePost(updatedPost);
   },
   resolveReport: (payload) => {
-    let updatedReport: CommunityReport | null = null;
     const reports = get().reports.map((report) => {
       if (report.id !== payload.reportId) {
         return report;
       }
 
-      updatedReport = {
+      return {
         ...report,
-        processStatus: '처리 완료',
+        processStatus: '처리 완료' as const,
         resolutionAction: payload.action,
         resolvedBy: 'mock-admin',
         resolvedAt: payload.resolvedAt
       };
-      return updatedReport;
     });
 
-    if (!updatedReport) {
+    // 갱신본은 map 결과에서 다시 찾는다. 가변 외부 변수에 담으면 콜백이 실행된 사실을
+    // 제어흐름 분석이 알지 못해 초기값(null)으로 좁혀진 채 남는다.
+    const resolvedReport =
+      reports.find((report) => report.id === payload.reportId) ?? null;
+    if (!resolvedReport) {
       return null;
     }
 
-    if (payload.action === 'hide_post' && updatedReport.targetPostId) {
+    if (payload.action === 'hide_post' && resolvedReport.targetPostId) {
       const { posts } = updatePostById(
         get().posts,
-        updatedReport.targetPostId,
+        resolvedReport.targetPostId,
         (post) => ({
           ...post,
           status: '숨김',
@@ -191,6 +193,6 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
       set({ reports });
     }
 
-    return cloneReport(updatedReport);
+    return cloneReport(resolvedReport);
   }
 }));
