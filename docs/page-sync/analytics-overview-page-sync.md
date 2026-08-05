@@ -29,7 +29,7 @@ last_reviewed_at: "2026-06-01"
 | 페이지 유형 | `대시보드형` |
 | 페이지 목적 한 줄 요약 | 활성 사용자, 매출, 발송 성공률 같은 운영 통계를 교차 분석하는 화면입니다. |
 | 주요 운영자 | `OPS_ADMIN, SUPER_ADMIN` |
-| 주요 권한 | `analytics.overview.read` |
+| 주요 권한 | `analytics.read` (메뉴·화면 게이팅 + `get_admin_analytics_overview` 서버 강제, 마이그 `20260805130000`). 2026-08-05 정정: 이전 표기 `analytics.overview.read`는 권한 카탈로그에 없는 키였다 |
 | 코드 근거 | `src/features/analytics/pages/analytics-overview-page.tsx` |
 | 연관 SoT 문서 | `docs/specs/page-ia/analytics-overview-page-ia.md`, `docs/specs/admin-data-contract.md`, `docs/specs/admin-data-usage-map.md`, `docs/specs/admin-page-tables.md` |
 

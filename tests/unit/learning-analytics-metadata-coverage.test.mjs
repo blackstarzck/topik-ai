@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import { evaluateLearningAnalyticsCoverage } from '../../scripts/check-learning-analytics-metadata-coverage.mjs';
@@ -50,8 +50,6 @@ const pdfTopicDownMigration = readFileSync(
   ),
   'utf8'
 );
-const adminMigrationsUrl = new URL('../../supabase/migrations-admin/', import.meta.url);
-
 function readDollarBlock(sql, tag) {
   const delimiter = `$${tag}$`;
   const start = sql.indexOf(delimiter);
@@ -213,32 +211,22 @@ describe('학습 분석 RPC metadata 계약 회귀 복구', () => {
     expect(rolledBack).toBe(migration);
   });
 
-  it('가장 최근 RPC 교체가 metadata coverage와 문항별 주제 통계를 함께 유지한다', () => {
-    const rpcMigrations = readdirSync(adminMigrationsUrl)
-      .filter((name) => name.endsWith('.sql'))
-      .map((name) => ({
-        name,
-        sql: readFileSync(new URL(name, adminMigrationsUrl), 'utf8')
-      }))
-      .filter(({ sql }) =>
-        sql.includes('function public.get_admin_learning_analytics_filtered(')
-      )
-      .sort((left, right) => left.name.localeCompare(right.name));
-    const latestRpcMigration = rpcMigrations.at(-1);
-
-    expect(latestRpcMigration?.name).toBe(
-      '20260715190000_admin_learning_analytics_pdf_topics.sql'
-    );
+  it('RPC 교체 이력이 metadata coverage와 문항별 주제 통계를 함께 유지한다', () => {
+    // 🚨 과거에는 "filtered RPC 를 언급하는 사전순 마지막 파일"을 .at(-1) 로 찾아 PDF 계약을
+    // 걸었다. 그 방식은 revoke/comment 로만 이 RPC 를 언급하는 후속 마이그가 추가되는
+    // 순간 무관하게 깨진다 — perTopic 계약은 그것을 도입한 원본 파일(20260715190000)에
+    // 직접 건다. 이후 본문을 다시 바꾸는 마이그는 자기 계약 테스트에서 보존을 단정한다
+    // (20260805130000 은 analytics-read-permission-contract.test.mjs 가 담당).
     expect(restoreMigration).toContain("'metadataEligibleSubmissions'");
     expect(restoreMigration).toContain("'metadataEligibleEvents'");
     expect(restoreMigration).toContain("'questionNo', t.question_no");
-    expect(latestRpcMigration?.sql).toContain('pg_get_functiondef(v_identity)');
-    expect(latestRpcMigration?.sql).toContain('submission_metadata_facts as');
-    expect(latestRpcMigration?.sql).toContain('event_metadata_coverage as');
-    expect(latestRpcMigration?.sql).toContain('topic_total');
-    expect(latestRpcMigration?.sql).toContain('pdf_per_topic as');
-    expect(latestRpcMigration?.sql).toContain("'perTopic'");
-    expect(latestRpcMigration?.sql).toContain('execute v_definition');
+    expect(pdfTopicMigration).toContain('pg_get_functiondef(v_identity)');
+    expect(pdfTopicMigration).toContain('submission_metadata_facts as');
+    expect(pdfTopicMigration).toContain('event_metadata_coverage as');
+    expect(pdfTopicMigration).toContain('topic_total');
+    expect(pdfTopicMigration).toContain('pdf_per_topic as');
+    expect(pdfTopicMigration).toContain("'perTopic'");
+    expect(pdfTopicMigration).toContain('execute v_definition');
   });
 
   it('canonical identity 전환이 있으면 private projection으로만 다시 쓴다', () => {

@@ -15,7 +15,7 @@
 | 현재 상태 | 구현됨 |
 | 페이지 유형 | 대시보드형 |
 | 라우트 | /analytics/overview |
-| 주요 권한 | analytics.read |
+| 주요 권한 | analytics.read (화면 게이팅 + `get_admin_analytics_overview` 서버 강제 — 마이그 20260805130000) |
 | 주요 role | SUPER_ADMIN, OPS_ADMIN, CONTENT_MANAGER, READ_ONLY |
 | 연관 문서 | docs/architecture/admin-overview.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
 

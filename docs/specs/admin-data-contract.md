@@ -941,7 +941,7 @@
 
 ### 신규 RPC: `get_admin_learning_analytics(period_days integer default 30)` (마이그 `20260708140000`)
 
-- 권한: `private.is_admin` (순수 집계, 개인 식별자 미반환 — 기존 `get_admin_analytics_overview`와 동일 표면).
+- 권한: `public.admin_has_permission(caller, 'analytics.read')` (2026-08-05 마이그 `20260805130000`으로 `private.is_admin`에서 전환. 순수 집계, 개인 식별자 미반환 — `get_admin_analytics_overview`와 동일 표면). 화면에서 미사용이지만 직접 호출 우회를 막기 위해 같은 게이트를 적용한다.
 - `period_days`: 7/30/90 = 최근 N일, 0 = 전체. 직전 동일기간 비교값은 N>0에서만(전체는 null).
 - 반환: `summary`(활성 학습자[study_events distinct]·제출/제출자·완료/실패율·정규화 평균·열람률·
   재제출·처리시간 평균+중앙값[고착 재동기화로 평균 부풀 수 있어 중앙값 병기]·elapsed 평균+중앙값·
@@ -964,7 +964,7 @@
 - 배포 전 coverage gate는 target/expected project ref를 모두 명시하고, 모든 metric이 비음수 정수이며 `mapped <= eligible`인지 fail-closed로 확인한 뒤 100% 연결을 요구한다. 환경 별칭 reconciliation은 기존 `held` 상태를 자동 해제하지 않고, apply/restore에서 대상 cardinality와 source-map anchor 생성·제거를 검증한다.
 - `PDF 내보내기 완료 수`는 `study_events.event_type='export_downloaded'` 건수이며 실제 파일 저장 완료를 의미하지 않는다. 단일 제출만 문제 유형/주제로 직접 귀속하고 확정할 수 없는 보고서·서재 선택은 `혼합` 또는 `미분류`로 보존한다. 문제 유형×주제 집계는 직접 귀속·현재 scope 일치 이벤트만 포함하고 혼합·미분류를 임의 배분하지 않으며, 주제 연결이 없는 직접 귀속 행은 null 주제로 보존한다.
 - 2026-07-15: `pdf_usage.perTopic`을 문제 유형(51~54) × `topic_main` × `topic_detail` 단위로 추가했다(마이그 `20260715190000`). `count desc → questionNo → topicMain → topicDetail` 순으로 반환하며 합계는 동일 scope의 직접 귀속 수와 일치한다.
-- 필터 옵션 RPC는 `topic_main → topic_detail`과 51~54번별 세부 특성의 distinct 옵션만 반환한다. 두 RPC 모두 `private.is_admin()` + `SECURITY DEFINER` read-only 계약을 따른다.
+- 필터 옵션 RPC는 `topic_main → topic_detail`과 51~54번별 세부 특성의 distinct 옵션만 반환한다. 두 RPC 모두 `public.admin_has_permission(caller, 'analytics.read')` + `SECURITY DEFINER` read-only 계약을 따른다(2026-08-05 마이그 `20260805130000` 전환. 이전 계약은 `private.is_admin`이었다).
 - 2026-07-15: `topic_stats`를 문제 유형(51~54) × `topic_main` × `topic_detail` 단위로 분해해 각 행에 `questionNo`를 포함한다. 마이그 `20260715130000`은 직전 최신 함수에서 주제 CTE와 JSON projection만 fail-closed로 교체해 metadata coverage·identity 계약을 보존하며, down도 같은 블록만 역변환한다. 정렬은 주제쌍 제출 합계 내림차순 → 대주제 → 세부 주제 → 문제 유형이다.
 - 2026-07-15: dev 선적용 과정에서 발생했던 metadata coverage summary 누락은 `20260715173826`으로 복구했다. clean migration 자산에서는 `20260715130000`부터 coverage를 보존하고, `20260715173826`은 canonical identity 객체가 모두 존재할 때만 private identity projection을 사용하며 일부 설치 상태는 fail-closed로 거부한다. 전체 신규 down을 역순 적용해도 `20260713120000` metadata 계약을 유지한다.
 - URL 복원 키는 `period`, `from`, `to`, `compare`, 반복 `question`, `topicMain`, `topicDetail`, 반복 `d.<field>`다. CSV 공개 열은 `section, question_type, topic_main, topic_detail, metric, category, value, unit, sample_count, coverage, period_start, period_end`로 고정한다.

@@ -17,6 +17,7 @@ import {
   Divider,
   Drawer,
   Empty,
+  Result,
   Segmented,
   Select,
   Skeleton,
@@ -48,6 +49,11 @@ import {
   type LearningAnalyticsQuestionStat,
   type LearningAnalyticsTopicStat
 } from '../api/analytics-learning-service';
+import {
+  isAnalyticsPermissionError,
+  translateAnalyticsError
+} from '../api/analytics-permission-error';
+import { usePermissionStore } from '../../system/model/permission-store';
 import {
   areLearningAnalyticsQueriesEqual,
   countLearningAnalyticsConditions,
@@ -523,6 +529,16 @@ function getQuestionShortLabel(questionNo: LearningQuestionNo): string {
 
 export default function AnalyticsLearningPage(): JSX.Element {
   const { message } = App.useApp();
+  // 화면 게이트는 세션 grants(analytics.read) 기준 — DB 검사와 같은 판정을 내야 한다.
+  const currentAdminId = usePermissionStore((store) => store.currentAdminId);
+  const admins = usePermissionStore((store) => store.admins);
+  const canRead = useMemo(
+    () =>
+      admins
+        .find((admin) => admin.adminId === currentAdminId)
+        ?.permissions.includes('analytics.read') ?? false,
+    [admins, currentAdminId]
+  );
   const [searchParams, setSearchParams] = useSearchParams();
   const searchKey = searchParams.toString();
   const appliedQuery = useMemo(
@@ -547,6 +563,9 @@ export default function AnalyticsLearningPage(): JSX.Element {
     errorMessage: string | null;
   }>({ status: 'pending', data: null, errorMessage: null });
   useEffect(() => {
+    if (!canRead) {
+      return;
+    }
     const controller = new AbortController();
     void fetchLearningAnalyticsFilterOptionsSafe(controller.signal).then((result) => {
       if (controller.signal.aborted) {
@@ -557,9 +576,12 @@ export default function AnalyticsLearningPage(): JSX.Element {
       }
     });
     return () => controller.abort();
-  }, []);
+  }, [canRead]);
 
   useEffect(() => {
+    if (!canRead) {
+      return;
+    }
     const controller = new AbortController();
     setState((current) => ({
       status: 'pending',
@@ -571,10 +593,13 @@ export default function AnalyticsLearningPage(): JSX.Element {
         return;
       }
       if (!result.ok) {
+        // 권한 거절이면 직전 수치를 남기지 않는다 — 회수 후에도 화면에 통계가
+        // 잔존하면 "회수 즉시 거절" 계약이 화면에서 깨져 보인다.
+        const permissionDenied = isAnalyticsPermissionError(result.error.message);
         setState((current) => ({
           status: 'error',
-          data: current.data,
-          errorMessage: result.error.message
+          data: permissionDenied ? null : current.data,
+          errorMessage: translateAnalyticsError(result.error.message)
         }));
         return;
       }
@@ -587,7 +612,7 @@ export default function AnalyticsLearningPage(): JSX.Element {
       setUpdatedAt(new Date());
     });
     return () => controller.abort();
-  }, [appliedQuery, appliedQueryKey, retryKey]);
+  }, [appliedQuery, appliedQueryKey, canRead, retryKey]);
 
   useEffect(() => {
     if (!drawerOpen) {
@@ -959,6 +984,28 @@ export default function AnalyticsLearningPage(): JSX.Element {
         }
       ]
     : [];
+
+  // 모든 훅 뒤에 위치해야 한다(조건부 훅 금지). 메뉴 숨김과 별개로 직접 URL 진입을
+  // 막는 최종 화면 게이트 — DB 는 어차피 거절하지만, 단순 장애로 오해하지 않게 한다.
+  if (!canRead) {
+    return (
+      <ConfigProvider theme={learningTypographyTheme}>
+        <main className="analytics-learning-page" data-testid="analytics-learning-page">
+          <PageTitle
+            title="학습 분석"
+            breadcrumbFirst
+            description="문제 유형, 주제, 기간 기준으로 학습 성과와 피드백 활용을 분석합니다."
+          />
+          <Result
+            status="403"
+            title="통계 조회 권한이 없습니다."
+            subTitle="통계 조회(analytics.read) 권한을 부여받은 관리자만 학습 분석을 볼 수 있습니다. 권한을 부여받은 뒤 새로고침하거나 다시 로그인하면 표시됩니다."
+            extra={<Button onClick={() => history.back()}>이전 화면</Button>}
+          />
+        </main>
+      </ConfigProvider>
+    );
+  }
 
   return (
     <ConfigProvider theme={learningTypographyTheme}>

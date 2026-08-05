@@ -5,7 +5,7 @@ import {
 } from '../../../shared/api/supabase-client';
 
 /**
- * 분석 개요 기간 KPI 실데이터 집계 — get_admin_analytics_overview (is_admin).
+ * 분석 개요 기간 KPI 실데이터 집계 — get_admin_analytics_overview (analytics.read 권한 전용).
  * 현재 기간 + 직전 동일기간 값을 함께 받아 추세(%)는 클라이언트에서 계산한다.
  * Supabase 미설정(mock 모드)에서는 null 을 반환하고 페이지가 기존 목업을 유지한다.
  */

@@ -26,7 +26,7 @@ last_reviewed_at: "2026-07-15"
 | 라우트 | `/analytics/learning` |
 | 현재 상태 | `구현됨` |
 | 목적 | 기간·문제 유형·주제·세부 특성별 TOPIK 쓰기 성과 비교 |
-| 주요 권한 | `analytics.read` |
+| 주요 권한 | `analytics.read` (메뉴·화면 게이팅 + 집계·필터 RPC 서버 강제, 마이그 `20260805130000`) |
 | 연관 SoT | `docs/specs/page-ia/analytics-learning-page-ia.md`, `docs/specs/admin-data-contract.md`, `docs/specs/admin-data-usage-map.md` |
 
 ## 3. 목적과 비목표

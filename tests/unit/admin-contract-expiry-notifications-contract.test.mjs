@@ -144,8 +144,12 @@ describe('manifest lockstep', () => {
     const fileCount = readdirSync(join(cwd(), 'supabase', 'migrations-admin'))
       .filter((name) => name.endsWith('.sql')).length;
     expect(manifest.expectedLocalCount).toBe(fileCount);
-    expect(manifest.batches['release-all'].to).toBe(MIGRATION);
-    expect(manifest.batches['baseline-all'].to).toBe(MIGRATION);
+    // `.to` 를 정확 일치로 박으면 마이그가 하나 추가될 때마다 이 테스트가 깨진다
+    // (expectedLocalCount 상수와 같은 병 — 검사할 불변식은 "범위가 이 마이그를 덮는다"다).
+    expect(manifest.batches['release-all'].from <= MIGRATION).toBe(true);
+    expect(manifest.batches['release-all'].to >= MIGRATION).toBe(true);
+    expect(manifest.batches['baseline-all'].from <= MIGRATION).toBe(true);
+    expect(manifest.batches['baseline-all'].to >= MIGRATION).toBe(true);
 
     const batch = manifest.batches['admin-contract-expiry-notifications'];
     expect(batch.migrations).toEqual([MIGRATION]);
