@@ -263,6 +263,13 @@
 
 - Migration home: `supabase/migrations-admin/20260618120000_admin_user_learning_overview.sql` only creates/replaces a read RPC and its down pair. It creates no tables and changes no v13 DDL.
 - Access gate: `private.is_platform_admin(auth.uid())`, `SECURITY DEFINER`, fixed `search_path`.
+
+### 2026-08-05 정정 — 위 표의 "No policy change from topik-ai" 는 저작 동결 이전 기준이다
+
+- 위 boundary 칸은 2026-06-18 기준이며, **v13 저작 동결(2026-07-30, 워터마크 `20260729120000`)** 이후에는 신규 learner 마이그레이션을 이 저장소 `supabase/migrations-v13/` 에서 저작한다(`supabase/README.md` §2.5.3, 이전 프로그램 M5). 정책 변경도 그 경로로 수행하며, 별도 handoff 나 v13 저장소 변경이 필요하지 않다.
+- 근거·선례: `supabase/migrations-v13/20260805140000_learner_raw_data_admin_read_removal.sql` — `writing_submissions`, `writing_feedback`, `writing_submission_metrics`, `feedback_dimension_scores`, `sentence_feedback`, `study_events`, `comparison_reports` 의 owner-select 정책에서 관리자 분기를 제거하고 `problem_attempts.attempts_admin_select` 를 삭제했다. 이 저장소가 저작한 첫 learner 정책 변경이다.
+- 관리자 read path 는 영향이 없다: 위 표의 RPC 들은 모두 `postgres` 소유 + `rolbypassrls` + `SECURITY DEFINER` 라 RLS 를 우회한다(마이그레이션이 사후 단정으로 이 성질을 확인한다). 관리자 앱은 이 테이블들을 직접 조회하지 않는다.
+- 함의: RPC 표면과 테이블 표면은 **독립된 두 게이트**다. 한쪽만 권한 키로 좁히면 다른 쪽으로 같은 데이터에 도달하므로, 권한 계약을 바꿀 때 두 표면을 함께 판정한다.
 - Privacy decision: admin learning overview can show operational aggregates, scores, and weakness labels, but not answer body or sentence correction body.
 
 ## 2026-07-08 학습 데이터 수집(writing 재정의 + 학습 분석) read 참조 추가

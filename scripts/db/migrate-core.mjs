@@ -71,6 +71,7 @@ export function parseMigrationArgs(args) {
     batchName: getArgValue(args, '--batch'),
     downName: action === 'down' ? getArgValue(args, '--down') : null,
     allowDown: args.includes('--allow-down'),
+    allowOutOfOrderDown: args.includes('--allow-out-of-order-down'),
     requireClean,
     jsonOut: getArgValue(args, '--json-out'),
   };
@@ -715,15 +716,45 @@ commit;`,
   console.log(changed === 0 ? 'baseline already current' : `baselined ${changed} migration(s)`);
 }
 
+// Rolling back out of order is how a tracker and the live schema drift apart.
+// Several migrations here rewrite an existing function by reading its live body and
+// replacing one block (pg_get_functiondef surgery). Those files assert what the
+// previous definition looks like, so undoing an earlier one while a later one is
+// still applied either fails closed or — worse — succeeds against a body the down
+// file was never written for. LIFO is the only order whose result is defined.
+export function findLaterAppliedMigrations({ migrationName, appliedNames }) {
+  return [...appliedNames]
+    .filter((name) => name > migrationName)
+    .sort();
+}
+
 async function rollbackMigration({
   target,
   trackTable,
   migrationsDir,
   migrationName,
+  appliedNames = [],
+  allowOutOfOrderDown = false,
 }) {
   requireMigrationName(migrationName);
   const downPath = join(migrationsDir, 'down', migrationName);
   if (!existsSync(downPath)) fail(`Down migration not found: ${downPath}`);
+
+  const laterApplied = findLaterAppliedMigrations({ migrationName, appliedNames });
+  if (laterApplied.length > 0 && !allowOutOfOrderDown) {
+    fail(
+      `Refusing to roll back ${migrationName} while newer migration(s) are still applied: `
+      + `${laterApplied.join(', ')}. Roll those back first (newest first) so each down runs `
+      + 'against the state its forward file created. If you have verified that none of them '
+      + 'touches the same objects, re-run with --allow-out-of-order-down.'
+    );
+  }
+  if (laterApplied.length > 0) {
+    console.warn(
+      `WARNING: rolling back ${migrationName} out of order; still applied: ${laterApplied.join(', ')}`
+    );
+  }
+
   const table = requireIdentifier(trackTable, 'tracker table');
   const downSql = stripOuterTransaction(readFileSync(downPath, 'utf8'));
   await runSql({
@@ -757,11 +788,14 @@ export async function runMigrate({ trackTable, migrationsDir, args }) {
     if (!options.allowDown) fail('--down also requires --allow-down.');
     const target = getTarget({ write: true });
     await ensureTracker({ target, trackTable });
+    const appliedRows = await loadApplied({ target, trackTable });
     await rollbackMigration({
       target,
       trackTable,
       migrationsDir,
       migrationName: options.downName,
+      appliedNames: appliedRows.map((row) => row.name),
+      allowOutOfOrderDown: options.allowOutOfOrderDown,
     });
     return;
   }

@@ -48,7 +48,7 @@ const TRANSACTION_HOSTILE = [
   ['create tablespace', /\bcreate\s+tablespace\b/i],
 ];
 
-const PROBE_KINDS = new Set(['function', 'table', 'column', 'trigger']);
+const PROBE_KINDS = new Set(['function', 'table', 'column', 'trigger', 'policy']);
 
 function fail(message) {
   throw new Error(message);
@@ -224,9 +224,17 @@ export function buildProbeSql(entries) {
     }
     const parts = identity.split('.');
     if (parts.length !== 3 || !parts.every((part) => PLAIN_IDENTIFIER.test(part))) {
-      fail(`${entry.kind} probe identity must be schema.table.${entry.kind === 'column' ? 'column' : 'trigger'}: ${identity}`);
+      fail(`${entry.kind} probe identity must be schema.table.${entry.kind}: ${identity}`);
     }
     const [schema, table, leaf] = parts;
+    if (entry.kind === 'policy') {
+      // RLS 정책은 이 러너가 다루는 learner 마이그레이션의 실제 변경 대상이다(정책 신설·교체·제거).
+      // 정책 프로브 없이는 그 배치의 expectPresentAfter/expectAbsent 를 쓸 수 없다.
+      return `exists (select 1 from pg_policies p`
+        + ` where p.schemaname = ${sqlLiteral(schema)}`
+        + ` and p.tablename = ${sqlLiteral(table)}`
+        + ` and p.policyname = ${sqlLiteral(leaf)}) as ${alias}`;
+    }
     if (entry.kind === 'column') {
       return `exists (select 1 from information_schema.columns c`
         + ` where c.table_schema = ${sqlLiteral(schema)}`

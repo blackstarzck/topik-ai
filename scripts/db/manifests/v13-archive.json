@@ -11,8 +11,8 @@
   "authoringWatermarkComment": "The highest v13-authored forward version. At or below this version a migration is v13-authored history and keeps its tracker; above it, the migration is topik-ai-authored in this directory.",
   "ledgerMeasuredAt": "2026-07-30",
   "counts": {
-    "forward": 100,
-    "down": 18
+    "forward": 101,
+    "down": 19
   },
   "dispositions": {
     "applied": "Normal learner history. Recorded in the learner tracker.",
@@ -1234,6 +1234,18 @@
       "disposition": "applied"
     },
     {
+      "name": "20260805140000_learner_raw_data_admin_read_removal.sql",
+      "origin": "topik-ai",
+      "sha256": "90ae5c447a6ae5f6d2b4b2aa2c61516641f876b2282b0836497acc6dc85abc6a",
+      "blob": "67b4aa689859b9e6bbd0b9a6dbcf9fc09fc0f5ef",
+      "bytes": 7614,
+      "ledger": {
+        "dev": "absent",
+        "prod": "absent"
+      },
+      "disposition": "authored"
+    },
+    {
       "name": "down/20260612190000_notification_email_pipeline.sql",
       "origin": "v13",
       "sha256": "910c1679e82c4cd1a2cb7b95b1bf5d12b670bb391722840717094ae190d6510e",
@@ -1358,6 +1370,13 @@
       "sha256": "af19011b609824f62a4bd508c355d34095703d159d9902ff506591d255ad396b",
       "blob": "8632a7b6f565471c63cf5903a7c876f2b8842f5b",
       "bytes": 404
+    },
+    {
+      "name": "down/20260805140000_learner_raw_data_admin_read_removal.sql",
+      "origin": "topik-ai",
+      "sha256": "6955dc57a5b5c72cfdcbde78ef74cabd85d10b6fa11ee3e08252ca4a3ea6f791",
+      "blob": "8f8320c7a1c9f2a253b0c5cd5acf6122ae702c77",
+      "bytes": 3732
     }
   ]
 }
