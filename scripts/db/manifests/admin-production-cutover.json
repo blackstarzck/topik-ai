@@ -2,7 +2,7 @@
   "namespace": "admin",
   "environment": "production",
   "projectRef": "eymlabowhfgtxbiqwxqh",
-  "expectedLocalCount": 100,
+  "expectedLocalCount": 101,
   "batches": {
     "notification-baseline": {
       "from": "20260612170000_notification_admin_tables.sql",
@@ -74,11 +74,11 @@
     },
     "baseline-all": {
       "from": "20260612170000_notification_admin_tables.sql",
-      "to": "20260805150000_admin_read_permission_alignment.sql"
+      "to": "20260805160000_audit_logs_sensitive_data_gate_restore.sql"
     },
     "release-all": {
       "from": "20260612170000_notification_admin_tables.sql",
-      "to": "20260805150000_admin_read_permission_alignment.sql"
+      "to": "20260805160000_audit_logs_sensitive_data_gate_restore.sql"
     },
     "institution-assignment-prerequisite": {
       "reason": "배정 0건 기관에 회원을 배정/초대하면 그 회원은 쓰기 문항을 하나도 보지 못한다(기관 할당제). admin_assign_institution_code 와 admin_invite_institution_members 에 선행조건 검사를 끼운다. 짝 가드는 topik_writing 네임스페이스 20260731100100.",
@@ -273,6 +273,36 @@
         {
           "kind": "function",
           "identity": "public.admin_has_permission(uuid,text)"
+        }
+      ]
+    },
+    "audit-log-sensitive-data-gate": {
+      "reason": "감사 로그의 민감정보(diff/payload) 보호를 복원하고 우회 경로인 원본 테이블 접근까지 닫는다. 오너 결정(2026-06-18)으로 20260618095000 이 넣은 platform_admin 전용 게이트를 이후 두 번의 재정의(20260623230000 · 20260720104000)가 드롭해, 활성 content_admin 이 회원 PII 를 포함한 감사 payload 전량을 조회할 수 있는 상태였다. 조회 RPC 게이트를 라이브 정의 수술로 되살리고, admin_audit_logs 직접 조회를 platform_admin 전용으로 좁히고, 관리자가 자기 이름으로 감사 기록을 위조할 수 있던 직접 INSERT 정책을 삭제한다. 감사 기록 쓰기는 RLS 를 우회하는 definer RPC 단일 경로라 정책 축소가 기능을 깨지 않으며, 마이그레이션이 그 성질을 사후 단정한다.",
+      "migrations": [
+        "20260805160000_audit_logs_sensitive_data_gate_restore.sql"
+      ],
+      "expectPresentAfter": [
+        {
+          "kind": "function",
+          "identity": "public.admin_list_audit_logs(text,text,text,timestamptz,timestamptz,integer,integer)"
+        },
+        {
+          "kind": "function",
+          "identity": "private.is_platform_admin(uuid)"
+        },
+        {
+          "kind": "policy",
+          "identity": "public.admin_audit_logs.admin_audit_logs_platform_select"
+        }
+      ],
+      "expectAbsent": [
+        {
+          "kind": "policy",
+          "identity": "public.admin_audit_logs.admin_audit_logs_admin_insert"
+        },
+        {
+          "kind": "policy",
+          "identity": "public.admin_audit_logs.admin_audit_logs_admin_select"
         }
       ]
     }
