@@ -571,6 +571,62 @@ function verifyNotificationMigrationReplay(containerName, migrationPath, memberI
   return { clean: true, before, after };
 }
 
+// 감사 로그 민감정보 보호는 조회 RPC와 원본 테이블 두 표면에 걸쳐 있고, 조회 RPC는 여러
+// 마이그레이션이 순차로 재정의한다. 실제로 지켜야 하는 것은 "전부 재생한 뒤의 최종 상태"이므로
+// 개별 파일의 문자열이 아니라 재생 결과를 단정한다 — 게이트를 드롭했던 두 재정의가 이미
+// 불변 이력이라 파일 단위 검사로는 잡을 수 없다(2026-08-05 회귀).
+function verifyAuditSensitiveDataGate(containerName) {
+  runPsql(containerName, `
+do $$
+declare
+  v_proc regprocedure := to_regprocedure(
+    'public.admin_list_audit_logs(text,text,text,timestamptz,timestamptz,integer,integer)'
+  );
+  v_definition text;
+  v_select_qual text;
+  v_masked integer;
+begin
+  if v_proc is null then
+    raise exception 'audit gate: admin_list_audit_logs is missing after replay';
+  end if;
+
+  select pg_get_functiondef(v_proc) into v_definition;
+
+  if position('v_is_platform := private.is_platform_admin(caller_id);' in v_definition) = 0 then
+    raise exception 'audit gate: platform check is missing from the replayed read RPC';
+  end if;
+  if position('(v_is_platform and l.payload::text ilike' in v_definition) = 0 then
+    raise exception 'audit gate: payload keyword search is not restricted after replay';
+  end if;
+  v_masked := (length(v_definition)
+    - length(replace(v_definition, 'case when v_is_platform then counted.', '')))
+    / length('case when v_is_platform then counted.');
+  if v_masked <> 2 then
+    raise exception 'audit gate: expected diff and payload to be masked, found % masked column(s)', v_masked;
+  end if;
+
+  if (select count(*) from pg_policies
+       where schemaname = 'public' and tablename = 'admin_audit_logs' and cmd = 'SELECT') <> 1 then
+    raise exception 'audit gate: expected exactly one select policy on admin_audit_logs after replay';
+  end if;
+  select p.qual into v_select_qual
+  from pg_policies p
+  where p.schemaname = 'public' and p.tablename = 'admin_audit_logs' and p.cmd = 'SELECT';
+  if position('is_platform_admin' in coalesce(v_select_qual, '')) = 0 then
+    raise exception 'audit gate: raw table select is not platform_admin scoped after replay: %', v_select_qual;
+  end if;
+
+  if exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'admin_audit_logs'
+      and cmd in ('INSERT', 'UPDATE', 'DELETE', 'ALL')
+  ) then
+    raise exception 'audit gate: a direct write policy on admin_audit_logs survived replay';
+  end if;
+end $$;
+`);
+}
+
 function elevateShadowAdmin(containerName, adminId) {
   runPsql(containerName, `
 do $$
@@ -966,6 +1022,7 @@ async function main() {
       ),
       memberId
     );
+    verifyAuditSensitiveDataGate(dbContainer);
     const report = {
       schemaVersion: 2,
       generatedAt: new Date().toISOString(),

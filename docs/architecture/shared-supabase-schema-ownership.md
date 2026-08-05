@@ -249,6 +249,16 @@
 - 결정(오너 2026-06-18): `admin_audit_logs.diff`/`payload`는 민감정보(회원 PII·정책 본문·환불/정지 사유 등)를 포함할 수 있어 **platform_admin에게만** 노출한다. content_admin/org_admin은 목록·필터·actor·`reason`은 보지만 diff/payload는 서버에서 NULL로 받는다(전송 단계 차단, 방어적 게이팅).
 - 마이그레이션: `supabase/migrations-admin/20260618095000_audit_logs_diff_payload_platform_only.sql`(+down). 읽기 RPC `admin_list_audit_logs` CREATE OR REPLACE만, 테이블/RLS/쓰기 경로 무변경(함수 수 불변).
 - 경계: `private.is_platform_admin(caller)`일 때만 diff/payload를 반환하고 payload 키워드 검색 분기도 허용한다. `reason`(payload->>'reason')은 전체 admin에게 유지. dev DB 검증 완료(platform=노출, content_admin=NULL·payload 검색 불가).
+
+### 2026-08-05 회귀와 복원 — 이 결정은 한 번 무력화됐다
+
+- 🚨 회귀: 위 게이트는 이후 `admin_list_audit_logs`를 `create or replace`한 **두 마이그레이션이 드롭**했다 — `20260623230000_admin_accounts_rpcs.sql`(actor를 `admin_accounts`로 재지향)과 `20260720104000_users_audit_target_projection.sql`(User/Users projection). 둘 다 `v_is_platform` 선언이 없고 diff/payload를 그대로 반환하며 payload 키워드 검색도 무조건 허용했다. 화면(`system-audit-logs-page.tsx`)은 그 사이에도 "서버가 게이팅한다"는 주석을 유지했다.
+- 🚨 더 큰 구멍: **RPC만 게이팅해도 닫히지 않았다.** `admin_audit_logs`에 두 정책이 열려 있었다 — `admin_audit_logs_admin_select`(`private.is_admin`, 행·컬럼 제한 없음 → PostgREST 직접 조회로 마스킹 우회)와 `admin_audit_logs_admin_insert`(`private.is_admin` + `admin_user_id = auth.uid()` → 관리자가 자기 이름으로 임의 감사 기록 위조). **RPC 표면과 테이블 표면은 독립된 두 게이트다.**
+- 복원: `supabase/migrations-admin/20260805160000_audit_logs_sensitive_data_gate_restore.sql`(+down). ①조회 RPC 게이트를 라이브 정의 수술로 복원(전문 재정의 금지 — User/Users projection·`admin_accounts` actor 조인 보존을 사전·사후 단정) ②`admin_audit_logs` 직접 SELECT를 `admin_audit_logs_platform_select`(platform_admin 전용)로 축소 ③직접 INSERT 정책 삭제. 감사 기록 쓰기는 `postgres` 소유 + `rolbypassrls` definer RPC 단일 경로라 정책 축소가 기능을 깨지 않으며, 마이그레이션이 그 성질을 사후 단정한다.
+- 소유권: `admin_audit_logs`는 **topik-ai**(admin 운영 감사 도메인) 소유다(2026-06-17 정정 유지). 직접 SELECT는 platform_admin 전용, 그 외 관리자는 `admin_list_audit_logs`만, 쓰기 정책은 두지 않는다.
+- 재발 방지: 파일 단위 문자열 스캔은 쓰지 않는다 — 게이트를 드롭한 두 파일이 이미 적용된 불변 이력이라 그런 단정은 영구 실패한다. 대신 **전체 재생 후 최종 상태**를 검사한다(`scripts/ci/run-shadow-contract.mjs`의 `verifyAuditSensitiveDataGate` — CI `db-contract` 잡에서 실행). 배선 여부는 `tests/unit/audit-log-sensitive-data-gate-contract.test.mjs`가 고정한다.
+- dev 행동 실측(2026-08-05, 트랜잭션 롤백): platform_admin은 500행 중 diff 448·payload 500 노출 / content_admin은 목록 500행·사유 361행은 유지하되 diff·payload 0행 · payload 키워드 검색 0건 / 원본 테이블 직접 조회 platform 4,560행 vs content **0행** / content의 감사 기록 위조 INSERT **거절**.
+
 ## 2026-06-18 Users 상세 학습 테이블 read 참조
 
 | Object | Owner | Write path | Read path | Boundary |

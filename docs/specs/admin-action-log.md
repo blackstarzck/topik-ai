@@ -268,6 +268,15 @@
 - RPC는 `SECURITY DEFINER` + `private.is_admin` 가드로 동작하고, `profiles(admin_user_id -> id)` 조인을 통해 `profiles.display_name`을 `actor`로 해석합니다.
 - 필터는 `target_table`, `target_id`, keyword `ILIKE`, `created_at` 범위이며, 정렬은 `created_at desc`, 페이지네이션은 `p_limit`/`p_offset`입니다.
 - 반환 컬럼은 `log_id`, `target_type`, `target_id`, `action`, `actor`, `reason`, `diff`, `payload`, `created_at`, `total_count`입니다. 단, `diff`/`payload` 민감정보 노출 범위는 미확정이므로 화면 노출은 보류합니다.
+
+### 2026-08-05 조회 계약 갱신 — 두 표면 모두 platform_admin 전용
+
+- `diff`/`payload`와 payload 키워드 검색은 **platform_admin 에게만** 반환합니다(2026-06-18 결정. 그 게이트가 두 번의 RPC 재정의로 사라졌다가 `20260805160000`으로 복원됐습니다 — 경위는 `docs/architecture/shared-supabase-schema-ownership.md`의 2026-08-05 절).
+- `reason`(`payload->>'reason'`)은 **전체 관리자에게 계속 노출**합니다. 따라서 사유 입력란에는 PII를 넣지 않는 것이 감사 계약의 전제입니다 — 사유는 조치의 근거를 남기는 필드이고, 회원 식별 정보가 필요하면 `Target ID`로 참조합니다.
+- 🚨 **원본 테이블 직접 조회도 platform_admin 전용입니다.** `admin_audit_logs`의 SELECT 정책은 `admin_audit_logs_platform_select` 하나뿐이고, 그 외 관리자의 유일한 조회 경로는 이 RPC 입니다. RPC 만 마스킹하면 PostgREST 로 테이블을 직접 읽어 우회할 수 있었습니다(RPC 표면과 테이블 표면은 독립된 두 게이트).
+- 🚨 **직접 INSERT 정책은 두지 않습니다.** 감사 기록은 `SECURITY DEFINER` RPC 단일 경로로만 적재합니다. 종전에는 관리자가 자기 이름으로 임의 감사 행을 만들 수 있어 감사 무결성이 보장되지 않았습니다.
+- actor 해석은 `admin_accounts` 조인입니다(관리자는 `profiles` 행과 물리 분리 — 2026-06-23 이후). 위 268행의 `profiles` 조인 서술은 그 이전 기준입니다.
+
 ## 2026-06-18 Users 학습 현황 조회 감사 로그 기준
 
 - `Users > 회원 상세 > 학습 현황`은 조회 전용 read RPC(`get_admin_user_learning_overview`)이므로 별도 `admin_audit_logs` write를 만들지 않는다.

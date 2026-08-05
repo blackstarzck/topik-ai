@@ -999,3 +999,13 @@
 - Fixed: apply-v13-migration.mjs 의 프로브 종류에 policy 를 추가했다. 이 러너가 다루는 learner 마이그레이션의 실제 변경 대상이 정책인데 프로브가 없어 expectPresentAfter/expectAbsent 를 쓸 수 없었다.
 - Not-updated: 운영 DB 는 미적용이다(대기 9건). 63개 정책 전수 정렬은 오너 결정(키 매핑 원칙·정책 교체 vs 분리·단계 분할) 후 별도 프로그램.
 - Validation: 단위 신규 4 + 전량 통과 · dev 라이브 스키마 up·down 예행(양 마이그) · dev 적용 후 실측 = 권한 없는 content_admin 원본 직접 조회 8테이블 전부 0행 / 학습자 본인 조회 77행 불변 / 관리자 RPC 282건 정상 / dashboard.read·system.backups.read 키 독립성(대시보드 키로 백업 요약 미개방) / 러너가 실제로 비-LIFO down 거부. 프로브 1차에서 16행이 나온 것은 관리자 uid 로 학습 데이터가 있는 계정을 빌려 본인 분기가 잡힌 것이었고, 학습 데이터 0인 계정으로 바꿔 재측정했다.
+
+## 2026-08-05 감사 로그 민감정보 보호 복원 (조회 RPC + 원본 테이블 두 표면)
+
+- Updated: supabase/migrations-admin/20260805160000_audit_logs_sensitive_data_gate_restore.sql(+down, 신규), scripts/ci/run-shadow-contract.mjs(verifyAuditSensitiveDataGate 신설·배선), scripts/db/manifests/admin-{development-reconciliation,production-cutover}.json, docs/architecture/shared-supabase-schema-ownership.md(2026-08-05 회귀·복원 절 신설), docs/specs/admin-action-log.md(조회 계약 갱신 절 신설), docs/specs/admin-page-gap-register.md(§4.9.1 + §7), tests/unit/audit-log-sensitive-data-gate-contract.test.mjs(신규)
+- Reason: 오너 결정(2026-06-18)의 platform_admin 전용 게이트가 두 번의 RPC 재정의(20260623230000 · 20260720104000)로 드롭돼 활성 content_admin 이 회원 PII 를 포함한 감사 payload 전량을 조회할 수 있었다. 외부 리뷰(Codex GPT-5.6)가 지적하고 실측으로 확인했다. 등급·권한 프로그램의 선행 조건이기도 하다 — 감사 조회 권한을 부여하는 순간 민감정보까지 함께 나간다.
+- Contract: diff/payload 와 payload 키워드 검색은 platform_admin 전용. reason 은 전체 관리자 유지(사유에 PII 를 넣지 않는 것이 전제). 원본 테이블 직접 SELECT 도 platform_admin 전용이고 그 외 관리자의 유일한 조회 경로는 RPC 다. 직접 INSERT 정책은 두지 않는다 — 감사 기록은 definer RPC 단일 경로. 전문 재정의 금지: 라이브 정의를 읽어 네 앵커만 치환하고 User/Users projection·admin_accounts actor 조인 보존을 사전·사후 단정한다.
+- Found: RPC 만 게이팅해도 닫히지 않았다. admin_audit_logs 의 admin_select 정책이 행·컬럼 제한 없는 is_admin 기준이라 PostgREST 로 우회 가능했고, admin_insert 정책은 관리자가 자기 이름으로 감사 기록을 위조할 수 있게 했다. PR #80 에서 내가 직접 문서화한 "RPC 표면과 테이블 표면은 독립된 두 게이트" 교훈을 바로 다음 계획에서 놓쳤다.
+- Rejected: 파일 전수 스캔 테스트("이 함수를 정의하는 모든 마이그는 게이트를 포함해야 한다"). 게이트를 드롭한 두 파일이 이미 적용된 불변 이력이라 영구 실패한다 — 리뷰가 이 결함을 지적했다. 대체로 전체 재생 후 최종 상태를 검사하는 shadow 검증을 신설하고, 배선 여부를 단위 테스트가 고정한다.
+- Not-updated: 운영 DB 는 미적용(대기 10건). 등급·권한 모델(계획 2·3단계)은 정책 63개 정렬이 선행 조건이라 이번 범위가 아니다.
+- Validation: harness:check exit 0 · 단위 674/674(신규 15) · e2e system-audit-logs 통과 · check:expand-migrations · check:migration-boundary · db:contracts:verify(admin 101/101 clean) · dev 라이브 스키마 up·down 예행 · dev 적용 후 행동 실측(platform 500행 중 diff 448·payload 500 노출 / content 목록 500·사유 361 유지 + diff·payload 0 + payload 키워드 0 / 원본 직접조회 platform 4,560 vs content 0 / content 위조 INSERT 거절 / 오너 계정 역할·상태 불변). 프로브 1차 실패는 최신 감사 행의 diff 가 원래 NULL 인 데이터 특성이었고 순서 의존을 없애 집계 단정으로 교체했다.
