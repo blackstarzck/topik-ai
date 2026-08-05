@@ -1,7 +1,17 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { cwd } from 'node:process';
 import { describe, expect, it } from 'vitest';
+
+/**
+ * manifest 의 expectedLocalCount 는 **실제 마이그 파일 수**와 같아야 한다. 그 숫자를 상수로
+ * 박으면 마이그가 하나 추가될 때마다 이 파일과 무관한 테스트가 깨진다(PR-B·PR-C·PR-D 에서
+ * 세 번 겪었다). 파일 수를 세서 비교하면 lockstep 이라는 원래 불변식을 그대로 검사하면서
+ * 무관한 유지보수가 사라진다.
+ */
+function countMigrations(dir) {
+  return readdirSync(join(cwd(), 'supabase', dir)).filter((name) => name.endsWith('.sql')).length;
+}
 
 // SQL 계약 테스트. 마이그는 적용해야 검증되는 것이 많지만, "이 줄이 사라지면 조용히
 // 위험해지는" 성질은 파일 텍스트로도 고정할 수 있다. 여기서는 그런 것만 다룬다:
@@ -289,11 +299,10 @@ describe('A3 intake 가드 — 문자열 수술 보호', () => {
 
 describe('manifest lockstep', () => {
   it.each([['writing/development'], ['writing/production']])(
-    '%s 은 39개 + 계약 배치를 등재한다',
+    '%s 은 파일 수와 일치하고 계약 배치를 등재한다',
     (key) => {
       const manifest = manifests[key];
-      // 39 = 계약 5종 + PR-C 가 추가한 노출 옵션 읽기 RPC(20260805100000).
-      expect(manifest.expectedLocalCount).toBe(39);
+      expect(manifest.expectedLocalCount).toBe(countMigrations('migrations'));
       // release-all 의 끝은 더 이상 W2 가 아니다. 끝을 고정하면 뒤에 파일이 붙을 때마다
       // 무관한 테스트가 깨지므로 "릴리스 범위에 포함된다"는 의도만 남긴다.
       expect(manifest.batches['release-all'].to >= W2).toBe(true);
@@ -312,12 +321,14 @@ describe('manifest lockstep', () => {
   );
 
   it.each([['admin/development'], ['admin/production']])(
-    '%s 은 97개 + 신규 배치 3종을 등재한다',
+    '%s 은 파일 수와 일치하고 신규 배치 3종을 등재한다',
     (key) => {
       const manifest = manifests[key];
-      expect(manifest.expectedLocalCount).toBe(97);
-      expect(manifest.batches['release-all'].to).toBe(A3);
-      expect(manifest.batches['baseline-all'].to).toBe(A3);
+      expect(manifest.expectedLocalCount).toBe(countMigrations('migrations-admin'));
+      // release/baseline 의 끝은 뒤에 마이그가 붙을 때마다 바뀐다 — 이 PR 의 파일이 릴리스
+      // 범위에 포함된다는 의도만 남긴다.
+      expect(manifest.batches['release-all'].to >= A3).toBe(true);
+      expect(manifest.batches['baseline-all'].to >= A3).toBe(true);
       expect(manifest.batches['institution-code-settings'].migrations).toEqual([A1]);
       expect(manifest.batches['institution-contract-delete-cleanup'].migrations).toEqual([A2]);
       expect(manifest.batches['institution-intake-guards'].migrations).toEqual([A3]);

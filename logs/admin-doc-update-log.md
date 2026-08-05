@@ -967,3 +967,13 @@
 - Fixed: PR-B 가 auto_assign_new_questions 의 쓰기 RPC 만 만들어 값을 되읽을 수 없었다(write-only) — 토글이 현재 상태를 그릴 수 없어 신규 읽기 RPC 20260805100000 을 추가했다. 기존 조회 RPC 확장은 returns table 변경이 drop+create 를 요구해 expand 게이트에 막힌다.
 - Not-updated: 가드 없는 inviteInstitutionMembersSafe 는 삭제하지 않고 @deprecated 로 표시했다(화면 호출부 0건). wrapper 가 없는 구 스키마로 롤백할 때의 복귀 지점이다.
 - Validation: harness:check exit 0 · 단위 신규 8+34 · e2e 신규 8건(겹침 거부는 결함 주입으로 red 확인) · 프리뷰 mock 실측(계약 컬럼 3톤·토글 왕복·만료 기관 비노출 배지·초대 기본값 14일 prefill) · db:contracts:verify writing 39 clean · dev DB 적용 후 쓰기→읽기 왕복 확인.
+
+## 2026-08-05 관리자 인앱 알림 + 기관 계약 만료 임박 적재 (PR-D)
+
+- Updated: docs/specs/notification-contract.md(§9 신설), scripts/db/manifests/admin-{development-reconciliation,production-cutover}.json, tests/unit/admin-contract-expiry-notifications-contract.test.mjs(신규), tests/e2e/admin-notification-bell.spec.ts(신규)
+- Reason: 계약 기간(PR #76)과 D-day 화면(PR #77)은 있지만 관리자가 그 화면에 들어오지 않으면 만료를 놓친다. 오너 요구는 만료 임박 인앱 알림이었다.
+- Contract: 관리자 알림은 admin_notifications(수신자 FK=admin_accounts) 에 쌓고 학습자 알림함 user_notifications 와 원장을 분리한다 — 그쪽은 v13 공유 객체라 관리 문구가 학습자 앱에 노출된다. dedup 은 (recipient_admin_id, event_key) unique(10분 tick 이라 없으면 하루 144번 적재). 신규 cron 없이 기존 dispatch_notifications tick 에 키를 더하며 기존 키 보존을 사후 단정한다. 만료 버킷은 겹치지 않게 자른다(7<d<=30 d30 / 0<d<=7 d7 / d<=0 expired) — 범위 판정이라 놓친 날을 복구하면서도 5일 남은 계약에 D-30 문구가 나가지 않는다. 수신자는 profiles.app_role=platform_admin(RBAC SoT). 읽음 처리는 조치가 아니라 열람이라 사유·감사 로그를 요구하지 않는다.
+- Corrected: 계획서의 PR-D 전제 2개가 실측과 달랐다. ①관리자는 profiles 행이 없어 수신자가 될 수 없다 → 사실이 아니다(admin_accounts.id 는 auth.users 참조이고 handle_new_user 가 profiles 행을 만든다, dev·운영 1/1 확인). ②org_admin 을 수신자로 → org_admin 계정이 dev·운영 모두 0개이고 기관 매핑 스키마도 없어 수신자가 구조적으로 0명이 된다. 오너 결정으로 마스터 관리자를 먼저 수신자로 두고 substrate 를 재사용하기로 했다.
+- Fixed: 목록 RPC 정렬에 id tie-break 를 넣었다. 한 tick 적재는 단일 INSERT 라 created_at 이 전부 같아 tie-break 없이는 목록 순서가 조회마다 흔들리고 limit 경계에서 행이 누락·중복된다(행동 테스트 작성 중 발견).
+- Not-updated: org_admin 계정 생성·기관 매핑·권한 스코프는 이 PR 범위가 아니다. 수신자 해석만 바꾸면 되도록 substrate 를 분리해 뒀다.
+- Validation: harness:check exit 0 · 단위 신규 14 · e2e 신규 3 · db:contracts:verify admin 98 clean · check:migration-boundary 통과 · dev 라이브 스키마 up·down 예행(사후 단정 포함) · dev 적용 후 행동 실측 11항목(버킷 3종 정확성·무기한 제외·재적재 dedup 0건·tick 기존 키 6종 보존·미읽음 수·개별/전체 읽음·딥링크). tick 배선 제거를 주입해 단위 테스트 red 확인.
