@@ -289,11 +289,14 @@ describe('A3 intake 가드 — 문자열 수술 보호', () => {
 
 describe('manifest lockstep', () => {
   it.each([['writing/development'], ['writing/production']])(
-    '%s 은 38개 + 계약 배치를 등재한다',
+    '%s 은 39개 + 계약 배치를 등재한다',
     (key) => {
       const manifest = manifests[key];
-      expect(manifest.expectedLocalCount).toBe(38);
-      expect(manifest.batches['release-all'].to).toBe(W2);
+      // 39 = 계약 5종 + PR-C 가 추가한 노출 옵션 읽기 RPC(20260805100000).
+      expect(manifest.expectedLocalCount).toBe(39);
+      // release-all 의 끝은 더 이상 W2 가 아니다. 끝을 고정하면 뒤에 파일이 붙을 때마다
+      // 무관한 테스트가 깨지므로 "릴리스 범위에 포함된다"는 의도만 남긴다.
+      expect(manifest.batches['release-all'].to >= W2).toBe(true);
       expect(manifest.batches['institution-contracts'].migrations).toEqual([W1, W2]);
       expect(manifest.batches['institution-contracts'].expectPresentAfter).toEqual(
         expect.arrayContaining([
@@ -334,6 +337,25 @@ describe('manifest lockstep', () => {
     }
   );
 
+  it.each([['writing/development'], ['writing/production']])(
+    '%s 은 노출 옵션 읽기 RPC 배치를 등재한다',
+    (key) => {
+      const batch = manifests[key].batches['institution-exposure-options-read'];
+      expect(batch).toBeDefined();
+      expect(batch.migrations).toEqual([
+        '20260805100000_topik_writing_institution_exposure_options_read.sql'
+      ]);
+      expect(batch.expectPresentAfter).toEqual(
+        expect.arrayContaining([
+          {
+            kind: 'function',
+            identity: 'public.admin_list_institution_exposure_options(text[])'
+          }
+        ])
+      );
+    }
+  );
+
   it('모든 신규 배치에 한국어 reason 이 있다', () => {
     const batches = [
       manifests['writing/development'].batches['institution-contracts'],
@@ -341,6 +363,7 @@ describe('manifest lockstep', () => {
       manifests['admin/development'].batches['institution-code-settings'],
       manifests['admin/development'].batches['institution-contract-delete-cleanup'],
       manifests['admin/development'].batches['institution-intake-guards'],
+      manifests['writing/development'].batches['institution-exposure-options-read'],
     ];
     for (const batch of batches) {
       expect(batch.reason).toBeTruthy();

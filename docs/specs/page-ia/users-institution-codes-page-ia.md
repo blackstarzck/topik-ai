@@ -46,6 +46,7 @@
 | 생성 페이지 (`/create`) | 코드 메타데이터 등록 | code, label, kind, note + 노출 모드 읽기 전용 안내 | 생성(성공 시 상세 `노출 문항` 탭으로 이동), 취소 | `System > 감사 로그` target=`InstitutionCode` | 가입/기관 유입 코드 신설 |
 | 상세 헤더 (`/:code`) | 코드 식별·현재 상태 확인 | code, label, status, kind, memberCount | 없음(탭 전환) | 없음 | 없음 |
 | 상세 `기본 정보` 탭 | 코드 메타데이터 수정 | label, kind, status, note, reason + 생성·수정일 | 수정 | `System > 감사 로그` target=`InstitutionCode` | 가입/기관 유입 코드 상태 반영 |
+| 상세 `계약` 탭 | 계약 기간 원장(= 히스토리)과 운영 담당자 관리 | 현재 계약 기간·D-day 배지·계약 이력 건수, 계약 행(기간/상태/문서 링크/메모), contactName, contactEmail, reason | 계약 추가·수정·삭제(사유 필수), 담당자 정보 저장 | `System > 감사 로그` target=`InstitutionCode` | 기관 계약 기간, 만료 연동 노출 제어 |
 | 상세 `회원` 탭 | 코드별 소속 회원·대기 중 초대를 통합 로스터 한 테이블로 관리(초대 행은 '초대 대기' 태그 + 이메일 발송 상태 태그) | userId, 이름, 이메일, 상태(회원 상태 또는 초대 대기·이메일 대기/발송됨/실패), 가입·초대일 | 회원 초대(인앱+이메일 알림, 이메일은 즉시 kick), 초대 취소, 소속 해제 | `Users > 회원 목록/상세` affiliation 필터와 정합, 발송 결과는 `메시지 ▸ 발송 이력` | 기관 회원 구분, 알림함 초대 카드 |
 | 상세 `노출 문항` 탭 | 노출 모드 전환 + 기관별 문항 배정 관리(한 화면) | exposureMode, assignedQuestionCount, questionId, 문항 번호, 주제, 유형, serviceStatus, isExposed | 노출 모드 변경, 문항 추가, 문항 해제 | `Assessment > 문항`의 기관 노출 상태와 정합 | 기관 소속 학습자 대상 TOPIK 쓰기 문항 배정 |
 
@@ -109,7 +110,7 @@
 
 - 기본 라우트: 목록 `/users/institution-codes`, 생성 `/users/institution-codes/create`, 상세 `/users/institution-codes/:code`.
 - 정적 `create` 세그먼트가 동적 `:code` 보다 먼저 매칭되므로, 코드 값 `create`는 생성 폼에서 예약어로 거부합니다(그 코드의 상세 URL 이 영구히 가려지는 것을 막습니다).
-- 상세 탭은 `?tab=info|members|questions`로 복원합니다. 미지정 또는 알 수 없는 값이면 `info`로 해석하며, 탭 전환은 `replace`로 기록해 뒤로 가기가 목록으로 돌아가게 합니다.
+- 상세 탭은 `?tab=info|contract|members|questions`로 복원합니다. 미지정 또는 알 수 없는 값이면 `info`로 해석하며, 탭 전환은 `replace`로 기록해 뒤로 가기가 목록으로 돌아가게 합니다.
 - 목록의 구 딥링크 `?selected={code}`는 상세(`/users/institution-codes/{code}`)로 `replace` 리다이렉트합니다. 기존 감사 로그 링크·북마크 호환용이며, 감사 로그가 새로 만드는 링크는 상세 URL 을 직접 가리킵니다.
 - 목록의 후보 쿼리 파라미터: `page`, `pageSize`, `kind`, `status`. 목록 검색 문자열은 생성 페이지 진입 시 유지되어 취소 시 같은 목록 상태로 복귀합니다.
 
@@ -124,8 +125,8 @@
 
 ## 12. 구현 메모
 
-- 구현 파일: `src/features/users/pages/institution-codes-page.tsx`(목록·삭제), `src/features/users/pages/institution-code-create-page.tsx`(생성), `src/features/users/pages/institution-code-detail-page.tsx`(상세 셸), `src/features/users/ui/institution-code-detail/`(탭 3개), `src/features/users/ui/institution-question-exposure-panel.tsx`, `src/features/users/model/institution-codes-types.ts`, `src/features/users/model/institution-questions-types.ts`.
-- 상세 셸이 코드 메타와 노출 모드 원장 행을 한 번 조회해 탭에 내리고, 탭의 변경은 `onChanged` 콜백으로 셸 재조회를 유발합니다. 배정 건수·회원 수처럼 여러 탭이 함께 읽는 값이 stale 해지지 않게 하는 단일 경로입니다.
+- 구현 파일: `src/features/users/pages/institution-codes-page.tsx`(목록·삭제), `src/features/users/pages/institution-code-create-page.tsx`(생성), `src/features/users/pages/institution-code-detail-page.tsx`(상세 셸), `src/features/users/ui/institution-code-detail/`(탭 4개 + 회원 정책 섹션), `src/features/users/ui/institution-question-exposure-panel.tsx`, `src/features/users/model/institution-codes-types.ts`, `src/features/users/model/institution-questions-types.ts`.
+- 상세 셸이 코드 메타·노출 모드 원장 행·계약 요약·운영 설정·노출 옵션을 한 번 조회해 탭에 내리고, 탭의 변경은 `onChanged` 콜백으로 셸 재조회를 유발합니다. 배정 건수·회원 수처럼 여러 탭이 함께 읽는 값이 stale 해지지 않게 하는 단일 경로입니다.
 - 탭은 `destroyOnHidden`으로 두어 구 모달의 `destroyOnHidden` 초기화 의미(미저장 트리 선택·검색어 리셋)를 유지합니다.
 - mock 경로의 코드 생성/수정/삭제는 `src/features/users/api/mock-institution-codes.ts`의 모듈 메모리에 반영합니다. 생성·수정이 별도 라우트가 되어 목록 복귀 시 리마운트 재조회가 일어나므로, 페이지 로컬 상태 patch 로는 방금 만든 코드가 사라집니다. 시드 배열은 **끝에만** 추가합니다(e2e 가 `.first()` 행을 A부스로 가정).
 - service facade: `src/features/users/api/institution-codes-service.ts`, `src/features/users/api/institution-questions-service.ts`.
@@ -136,6 +137,12 @@
 ## 13. 오픈 이슈
 
 - **기관 노출 모드(2026-08-01)**: 기관마다 `제한 없음` 또는 `배정분만` 을 둡니다. `제한 없음` 이면 그 기관 소속 학습자도 `available` 문항 전체를 보고 이후 승격되는 신규 문항이 자동 포함됩니다(배정 목록은 보존되지만 게이팅에 참여하지 않습니다). `배정분만` 이면 배정된 문항만 봅니다. 모드 원장(`topik_writing_institution_exposure_mode`)에 행이 없으면 `배정분만` 으로 해석합니다 — 폴백과 신규 코드의 시작 모드는 항상 현행 동작인 `배정분만`입니다.
+- **계약 연동 배치(2026-08-05, PR-C)**: 계약 기간은 상세 `계약` 탭, 계약과 연동되는 노출 옵션 2종(만료 시 자동 비노출 · 신규 문항 자동 배정)은 `노출 문항` 탭, 정원·초대 유효기간 기본값·만료 시 유입 차단은 `회원` 탭의 `회원 정책` 섹션입니다. 기준은 "그 값이 바꾸는 것을 같은 화면에서 볼 수 있는가"입니다 — 옵션 2종은 노출을 바꾸므로 배정 현황 옆에, 정원 3종은 회원을 더 받을 수 있는지를 결정하므로 현원·대기 초대 목록 옆에 둡니다.
+- **D-day 배지는 단일 컴포넌트**(`institution-contract-dday-badge.tsx`)로 목록 컬럼·상세 헤더·계약 탭이 공유합니다. 색·문구 결정은 모델의 순수 함수(`resolveContractTone`/`resolveContractDdayLabel`)에 둡니다 — 화면마다 기준이 갈라져 오진을 낳은 구 노출 모드 라벨(PR #66)을 반복하지 않기 위한 것입니다.
+- **`계약 없음` 과 `만료` 를 반드시 구분합니다.** 계약 미등재 기관은 만료할 계약이 없어 노출이 제한되지 않는 **정상 상태**이고, `만료` 는 조치가 필요한 상태입니다. 둘을 같은 톤으로 묶으면 운영자가 불필요한 계약을 만듭니다. 유효 계약이 없을 때는 기간 문자열을 붙이지 않습니다(`- 만료` 는 정보가 아니라 잡음이며 프리뷰 실측에서 잡았습니다).
+- **만료는 배정을 지우지 않습니다.** 계약을 연장하면 배정 행이 그대로인 상태로 노출만 즉시 복구됩니다(서버 lazy 판정). 화면은 연장 후 재배정을 안내하지 않으며, 수정 성공 알림이 그 사실을 명시합니다.
+- **옵션 값을 못 읽었으면 토글을 잠급니다.** 기본값 false 로 그려두면 "이미 켜져 있는데 꺼진 것처럼 보이는" 상태에서 잘못된 쓰기가 나갑니다. 자동 배정 값을 되읽는 경로는 `admin_list_institution_exposure_options`(`20260805100000`)뿐입니다 — PR-B 가 쓰기 RPC 만 만들어 write-only 였던 것을 PR-C 에서 보완했습니다.
+- **초대는 `_guarded` wrapper RPC 로만 나갑니다.** 기관 코드 상세뿐 아니라 `회원 목록`의 일괄 배정과 `회원 상세`의 기관 소속 탭도 같은 경로를 씁니다 — 한 곳이라도 원함수를 직접 부르면 그 진입점에서 정원·만료 차단이 조용히 우회됩니다. 만료 기간을 비워 보내면 서버가 기관 설정의 기본값(없으면 전역 7일)으로 해석하므로 화면이 7 을 하드코딩하지 않습니다.
 - **모드 전환 지점(2026-08-03 이전)**: 상세 `노출 문항` 탭 상단의 라디오 2안(변경 사유 필수). 배정 현황을 같은 화면에서 보며 판단해야 하는 스위치라 `기본 정보` 탭이 아니라 여기에 둡니다 — 구 `수정` 모달에 있던 "노출 문항 열기" 탈출 버튼이 필요 없어집니다. 생성 페이지에는 읽기 전용 안내만 두어, 배정 0건 상태로 `배정분만` 을 고를 수 있는 경로를 만들지 않습니다.
 - **모드 전환 차단(2026-08-01)**: 배정이 0건인데 소속 회원 또는 대기 중 초대가 있는 기관은 `배정분만` 으로 전환할 수 없습니다. 전환 즉시 그 학습자에게 쓰기 문항이 하나도 보이지 않기 때문입니다. 화면은 error Alert + `노출 모드 변경` 버튼 비활성으로 막고, 서버는 모드 원장 트리거로 거부합니다.
 - **배정 편집은 두 모드에서 모두 허용**합니다. 의도된 동선이 "먼저 배정 → 그다음 `배정분만` 전환"이라, `제한 없음` 에서 배정 편집을 잠그면 그 순서가 불가능해집니다. 대신 패널이 warning 으로 "지금은 학습자 화면에 영향을 주지 않는다"를 알립니다.

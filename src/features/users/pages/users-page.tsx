@@ -41,10 +41,13 @@ import {
   type UserExportScope
 } from '../model/user-export-types';
 import {
-  inviteInstitutionMembersSafe,
   clearInstitutionCodeSafe,
   fetchInstitutionCodesSafe
 } from '../api/institution-codes-service';
+import {
+  inviteInstitutionMembersGuardedSafe,
+  translateInstitutionContractError
+} from '../api/institution-contracts-service';
 import { kickNotificationEmailDispatch } from '../../../shared/api/notification-email-kick';
 import {
   AFFILIATION_FILTER_AFFILIATED,
@@ -726,11 +729,13 @@ export default function UsersPage(): JSX.Element {
     }
     const result =
       bulkMode === 'assign'
-        ? await inviteInstitutionMembersSafe(
+        ? // 정원·계약 만료 차단이 걸린 wrapper 로 보낸다(기관 코드 화면과 같은 경로).
+          // 만료 기간을 비우면 서버가 기관 설정의 기본값으로 해석한다.
+          await inviteInstitutionMembersGuardedSafe(
             ids,
             values.code,
             values.reason,
-            values.expiresInDays ?? 7
+            values.expiresInDays ?? null
           )
         : await clearInstitutionCodeSafe(ids, values.reason);
     setBulkSubmitting(false);
@@ -739,7 +744,7 @@ export default function UsersPage(): JSX.Element {
     if (!result.ok) {
       notificationApi.error({
         message: `${actionLabel} 실패`,
-        description: result.error.message
+        description: translateInstitutionContractError(result.error.message)
       });
       return;
     }

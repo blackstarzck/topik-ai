@@ -7,11 +7,23 @@ import {
   fetchInstitutionExposureModesSafe,
   isInstitutionCodesSupabase
 } from '../api/institution-codes-service';
+import {
+  fetchInstitutionContractStatusSafe,
+  fetchInstitutionExposureOptionsSafe,
+  fetchInstitutionSettingsSafe
+} from '../api/institution-contracts-service';
 import { defaultInstitutionExposureMode } from '../model/institution-codes-types';
 import type {
   InstitutionCode,
   InstitutionExposureModeRow
 } from '../model/institution-codes-types';
+import type {
+  InstitutionContractStatusSummary,
+  InstitutionExposureOptions,
+  InstitutionSettings
+} from '../model/institution-contracts-types';
+import { InstitutionContractDdayBadge } from '../ui/institution-contract-dday-badge';
+import { InstitutionCodeContractTab } from '../ui/institution-code-detail/institution-code-contract-tab';
 import { InstitutionCodeInfoTab } from '../ui/institution-code-detail/institution-code-info-tab';
 import { InstitutionCodeMembersTab } from '../ui/institution-code-detail/institution-code-members-tab';
 import { InstitutionCodeQuestionsTab } from '../ui/institution-code-detail/institution-code-questions-tab';
@@ -25,7 +37,7 @@ import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 
 const { Paragraph, Text } = Typography;
 
-const DETAIL_TAB_KEYS = ['info', 'members', 'questions'] as const;
+const DETAIL_TAB_KEYS = ['info', 'contract', 'members', 'questions'] as const;
 type InstitutionCodeDetailTabKey = (typeof DETAIL_TAB_KEYS)[number];
 
 function isDetailTab(value: string | null): value is InstitutionCodeDetailTabKey {
@@ -52,6 +64,15 @@ export default function InstitutionCodeDetailPage(): JSX.Element {
     errorCode: null
   });
   const [exposureModeRow, setExposureModeRow] = useState<InstitutionExposureModeRow | null>(
+    null
+  );
+  // 계약 요약·운영 설정·노출 옵션은 여러 탭이 함께 읽는다(계약 탭은 D-day 와 담당자,
+  // 회원 탭은 정원·초대 기본값, 노출 문항 탭은 토글 2종). 셸에서 한 번 읽어 내려야
+  // 탭을 옮길 때마다 같은 값을 다시 받거나 서로 stale 해지지 않는다.
+  const [contractStatus, setContractStatus] =
+    useState<InstitutionContractStatusSummary | null>(null);
+  const [settings, setSettings] = useState<InstitutionSettings | null>(null);
+  const [exposureOptions, setExposureOptions] = useState<InstitutionExposureOptions | null>(
     null
   );
   const [reloadKey, setReloadKey] = useState(0);
@@ -110,6 +131,31 @@ export default function InstitutionCodeDetailPage(): JSX.Element {
       setExposureModeRow(
         result.ok ? (result.data.find((row) => row.code === code) ?? null) : null
       );
+    });
+
+    // 계약·설정·옵션도 각각 독립적으로 실패할 수 있다. null 로 두면 각 탭이 "불러오는 중"
+    // 또는 기본값으로 degrade 하며, 코드 메타가 살아 있으면 화면 자체는 계속 쓸 수 있다.
+    void fetchInstitutionContractStatusSafe(code, controller.signal).then((result) => {
+      if (controller.signal.aborted) {
+        return;
+      }
+      setContractStatus(
+        result.ok ? (result.data.find((row) => row.code === code) ?? null) : null
+      );
+    });
+
+    void fetchInstitutionSettingsSafe(code, controller.signal).then((result) => {
+      if (controller.signal.aborted) {
+        return;
+      }
+      setSettings(result.ok ? result.data : null);
+    });
+
+    void fetchInstitutionExposureOptionsSafe(code, controller.signal).then((result) => {
+      if (controller.signal.aborted) {
+        return;
+      }
+      setExposureOptions(result.ok ? result.data : null);
     });
 
     return () => {
@@ -199,6 +245,11 @@ export default function InstitutionCodeDetailPage(): JSX.Element {
               가입 {institution.memberCount.toLocaleString()}명
             </Text>
           ) : null}
+          {/* 계약 상태는 어느 탭에 있든 보여야 한다 — 만료된 기관을 모르고 회원을
+              배정하거나 문항을 손대는 것이 이 기능이 막으려는 상황이다. */}
+          {contractStatus ? (
+            <InstitutionContractDdayBadge summary={contractStatus} showPeriod />
+          ) : null}
         </Space>
         {!isInstitutionCodesSupabase ? (
           <Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
@@ -225,11 +276,27 @@ export default function InstitutionCodeDetailPage(): JSX.Element {
               ) : null
             },
             {
+              key: 'contract',
+              label: '계약',
+              children: institution ? (
+                <InstitutionCodeContractTab
+                  institution={institution}
+                  contractStatus={contractStatus}
+                  settings={settings}
+                  canManage={canManageMembers}
+                  notificationApi={notificationApi}
+                  onChanged={handleChanged}
+                />
+              ) : null
+            },
+            {
               key: 'members',
               label: '회원',
               children: institution ? (
                 <InstitutionCodeMembersTab
                   institution={institution}
+                  settings={settings}
+                  contractStatus={contractStatus}
                   canManage={canManageMembers}
                   notificationApi={notificationApi}
                   onChanged={handleChanged}
@@ -244,6 +311,8 @@ export default function InstitutionCodeDetailPage(): JSX.Element {
                   institution={institution}
                   exposureMode={exposureMode}
                   assignedQuestionCount={assignedQuestionCount}
+                  exposureOptions={exposureOptions}
+                  contractStatus={contractStatus}
                   canManage={canManageMembers}
                   notificationApi={notificationApi}
                   onChanged={handleChanged}

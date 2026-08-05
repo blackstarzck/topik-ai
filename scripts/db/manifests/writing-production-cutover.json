@@ -2,7 +2,7 @@
   "namespace": "topik_writing",
   "environment": "production",
   "projectRef": "eymlabowhfgtxbiqwxqh",
-  "expectedLocalCount": 38,
+  "expectedLocalCount": 39,
   "blockedMigrations": [
     "20260716052957_topik_writing_source_updated_at_version_tracking.sql"
   ],
@@ -19,7 +19,7 @@
     },
     "release-all": {
       "from": "20260610200100_topik_writing_topic_master.sql",
-      "to": "20260804100100_topik_writing_auto_assign_new_questions.sql",
+      "to": "20260805100000_topik_writing_institution_exposure_options_read.sql",
       "exclude": [
         "20260716052957_topik_writing_source_updated_at_version_tracking.sql"
       ]
@@ -62,6 +62,18 @@
         {
           "kind": "trigger",
           "identity": "public.topik_writing_54_questions.topik_writing_54_auto_assign_on_available"
+        }
+      ]
+    },
+    "institution-exposure-options-read": {
+      "reason": "기관 노출 옵션 2종의 읽기 경로를 만든다. 20260804100100 이 auto_assign_new_questions 의 쓰기 RPC 만 만들어 값을 되읽을 수 없었고(write-only), 관리 화면의 자동 배정 토글이 현재 상태를 그릴 수 없었다. 기존 조회 RPC 는 returns table 컬럼 추가가 drop+create 를 요구해 expand 게이트에 막히므로 신규 읽기 RPC 로 보완한다.",
+      "migrations": [
+        "20260805100000_topik_writing_institution_exposure_options_read.sql"
+      ],
+      "expectPresentAfter": [
+        {
+          "kind": "function",
+          "identity": "public.admin_list_institution_exposure_options(text[])"
         }
       ]
     }

@@ -272,6 +272,11 @@ export function fetchInstitutionCodeMembersSafe(
 }
 
 /**
+ * @deprecated 화면에서 쓰지 마라. 정원·계약 만료 차단이 걸리지 않는 **원함수 직행** 경로다.
+ *   초대는 `institution-contracts-service` 의 `inviteInstitutionMembersGuardedSafe` 를 쓴다
+ *   (wrapper RPC → 원함수 위임). 2026-08-05 기준 화면 호출부는 0개이며, 남겨둔 이유는
+ *   wrapper 가 없는 환경(구 스키마)으로 롤백할 때의 복귀 지점이기 때문이다.
+ *
  * 회원 N명에게 기관 초대 발송(즉시 배정 아님 — 수락 시 소속 적용, 만료 기본 7일).
  * 실제 초대된 수 반환(기소속/유효 pending/탈퇴는 서버 스킵). mock 경로는 요청 수를 그대로 성공 처리.
  */

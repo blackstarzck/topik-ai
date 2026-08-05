@@ -9,6 +9,9 @@ import {
   fetchInstitutionExposureModesSafe,
   isInstitutionCodesSupabase
 } from '../api/institution-codes-service';
+import { fetchInstitutionContractStatusSafe } from '../api/institution-contracts-service';
+import type { InstitutionContractStatusSummary } from '../model/institution-contracts-types';
+import { InstitutionContractDdayBadge } from '../ui/institution-contract-dday-badge';
 import { InstitutionExposureModeTag } from '../ui/institution-exposure-mode-tag';
 import {
   defaultInstitutionExposureMode,
@@ -73,6 +76,17 @@ export default function InstitutionCodesPage(): JSX.Element {
   // 기관별 노출 모드 원장. admin_list_institution_codes 는 반환 타입을 바꿀 수 없어
   // (expand 게이트가 drop function 차단) 별도 RPC 로 조회해 코드 목록과 병합한다.
   // 원장에 행이 없는 코드는 기본값(`배정분만`)으로 해석한다.
+  // 계약 요약은 목록 RPC 와 별개다(admin_list_institution_codes 는 반환 타입을 바꿀 수
+  // 없다 — expand 게이트가 함수 삭제·재생성을 차단한다). 모드 컬럼과 같은 방식으로
+  // 별도 조회해 화면에서 코드별로 병합한다.
+  const [contractStatuses, setContractStatuses] = useState<
+    InstitutionContractStatusSummary[]
+  >([]);
+  const contractStatusByCode = useMemo(
+    () => new Map(contractStatuses.map((row) => [row.code, row])),
+    [contractStatuses]
+  );
+
   const [exposureModes, setExposureModes] = useState<InstitutionExposureModeRow[]>([]);
   const exposureModeByCode = useMemo(
     () => new Map(exposureModes.map((row) => [row.code, row])),
@@ -146,6 +160,14 @@ export default function InstitutionCodesPage(): JSX.Element {
         return;
       }
       setExposureModes(result.ok ? result.data : []);
+    });
+
+    // 계약 요약도 독립적으로 실패할 수 있다. 실패하면 계약 컬럼이 비고 목록은 계속 쓴다.
+    void fetchInstitutionContractStatusSafe(null, controller.signal).then((result) => {
+      if (controller.signal.aborted) {
+        return;
+      }
+      setContractStatuses(result.ok ? result.data : []);
     });
 
     return () => {
@@ -316,6 +338,21 @@ export default function InstitutionCodesPage(): JSX.Element {
         )
       },
       {
+        // 마스터 관리자 요구: 목록에서 계약 기간과 만료 D-day 를 바로 본다. 만료된 기관을
+        // 모르고 회원을 배정하거나 문항을 손대는 상황을 막는 것이 이 컬럼의 목적이다.
+        title: '계약',
+        dataIndex: 'code',
+        key: 'contract',
+        width: 220,
+        render: (_code: string, record: InstitutionCode) => {
+          const summary = contractStatusByCode.get(record.code);
+          if (!summary) {
+            return <Text type="secondary">-</Text>;
+          }
+          return <InstitutionContractDdayBadge summary={summary} showPeriod />;
+        }
+      },
+      {
         title: '가입 수',
         dataIndex: 'memberCount',
         width: 110,
@@ -341,7 +378,7 @@ export default function InstitutionCodesPage(): JSX.Element {
         render: (_, record) => <TableActionMenu items={buildCodeActionItems(record)} />
       }
     ],
-    [buildCodeActionItems, resolveAssignedCount, resolveExposureMode]
+    [buildCodeActionItems, contractStatusByCode, resolveAssignedCount, resolveExposureMode]
   );
 
   const toolbar = (

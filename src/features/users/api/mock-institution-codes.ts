@@ -1,3 +1,4 @@
+import { removeMockInstitutionContractData } from './mock-institution-contracts';
 import { defaultInstitutionExposureMode } from '../model/institution-codes-types';
 import type {
   InstitutionCode,
@@ -159,8 +160,10 @@ export function updateMockInstitutionCode(input: {
 }
 
 /**
- * mock 경로의 코드 삭제. 모드 원장 행도 함께 지운다 — `admin_delete_institution_code` 가
- * 원장을 정리하므로 같은 코드를 재생성했을 때 이전 모드가 되살아나지 않아야 한다.
+ * mock 경로의 코드 삭제. 모드 원장·계약·설정·노출 옵션까지 함께 지운다 —
+ * `admin_delete_institution_code` 가 네 종속 데이터를 같은 트랜잭션에서 정리하므로
+ * (`20260804100300`), 같은 코드를 재생성했을 때 이전 모드·계약 기간·정원·담당자가
+ * 되살아나지 않아야 한다.
  */
 export function removeMockInstitutionCode(code: string): void {
   const codeIndex = mockInstitutionCodes.findIndex((row) => row.code === code);
@@ -168,4 +171,6 @@ export function removeMockInstitutionCode(code: string): void {
 
   const modeIndex = mockInstitutionExposureModes.findIndex((row) => row.code === code);
   if (modeIndex >= 0) mockInstitutionExposureModes.splice(modeIndex, 1);
+
+  removeMockInstitutionContractData(code);
 }

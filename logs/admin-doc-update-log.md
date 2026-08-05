@@ -958,3 +958,12 @@
 - Fixed: `admin_set_institution_exposure_mode` 가 존재하지 않는 `private.admin_has_permission` 을 호출해 기관 노출 모드의 **유일한 쓰기 경로가 42883 으로 죽어 있었다**(20260801100000 도입, 20260801100200 계승, dev·운영 모두 적용됨). 권한 함수는 `20260623200000` 이 `public` 으로만 만든다. 수리를 admin 폴더(20260804100300)에 둔 이유는 그 함수의 최신 정의 소유 폴더가 admin 이기 때문이다 — writing 폴더에서 고치면 적용 순서상 admin 이 나중에 돌며 깨진 정의로 되덮는다. down 은 이 수리를 되돌리지 않는다.
 - Not-updated: `admin_assign_institution_code`·`admin_invite_institution_members` 는 재정의하지 않았다(20260731100000 이 문자열 수술로 선행조건 가드를 심은 함수 — 덮으면 가드가 조용히 사라져 빈 화면 경로가 되살아난다). 확장은 헬퍼 교체 + wrapper RPC 2종 + 초대 정원 백스톱 트리거 3축으로만 했고, 단위 테스트가 두 함수의 정의 패턴 부재를 단정한다. FE 배선·계약 탭·D-day 배지는 PR-C 범위다.
 - Validation: `harness:check` exit 0 · 단위 618/618(신규 32) · `db:contracts:verify` 4/4 clean(writing 38·admin 97) · `check:expand-migrations` · `check:migration-boundary` · 마이그 5종을 dev 라이브 스키마에 `begin; … rollback;` 으로 up·down 양방향 예행(사후 do-block 전부 통과, 잔존물 0). 분기 순서 단정은 결함을 주입해 exit 1 을 확인했다. 🚨`pg_get_functiondef` 와 SQL 파일 원문은 **본문 주석까지 포함**하므로 위치·부재 단정은 낱말이 아니라 실행 코드 표현식으로 해야 한다(작성 중 오탐 4건).
+
+## 2026-08-05 기관 계약 탭 FE 실연동 (PR-C)
+
+- Updated: docs/specs/page-ia/users-institution-codes-page-ia.md, scripts/db/manifests/writing-{development-release,production-cutover}.json, tests/unit/institution-contract-ledger-contract.test.mjs, tests/unit/institution-contract-badge-model.test.ts(신규), tests/e2e/institution-contract-tab.spec.ts(신규)
+- Reason: PR #76 이 만든 계약 원장·운영 설정·노출 옵션에 관리 화면을 붙인다. DB 만 있고 화면이 없으면 운영자가 계약 기간을 넣을 방법이 없어 기능이 죽어 있다.
+- Contract: 상세 탭이 3개→4개(info/contract/members/questions). 배치 기준은 그 값이 바꾸는 것을 같은 화면에서 볼 수 있는가 다 — 노출 옵션 2종은 노출 문항 탭(배정 현황 옆), 정원·초대 기본값·유입 차단은 회원 탭(현원·대기 초대 옆), 계약 기간·담당자는 계약 탭. D-day 배지는 단일 컴포넌트로 목록·헤더·계약 탭이 공유하고 톤·문구는 모델의 순수 함수가 결정한다. 계약 없음(정상)과 만료(조치 필요)를 문구로 구분하며 유효 계약이 없으면 기간 문자열을 붙이지 않는다. 초대는 세 진입점(기관 코드 상세·회원 목록 일괄·회원 상세) 전부 _guarded wrapper 로 전환했고 만료 기간을 비우면 서버가 기관 기본값으로 해석한다.
+- Fixed: PR-B 가 auto_assign_new_questions 의 쓰기 RPC 만 만들어 값을 되읽을 수 없었다(write-only) — 토글이 현재 상태를 그릴 수 없어 신규 읽기 RPC 20260805100000 을 추가했다. 기존 조회 RPC 확장은 returns table 변경이 drop+create 를 요구해 expand 게이트에 막힌다.
+- Not-updated: 가드 없는 inviteInstitutionMembersSafe 는 삭제하지 않고 @deprecated 로 표시했다(화면 호출부 0건). wrapper 가 없는 구 스키마로 롤백할 때의 복귀 지점이다.
+- Validation: harness:check exit 0 · 단위 신규 8+34 · e2e 신규 8건(겹침 거부는 결함 주입으로 red 확인) · 프리뷰 mock 실측(계약 컬럼 3톤·토글 왕복·만료 기관 비노출 배지·초대 기본값 14일 prefill) · db:contracts:verify writing 39 clean · dev DB 적용 후 쓰기→읽기 왕복 확인.
