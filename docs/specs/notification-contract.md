@@ -111,3 +111,14 @@ operational 토글(`exam_schedule_email` 등) 노출 범위는 O-8 결정 후 �
 - migration은 기존 dispatch/attempt/config row를 삭제·재시드하지 않는다. down은 공유 운영 상태 보존을
   위해 no-op이며 교정은 roll-forward로만 수행한다.
 - `institution_invitation`은 위 cron dispatcher를 거치지 않는 inline RPC 특례를 유지한다.
+
+## 9. 관리자 수신 알림 (2026-08-05)
+
+- **원장이 분리돼 있다.** 관리자에게 가는 인앱 알림은 `admin_notifications`(수신자 FK = `admin_accounts(id)`)에 쌓이고, 학습자 알림함 `user_notifications`와 **같은 테이블을 쓰지 않는다**. 그쪽은 v13 소유 공유 객체이고 v13 앱이 로그인 사용자 기준으로 읽으므로, 관리 도메인 알림을 넣으면 학습자 알림함에 관리 문구가 노출된다. migration home은 `supabase/migrations-admin/20260805110000_admin_contract_expiry_notifications.sql`이다.
+- 관리자도 `profiles` 행을 가진다(`admin_accounts.id` → `auth.users(id)`, `handle_new_user`가 모든 auth 유저에 profiles 행을 만든다 — dev·운영 실측 1/1). 즉 기술적으로는 `user_notifications`로 보낼 수 있으나 위 이유로 하지 않는다.
+- **dedup은 `(recipient_admin_id, event_key)` unique다.** 적재가 10분 cron tick에서 일어나므로 이 제약이 없으면 같은 마일스톤이 하루 144번 쌓인다. dedupe_key 2단(§5)과 목적은 같고 형식만 다르다: `contract_expiry:<code>:<contract_id>:<bucket>`.
+- **신규 cron을 만들지 않는다.** 적재는 기존 `private.dispatch_notifications()` tick에 키(`contract_expiry`)를 더해 수행한다. cron이 늘어나면 스케줄 소유·실패 관측 지점이 갈라진다. 이 함수를 재정의할 때 **기존 키를 하나도 잃지 않는지** 사후 do-block이 단정한다.
+- **만료 버킷은 겹치지 않게 자른다**: `7 < 남은일수 <= 30` → `d30`, `0 < 남은일수 <= 7` → `d7`, `남은일수 <= 0` → `expired`. 범위 판정이라 cron이 멈춘 날의 마일스톤도 다음 tick이 잡고(놓친 날 복구), 버킷이 겹치지 않아 5일 남은 계약에 `D-30` 문구가 나가지 않는다. 무기한(`ends_on is null`)·시작 전 계약은 대상이 아니다.
+- 수신자는 `profiles.app_role = 'platform_admin'`(RBAC SoT)인 활성 관리자다. `admin_accounts.role`이 아니다. 정지·회수 계정은 제외한다.
+- **읽음 처리는 감사 로그를 남기지 않는다.** 사유 필수·감사 기록 규약은 상태를 바꾸는 운영 조치에 적용되며, 알림 열람은 조치가 아니다.
+- 기관 단위 관리자(`org_admin`)를 수신자로 두는 것이 최종 목표지만 2026-08-05 실측 기준 `org_admin` 계정이 dev·운영 모두 0개이고 기관↔관리자 매핑 스키마가 없다. 오너 결정으로 **마스터 관리자(platform_admin)를 먼저** 수신자로 두고, 기관 단위 계정이 생기면 이 substrate를 재사용한다(수신자 해석만 바꾸면 된다).

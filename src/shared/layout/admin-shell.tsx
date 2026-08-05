@@ -11,7 +11,7 @@ import {
   ShopOutlined,
   TeamOutlined
 } from '@ant-design/icons';
-import { Button, Grid, Layout, Menu, Spin, Tag, Typography, theme } from 'antd';
+import { Button, Grid, Layout, Menu, Space, Spin, Tag, Typography, theme } from 'antd';
 import type { MenuProps } from 'antd';
 import type { ItemType } from 'antd/es/menu/interface';
 import { Suspense, useEffect, useMemo, useState } from 'react';
@@ -20,6 +20,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { usePermissionStore } from '../../features/system/model/permission-store';
 import { adminMenuLabels, adminRoleLabels } from './admin-labels';
+import { AdminNotificationBell } from './admin-notification-bell';
 
 const { Header, Sider, Content } = Layout;
 const { Text, Title } = Typography;
@@ -764,11 +765,15 @@ export function AdminShell(): JSX.Element {
           >
             운영 기본 흐름: 검색 {"->"} 상세 {"->"} 조치 {"->"} 감사 로그 확인
           </Text>
-          {currentAdmin ? (
-            <Tag color="blue" style={{ marginInlineStart: 'auto' }}>
-              현재 세션: {currentAdmin.name} · {adminRoleLabels[currentAdmin.role]}
-            </Tag>
-          ) : null}
+          <Space size={8} style={{ marginInlineStart: 'auto', flex: '0 0 auto' }}>
+            {currentAdmin ? (
+              <Tag color="blue" style={{ marginInlineEnd: 0 }}>
+                현재 세션: {currentAdmin.name} · {adminRoleLabels[currentAdmin.role]}
+              </Tag>
+            ) : null}
+            {/* 계약 만료 임박 알림의 수신 지점. 학습자 알림함과 원장이 다르다. */}
+            <AdminNotificationBell />
+          </Space>
         </Header>
         <Content
           style={{
