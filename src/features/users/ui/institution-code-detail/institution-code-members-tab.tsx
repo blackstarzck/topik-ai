@@ -7,17 +7,26 @@ import {
   clearInstitutionCodeSafe,
   fetchInstitutionCodeMembersSafe,
   fetchInstitutionInvitationsSafe,
-  inviteInstitutionMembersSafe,
   isInstitutionCodesSupabase
 } from '../../api/institution-codes-service';
+import {
+  inviteInstitutionMembersGuardedSafe,
+  translateInstitutionContractError
+} from '../../api/institution-contracts-service';
 import { fetchUsersSafe } from '../../api/users-service';
 import type {
   InstitutionCode,
   InstitutionCodeMember,
   InstitutionInvitation
 } from '../../model/institution-codes-types';
+import {
+  GLOBAL_INVITE_EXPIRY_DAYS,
+  type InstitutionContractStatusSummary,
+  type InstitutionSettings
+} from '../../model/institution-contracts-types';
 import type { UserSummary } from '../../model/types';
 import type { NotificationApi } from './institution-code-detail-tab-types';
+import { InstitutionMemberPolicySection } from './institution-member-policy-section';
 import { InvitationEmailStatusTag } from '../invitation-email-status-tag';
 import { kickNotificationEmailDispatch } from '../../../../shared/api/notification-email-kick';
 import type { AsyncState } from '../../../../shared/model/async-state';
@@ -42,6 +51,10 @@ type MemberRosterRow = {
 
 type InstitutionCodeMembersTabProps = {
   institution: InstitutionCode;
+  /** 정원·초대 기본값·만료 차단. null 이면 아직 못 읽은 상태(정책 편집 비활성). */
+  settings: InstitutionSettings | null;
+  /** 만료 차단이 지금 실제로 걸리는지 판단하려면 계약 요약이 필요하다. */
+  contractStatus: InstitutionContractStatusSummary | null;
   canManage: boolean;
   notificationApi: NotificationApi;
   onChanged: () => void;
@@ -50,9 +63,14 @@ type InstitutionCodeMembersTabProps = {
 /**
  * 회원 탭 — 구 회원 관리 모달을 승격했다. 초대는 즉시 배정이 아니라 pending 초대를 만들고,
  * 회원이 v13 알림에서 수락해야 소속이 적용된다. 해제만 직접 반영된다.
+ *
+ * 초대는 `_guarded` wrapper RPC 로 나간다. 원함수를 직접 부르면 정원·계약 차단이 조용히
+ * 우회되므로, 파사드에도 가드 없는 초대 함수를 남기지 않았다.
  */
 export function InstitutionCodeMembersTab({
   institution,
+  settings,
+  contractStatus,
   canManage,
   notificationApi,
   onChanged
@@ -82,6 +100,15 @@ export function InstitutionCodeMembersTab({
   }>();
   const [addSubmitting, setAddSubmitting] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<InstitutionCodeMember | null>(null);
+
+  // 초대 만료 기간의 기본값은 기관 설정에서 온다(없으면 전역 7일). `initialValue` 로는
+  // 설정을 나중에 받아오는 이 화면에서 값이 갱신되지 않으므로 setFieldsValue 로 채운다.
+  // 운영자가 손으로 바꾼 값을 덮지 않도록 설정이 바뀔 때만 다시 채운다.
+  useEffect(() => {
+    addForm.setFieldsValue({
+      expiresInDays: settings?.defaultInviteExpiryDays ?? GLOBAL_INVITE_EXPIRY_DAYS
+    });
+  }, [addForm, settings?.defaultInviteExpiryDays]);
   const [cancelInviteTarget, setCancelInviteTarget] =
     useState<InstitutionInvitation | null>(null);
 
@@ -222,16 +249,32 @@ export function InstitutionCodeMembersTab({
       return;
     }
 
-    const result = await inviteInstitutionMembersSafe(
+    // 정원 초과는 서버도 막지만, 왕복 전에 알려주면 운영자가 대상 인원을 바로 줄일 수 있다.
+    // 좌석 = 소속 회원 + 만료되지 않은 대기 초대(서버 계산과 같은 정의).
+    const seatLimit = settings?.maxMembers ?? null;
+    if (settings && seatLimit !== null && settings.seatsUsed + values.userIds.length > seatLimit) {
+      setAddSubmitting(false);
+      notificationApi.error({
+        message: '정원 초과',
+        description: `정원 ${seatLimit.toLocaleString()}명 중 ${settings.seatsUsed.toLocaleString()}명이 사용 중입니다(소속 회원 + 대기 초대). ${values.userIds.length.toLocaleString()}명을 더 초대할 수 없습니다.`
+      });
+      return;
+    }
+
+    const result = await inviteInstitutionMembersGuardedSafe(
       values.userIds,
       code,
       values.reason,
-      values.expiresInDays ?? 7
+      // 폼에 값이 있으면 그것을, 비어 있으면 null 을 보내 서버가 기관 기본값으로 해석한다.
+      values.expiresInDays ?? null
     );
     setAddSubmitting(false);
 
     if (!result.ok) {
-      notificationApi.error({ message: '초대 발송 실패', description: result.error.message });
+      notificationApi.error({
+        message: '초대 발송 실패',
+        description: translateInstitutionContractError(result.error.message)
+      });
       return;
     }
 
@@ -251,7 +294,7 @@ export function InstitutionCodeMembersTab({
     addForm.resetFields();
     setMemberReload((prev) => prev + 1);
     onChanged();
-  }, [addForm, addSubmitting, code, notificationApi, onChanged]);
+  }, [addForm, addSubmitting, code, notificationApi, onChanged, settings]);
 
   const handleCancelInvitationConfirm = useCallback(
     async (reason: string) => {
@@ -394,6 +437,15 @@ export function InstitutionCodeMembersTab({
 
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
+      <InstitutionMemberPolicySection
+        institution={institution}
+        settings={settings}
+        contractStatus={contractStatus}
+        canManage={canManage}
+        notificationApi={notificationApi}
+        onChanged={onChanged}
+      />
+
       {canManage ? (
         <Form form={addForm} layout="vertical">
           <Form.Item
@@ -414,9 +466,12 @@ export function InstitutionCodeMembersTab({
           <Form.Item
             label="만료 기간"
             name="expiresInDays"
-            initialValue={7}
             rules={[{ required: true, message: '만료 기간을 입력하세요.' }]}
-            extra="이 기간 안에 응답하지 않으면 초대가 만료됩니다."
+            extra={
+              settings?.defaultInviteExpiryDays !== null && settings
+                ? `이 기간 안에 응답하지 않으면 초대가 만료됩니다. 기관 기본값 ${settings.defaultInviteExpiryDays}일이 채워져 있습니다.`
+                : `이 기간 안에 응답하지 않으면 초대가 만료됩니다. 기관 기본값이 없어 전역 기본 ${GLOBAL_INVITE_EXPIRY_DAYS}일이 채워져 있습니다.`
+            }
           >
             <InputNumber min={1} max={365} addonAfter="일" style={{ width: 140 }} />
           </Form.Item>

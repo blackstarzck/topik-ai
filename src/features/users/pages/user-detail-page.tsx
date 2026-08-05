@@ -41,9 +41,12 @@ import {
   cancelInstitutionInvitationSafe,
   clearInstitutionCodeSafe,
   fetchInstitutionCodesSafe,
-  fetchInstitutionInvitationsSafe,
-  inviteInstitutionMembersSafe
+  fetchInstitutionInvitationsSafe
 } from '../api/institution-codes-service';
+import {
+  inviteInstitutionMembersGuardedSafe,
+  translateInstitutionContractError
+} from '../api/institution-contracts-service';
 import { kickNotificationEmailDispatch } from '../../../shared/api/notification-email-kick';
 import { InvitationEmailStatusTag } from '../ui/invitation-email-status-tag';
 import type {
@@ -307,7 +310,9 @@ function AffiliationTabPanel({
       return;
     }
     setSubmitting(true);
-    const result = await inviteInstitutionMembersSafe(
+    // 정원·계약 만료 차단이 걸린 wrapper 로 보낸다. 원함수를 직접 부르면 기관 코드 화면에서
+    // 설정한 정원이 이 진입점에서 조용히 우회된다.
+    const result = await inviteInstitutionMembersGuardedSafe(
       [userId],
       selectedCode,
       reason.trim(),
@@ -315,7 +320,10 @@ function AffiliationTabPanel({
     );
     setSubmitting(false);
     if (!result.ok) {
-      notificationApi.error({ message: '기관 초대 실패', description: result.error.message });
+      notificationApi.error({
+        message: '기관 초대 실패',
+        description: translateInstitutionContractError(result.error.message)
+      });
       return;
     }
     if (result.data > 0) {

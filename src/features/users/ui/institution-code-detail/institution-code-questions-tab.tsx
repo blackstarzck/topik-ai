@@ -1,20 +1,54 @@
-import { Alert, Button, Divider, Input, Radio, Space, Typography } from 'antd';
+import { Alert, Button, Divider, Input, Radio, Space, Switch, Typography } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 
 import { setInstitutionExposureModeSafe } from '../../api/institution-codes-service';
 import { isInstitutionCodesSupabase } from '../../api/institution-codes-service';
+import {
+  setInstitutionAutoAssignSafe,
+  setInstitutionAutoHideSafe,
+  translateInstitutionContractError
+} from '../../api/institution-contracts-service';
 import type {
   InstitutionCode,
   InstitutionExposureMode
 } from '../../model/institution-codes-types';
+import type {
+  InstitutionContractStatusSummary,
+  InstitutionExposureOptions
+} from '../../model/institution-contracts-types';
 import type { NotificationApi } from './institution-code-detail-tab-types';
 import {
   InstitutionQuestionExposurePanel,
   type InstitutionQuestionMutationSummary
 } from '../institution-question-exposure-panel';
 import { AuditLogLink } from '../../../../shared/ui/audit-log-link/audit-log-link';
+import { ConfirmAction } from '../../../../shared/ui/confirm-action/confirm-action';
 
 const { Text } = Typography;
+
+/** 사유 확인 모달을 띄울 대상 토글. */
+type PendingOptionToggle = {
+  field: 'autoHide' | 'autoAssign';
+  next: boolean;
+};
+
+const OPTION_COPY: Record<
+  PendingOptionToggle['field'],
+  { title: string; label: string; on: string; off: string }
+> = {
+  autoHide: {
+    title: '만료 시 자동 비노출',
+    label: '계약 만료 시 자동 비노출',
+    on: '켜면 계약이 만료된 동안 이 기관 학습자에게 쓰기 문항이 보이지 않습니다.',
+    off: '끄면 계약이 만료돼도 문항 노출은 그대로 유지됩니다.'
+  },
+  autoAssign: {
+    title: '신규 문항 자동 배정',
+    label: '신규 문항 자동 배정',
+    on: '켠 이후 노출 전환되는 문항이 이 기관에 자동 배정됩니다. 이미 노출 중인 문항은 소급 배정되지 않습니다.',
+    off: '끄면 새 문항을 이 기관에 직접 배정해야 합니다.'
+  }
+};
 
 /**
  * 노출 모드 변경 거부 사유를 운영자 언어로 바꾼다. 서버(빈 화면 가드)가 raw Postgres
@@ -35,6 +69,10 @@ type InstitutionCodeQuestionsTabProps = {
   exposureMode: InstitutionExposureMode;
   /** 셸이 모드 원장에서 읽은 실제 배정 건수. 전환 차단 판정의 입력값이다. */
   assignedQuestionCount: number;
+  /** 계약 연동 옵션 2종의 현재 값. null 이면 아직 못 읽은 상태(토글 비활성). */
+  exposureOptions: InstitutionExposureOptions | null;
+  /** 만료로 지금 가려져 있는지 알려면 계약 요약이 필요하다. */
+  contractStatus: InstitutionContractStatusSummary | null;
   canManage: boolean;
   notificationApi: NotificationApi;
   onChanged: () => void;
@@ -51,6 +89,8 @@ export function InstitutionCodeQuestionsTab({
   institution,
   exposureMode,
   assignedQuestionCount,
+  exposureOptions,
+  contractStatus,
   canManage,
   notificationApi,
   onChanged
@@ -58,6 +98,56 @@ export function InstitutionCodeQuestionsTab({
   const [pendingMode, setPendingMode] = useState<InstitutionExposureMode>(exposureMode);
   const [modeReason, setModeReason] = useState('');
   const [modeSubmitting, setModeSubmitting] = useState(false);
+  const [pendingToggle, setPendingToggle] = useState<PendingOptionToggle | null>(null);
+
+  /**
+   * 옵션 토글은 사유가 필수다. Switch 옆에 사유 입력을 두 개 더 놓는 대신 확인 모달로
+   * 받는다 — 이 저장소의 사유 필수 조치가 쓰는 방식과 같고, 실수로 토글을 건드렸을 때
+   * 되돌릴 기회도 준다(노출 범위를 바꾸는 스위치다).
+   */
+  const handleToggleConfirm = useCallback(
+    async (reason: string) => {
+      if (!pendingToggle) {
+        return;
+      }
+      const copy = OPTION_COPY[pendingToggle.field];
+      const result =
+        pendingToggle.field === 'autoHide'
+          ? await setInstitutionAutoHideSafe({
+              code: institution.code,
+              enabled: pendingToggle.next,
+              reason
+            })
+          : await setInstitutionAutoAssignSafe({
+              code: institution.code,
+              enabled: pendingToggle.next,
+              reason
+            });
+
+      if (!result.ok) {
+        notificationApi.error({
+          message: `${copy.title} 변경 실패`,
+          description: translateInstitutionContractError(result.error.message)
+        });
+        // 화면 값이 stale 해서 실패했을 수 있다 → 스스로 교정한다.
+        onChanged();
+        return;
+      }
+
+      notificationApi.success({
+        message: `${copy.title} ${pendingToggle.next ? '켜짐' : '꺼짐'}`,
+        description: (
+          <Space direction="vertical">
+            <Text>{pendingToggle.next ? copy.on : copy.off}</Text>
+            <AuditLogLink targetType="InstitutionCode" targetId={institution.code} />
+          </Space>
+        )
+      });
+      setPendingToggle(null);
+      onChanged();
+    },
+    [institution.code, notificationApi, onChanged, pendingToggle]
+  );
 
   // 셸이 재조회한 실제 모드로 선택을 되돌린다(적용 성공·실패 모두 이 경로로 수렴).
   useEffect(() => {
@@ -246,6 +336,65 @@ export function InstitutionCodeQuestionsTab({
 
       <Divider style={{ margin: 0 }} />
 
+      <div data-testid="institution-exposure-options-section">
+        <Text strong style={{ fontSize: 15 }}>
+          계약 연동 옵션
+        </Text>
+
+        {contractStatus?.writingHiddenNow ? (
+          <Alert
+            type="error"
+            showIcon
+            style={{ marginTop: 8 }}
+            message="계약이 만료되어 지금 이 기관 학습자에게 쓰기 문항이 보이지 않습니다."
+            description="계약 탭에서 기간을 연장하면 즉시 다시 보입니다 — 배정된 문항은 그대로 남아 있어 다시 배정할 필요가 없습니다."
+          />
+        ) : null}
+
+        <Space direction="vertical" size={12} style={{ marginTop: 10, width: '100%' }}>
+          <Space align="start" size={10}>
+            <Switch
+              // 옵션 값을 아직 못 읽었으면 토글을 잠근다. 기본값 false 로 그려두고 켜게 하면
+              // "이미 켜져 있는데 꺼진 것처럼 보이는" 상태에서 잘못된 쓰기가 나간다.
+              checked={exposureOptions?.autoHideOnExpiry ?? false}
+              disabled={!canManage || !exposureOptions}
+              onChange={(next) => setPendingToggle({ field: 'autoHide', next })}
+              data-testid="institution-auto-hide-switch"
+            />
+            <Space direction="vertical" size={0}>
+              <Text>{OPTION_COPY.autoHide.label}</Text>
+              <Text type="secondary">
+                계약이 만료된 동안 노출 모드와 무관하게 전부 가립니다. 계약을 연장하면 배정된
+                문항이 그대로 다시 보입니다.
+              </Text>
+              {contractStatus && contractStatus.contractCount === 0 ? (
+                <Text type="secondary">
+                  등록된 계약이 없어 이 옵션을 켜도 아무것도 가려지지 않습니다.
+                </Text>
+              ) : null}
+            </Space>
+          </Space>
+
+          <Space align="start" size={10}>
+            <Switch
+              checked={exposureOptions?.autoAssignNewQuestions ?? false}
+              disabled={!canManage || !exposureOptions}
+              onChange={(next) => setPendingToggle({ field: 'autoAssign', next })}
+              data-testid="institution-auto-assign-switch"
+            />
+            <Space direction="vertical" size={0}>
+              <Text>{OPTION_COPY.autoAssign.label}</Text>
+              <Text type="secondary">
+                켠 이후 노출 전환되는 문항이 이 기관에 자동 배정됩니다. 이미 노출 중인 문항은
+                소급 배정되지 않습니다.
+              </Text>
+            </Space>
+          </Space>
+        </Space>
+      </div>
+
+      <Divider style={{ margin: 0 }} />
+
       <div>
         <Text strong style={{ fontSize: 15 }}>
           노출 문항
@@ -260,6 +409,24 @@ export function InstitutionCodeQuestionsTab({
           />
         </div>
       </div>
+
+      {pendingToggle ? (
+        <ConfirmAction
+          open
+          title={`${OPTION_COPY[pendingToggle.field].title} ${pendingToggle.next ? '켜기' : '끄기'}`}
+          description={
+            pendingToggle.next
+              ? OPTION_COPY[pendingToggle.field].on
+              : OPTION_COPY[pendingToggle.field].off
+          }
+          targetType="InstitutionCode"
+          targetId={institution.code}
+          confirmText={pendingToggle.next ? '켜기' : '끄기'}
+          reasonPlaceholder="옵션 변경 사유를 입력하세요."
+          onCancel={() => setPendingToggle(null)}
+          onConfirm={handleToggleConfirm}
+        />
+      ) : null}
     </Space>
   );
 }
