@@ -213,8 +213,21 @@ describe('object probes', () => {
     expect(built.sql).toContain('not t.tgisinternal');
   });
 
+  it('probes RLS policies by schema.table.policy', () => {
+    // 이 러너가 다루는 learner 마이그레이션의 실제 변경 대상이 정책이다(신설·교체·제거).
+    // 프로브가 없으면 그 배치의 expectPresentAfter/expectAbsent 를 쓸 수 없다.
+    const built = buildProbeSql([
+      { kind: 'policy', identity: 'public.writing_submissions.writing_submissions_owner_select' },
+    ]);
+    expect(built.sql).toContain('from pg_policies p');
+    expect(built.sql).toContain("p.tablename = 'writing_submissions'");
+    expect(built.sql).toContain("p.policyname = 'writing_submissions_owner_select'");
+  });
+
   it('rejects unknown kinds and malformed identities', () => {
-    expect(() => buildProbeSql([{ kind: 'policy', identity: 'x' }])).toThrow(/Unsupported probe kind/);
+    expect(() => buildProbeSql([{ kind: 'view', identity: 'public.v' }])).toThrow(/Unsupported probe kind/);
+    expect(() => buildProbeSql([{ kind: 'policy', identity: 'public.t' }]))
+      .toThrow(/schema\.table\.policy/);
     expect(() => buildProbeSql([{ kind: 'function', identity: 'no_schema()' }]))
       .toThrow(/schema\.name\(args\)/);
     expect(() => buildProbeSql([{ kind: 'table', identity: 'public.t; drop table u' }]))
@@ -292,7 +305,11 @@ describe('v13-shared-dev manifest integrity', () => {
   });
 
   it('declares the approved batches in order', () => {
-    expect(manifest.sequence).toEqual(['B1', 'B2', 'B3', 'B4', 'B6', 'B7', 'B8', 'B9', 'B10']);
+    // 2026-07-30 에 닫힌 dev 적용 창의 순서는 역사이므로 그대로 고정하고, 그 뒤에 붙는
+    // 배치(이 저장소가 저작한 learner 마이그레이션)는 append 만 허용한다. 목록 전체를
+    // 정확 일치로 박으면 배치가 하나 늘 때마다 무관한 테스트가 깨진다.
+    const closedWindow = ['B1', 'B2', 'B3', 'B4', 'B6', 'B7', 'B8', 'B9', 'B10'];
+    expect(manifest.sequence.slice(0, closedWindow.length)).toEqual(closedWindow);
     expect(Object.keys(manifest.batches).sort()).toEqual([...manifest.sequence].sort());
     for (const batchName of manifest.sequence) {
       expect(() => resolveBatch(manifest, batchName)).not.toThrow();

@@ -8,7 +8,7 @@
   "sourceMigrationsDir": "supabase/migrations",
   "sourceGitSha": null,
   "sourceGitShaComment": "Set with --v13-sha at run time. Must be the merged v13 commit that contains every migration named below, including the list_user_problems repair. v13 origin/main was a29076543f655a1aae5d895a0218901594637357 when this manifest was written; that tree does NOT yet contain the repair migration.",
-  "sequence": ["B1", "B2", "B3", "B4", "B6", "B7", "B8", "B9", "B10"],
+  "sequence": ["B1", "B2", "B3", "B4", "B6", "B7", "B8", "B9", "B10", "B11"],
   "adoptedElsewhere": [
     {
       "name": "20260723170000_system_reports.sql",
@@ -123,6 +123,20 @@
         { "kind": "function", "identity": "public.is_supported_country_code(text)" }
       ],
       "note": "Applied after B1-B9 rather than in timestamp order, because the dependency only surfaced when the onboarding gate was exercised with a real user JWT. Every existing profiles row already satisfies the new constraints (15 nationality values and 2 phone values, all valid ISO codes), so VALIDATE passes without a backfill."
+    },
+    "B11": {
+      "reason": "Removes the `or private.is_admin(...)` read branch from eight learner raw-data policies. admin/20260805130000 gated the analytics RPCs on analytics.read, but the same rows stayed readable through PostgREST by any active admin: a content_admin without the grant read writing_submissions 282 rows and writing_feedback 249 rows on development (2026-08-05, inside a rolled-back transaction). The admin console never reads these tables directly (no `.from()` reference in src/) and every admin path is a SECURITY DEFINER RPC owned by postgres with rolbypassrls, so removing the branch cannot break an admin screen; the migration asserts that bypass property before it finishes. Learner owner reads are untouched.",
+      "migrations": ["20260805140000_learner_raw_data_admin_read_removal.sql"],
+      "expectPresentAfter": [
+        { "kind": "policy", "identity": "public.writing_submissions.writing_submissions_owner_select" },
+        { "kind": "policy", "identity": "public.writing_feedback.writing_feedback_owner_select" },
+        { "kind": "policy", "identity": "public.study_events.study_events_owner_select" },
+        { "kind": "policy", "identity": "public.problem_attempts.attempts_owner_all" }
+      ],
+      "expectAbsent": [
+        { "kind": "policy", "identity": "public.problem_attempts.attempts_admin_select" }
+      ],
+      "note": "This is the first learner migration authored in this repo under the M5 authoring freeze (watermark 20260729120000); the body source is the vendored archive, not the v13 git store. The down file restores the admin branch verbatim, which is a security relaxation — it needs its own approval before running anywhere."
     }
   },
   "blockedMigrations": [

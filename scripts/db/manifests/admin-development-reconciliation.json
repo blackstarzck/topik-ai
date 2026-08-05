@@ -2,7 +2,7 @@
   "namespace": "admin",
   "environment": "development",
   "projectRef": "fglggyfvzjdsbyckinqa",
-  "expectedLocalCount": 99,
+  "expectedLocalCount": 100,
   "knownRemoteOnly": {
     "20260713140000_admin_learning_analytics_dual_id_coverage.sql": {
       "status": "superseded",
@@ -88,11 +88,11 @@
     },
     "baseline-all": {
       "from": "20260612170000_notification_admin_tables.sql",
-      "to": "20260805130000_admin_analytics_read_permission.sql"
+      "to": "20260805150000_admin_read_permission_alignment.sql"
     },
     "release-all": {
       "from": "20260612170000_notification_admin_tables.sql",
-      "to": "20260805130000_admin_analytics_read_permission.sql"
+      "to": "20260805150000_admin_read_permission_alignment.sql"
     },
     "institution-assignment-prerequisite": {
       "reason": "배정 0건 기관에 회원을 배정/초대하면 그 회원은 쓰기 문항을 하나도 보지 못한다(기관 할당제). admin_assign_institution_code 와 admin_invite_institution_members 에 선행조건 검사를 끼운다. 짝 가드는 topik_writing 네임스페이스 20260731100100.",
@@ -263,6 +263,26 @@
         {
           "kind": "function",
           "identity": "public.get_admin_analytics_overview(integer)"
+        },
+        {
+          "kind": "function",
+          "identity": "public.admin_has_permission(uuid,text)"
+        }
+      ]
+    },
+    "admin-read-permission-alignment": {
+      "reason": "화면은 권한 키로 게이팅하는데 서버는 관리자 공통이던 조회 RPC 2종을 같은 키로 맞춘다 — get_admin_dashboard_stats 는 dashboard.read(사이드바 게이팅 키), get_admin_backup_summary 는 system.backups.read(같은 화면의 get_admin_backup_runs 가 이미 요구하는 키). 20260805130000 과 같은 수술 기법이며 platform_admin 자동 통과라 현 운영 동작은 바뀌지 않는다.",
+      "migrations": [
+        "20260805150000_admin_read_permission_alignment.sql"
+      ],
+      "expectPresentAfter": [
+        {
+          "kind": "function",
+          "identity": "public.get_admin_dashboard_stats()"
+        },
+        {
+          "kind": "function",
+          "identity": "public.get_admin_backup_summary()"
         },
         {
           "kind": "function",
