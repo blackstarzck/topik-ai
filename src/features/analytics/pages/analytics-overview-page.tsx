@@ -4,6 +4,7 @@ import {
   Card,
   Col,
   Progress,
+  Result,
   Row,
   Segmented,
   Space,
@@ -20,6 +21,11 @@ import {
   fetchAnalyticsOverviewSafe,
   type AnalyticsOverview
 } from '../api/analytics-overview-service';
+import {
+  isAnalyticsPermissionError,
+  translateAnalyticsError
+} from '../api/analytics-permission-error';
+import { usePermissionStore } from '../../system/model/permission-store';
 import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
 import type { AsyncState } from '../../../shared/model/async-state';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
@@ -420,6 +426,16 @@ export default function AnalyticsOverviewPage(): JSX.Element {
   const refunds = useCommerceStore((state) => state.refunds);
   const [searchParams, setSearchParams] = useSearchParams();
   const activePeriod = parsePeriod(searchParams.get('period'));
+  // 화면 게이트는 세션 grants(analytics.read) 기준 — DB 검사와 같은 판정을 내야 한다.
+  const currentAdminId = usePermissionStore((store) => store.currentAdminId);
+  const admins = usePermissionStore((store) => store.admins);
+  const canRead = useMemo(
+    () =>
+      admins
+        .find((admin) => admin.adminId === currentAdminId)
+        ?.permissions.includes('analytics.read') ?? false,
+    [admins, currentAdminId]
+  );
 
   // Supabase 모드 실데이터 집계(get_admin_analytics_overview). mock 모드는 data=null.
   const [overviewState, setOverviewState] = useState<AsyncState<AnalyticsOverview | null>>({
@@ -431,6 +447,9 @@ export default function AnalyticsOverviewPage(): JSX.Element {
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
+    if (!canRead) {
+      return;
+    }
     const controller = new AbortController();
     setOverviewState((prev) => ({
       ...prev,
@@ -452,16 +471,18 @@ export default function AnalyticsOverviewPage(): JSX.Element {
           });
           return;
         }
+        // 권한 거절이면 직전 수치를 남기지 않는다(회수 즉시 화면에서도 사라져야 한다).
         setOverviewState((prev) => ({
           ...prev,
           status: 'error',
-          errorMessage: result.error.message,
+          data: isAnalyticsPermissionError(result.error.message) ? null : prev.data,
+          errorMessage: translateAnalyticsError(result.error.message),
           errorCode: result.error.code
         }));
       }
     );
     return () => controller.abort();
-  }, [activePeriod, reloadKey]);
+  }, [activePeriod, canRead, reloadKey]);
 
   const overview = overviewState.data;
   const overviewLoading = isSupabaseConfigured && overviewState.status === 'pending';
@@ -574,6 +595,22 @@ export default function AnalyticsOverviewPage(): JSX.Element {
     ],
     [navigate]
   );
+
+  // 모든 훅 뒤에 위치해야 한다(조건부 훅 금지). 메뉴 숨김과 별개로 직접 URL 진입을
+  // 막는 최종 화면 게이트 — DB 는 어차피 거절하지만, 단순 장애로 오해하지 않게 한다.
+  if (!canRead) {
+    return (
+      <div>
+        <PageTitle title="분석" />
+        <Result
+          status="403"
+          title="통계 조회 권한이 없습니다."
+          subTitle="통계 조회(analytics.read) 권한을 부여받은 관리자만 분석 지표를 볼 수 있습니다. 권한을 부여받은 뒤 새로고침하거나 다시 로그인하면 표시됩니다."
+          extra={<Button onClick={() => history.back()}>이전 화면</Button>}
+        />
+      </div>
+    );
+  }
 
   return (
     <div>

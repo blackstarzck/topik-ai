@@ -479,7 +479,7 @@
 
 ## 28-1) Analytics > 학습 분석
 
-- 현재 상태: 구현됨. `/analytics/learning`, `analytics.read`, 조회 전용.
+- 현재 상태: 구현됨. `/analytics/learning`, `analytics.read`(화면 게이팅 + RPC 서버 강제, 마이그 `20260805130000`), 조회 전용.
 - source: `get_admin_learning_analytics_filtered(...)` 집계 RPC + `get_admin_learning_analytics_filter_options()` 필터 옵션 RPC. 제출·이벤트 `problem_id`는 현재 canonical identity와 전환 시 이관한 private historical identity snapshot을 합친 projection에 연결하고 기존 `get_admin_learning_analytics(period_days)`는 호환용으로 유지합니다. 구 `problems`와 공개 환경별 alias map은 runtime 집계 source가 아닙니다.
 - 필터: 최근 7/30/90일·전체·직접 날짜, 이전 동일 기간 비교, 문제 유형 51~54, `topic_main → topic_detail`, 단일 문제 유형의 세부 특성. 같은 문제 유형/세부 필드 안은 OR, 서로 다른 필터 축은 AND입니다.
 - KPI: 학습 활성 사용자, 제출 수, 피드백 완료율, 평균 환산 점수, 피드백 조회율, 평균 풀이 시간, 처리 시간 중앙값, PDF 내보내기 완료 수. 각 카드의 정보 아이콘 툴팁은 `분류 → 지표명 → 지표 정의 → 계산 방법·포함 조건·주의사항` 순서로 계층화하며, 표본·커버리지는 카드 보조 문구로 표시합니다.

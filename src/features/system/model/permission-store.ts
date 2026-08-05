@@ -149,6 +149,36 @@ const initialAdmins: AdminPermissionAssignment[] = [
   }
 ];
 
+// e2e fixture: mock 모드는 기본적으로 SUPER_ADMIN(전 권한) 세션이라 "권한 없는 관리자"
+// 상태를 재현할 수 없다. 전용 playwright config 가 주입하는 env 로만 켜지며,
+// supabase 모드에서는 auth 세션(setSessionAdmin)이 시드를 대체하므로 제품 경로 영향이 없다.
+// 선례: VITE_ANALYTICS_METADATA_COVERAGE_FIXTURE(analytics-learning-service).
+const adminPermissionsFixture = import.meta.env.VITE_ADMIN_PERMISSIONS_FIXTURE;
+
+const fixtureSeededAdmins: AdminPermissionAssignment[] =
+  adminPermissionsFixture === 'no-analytics'
+    ? [
+        {
+          adminId: 'admin_fixture_no_analytics',
+          name: '통계권한없음',
+          status: '활성',
+          lastLoginAt: '2026-08-05 09:00:00',
+          role: 'READ_ONLY',
+          permissions: normalizePermissionKeys(
+            (getRole('READ_ONLY')?.defaultPermissions ?? []).filter(
+              (key) => key !== 'analytics.read'
+            )
+          ),
+          updatedAt: '2026-08-05 09:00:00',
+          updatedBy: 'fixture_seed'
+        },
+        ...initialAdmins
+      ]
+    : initialAdmins;
+
+const initialCurrentAdminId =
+  adminPermissionsFixture === 'no-analytics' ? 'admin_fixture_no_analytics' : 'admin_park';
+
 const initialAudits: PermissionAuditEvent[] = [
   {
     id: 'AL-PERM-00001',
@@ -187,8 +217,8 @@ const initialAudits: PermissionAuditEvent[] = [
 ];
 
 export const usePermissionStore = create<PermissionStore>((set, get) => ({
-  currentAdminId: 'admin_park',
-  admins: initialAdmins,
+  currentAdminId: initialCurrentAdminId,
+  admins: fixtureSeededAdmins,
   audits: [...initialAudits].sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
   setCurrentAdminId: (adminId) => {
     if (!get().admins.some((item) => item.adminId === adminId)) {

@@ -2,7 +2,7 @@
   "namespace": "admin",
   "environment": "production",
   "projectRef": "eymlabowhfgtxbiqwxqh",
-  "expectedLocalCount": 98,
+  "expectedLocalCount": 99,
   "batches": {
     "notification-baseline": {
       "from": "20260612170000_notification_admin_tables.sql",
@@ -74,11 +74,11 @@
     },
     "baseline-all": {
       "from": "20260612170000_notification_admin_tables.sql",
-      "to": "20260805110000_admin_contract_expiry_notifications.sql"
+      "to": "20260805130000_admin_analytics_read_permission.sql"
     },
     "release-all": {
       "from": "20260612170000_notification_admin_tables.sql",
-      "to": "20260805110000_admin_contract_expiry_notifications.sql"
+      "to": "20260805130000_admin_analytics_read_permission.sql"
     },
     "institution-assignment-prerequisite": {
       "reason": "배정 0건 기관에 회원을 배정/초대하면 그 회원은 쓰기 문항을 하나도 보지 못한다(기관 할당제). admin_assign_institution_code 와 admin_invite_institution_members 에 선행조건 검사를 끼운다. 짝 가드는 topik_writing 네임스페이스 20260731100100.",
@@ -225,6 +225,34 @@
         {
           "kind": "function",
           "identity": "private.dispatch_notifications()"
+        }
+      ]
+    },
+    "analytics-read-permission": {
+      "reason": "학습 분석·분석 개요 조회 권한을 관리자 공통(is_admin)에서 세부 권한 analytics.read(admin_has_permission)로 전환한다 — 트랙 0 / CBT2 R-09. 라이브 정의를 읽어 권한 검사 블록만 치환하므로 pdf perTopic 등 이후 수술 계약을 보존하고, FE 미사용 구형 집계 RPC 까지 함께 닫아 직접 호출 우회를 막는다. platform_admin 은 권한 함수 안에서 자동 통과라 grant 백필 없이 현 운영 동작 무변경이다.",
+      "migrations": [
+        "20260805130000_admin_analytics_read_permission.sql"
+      ],
+      "expectPresentAfter": [
+        {
+          "kind": "function",
+          "identity": "public.get_admin_learning_analytics_filtered(date,date,smallint[],text,text,jsonb,boolean)"
+        },
+        {
+          "kind": "function",
+          "identity": "public.get_admin_learning_analytics_filter_options()"
+        },
+        {
+          "kind": "function",
+          "identity": "public.get_admin_learning_analytics(integer)"
+        },
+        {
+          "kind": "function",
+          "identity": "public.get_admin_analytics_overview(integer)"
+        },
+        {
+          "kind": "function",
+          "identity": "public.admin_has_permission(uuid,text)"
         }
       ]
     }

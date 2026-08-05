@@ -85,7 +85,8 @@
 
 - 집계 RPC: `get_admin_learning_analytics_filtered(...)`.
 - 필터 옵션 RPC: `get_admin_learning_analytics_filter_options()`.
-- 두 RPC는 `private.is_admin()` + `SECURITY DEFINER` read-only 계약이며 개인 식별자와 민감 본문을 반환하지 않습니다.
+- 두 RPC는 `public.admin_has_permission(caller, 'analytics.read')` + `SECURITY DEFINER` read-only 계약이며 개인 식별자와 민감 본문을 반환하지 않습니다(마이그 `20260805130000`). `platform_admin`은 권한 함수 안에서 자동 통과하고, 비활성(`invited`/`suspended`) 관리자는 권한이 있어도 거절됩니다.
+- 화면은 같은 판정을 내야 합니다. 메뉴 게이팅과 별개로 직접 URL 진입 시 `analytics.read`가 없으면 403 안내를 렌더하고 집계 요청을 보내지 않습니다. 서버가 권한을 거절하면 보유 중이던 수치를 비우고 권한 오류로 표기합니다(단순 장애와 구분).
 - 기본 기간·문제 유형 통계와 주제·세부 특성 조건은 제출·이벤트의 `problem_id`를 현재 canonical identity 또는 전환 시 이관한 private historical identity snapshot에 연결해 51~54번과 canonical metadata를 판별합니다. 공개 환경별 alias map과 구 `problems`는 runtime 분석에 사용하지 않습니다.
 - 연결된 canonical 행은 `topik_writing_question_recommendation_view`의 `topic_main/topic_detail`과 번호별 필수 세부 메타데이터 완전성을 만족해야 합니다. 최신 coverage RPC의 현재·직전 제출 및 이벤트 대상·연결 수와 100% fail-closed gate는 그대로 유지합니다.
 - 집계 summary는 현재/직전 기간 각각 제출과 학습 이벤트의 메타데이터 대상·연결 수를 반환합니다. coverage 분모에는 기간·문제 유형만 적용하며 주제·세부 조건을 적용하지 않습니다.
