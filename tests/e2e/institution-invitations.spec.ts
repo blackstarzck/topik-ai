@@ -29,27 +29,33 @@ test('기관코드 상세 회원 탭: 초대 폼과 통합 로스터(소속+대�
   const tabPanel = page.locator('.ant-tabs-tabpane-active');
   await expect(tabPanel).toBeVisible();
 
-  // 배정 → 초대 전환: 라벨/버튼/안내문(+발송 이력 확인 경로).
-  await expect(tabPanel.getByText('회원 초대', { exact: true })).toBeVisible();
-  await expect(
-    tabPanel.getByText('초대 알림(인앱+이메일)이 발송되고, 회원이 수락해야 소속이 적용됩니다.')
-  ).toBeVisible();
-  await expect(
-    tabPanel.getByText('발송 내역은 메시지 ▸ 발송 이력에서 확인할 수 있습니다.')
-  ).toBeVisible();
-  // 만료 기간(기본 7일) 입력.
-  await expect(tabPanel.getByText('만료 기간', { exact: true })).toBeVisible();
-  await expect(
-    tabPanel.getByText('이 기간 안에 응답하지 않으면 초대가 만료됩니다.')
-  ).toBeVisible();
-  await expect(tabPanel.getByRole('button', { name: '선택 회원 초대' })).toBeVisible();
-
+  // 본문은 로스터 하나다 — 초대(작업)와 정책(설정)은 툴바 뒤로 갔다(2026-08-06 재배치).
   // 통합 로스터 헤더(소속 회원 + 대기 중 초대를 한 테이블로 관리) + 상태 컬럼.
   await expect(
     tabPanel.getByText(/소속 회원 \d+명 · 대기 중 초대 \d+건/)
   ).toBeVisible();
   // antd 고정 헤더 테이블은 th를 2벌 렌더하므로 first()로 좁힌다.
   await expect(tabPanel.getByText('가입·초대일').first()).toBeVisible();
+
+  // 배정 → 초대 전환: 라벨/버튼/안내문(+발송 이력 확인 경로)은 초대 Drawer 안에 있다.
+  // Drawer 는 body portal 이라 tabPanel 스코프 밖이다 — 스코프를 Drawer 로 바꾼다.
+  await tabPanel.getByTestId('institution-invite-open-button').click();
+  const inviteDrawer = page.getByTestId('institution-invite-drawer');
+  await expect(inviteDrawer).toBeVisible();
+
+  await expect(inviteDrawer.getByText('회원 초대', { exact: true })).toBeVisible();
+  await expect(
+    inviteDrawer.getByText('초대 알림(인앱+이메일)이 발송되고, 회원이 수락해야 소속이 적용됩니다.')
+  ).toBeVisible();
+  await expect(
+    inviteDrawer.getByText('발송 내역은 메시지 ▸ 발송 이력에서 확인할 수 있습니다.')
+  ).toBeVisible();
+  // 만료 기간(기본 7일) 입력.
+  await expect(inviteDrawer.getByText('만료 기간', { exact: true })).toBeVisible();
+  await expect(
+    inviteDrawer.getByText('이 기간 안에 응답하지 않으면 초대가 만료됩니다.')
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: '선택 회원 초대' })).toBeVisible();
 });
 
 test('회원목록: 다중 선택 시 기관 초대 모달을 연다', async ({ page }) => {

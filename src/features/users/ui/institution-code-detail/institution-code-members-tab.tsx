@@ -1,4 +1,4 @@
-import { Alert, Button, Form, Input, InputNumber, Select, Space, Tag, Tooltip, Typography } from 'antd';
+import { Alert, Button, Space, Tag, Tooltip, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -9,26 +9,22 @@ import {
   fetchInstitutionInvitationsSafe,
   isInstitutionCodesSupabase
 } from '../../api/institution-codes-service';
-import {
-  inviteInstitutionMembersGuardedSafe,
-  translateInstitutionContractError
-} from '../../api/institution-contracts-service';
 import { fetchUsersSafe } from '../../api/users-service';
 import type {
   InstitutionCode,
   InstitutionCodeMember,
   InstitutionInvitation
 } from '../../model/institution-codes-types';
-import {
-  GLOBAL_INVITE_EXPIRY_DAYS,
-  type InstitutionContractStatusSummary,
-  type InstitutionSettings
+import type {
+  InstitutionContractStatusSummary,
+  InstitutionSettings
 } from '../../model/institution-contracts-types';
 import type { UserSummary } from '../../model/types';
 import type { NotificationApi } from './institution-code-detail-tab-types';
-import { InstitutionMemberPolicySection } from './institution-member-policy-section';
+import { InstitutionInviteDrawer } from './institution-invite-drawer';
+import { InstitutionMemberPolicyDrawer } from './institution-member-policy-drawer';
+import { InstitutionTabToolbar } from './institution-tab-toolbar';
 import { InvitationEmailStatusTag } from '../invitation-email-status-tag';
-import { kickNotificationEmailDispatch } from '../../../../shared/api/notification-email-kick';
 import type { AsyncState } from '../../../../shared/model/async-state';
 import { ConfirmAction } from '../../../../shared/ui/confirm-action/confirm-action';
 import { AdminDataTable } from '../../../../shared/ui/table/admin-data-table';
@@ -93,24 +89,11 @@ export function InstitutionCodeMembersTab({
   });
   const [memberReload, setMemberReload] = useState(0);
   const [allUsers, setAllUsers] = useState<UserSummary[]>([]);
-  const [addForm] = Form.useForm<{
-    userIds: string[];
-    reason: string;
-    expiresInDays: number;
-  }>();
-  const [addSubmitting, setAddSubmitting] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<InstitutionCodeMember | null>(null);
-
-  // 초대 만료 기간의 기본값은 기관 설정에서 온다(없으면 전역 7일). `initialValue` 로는
-  // 설정을 나중에 받아오는 이 화면에서 값이 갱신되지 않으므로 setFieldsValue 로 채운다.
-  // 운영자가 손으로 바꾼 값을 덮지 않도록 설정이 바뀔 때만 다시 채운다.
-  useEffect(() => {
-    addForm.setFieldsValue({
-      expiresInDays: settings?.defaultInviteExpiryDays ?? GLOBAL_INVITE_EXPIRY_DAYS
-    });
-  }, [addForm, settings?.defaultInviteExpiryDays]);
   const [cancelInviteTarget, setCancelInviteTarget] =
     useState<InstitutionInvitation | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [policyOpen, setPolicyOpen] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -231,70 +214,17 @@ export function InstitutionCodeMembersTab({
     [allUsers, memberUserIdSet, pendingInviteUserIdSet]
   );
 
-  const handleAddMembers = useCallback(async () => {
-    if (addSubmitting) {
-      return;
-    }
-    // submitting을 검증 await 전에 세워 더블 서밋 창을 닫는다.
-    setAddSubmitting(true);
-    let values: { userIds: string[]; reason: string; expiresInDays: number };
-    try {
-      values = await addForm.validateFields();
-    } catch {
-      setAddSubmitting(false);
-      return;
-    }
-    if (!values.userIds || values.userIds.length === 0) {
-      setAddSubmitting(false);
-      return;
-    }
-
-    // 정원 초과는 서버도 막지만, 왕복 전에 알려주면 운영자가 대상 인원을 바로 줄일 수 있다.
-    // 좌석 = 소속 회원 + 만료되지 않은 대기 초대(서버 계산과 같은 정의).
-    const seatLimit = settings?.maxMembers ?? null;
-    if (settings && seatLimit !== null && settings.seatsUsed + values.userIds.length > seatLimit) {
-      setAddSubmitting(false);
-      notificationApi.error({
-        message: '정원 초과',
-        description: `정원 ${seatLimit.toLocaleString()}명 중 ${settings.seatsUsed.toLocaleString()}명이 사용 중입니다(소속 회원 + 대기 초대). ${values.userIds.length.toLocaleString()}명을 더 초대할 수 없습니다.`
-      });
-      return;
-    }
-
-    const result = await inviteInstitutionMembersGuardedSafe(
-      values.userIds,
-      code,
-      values.reason,
-      // 폼에 값이 있으면 그것을, 비어 있으면 null 을 보내 서버가 기관 기본값으로 해석한다.
-      values.expiresInDays ?? null
-    );
-    setAddSubmitting(false);
-
-    if (!result.ok) {
-      notificationApi.error({
-        message: '초대 발송 실패',
-        description: translateInstitutionContractError(result.error.message)
-      });
-      return;
-    }
-
-    if (result.data === 0) {
-      notificationApi.info({
-        message: '초대 대상 없음',
-        description: '이미 소속이거나 대기 중 초대가 있어 새로 보낸 초대가 없습니다.'
-      });
-    } else {
-      // 이메일이 cron 주기를 기다리지 않도록 워커 즉시 kick(실패해도 cron 이 수거).
-      void kickNotificationEmailDispatch();
-      notificationApi.success({
-        message: '초대 발송 완료',
-        description: `${result.data.toLocaleString()}명에게 초대를 보냈습니다. 인앱 알림은 즉시 전달되고 이메일 발송을 시작했습니다. 발송 결과는 메시지 ▸ 발송 이력에서 확인할 수 있습니다. (이미 소속·대기 중 제외)`
-      });
-    }
-    addForm.resetFields();
+  // 초대 성공 후 갱신 두 축: 로컬 로스터(대기 초대 행)와 셸 settings(좌석 요약·정원 검사).
+  const handleInvited = useCallback(() => {
     setMemberReload((prev) => prev + 1);
     onChanged();
-  }, [addForm, addSubmitting, code, notificationApi, onChanged, settings]);
+  }, [onChanged]);
+
+  // 툴바 요약과 본문 경보가 같은 판정을 쓰도록 여기서 한 번만 계산한다.
+  const seatFull =
+    settings !== null && settings.maxMembers !== null && settings.seatsUsed >= settings.maxMembers;
+  const blockedNow =
+    (settings?.blockIntakeOnExpiry ?? false) && contractStatus?.hasActiveContract === false;
 
   const handleCancelInvitationConfirm = useCallback(
     async (reason: string) => {
@@ -441,55 +371,66 @@ export function InstitutionCodeMembersTab({
 
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
-      <InstitutionMemberPolicySection
-        institution={institution}
-        settings={settings}
-        contractStatus={contractStatus}
-        canManage={canManage}
-        notificationApi={notificationApi}
-        onChanged={onChanged}
+      {/* 좌석은 "설정"이 아니라 판단에 필요한 **현황**이라 툴바에 상시 노출한다.
+          정원·초대 기본값·유입 차단 편집만 Drawer 뒤로 보낸다. */}
+      <InstitutionTabToolbar
+        summary={
+          settings ? (
+            <Space size={8} wrap>
+              <Text data-testid="institution-seat-usage">
+                {settings.seatsUsed.toLocaleString()}
+                {settings.maxMembers === null
+                  ? ' / 무제한'
+                  : ` / ${settings.maxMembers.toLocaleString()}`}
+              </Text>
+              <Text type="secondary">
+                소속 {settings.memberCount.toLocaleString()}명 · 대기 초대{' '}
+                {settings.pendingInvitationCount.toLocaleString()}건
+              </Text>
+            </Space>
+          ) : (
+            <Text type="secondary">좌석 불러오는 중…</Text>
+          )
+        }
+        actions={
+          <>
+            {canManage ? (
+              <Button
+                type="primary"
+                size="large"
+                data-testid="institution-invite-open-button"
+                onClick={() => setInviteOpen(true)}
+              >
+                회원 초대
+              </Button>
+            ) : null}
+            <Button
+              size="large"
+              data-testid="institution-member-policy-open-button"
+              onClick={() => setPolicyOpen(true)}
+            >
+              회원 정책
+            </Button>
+          </>
+        }
       />
 
-      {canManage ? (
-        <Form form={addForm} layout="vertical">
-          <Form.Item
-            label="회원 초대"
-            name="userIds"
-            rules={[{ required: true, message: '초대할 회원을 선택하세요.' }]}
-            extra="초대 알림(인앱+이메일)이 발송되고, 회원이 수락해야 소속이 적용됩니다. 발송 내역은 메시지 ▸ 발송 이력에서 확인할 수 있습니다."
-          >
-            <Select
-              mode="multiple"
-              placeholder="이름 또는 이메일로 검색하세요."
-              options={addUserOptions}
-              showSearch
-              optionFilterProp="label"
-              maxTagCount="responsive"
-            />
-          </Form.Item>
-          <Form.Item
-            label="만료 기간"
-            name="expiresInDays"
-            rules={[{ required: true, message: '만료 기간을 입력하세요.' }]}
-            extra={
-              settings?.defaultInviteExpiryDays !== null && settings
-                ? `이 기간 안에 응답하지 않으면 초대가 만료됩니다. 기관 기본값 ${settings.defaultInviteExpiryDays}일이 채워져 있습니다.`
-                : `이 기간 안에 응답하지 않으면 초대가 만료됩니다. 기관 기본값이 없어 전역 기본 ${GLOBAL_INVITE_EXPIRY_DAYS}일이 채워져 있습니다.`
-            }
-          >
-            <InputNumber min={1} max={365} addonAfter="일" style={{ width: 140 }} />
-          </Form.Item>
-          <Form.Item
-            label="사유/근거"
-            name="reason"
-            rules={[{ required: true, message: '초대 사유를 입력하세요.' }]}
-          >
-            <Input.TextArea rows={2} placeholder="감사 기록에 남길 초대 사유를 입력하세요." />
-          </Form.Item>
-          <Button type="primary" loading={addSubmitting} onClick={() => void handleAddMembers()}>
-            선택 회원 초대
-          </Button>
-        </Form>
+      {/* 현황 경보는 본문에 남긴다 — Drawer 안에 넣으면 열어보기 전까지 못 본다. */}
+      {blockedNow ? (
+        <Alert
+          type="warning"
+          showIcon
+          message="계약이 만료돼 신규 배정·초대가 차단된 상태입니다."
+          description="계약 탭에서 기간을 갱신하거나 회원 정책에서 차단 옵션을 해제하세요. 이미 소속된 회원은 그대로 유지됩니다."
+        />
+      ) : null}
+      {seatFull ? (
+        <Alert
+          type="warning"
+          showIcon
+          message="정원이 모두 사용됐습니다."
+          description="정원을 늘리거나 대기 중 초대를 취소해야 새로 초대할 수 있습니다."
+        />
       ) : null}
 
       <div>
@@ -558,6 +499,27 @@ export function InstitutionCodeMembersTab({
           onConfirm={handleCancelInvitationConfirm}
         />
       ) : null}
+
+      <InstitutionInviteDrawer
+        open={inviteOpen}
+        onClose={() => setInviteOpen(false)}
+        code={code}
+        settings={settings}
+        userOptions={addUserOptions}
+        notificationApi={notificationApi}
+        onInvited={handleInvited}
+      />
+
+      <InstitutionMemberPolicyDrawer
+        open={policyOpen}
+        onClose={() => setPolicyOpen(false)}
+        institution={institution}
+        settings={settings}
+        contractStatus={contractStatus}
+        canManage={canManage}
+        notificationApi={notificationApi}
+        onChanged={onChanged}
+      />
     </Space>
   );
 }

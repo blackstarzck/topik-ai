@@ -166,13 +166,22 @@ test('회원 정책은 좌석 사용량을 보여주고 초대 기본값을 폼�
     test.skip(true, 'Supabase auth is configured for this run; login is not part of this e2e.');
   }
 
-  await expect(page.getByTestId('institution-member-policy-section')).toBeVisible();
+  // 좌석 요약은 툴바에 상시 노출된다 — 판단에 필요한 현황이라 Drawer 뒤로 숨기지 않았다.
   await expect(page.getByTestId('institution-seat-usage')).toHaveText('0 / 50');
 
-  // 기관 설정의 초대 유효기간 기본값(14일)이 초대 폼에 채워져야 한다 — 전역 7일이 아니다.
-  await expect(page.locator('#expiresInDays')).toHaveValue('14');
+  // 정책 편집은 Drawer 안이다(2026-08-06 재배치).
+  await page.getByTestId('institution-member-policy-open-button').click();
+  await expect(page.getByTestId('institution-member-policy-drawer')).toBeVisible();
+  await expect(page.getByTestId('institution-member-policy-section')).toBeVisible();
   await expect(page.locator('#defaultInviteExpiryDays')).toHaveValue('14');
   await expect(page.locator('#maxMembers')).toHaveValue('50');
+  await page.getByRole('button', { name: '취소' }).click();
+  await expect(page.locator('.ant-drawer-open')).toHaveCount(0);
+
+  // 기관 설정의 초대 유효기간 기본값(14일)이 초대 폼에 채워져야 한다 — 전역 7일이 아니다.
+  await page.getByTestId('institution-invite-open-button').click();
+  await expect(page.getByTestId('institution-invite-drawer')).toBeVisible();
+  await expect(page.locator('#expiresInDays')).toHaveValue('14');
 });
 
 test('정원을 현재 좌석 사용량보다 낮게 저장할 수 없다', async ({ page }) => {
@@ -185,6 +194,8 @@ test('정원을 현재 좌석 사용량보다 낮게 저장할 수 없다', asyn
 
   await expect(page.getByTestId('institution-seat-usage')).toHaveText('130 / 무제한');
 
+  await page.getByTestId('institution-member-policy-open-button').click();
+  await expect(page.getByTestId('institution-member-policy-drawer')).toBeVisible();
   await page.locator('#maxMembers').fill('10');
   await page
     .getByTestId('institution-member-policy-section')
