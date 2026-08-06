@@ -1020,3 +1020,20 @@
 - Rejected: phase8 파일 재적용. 그 본문은 6월 상태라 이후 정당한 변경(예: 20260708110000 의 cta_label)을 되돌린다.
 - Not-updated: dev 47함수 복구는 미실행 — 드라이런(47건·차단 0)까지 확인했고 실제 쓰기는 오너 승인 대기. 2단계 본작업(신규 배선 60함수 + 정책)도 복구 후 착수한다.
 - Validation: harness:check exit 0 · 단위 691/691(신규 15) · check:mojibake · check:expand-migrations(0 new) · check:migration-boundary · parity 검사 양방향 실측(dev 47건 exit 1 / 운영 0건 exit 0 — 정상 환경 오탐 없음) · repair 드라이런 47건 차단 0
+
+## 2026-08-06 2단계 2A — 시스템·회원 서버 권한 정렬 (RPC 20 + 정책 14)
+
+- Updated: supabase/migrations-admin/20260806120000_admin_permission_alignment_system_users.sql(+down, 신규), scripts/db/manifests/admin-{development-reconciliation,production-cutover}.json, tests/unit/permission-alignment-system-users-contract.test.mjs(신규 21), docs/specs/page-ia/{system-audit-logs,system-admins,users-list}-page-ia.md, docs/specs/admin-page-gap-register.md §4.9.1
+- Reason: 화면은 43개 권한 키로 게이팅하는데 서버는 역할만 검사했다. 3단계 등급 모델이 의미를 갖기 위한 전제 작업이고, 활성 관리자가 platform_admin 1명·grants 0 인 지금이 유일한 무파손 창이다(platform 은 admin_has_permission 자동 통과라 적용 시점 동작 무변경).
+- Contract: 강제 형태는 **역할 검사 + 권한 키 2겹**(오너 확정 2026-08-06). `private.is_admin` 으로 콘솔 관리자임을 먼저 확인하고 그 뒤 키를 본다 — 키만 남기면 org_admin(기관 관리자)이 grant 하나로 콘솔 표면에 닿는다. 2026-08 트랙(20260805130000·150000)의 키 단독 4종은 이 표준의 예외로 남아 있고 별도 정규화 대상이다.
+- Contract: 회원 원문 PII(이메일·전화)는 platform_admin **또는 `users.export`** 보유자에게만 반환한다. `users.read` 는 저위험 키인데 그것만으로 원문 PII 가 나가면 카탈로그 위험도와 맞지 않는다. 반환값만 NULL 로 만들면 이메일 검색으로 존재 여부를 역추적할 수 있으므로 검색 분기도 같은 조건으로 닫았다. 정렬은 마스킹된 투영을 따라가므로 별도 조치가 필요없다.
+- Contract: `get_admin_users` 의 키 검사는 `users.read` **또는** `users.export` 를 받는다. `admin_export_users` 가 이 함수를 내부 호출하므로 함의가 없으면 `users.export` 단독 보유자가 자기 표면 안에서 막힌다. `users.export` 는 목록보다 많은 데이터를 반환하는 상위 권한이라 목록 조회를 함의한다.
+- Contract: 정책은 **교체 또는 삭제**다. RLS 는 permissive-OR 이므로 역할 정책을 남긴 채 키 정책을 추가하면 아무것도 좁혀지지 않는다. 관리자 앱이 직접 읽는 3테이블(system_logs·metadata 2)은 키 정책으로 교체하고, 직접 읽지 않는 11테이블은 정책을 삭제해 조회를 definer RPC 단일 경로로 만들었다.
+- Found: 계획의 인벤토리가 dev 드리프트 상태에서 센 수치라 여러 항목이 틀렸다 — 본인 분기가 섞인 정책은 3건이 아니라 **13건**(pdf 쿼터·problems·profiles·subscriptions·user_consents 등 v13 표면 포함), "쓰기 정책 0" 도 사실이 아니었고(v13 소유 `*`/`d`/`w` 9건 존재), 내부 호출 체인은 2건이 아니라 **5건**(기관 배정 guarded 2·문항 bulk 1 추가)이었다. 2A 범위에서는 본인 혼합·쓰기 정책 대상이 없어 영향은 없었으나 2B·2C 인벤토리는 라이브 재실측으로 다시 세야 한다.
+- Found: 메타데이터 RPC 6종은 이번 범위에서 빠졌다 — 2026-08-06 드리프트 복구로 이미 키를 되찾았기 때문이다(원래 phase8 결정 대상).
+- Rejected: `admin_export_users` 의 내부 호출을 private 헬퍼 분리로 고치는 방안(외부 리뷰 제안). 상위 권한이 하위 조회를 함의하게 하는 1줄 변경으로 같은 목적을 달성하면서 본문 구조 수술을 피했다. 헬퍼 분리는 반환 타입 변경을 요구해 `drop function` 금지 규약과 충돌한다.
+- Rejected: PII 마스킹 조건을 platform_admin 단독으로 두는 방안. `admin_export_users` 가 `get_admin_users` 를 내부 호출하므로 내보내기 결과의 이메일이 전부 NULL 이 되어 `users.export` 키가 무의미해진다.
+- Not-updated: 운영 DB 미적용(대기 11건). 2B(운영·커머스·메시지·커뮤니티)·2C(문제은행·기관) 미착수. FE 변경 0 — 오늘 유일한 관리자가 모든 키를 자동 통과하므로 화면이 받는 데이터가 같다.
+- Validation: dev 라이브 스키마 예행(begin/rollback) → **up·down 왕복 예행**(down 후 키 0·정책 4 복원 단정) → 러너 적용 → 프로브 → parity. 게이트: harness:check · test:unit(신규 21) · db:contracts:verify · check:expand-migrations · check:migration-boundary · db:permission-gate-parity(missing=0)
+- Validation(프로브 매트릭스, 트랜잭션 롤백): **오너**=목록·상세·감사 전부 통과 + 원문 이메일 노출 유지 / **키 0개 관리자**=RPC 4종 전부 bare P0001 거절 + 정책 삭제·교체 5테이블 모두 0행 / **users.read 단독 관리자**=목록·상세 통과, 원문 이메일 0건, `phone_masked` 건수는 오너와 동일(기능 손실 없음), 이메일 전용 검색어로 0행(오너는 1행), 인접 도메인(`system.admins.manage`)은 여전히 거절. 적용 후 실측: 키 검사 함수 81→**101**, 닫은 11테이블 정책 **0**, 오너 계정·grants·51번 노출 문항 200 불변, 프로브 잔존물 0
+- Found(프로브 함정 2건): ①단건 값 단정은 데이터 특성에 걸린다 — 첫 회원의 전화번호가 원래 NULL 이라 `phone_masked` 단정이 거짓 실패했다(PR #81 의 diff NULL 과 같은 함정). 주체 간 **집계 비교**로 교체했다. ②`get_admin_users` 검색은 이메일 외 display_name·nickname·user_id 도 훑는다 — `@` 로 검색하면 다른 필드에 걸려 검색 분기를 측정하지 못한다. **이메일에만 존재하는 검색어를 런타임에 구성**해 판정했다(만들 수 없으면 조용히 넘기지 않고 예외).

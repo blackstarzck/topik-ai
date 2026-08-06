@@ -15,7 +15,7 @@
 | 현재 상태 | 구현됨 |
 | 페이지 유형 | 목록 운영형 |
 | 라우트 | /system/audit-logs |
-| 주요 권한 | system.audit.read |
+| 주요 권한 | system.audit.read (서버 강제 — 마이그 20260806120000, is_admin + 권한 키 2겹. diff/payload 와 payload 키워드 검색은 그 위에서 다시 platform_admin 전용 — 20260805160000) |
 | 주요 role | SUPER_ADMIN, OPS_ADMIN, CONTENT_MANAGER, CS_MANAGER, READ_ONLY |
 | 연관 문서 | docs/architecture/admin-overview.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md, docs/specs/admin-action-log.md |
 

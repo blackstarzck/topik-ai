@@ -2,7 +2,7 @@
   "namespace": "admin",
   "environment": "development",
   "projectRef": "fglggyfvzjdsbyckinqa",
-  "expectedLocalCount": 101,
+  "expectedLocalCount": 102,
   "knownRemoteOnly": {
     "20260713140000_admin_learning_analytics_dual_id_coverage.sql": {
       "status": "superseded",
@@ -92,7 +92,7 @@
     },
     "release-all": {
       "from": "20260612170000_notification_admin_tables.sql",
-      "to": "20260805160000_audit_logs_sensitive_data_gate_restore.sql"
+      "to": "20260806120000_admin_permission_alignment_system_users.sql"
     },
     "institution-assignment-prerequisite": {
       "reason": "배정 0건 기관에 회원을 배정/초대하면 그 회원은 쓰기 문항을 하나도 보지 못한다(기관 할당제). admin_assign_institution_code 와 admin_invite_institution_members 에 선행조건 검사를 끼운다. 짝 가드는 topik_writing 네임스페이스 20260731100100.",
@@ -317,6 +317,68 @@
         {
           "kind": "policy",
           "identity": "public.admin_audit_logs.admin_audit_logs_admin_select"
+        }
+      ]
+    },
+    "permission-alignment-system-users": {
+      "reason": "2단계 서버 권한 정렬 2A — 시스템·회원 표면. 화면은 43개 권한 키로 게이팅하는데 서버는 역할만 검사하던 RPC 20종을 화면과 같은 키로 정렬한다(오너 확정 강제 형태: 역할 검사 + 권한 키 2겹). is_admin 전용 14종은 키 추가(순수 강화)이고, platform 전용 6종은 is_admin + 키로 전환해 grant 로 열 수 있게 한다(완화-by-design — grants 0 이라 적용 시점 동작 무변경). 완화에 딸린 필수 조치로 회원 원문 이메일·전화는 platform_admin 또는 users.export 보유자에게만 반환하고 이메일 검색 분기도 같은 조건으로 닫는다(반환값만 가리면 검색으로 존재 여부를 역추적할 수 있다). RPC 만 잠그면 PostgREST 직접 조회로 우회되므로 정책 표면도 함께 정렬한다 — 관리자 앱이 직접 읽는 3테이블은 키 정책으로 교체하고, 직접 읽지 않는 11테이블은 정책을 삭제해 조회를 definer RPC 단일 경로로 만든다. get_admin_users 의 키 검사가 users.export 를 함의하는 이유는 admin_export_users 가 이 함수를 내부 호출하기 때문이다.",
+      "migrations": [
+        "20260806120000_admin_permission_alignment_system_users.sql"
+      ],
+      "expectPresentAfter": [
+        {
+          "kind": "function",
+          "identity": "public.get_admin_users(text,text,integer,integer,text)"
+        },
+        {
+          "kind": "function",
+          "identity": "public.get_admin_user(uuid)"
+        },
+        {
+          "kind": "function",
+          "identity": "public.admin_export_users(text,boolean,text,text,uuid[],text,text,date,date,text[],text[],text[],text[],text[],text[],text[])"
+        },
+        {
+          "kind": "function",
+          "identity": "public.admin_list_audit_logs(text,text,text,timestamptz,timestamptz,integer,integer)"
+        },
+        {
+          "kind": "function",
+          "identity": "public.admin_has_permission(uuid,text)"
+        },
+        {
+          "kind": "policy",
+          "identity": "public.system_logs.system_logs_permission_select"
+        },
+        {
+          "kind": "policy",
+          "identity": "public.system_metadata_groups.system_metadata_groups_permission_select"
+        },
+        {
+          "kind": "policy",
+          "identity": "public.system_metadata_group_items.system_metadata_group_items_permission_select"
+        }
+      ],
+      "expectAbsent": [
+        {
+          "kind": "policy",
+          "identity": "public.admin_accounts.admin_accounts_admin_select"
+        },
+        {
+          "kind": "policy",
+          "identity": "public.admin_permission_grants.admin_permission_grants_admin_select"
+        },
+        {
+          "kind": "policy",
+          "identity": "public.instructors.instructors_admin_select"
+        },
+        {
+          "kind": "policy",
+          "identity": "public.user_admin_memos.user_admin_memos_admin_select"
+        },
+        {
+          "kind": "policy",
+          "identity": "public.system_logs.system_logs_admin_select"
         }
       ]
     }

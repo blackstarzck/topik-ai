@@ -15,7 +15,7 @@
 | 현재 상태 | 구현됨 |
 | 페이지 유형 | 목록 운영형 |
 | 라우트 | /users |
-| 주요 권한 | users.read, users.suspend, users.export |
+| 주요 권한 | users.read · users.export (서버 강제 — 마이그 20260806120000, is_admin + 권한 키 2겹). 원문 이메일·전화는 platform_admin 또는 users.export 보유자에게만 반환하고 이메일 검색 분기도 같은 조건이다. 종전 표기 `users.suspend` 는 카탈로그에 없는 유령 키이며, 회원 정지는 platform_admin 전용으로 남아 있다 |
 | 주요 role | SUPER_ADMIN, OPS_ADMIN, CS_MANAGER, READ_ONLY |
 | 연관 문서 | docs/architecture/admin-overview.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
 
