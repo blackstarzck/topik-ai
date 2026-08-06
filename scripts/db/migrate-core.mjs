@@ -72,6 +72,7 @@ export function parseMigrationArgs(args) {
     downName: action === 'down' ? getArgValue(args, '--down') : null,
     allowDown: args.includes('--allow-down'),
     allowOutOfOrderDown: args.includes('--allow-out-of-order-down'),
+    allowOutOfOrderApply: args.includes('--allow-out-of-order-apply'),
     requireClean,
     jsonOut: getArgValue(args, '--json-out'),
   };
@@ -615,6 +616,7 @@ async function applyRecords({
   batch,
   records,
   appliedRows,
+  allowOutOfOrderApply = false,
 }) {
   const applied = new Map(appliedRows.map((row) => [row.name, row]));
   const operator = process.env.SUPABASE_MIGRATION_OPERATOR ?? 'codex';
@@ -630,6 +632,28 @@ async function applyRecords({
     if (existing) {
       console.log(`skip ${record.name}`);
       continue;
+    }
+
+    const newerApplied = findOutOfOrderApplyBlockers({
+      migrationName: record.name,
+      appliedNames: applied.keys(),
+    });
+    if (newerApplied.length > 0 && !allowOutOfOrderApply) {
+      fail(
+        `Refusing to apply ${record.name} while newer migration(s) are already applied: `
+        + `${newerApplied.slice(-5).join(', ')}${newerApplied.length > 5 ? ` (+${newerApplied.length - 5} more)` : ''}. `
+        + 'A back-dated file replays its own CREATE OR REPLACE bodies on top of the newer ones, '
+        + 'so anything the newer files added to those objects is silently dropped and the live '
+        + 'schema stops matching a clean replay. Confirm this file shares no object with the '
+        + 'newer ones (or re-apply them afterwards in name order), then re-run with '
+        + '--allow-out-of-order-apply.'
+      );
+    }
+    if (newerApplied.length > 0) {
+      console.warn(
+        `WARNING: applying ${record.name} out of order; newer already applied: `
+        + `${newerApplied.slice(-3).join(', ')}`
+      );
     }
 
     if (record.mode === 'adopt') {
@@ -726,6 +750,17 @@ export function findLaterAppliedMigrations({ migrationName, appliedNames }) {
   return [...appliedNames]
     .filter((name) => name > migrationName)
     .sort();
+}
+
+// Applying forward out of order drifts the live schema away from what a clean replay
+// produces, and the drift is silent. 2026-08-06 audit of dev: 20260617211000 was still
+// pending when the 20260623283000-block landed, so when it finally ran its
+// CREATE OR REPLACE bodies overwrote the newer files and dropped the permission gates
+// from 48 functions. Files and production were correct the whole time; only the
+// environment that applied out of order was wrong, and nothing failed loudly.
+// Ascending name order is the only order whose result equals a clean replay.
+export function findOutOfOrderApplyBlockers({ migrationName, appliedNames }) {
+  return findLaterAppliedMigrations({ migrationName, appliedNames });
 }
 
 async function rollbackMigration({
@@ -863,5 +898,6 @@ export async function runMigrate({ trackTable, migrationsDir, args }) {
     batch,
     records,
     appliedRows,
+    allowOutOfOrderApply: options.allowOutOfOrderApply,
   });
 }

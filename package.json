@@ -52,6 +52,8 @@
     "db:recover-prod": "node ./scripts/db/recover-prod-from-dev.mjs",
     "db:snapshot": "node ./scripts/db/schema-snapshot.mjs",
     "db:sql": "node ./scripts/db/run-sql.mjs",
+    "db:permission-gate-parity": "node ./scripts/db/verify-permission-gate-parity.mjs",
+    "db:permission-gate-repair": "node ./scripts/db/repair-permission-gate-drift.mjs",
     "lint": "set ESLINT_USE_FLAT_CONFIG=false&& eslint \"src/**/*.{ts,tsx}\" \"api/**/*.ts\"",
     "typecheck": "tsc -b --noEmit",
     "test:e2e": "playwright test",

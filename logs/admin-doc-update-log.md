@@ -1009,3 +1009,14 @@
 - Rejected: 파일 전수 스캔 테스트("이 함수를 정의하는 모든 마이그는 게이트를 포함해야 한다"). 게이트를 드롭한 두 파일이 이미 적용된 불변 이력이라 영구 실패한다 — 리뷰가 이 결함을 지적했다. 대체로 전체 재생 후 최종 상태를 검사하는 shadow 검증을 신설하고, 배선 여부를 단위 테스트가 고정한다.
 - Not-updated: 운영 DB 는 미적용(대기 10건). 등급·권한 모델(계획 2·3단계)은 정책 63개 정렬이 선행 조건이라 이번 범위가 아니다.
 - Validation: harness:check exit 0 · 단위 674/674(신규 15) · e2e system-audit-logs 통과 · check:expand-migrations · check:migration-boundary · db:contracts:verify(admin 101/101 clean) · dev 라이브 스키마 up·down 예행 · dev 적용 후 행동 실측(platform 500행 중 diff 448·payload 500 노출 / content 목록 500·사유 361 유지 + diff·payload 0 + payload 키워드 0 / 원본 직접조회 platform 4,560 vs content 0 / content 위조 INSERT 거절 / 오너 계정 역할·상태 불변). 프로브 1차 실패는 최신 감사 행의 diff 가 원래 NULL 인 데이터 특성이었고 순서 의존을 없애 집계 단정으로 교체했다.
+
+## 2026-08-06 권한 게이트 드리프트 탐지·복구 도구 + 러너 정순 적용 가드 (2단계 선행)
+
+- Updated: scripts/db/verify-permission-gate-parity.mjs(신규), scripts/db/repair-permission-gate-drift.mjs(신규), scripts/db/migrate-core.mjs(정순 적용 가드 + --allow-out-of-order-apply), package.json(db:permission-gate-parity · db:permission-gate-repair), tests/unit/permission-gate-parity.test.mjs(신규 15), AGENTS.md §11.6, supabase/README.md, docs/specs/admin-page-gap-register.md §4.9.1
+- Reason: 2단계(서버 권한 정렬) 착수 실사에서 dev 와 운영의 게이트 상태가 갈라져 있었다. 운영은 관리자 RPC 76개가 권한 키를 검사하는데 dev 는 34개뿐 — 차이 47개는 dev 가 잃은 것이다. 계획의 기준선("권한 키 정책 0개 / 미강제 20키")이 dev 만 보고 센 수치였고, 그 상태로 정렬 마이그를 저작하면 운영에서 앵커가 어긋나 fail-closed 되거나 이미 있는 키를 지울 수 있었다.
+- Found: 원인은 코드가 아니라 적용 순서다. 20260617211000_system_metadata.sql 등 6/17~6/22 자 파일이 dev 에서 대기 상태로 남아 있다가 phase8 강제 블록(2026062328xxxx, 6/24 적용) 뒤인 7/8~7/16 에 적용됐고, 그 create or replace 본문이 새 정의를 덮어 권한 검사를 지웠다. 아무것도 실패하지 않았다 — checksum 은 파일별로만 맞고, 클린 재생은 이름 순이라 정상 상태를 만들기 때문에 shadow 계약으로는 원리적으로 볼 수 없었다. 파일 세트와 운영 DB 는 처음부터 정상(양쪽 parity 실측). 관리자 47개 RPC 가 한 달간 dev 에서 권한 키 없이 돌았다.
+- Contract: 적용은 이름 순이 유일하게 정의된 순서다. 러너가 역순 forward 적용을 거부하고, 객체 비겹침을 확인했을 때만 --allow-out-of-order-apply 로 우회하며 겹치는 파일은 이후 이름 순 재적용한다. parity 검사는 "파일이 요구하는 키가 라이브에 없음"만 실패로 다루고 그 반대(라이브에만 있는 키)는 보고만 한다 — 이 저장소 게이트 다수가 do-block pg_get_functiondef 수술로 들어가 정적 파서로 읽을 수 없기 때문이다. 기대값은 적용된 파일 중 이름 순 최신 정의에서 뽑는다(적용 시각을 따라가면 드리프트가 정상으로 보인다). 미적용 파일은 기대에서 제외해 단순히 뒤처진 환경을 오진하지 않는다.
+- Rejected: 드리프트를 forward 마이그레이션으로 고치는 방안. 파일 세트와 운영이 이미 정상이라 그 마이그는 두 곳에서 no-op 이고 한 환경의 사고를 패치하려고 이력을 오염시킨다. 대신 참조 환경에서 정의를 복사하는 운영 도구로 만들었다 — 손으로 본문을 쓰면 틀릴 기회를 한 번 더 만든다.
+- Rejected: phase8 파일 재적용. 그 본문은 6월 상태라 이후 정당한 변경(예: 20260708110000 의 cta_label)을 되돌린다.
+- Not-updated: dev 47함수 복구는 미실행 — 드라이런(47건·차단 0)까지 확인했고 실제 쓰기는 오너 승인 대기. 2단계 본작업(신규 배선 60함수 + 정책)도 복구 후 착수한다.
+- Validation: harness:check exit 0 · 단위 691/691(신규 15) · check:mojibake · check:expand-migrations(0 new) · check:migration-boundary · parity 검사 양방향 실측(dev 47건 exit 1 / 운영 0건 exit 0 — 정상 환경 오탐 없음) · repair 드라이런 47건 차단 0
