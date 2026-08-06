@@ -3,6 +3,10 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { updateInstitutionCodeSafe } from '../../api/institution-codes-service';
 import {
+  patchInstitutionSettingsSafe,
+  translateInstitutionContractError
+} from '../../api/institution-contracts-service';
+import {
   institutionCodeKinds,
   institutionCodeStatuses
 } from '../../model/institution-codes-types';
@@ -11,6 +15,7 @@ import type {
   InstitutionCodeKind,
   InstitutionCodeStatus
 } from '../../model/institution-codes-types';
+import type { InstitutionSettings } from '../../model/institution-contracts-types';
 import type { NotificationApi } from './institution-code-detail-tab-types';
 import { AuditLogLink } from '../../../../shared/ui/audit-log-link/audit-log-link';
 import { createDescriptionLabel } from '../../../../shared/ui/descriptions/description-label';
@@ -31,8 +36,17 @@ type InfoFormValues = {
   reason: string;
 };
 
+type ContactFormValues = {
+  contactName?: string;
+  contactEmail?: string;
+  reason: string;
+};
+
 type InstitutionCodeInfoTabProps = {
   institution: InstitutionCode;
+  /** 담당자 편집에 필요하다. null 이면 아직 못 읽은 상태(편집 비활성). */
+  settings: InstitutionSettings | null;
+  canManage: boolean;
   notificationApi: NotificationApi;
   onChanged: () => void;
 };
@@ -46,11 +60,15 @@ type InstitutionCodeInfoTabProps = {
  */
 export function InstitutionCodeInfoTab({
   institution,
+  settings,
+  canManage,
   notificationApi,
   onChanged
 }: InstitutionCodeInfoTabProps): JSX.Element {
   const [form] = Form.useForm<InfoFormValues>();
   const [submitting, setSubmitting] = useState(false);
+  const [contactForm] = Form.useForm<ContactFormValues>();
+  const [contactSubmitting, setContactSubmitting] = useState(false);
 
   // 셸이 재조회한 값으로 폼을 되돌린다(다른 탭의 변경이 코드 메타를 바꿀 수 있다).
   useEffect(() => {
@@ -62,6 +80,16 @@ export function InstitutionCodeInfoTab({
       reason: ''
     });
   }, [form, institution]);
+
+  // 🚨 프리필 effect 를 코드 메타와 합치지 않는다 — 두 소스(institution / settings)가 서로
+  // 다른 시점에 도착하므로, 합치면 늦게 온 쪽이 먼저 온 쪽에 입력한 값을 덮는다.
+  useEffect(() => {
+    contactForm.setFieldsValue({
+      contactName: settings?.contactName ?? '',
+      contactEmail: settings?.contactEmail ?? '',
+      reason: ''
+    });
+  }, [contactForm, settings]);
 
   const handleSubmit = useCallback(async () => {
     let values: InfoFormValues;
@@ -106,6 +134,57 @@ export function InstitutionCodeInfoTab({
       setSubmitting(false);
     }
   }, [form, institution, notificationApi, onChanged]);
+
+  const handleContactSubmit = useCallback(async () => {
+    // 설정을 아직 못 읽었으면 저장하지 않는다 — 전량 upsert 라 현재 값 없이 보내면
+    // 정원·초대 기본값·유입 차단이 지워진다. 입력도 disable 이라 도달 불가 경로다.
+    if (!settings) {
+      return;
+    }
+
+    let values: ContactFormValues;
+    try {
+      values = await contactForm.validateFields();
+    } catch {
+      return;
+    }
+
+    setContactSubmitting(true);
+    try {
+      const result = await patchInstitutionSettingsSafe(
+        settings,
+        {
+          contactName: values.contactName ?? '',
+          contactEmail: values.contactEmail ?? ''
+        },
+        values.reason
+      );
+      if (!result.ok) {
+        notificationApi.error({
+          message: '담당자 정보 저장 실패',
+          description: translateInstitutionContractError(result.error.message)
+        });
+        return;
+      }
+      notificationApi.success({
+        message: '담당자 정보 저장 완료',
+        description: (
+          <Space direction="vertical">
+            <Text type="secondary">
+              담당자 이름·이메일 값은 감사 로그에 기록되지 않습니다(변경된 항목명만 남습니다).
+            </Text>
+            <AuditLogLink targetType="InstitutionCode" targetId={institution.code} />
+          </Space>
+        )
+      });
+      contactForm.setFieldsValue({ reason: '' });
+      onChanged();
+    } finally {
+      setContactSubmitting(false);
+    }
+  }, [contactForm, institution.code, notificationApi, onChanged, settings]);
+
+  const contactEditDisabled = !canManage || !settings;
 
   const items = [
     {
@@ -193,19 +272,95 @@ export function InstitutionCodeInfoTab({
 
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
-      <Form form={form} layout="vertical">
-        <Descriptions
-          bordered
-          column={1}
-          size="small"
-          labelStyle={{ width: 110, whiteSpace: 'nowrap' }}
-          items={items}
-        />
-      </Form>
       <div>
-        <Button type="primary" loading={submitting} onClick={() => void handleSubmit()}>
-          수정
-        </Button>
+        <Text strong style={{ fontSize: 15, display: 'block', marginBottom: 8 }}>
+          기본 정보
+        </Text>
+        <Form form={form} layout="vertical" disabled={!canManage}>
+          <Descriptions
+            bordered
+            column={1}
+            size="small"
+            labelStyle={{ width: 110, whiteSpace: 'nowrap' }}
+            items={items}
+          />
+        </Form>
+        {canManage ? (
+          <Button
+            type="primary"
+            style={{ marginTop: 10 }}
+            loading={submitting}
+            onClick={() => void handleSubmit()}
+          >
+            수정
+          </Button>
+        ) : null}
+      </div>
+
+      <div>
+        <Text strong style={{ fontSize: 15, display: 'block', marginBottom: 8 }}>
+          운영 담당자
+        </Text>
+        <Form form={contactForm} layout="vertical">
+          <Descriptions
+            bordered
+            column={1}
+            size="small"
+            labelStyle={{ width: 110, whiteSpace: 'nowrap' }}
+            items={[
+              {
+                key: 'contactName',
+                label: '담당자 이름',
+                children: (
+                  <Form.Item name="contactName" style={{ margin: 0 }}>
+                    <Input disabled={contactEditDisabled} placeholder="미입력" />
+                  </Form.Item>
+                )
+              },
+              {
+                key: 'contactEmail',
+                label: '담당자 이메일',
+                children: (
+                  <Form.Item
+                    name="contactEmail"
+                    style={{ margin: 0 }}
+                    rules={[{ type: 'email', message: '이메일 형식이 아닙니다.' }]}
+                  >
+                    <Input disabled={contactEditDisabled} placeholder="미입력" />
+                  </Form.Item>
+                )
+              },
+              {
+                key: 'reason',
+                label: createDescriptionLabel('변경 사유', { required: true }),
+                children: (
+                  <Form.Item
+                    name="reason"
+                    style={{ margin: 0 }}
+                    rules={[{ required: true, message: '변경 사유를 입력하세요.' }]}
+                  >
+                    <Input.TextArea
+                      rows={2}
+                      disabled={contactEditDisabled}
+                      placeholder="감사 로그에 기록됩니다(담당자 값은 기록되지 않습니다)."
+                    />
+                  </Form.Item>
+                )
+              }
+            ]}
+          />
+        </Form>
+        {canManage ? (
+          <Button
+            type="primary"
+            style={{ marginTop: 10 }}
+            loading={contactSubmitting}
+            disabled={contactEditDisabled}
+            onClick={() => void handleContactSubmit()}
+          >
+            담당자 정보 저장
+          </Button>
+        ) : null}
       </div>
     </Space>
   );

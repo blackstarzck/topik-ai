@@ -270,6 +270,8 @@ export default function InstitutionCodeDetailPage(): JSX.Element {
               children: institution ? (
                 <InstitutionCodeInfoTab
                   institution={institution}
+                  settings={settings}
+                  canManage={canManageMembers}
                   notificationApi={notificationApi}
                   onChanged={handleChanged}
                 />
@@ -282,7 +284,6 @@ export default function InstitutionCodeDetailPage(): JSX.Element {
                 <InstitutionCodeContractTab
                   institution={institution}
                   contractStatus={contractStatus}
-                  settings={settings}
                   canManage={canManageMembers}
                   notificationApi={notificationApi}
                   onChanged={handleChanged}
