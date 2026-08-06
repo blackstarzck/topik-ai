@@ -129,6 +129,9 @@ export function InstitutionCodeQuestionsTab({
           message: `${copy.title} 변경 실패`,
           description: translateInstitutionContractError(result.error.message)
         });
+        // 🚨 실패해도 확인 모달은 닫는다. 예전에는 여기서 pendingToggle 을 비우지 않아
+        // 실패 알림 뒤로 모달이 열린 채 남았고, 같은 사유로 다시 누르면 또 실패했다.
+        setPendingToggle(null);
         // 화면 값이 stale 해서 실패했을 수 있다 → 스스로 교정한다.
         onChanged();
         return;

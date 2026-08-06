@@ -100,6 +100,17 @@ export type InstitutionSettingsPayload = {
   reason: string;
 };
 
+/**
+ * 바꿀 필드만 담는다. 생략한 키는 현재 값을 그대로 유지한다.
+ * `null` 은 "값을 비운다"(정원 무제한 등)라서 "안 바꾼다"(`undefined`)와 구분된다.
+ */
+export type InstitutionSettingsPatch = Partial<
+  Pick<
+    InstitutionSettingsPayload,
+    'maxMembers' | 'defaultInviteExpiryDays' | 'blockIntakeOnExpiry' | 'contactName' | 'contactEmail'
+  >
+>;
+
 export function fetchInstitutionContractsSafe(code: string, signal?: AbortSignal) {
   return toSafeResult<InstitutionContract[]>(() =>
     withRetry(
@@ -271,7 +282,49 @@ export function setInstitutionAutoAssignSafe(
   });
 }
 
-export function updateInstitutionSettingsSafe(
+/**
+ * 기관 설정의 **일부 필드만** 바꾼다.
+ *
+ * 🚨 `admin_update_institution_settings` 는 정원·초대 기본값·유입 차단·담당자를 **전량**
+ * 받는 upsert 다. 그래서 화면이 한 필드만 고치려 해도 나머지를 그대로 실어 보내야 하는데,
+ * 그 pass-through 를 화면마다 손으로 하면 하나만 빠뜨려도 다른 설정이 조용히 초기화된다
+ * (실제로 담당자 폼이 `settings` 미로드 상태에서 저장하면 정원·초대 기본값·차단이
+ * null/false 로 덮이는 결함이 있었다).
+ *
+ * 그래서 병합을 여기 한 곳으로 모으고 `current` 를 **non-null 로 강제**한다 —
+ * 설정을 아직 못 읽었으면 애초에 저장할 수 없다는 것이 타입으로 드러난다.
+ */
+export function patchInstitutionSettingsSafe(
+  current: InstitutionSettings,
+  patch: InstitutionSettingsPatch,
+  reason: string,
+  signal?: AbortSignal
+) {
+  return updateInstitutionSettingsInternal(
+    {
+      code: current.code,
+      maxMembers: patch.maxMembers !== undefined ? patch.maxMembers : current.maxMembers,
+      defaultInviteExpiryDays:
+        patch.defaultInviteExpiryDays !== undefined
+          ? patch.defaultInviteExpiryDays
+          : current.defaultInviteExpiryDays,
+      blockIntakeOnExpiry:
+        patch.blockIntakeOnExpiry !== undefined
+          ? patch.blockIntakeOnExpiry
+          : current.blockIntakeOnExpiry,
+      contactName: patch.contactName !== undefined ? patch.contactName : current.contactName,
+      contactEmail: patch.contactEmail !== undefined ? patch.contactEmail : current.contactEmail,
+      reason
+    },
+    signal
+  );
+}
+
+/**
+ * 전량 payload 경로. 병합 실수를 구조적으로 막기 위해 **모듈 밖으로 내보내지 않는다** —
+ * 화면은 언제나 `patchInstitutionSettingsSafe` 를 쓴다.
+ */
+function updateInstitutionSettingsInternal(
   payload: InstitutionSettingsPayload,
   signal?: AbortSignal
 ) {

@@ -21,7 +21,7 @@ import {
   fetchInstitutionContractsSafe,
   translateInstitutionContractError,
   updateInstitutionContractSafe,
-  updateInstitutionSettingsSafe
+  patchInstitutionSettingsSafe
 } from '../../api/institution-contracts-service';
 import { isInstitutionCodesSupabase } from '../../api/institution-codes-service';
 import { formatContractPeriod } from '../../model/institution-contracts-types';
@@ -259,6 +259,13 @@ export function InstitutionCodeContractTab({
   );
 
   const handleContactSubmit = useCallback(async () => {
+    // 🚨 설정을 아직 못 읽었으면 저장하지 않는다. 예전에는 여기서 `settings?.x ?? null` 로
+    // 흘려보내 **정원·초대 기본값·유입 차단이 조용히 초기화**됐다(정책 섹션은 같은 상황에서
+    // 폼을 잠그는데 이 폼만 열려 있었다). 병합은 파사드가 하고, 이 가드는 폼 disable 과 짝이다.
+    if (!settings) {
+      return;
+    }
+
     let values: ContactFormValues;
     try {
       values = await contactForm.validateFields();
@@ -268,17 +275,14 @@ export function InstitutionCodeContractTab({
 
     setContactSubmitting(true);
     try {
-      // 담당자만 바꿀 때도 설정 RPC 는 전량값을 받는다 → 나머지는 현재 값을 그대로 보낸다.
-      // 여기서 null 로 흘리면 정원·초대 기본값이 조용히 초기화된다.
-      const result = await updateInstitutionSettingsSafe({
-        code: institution.code,
-        maxMembers: settings?.maxMembers ?? null,
-        defaultInviteExpiryDays: settings?.defaultInviteExpiryDays ?? null,
-        blockIntakeOnExpiry: settings?.blockIntakeOnExpiry ?? false,
-        contactName: values.contactName ?? '',
-        contactEmail: values.contactEmail ?? '',
-        reason: values.reason
-      });
+      const result = await patchInstitutionSettingsSafe(
+        settings,
+        {
+          contactName: values.contactName ?? '',
+          contactEmail: values.contactEmail ?? ''
+        },
+        values.reason
+      );
       if (!result.ok) {
         notificationApi.error({
           message: '담당자 정보 저장 실패',
@@ -303,6 +307,10 @@ export function InstitutionCodeContractTab({
       setContactSubmitting(false);
     }
   }, [contactForm, institution.code, notificationApi, reload, settings]);
+
+  // 설정 미로드 상태에서는 편집 자체를 막는다 — 전량 upsert 라 현재 값 없이 저장하면
+  // 이 폼 밖의 정원·초대 기본값·유입 차단이 지워진다(정책 섹션과 같은 계약).
+  const contactEditDisabled = !canManage || !settings;
 
   const columns = useMemo(
     () =>
@@ -476,7 +484,7 @@ export function InstitutionCodeContractTab({
                 label: '담당자 이름',
                 children: (
                   <Form.Item name="contactName" style={{ margin: 0 }}>
-                    <Input disabled={!canManage} placeholder="미입력" />
+                    <Input disabled={contactEditDisabled} placeholder="미입력" />
                   </Form.Item>
                 )
               },
@@ -489,7 +497,7 @@ export function InstitutionCodeContractTab({
                     style={{ margin: 0 }}
                     rules={[{ type: 'email', message: '이메일 형식이 아닙니다.' }]}
                   >
-                    <Input disabled={!canManage} placeholder="미입력" />
+                    <Input disabled={contactEditDisabled} placeholder="미입력" />
                   </Form.Item>
                 )
               },
@@ -504,7 +512,7 @@ export function InstitutionCodeContractTab({
                   >
                     <Input.TextArea
                       rows={2}
-                      disabled={!canManage}
+                      disabled={contactEditDisabled}
                       placeholder="감사 로그에 기록됩니다(담당자 값은 기록되지 않습니다)."
                     />
                   </Form.Item>
@@ -518,6 +526,7 @@ export function InstitutionCodeContractTab({
             type="primary"
             style={{ marginTop: 10 }}
             loading={contactSubmitting}
+            disabled={contactEditDisabled}
             onClick={() => void handleContactSubmit()}
           >
             담당자 정보 저장

@@ -14,7 +14,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import {
   translateInstitutionContractError,
-  updateInstitutionSettingsSafe
+  patchInstitutionSettingsSafe
 } from '../../api/institution-contracts-service';
 import { GLOBAL_INVITE_EXPIRY_DAYS } from '../../model/institution-contracts-types';
 import type {
@@ -75,6 +75,12 @@ export function InstitutionMemberPolicySection({
   }, [form, settings]);
 
   const handleSubmit = useCallback(async () => {
+    // 설정을 아직 못 읽었으면 저장할 수 없다 — 전량 upsert 라 현재 값 없이 보내면
+    // 담당자 등 이 섹션 밖 필드가 지워진다. 폼 자체도 disable 이라 도달 불가 경로다.
+    if (!settings) {
+      return;
+    }
+
     let values: PolicyFormValues;
     try {
       values = await form.validateFields();
@@ -84,17 +90,17 @@ export function InstitutionMemberPolicySection({
 
     setSubmitting(true);
     try {
-      // 담당자는 이 섹션에서 편집하지 않지만, 설정 RPC 는 전량값을 받으므로 현재 값을
-      // 그대로 실어 보낸다. 빼먹으면 담당자 정보가 조용히 지워진다.
-      const result = await updateInstitutionSettingsSafe({
-        code: institution.code,
-        maxMembers: values.maxMembers ?? null,
-        defaultInviteExpiryDays: values.defaultInviteExpiryDays ?? null,
-        blockIntakeOnExpiry: values.blockIntakeOnExpiry,
-        contactName: settings?.contactName ?? '',
-        contactEmail: settings?.contactEmail ?? '',
-        reason: values.reason
-      });
+      // 담당자는 이 섹션에서 편집하지 않는다. 병합은 파사드가 하므로 여기서
+      // 현재 값을 손으로 실어 나르지 않는다(빠뜨리면 조용히 지워지던 자리다).
+      const result = await patchInstitutionSettingsSafe(
+        settings,
+        {
+          maxMembers: values.maxMembers ?? null,
+          defaultInviteExpiryDays: values.defaultInviteExpiryDays ?? null,
+          blockIntakeOnExpiry: values.blockIntakeOnExpiry
+        },
+        values.reason
+      );
       if (!result.ok) {
         notificationApi.error({
           message: '회원 정책 저장 실패',

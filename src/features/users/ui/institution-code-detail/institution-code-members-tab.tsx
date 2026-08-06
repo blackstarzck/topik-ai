@@ -316,8 +316,12 @@ export function InstitutionCodeMembersTab({
       });
       setCancelInviteTarget(null);
       setMemberReload((prev) => prev + 1);
+      // 🚨 대기 초대도 좌석을 선점하므로 취소는 좌석 사용량을 바꾼다. 로컬 로스터만
+      // 갱신하고 끝내면 셸이 들고 있는 settings(좌석 요약·정원 사전검사의 소스)가
+      // stale 로 남아 "자리가 났는데 초대가 거부되는" 상태가 된다.
+      onChanged();
     },
-    [cancelInviteTarget, notificationApi]
+    [cancelInviteTarget, notificationApi, onChanged]
   );
 
   const handleRemoveConfirm = useCallback(
