@@ -283,6 +283,38 @@ export function setInstitutionAutoAssignSafe(
 }
 
 /**
+ * patch 를 현재 값 위에 얹어 전량 payload 를 만든다.
+ *
+ * 순수 함수로 떼어 둔 이유: 이 병합이 무너지면 화면이 안 건드린 설정이 조용히 사라지는데,
+ * 서비스 호출 경로를 통째로 태우는 테스트는 데이터 소스 스위치(mock/supabase)에 묶여
+ * 환경에 따라 검증이 성립하지 않는다. 계약만 여기서 고정한다.
+ *
+ * 🔑 `undefined`(안 바꿈)와 `null`(값을 비운다 — 정원 무제한 등)은 **다르다**.
+ * `??` 로 바꾸면 "정원을 무제한으로 되돌리기"가 조용히 무시된다.
+ */
+export function mergeInstitutionSettingsPatch(
+  current: InstitutionSettings,
+  patch: InstitutionSettingsPatch,
+  reason: string
+): InstitutionSettingsPayload {
+  return {
+    code: current.code,
+    maxMembers: patch.maxMembers !== undefined ? patch.maxMembers : current.maxMembers,
+    defaultInviteExpiryDays:
+      patch.defaultInviteExpiryDays !== undefined
+        ? patch.defaultInviteExpiryDays
+        : current.defaultInviteExpiryDays,
+    blockIntakeOnExpiry:
+      patch.blockIntakeOnExpiry !== undefined
+        ? patch.blockIntakeOnExpiry
+        : current.blockIntakeOnExpiry,
+    contactName: patch.contactName !== undefined ? patch.contactName : current.contactName,
+    contactEmail: patch.contactEmail !== undefined ? patch.contactEmail : current.contactEmail,
+    reason
+  };
+}
+
+/**
  * 기관 설정의 **일부 필드만** 바꾼다.
  *
  * 🚨 `admin_update_institution_settings` 는 정원·초대 기본값·유입 차단·담당자를 **전량**
@@ -300,24 +332,7 @@ export function patchInstitutionSettingsSafe(
   reason: string,
   signal?: AbortSignal
 ) {
-  return updateInstitutionSettingsInternal(
-    {
-      code: current.code,
-      maxMembers: patch.maxMembers !== undefined ? patch.maxMembers : current.maxMembers,
-      defaultInviteExpiryDays:
-        patch.defaultInviteExpiryDays !== undefined
-          ? patch.defaultInviteExpiryDays
-          : current.defaultInviteExpiryDays,
-      blockIntakeOnExpiry:
-        patch.blockIntakeOnExpiry !== undefined
-          ? patch.blockIntakeOnExpiry
-          : current.blockIntakeOnExpiry,
-      contactName: patch.contactName !== undefined ? patch.contactName : current.contactName,
-      contactEmail: patch.contactEmail !== undefined ? patch.contactEmail : current.contactEmail,
-      reason
-    },
-    signal
-  );
+  return updateInstitutionSettingsInternal(mergeInstitutionSettingsPatch(current, patch, reason), signal);
 }
 
 /**

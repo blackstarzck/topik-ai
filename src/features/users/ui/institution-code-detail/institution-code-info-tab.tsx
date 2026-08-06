@@ -71,7 +71,16 @@ export function InstitutionCodeInfoTab({
   const [contactSubmitting, setContactSubmitting] = useState(false);
 
   // 셸이 재조회한 값으로 폼을 되돌린다(다른 탭의 변경이 코드 메타를 바꿀 수 있다).
+  //
+  // 🚨 **작성 중이면 건너뛴다.** 이 탭에는 폼이 둘(기본 정보 / 운영 담당자) 있고 둘 다 저장 시
+  // `onChanged()` 로 셸 전량 재조회를 유발한다. 셸은 매 재조회마다 새 객체를 돌려주므로
+  // (mock·supabase 모두 스냅샷/매핑), 가드가 없으면 **한쪽을 저장할 때 다른 쪽에 입력해 둔
+  // 초안이 조용히 서버값으로 되돌아간다**. 사유가 required 라 오저장으로 곧장 이어지진 않지만,
+  // 운영자는 자기가 고친 값이 사라진 걸 모른 채 사유만 다시 넣고 저장하게 된다.
   useEffect(() => {
+    if (form.isFieldsTouched()) {
+      return;
+    }
     form.setFieldsValue({
       label: institution.label,
       kind: institution.kind,
@@ -83,7 +92,11 @@ export function InstitutionCodeInfoTab({
 
   // 🚨 프리필 effect 를 코드 메타와 합치지 않는다 — 두 소스(institution / settings)가 서로
   // 다른 시점에 도착하므로, 합치면 늦게 온 쪽이 먼저 온 쪽에 입력한 값을 덮는다.
+  // dirty 가드는 위와 같은 이유로 여기에도 필요하다(반대 방향 덮어쓰기).
   useEffect(() => {
+    if (contactForm.isFieldsTouched()) {
+      return;
+    }
     contactForm.setFieldsValue({
       contactName: settings?.contactName ?? '',
       contactEmail: settings?.contactEmail ?? '',
@@ -128,7 +141,8 @@ export function InstitutionCodeInfoTab({
           </Space>
         )
       });
-      form.setFieldsValue({ reason: '' });
+      // 저장했으니 초안이 아니다 — dirty 를 풀어야 다음 셸 재조회의 프리필이 다시 산다.
+      form.resetFields();
       onChanged();
     } finally {
       setSubmitting(false);
@@ -177,7 +191,8 @@ export function InstitutionCodeInfoTab({
           </Space>
         )
       });
-      contactForm.setFieldsValue({ reason: '' });
+      // 위와 같은 이유로 dirty 를 푼다(사유만 비우면 touched 가 남는다).
+      contactForm.resetFields();
       onChanged();
     } finally {
       setContactSubmitting(false);

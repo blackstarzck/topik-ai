@@ -121,15 +121,20 @@ test('노출 문항 탭: 배정이 있는 배정분만 코드는 경고를 띄�
   await openList(page);
   await openDetailTab(page, 'EXPO2026-BOOTH-A', '수정', 'info');
 
+  // 🚨 부정 단언 앞에는 **반드시 양성 앵커**를 세운다. 탭 children 은 코드 조회가 끝나야
+  // 렌더되는데(셸이 `institution ? … : null`), 앵커 없이 count 0 을 재면 아직 아무것도 안 그려진
+  // t≈0 에 통과해 버린다 — info 탭에 모드 트리거를 실제로 붙여도 green 인 vacuous pass 였다.
+  await expect(page.getByRole('button', { name: '수정' })).toBeVisible();
+
   // `수정` 은 기본 정보 탭이다. 모드는 이 탭에 없고 진입점(설정 트리거)조차 없다 —
   // 모드 축은 노출 문항 탭이 소유한다.
   await expect(page.getByRole('radio', { name: '배정분만' })).toHaveCount(0);
   await expect(page.getByTestId('institution-exposure-settings-open-button')).toHaveCount(0);
 
   await page.getByRole('tab', { name: '노출 문항' }).click();
-  // 본문에는 라디오가 없다(설정은 Drawer 로 갔다). 대신 툴바 요약이 모드를 보여준다.
-  await expect(page.getByRole('radio', { name: '배정분만' })).toHaveCount(0);
+  // 앵커 먼저(탭 전환 직후에도 같은 함정) → 그다음 본문에 라디오가 없음을 단언한다.
   await expect(page.getByTestId('institution-exposure-settings-open-button')).toBeVisible();
+  await expect(page.getByRole('radio', { name: '배정분만' })).toHaveCount(0);
 
   const section = await openModeSettings(page);
   // A부스는 모드 원장 행이 없어 실효 모드가 기본값(배정분만)으로 초기화된다.
@@ -137,6 +142,30 @@ test('노출 문항 탭: 배정이 있는 배정분만 코드는 경고를 띄�
   // 배정이 1건 있으므로 빈 화면 위험이 없다 → 차단·경고 Alert 모두 뜨지 않아야 한다.
   // (Drawer 가 열려 있으므로 이 부정 단언은 "섹션은 있는데 문구가 없다"를 뜻한다.)
   await expect(section.getByText(/배정된 문항이 0건입니다/)).toHaveCount(0);
+});
+
+test('노출 설정: 취소로 닫으면 고른 값과 사유를 버린다', async ({ page }) => {
+  // Drawer 는 탭에 상시 마운트돼 있어 state 가 닫아도 살아남는다. 리셋을 열 때 하지 않으면
+  // 버린 선택이 재오픈 때 되살아나고, 적용 버튼이 처음부터 활성이라 확인 절차 없이
+  // 한 번의 클릭으로 기관 전원의 노출 범위가 바뀐다.
+  await openList(page);
+  // 배정이 있는 코드를 쓴다 — 배정 0건 코드는 빈 화면 가드가 버튼을 정당하게 잠가서
+  // '취소가 초안을 버렸는가' 를 구분할 수 없다(B부스: 제한 없음 · 배정 2건).
+  await openDetailTab(page, 'EXPO2026-BOOTH-B', '노출 문항', 'questions');
+
+  const section = await openModeSettings(page);
+  await section.getByRole('radio', { name: '배정분만' }).check();
+  await section.getByPlaceholder('감사 로그에 기록됩니다.').fill('e2e: 버려질 초안');
+  await expect(page.getByRole('button', { name: '노출 모드 변경' })).toBeEnabled();
+
+  await closeDrawer(page);
+
+  const reopened = await openModeSettings(page);
+  // 실제 모드(제한 없음)로 되돌아와야 하고, 사유도 비어 있어야 한다.
+  await expect(reopened.getByRole('radio', { name: '제한 없음' })).toBeChecked();
+  await expect(reopened.getByPlaceholder('감사 로그에 기록됩니다.')).toHaveValue('');
+  // 바뀐 게 없으므로 적용 버튼은 비활성이어야 한다 — 여기가 1클릭 사고를 막는 지점이다.
+  await expect(page.getByRole('button', { name: '노출 모드 변경' })).toBeDisabled();
 });
 
 test('노출 문항 탭: 모드를 바꿔도 배정 건수는 보존된다(모크)', async ({ page }) => {

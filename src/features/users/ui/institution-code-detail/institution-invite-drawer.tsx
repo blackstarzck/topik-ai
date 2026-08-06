@@ -53,16 +53,25 @@ export function InstitutionInviteDrawer({
   const [form] = Form.useForm<InviteFormValues>();
   const [submitting, setSubmitting] = useState(false);
 
-  // 만료 기간 기본값은 기관 설정에서 온다(없으면 전역 7일). 열릴 때와 설정이 바뀔 때만
-  // 채워, 운영자가 손으로 고친 값을 덮지 않는다.
+  // 🚨 **열 때 초안을 버린다.** Drawer 는 탭에 상시 마운트돼 있고 rc-field-form 의 `preserve`
+  // 기본값이 true 라, 닫아도 고른 회원과 사유가 폼 store 에 남는다. 그대로 두면 취소로 버린
+  // 대상이 재오픈 때 되살아나고(`maxTagCount="responsive"` 라 `+N` 으로 접혀 눈에 안 띈다)
+  // 의도치 않은 회원에게 실제 초대가 나간다.
+  //
+  // 실패 시 Drawer 를 열어둔 채 입력을 보존하는 계약(아래 handleSubmit)은 그대로다 —
+  // 리셋은 **닫을 때가 아니라 열 때** 하므로 실패 후 재시도에는 영향이 없다.
   useEffect(() => {
     if (!open) {
       return;
     }
+    form.resetFields();
     form.setFieldsValue({
       expiresInDays: settings?.defaultInviteExpiryDays ?? GLOBAL_INVITE_EXPIRY_DAYS
     });
-  }, [form, open, settings?.defaultInviteExpiryDays]);
+    // deps 에 `defaultInviteExpiryDays` 를 넣지 않는다 — 열려 있는 동안 설정이 바뀌면
+    // (다른 탭 저장 → 셸 재조회) 운영자가 고르던 회원 목록이 통째로 날아간다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form, open]);
 
   const handleSubmit = useCallback(async () => {
     if (submitting) {

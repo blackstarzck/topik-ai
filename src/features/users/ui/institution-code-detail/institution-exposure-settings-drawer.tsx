@@ -109,10 +109,18 @@ export function InstitutionExposureSettingsDrawer({
   const [pendingToggle, setPendingToggle] = useState<PendingOptionToggle | null>(null);
 
   // 셸이 재조회한 실제 모드로 선택을 되돌린다(적용 성공·실패 모두 이 경로로 수렴).
+  //
+  // 🚨 `open` 이 deps 에 있어야 한다. Drawer 는 탭에 상시 마운트돼 있어(`destroyOnHidden` 은
+  // DOM 만 버린다) state 가 닫아도 살아남는다. `exposureMode` 만 보면 **취소로 닫은 선택과
+  // 사유가 재오픈 때 그대로 되살아나고**, 그 상태에서는 적용 버튼이 처음부터 활성이라
+  // 확인 절차 없이 한 번의 클릭으로 기관 전원의 노출 범위가 바뀐다(툴바 요약과도 어긋난다).
   useEffect(() => {
+    if (!open) {
+      return;
+    }
     setPendingMode(exposureMode);
     setModeReason('');
-  }, [exposureMode]);
+  }, [exposureMode, open]);
 
   // 배정 0건인데 `배정분만` 으로 바꾸려 하면 서버(빈 화면 가드)가 거부하므로,
   // 왕복 전에 화면에서 막고 이유를 알린다.
