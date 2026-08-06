@@ -33,12 +33,30 @@ async function openContractTab(page: Page, code: string): Promise<void> {
 
 /** antd RangePicker 는 두 입력을 차례로 채우고 Enter 로 확정한다. */
 async function fillPeriod(page: Page, startsOn: string, endsOn: string): Promise<void> {
-  const dialog = page.getByRole('dialog');
+  const dialog = page.locator('.ant-modal-content');
   await dialog.getByPlaceholder('시작일').click();
   await dialog.getByPlaceholder('시작일').fill(startsOn);
   await page.keyboard.press('Enter');
   await dialog.getByPlaceholder('종료일').fill(endsOn);
   await page.keyboard.press('Enter');
+}
+
+/**
+ * 노출 설정 Drawer 를 연다. 옵션 토글 2종이 여기 들어 있다.
+ *
+ * 🚨 Drawer 도 `role="dialog"` 라, Drawer 가 열린 상태에서 확인 모달을 띄우면
+ * `getByRole('dialog')` 가 2개를 잡아 strict violation 이 난다. 그래서 이 파일의 모달
+ * 접근은 전부 `.ant-modal-content` 로 좁혀 두었다.
+ */
+async function openExposureSettings(page: Page): Promise<void> {
+  await page.getByTestId('institution-exposure-settings-open-button').click();
+  await expect(page.getByTestId('institution-exposure-settings-drawer')).toBeVisible();
+}
+
+/** Drawer 를 닫는다 — 마스크가 본문 Alert·배지 단언을 가린다. */
+async function closeDrawer(page: Page): Promise<void> {
+  await page.getByRole('button', { name: '취소' }).click();
+  await expect(page.locator('.ant-drawer-open')).toHaveCount(0);
 }
 
 test('계약 요약은 유효·만료·미등록을 서로 다른 문구로 구분한다', async ({ page }) => {
@@ -73,7 +91,7 @@ test('계약 기간이 겹치면 거부하고, 겹치지 않는 기간은 히스
     .getByRole('dialog')
     .getByPlaceholder('감사 로그에 기록됩니다.')
     .fill('e2e: 겹치는 계약');
-  await page.getByRole('dialog').getByRole('button', { name: '추가' }).click();
+  await page.locator('.ant-modal-content').getByRole('button', { name: '추가' }).click();
 
   await expect(page.getByText('계약 추가 실패')).toBeVisible();
   await expect(
@@ -82,7 +100,7 @@ test('계약 기간이 겹치면 거부하고, 겹치지 않는 기간은 히스
 
   // ── 겹치지 않는 미래 기간: 성공하고 `예정` 으로 쌓인다.
   await fillPeriod(page, shiftDays(41), shiftDays(80));
-  await page.getByRole('dialog').getByRole('button', { name: '추가' }).click();
+  await page.locator('.ant-modal-content').getByRole('button', { name: '추가' }).click();
   await expect(page.getByText('계약 추가 완료')).toBeVisible();
 
   const history = page.locator('tbody tr.ant-table-row');
@@ -100,18 +118,21 @@ test('만료 기관에 자동 비노출을 켜면 비노출 상태가 배지와 
     test.skip(true, 'Supabase auth is configured for this run; login is not part of this e2e.');
   }
 
+  await openExposureSettings(page);
   const autoHide = page.getByTestId('institution-auto-hide-switch');
   await expect(autoHide).toHaveAttribute('aria-checked', 'false');
   await autoHide.click();
 
   // 옵션 변경은 사유가 필수다 — 확인 모달로 받는다.
-  const dialog = page.getByRole('dialog');
+  const dialog = page.locator('.ant-modal-content');
   await expect(dialog).toContainText('만료 시 자동 비노출 켜기');
   await dialog.getByPlaceholder('옵션 변경 사유를 입력하세요.').fill('e2e: 만료 시 자동 비노출');
   await dialog.getByRole('button', { name: '켜기' }).click();
 
   await expect(page.getByText('만료 시 자동 비노출 켜짐')).toBeVisible();
   await expect(autoHide).toHaveAttribute('aria-checked', 'true');
+  // 비노출 경보는 본문에 있다 — 설정을 닫아야 마스크 없이 보인다.
+  await closeDrawer(page);
   // 계약이 만료 상태이므로 즉시 비노출이 성립한다.
   await expect(page.getByText('만료·비노출').first()).toBeVisible();
   await expect(
@@ -126,12 +147,16 @@ test('유효 계약 기관은 자동 비노출을 켜도 가려지지 않는다'
     test.skip(true, 'Supabase auth is configured for this run; login is not part of this e2e.');
   }
 
+  await openExposureSettings(page);
   await page.getByTestId('institution-auto-hide-switch').click();
-  const dialog = page.getByRole('dialog');
+  const dialog = page.locator('.ant-modal-content');
   await dialog.getByPlaceholder('옵션 변경 사유를 입력하세요.').fill('e2e: 유효 계약에서 옵션 ON');
   await dialog.getByRole('button', { name: '켜기' }).click();
 
   await expect(page.getByText('만료 시 자동 비노출 켜짐')).toBeVisible();
+  // 성공 알림을 확인한 뒤 닫는다 — 부정 단언 전에 "실제로 켜졌다"가 먼저 증명돼야
+  // `toHaveCount(0)` 이 vacuous pass 가 되지 않는다.
+  await closeDrawer(page);
   // 계약이 유효하므로 옵션을 켜도 비노출이 아니다 — 이 구분이 옵션의 핵심 계약이다.
   await expect(page.getByText('만료·비노출')).toHaveCount(0);
 });
@@ -143,9 +168,10 @@ test('신규 문항 자동 배정 토글은 만료 옵션과 독립이다', asyn
     test.skip(true, 'Supabase auth is configured for this run; login is not part of this e2e.');
   }
 
+  await openExposureSettings(page);
   const autoAssign = page.getByTestId('institution-auto-assign-switch');
   await autoAssign.click();
-  const dialog = page.getByRole('dialog');
+  const dialog = page.locator('.ant-modal-content');
   await expect(dialog).toContainText('신규 문항 자동 배정 켜기');
   await dialog.getByPlaceholder('옵션 변경 사유를 입력하세요.').fill('e2e: 자동 배정 ON');
   await dialog.getByRole('button', { name: '켜기' }).click();

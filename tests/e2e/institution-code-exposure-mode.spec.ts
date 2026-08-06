@@ -42,9 +42,23 @@ async function openDetailTab(
   await expect(page.getByRole('heading', { name: `기관 코드 · ${code}` })).toBeVisible();
 }
 
-/** 노출 모드 섹션(사유 입력 placeholder 가 배정 패널과 같아 스코프가 필요하다). */
-function modeSection(page: Page) {
+/**
+ * 노출 설정 Drawer 를 열고 모드 섹션 Locator 를 돌려준다.
+ *
+ * 🚨 Drawer 를 열지 않은 채 이 스코프로 부정 단언(`toHaveCount(0)`)을 하면 섹션 자체가
+ * 없어서 **무조건 통과**한다(vacuous pass). 그래서 여는 것과 스코프 잡는 것을 한 함수로
+ * 묶어, 부정 단언이 항상 "열린 Drawer 안에서 그 문구가 없다"를 뜻하게 만든다.
+ */
+async function openModeSettings(page: Page) {
+  await page.getByTestId('institution-exposure-settings-open-button').click();
+  await expect(page.getByTestId('institution-exposure-settings-drawer')).toBeVisible();
   return page.getByTestId('institution-exposure-mode-section');
+}
+
+/** Drawer 를 닫는다 — 마스크가 본문 단언과 브레드크럼 클릭을 가린다. */
+async function closeDrawer(page: Page): Promise<void> {
+  await page.getByRole('button', { name: '취소' }).click();
+  await expect(page.locator('.ant-drawer-open')).toHaveCount(0);
 }
 
 /** 브레드크럼으로 목록 복귀 — mock 모듈 메모리를 보존하는 유일한 경로. */
@@ -77,7 +91,10 @@ test('목록: 노출 모드 컬럼과 배정 보존 표기를 렌더한다', asy
 test('노출 문항 탭: 배정 0건 + 회원 있음이면 배정분만 전환을 차단한다', async ({ page }) => {
   await openList(page);
   await openDetailTab(page, 'CONVENTION-VN', '노출 문항', 'questions');
-  const section = modeSection(page);
+  // 툴바 요약이 현재 모드를 보여준다 — 설정을 열지 않아도 상태는 읽힌다.
+  await expect(page.getByTestId('institution-exposure-summary')).toContainText('제한 없음');
+
+  const section = await openModeSettings(page);
 
   // 현재 제한 없음 → 차단 Alert 없음
   await expect(section.getByRole('radio', { name: '제한 없음' })).toBeChecked();
@@ -92,7 +109,8 @@ test('노출 문항 탭: 배정 0건 + 회원 있음이면 배정분만 전환�
 
   // 사유를 채워도 차단은 유지된다 — 막는 이유가 사유 누락이 아니라 빈 화면 위험이다.
   await section.getByPlaceholder('감사 로그에 기록됩니다.').fill('e2e: 차단 확인');
-  await expect(section.getByRole('button', { name: '노출 모드 변경' })).toBeDisabled();
+  // 적용 버튼은 Drawer footer 에 있다(모드 섹션 밖).
+  await expect(page.getByRole('button', { name: '노출 모드 변경' })).toBeDisabled();
 
   // 제한 없음으로 되돌리면 즉시 해제된다.
   await section.getByRole('radio', { name: '제한 없음' }).check();
@@ -103,14 +121,21 @@ test('노출 문항 탭: 배정이 있는 배정분만 코드는 경고를 띄�
   await openList(page);
   await openDetailTab(page, 'EXPO2026-BOOTH-A', '수정', 'info');
 
-  // `수정` 은 기본 정보 탭이고, 노출 모드는 그 탭에 없다 — 모드 축을 배정 현황 옆으로 옮겼다.
+  // `수정` 은 기본 정보 탭이다. 모드는 이 탭에 없고 진입점(설정 트리거)조차 없다 —
+  // 모드 축은 노출 문항 탭이 소유한다.
   await expect(page.getByRole('radio', { name: '배정분만' })).toHaveCount(0);
+  await expect(page.getByTestId('institution-exposure-settings-open-button')).toHaveCount(0);
 
   await page.getByRole('tab', { name: '노출 문항' }).click();
-  const section = modeSection(page);
+  // 본문에는 라디오가 없다(설정은 Drawer 로 갔다). 대신 툴바 요약이 모드를 보여준다.
+  await expect(page.getByRole('radio', { name: '배정분만' })).toHaveCount(0);
+  await expect(page.getByTestId('institution-exposure-settings-open-button')).toBeVisible();
+
+  const section = await openModeSettings(page);
   // A부스는 모드 원장 행이 없어 실효 모드가 기본값(배정분만)으로 초기화된다.
   await expect(section.getByRole('radio', { name: '배정분만' })).toBeChecked();
   // 배정이 1건 있으므로 빈 화면 위험이 없다 → 차단·경고 Alert 모두 뜨지 않아야 한다.
+  // (Drawer 가 열려 있으므로 이 부정 단언은 "섹션은 있는데 문구가 없다"를 뜻한다.)
   await expect(section.getByText(/배정된 문항이 0건입니다/)).toHaveCount(0);
 });
 
@@ -119,13 +144,16 @@ test('노출 문항 탭: 모드를 바꿔도 배정 건수는 보존된다(모�
   await expect(row(page, 'EXPO2026-BOOTH-B').getByText('배정 2건 보존')).toBeVisible();
 
   await openDetailTab(page, 'EXPO2026-BOOTH-B', '노출 문항', 'questions');
-  const section = modeSection(page);
+  const section = await openModeSettings(page);
   await section.getByRole('radio', { name: '배정분만' }).check();
   await section.getByPlaceholder('감사 로그에 기록됩니다.').fill('e2e: 모드 왕복');
-  await section.getByRole('button', { name: '노출 모드 변경' }).click();
+  // 적용 버튼은 Drawer footer 에 있다(섹션 밖).
+  await page.getByRole('button', { name: '노출 모드 변경' }).click();
 
   await expect(page.getByText(/노출 모드 변경 완료/)).toBeVisible();
 
+  // 목록 복귀 전에 Drawer 를 닫는다 — 마스크가 브레드크럼 클릭을 삼킨다.
+  await closeDrawer(page);
   // 목록 복귀는 브레드크럼으로 — goto 는 mock 모듈 메모리를 초기화한다.
   await backToListViaBreadcrumb(page);
   // 모드는 바뀌고 배정 건수는 그대로여야 한다 — 모드 전환이 배정을 지우지 않는다는 계약.
