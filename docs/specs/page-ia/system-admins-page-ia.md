@@ -15,7 +15,7 @@
 | 현재 상태 | 구현됨 |
 | 페이지 유형 | 목록 운영형 |
 | 라우트 | /system/admins |
-| 주요 권한 | system.admins.manage |
+| 주요 권한 | system.admins.manage (서버 강제 — 마이그 20260806120000, is_admin + 권한 키 2겹. admin_accounts·admin_permission_grants 직접 조회는 닫혀 있고 조회는 definer RPC 단일 경로) |
 | 주요 role | SUPER_ADMIN |
 | 연관 문서 | docs/architecture/admin-overview.md, docs/specs/admin-page-tables.md, docs/specs/admin-data-usage-map.md, docs/specs/admin-page-flows-mermaid.md |
 
