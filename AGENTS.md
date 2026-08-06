@@ -270,3 +270,5 @@ DO NOT
 - 각 마이그는 `down/`에 같은 파일명으로 롤백 SQL을 짝지어 둔다. 적용은 Management API(`SUPABASE_ACCESS_TOKEN`).
 - **dev DB와 운영 DB는 분리**된다. 작업은 dev DB(`fglggyfvzjdsbyckinqa`)에 적용·검증하고, 운영 DB 적용은 PR 머지 후 별도 후속 단계다 — 커밋·머지가 운영 DB에 자동 반영되지 않는다.
 - 신규 마이그를 **구버전 정의 위에 작성하지 않는다**(직전 컬럼/함수를 덮어쓸 위험). 최신 정의를 베이스로 작성하고, 신규 쓰기 파일은 boundary 게이트의 허용 목록에 등록한다.
+- **적용은 이름 순으로만 한다.** 이미 더 나중 파일이 적용된 환경에 앞선 파일을 적용하면 그 파일의 `create or replace` 본문이 새 정의를 덮어 조용히 되돌린다(2026-08-06 실측: dev 관리자 RPC 47개가 이렇게 권한 검사를 잃었고, 파일 세트와 운영은 정상이라 클린 재생을 보는 shadow 계약으로는 볼 수 없었다). 러너가 거부하며, 객체가 겹치지 않음을 확인했을 때만 `--allow-out-of-order-apply` 로 우회하고 겹치는 파일은 이후 이름 순으로 재적용한다.
+- 환경별 게이트 실측은 `npm run db:permission-gate-parity`(적용된 파일의 이름 순 최종 정의가 요구하는 권한 키가 라이브에 있는지 확인). 드리프트 복구는 `npm run db:permission-gate-repair -- --target <ref> --reference <parity 통과하는 ref>`.
