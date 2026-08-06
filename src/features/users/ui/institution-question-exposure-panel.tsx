@@ -553,7 +553,7 @@ export function InstitutionQuestionExposurePanel({
             type="warning"
             showIcon
             message="제한 없음 모드입니다. 이 기관 소속 학습자도 노출 허용한 문항을 모두 보므로, 아래 배정은 지금 학습자 화면에 영향을 주지 않습니다."
-            description="배정분만으로 바꾸면 그때 적용됩니다. 모드는 이 탭 위쪽 노출 모드에서 바꿉니다."
+            description="배정분만으로 바꾸면 그때 적용됩니다. 모드는 위 노출 설정에서 바꿉니다."
           />
         ) : (
           <Alert

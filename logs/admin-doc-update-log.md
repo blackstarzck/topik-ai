@@ -1037,3 +1037,13 @@
 - Validation: dev 라이브 스키마 예행(begin/rollback) → **up·down 왕복 예행**(down 후 키 0·정책 4 복원 단정) → 러너 적용 → 프로브 → parity. 게이트: harness:check · test:unit(신규 21) · db:contracts:verify · check:expand-migrations · check:migration-boundary · db:permission-gate-parity(missing=0)
 - Validation(프로브 매트릭스, 트랜잭션 롤백): **오너**=목록·상세·감사 전부 통과 + 원문 이메일 노출 유지 / **키 0개 관리자**=RPC 4종 전부 bare P0001 거절 + 정책 삭제·교체 5테이블 모두 0행 / **users.read 단독 관리자**=목록·상세 통과, 원문 이메일 0건, `phone_masked` 건수는 오너와 동일(기능 손실 없음), 이메일 전용 검색어로 0행(오너는 1행), 인접 도메인(`system.admins.manage`)은 여전히 거절. 적용 후 실측: 키 검사 함수 81→**101**, 닫은 11테이블 정책 **0**, 오너 계정·grants·51번 노출 문항 200 불변, 프로브 잔존물 0
 - Found(프로브 함정 2건): ①단건 값 단정은 데이터 특성에 걸린다 — 첫 회원의 전화번호가 원래 NULL 이라 `phone_masked` 단정이 거짓 실패했다(PR #81 의 diff NULL 과 같은 함정). 주체 간 **집계 비교**로 교체했다. ②`get_admin_users` 검색은 이메일 외 display_name·nickname·user_id 도 훑는다 — `@` 로 검색하면 다른 필드에 걸려 검색 분기를 측정하지 못한다. **이메일에만 존재하는 검색어를 런타임에 구성**해 판정했다(만들 수 없으면 조용히 넘기지 않고 예외).
+
+## 2026-08-06 기관 코드 상세 탭 재배치 (툴바 + 본문 + 설정 Drawer)
+
+- Updated: `docs/specs/page-ia/users-institution-codes-page-ia.md`(§4 탭 4행 재서술, §12 구현 파일·Drawer 파기 계약, §13 배치 원칙 개정 + 모드 전환 지점·차단·설정 upsert 항목), `docs/specs/admin-page-tables.md`(3-1 구식 "모달" 서술 정정 + 탭 구조 항목), `docs/page-sync/users-institution-codes-page-sync.md`(§10 `?tab=` 나열), `docs/specs/admin-page-gap-register.md`
+- Reason: 오너 지적(UX/UI) — 계약 탭의 운영 담당자가 탭 주제와 무관하고, 회원 탭이 정책(설정) → 초대(작업) → 목록(현황) 순서라 매일 보는 로스터가 맨 아래였다. 실측으로 확인: convention-vn(회원 130명) 회원 탭 6,575px·첫 화면 회원 0명, 노출 문항 탭 사유 3벌·배정 도구 826px 아래.
+- Method: 각 탭을 툴바 + 본문으로 나누고 편집을 Drawer 3종으로 이동. 신규 CSS 없이 `.admin-list-card-toolbar-side` 3종과 `drawer-frame` chrome 재사용(선례 operation-pdf-quota-page, analytics-learning-page). 기존 testid 는 위치만 옮겨 스펙 churn 최소화.
+- Validation: harness:check exit 0 · 기관 e2e 4종 25/25 · dev DB 프리뷰 실측(5,815px / 로스터 첫 행 440px / 첫 화면 12행)
+- Found(재배치가 드러낸 결함 3건, 같은 PR 에서 수리): ①기관 설정 전량 upsert 를 두 폼이 각자 pass-through 해 담당자 폼이 settings 미로드 상태에서 저장하면 정원·초대 기본값·유입 차단이 null/false 로 덮였다 → `patchInstitutionSettingsSafe(current, patch, reason)` 로 병합을 한 곳에 모으고 current 를 non-null 로 강제(전량 경로는 export 제거). ②초대 취소가 `onChanged()` 를 안 불러 좌석 지표가 stale(대기 초대도 좌석을 선점한다). ③노출 옵션 토글 실패 시 확인 모달이 닫히지 않아 같은 사유로 계속 재실패.
+- Found(e2e 함정 2건): ①`toHaveCount(0)` 부정 단언을 Drawer 닫힌 채로 하면 섹션이 없어 무조건 통과하는 vacuous pass 가 된다 → Drawer 를 연 뒤 그 스코프에서 단언. ②antd Drawer 도 `role="dialog"` 라 확인 모달과 겹쳐 strict violation → 모달 접근을 `.ant-modal-content` 로 좁혔다.
+- Not-updated: DB·RPC·감사 계약·탭 키·`?tab=` URL 무변경. 운영 DB 적용 불필요(FE 전용).

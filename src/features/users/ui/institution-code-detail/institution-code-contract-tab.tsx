@@ -20,18 +20,17 @@ import {
   deleteInstitutionContractSafe,
   fetchInstitutionContractsSafe,
   translateInstitutionContractError,
-  updateInstitutionContractSafe,
-  updateInstitutionSettingsSafe
+  updateInstitutionContractSafe
 } from '../../api/institution-contracts-service';
 import { isInstitutionCodesSupabase } from '../../api/institution-codes-service';
 import { formatContractPeriod } from '../../model/institution-contracts-types';
 import type {
   InstitutionContract,
-  InstitutionContractStatusSummary,
-  InstitutionSettings
+  InstitutionContractStatusSummary
 } from '../../model/institution-contracts-types';
 import type { InstitutionCode } from '../../model/institution-codes-types';
 import type { NotificationApi } from './institution-code-detail-tab-types';
+import { InstitutionTabToolbar } from './institution-tab-toolbar';
 import { InstitutionContractDdayBadge } from '../institution-contract-dday-badge';
 import { AuditLogLink } from '../../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../../shared/ui/confirm-action/confirm-action';
@@ -55,18 +54,10 @@ type ContractFormValues = {
   reason: string;
 };
 
-type ContactFormValues = {
-  contactName?: string;
-  contactEmail?: string;
-  reason: string;
-};
-
 type InstitutionCodeContractTabProps = {
   institution: InstitutionCode;
   /** 셸이 읽은 계약 요약 — D-day 배지와 현재 계약 표시의 데이터 소스. */
   contractStatus: InstitutionContractStatusSummary | null;
-  /** 담당자 정보를 여기서 편집한다(정원·초대 정책은 회원 탭). */
-  settings: InstitutionSettings | null;
   canManage: boolean;
   notificationApi: NotificationApi;
   onChanged: () => void;
@@ -87,7 +78,6 @@ type InstitutionCodeContractTabProps = {
 export function InstitutionCodeContractTab({
   institution,
   contractStatus,
-  settings,
   canManage,
   notificationApi,
   onChanged
@@ -103,8 +93,6 @@ export function InstitutionCodeContractTab({
   const [deleteTarget, setDeleteTarget] = useState<InstitutionContract | null>(null);
 
   const [contractForm] = Form.useForm<ContractFormValues>();
-  const [contactForm] = Form.useForm<ContactFormValues>();
-  const [contactSubmitting, setContactSubmitting] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -129,13 +117,6 @@ export function InstitutionCodeContractTab({
     };
   }, [institution.code, reloadKey]);
 
-  useEffect(() => {
-    contactForm.setFieldsValue({
-      contactName: settings?.contactName ?? '',
-      contactEmail: settings?.contactEmail ?? '',
-      reason: ''
-    });
-  }, [contactForm, settings]);
 
   const reload = useCallback(() => {
     setReloadKey((prev) => prev + 1);
@@ -258,51 +239,6 @@ export function InstitutionCodeContractTab({
     [deleteTarget, institution.code, notificationApi, reload]
   );
 
-  const handleContactSubmit = useCallback(async () => {
-    let values: ContactFormValues;
-    try {
-      values = await contactForm.validateFields();
-    } catch {
-      return;
-    }
-
-    setContactSubmitting(true);
-    try {
-      // 담당자만 바꿀 때도 설정 RPC 는 전량값을 받는다 → 나머지는 현재 값을 그대로 보낸다.
-      // 여기서 null 로 흘리면 정원·초대 기본값이 조용히 초기화된다.
-      const result = await updateInstitutionSettingsSafe({
-        code: institution.code,
-        maxMembers: settings?.maxMembers ?? null,
-        defaultInviteExpiryDays: settings?.defaultInviteExpiryDays ?? null,
-        blockIntakeOnExpiry: settings?.blockIntakeOnExpiry ?? false,
-        contactName: values.contactName ?? '',
-        contactEmail: values.contactEmail ?? '',
-        reason: values.reason
-      });
-      if (!result.ok) {
-        notificationApi.error({
-          message: '담당자 정보 저장 실패',
-          description: translateInstitutionContractError(result.error.message)
-        });
-        return;
-      }
-      notificationApi.success({
-        message: '담당자 정보 저장 완료',
-        description: (
-          <Space direction="vertical">
-            <Text type="secondary">
-              담당자 이름·이메일 값은 감사 로그에 기록되지 않습니다(변경된 항목명만 남습니다).
-            </Text>
-            <AuditLogLink targetType="InstitutionCode" targetId={institution.code} />
-          </Space>
-        )
-      });
-      contactForm.setFieldsValue({ reason: '' });
-      reload();
-    } finally {
-      setContactSubmitting(false);
-    }
-  }, [contactForm, institution.code, notificationApi, reload, settings]);
 
   const columns = useMemo(
     () =>
@@ -372,6 +308,31 @@ export function InstitutionCodeContractTab({
 
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
+      <InstitutionTabToolbar
+        summary={
+          summary ? (
+            <Space size={8} wrap>
+              <InstitutionContractDdayBadge summary={summary} />
+              <Text type="secondary">
+                {summary.contractCount === 0
+                  ? '등록된 계약 없음'
+                  : formatContractPeriod(summary.activeStartsOn, summary.activeEndsOn)}
+              </Text>
+              <Text type="secondary">이력 {contracts.length.toLocaleString()}건</Text>
+            </Space>
+          ) : (
+            <Text type="secondary">계약 불러오는 중…</Text>
+          )
+        }
+        actions={
+          canManage ? (
+            <Button type="primary" size="large" onClick={openCreate}>
+              계약 추가
+            </Button>
+          ) : null
+        }
+      />
+
       <div data-testid="institution-contract-summary">
         <Text strong style={{ fontSize: 15 }}>
           현재 계약
@@ -423,25 +384,15 @@ export function InstitutionCodeContractTab({
             showIcon
             style={{ marginTop: 10 }}
             message="등록된 계약이 없습니다."
-            description="만료할 계약이 없으므로 노출은 제한되지 않습니다. 계약 기간을 관리하려면 아래에서 추가하세요."
+            description="만료할 계약이 없으므로 노출은 제한되지 않습니다. 계약 기간을 관리하려면 위 계약 추가를 누르세요."
           />
         ) : null}
       </div>
 
       <div>
-        <Space
-          style={{ width: '100%', justifyContent: 'space-between', marginBottom: 8 }}
-          align="center"
-        >
-          <Text strong style={{ fontSize: 15 }}>
-            계약 히스토리
-          </Text>
-          {canManage ? (
-            <Button type="primary" onClick={openCreate}>
-              계약 추가
-            </Button>
-          ) : null}
-        </Space>
+        <Text strong style={{ fontSize: 15, display: 'block', marginBottom: 8 }}>
+          계약 히스토리
+        </Text>
         {errorMessage ? (
           <Alert type="error" showIcon message={errorMessage} style={{ marginBottom: 8 }} />
         ) : null}
@@ -460,70 +411,6 @@ export function InstitutionCodeContractTab({
         </Text>
       </div>
 
-      <div>
-        <Text strong style={{ fontSize: 15 }}>
-          운영 담당자
-        </Text>
-        <Form form={contactForm} layout="vertical" style={{ marginTop: 8 }}>
-          <Descriptions
-            bordered
-            column={1}
-            size="small"
-            labelStyle={{ width: 130, whiteSpace: 'nowrap' }}
-            items={[
-              {
-                key: 'contactName',
-                label: '담당자 이름',
-                children: (
-                  <Form.Item name="contactName" style={{ margin: 0 }}>
-                    <Input disabled={!canManage} placeholder="미입력" />
-                  </Form.Item>
-                )
-              },
-              {
-                key: 'contactEmail',
-                label: '담당자 이메일',
-                children: (
-                  <Form.Item
-                    name="contactEmail"
-                    style={{ margin: 0 }}
-                    rules={[{ type: 'email', message: '이메일 형식이 아닙니다.' }]}
-                  >
-                    <Input disabled={!canManage} placeholder="미입력" />
-                  </Form.Item>
-                )
-              },
-              {
-                key: 'reason',
-                label: createDescriptionLabel('변경 사유', { required: true }),
-                children: (
-                  <Form.Item
-                    name="reason"
-                    style={{ margin: 0 }}
-                    rules={[{ required: true, message: '변경 사유를 입력하세요.' }]}
-                  >
-                    <Input.TextArea
-                      rows={2}
-                      disabled={!canManage}
-                      placeholder="감사 로그에 기록됩니다(담당자 값은 기록되지 않습니다)."
-                    />
-                  </Form.Item>
-                )
-              }
-            ]}
-          />
-        </Form>
-        {canManage ? (
-          <Button
-            type="primary"
-            style={{ marginTop: 10 }}
-            loading={contactSubmitting}
-            onClick={() => void handleContactSubmit()}
-          >
-            담당자 정보 저장
-          </Button>
-        ) : null}
-      </div>
 
       {!isInstitutionCodesSupabase ? (
         <Text type="secondary">현재 mock 데이터 — 변경은 화면에만 반영됩니다.</Text>

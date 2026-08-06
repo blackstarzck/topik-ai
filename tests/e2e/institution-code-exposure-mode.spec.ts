@@ -42,9 +42,23 @@ async function openDetailTab(
   await expect(page.getByRole('heading', { name: `기관 코드 · ${code}` })).toBeVisible();
 }
 
-/** 노출 모드 섹션(사유 입력 placeholder 가 배정 패널과 같아 스코프가 필요하다). */
-function modeSection(page: Page) {
+/**
+ * 노출 설정 Drawer 를 열고 모드 섹션 Locator 를 돌려준다.
+ *
+ * 🚨 Drawer 를 열지 않은 채 이 스코프로 부정 단언(`toHaveCount(0)`)을 하면 섹션 자체가
+ * 없어서 **무조건 통과**한다(vacuous pass). 그래서 여는 것과 스코프 잡는 것을 한 함수로
+ * 묶어, 부정 단언이 항상 "열린 Drawer 안에서 그 문구가 없다"를 뜻하게 만든다.
+ */
+async function openModeSettings(page: Page) {
+  await page.getByTestId('institution-exposure-settings-open-button').click();
+  await expect(page.getByTestId('institution-exposure-settings-drawer')).toBeVisible();
   return page.getByTestId('institution-exposure-mode-section');
+}
+
+/** Drawer 를 닫는다 — 마스크가 본문 단언과 브레드크럼 클릭을 가린다. */
+async function closeDrawer(page: Page): Promise<void> {
+  await page.getByRole('button', { name: '취소' }).click();
+  await expect(page.locator('.ant-drawer-open')).toHaveCount(0);
 }
 
 /** 브레드크럼으로 목록 복귀 — mock 모듈 메모리를 보존하는 유일한 경로. */
@@ -77,7 +91,10 @@ test('목록: 노출 모드 컬럼과 배정 보존 표기를 렌더한다', asy
 test('노출 문항 탭: 배정 0건 + 회원 있음이면 배정분만 전환을 차단한다', async ({ page }) => {
   await openList(page);
   await openDetailTab(page, 'CONVENTION-VN', '노출 문항', 'questions');
-  const section = modeSection(page);
+  // 툴바 요약이 현재 모드를 보여준다 — 설정을 열지 않아도 상태는 읽힌다.
+  await expect(page.getByTestId('institution-exposure-summary')).toContainText('제한 없음');
+
+  const section = await openModeSettings(page);
 
   // 현재 제한 없음 → 차단 Alert 없음
   await expect(section.getByRole('radio', { name: '제한 없음' })).toBeChecked();
@@ -92,7 +109,8 @@ test('노출 문항 탭: 배정 0건 + 회원 있음이면 배정분만 전환�
 
   // 사유를 채워도 차단은 유지된다 — 막는 이유가 사유 누락이 아니라 빈 화면 위험이다.
   await section.getByPlaceholder('감사 로그에 기록됩니다.').fill('e2e: 차단 확인');
-  await expect(section.getByRole('button', { name: '노출 모드 변경' })).toBeDisabled();
+  // 적용 버튼은 Drawer footer 에 있다(모드 섹션 밖).
+  await expect(page.getByRole('button', { name: '노출 모드 변경' })).toBeDisabled();
 
   // 제한 없음으로 되돌리면 즉시 해제된다.
   await section.getByRole('radio', { name: '제한 없음' }).check();
@@ -103,15 +121,51 @@ test('노출 문항 탭: 배정이 있는 배정분만 코드는 경고를 띄�
   await openList(page);
   await openDetailTab(page, 'EXPO2026-BOOTH-A', '수정', 'info');
 
-  // `수정` 은 기본 정보 탭이고, 노출 모드는 그 탭에 없다 — 모드 축을 배정 현황 옆으로 옮겼다.
+  // 🚨 부정 단언 앞에는 **반드시 양성 앵커**를 세운다. 탭 children 은 코드 조회가 끝나야
+  // 렌더되는데(셸이 `institution ? … : null`), 앵커 없이 count 0 을 재면 아직 아무것도 안 그려진
+  // t≈0 에 통과해 버린다 — info 탭에 모드 트리거를 실제로 붙여도 green 인 vacuous pass 였다.
+  await expect(page.getByRole('button', { name: '수정' })).toBeVisible();
+
+  // `수정` 은 기본 정보 탭이다. 모드는 이 탭에 없고 진입점(설정 트리거)조차 없다 —
+  // 모드 축은 노출 문항 탭이 소유한다.
   await expect(page.getByRole('radio', { name: '배정분만' })).toHaveCount(0);
+  await expect(page.getByTestId('institution-exposure-settings-open-button')).toHaveCount(0);
 
   await page.getByRole('tab', { name: '노출 문항' }).click();
-  const section = modeSection(page);
+  // 앵커 먼저(탭 전환 직후에도 같은 함정) → 그다음 본문에 라디오가 없음을 단언한다.
+  await expect(page.getByTestId('institution-exposure-settings-open-button')).toBeVisible();
+  await expect(page.getByRole('radio', { name: '배정분만' })).toHaveCount(0);
+
+  const section = await openModeSettings(page);
   // A부스는 모드 원장 행이 없어 실효 모드가 기본값(배정분만)으로 초기화된다.
   await expect(section.getByRole('radio', { name: '배정분만' })).toBeChecked();
   // 배정이 1건 있으므로 빈 화면 위험이 없다 → 차단·경고 Alert 모두 뜨지 않아야 한다.
+  // (Drawer 가 열려 있으므로 이 부정 단언은 "섹션은 있는데 문구가 없다"를 뜻한다.)
   await expect(section.getByText(/배정된 문항이 0건입니다/)).toHaveCount(0);
+});
+
+test('노출 설정: 취소로 닫으면 고른 값과 사유를 버린다', async ({ page }) => {
+  // Drawer 는 탭에 상시 마운트돼 있어 state 가 닫아도 살아남는다. 리셋을 열 때 하지 않으면
+  // 버린 선택이 재오픈 때 되살아나고, 적용 버튼이 처음부터 활성이라 확인 절차 없이
+  // 한 번의 클릭으로 기관 전원의 노출 범위가 바뀐다.
+  await openList(page);
+  // 배정이 있는 코드를 쓴다 — 배정 0건 코드는 빈 화면 가드가 버튼을 정당하게 잠가서
+  // '취소가 초안을 버렸는가' 를 구분할 수 없다(B부스: 제한 없음 · 배정 2건).
+  await openDetailTab(page, 'EXPO2026-BOOTH-B', '노출 문항', 'questions');
+
+  const section = await openModeSettings(page);
+  await section.getByRole('radio', { name: '배정분만' }).check();
+  await section.getByPlaceholder('감사 로그에 기록됩니다.').fill('e2e: 버려질 초안');
+  await expect(page.getByRole('button', { name: '노출 모드 변경' })).toBeEnabled();
+
+  await closeDrawer(page);
+
+  const reopened = await openModeSettings(page);
+  // 실제 모드(제한 없음)로 되돌아와야 하고, 사유도 비어 있어야 한다.
+  await expect(reopened.getByRole('radio', { name: '제한 없음' })).toBeChecked();
+  await expect(reopened.getByPlaceholder('감사 로그에 기록됩니다.')).toHaveValue('');
+  // 바뀐 게 없으므로 적용 버튼은 비활성이어야 한다 — 여기가 1클릭 사고를 막는 지점이다.
+  await expect(page.getByRole('button', { name: '노출 모드 변경' })).toBeDisabled();
 });
 
 test('노출 문항 탭: 모드를 바꿔도 배정 건수는 보존된다(모크)', async ({ page }) => {
@@ -119,13 +173,16 @@ test('노출 문항 탭: 모드를 바꿔도 배정 건수는 보존된다(모�
   await expect(row(page, 'EXPO2026-BOOTH-B').getByText('배정 2건 보존')).toBeVisible();
 
   await openDetailTab(page, 'EXPO2026-BOOTH-B', '노출 문항', 'questions');
-  const section = modeSection(page);
+  const section = await openModeSettings(page);
   await section.getByRole('radio', { name: '배정분만' }).check();
   await section.getByPlaceholder('감사 로그에 기록됩니다.').fill('e2e: 모드 왕복');
-  await section.getByRole('button', { name: '노출 모드 변경' }).click();
+  // 적용 버튼은 Drawer footer 에 있다(섹션 밖).
+  await page.getByRole('button', { name: '노출 모드 변경' }).click();
 
   await expect(page.getByText(/노출 모드 변경 완료/)).toBeVisible();
 
+  // 목록 복귀 전에 Drawer 를 닫는다 — 마스크가 브레드크럼 클릭을 삼킨다.
+  await closeDrawer(page);
   // 목록 복귀는 브레드크럼으로 — goto 는 mock 모듈 메모리를 초기화한다.
   await backToListViaBreadcrumb(page);
   // 모드는 바뀌고 배정 건수는 그대로여야 한다 — 모드 전환이 배정을 지우지 않는다는 계약.

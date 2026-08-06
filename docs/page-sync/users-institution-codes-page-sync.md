@@ -98,7 +98,7 @@ last_reviewed_at: "2026-06-26"
 ## 10. URL/검색 복원 규칙
 
 - 기본 라우트: 목록 `/users/institution-codes`, 생성 `/users/institution-codes/create`, 상세 `/users/institution-codes/:code`.
-- 상세 탭은 `?tab=info|members|questions` 로 복원합니다(미지정·미지원 값은 `info`).
+- 상세 탭은 `?tab=info|contract|members|questions` 로 복원합니다(미지정·미지원 값은 `info`). 설정 Drawer 의 열림 상태는 URL 로 승격하지 않습니다 — mock 원장이 모듈 메모리라 `goto` 진입이 시드를 초기화합니다.
 - 목록의 구 딥링크 `?selected={code}` 는 상세로 replace 리다이렉트합니다(감사 로그 북마크 호환).
 - 선택 쿼리 후보: `page`, `pageSize`, `kind`, `status`.
 

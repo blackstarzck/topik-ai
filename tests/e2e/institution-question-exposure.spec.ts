@@ -90,7 +90,7 @@ test('노출 문항 탭: 제한 없음 모드는 경고로 알리되 배정 편�
     )
   ).toBeVisible();
   await expect(
-    panel.getByText('배정분만으로 바꾸면 그때 적용됩니다. 모드는 이 탭 위쪽 노출 모드에서 바꿉니다.')
+    panel.getByText('배정분만으로 바꾸면 그때 적용됩니다. 모드는 위 노출 설정에서 바꿉니다.')
   ).toBeVisible();
   await expect(panel.getByText('제한 없음', { exact: true })).toBeVisible();
 
