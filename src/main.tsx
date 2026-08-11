@@ -8,6 +8,9 @@
 // bundle, so this canary proves the production promote step end-to-end.
 // promote/rollback/logs now pin the team scope as well, so this run should
 // reach the Production alias switch.
+// Production is two releases behind and topik-prod still lacks the permission
+// alignment migration, so this canary opens a fresh source SHA for the manual
+// app-db release that ships the pending migration and the app together.
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 
