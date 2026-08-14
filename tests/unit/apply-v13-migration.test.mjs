@@ -606,6 +606,29 @@ describe('order inversion guard', () => {
       pendingVersions: ['20260718120000'],
     })).toEqual({ checked: true, highestRecorded: null });
   });
+
+  it('does not let a batch block itself on its own earlier files', () => {
+    // resolveBatch already forces a batch to list files in ascending order, and
+    // buildBatchSql applies them in one transaction, so a sibling commits before
+    // its successor and the tracker stays replayable. Counting siblings as
+    // pending made every multi-file batch unappliable the moment anything was
+    // recorded, which is how the production backlog deadlocked.
+    expect(() => assertNoOrderInversion({
+      batchName: 'P2',
+      files: [file('20260722120000'), file('20260729120000')],
+      recordedVersions: ['20260724130000'],
+      pendingVersions: ['20260722120000', '20260729120000'],
+    })).not.toThrow();
+  });
+
+  it('still refuses a batch blocked by pending work outside it', () => {
+    expect(() => assertNoOrderInversion({
+      batchName: 'P2',
+      files: [file('20260722120000'), file('20260729120000')],
+      recordedVersions: ['20260724130000'],
+      pendingVersions: ['20260722120000', '20260723234527', '20260729120000'],
+    })).toThrow(/20260723234527/);
+  });
 });
 
 describe('shipped production manifest', () => {
@@ -632,7 +655,7 @@ describe('shipped production manifest', () => {
     }
   });
 
-  it('orders the sequence by version, with the B4 repair inside its own batch', () => {
+  it('orders the sequence by version and keeps the repair in its origin transaction', () => {
     const versions = manifest.sequence
       .flatMap((name) => resolveBatch(manifest, name).files.map((file) => file.version));
     // 20260729120000 repairs 20260722120000 and shares its transaction, so the flat
@@ -643,8 +666,50 @@ describe('shipped production manifest', () => {
     expect(versions).toContain('20260729120000');
     const repairBatch = manifest.sequence
       .find((name) => resolveBatch(manifest, name).files.some((f) => f.version === '20260729120000'));
-    expect(resolveBatch(manifest, repairBatch).files.map((f) => f.version))
-      .toEqual(['20260722120000', '20260729120000']);
+    const repairFiles = resolveBatch(manifest, repairBatch).files.map((f) => f.version);
+    // The contract is that the repair commits with the file it repairs, nothing
+    // narrower. Pinning the pair to exactly those two files is what deadlocked the
+    // backlog: 20260729120000 outranks every other pending version, so any split
+    // that isolated the pair read as an order inversion whichever batch went first.
+    expect(repairFiles).toContain('20260722120000');
+    expect(repairFiles.indexOf('20260722120000'))
+      .toBeLessThan(repairFiles.indexOf('20260729120000'));
+  });
+
+  it('can be applied from the recorded production tracker without tripping the guard', () => {
+    // The deadlock was invisible until apply time: every batch parsed and every
+    // probe built, yet no order of --batch calls existed. Walk the sequence the
+    // way an operator does. This manifest is a production backlog snapshot rather
+    // than a clean-replay script — P5 was applied ahead of its neighbours on
+    // 2026-08-13 — so the walk starts from what production has recorded.
+    const managed = manifest.sequence
+      .flatMap((name) => resolveBatch(manifest, name).files.map((file) => file.version));
+    const recorded = new Set(['20260724130000']);
+    for (const batchName of manifest.sequence) {
+      const { files } = resolveBatch(manifest, batchName);
+      if (files.every((file) => recorded.has(file.version))) continue;
+      expect(() => assertNoOrderInversion({
+        batchName,
+        files,
+        recordedVersions: [...recorded],
+        pendingVersions: managed.filter((version) => !recorded.has(version)),
+      })).not.toThrow();
+      for (const file of files) recorded.add(file.version);
+    }
+    expect(managed.filter((version) => !recorded.has(version))).toEqual([]);
+  });
+
+  it('pairs every expectAbsent function with an expectPresent entry', () => {
+    // The runner also re-probes expectPresent after the apply, so a function a
+    // later file in the same batch removes must be declared in both places or the
+    // postcondition fails on a batch that did exactly what it was supposed to do.
+    for (const batchName of manifest.sequence) {
+      const { batch } = resolveBatch(manifest, batchName);
+      for (const entry of batch.expectAbsent ?? []) {
+        if (entry.kind !== 'function') continue;
+        expect(batch.expectPresent?.some((e) => e.identity === entry.identity)).toBe(true);
+      }
+    }
   });
 
   it('keeps blocked files out of the sequence and marks them as production history', () => {
