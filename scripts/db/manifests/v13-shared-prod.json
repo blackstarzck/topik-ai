@@ -10,8 +10,8 @@
   "sourceGitShaComment": "Bodies come from the in-repo archive (supabase/migrations-v13) whose byte identity with v13 0ee149930019c8a6f97644824c390d7d2ec76067 is proven by scripts/db/v13-archive.mjs. Passing --source git with --v13-sha reads the v13 object store instead and produces identical SQL.",
   "fingerprintMeasuredAt": "2026-07-30",
   "fingerprintComment": "Read-only production probe: all five backlog markers absent (no partial apply), all three preconditions present (private.is_email_confirmed, public.accept_affiliation_invite, public.is_supported_country_code) so the conditional 20260527113000 repair that development needed is NOT required here, and every P3 precondition function present. Re-run the probe before opening the window; the ledger is not the authority, the live schema is.",
-  "sequence": ["P1", "P2", "P3", "P4", "P5", "P6"],
-  "sequenceComment": "Timestamp order, except 20260729120000 which is the repair for 20260722120000 and therefore shares P2's single transaction rather than trailing at the end.",
+  "sequence": ["P1", "P2_P6", "P5"],
+  "sequenceComment": "Batch first-versions are in timestamp order. P5 trails P2_P6 in this list because its version sorts after 20260722120000, not because it applies later — P5 was applied on 2026-08-13 and P2_P6 is the remaining backlog. The old P2..P6 split could not be applied at all: 20260729120000 must share a transaction with 20260722120000 yet outranks P3, P4 and P6, so every arrangement recorded it ahead of lower pending versions. Merging is what puts the tracker in exact timestamp order.",
   "batches": {
     "P1": {
       "reason": "Snapshot-aware complete_auth_gate. Production still runs the boolean-only 4/7/9-argument overloads with no jsonb overload, so onboarding has no exact-consent snapshot path and the email-confirmed guard is absent from the live gate. Adding the jsonb overloads switches onboarding, so the v13 app version must be deployed in step.",
@@ -36,27 +36,17 @@
       ],
       "note": "Both preconditions were measured present on 2026-07-30, so no false-record repair precedes this batch. If either turns absent at window time, apply its source migration first (20260527113000 for is_email_confirmed, 20260710095000 for is_supported_country_code) — the development window hit exactly that false record."
     },
-    "P2": {
-      "reason": "20260722120000 recreates list_user_problems from the pre-cutover definition and calls two helpers 20260714140000 dropped, so it installs cleanly and then raises 42883 on every call. The repair restores the post-cutover catalog CTE. Both must run in one transaction so the broken definition is never committed.",
+    "P2_P6": {
+      "reason": "The rest of the backlog, applied as one transaction. This is forced, not chosen: 20260729120000 is the repair for 20260722120000 and must share its transaction, yet it carries the highest version in this manifest while 20260723234527, 20260724120000 and 20260724140000 sit between the two. Any split records the repair ahead of lower pending versions, which is the inversion no clean replay reproduces. Merging is the only arrangement that keeps the repair with its origin file AND leaves the tracker in exact timestamp order. Former batch names, in file order: P2 (20260722120000 + 20260729120000), P3 (20260723234527), P4 (20260724120000), P6 (20260724140000).",
       "migrations": [
         "20260722120000_writing_completion_and_pdf_outcomes.sql",
+        "20260723234527_consent_account_deletion_rls.sql",
+        "20260724120000_user_data_reference_integrity.sql",
+        "20260724140000_pdf_export_request_idempotency.sql",
         "20260729120000_list_user_problems_canonical_catalog_fix.sql"
       ],
       "expectPresent": [
-        { "kind": "function", "identity": "public.list_user_problems(jsonb,text,integer,integer)" }
-      ],
-      "expectPresentAfter": [
-        { "kind": "column", "identity": "public.export_files.failure_code" },
-        { "kind": "column", "identity": "public.export_files.failed_at" },
-        { "kind": "function", "identity": "public.list_user_problems(jsonb,text,integer,integer)" }
-      ],
-      "singleTransaction": "Both files in one batch is mandatory, not an optimization. Splitting them commits a definition that fails on every problem-list request."
-    },
-    "P3": {
-      "reason": "Consent/account-deletion RLS plus get_my_account_state(), which the workspace layout needs. Requires P2 because this migration moves get_dashboard_kpi into private and the repaired list_user_problems must already be in place.",
-      "requires": ["P2"],
-      "migrations": ["20260723234527_consent_account_deletion_rls.sql"],
-      "expectPresent": [
+        { "kind": "function", "identity": "public.list_user_problems(jsonb,text,integer,integer)" },
         { "kind": "function", "identity": "private.is_email_confirmed(uuid)" },
         { "kind": "function", "identity": "public.request_account_deletion()" },
         { "kind": "function", "identity": "public.get_dashboard_kpi()" },
@@ -70,22 +60,33 @@
         { "kind": "function", "identity": "public.is_nickname_available(text)" },
         { "kind": "function", "identity": "public.list_user_library_problem_items()" }
       ],
-      "expectPresentAfter": [
-        { "kind": "function", "identity": "private.is_active_user()" },
-        { "kind": "function", "identity": "public.get_my_account_state()" }
+      "expectAbsent": [
+        { "kind": "function", "identity": "public.claim_pdf_export_quota(uuid,uuid[])" }
       ],
-      "nonIdempotent": "Seven `alter function ... set schema private` plus rename pairs. On failure count private.*_unchecked before retrying: 0 means a clean rollback, 1..6 means a partial commit that must be reversed by hand.",
-      "note": "All nine preconditions were measured present on production 2026-07-30. The dev batch also listed claim_pdf_export_quota(uuid,uuid[]) — production still has the two-argument form because P6 is unapplied, which is the expected ordering."
-    },
-    "P4": {
-      "reason": "Reference integrity guard for learner-owned rows.",
-      "migrations": ["20260724120000_user_data_reference_integrity.sql"],
       "expectPresentAfter": [
+        { "kind": "column", "identity": "public.export_files.failure_code" },
+        { "kind": "column", "identity": "public.export_files.failed_at" },
+        { "kind": "function", "identity": "public.list_user_problems(jsonb,text,integer,integer)" },
+        { "kind": "function", "identity": "private.is_active_user()" },
+        { "kind": "function", "identity": "public.get_my_account_state()" },
         {
           "kind": "trigger",
           "identity": "public.study_events.trg_validate_review_set_study_event"
-        }
-      ]
+        },
+        { "kind": "table", "identity": "public.pdf_export_request_periods" },
+        { "kind": "column", "identity": "public.pdf_export_quota_usages.request_id" },
+        { "kind": "column", "identity": "public.export_files.request_id" },
+        {
+          "kind": "function",
+          "identity": "public.acquire_pdf_export_attempt(uuid,text,uuid,jsonb,text)"
+        },
+        { "kind": "function", "identity": "public.claim_pdf_export_quota(uuid,uuid[],uuid)" }
+      ],
+      "singleTransaction": "Mandatory, not an optimization. Splitting 20260722120000 from 20260729120000 commits a list_user_problems definition that raises 42883 on every problem-list request, and splitting anything else reintroduces the order inversion described in reason.",
+      "fileOrder": "Ascending version order also satisfies every dependency the old batch split expressed. 20260723234527 (was P3) needs public.get_dashboard_kpi(), created by 20260722120000. 20260724140000 (was P6) needs the private claim_pdf_export_quota move done by 20260723234527. The repair reads neither, so it stays last. Measured 2026-08-14: no file in this batch references an object another one creates out of this order.",
+      "expectAbsentReason": "public.claim_pdf_export_quota(uuid,uuid[]) is the only object a later file in this batch removes. 20260723234527 moves the original into private and leaves a two-argument public wrapper; 20260724140000 then drops that wrapper and installs the three-argument form. It has to be in expectPresent (the schema move has no IF EXISTS) and in expectAbsent (it is gone once the batch commits) — the same pairing P5 uses.",
+      "nonIdempotent": "Carried over from the merged batches: seven `alter function ... set schema private` plus rename pairs (was P3), and `alter column request_id set not null` plus a unique index (was P6). One transaction makes a failure atomic, so the hand-reversal procedures those batches documented no longer apply — on failure nothing is committed and the count of private.*_unchecked must be 0. If it is not, stop and report rather than retrying.",
+      "note": "All ten preconditions were re-measured present on production 2026-08-14. Maintenance window required, inherited from the former P6: quiesce PDF export requests, apply, deploy the app in step. The cutover closes legacy NULL-request queued exports as failed/legacy_unknown, which is one-way."
     },
     "P5": {
       "reason": "Stops handle_new_user() from trusting raw affiliation_code metadata and removes the legacy browser invite RPCs. Unlike development, production already has both functions (20260701140000 is recorded and live), so no preparatory batch is needed for the unconditional REVOKE.",
@@ -99,23 +100,6 @@
         { "kind": "function", "identity": "public.claim_affiliation_code(text)" }
       ],
       "note": "This file carries its own top-level begin;/commit; pair. stripOuterTransaction removes it so the runner wrapper stays the only transaction. expectPresent and expectAbsent name the same two functions on purpose: they must exist before (the REVOKE has no IF EXISTS) and be gone after."
-    },
-    "P6": {
-      "reason": "JWT-bound idempotent PDF export requests. Production still exposes the two-argument claim_pdf_export_quota and has no attempt ledger, so exports have no idempotency key.",
-      "requires": ["P3"],
-      "migrations": ["20260724140000_pdf_export_request_idempotency.sql"],
-      "expectPresentAfter": [
-        { "kind": "table", "identity": "public.pdf_export_request_periods" },
-        { "kind": "column", "identity": "public.pdf_export_quota_usages.request_id" },
-        { "kind": "column", "identity": "public.export_files.request_id" },
-        {
-          "kind": "function",
-          "identity": "public.acquire_pdf_export_attempt(uuid,text,uuid,jsonb,text)"
-        },
-        { "kind": "function", "identity": "public.claim_pdf_export_quota(uuid,uuid[],uuid)" }
-      ],
-      "nonIdempotent": "`alter column request_id set not null` plus a unique index. On failure check whether pdf_export_quota_usages.request_id exists before retrying.",
-      "note": "Maintenance window required: quiesce PDF export requests, apply, deploy the app in step. The cutover closes legacy NULL-request queued exports as failed/legacy_unknown, which is one-way."
     }
   },
   "blockedMigrations": [

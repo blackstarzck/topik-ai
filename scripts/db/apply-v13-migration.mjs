@@ -99,13 +99,20 @@ export function assertEnvironmentMatchesTarget({ projectRef, manifest, env }) {
 // after it: the learner history is replayed in timestamp order, so filling a gap
 // late produces a tracker whose order no clean replay can reproduce. Pending
 // lower-version work has to be applied first — or explicitly reclassified.
+//
+// A batch's own files are not such work. resolveBatch forces them into ascending
+// order and buildBatchSql applies them in one transaction, so a sibling always
+// lands before its successor and the tracker stays replayable. Counting siblings
+// as pending made every multi-file batch unappliable once anything was recorded.
 export function assertNoOrderInversion({ batchName, files, recordedVersions, pendingVersions }) {
   const recorded = [...recordedVersions].sort();
   const highestRecorded = recorded.at(-1);
   if (!highestRecorded) return { checked: true, highestRecorded: null };
+  const batchVersions = new Set(files.map((file) => file.version));
+  const outsidePending = [...pendingVersions].filter((version) => !batchVersions.has(version));
   for (const file of files) {
-    const earlierPending = [...pendingVersions]
-      .filter((version) => version < file.version && version !== file.version)
+    const earlierPending = outsidePending
+      .filter((version) => version < file.version)
       .sort();
     if (earlierPending.length > 0 && file.version > highestRecorded) {
       fail(
