@@ -39,6 +39,26 @@ describe('release change classifier v7', () => {
     expect(removed.validationProfile).toBe('light');
   });
 
+  // v8: Phase 1 이 제거한 루트 스크래치 6개도 같은 함정을 밟지 않는다.
+  // 정확한 파일명만 허용 — 다른 루트 신규 파일은 여전히 fail-closed 다.
+  it('keeps retired root scratch files on the light path when removed', () => {
+    const removed = classifyChangedFiles([
+      { status: 'D', path: 'tmp_extract_strings.ps1' },
+      { status: 'D', path: 'tmp_fix_korean_map.ps1' },
+      { status: 'D', path: 'tmp_fix_korean_map2.ps1' },
+      { status: 'D', path: 'preview4174.log' },
+      { status: 'D', path: 'preview4176.log' },
+      { status: 'D', path: 'preview4176.log.local-backup' },
+    ]);
+    expect(removed.blockedReasons).toEqual([]);
+    expect(removed.releasePlan).toBe('sync-only');
+    expect(removed.validationProfile).toBe('light');
+
+    const stranger = classifyChangedFiles([{ status: 'D', path: 'tmp_other_scratch.ps1' }]);
+    expect(stranger.releasePlan).toBe('blocked');
+    expect(stranger.blockedReasons).toEqual(['unknown-path:tmp_other_scratch.ps1']);
+  });
+
   it('strongly validates release control-plane changes without releasing', () => {
     for (const path of [
       '.github/workflows/ci.yml',

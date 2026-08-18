@@ -15,9 +15,12 @@ import { loadRewriteAllowlist } from '../db/check-expand-migrations.mjs';
 // control-plane instead of unknown, which blocked every PR that touched it.
 // 7: Playwright run artifacts (test-results/, playwright-report/) resolve to light
 // instead of unknown, which blocked the commit that untracked test-results/.
+// 8: six retired root-level scratch files (tmp_*.ps1 x3, preview*.log x3) resolve to
+// light instead of unknown, so the Phase 1 commit that removes them can release.
+// Exact filenames only — the fail-closed default for new root files stays intact.
 // Recorded in release evidence, so a bump keeps pre-fix classifications
 // distinguishable from post-fix ones.
-export const CLASSIFIER_VERSION = 7;
+export const CLASSIFIER_VERSION = 8;
 
 const ZERO_SHA = /^0+$/;
 const RELEASE_PLANS = new Set([
@@ -81,6 +84,22 @@ function isTestArtifactPath(filePath) {
   return /^(test-results|playwright-report)\//.test(filePath);
 }
 
+// 2026-08-18 리팩토링 Phase 1 이 제거한 루트 스크래치 파일들. 규칙이 없으면 삭제
+// diff 가 unknown-path 로 스스로를 blocked 시킨다(v7 의 test-results 와 같은 함정).
+// 새 루트 파일이 fail-closed 로 남도록 패턴이 아니라 정확한 파일명만 나열한다.
+const RETIRED_ROOT_ARTIFACTS = new Set([
+  'tmp_extract_strings.ps1',
+  'tmp_fix_korean_map.ps1',
+  'tmp_fix_korean_map2.ps1',
+  'preview4174.log',
+  'preview4176.log',
+  'preview4176.log.local-backup',
+]);
+
+function isRetiredRootArtifactPath(filePath) {
+  return RETIRED_ROOT_ARTIFACTS.has(filePath);
+}
+
 export function isForwardMigrationPath(filePath) {
   return /^supabase\/(migrations|migrations-admin)\/(?!down\/)[^/]+\.sql$/i.test(filePath);
 }
@@ -139,6 +158,7 @@ function pathKind(filePath) {
     isDocumentationPath(filePath)
     || isOfflineTestPath(filePath)
     || isTestArtifactPath(filePath)
+    || isRetiredRootArtifactPath(filePath)
   ) {
     return 'light';
   }
