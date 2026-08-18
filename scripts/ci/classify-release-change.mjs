@@ -18,9 +18,12 @@ import { loadRewriteAllowlist } from '../db/check-expand-migrations.mjs';
 // 8: six retired root-level scratch files (tmp_*.ps1 x3, preview*.log x3) resolve to
 // light instead of unknown, so the Phase 1 commit that removes them can release.
 // Exact filenames only — the fail-closed default for new root files stays intact.
+// 9: .eslintrc.cjs resolves to app instead of unknown. The list only knew
+// eslint.config.js (flat config), but this repo pins ESLINT_USE_FLAT_CONFIG=false
+// and its real lint config is .eslintrc.cjs — editing it blocked the release.
 // Recorded in release evidence, so a bump keeps pre-fix classifications
 // distinguishable from post-fix ones.
-export const CLASSIFIER_VERSION = 8;
+export const CLASSIFIER_VERSION = 9;
 
 const ZERO_SHA = /^0+$/;
 const RELEASE_PLANS = new Set([
@@ -148,6 +151,7 @@ function isAppPath(filePath) {
       'tsconfig.app.json',
       'tsconfig.node.json',
       'eslint.config.js',
+      '.eslintrc.cjs',
     ].includes(filePath)
   );
 }

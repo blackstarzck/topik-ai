@@ -148,6 +148,15 @@
 - 같은 작업에서 path alias `@/*`(tsconfig.app.json `paths` + vite `resolve.alias`, vitest 는 vite 설정 승계)를 도입하되 이번에 수정한 파일에만 적용했다 — 전면 치환은 진행 중인 다른 브랜치와의 충돌을 피해 별도 작업으로 분리. 미사용 CSS 클래스 13계열(BEM 하위 포함, `global.css` 232줄)과 git 추적 중이던 임시 파일 6개(`tmp_*.ps1` 3, `preview*.log` 3)도 제거했다.
 - §3.10 함정 재발 실측(2026-08-18): 위 임시 파일 6개의 **삭제 diff 가 릴리스 분류기에서 `unknown-path` 6건이 되어 PR #87 의 `ci-gate` 를 blocked 로 만들었다** — v7 이 test-results 제거 커밋에서 밟은 것과 같은 구조("사후 gitignore 는 삭제하는 커밋을 구하지 못한다"). 분류기 v8 로 해소: 해당 6개 파일명을 정확 목록(`RETIRED_ROOT_ARTIFACTS`)으로만 light 분류에 추가해 다른 루트 신규 파일의 fail-closed 기본값은 유지했고, 회귀 테스트(6개 삭제 → sync-only/light, 목록 밖 루트 파일 → 여전히 blocked)를 `release-change-classifier.test.mjs` 에 추가했다.
 
+### 3.12 파일 비대화·mock 경계·중복 코드에 기계 게이트가 없음 — **해소 (2026-08-18, 리팩토링 Phase 2)**
+
+- 위생 게이트(lint·typecheck)가 완벽해도 구조 문제는 통과했다: 3,023줄 페이지, mock 픽스처의 feature 경계 밖 import 5곳(프로덕션 경로 오염), 동일 본문 헬퍼 104개(§3.11) 모두 기존 게이트로는 잡히지 않았다. 게이트 없이 분해(Phase 4)부터 하면 다음 기능 추가 때 되돌아간다.
+- 조치(2026-08-18): 게이트 3종 신설, 전부 위반 주입 → exit 1 실측으로 배선 검증(§3.9 교훈 "게이트 통과 ≠ 검사가 돌았다").
+  - `max-lines` 800(공백·주석 제외): 도입 시점 위반 24개는 `.eslintrc.cjs` overrides baseline 으로 동결. **baseline 목록은 줄이기만 하며 신규 추가 금지** — 이 목록이 Phase 4 분해 작업의 대상 목록이다.
+  - `no-restricted-imports`: `../../*/api/mock-*`·`@/features/*/api/mock-*` 차단. baseline 5개(billing-service·coupons-service·message-store·pdf-quota-service·system-audit-logs-service)는 Phase 3 에서 service facade 경유로 해소 예정. 한계: 셀렉터가 import 문자열 형상 기반이라 비표준 깊이의 우회는 못 잡는다(완전한 경계 강제는 eslint-plugin-boundaries 도입 검토 항목).
+  - jscpd 중복 임계 5%(`check:duplication`, `harness:check` 배선): 도입 시점 실측 4.52%(296 클론·3,955줄)의 래칫. 대규모 중복 제거 후 같은 PR 에서 임계를 하향한다. 설정 SoT 는 `package.json` `jscpd` 키(신규 루트 설정 파일을 만들지 않아 분류기 unknown-path 를 피함).
+- 분류기 v9: 이 작업이 `.eslintrc.cjs` 를 수정하는데 app 목록에는 flat config(`eslint.config.js`)만 있어 **unknown-path → blocked 를 사전 실측으로 확인**하고(§3.10·§3.11 의 함정 3번째 재발을 선제 차단), `.eslintrc.cjs` 를 app 경로에 등재 + 회귀 테스트를 추가했다.
+
 ## 4. 모듈별 레지스트리
 
 ### 4.1 Dashboard

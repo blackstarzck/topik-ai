@@ -83,6 +83,8 @@ describe('release change classifier v7', () => {
       'public/logo.svg',
       'package-lock.json',
       'vercel.json',
+      // v9: 이 repo 의 실제 lint 설정은 flat config 가 아니라 .eslintrc.cjs 다
+      '.eslintrc.cjs',
     ]) {
       const report = classify(path);
       expect(report.releasePlan, path).toBe('app-only');

@@ -6,6 +6,19 @@
   "engines": {
     "node": "24.x"
   },
+  "jscpd": {
+    "path": [
+      "src"
+    ],
+    "pattern": "**/*.{ts,tsx}",
+    "minTokens": 50,
+    "threshold": 5,
+    "reporters": [
+      "console"
+    ],
+    "silent": true,
+    "gitignore": true
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b --noEmit && vite build",
@@ -24,10 +37,11 @@
     "check:admin-transfer-completion": "node ./scripts/check-admin-transfer-completion-audit.mjs",
     "check:admin-verification-env": "node ./scripts/check-admin-verification-env.mjs",
     "check:mojibake": "node ./scripts/check-mojibake.mjs",
+    "check:duplication": "jscpd",
     "check:learning-analytics-metadata-coverage": "node ./scripts/check-learning-analytics-metadata-coverage.mjs",
     "ci:classify": "node ./scripts/ci/classify-release-change.mjs",
     "harness:docs": "npm run check:mojibake && node ./scripts/check-doc-crosslinks.mjs && node ./scripts/check-route-doc-coverage.mjs",
-    "harness:check": "npm run check:mojibake && node ./scripts/check-doc-crosslinks.mjs && node ./scripts/check-route-doc-coverage.mjs && npm run check:message-history-boundary && npm run check:router-state-notice-boundary && npm run lint && npm run typecheck",
+    "harness:check": "npm run check:mojibake && node ./scripts/check-doc-crosslinks.mjs && node ./scripts/check-route-doc-coverage.mjs && npm run check:message-history-boundary && npm run check:router-state-notice-boundary && npm run check:duplication && npm run lint && npm run typecheck",
     "harness:admin-boundary": "npm run harness:admin-boundary:local",
     "harness:admin-boundary:local": "npm run check:transfer-sot-checklist && npm run check:admin-verification-env && npm run check:client-source-secrets && npm run check:message-history-boundary && npm run check:migration-boundary && npm run check:v13-archive && npm run check:notification-cross-app-state && npm run check:notification-production-evidence",
     "harness:admin-boundary:production": "npm run harness:admin-boundary:local && npm run check:vercel-worker-readiness -- --strict-env && npm run check:notification-worker-smoke -- --dispatch && npm run check:notification-production-evidence -- --require && npm run check:admin-transfer-completion",
@@ -97,6 +111,7 @@
     "@vitejs/plugin-react": "4.3.1",
     "eslint": "8.57.1",
     "eslint-plugin-react-hooks": "4.6.2",
+    "jscpd": "^5.0.16",
     "playwright": "^1.58.2",
     "typescript": "5.6.3",
     "vite": "5.4.10",
