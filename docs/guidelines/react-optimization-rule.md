@@ -117,6 +117,14 @@
 * 새 저장 신호를 추가할 때는 `RouterSavedStateMap`에 키와 payload를 함께 등재한다. 그래야 키 오타가 컴파일 오류가 된다.
 * 배경과 실측은 `docs/specs/admin-page-gap-register.md` §3.8, 회귀 고정은 `tests/e2e/router-state-notice.spec.ts`.
 
+### 3-5. safe facade 조회 effect 는 useAsyncResource 로(신규·전환 시 강제)
+
+`fetch*Safe` 결과를 컴포넌트 상태로 옮기는 수기 fetch effect(AbortController 생성 → pending 전환 → abort 가드 → 성공/실패 반영 → cleanup abort)는 **`src/shared/model/use-async-resource.ts`의 `useAsyncResource`** 로만 새로 만든다. 기존 42개 파일의 수기 배선은 파일럿(system-logs·system-audit-logs, Phase 3b)부터 점진 전환 중이며 목록은 `docs/specs/admin-page-gap-register.md` §3.13 에서 추적한다.
+
+* fetcher 는 반드시 `useCallback` 으로 감싸 전달한다 — 재조회 조건이 fetcher 의 의존성 배열로 드러나고, `react-hooks/exhaustive-deps` 가 호출부에서 검증한다.
+* 훅 계약: 초기 status 는 `'pending'`(idle 프레임 없음), 실패 시 직전 data 보존(마지막 성공 상태 fallback), abort 된 응답 무시, 빈 결과는 `'empty'`(기본 배열 길이 0, `isEmpty` 로 재정의).
+* 수동 재조회는 반환된 `reload()` 를 사용한다 — reloadKey state 를 페이지에 직접 만들지 않는다.
+
 ---
 
 ## 4) 대용량 목록/테이블 최적화(관리자 페이지 핵심)
