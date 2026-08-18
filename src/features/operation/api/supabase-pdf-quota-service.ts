@@ -1,4 +1,3 @@
-import { supabaseClient } from '../../../shared/api/supabase-client';
 import type {
   CreatePdfQuotaResetPayload,
   SavePdfQuotaPolicyPayload
@@ -16,6 +15,7 @@ import {
   type PdfQuotaResetUserOption,
   type PdfQuotaResetUserOptionPage
 } from '../model/pdf-quota-types';
+import { requireClient, requireReason, throwIfAborted } from '@/shared/api/supabase-service-utils';
 
 type PdfQuotaPolicyRow = {
   id: string;
@@ -68,27 +68,6 @@ type PdfQuotaPolicyHistoryRow = {
   result_period_unit: string | null;
   total_count: number | null;
 };
-
-function requireClient() {
-  if (!supabaseClient) {
-    throw new Error('Supabase client not configured');
-  }
-  return supabaseClient;
-}
-
-function requireReason(reason: string | undefined): string {
-  const trimmed = (reason ?? '').trim();
-  if (!trimmed) {
-    throw new Error('사유/근거를 입력하세요. (RPC p_reason 필수)');
-  }
-  return trimmed;
-}
-
-function throwIfAborted(signal?: AbortSignal): void {
-  if (signal?.aborted) {
-    throw new DOMException('Request aborted', 'AbortError');
-  }
-}
 
 function toDisplayDateTime(value: string | null | undefined): string {
   return value ?? '';

@@ -1,5 +1,5 @@
-import { AppApiError } from '../../../shared/api/api-error';
-import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
+import { AppApiError } from '@/shared/api/api-error';
+import { toSafeResult, withRetry } from '@/shared/api/safe-request';
 import { useOperationStore } from '../model/operation-store';
 import type {
   OperationFaq,
@@ -18,6 +18,7 @@ import {
   saveOperationFaqCuration,
   setOperationFaqStatus
 } from './supabase-operation-faqs-service';
+import { sleep } from '@/shared/api/supabase-service-utils';
 
 export type SaveFaqPayload = Pick<
   OperationFaq,
@@ -48,32 +49,6 @@ export type SaveFaqCurationPayload = Pick<
 };
 
 const isSupabaseSource = operationFaqsDataSource === 'supabase';
-
-function sleep(ms: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) {
-      reject(new DOMException('Request aborted', 'AbortError'));
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      cleanup();
-      resolve();
-    }, ms);
-
-    const onAbort = (): void => {
-      cleanup();
-      reject(new DOMException('Request aborted', 'AbortError'));
-    };
-
-    const cleanup = (): void => {
-      window.clearTimeout(timer);
-      signal?.removeEventListener('abort', onAbort);
-    };
-
-    signal?.addEventListener('abort', onAbort, { once: true });
-  });
-}
 
 function createFaqNotFoundError(): AppApiError {
   return new AppApiError('FAQ 대상을 찾을 수 없습니다.', {

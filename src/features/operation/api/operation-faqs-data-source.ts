@@ -1,4 +1,4 @@
-import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
+import { resolveDataSource } from '@/shared/api/data-source';
 
 /**
  * Operation > FAQ data source switch.
@@ -11,14 +11,8 @@ import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
  */
 export type OperationFaqsDataSource = 'mock' | 'supabase';
 
-const env = import.meta.env as unknown as Record<string, string | undefined>;
-
 export function resolveOperationFaqsDataSource(): OperationFaqsDataSource {
-  if (!isSupabaseConfigured) {
-    return 'mock';
-  }
-
-  return env.VITE_OPERATION_FAQS_SOURCE === 'mock' ? 'mock' : 'supabase';
+  return resolveDataSource('VITE_OPERATION_FAQS_SOURCE');
 }
 
 export const operationFaqsDataSource = resolveOperationFaqsDataSource();

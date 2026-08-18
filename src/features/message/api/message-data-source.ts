@@ -1,4 +1,4 @@
-import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
+import { resolveDataSource } from '@/shared/api/data-source';
 
 /**
  * 메시지(알림) 데이터 소스 스위치 (WP2-1 — docs/specs/notification-contract.md).
@@ -10,14 +10,8 @@ import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
  */
 export type MessageDataSource = 'mock' | 'supabase';
 
-const env = import.meta.env as unknown as Record<string, string | undefined>;
-
 export function resolveMessageDataSource(): MessageDataSource {
-  if (!isSupabaseConfigured) {
-    return 'mock';
-  }
-
-  return env.VITE_MESSAGE_SOURCE === 'mock' ? 'mock' : 'supabase';
+  return resolveDataSource('VITE_MESSAGE_SOURCE');
 }
 
 export const messageDataSource = resolveMessageDataSource();

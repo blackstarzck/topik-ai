@@ -16,6 +16,7 @@ import type {
   OperationPolicyTrackingStatus,
   OperationPolicyType
 } from './policy-types';
+import { toDateOnly as toDateString } from '@/shared/model/date-format';
 
 const CURRENT_ACTOR = 'admin_current';
 
@@ -75,10 +76,6 @@ function formatNow(): string {
   const hh = String(now.getHours()).padStart(2, '0');
   const mi = String(now.getMinutes()).padStart(2, '0');
   return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
-}
-
-function toDateString(dateTime: string): string {
-  return dateTime.slice(0, 10);
 }
 
 function normalizeText(value: string): string {

@@ -1,5 +1,5 @@
-import { AppApiError } from '../../../shared/api/api-error';
-import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
+import { AppApiError } from '@/shared/api/api-error';
+import { toSafeResult, withRetry } from '@/shared/api/safe-request';
 import { useOperationStore } from '../model/operation-store';
 import type { OperationEvent } from '../model/types';
 import { operationEventsDataSource } from './operation-events-data-source';
@@ -11,6 +11,7 @@ import {
   saveOperationEvent,
   scheduleOperationEvent
 } from './supabase-operation-events-service';
+import { sleep } from '@/shared/api/supabase-service-utils';
 
 export type SaveEventPayload = {
   id?: string;
@@ -51,32 +52,6 @@ export type EventActionPayload = {
 };
 
 const isSupabaseSource = operationEventsDataSource === 'supabase';
-
-function sleep(ms: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) {
-      reject(new DOMException('Request aborted', 'AbortError'));
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      cleanup();
-      resolve();
-    }, ms);
-
-    const onAbort = (): void => {
-      cleanup();
-      reject(new DOMException('Request aborted', 'AbortError'));
-    };
-
-    const cleanup = (): void => {
-      window.clearTimeout(timer);
-      signal?.removeEventListener('abort', onAbort);
-    };
-
-    signal?.addEventListener('abort', onAbort, { once: true });
-  });
-}
 
 function createEventNotFoundError(): AppApiError {
   return new AppApiError('이벤트 대상을 찾을 수 없습니다.', {

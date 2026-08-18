@@ -1,5 +1,5 @@
-import { AppApiError } from '../../../shared/api/api-error';
-import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
+import { AppApiError } from '@/shared/api/api-error';
+import { toSafeResult, withRetry } from '@/shared/api/safe-request';
 import { useOperationStore } from '../model/operation-store';
 import type { OperationNotice, OperationNoticeStatus } from '../model/types';
 import { operationNoticesDataSource } from './operation-notices-data-source';
@@ -10,6 +10,7 @@ import {
   saveOperationNotice,
   setOperationNoticeStatus
 } from './supabase-operation-notices-service';
+import { sleep } from '@/shared/api/supabase-service-utils';
 
 export type SaveNoticePayload = Pick<OperationNotice, 'title' | 'bodyHtml'> & {
   id?: string;
@@ -23,32 +24,6 @@ export type ToggleNoticeStatusPayload = {
 };
 
 const isSupabaseSource = operationNoticesDataSource === 'supabase';
-
-function sleep(ms: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) {
-      reject(new DOMException('Request aborted', 'AbortError'));
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      cleanup();
-      resolve();
-    }, ms);
-
-    const onAbort = (): void => {
-      cleanup();
-      reject(new DOMException('Request aborted', 'AbortError'));
-    };
-
-    const cleanup = (): void => {
-      window.clearTimeout(timer);
-      signal?.removeEventListener('abort', onAbort);
-    };
-
-    signal?.addEventListener('abort', onAbort, { once: true });
-  });
-}
 
 function createNoticeNotFoundError(): AppApiError {
   return new AppApiError('공지 대상을 찾을 수 없습니다.', {

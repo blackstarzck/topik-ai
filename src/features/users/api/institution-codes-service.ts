@@ -16,7 +16,7 @@ import {
   removeMockInstitutionCode,
   updateMockInstitutionCode
 } from './mock-institution-codes';
-import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
+import { toSafeResult, withRetry } from '@/shared/api/safe-request';
 import { institutionCodesDataSource } from './institution-codes-data-source';
 import {
   cancelInstitutionInvitationViaRpc,
@@ -31,6 +31,7 @@ import {
   setInstitutionExposureModeViaRpc,
   updateInstitutionCodeViaRpc
 } from './supabase-institution-codes-service';
+import { sleep } from '@/shared/api/supabase-service-utils';
 
 const isSupabaseSource = institutionCodesDataSource === 'supabase';
 
@@ -63,32 +64,6 @@ export type SetInstitutionExposureModePayload = {
   exposureMode: InstitutionExposureMode;
   reason: string;
 };
-
-function sleep(ms: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) {
-      reject(new DOMException('Request aborted', 'AbortError'));
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      cleanup();
-      resolve();
-    }, ms);
-
-    const onAbort = (): void => {
-      cleanup();
-      reject(new DOMException('Request aborted', 'AbortError'));
-    };
-
-    const cleanup = (): void => {
-      window.clearTimeout(timer);
-      signal?.removeEventListener('abort', onAbort);
-    };
-
-    signal?.addEventListener('abort', onAbort, { once: true });
-  });
-}
 
 function todayText(): string {
   const now = new Date();

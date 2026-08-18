@@ -1,4 +1,3 @@
-import { supabaseClient } from '../../../shared/api/supabase-client';
 import {
   operationEventBannerSourceTypeValues,
   operationEventExposureChannelValues,
@@ -10,6 +9,8 @@ import {
   type OperationEventExposureChannel
 } from '../model/types';
 import type { EventActionPayload, SaveEventPayload } from './events-service';
+import { requireClient, requireReason, throwIfAborted } from '@/shared/api/supabase-service-utils';
+import { toDateOnly as toDate, toDateTimeMinutes as toDateTime } from '@/shared/model/date-format';
 
 type OperationEventRow = {
   id: string;
@@ -111,35 +112,6 @@ const EVENT_COLUMNS = [
   'updated_at',
   'updated_by'
 ].join(', ');
-
-function requireClient() {
-  if (!supabaseClient) {
-    throw new Error('Supabase client not configured');
-  }
-  return supabaseClient;
-}
-
-function requireReason(reason: string | undefined): string {
-  const trimmed = (reason ?? '').trim();
-  if (!trimmed) {
-    throw new Error('사유/근거를 입력하세요. (RPC p_reason 필수)');
-  }
-  return trimmed;
-}
-
-function throwIfAborted(signal?: AbortSignal): void {
-  if (signal?.aborted) {
-    throw new DOMException('Request aborted', 'AbortError');
-  }
-}
-
-function toDate(value: string | null | undefined): string {
-  return value ? value.slice(0, 10) : '';
-}
-
-function toDateTime(value: string | null | undefined): string {
-  return value ? value.slice(0, 16).replace('T', ' ') : '';
-}
 
 function formatToday(): string {
   const now = new Date();

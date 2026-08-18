@@ -1,8 +1,8 @@
 import type { UserStatus, UserSummary } from '../model/types';
 import { userMatchesExportFilters } from '../model/user-export-filter';
 import { getMockUserById, getMockUserLearningOverview, mockUsers } from './mock-users';
-import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
-import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
+import { toSafeResult, withRetry } from '@/shared/api/safe-request';
+import { isSupabaseConfigured } from '@/shared/api/supabase-client';
 import {
   addUserMemoViaRpc,
   deleteUserMemoViaRpc,
@@ -24,32 +24,7 @@ import {
   type UserLegalConsent,
   type UserPaymentRecord
 } from './supabase-users-service';
-
-function sleep(ms: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) {
-      reject(new DOMException('Request aborted', 'AbortError'));
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      cleanup();
-      resolve();
-    }, ms);
-
-    const onAbort = (): void => {
-      cleanup();
-      reject(new DOMException('Request aborted', 'AbortError'));
-    };
-
-    const cleanup = (): void => {
-      window.clearTimeout(timer);
-      signal?.removeEventListener('abort', onAbort);
-    };
-
-    signal?.addEventListener('abort', onAbort, { once: true });
-  });
-}
+import { sleep } from '@/shared/api/supabase-service-utils';
 
 // 회원 목록 "기관 소속" 필터를 mock 경로에서도 동일하게 적용(@affiliated/@general/특정 코드).
 // 서버 경로는 get_admin_users(affiliation) 가 동일 의미로 거른다.

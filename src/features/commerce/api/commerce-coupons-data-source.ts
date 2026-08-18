@@ -1,15 +1,9 @@
-import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
+import { resolveDataSource } from '@/shared/api/data-source';
 
 export type CommerceCouponsDataSource = 'mock' | 'supabase';
 
-const env = import.meta.env as unknown as Record<string, string | undefined>;
-
 export function resolveCommerceCouponsDataSource(): CommerceCouponsDataSource {
-  if (!isSupabaseConfigured) {
-    return 'mock';
-  }
-
-  return env.VITE_COMMERCE_COUPONS_SOURCE === 'mock' ? 'mock' : 'supabase';
+  return resolveDataSource('VITE_COMMERCE_COUPONS_SOURCE');
 }
 
 export const commerceCouponsDataSource = resolveCommerceCouponsDataSource();

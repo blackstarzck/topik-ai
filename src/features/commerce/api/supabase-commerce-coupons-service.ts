@@ -1,4 +1,3 @@
-import { supabaseClient } from '../../../shared/api/supabase-client';
 import {
   getCouponTemplatePolicyNotes,
   resolveCouponTemplateCategoryNames,
@@ -19,6 +18,8 @@ import type {
   CouponSavePayload,
   CouponTemplateSavePayload
 } from '../model/coupon-store';
+import { requireClient, requireReason, throwIfAborted } from '@/shared/api/supabase-service-utils';
+import { toDateOnly as toDate, toDateTimeMinutes as toDateTime } from '@/shared/model/date-format';
 
 type CouponActionPayload = {
   couponId: string;
@@ -240,27 +241,6 @@ const UI_TEMPLATE_STATUS_BY_DB: Record<string, CouponTemplateStatus> = {
   paused: '발행 중지'
 };
 
-function requireClient() {
-  if (!supabaseClient) {
-    throw new Error('Supabase client not configured');
-  }
-  return supabaseClient;
-}
-
-function requireReason(reason: string | undefined): string {
-  const trimmed = (reason ?? '').trim();
-  if (!trimmed) {
-    throw new Error('사유/근거를 입력하세요. (RPC p_reason 필수)');
-  }
-  return trimmed;
-}
-
-function throwIfAborted(signal?: AbortSignal): void {
-  if (signal?.aborted) {
-    throw new DOMException('Request aborted', 'AbortError');
-  }
-}
-
 function toStringArray(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === 'string')
@@ -282,14 +262,6 @@ function toSchedule(value: unknown): {
     hour: Number(record.hour ?? 7),
     minute: Number(record.minute ?? 0)
   };
-}
-
-function toDate(value: string | null | undefined): string {
-  return value ? value.slice(0, 10) : '';
-}
-
-function toDateTime(value: string | null | undefined): string {
-  return value ? value.slice(0, 16).replace('T', ' ') : '';
 }
 
 function mapCouponRow(row: CouponRow): CommerceCoupon {

@@ -127,3 +127,12 @@ export function toAppApiError(error: unknown): AppApiError {
   });
 }
 
+/** NOT_FOUND 계열 AppApiError 생성 헬퍼(서비스 3곳 로컬 복제 통합). */
+export function createNotFoundError(message = '대상을 찾을 수 없습니다.'): AppApiError {
+  return new AppApiError(message, {
+    code: 'NOT_FOUND',
+    status: 404,
+    retryable: false
+  });
+}
+

@@ -1,4 +1,3 @@
-import { supabaseClient } from '../../../shared/api/supabase-client';
 import type {
   DeleteMetadataItemPayload,
   ReorderMetadataItemsPayload,
@@ -17,6 +16,8 @@ import type {
   SystemMetadataGroup,
   SystemMetadataItem
 } from '../model/system-metadata-types';
+import { requireClient, requireReason, throwIfAborted } from '@/shared/api/supabase-service-utils';
+import { toDateTimeSeconds as toDateTime } from '@/shared/model/date-format';
 
 type MetadataGroupRow = {
   group_id: string;
@@ -86,35 +87,10 @@ const ITEM_COLUMNS = [
   'updated_by'
 ].join(', ');
 
-function requireClient() {
-  if (!supabaseClient) {
-    throw new Error('Supabase client not configured');
-  }
-  return supabaseClient;
-}
-
-function requireReason(reason: string): string {
-  const trimmed = reason.trim();
-  if (!trimmed) {
-    throw new Error('사유/근거를 입력하세요. (RPC p_reason 필수)');
-  }
-  return trimmed;
-}
-
-function throwIfAborted(signal?: AbortSignal): void {
-  if (signal?.aborted) {
-    throw new DOMException('Request aborted', 'AbortError');
-  }
-}
-
 function toStringArray(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === 'string')
     : [];
-}
-
-function toDateTime(value: string | null | undefined): string {
-  return value ? value.slice(0, 19).replace('T', ' ') : '';
 }
 
 function toStatus(value: string): MetadataStatus {

@@ -1,4 +1,3 @@
-import { supabaseClient } from '../../../shared/api/supabase-client';
 import type {
   InstructorActivityStatus,
   InstructorAssignmentStatus,
@@ -9,6 +8,7 @@ import type {
   InstructorOrganization,
   InstructorStatus
 } from '../model/types';
+import { requireClient, requireReason, throwIfAborted } from '@/shared/api/supabase-service-utils';
 
 /**
  * Users > 강사 관리 Supabase 어댑터.
@@ -37,27 +37,6 @@ type InstructorRow = {
   recent_messages: unknown;
   admin_notes: unknown;
 };
-
-function requireClient() {
-  if (!supabaseClient) {
-    throw new Error('Supabase client not configured');
-  }
-  return supabaseClient;
-}
-
-function requireReason(reason: string | undefined): string {
-  const trimmed = (reason ?? '').trim();
-  if (!trimmed) {
-    throw new Error('사유/근거를 입력하세요. (RPC p_reason 필수)');
-  }
-  return trimmed;
-}
-
-function throwIfAborted(signal?: AbortSignal): void {
-  if (signal?.aborted) {
-    throw new DOMException('Request aborted', 'AbortError');
-  }
-}
 
 function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];

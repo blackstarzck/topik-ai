@@ -1,6 +1,7 @@
 import type { AdminNotification } from '../model/admin-notification-types';
-import { supabaseClient, isSupabaseConfigured } from '../../../shared/api/supabase-client';
-import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
+import { isSupabaseConfigured } from '@/shared/api/supabase-client';
+import { toSafeResult, withRetry } from '@/shared/api/safe-request';
+import { requireClient } from '@/shared/api/supabase-service-utils';
 
 /**
  * 관리자 인앱 알림 서비스. RPC 4종(`20260805110000`)과 1:1 이다.
@@ -20,13 +21,6 @@ type NotificationRow = {
   read_at: string | null;
   created_at: string | null;
 };
-
-function requireClient() {
-  if (!supabaseClient) {
-    throw new Error('Supabase client not configured');
-  }
-  return supabaseClient;
-}
 
 function mapRow(row: NotificationRow): AdminNotification {
   return {

@@ -1,5 +1,5 @@
-import { AppApiError } from '../../../shared/api/api-error';
-import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
+import { createNotFoundError } from '@/shared/api/api-error';
+import { toSafeResult, withRetry } from '@/shared/api/safe-request';
 import { useAuthStore } from '../../auth/model/auth-store';
 import { usePermissionStore } from '../../system/model/permission-store';
 import type { AdminPermissionAssignment } from '../../system/model/permission-types';
@@ -21,6 +21,7 @@ import {
   resolveCommunityReport as resolveSupabaseCommunityReport,
   showCommunityPost as showSupabaseCommunityPost
 } from './supabase-community-service';
+import { sleep } from '@/shared/api/supabase-service-utils';
 
 export type ModerateCommunityPostPayload = {
   postId: string;
@@ -55,32 +56,6 @@ export type CommunityModeratorOptions = {
 
 const isSupabaseSource = communityDataSource === 'supabase';
 
-function sleep(ms: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) {
-      reject(new DOMException('Request aborted', 'AbortError'));
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      cleanup();
-      resolve();
-    }, ms);
-
-    const onAbort = (): void => {
-      cleanup();
-      reject(new DOMException('Request aborted', 'AbortError'));
-    };
-
-    const cleanup = (): void => {
-      window.clearTimeout(timer);
-      signal?.removeEventListener('abort', onAbort);
-    };
-
-    signal?.addEventListener('abort', onAbort, { once: true });
-  });
-}
-
 function formatNow(): string {
   const now = new Date();
   const yyyy = now.getFullYear();
@@ -101,14 +76,6 @@ function clonePost(post: CommunityPost): CommunityPost {
 
 function cloneReport(report: CommunityReport): CommunityReport {
   return { ...report };
-}
-
-function createNotFoundError(message: string): AppApiError {
-  return new AppApiError(message, {
-    code: 'NOT_FOUND',
-    status: 404,
-    retryable: false
-  });
 }
 
 async function loadCommunityPosts(signal?: AbortSignal): Promise<CommunityPost[]> {

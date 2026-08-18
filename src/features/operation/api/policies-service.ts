@@ -1,5 +1,5 @@
-import { AppApiError } from '../../../shared/api/api-error';
-import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
+import { AppApiError } from '@/shared/api/api-error';
+import { toSafeResult, withRetry } from '@/shared/api/safe-request';
 import { useOperationPolicyStore } from '../model/policy-store';
 import type {
   OperationPolicy,
@@ -18,6 +18,7 @@ import {
   setOperationPolicyStatus,
   type TermsChangeNotificationResult
 } from './supabase-operation-policies-service';
+import { sleep } from '@/shared/api/supabase-service-utils';
 
 export type SavePolicyPayload = Pick<
   OperationPolicy,
@@ -60,32 +61,6 @@ export type PublishPolicyHistoryVersionPayload = {
   historyId: string;
   reason: string;
 };
-
-function sleep(ms: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) {
-      reject(new DOMException('Request aborted', 'AbortError'));
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      cleanup();
-      resolve();
-    }, ms);
-
-    const onAbort = (): void => {
-      cleanup();
-      reject(new DOMException('Request aborted', 'AbortError'));
-    };
-
-    const cleanup = (): void => {
-      window.clearTimeout(timer);
-      signal?.removeEventListener('abort', onAbort);
-    };
-
-    signal?.addEventListener('abort', onAbort, { once: true });
-  });
-}
 
 function createPolicyNotFoundError(): AppApiError {
   return new AppApiError('정책 대상을 찾을 수 없습니다.', {

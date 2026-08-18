@@ -1,6 +1,7 @@
-import { supabaseClient } from '../../../shared/api/supabase-client';
 import type { OperationNotice, OperationNoticeStatus } from '../model/types';
 import type { SaveNoticePayload, ToggleNoticeStatusPayload } from './notices-service';
+import { requireClient, requireReason, throwIfAborted } from '@/shared/api/supabase-service-utils';
+import { toDateOnly as toDate, toDateTimeMinutes as toDateTime } from '@/shared/model/date-format';
 
 type OperationNoticeRow = {
   id: string;
@@ -25,35 +26,6 @@ const UI_NOTICE_STATUS_BY_DB: Record<string, OperationNoticeStatus> = {
 
 const NOTICE_COLUMNS =
   'id, title, body_html, status, author, created_at, updated_at, updated_by';
-
-function requireClient() {
-  if (!supabaseClient) {
-    throw new Error('Supabase client not configured');
-  }
-  return supabaseClient;
-}
-
-function requireReason(reason: string | undefined): string {
-  const trimmed = (reason ?? '').trim();
-  if (!trimmed) {
-    throw new Error('사유/근거를 입력하세요. (RPC p_reason 필수)');
-  }
-  return trimmed;
-}
-
-function throwIfAborted(signal?: AbortSignal): void {
-  if (signal?.aborted) {
-    throw new DOMException('Request aborted', 'AbortError');
-  }
-}
-
-function toDate(ts: string | null | undefined): string {
-  return ts ? ts.slice(0, 10) : '';
-}
-
-function toDateTime(ts: string | null | undefined): string {
-  return ts ? ts.slice(0, 16).replace('T', ' ') : '';
-}
 
 function mapNoticeRow(row: OperationNoticeRow): OperationNotice {
   return {

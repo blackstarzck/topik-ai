@@ -1,10 +1,11 @@
-import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
-import { supabaseClient } from '../../../shared/api/supabase-client';
+import { toSafeResult, withRetry } from '@/shared/api/safe-request';
+import { supabaseClient } from '@/shared/api/supabase-client';
 import { mapAppRoleToRoleKey, permissionKeysForRole } from '../../auth/model/app-role-mapping';
 import type { V13AppRole } from '../../auth/model/session-types';
 import { usePermissionStore } from '../model/permission-store';
 import type { AdminPermissionAssignment } from '../model/permission-types';
 import { systemAdminsDataSource } from './system-admins-data-source';
+import { toDateTimeSeconds as toDateTime } from '@/shared/model/date-format';
 
 export type AdminListRpcRow = {
   user_id: string;
@@ -22,10 +23,6 @@ type AdminStatus = AdminPermissionAssignment['status'];
 type FetchSystemAdminsResult =
   | { ok: true; data: AdminPermissionAssignment[]; error: null }
   | { ok: false; data: null; error: string };
-
-function toDateTime(value: string | null | undefined): string {
-  return value ? value.replace('T', ' ').slice(0, 19) : '';
-}
 
 function mapAdminStatus(status: string | null): AdminStatus {
   if (status === 'active') {

@@ -1,4 +1,4 @@
-import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
+import { toSafeResult, withRetry } from '@/shared/api/safe-request';
 import {
   createInitialPointExpirations,
   createInitialPointLedgers,
@@ -24,6 +24,7 @@ import type {
   PointPolicyStatus,
   PointPolicyType
 } from '../model/point-types';
+import { sleep } from '@/shared/api/supabase-service-utils';
 
 export type SavePointPolicyPayload = {
   policyId?: string;
@@ -72,32 +73,6 @@ export type ReleasePointExpirationHoldPayload = {
 export type ExportPointExpirationsPayload = {
   itemCount: number;
 };
-
-function sleep(ms: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) {
-      reject(new DOMException('Request aborted', 'AbortError'));
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      cleanup();
-      resolve();
-    }, ms);
-
-    const onAbort = (): void => {
-      cleanup();
-      reject(new DOMException('Request aborted', 'AbortError'));
-    };
-
-    const cleanup = (): void => {
-      window.clearTimeout(timer);
-      signal?.removeEventListener('abort', onAbort);
-    };
-
-    signal?.addEventListener('abort', onAbort, { once: true });
-  });
-}
 
 function clonePolicies(items: PointPolicy[]): PointPolicy[] {
   return items.map((item) => ({ ...item }));

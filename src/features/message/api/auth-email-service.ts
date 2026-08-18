@@ -1,5 +1,5 @@
-import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
-import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
+import { toSafeResult, withRetry } from '@/shared/api/safe-request';
+import { isSupabaseConfigured } from '@/shared/api/supabase-client';
 import type { AuthEmailStatus, AuthEmailTemplate, AuthEmailType } from '../model/auth-email-types';
 import {
   listMockAuthEmailTemplates,
@@ -11,6 +11,7 @@ import {
   saveSupabaseAuthEmailTemplate,
   syncSupabaseAuthEmailTemplate
 } from './supabase-auth-email-service';
+import { sleep } from '@/shared/api/supabase-service-utils';
 
 /**
  * 인증 메일 서비스 파사드 — Supabase 구성 시 실 DB(RLS 읽기 + RPC 쓰기 + 서버 동기화),
@@ -26,10 +27,6 @@ export type SaveAuthEmailPayload = {
 };
 
 const useSupabase = isSupabaseConfigured;
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
-}
 
 async function listAuthEmailTemplates(): Promise<AuthEmailTemplate[]> {
   if (useSupabase) {

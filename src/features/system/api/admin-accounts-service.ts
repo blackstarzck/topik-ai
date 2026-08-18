@@ -1,5 +1,6 @@
-import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
-import { supabaseClient } from '../../../shared/api/supabase-client';
+import { toSafeResult, withRetry } from '@/shared/api/safe-request';
+import { requireClient } from '@/shared/api/supabase-service-utils';
+import { toDateTimeSeconds as toDateTime } from '@/shared/model/date-format';
 
 /**
  * Admin-account management service (관리자 계정 분리 Phase 6).
@@ -42,17 +43,6 @@ type AdminGetAdminRpcRow = {
   updated_at: string | null;
   permission_keys: string[] | null;
 };
-
-function toDateTime(value: string | null | undefined): string {
-  return value ? value.replace('T', ' ').slice(0, 19) : '';
-}
-
-function requireClient() {
-  if (!supabaseClient) {
-    throw new Error('Supabase client not configured');
-  }
-  return supabaseClient;
-}
 
 function mapAdminDetail(row: AdminGetAdminRpcRow): AdminAccountDetail {
   return {

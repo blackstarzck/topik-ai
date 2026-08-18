@@ -1,5 +1,5 @@
-import { AppApiError } from '../../../shared/api/api-error';
-import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
+import { AppApiError, createNotFoundError } from '@/shared/api/api-error';
+import { toSafeResult, withRetry } from '@/shared/api/safe-request';
 import {
   useSystemMetadataStore,
   type DeleteMetadataItemPayload,
@@ -19,47 +19,14 @@ import {
   toggleMetadataGroupStatusViaRpc,
   toggleMetadataItemStatusViaRpc
 } from './supabase-system-metadata-service';
+import { sleep } from '@/shared/api/supabase-service-utils';
 
 const isSupabaseSource = systemMetadataDataSource === 'supabase';
-
-function sleep(ms: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) {
-      reject(new DOMException('Request aborted', 'AbortError'));
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      cleanup();
-      resolve();
-    }, ms);
-
-    const onAbort = (): void => {
-      cleanup();
-      reject(new DOMException('Request aborted', 'AbortError'));
-    };
-
-    const cleanup = (): void => {
-      window.clearTimeout(timer);
-      signal?.removeEventListener('abort', onAbort);
-    };
-
-    signal?.addEventListener('abort', onAbort, { once: true });
-  });
-}
 
 function createValidationError(message: string): AppApiError {
   return new AppApiError(message, {
     code: 'VALIDATION_ERROR',
     status: 400,
-    retryable: false
-  });
-}
-
-function createNotFoundError(message: string): AppApiError {
-  return new AppApiError(message, {
-    code: 'NOT_FOUND',
-    status: 404,
     retryable: false
   });
 }

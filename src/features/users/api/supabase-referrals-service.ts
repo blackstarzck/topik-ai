@@ -1,4 +1,3 @@
-import { supabaseClient } from '../../../shared/api/supabase-client';
 import type {
   ReferralAnomalyStatus,
   ReferralPolicySnapshot,
@@ -7,6 +6,7 @@ import type {
   ReferralStatus,
   ReferralSummary
 } from '../model/referrals-types';
+import { requireClient, requireReason, throwIfAborted } from '@/shared/api/supabase-service-utils';
 
 /**
  * Users > 추천인 관리 Supabase 어댑터.
@@ -44,27 +44,6 @@ const DEFAULT_POLICY: ReferralPolicySnapshot = {
   rollbackRule: '미확정',
   note: '추천 정책이 확정되지 않았습니다.'
 };
-
-function requireClient() {
-  if (!supabaseClient) {
-    throw new Error('Supabase client not configured');
-  }
-  return supabaseClient;
-}
-
-function requireReason(reason: string | undefined): string {
-  const trimmed = (reason ?? '').trim();
-  if (!trimmed) {
-    throw new Error('사유/근거를 입력하세요. (RPC p_reason 필수)');
-  }
-  return trimmed;
-}
-
-function throwIfAborted(signal?: AbortSignal): void {
-  if (signal?.aborted) {
-    throw new DOMException('Request aborted', 'AbortError');
-  }
-}
 
 function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];

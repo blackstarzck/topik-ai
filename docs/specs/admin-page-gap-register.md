@@ -140,6 +140,14 @@
 - CI 무영향 확인: `.github/workflows/ci.yml` 의 아티팩트 업로드는 `if: failure()` + `if-no-files-found: ignore` 이고 파일시스템을 직접 읽으므로 gitignore 와 무관하다.
 - 검증: e2e 를 실행한 뒤 `git status` 에 산출물이 나타나지 않음을 확인했다(이전에는 `M test-results/.last-run.json` 이 떴다).
 
+### 3.11 서비스 인프라 헬퍼·데이터소스 판별 로직이 파일마다 복제됨 — **부분 해소 (2026-08-18)**
+
+- 동일 본문 헬퍼가 서비스 파일마다 로컬로 복제되어 있었다: `requireClient` 24곳, `throwIfAborted` 18곳, `sleep` 18곳, `toDateTime` 18곳(분/초 정밀도 2계열), `requireReason` 15곳, `toDate` 8곳 등. mock/supabase 판별도 `*-data-source.ts` 21개가 같은 3분기 로직(미구성 → mock, 강제 env → mock, 그 외 supabase)을 반복했다. 신규 도메인을 추가할 때마다 복제가 늘고, 수정 시 일부 복제본만 고쳐질 위험이 상존했다.
+- 조치(2026-08-18): 함수 본문을 해시로 대조해 동일성을 검증한 것만 `src/shared/api/supabase-service-utils.ts`(가드 4종), `src/shared/model/date-format.ts`(날짜 포맷 3종), `src/shared/api/api-error.ts`(`createNotFoundError`), `src/shared/api/data-source.ts`(판별 팩토리)로 통합했다 — 로컬 복제 계 104개 제거. resolver 21개는 공개 API(파일명·타입·강제 env 키) 불변의 thin wrapper 로 남겨 문서·e2e 계약을 유지했다.
+- 동작 보존을 위해 통합에서 제외한 잔여: `requireReason` 1곳(기관 계약 — 사용자 노출 에러 메시지 상이), `toDateTime` 2곳(billing·auth-email — `undefined` 폴백 반환), `toStringArray` 4곳(String 강제 vs typeof 필터 2계열), `parseSortOrder` 7곳(도메인별 반환 타입 상이), `formatNow` 10곳·`normalizeText` 3곳(mock/store 계층). 목록 질의(정렬/필터/URL 코덱) 계열은 공용 훅 추출 단계에서 다룬다.
+- 같은 작업에서 path alias `@/*`(tsconfig.app.json `paths` + vite `resolve.alias`, vitest 는 vite 설정 승계)를 도입하되 이번에 수정한 파일에만 적용했다 — 전면 치환은 진행 중인 다른 브랜치와의 충돌을 피해 별도 작업으로 분리. 미사용 CSS 클래스 13계열(BEM 하위 포함, `global.css` 232줄)과 git 추적 중이던 임시 파일 6개(`tmp_*.ps1` 3, `preview*.log` 3)도 제거했다.
+- §3.10 함정 재발 실측(2026-08-18): 위 임시 파일 6개의 **삭제 diff 가 릴리스 분류기에서 `unknown-path` 6건이 되어 PR #87 의 `ci-gate` 를 blocked 로 만들었다** — v7 이 test-results 제거 커밋에서 밟은 것과 같은 구조("사후 gitignore 는 삭제하는 커밋을 구하지 못한다"). 분류기 v8 로 해소: 해당 6개 파일명을 정확 목록(`RETIRED_ROOT_ARTIFACTS`)으로만 light 분류에 추가해 다른 루트 신규 파일의 fail-closed 기본값은 유지했고, 회귀 테스트(6개 삭제 → sync-only/light, 목록 밖 루트 파일 → 여전히 blocked)를 `release-change-classifier.test.mjs` 에 추가했다.
+
 ## 4. 모듈별 레지스트리
 
 ### 4.1 Dashboard

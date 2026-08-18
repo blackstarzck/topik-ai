@@ -1,4 +1,4 @@
-import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
+import { toSafeResult, withRetry } from '@/shared/api/safe-request';
 import {
   usePdfQuotaStore,
   type CreatePdfQuotaResetPayload,
@@ -23,34 +23,9 @@ import {
   savePdfQuotaPolicy,
   type CreatePdfQuotaResetResult
 } from './supabase-pdf-quota-service';
+import { sleep } from '@/shared/api/supabase-service-utils';
 
 const isSupabaseSource = operationPdfQuotaDataSource === 'supabase';
-
-function sleep(ms: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) {
-      reject(new DOMException('Request aborted', 'AbortError'));
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      cleanup();
-      resolve();
-    }, ms);
-
-    const onAbort = (): void => {
-      cleanup();
-      reject(new DOMException('Request aborted', 'AbortError'));
-    };
-
-    const cleanup = (): void => {
-      window.clearTimeout(timer);
-      signal?.removeEventListener('abort', onAbort);
-    };
-
-    signal?.addEventListener('abort', onAbort, { once: true });
-  });
-}
 
 async function loadPolicies(signal?: AbortSignal): Promise<PdfQuotaPolicy[]> {
   if (isSupabaseSource) {

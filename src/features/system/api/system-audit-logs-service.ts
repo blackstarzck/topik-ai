@@ -1,5 +1,5 @@
-import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
-import { formatUserDisplayName } from '../../../shared/ui/user/user-reference';
+import { toSafeResult, withRetry } from '@/shared/api/safe-request';
+import { formatUserDisplayName } from '@/shared/ui/user/user-reference';
 import { useCouponStore } from '../../commerce/model/coupon-store';
 import { getMockUserById } from '../../users/api/mock-users';
 import { usePermissionStore } from '../model/permission-store';
@@ -8,32 +8,7 @@ import type { SystemAuditLogRow } from '../model/system-log-types';
 import { createMockSystemAuditLogs } from './mock-system-audit-logs';
 import { loadSystemAuditLogsFromSupabase } from './supabase-system-audit-logs-service';
 import { systemAuditLogsDataSource } from './system-audit-logs-data-source';
-
-function sleep(ms: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) {
-      reject(new DOMException('Request aborted', 'AbortError'));
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      cleanup();
-      resolve();
-    }, ms);
-
-    const onAbort = (): void => {
-      cleanup();
-      reject(new DOMException('Request aborted', 'AbortError'));
-    };
-
-    const cleanup = (): void => {
-      window.clearTimeout(timer);
-      signal?.removeEventListener('abort', onAbort);
-    };
-
-    signal?.addEventListener('abort', onAbort, { once: true });
-  });
-}
+import { sleep } from '@/shared/api/supabase-service-utils';
 
 function getAuditActionLabel(action: string): string {
   if (action === 'service_status_changed') {

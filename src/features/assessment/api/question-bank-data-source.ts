@@ -1,4 +1,4 @@
-import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
+import { isForcedMock } from '@/shared/api/data-source';
 
 /**
  * 문항 은행 데이터 소스.
@@ -15,11 +15,7 @@ import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
 export type QuestionBankDataSource = 'topik_writing' | 'mock';
 
 export function resolveQuestionBankDataSource(): QuestionBankDataSource {
-  if (!isSupabaseConfigured) {
-    return 'mock';
-  }
-
-  return 'topik_writing';
+  return isForcedMock() ? 'mock' : 'topik_writing';
 }
 
 export const questionBankDataSource = resolveQuestionBankDataSource();

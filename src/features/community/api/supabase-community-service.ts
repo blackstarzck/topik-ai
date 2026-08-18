@@ -1,4 +1,3 @@
-import { supabaseClient } from '../../../shared/api/supabase-client';
 import type {
   CommunityAdminMemo,
   CommunityPolicyCode,
@@ -11,6 +10,8 @@ import type {
   ModerateCommunityPostPayload,
   ResolveCommunityReportPayload
 } from './community-service';
+import { requireClient, requireReason, throwIfAborted } from '@/shared/api/supabase-service-utils';
+import { toDateOnly as toDate, toDateTimeMinutes as toDateTime } from '@/shared/model/date-format';
 
 type CommunityPostRow = {
   id: string;
@@ -96,35 +97,6 @@ const REPORT_COLUMNS = [
   'resolved_at',
   'created_at'
 ].join(', ');
-
-function requireClient() {
-  if (!supabaseClient) {
-    throw new Error('Supabase client not configured');
-  }
-  return supabaseClient;
-}
-
-function requireReason(reason: string | undefined): string {
-  const trimmed = (reason ?? '').trim();
-  if (!trimmed) {
-    throw new Error('사유/근거를 입력하세요. (RPC p_reason 필수)');
-  }
-  return trimmed;
-}
-
-function throwIfAborted(signal?: AbortSignal): void {
-  if (signal?.aborted) {
-    throw new DOMException('Request aborted', 'AbortError');
-  }
-}
-
-function toDate(value: string | null | undefined): string {
-  return value ? value.slice(0, 10) : '';
-}
-
-function toDateTime(value: string | null | undefined): string {
-  return value ? value.slice(0, 16).replace('T', ' ') : '';
-}
 
 function mapNoteRow(row: CommunityPostAdminNoteRow): CommunityAdminMemo {
   return {

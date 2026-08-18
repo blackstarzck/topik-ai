@@ -1,9 +1,9 @@
-import { supabaseClient } from '../../../shared/api/supabase-client';
 import type {
   SystemReport,
   SystemReportPage,
   SystemReportQuery
 } from '../model/system-report-types';
+import { requireClient, throwIfAborted } from '@/shared/api/supabase-service-utils';
 
 type SystemReportRow = {
   report_id: string;
@@ -24,15 +24,6 @@ type SystemReportRow = {
   created_at: string;
   total_count: number;
 };
-
-function requireClient() {
-  if (!supabaseClient) throw new Error('Supabase client not configured');
-  return supabaseClient;
-}
-
-function throwIfAborted(signal?: AbortSignal): void {
-  if (signal?.aborted) throw new DOMException('Request aborted', 'AbortError');
-}
 
 function mapSystemReport(row: SystemReportRow): SystemReport {
   return {

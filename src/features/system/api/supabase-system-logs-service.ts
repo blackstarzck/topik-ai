@@ -1,5 +1,6 @@
-import { supabaseClient } from '../../../shared/api/supabase-client';
 import type { SystemLogLevel, SystemLogRow } from '../model/system-log-types';
+import { requireClient, throwIfAborted } from '@/shared/api/supabase-service-utils';
+import { toDateTimeSeconds as toDateTime } from '@/shared/model/date-format';
 
 type SystemLogDbRow = {
   id: string;
@@ -20,23 +21,6 @@ const SYSTEM_LOG_COLUMNS = [
   'context',
   'created_at'
 ].join(', ');
-
-function requireClient() {
-  if (!supabaseClient) {
-    throw new Error('Supabase client not configured');
-  }
-  return supabaseClient;
-}
-
-function throwIfAborted(signal?: AbortSignal): void {
-  if (signal?.aborted) {
-    throw new DOMException('Request aborted', 'AbortError');
-  }
-}
-
-function toDateTime(value: string): string {
-  return value.slice(0, 19).replace('T', ' ');
-}
 
 function toLogLevel(value: string): SystemLogLevel {
   if (value === 'WARN' || value === 'ERROR') {
