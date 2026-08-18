@@ -107,6 +107,8 @@ src/features/<feature>/
 
 - shared에는 공통 엔티티 포맷터, 날짜 생성 규칙, 테스트용 factory만 둔다.
 - shared가 feature 도메인 레코드 전체를 소유하지 않는다.
+- (2026-08-18) mock/supabase 판별 로직은 `src/shared/api/data-source.ts`의 `resolveDataSource(forceMockEnvKey)`/`isForcedMock`이 단일 정의다. 각 feature `*-data-source.ts`는 도메인 타입·강제 env 키·기본값 계약을 유지하는 thin wrapper로 남는다 — 파일·env 키 계약이 불변이므로 이 문서의 도메인별 서술(§2.1 등)은 그대로 유효하다.
+- (2026-08-18) 서비스 계층 공통 가드(`requireClient`/`throwIfAborted`/`sleep`/`requireReason`)는 `src/shared/api/supabase-service-utils.ts`, ISO 타임스탬프 표시 포맷(`toDateOnly`/`toDateTimeMinutes`/`toDateTimeSeconds`)은 `src/shared/model/date-format.ts`, NOT_FOUND 오류 생성은 `src/shared/api/api-error.ts`의 `createNotFoundError`가 단일 정의다. feature 서비스 파일에 동일 본문 로컬 복제를 새로 만들지 않는다.
 
 ## 5. 모듈별 우선 정리 대상
 
