@@ -57,3 +57,15 @@ export function requireReason(reason: string | undefined): string {
   }
   return trimmed;
 }
+
+/** jsonb/unknown 배열 → 모든 원소를 String() 강제 변환(비배열은 빈 배열). */
+export function coerceStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.map((item) => String(item)) : [];
+}
+
+/** jsonb/unknown 배열 → string 원소만 필터(비배열은 빈 배열). */
+export function filterStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : [];
+}

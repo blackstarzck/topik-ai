@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-import { mockUsers } from '../../users/api/mock-users';
+import { getMockUsers } from '../../users/api/users-service';
 import {
   createInitialMessageGroups,
   createInitialMessageHistories,
@@ -28,6 +28,9 @@ import type {
   MessageTemplateMode,
   MessageTemplateStatus
 } from './types';
+import { formatNowMinutes as formatNow } from '@/shared/model/date-format';
+
+const mockUsers = getMockUsers();
 
 const CURRENT_ACTOR = 'admin_current';
 
@@ -129,16 +132,6 @@ type MessageStore = {
   sendTemplate: (payload: SendTemplatePayload) => MessageHistory | null;
   retryHistory: (historyId: string, actor: string) => MessageHistory | null;
 };
-
-function formatNow(): string {
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const dd = String(now.getDate()).padStart(2, '0');
-  const hh = String(now.getHours()).padStart(2, '0');
-  const mi = String(now.getMinutes()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
-}
 
 function sumWeights<T extends string>(values: T[], weightMap: Record<T, number>, fallback = 1): number {
   if (values.length === 0) {

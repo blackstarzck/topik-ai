@@ -1,4 +1,4 @@
-import { parseSearchDate } from '../../../shared/ui/search-bar/search-bar-utils';
+import { parseSearchDate } from '@/shared/ui/search-bar/search-bar-utils';
 import type {
   CommercePointsQuery,
   PointExpirationQuery,
@@ -14,11 +14,11 @@ import type {
   PointPolicyQuery,
   PointPolicySortField,
   PointPolicySearchField,
-  PointSortOrder,
   PointPolicyStatusFilter,
   PointPolicyTypeFilter,
   PointsTab
 } from './point-types';
+import { parseSortOrder } from '@/shared/ui/table/table-column-utils';
 
 const defaultPage = 1;
 const defaultPageSize = 10;
@@ -87,10 +87,6 @@ function parsePointsTab(value: string | null): PointsTab {
   }
 
   return defaultCommercePointsQuery.tab;
-}
-
-function parseSortOrder(value: string | null): PointSortOrder {
-  return value === 'ascend' || value === 'descend' ? value : null;
 }
 
 function parsePointPolicySearchField(

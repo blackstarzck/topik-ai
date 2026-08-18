@@ -16,7 +16,7 @@ import type {
   SaveMessageTemplatePayload,
   SendMessageTemplatePayload
 } from './messages-service';
-import { requireClient, requireReason, throwIfAborted } from '@/shared/api/supabase-service-utils';
+import { coerceStringArray as toStringArray, requireClient, requireReason, throwIfAborted } from '@/shared/api/supabase-service-utils';
 import { toDateTimeMinutes as toDateTime } from '@/shared/model/date-format';
 
 /**
@@ -261,10 +261,6 @@ const DISPATCH_COLUMNS =
 const ATTEMPT_COLUMNS =
   'id, dispatch_id, user_id, channel, template_key, status, error_code, ' +
   'error_message, retry_count, sent_at, created_at';
-
-function toStringArray(value: unknown): string[] {
-  return Array.isArray(value) ? value.map((item) => String(item)) : [];
-}
 
 function toUiChannels(value: unknown): MessageChannel[] {
   return toStringArray(value)

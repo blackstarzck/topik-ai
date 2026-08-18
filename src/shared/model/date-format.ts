@@ -20,3 +20,19 @@ export function toDateTimeMinutes(value: string | null | undefined): string {
 export function toDateTimeSeconds(value: string | null | undefined): string {
   return value ? value.slice(0, 19).replace('T', ' ') : '';
 }
+
+/** 현재 시각 'YYYY-MM-DD HH:mm' — mock/store 계열의 생성·조치 시각 표기(복제 7곳 통합). */
+export function formatNowMinutes(date = new Date()): string {
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const hh = String(date.getHours()).padStart(2, '0');
+  const mi = String(date.getMinutes()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+}
+
+/** 현재 시각 'YYYY-MM-DD HH:mm:ss' (복제 3곳 통합). */
+export function formatNowSeconds(date = new Date()): string {
+  const ss = String(date.getSeconds()).padStart(2, '0');
+  return `${formatNowMinutes(date)}:${ss}`;
+}

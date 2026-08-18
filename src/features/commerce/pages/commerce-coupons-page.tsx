@@ -66,28 +66,29 @@ import {
   getCouponLinkageSummary,
   getCouponValiditySummary,
 } from "../model/coupon-types";
-import type { AsyncState } from "../../../shared/model/async-state";
-import { useRouterStateNotice } from "../../../shared/model/use-router-state-notice";
-import { AuditLogLink } from "../../../shared/ui/audit-log-link/audit-log-link";
-import { ConfirmAction } from "../../../shared/ui/confirm-action/confirm-action";
+import type { AsyncState } from "@/shared/model/async-state";
+import { useRouterStateNotice } from "@/shared/model/use-router-state-notice";
+import { AuditLogLink } from "@/shared/ui/audit-log-link/audit-log-link";
+import { ConfirmAction } from "@/shared/ui/confirm-action/confirm-action";
 import {
   DetailDrawer,
   DetailDrawerBody,
   DetailDrawerSection,
-} from "../../../shared/ui/detail-drawer/detail-drawer";
-import { AdminListCard } from "../../../shared/ui/list-page-card/admin-list-card";
-import { ListSummaryCards } from "../../../shared/ui/list-summary-cards/list-summary-cards";
-import { PageTitle } from "../../../shared/ui/page-title/page-title";
-import { SearchBar } from "../../../shared/ui/search-bar/search-bar";
-import { matchesSearchField } from "../../../shared/ui/search-bar/search-bar-utils";
-import { StatusBadge } from "../../../shared/ui/status-badge/status-badge";
-import { AdminDataTable } from "../../../shared/ui/table/admin-data-table";
-import { BinaryStatusSwitch } from "../../../shared/ui/table/binary-status-switch";
-import { createStatusColumnTitle } from "../../../shared/ui/table/status-column-title";
+} from "@/shared/ui/detail-drawer/detail-drawer";
+import { AdminListCard } from "@/shared/ui/list-page-card/admin-list-card";
+import { ListSummaryCards } from "@/shared/ui/list-summary-cards/list-summary-cards";
+import { PageTitle } from "@/shared/ui/page-title/page-title";
+import { SearchBar } from "@/shared/ui/search-bar/search-bar";
+import { matchesSearchField } from "@/shared/ui/search-bar/search-bar-utils";
+import { StatusBadge } from "@/shared/ui/status-badge/status-badge";
+import { AdminDataTable } from "@/shared/ui/table/admin-data-table";
+import { BinaryStatusSwitch } from "@/shared/ui/table/binary-status-switch";
+import { createStatusColumnTitle } from "@/shared/ui/table/status-column-title";
 import {
   TableActionMenu,
   type TableActionMenuItem,
-} from "../../../shared/ui/table/table-action-menu";
+} from "@/shared/ui/table/table-action-menu";
+import { parseSortOrder } from '@/shared/ui/table/table-column-utils';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -98,7 +99,6 @@ type CouponSortField =
   | "validity"
   | "couponStatus"
   | "issueCount";
-type CouponSortOrder = "ascend" | "descend" | null;
 type CouponTemplateStatusTab = "all" | "active" | "paused";
 type CouponDangerState =
   | {
@@ -277,10 +277,6 @@ function parseSortField(value: string | null): CouponSortField | null {
   }
 
   return null;
-}
-
-function parseSortOrder(value: string | null): CouponSortOrder {
-  return value === "ascend" || value === "descend" ? value : null;
 }
 
 function parseCouponKindFilter(

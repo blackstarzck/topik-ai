@@ -16,7 +16,7 @@ import type {
   SystemMetadataGroup,
   SystemMetadataItem
 } from '../model/system-metadata-types';
-import { requireClient, requireReason, throwIfAborted } from '@/shared/api/supabase-service-utils';
+import { filterStringArray as toStringArray, requireClient, requireReason, throwIfAborted } from '@/shared/api/supabase-service-utils';
 import { toDateTimeSeconds as toDateTime } from '@/shared/model/date-format';
 
 type MetadataGroupRow = {
@@ -86,12 +86,6 @@ const ITEM_COLUMNS = [
   'updated_at',
   'updated_by'
 ].join(', ');
-
-function toStringArray(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === 'string')
-    : [];
-}
 
 function toStatus(value: string): MetadataStatus {
   return value === 'inactive' ? 'inactive' : 'active';

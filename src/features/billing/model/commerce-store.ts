@@ -5,6 +5,7 @@ import {
   createInitialBillingRefunds
 } from '../api/mock-billing';
 import type { PaymentRow, RefundRow } from './types';
+import { formatNowMinutes as formatNow } from '@/shared/model/date-format';
 
 type UpdateRefundPayload = {
   refundId: string;
@@ -19,15 +20,6 @@ type CommerceStore = {
   rejectRefund: (payload: UpdateRefundPayload) => RefundRow | null;
 };
 
-function formatNow(): string {
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const dd = String(now.getDate()).padStart(2, '0');
-  const hh = String(now.getHours()).padStart(2, '0');
-  const mi = String(now.getMinutes()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
-}
 export const useCommerceStore = create<CommerceStore>((set, get) => ({
   payments: createInitialBillingPayments(),
   refunds: createInitialBillingRefunds(),

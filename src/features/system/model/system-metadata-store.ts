@@ -9,6 +9,7 @@ import type {
   SystemMetadataHistoryEntry,
   SystemMetadataItem
 } from './system-metadata-types';
+import { formatNowSeconds as formatNow } from '@/shared/model/date-format';
 
 type SaveMetadataGroupPayload = {
   groupId?: string;
@@ -100,16 +101,6 @@ const MODULE_LOCATION_LABELS: Record<SystemMetadataGroup['ownerModule'], string>
   Content: '콘텐츠',
   System: '시스템'
 };
-
-function formatNow(date = new Date()): string {
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  const dd = String(date.getDate()).padStart(2, '0');
-  const hh = String(date.getHours()).padStart(2, '0');
-  const mi = String(date.getMinutes()).padStart(2, '0');
-  const ss = String(date.getSeconds()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
-}
 
 function createHistoryEntry(params: {
   historyId: string;

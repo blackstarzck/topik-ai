@@ -62,32 +62,33 @@ import type {
   PointPolicyType,
   PointsTab
 } from '../model/point-types';
-import type { AsyncState } from '../../../shared/model/async-state';
-import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
-import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
-import { markRequiredDescriptionItems } from '../../../shared/ui/descriptions/description-label';
+import type { AsyncState } from '@/shared/model/async-state';
+import { AuditLogLink } from '@/shared/ui/audit-log-link/audit-log-link';
+import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
+import { markRequiredDescriptionItems } from '@/shared/ui/descriptions/description-label';
 import {
   DetailDrawer,
   DetailDrawerBody,
   DetailDrawerSection
-} from '../../../shared/ui/detail-drawer/detail-drawer';
-import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
-import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
-import { PageTitle } from '../../../shared/ui/page-title/page-title';
+} from '@/shared/ui/detail-drawer/detail-drawer';
+import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
+import { ListSummaryCards } from '@/shared/ui/list-summary-cards/list-summary-cards';
+import { PageTitle } from '@/shared/ui/page-title/page-title';
 import {
   SearchBar,
   SearchBarDateRange,
   SearchBarDetailField
-} from '../../../shared/ui/search-bar/search-bar';
-import { useSearchBarDateDraft } from '../../../shared/ui/search-bar/use-search-bar-date-draft';
+} from '@/shared/ui/search-bar/search-bar';
+import { useSearchBarDateDraft } from '@/shared/ui/search-bar/use-search-bar-date-draft';
 import {
   matchesSearchDateRange,
   matchesSearchField
-} from '../../../shared/ui/search-bar/search-bar-utils';
-import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
-import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
-import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
-import { UserNavigationLink } from '../../../shared/ui/user/user-reference';
+} from '@/shared/ui/search-bar/search-bar-utils';
+import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
+import { createStatusColumnTitle } from '@/shared/ui/table/status-column-title';
+import { TableActionMenu } from '@/shared/ui/table/table-action-menu';
+import { UserNavigationLink } from '@/shared/ui/user/user-reference';
+import { parseSortOrder } from '@/shared/ui/table/table-column-utils';
 
 const { Paragraph, Text } = Typography;
 
@@ -182,10 +183,6 @@ function compareText(left: string | number, right: string | number): number {
     numeric: true,
     sensitivity: 'base'
   });
-}
-
-function parseSortOrder(value: SortOrder | null | undefined): SortOrder | null {
-  return value === 'ascend' || value === 'descend' ? value : null;
 }
 
 function getSorterField(

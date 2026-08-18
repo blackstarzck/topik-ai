@@ -6,6 +6,7 @@ import type {
   RoleKey
 } from './permission-types';
 import { permissionCatalog, roleCatalog } from './permission-types';
+import { formatNowSeconds as formatNow } from '@/shared/model/date-format';
 
 type GrantPermissionPayload = {
   adminId: string;
@@ -49,16 +50,6 @@ type PermissionStore = {
 
 function getRole(role: RoleKey) {
   return roleCatalog.find((item) => item.key === role);
-}
-
-function formatNow(date = new Date()): string {
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  const dd = String(date.getDate()).padStart(2, '0');
-  const hh = String(date.getHours()).padStart(2, '0');
-  const mi = String(date.getMinutes()).padStart(2, '0');
-  const ss = String(date.getSeconds()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
 }
 
 function normalizePermissionKeys(permissionKeys: string[]): string[] {

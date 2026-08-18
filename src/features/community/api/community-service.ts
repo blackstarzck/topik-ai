@@ -22,6 +22,7 @@ import {
   showCommunityPost as showSupabaseCommunityPost
 } from './supabase-community-service';
 import { sleep } from '@/shared/api/supabase-service-utils';
+import { formatNowSeconds as formatNow } from '@/shared/model/date-format';
 
 export type ModerateCommunityPostPayload = {
   postId: string;
@@ -55,17 +56,6 @@ export type CommunityModeratorOptions = {
 };
 
 const isSupabaseSource = communityDataSource === 'supabase';
-
-function formatNow(): string {
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const dd = String(now.getDate()).padStart(2, '0');
-  const hh = String(now.getHours()).padStart(2, '0');
-  const mi = String(now.getMinutes()).padStart(2, '0');
-  const ss = String(now.getSeconds()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
-}
 
 function clonePost(post: CommunityPost): CommunityPost {
   return {
