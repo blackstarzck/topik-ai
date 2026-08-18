@@ -15,7 +15,7 @@ import type {
   TopikWritingTopicMasterRow,
   WritingQuestionInstitutionRow
 } from '../model/assessment-question-bank-types';
-import { requireClient } from '@/shared/api/supabase-service-utils';
+import { coerceStringArray as toStringArray, requireClient } from '@/shared/api/supabase-service-utils';
 import { toDateTimeMinutes as toDateTime } from '@/shared/model/date-format';
 
 /**
@@ -58,10 +58,6 @@ type ViewRow = {
   created_at: string | null;
   updated_at: string | null;
 };
-
-function toStringArray(value: unknown): string[] {
-  return Array.isArray(value) ? value.map((item) => String(item)) : [];
-}
 
 function toText(value: unknown): string {
   return typeof value === 'string' ? value : '';

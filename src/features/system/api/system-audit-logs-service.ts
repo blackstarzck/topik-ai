@@ -1,7 +1,7 @@
 import { toSafeResult, withRetry } from '@/shared/api/safe-request';
 import { formatUserDisplayName } from '@/shared/ui/user/user-reference';
 import { useCouponStore } from '../../commerce/model/coupon-store';
-import { getMockUserById } from '../../users/api/mock-users';
+import { getMockUserRealName } from '../../users/api/users-service';
 import { usePermissionStore } from '../model/permission-store';
 import { useSystemMetadataStore } from '../model/system-metadata-store';
 import type { SystemAuditLogRow } from '../model/system-log-types';
@@ -83,7 +83,7 @@ function decorateMockAuditLog(row: SystemAuditLogRow): SystemAuditLogRow {
     return decorateAuditLogAction(row);
   }
 
-  const userName = getMockUserById(row.targetId)?.realName;
+  const userName = getMockUserRealName(row.targetId);
   return {
     ...decorateAuditLogAction(row),
     targetUserName: userName,

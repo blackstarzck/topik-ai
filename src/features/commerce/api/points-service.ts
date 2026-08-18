@@ -25,6 +25,7 @@ import type {
   PointPolicyType
 } from '../model/point-types';
 import { sleep } from '@/shared/api/supabase-service-utils';
+import { formatNowMinutes as formatNow } from '@/shared/model/date-format';
 
 export type SavePointPolicyPayload = {
   policyId?: string;
@@ -97,16 +98,6 @@ function cloneSnapshot(): CommercePointsSnapshot {
     ledgers: cloneLedgers(pointLedgers),
     expirations: cloneExpirations(pointExpirations)
   };
-}
-
-function formatNow(): string {
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const dd = String(now.getDate()).padStart(2, '0');
-  const hh = String(now.getHours()).padStart(2, '0');
-  const mi = String(now.getMinutes()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
 }
 
 function createSequenceId(prefix: string, items: Array<{ id: string }>): string {

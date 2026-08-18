@@ -1,7 +1,6 @@
 import { DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { Alert, Button, Space, Tooltip, Typography, notification } from 'antd';
 import type { TableColumnsType, TableProps } from 'antd';
-import type { SortOrder } from 'antd/es/table/interface';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -11,21 +10,18 @@ import {
   toggleNoticeStatusSafe
 } from '../api/notices-service';
 import type { OperationNotice } from '../model/types';
-import type { AsyncState } from '../../../shared/model/async-state';
-import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
-import { useRouterStateNotice } from '../../../shared/model/use-router-state-notice';
-import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
-import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
-import { HtmlPreviewModal } from '../../../shared/ui/html-preview-modal/html-preview-modal';
-import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
-import { PageTitle } from '../../../shared/ui/page-title/page-title';
-import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
-import { BinaryStatusSwitch } from '../../../shared/ui/table/binary-status-switch';
-import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
-import {
-  createDefinedColumnFilterProps,
-  createTextSorter
-} from '../../../shared/ui/table/table-column-utils';
+import type { AsyncState } from '@/shared/model/async-state';
+import { getTargetTypeLabel } from '@/shared/model/target-type-label';
+import { useRouterStateNotice } from '@/shared/model/use-router-state-notice';
+import { AuditLogLink } from '@/shared/ui/audit-log-link/audit-log-link';
+import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
+import { HtmlPreviewModal } from '@/shared/ui/html-preview-modal/html-preview-modal';
+import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
+import { PageTitle } from '@/shared/ui/page-title/page-title';
+import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
+import { BinaryStatusSwitch } from '@/shared/ui/table/binary-status-switch';
+import { createStatusColumnTitle } from '@/shared/ui/table/status-column-title';
+import { createDefinedColumnFilterProps, createTextSorter, parseSortOrder } from '@/shared/ui/table/table-column-utils';
 
 const { Text } = Typography;
 
@@ -59,14 +55,6 @@ function parseSortField(value: string | null): NoticeSortField | null {
     value === 'createdAt' ||
     value === 'status'
   ) {
-    return value;
-  }
-
-  return null;
-}
-
-function parseSortOrder(value: string | null): SortOrder | null {
-  if (value === 'ascend' || value === 'descend') {
     return value;
   }
 

@@ -45,6 +45,20 @@ function filterMockUsersByAffiliation(
   return users.filter((user) => user.affiliationCode === value);
 }
 
+// mock 경계 facade — 타 feature 가 mock-users 를 직접 import 하지 않도록 하는
+// 공식 통로(no-restricted-imports 게이트의 해소 경로, gap-register §3.12).
+export function getMockUserRealName(userId: string): string | undefined {
+  return getMockUserById(userId)?.realName;
+}
+
+export function mockUserExists(userId: string): boolean {
+  return Boolean(getMockUserById(userId));
+}
+
+export function getMockUsers(): UserSummary[] {
+  return mockUsers;
+}
+
 export function filterMockUsersForExport(
   users: UserSummary[],
   options: ExportUsersOptions

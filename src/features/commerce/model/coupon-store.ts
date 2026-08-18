@@ -34,6 +34,7 @@ import type {
   CouponValidityMode,
 } from "./coupon-types";
 import { getMessageOptionSnapshot } from "../../message/api/messages-service";
+import { formatNowMinutes as formatNow } from '@/shared/model/date-format';
 
 export type CouponPlanTier = "free" | "pro";
 
@@ -140,15 +141,6 @@ type CouponStore = {
 };
 
 const CURRENT_ACTOR = "admin_current";
-
-function formatNow(date = new Date()): string {
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const dd = String(date.getDate()).padStart(2, "0");
-  const hh = String(date.getHours()).padStart(2, "0");
-  const mi = String(date.getMinutes()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
-}
 
 function createCouponId(coupons: CommerceCoupon[]): string {
   const nextSequence =

@@ -1,6 +1,6 @@
 import { AppApiError, createNotFoundError } from '@/shared/api/api-error';
 import { toSafeResult, withRetry } from '@/shared/api/safe-request';
-import { getMockUserById } from '../../users/api/mock-users';
+import { mockUserExists } from '../../users/api/users-service';
 import {
   couponTemplateCategoryOptions,
   couponTemplateProductOptions,
@@ -30,6 +30,7 @@ import {
   setCouponTemplateStatusViaRpc
 } from './supabase-commerce-coupons-service';
 import { sleep } from '@/shared/api/supabase-service-utils';
+import { formatNowMinutes as formatNow } from '@/shared/model/date-format';
 
 export type { CouponPlanTier };
 
@@ -111,15 +112,6 @@ function createFreePlanLimitError(): AppApiError {
   );
 }
 
-function formatNow(date = new Date()): string {
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  const dd = String(date.getDate()).padStart(2, '0');
-  const hh = String(date.getHours()).padStart(2, '0');
-  const mi = String(date.getMinutes()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
-}
-
 function createCouponAuditId(audits: CouponAuditEvent[]): string {
   const nextSequence =
     audits
@@ -175,7 +167,7 @@ function validateCouponPayload(payload: CouponSavePayload): void {
     // target member IDs are validated server-side (real users are not fixtures).
     const hasInvalidUser =
       !isSupabaseSource &&
-      payload.targetUserIds.some((userId) => !getMockUserById(userId));
+      payload.targetUserIds.some((userId) => !mockUserExists(userId));
 
     if (hasInvalidUser) {
       throw createValidationError('존재하지 않는 회원입니다. 다시 확인해 주세요.');

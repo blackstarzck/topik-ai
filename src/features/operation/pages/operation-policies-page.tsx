@@ -8,7 +8,6 @@ import {
   notification
 } from 'antd';
 import type { TableColumnsType, TableProps } from 'antd';
-import type { SortOrder } from 'antd/es/table/interface';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -33,38 +32,35 @@ import {
   operationPolicyTrackingStatusValues,
   operationPolicyTypeValues
 } from '../model/policy-types';
-import type { AsyncState } from '../../../shared/model/async-state';
-import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
-import { useRouterStateNotice } from '../../../shared/model/use-router-state-notice';
-import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
-import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
+import type { AsyncState } from '@/shared/model/async-state';
+import { getTargetTypeLabel } from '@/shared/model/target-type-label';
+import { useRouterStateNotice } from '@/shared/model/use-router-state-notice';
+import { AuditLogLink } from '@/shared/ui/audit-log-link/audit-log-link';
+import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
 import {
   DetailDrawer,
   DetailDrawerBody,
   DetailDrawerSection
-} from '../../../shared/ui/detail-drawer/detail-drawer';
-import { HtmlPreviewModal } from '../../../shared/ui/html-preview-modal/html-preview-modal';
-import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
-import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
-import { PageTitle } from '../../../shared/ui/page-title/page-title';
+} from '@/shared/ui/detail-drawer/detail-drawer';
+import { HtmlPreviewModal } from '@/shared/ui/html-preview-modal/html-preview-modal';
+import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
+import { ListSummaryCards } from '@/shared/ui/list-summary-cards/list-summary-cards';
+import { PageTitle } from '@/shared/ui/page-title/page-title';
 import {
   SearchBar,
   SearchBarDateRange,
   SearchBarDetailField
-} from '../../../shared/ui/search-bar/search-bar';
-import { useSearchBarDateDraft } from '../../../shared/ui/search-bar/use-search-bar-date-draft';
+} from '@/shared/ui/search-bar/search-bar';
+import { useSearchBarDateDraft } from '@/shared/ui/search-bar/use-search-bar-date-draft';
 import {
   matchesSearchDateRange,
   matchesSearchField,
   parseSearchDate
-} from '../../../shared/ui/search-bar/search-bar-utils';
-import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
-import { BinaryStatusSwitch } from '../../../shared/ui/table/binary-status-switch';
-import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
-import {
-  createDefinedColumnFilterProps,
-  createTextSorter
-} from '../../../shared/ui/table/table-column-utils';
+} from '@/shared/ui/search-bar/search-bar-utils';
+import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
+import { BinaryStatusSwitch } from '@/shared/ui/table/binary-status-switch';
+import { createStatusColumnTitle } from '@/shared/ui/table/status-column-title';
+import { createDefinedColumnFilterProps, createTextSorter, parseSortOrder } from '@/shared/ui/table/table-column-utils';
 
 const { Paragraph, Text } = Typography;
 
@@ -171,14 +167,6 @@ function parseSortField(value: string | null): PolicySortField | null {
     value === 'status' ||
     value === 'updatedAt'
   ) {
-    return value;
-  }
-
-  return null;
-}
-
-function parseSortOrder(value: string | null): SortOrder | null {
-  if (value === 'ascend' || value === 'descend') {
     return value;
   }
 

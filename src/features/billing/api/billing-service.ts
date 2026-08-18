@@ -1,6 +1,6 @@
 import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
 import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
-import { getMockUserById } from '../../users/api/mock-users';
+import { getMockUserRealName } from '../../users/api/users-service';
 import { useCommerceStore } from '../model/commerce-store';
 import type {
   PaymentRow,
@@ -78,7 +78,7 @@ export function getBillingUserNameSafe(
   if (isSupabaseConfigured) {
     return record.userNickname;
   }
-  return getMockUserById(record.userId)?.realName ?? record.userNickname;
+  return getMockUserRealName(record.userId) ?? record.userNickname;
 }
 
 export function fetchPaymentsSafe(signal?: AbortSignal) {

@@ -18,7 +18,7 @@ import type {
   CouponSavePayload,
   CouponTemplateSavePayload
 } from '../model/coupon-store';
-import { requireClient, requireReason, throwIfAborted } from '@/shared/api/supabase-service-utils';
+import { filterStringArray as toStringArray, requireClient, requireReason, throwIfAborted } from '@/shared/api/supabase-service-utils';
 import { toDateOnly as toDate, toDateTimeMinutes as toDateTime } from '@/shared/model/date-format';
 
 type CouponActionPayload = {
@@ -240,12 +240,6 @@ const UI_TEMPLATE_STATUS_BY_DB: Record<string, CouponTemplateStatus> = {
   active: '진행 중',
   paused: '발행 중지'
 };
-
-function toStringArray(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === 'string')
-    : [];
-}
 
 function toSchedule(value: unknown): {
   dayOfMonth: number;

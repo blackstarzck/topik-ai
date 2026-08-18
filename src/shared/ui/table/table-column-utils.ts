@@ -1,3 +1,4 @@
+import type { SortOrder } from 'antd/es/table/interface';
 import type { Key } from 'react';
 
 type Primitive = string | number;
@@ -94,4 +95,12 @@ export function createNumericTextSorter<RecordType>(
 
     return compareText(normalizeValue(accessor(left)), normalizeValue(accessor(right)));
   };
+}
+
+// URL 쿼리/antd sorter 값을 SortOrder 로 정규화한다 — 페이지 7곳에 복제돼 있던
+// 동일 본문을 통합(도메인 별칭 PointSortOrder·CouponSortOrder 도 같은 유니온이다).
+export function parseSortOrder(
+  value: string | SortOrder | null | undefined
+): SortOrder | null {
+  return value === 'ascend' || value === 'descend' ? value : null;
 }

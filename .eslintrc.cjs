@@ -69,19 +69,6 @@ module.exports = {
       rules: {
         'max-lines': 'off'
       }
-    },
-    {
-      // mock 경계 위반 baseline 5개 — Phase 3(서비스 facade 경유)에서 해소 예정.
-      files: [
-        'src/features/billing/api/billing-service.ts',
-        'src/features/commerce/api/coupons-service.ts',
-        'src/features/message/model/message-store.ts',
-        'src/features/operation/api/pdf-quota-service.ts',
-        'src/features/system/api/system-audit-logs-service.ts'
-      ],
-      rules: {
-        'no-restricted-imports': 'off'
-      }
     }
   ]
 };

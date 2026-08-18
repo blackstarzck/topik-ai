@@ -12,7 +12,7 @@ import type {
   PdfQuotaResetUserOption,
   PdfQuotaResetUserOptionPage
 } from '../model/pdf-quota-types';
-import { mockUsers } from '../../users/api/mock-users';
+import { getMockUsers } from '../../users/api/users-service';
 import { operationPdfQuotaDataSource } from './pdf-quota-data-source';
 import {
   createPdfQuotaReset,
@@ -24,6 +24,8 @@ import {
   type CreatePdfQuotaResetResult
 } from './supabase-pdf-quota-service';
 import { sleep } from '@/shared/api/supabase-service-utils';
+
+const mockUsers = getMockUsers();
 
 const isSupabaseSource = operationPdfQuotaDataSource === 'supabase';
 

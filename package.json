@@ -12,7 +12,7 @@
     ],
     "pattern": "**/*.{ts,tsx}",
     "minTokens": 50,
-    "threshold": 5,
+    "threshold": 4.5,
     "reporters": [
       "console"
     ],
