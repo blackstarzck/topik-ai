@@ -380,24 +380,6 @@ body {
   align-items: flex-start;
 }
 
-.assessment-question-bank-page__question-cell {
-  min-width: 0;
-  overflow: hidden;
-}
-
-.assessment-question-bank-page__question-trigger {
-  display: block;
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.assessment-question-bank-page__question-text.ant-typography {
-  width: 100%;
-  max-width: 100%;
-}
-
 .admin-data-table--loading .ant-spin-container {
   opacity: 0.72;
   filter: saturate(0.86);
@@ -997,154 +979,6 @@ body {
   max-width: 360px;
 }
 
-.coupon-create-imweb-page {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.coupon-create-imweb-form {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.coupon-create-imweb-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.coupon-create-imweb-header__actions {
-  justify-content: flex-end;
-}
-
-.coupon-create-imweb-header__title-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-}
-
-.coupon-create-imweb-header__title.ant-typography {
-  margin-bottom: 4px;
-}
-
-.coupon-create-imweb-hero {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  padding: 24px;
-  border: 1px solid #e5e7eb;
-  border-radius: 20px;
-  background: linear-gradient(180deg, #ffffff 0%, #fbfbfc 100%);
-}
-
-.coupon-create-imweb-hero__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 64px;
-  height: 64px;
-  border-radius: 20px;
-  background: #f5f6f8;
-  color: #1f2937;
-  font-weight: 700;
-  font-size: 16px;
-}
-
-.coupon-create-imweb-hero__content {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
-}
-
-.coupon-create-imweb-hero__title.ant-typography {
-  margin: 0;
-}
-
-.coupon-create-imweb-hero__description {
-  color: #667085;
-}
-
-.coupon-create-imweb-hero__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.coupon-create-imweb-hero__chip {
-  display: inline-flex;
-  align-items: center;
-  min-height: 28px;
-  padding: 0 12px;
-  border-radius: 999px;
-  background: #f3f4f6;
-  color: #4b5563;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.coupon-create-imweb-section {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.coupon-create-imweb-section__header {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.coupon-create-imweb-section__title-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.coupon-create-imweb-section__index {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 999px;
-  background: #111827;
-  color: #fff;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.coupon-create-imweb-section__title.ant-typography {
-  margin: 0;
-}
-
-.coupon-create-imweb-section__description {
-  color: #667085;
-}
-
-.coupon-create-imweb-descriptions .ant-descriptions-view {
-  overflow: hidden;
-  border-radius: 20px;
-  border: 1px solid #e5e7eb;
-}
-
-.coupon-create-imweb-descriptions .ant-descriptions-row > th,
-.coupon-create-imweb-descriptions .ant-descriptions-row > td {
-  padding: 20px 18px;
-}
-
-.coupon-create-imweb-descriptions .ant-descriptions-item-label {
-  width: 192px;
-  background: #fafafa;
-}
-
-.coupon-create-imweb-descriptions .ant-descriptions-item-content {
-  background: #fff;
-}
-
 .coupon-choice-radio-group {
   display: flex;
   flex-wrap: wrap;
@@ -1172,11 +1006,6 @@ body {
   border-radius: 14px;
   background: #fcfcfd;
 }
-
-.coupon-create-imweb-inline-note {
-  color: #667085;
-}
-
 .event-form-tooltip-label {
   display: inline-flex;
   align-items: center;
@@ -1282,24 +1111,7 @@ body {
   .admin-editor-form-section + .admin-editor-form-section {
     margin-top: 20px;
     padding-top: 20px;
-  }
-
-  .coupon-create-imweb-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .coupon-create-imweb-hero {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .coupon-create-imweb-descriptions .ant-descriptions-item-label,
-  .coupon-create-imweb-descriptions .ant-descriptions-item-content {
-    display: block;
-    width: 100%;
-  }
-}
+  }}
 
 .content-html-editor .tox-tinymce,
 .message-template-html-editor .tox-tinymce {
@@ -1308,21 +1120,18 @@ body {
   border-radius: 12px;
 }
 
-.content-preview-descriptions .ant-descriptions-view,
-.message-template-preview-descriptions .ant-descriptions-view {
+.content-preview-descriptions .ant-descriptions-view {
   overflow: hidden;
   border-radius: 12px;
 }
 
-.content-preview-canvas,
-.message-template-preview-canvas {
+.content-preview-canvas {
   overflow: hidden;
   border-radius: 16px;
   background: #fff;
 }
 
-.content-preview-canvas-body,
-.message-template-preview-canvas-body {
+.content-preview-canvas-body {
   max-height: 60vh;
   overflow: auto;
   padding: 24px;
@@ -1360,25 +1169,6 @@ body {
   min-height: 0;
   min-width: 0;
   width: 100%;
-}
-
-.event-rich-content-preview {
-  color: #111827;
-  line-height: 1.7;
-  word-break: break-word;
-}
-
-.event-rich-content-preview > *:first-child {
-  margin-top: 0;
-}
-
-.event-rich-content-preview > *:last-child {
-  margin-bottom: 0;
-}
-
-.event-rich-content-preview img {
-  height: auto;
-  max-width: 100%;
 }
 
 .admin-form-descriptions .ant-descriptions-view {
@@ -2051,22 +1841,4 @@ body {
     border-bottom: 1px solid #e8edf5;
   }
 
-  .assessment-question-searchbar {
-    align-items: stretch;
-  }
-
-  .assessment-question-searchbar__field {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .assessment-question-searchbar__field--search {
-    flex-basis: 100%;
-  }
-
-  .assessment-question-searchbar__native-select,
-  .assessment-question-searchbar__native-select--wide {
-    width: 100%;
-    min-width: 0;
-  }
 }
