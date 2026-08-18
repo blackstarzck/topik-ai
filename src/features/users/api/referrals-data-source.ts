@@ -1,4 +1,4 @@
-import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
+import { resolveDataSource } from '@/shared/api/data-source';
 
 /**
  * Users > 추천인 관리 데이터 소스 스위치.
@@ -10,14 +10,8 @@ import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
  */
 export type ReferralsDataSource = 'mock' | 'supabase';
 
-const env = import.meta.env as unknown as Record<string, string | undefined>;
-
 export function resolveReferralsDataSource(): ReferralsDataSource {
-  if (!isSupabaseConfigured) {
-    return 'mock';
-  }
-
-  return env.VITE_REFERRALS_SOURCE === 'mock' ? 'mock' : 'supabase';
+  return resolveDataSource('VITE_REFERRALS_SOURCE');
 }
 
 export const referralsDataSource = resolveReferralsDataSource();

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin, type ViteDevServer } from 'vite';
@@ -122,6 +123,13 @@ function localApiPlugin(): Plugin {
 export default defineConfig({
   envPrefix: ['VITE_', 'REACT_APP_'],
   plugins: [react(), localApiPlugin()],
+  resolve: {
+    // tsconfig.app.json paths(`@/*` → `src/*`)와 짝을 이루는 번들러측 alias.
+    // vitest 는 vite.config 를 그대로 읽으므로 단위 테스트에도 동일 적용된다.
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url))
+    }
+  },
   server: {
     port: 5173
   }

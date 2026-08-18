@@ -1,7 +1,8 @@
-import { supabaseClient } from '../../../shared/api/supabase-client';
-import { normalizeTargetType } from '../../../shared/model/target-type-label';
+import { normalizeTargetType } from '@/shared/model/target-type-label';
 import type { SystemAuditLogRow } from '../model/system-log-types';
 import { decorateAuditLogAction } from './system-audit-logs-service';
+import { requireClient, throwIfAborted } from '@/shared/api/supabase-service-utils';
+import { toDateTimeSeconds as toDateTime } from '@/shared/model/date-format';
 
 type AuditLogDbRow = {
   log_id: string;
@@ -15,23 +16,6 @@ type AuditLogDbRow = {
   created_at: string;
   total_count: number;
 };
-
-function requireClient() {
-  if (!supabaseClient) {
-    throw new Error('Supabase client not configured');
-  }
-  return supabaseClient;
-}
-
-function throwIfAborted(signal?: AbortSignal): void {
-  if (signal?.aborted) {
-    throw new DOMException('Request aborted', 'AbortError');
-  }
-}
-
-function toDateTime(value: string): string {
-  return value.slice(0, 19).replace('T', ' ');
-}
 
 export function mapSupabaseAuditLogRow(row: AuditLogDbRow): SystemAuditLogRow {
   return decorateAuditLogAction({

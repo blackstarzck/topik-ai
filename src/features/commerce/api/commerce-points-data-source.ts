@@ -1,15 +1,9 @@
-import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
+import { resolveDataSource } from '@/shared/api/data-source';
 
 export type CommercePointsDataSource = 'mock' | 'supabase';
 
-const env = import.meta.env as unknown as Record<string, string | undefined>;
-
 export function resolveCommercePointsDataSource(): CommercePointsDataSource {
-  if (!isSupabaseConfigured) {
-    return 'mock';
-  }
-
-  return env.VITE_COMMERCE_POINTS_SOURCE === 'mock' ? 'mock' : 'supabase';
+  return resolveDataSource('VITE_COMMERCE_POINTS_SOURCE');
 }
 
 export const commercePointsDataSource = resolveCommercePointsDataSource();

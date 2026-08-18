@@ -1,4 +1,3 @@
-import { supabaseClient } from '../../../shared/api/supabase-client';
 import type {
   InstitutionContract,
   InstitutionContractStatus,
@@ -6,6 +5,7 @@ import type {
   InstitutionExposureOptions,
   InstitutionSettings
 } from '../model/institution-contracts-types';
+import { requireClient, throwIfAborted } from '@/shared/api/supabase-service-utils';
 
 /**
  * 기관 계약·운영 설정 Supabase 어댑터. PR #76 이 만든 RPC 9종과 1:1 이다.
@@ -61,19 +61,6 @@ type SettingsRow = {
   seats_used: number | null;
   updated_at: string | null;
 };
-
-function requireClient() {
-  if (!supabaseClient) {
-    throw new Error('Supabase client not configured');
-  }
-  return supabaseClient;
-}
-
-function throwIfAborted(signal?: AbortSignal): void {
-  if (signal?.aborted) {
-    throw new DOMException('Request aborted', 'AbortError');
-  }
-}
 
 /** date/timestamp 를 화면용 YYYY-MM-DD 로. null 은 빈 문자열(무기한·미입력 표현). */
 function toDateText(value: string | null): string {

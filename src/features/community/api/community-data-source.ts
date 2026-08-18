@@ -1,4 +1,4 @@
-import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
+import { resolveDataSource } from '@/shared/api/data-source';
 
 /**
  * Community data source switch.
@@ -10,14 +10,8 @@ import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
  */
 export type CommunityDataSource = 'mock' | 'supabase';
 
-const env = import.meta.env as unknown as Record<string, string | undefined>;
-
 export function resolveCommunityDataSource(): CommunityDataSource {
-  if (!isSupabaseConfigured) {
-    return 'mock';
-  }
-
-  return env.VITE_COMMUNITY_SOURCE === 'mock' ? 'mock' : 'supabase';
+  return resolveDataSource('VITE_COMMUNITY_SOURCE');
 }
 
 export const communityDataSource = resolveCommunityDataSource();

@@ -1,4 +1,4 @@
-import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
+import { resolveDataSource } from '@/shared/api/data-source';
 
 export type BackupDataSource = 'mock' | 'supabase';
 export type BackupViewContext = 'primary' | 'mirror';
@@ -7,8 +7,7 @@ const env = import.meta.env as unknown as Record<string, string | undefined>;
 const TOPIK_DEV_HOST = 'fglggyfvzjdsbyckinqa.supabase.co';
 
 export function resolveBackupDataSource(): BackupDataSource {
-  if (!isSupabaseConfigured) return 'mock';
-  return env.VITE_BACKUP_SOURCE === 'mock' ? 'mock' : 'supabase';
+  return resolveDataSource('VITE_BACKUP_SOURCE');
 }
 
 export const backupDataSource = resolveBackupDataSource();

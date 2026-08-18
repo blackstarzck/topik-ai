@@ -1,4 +1,3 @@
-import { supabaseClient } from '../../../shared/api/supabase-client';
 import { createDefaultMessageGroupFilters } from '../model/message-group-segment-schema';
 import type {
   ChannelSnapshot,
@@ -17,6 +16,8 @@ import type {
   SaveMessageTemplatePayload,
   SendMessageTemplatePayload
 } from './messages-service';
+import { requireClient, requireReason, throwIfAborted } from '@/shared/api/supabase-service-utils';
+import { toDateTimeMinutes as toDateTime } from '@/shared/model/date-format';
 
 /**
  * Supabase 어댑터 (WP2-2/2-3 — docs/specs/notification-contract.md).
@@ -260,31 +261,6 @@ const DISPATCH_COLUMNS =
 const ATTEMPT_COLUMNS =
   'id, dispatch_id, user_id, channel, template_key, status, error_code, ' +
   'error_message, retry_count, sent_at, created_at';
-
-function requireClient() {
-  if (!supabaseClient) {
-    throw new Error('Supabase client not configured');
-  }
-  return supabaseClient;
-}
-
-function requireReason(reason: string | undefined): string {
-  const trimmed = (reason ?? '').trim();
-  if (!trimmed) {
-    throw new Error('사유/근거를 입력하세요. (RPC p_reason 필수)');
-  }
-  return trimmed;
-}
-
-function throwIfAborted(signal?: AbortSignal): void {
-  if (signal?.aborted) {
-    throw new DOMException('Request aborted', 'AbortError');
-  }
-}
-
-function toDateTime(ts: string | null | undefined): string {
-  return ts ? ts.slice(0, 16).replace('T', ' ') : '';
-}
 
 function toStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.map((item) => String(item)) : [];

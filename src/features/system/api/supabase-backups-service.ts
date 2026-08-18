@@ -1,4 +1,3 @@
-import { supabaseClient } from '../../../shared/api/supabase-client';
 import type {
   BackupComponentStatus,
   BackupRun,
@@ -9,6 +8,7 @@ import type {
   BackupValidationStatus,
   RestoreDrillStatus
 } from '../model/backup-types';
+import { requireClient, throwIfAborted } from '@/shared/api/supabase-service-utils';
 
 type BackupSummaryRow = {
   latest_run_id: string | null;
@@ -50,15 +50,6 @@ type BackupRunRow = {
   system_log_id: string | null;
   total_count: number;
 };
-
-function requireClient() {
-  if (!supabaseClient) throw new Error('Supabase client not configured');
-  return supabaseClient;
-}
-
-function throwIfAborted(signal?: AbortSignal): void {
-  if (signal?.aborted) throw new DOMException('Request aborted', 'AbortError');
-}
 
 export async function loadBackupSummaryFromSupabase(
   signal?: AbortSignal

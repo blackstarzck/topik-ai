@@ -1,10 +1,11 @@
-import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
-import { supabaseClient } from '../../../shared/api/supabase-client';
+import { toSafeResult, withRetry } from '@/shared/api/safe-request';
+import { supabaseClient } from '@/shared/api/supabase-client';
 import { mapAppRoleToRoleKey, permissionKeysForRole } from '../../auth/model/app-role-mapping';
 import type { V13AppRole } from '../../auth/model/session-types';
 import { usePermissionStore } from '../model/permission-store';
 import type { AdminPermissionAssignment, RoleKey } from '../model/permission-types';
 import { systemPermissionsDataSource } from './system-permissions-data-source';
+import { toDateTimeSeconds as toDateTime } from '@/shared/model/date-format';
 
 export type AdminAppRoleRow = {
   adminId: string;
@@ -34,10 +35,6 @@ export type ChangeAdminAppRolePayload = {
   newAppRole: V13AppRole;
   reason: string;
 };
-
-function toDateTime(value: string | null | undefined): string {
-  return value ? value.replace('T', ' ').slice(0, 19) : '';
-}
 
 function roleKeyToMockAppRole(role: RoleKey): V13AppRole {
   if (role === 'SUPER_ADMIN') {

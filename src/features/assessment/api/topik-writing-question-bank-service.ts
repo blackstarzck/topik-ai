@@ -1,4 +1,3 @@
-import { supabaseClient } from '../../../shared/api/supabase-client';
 import type {
   AssessmentQuestionContent,
   AssessmentQuestionDetail,
@@ -16,6 +15,8 @@ import type {
   TopikWritingTopicMasterRow,
   WritingQuestionInstitutionRow
 } from '../model/assessment-question-bank-types';
+import { requireClient } from '@/shared/api/supabase-service-utils';
+import { toDateTimeMinutes as toDateTime } from '@/shared/model/date-format';
 
 /**
  * 신규 스키마 어댑터 (인바운드 모델 — 결정 기록 §0): 목록은
@@ -57,17 +58,6 @@ type ViewRow = {
   created_at: string | null;
   updated_at: string | null;
 };
-
-function requireClient() {
-  if (!supabaseClient) {
-    throw new Error('Supabase client not configured');
-  }
-  return supabaseClient;
-}
-
-function toDateTime(ts: string | null | undefined): string {
-  return ts ? ts.slice(0, 16).replace('T', ' ') : '';
-}
 
 function toStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.map((item) => String(item)) : [];

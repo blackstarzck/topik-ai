@@ -1,4 +1,3 @@
-import { supabaseClient } from '../../../shared/api/supabase-client';
 import {
   faqCategoryValues,
   faqCurationModeValues,
@@ -20,6 +19,8 @@ import type {
   SaveFaqPayload,
   ToggleFaqStatusPayload
 } from './faqs-service';
+import { requireClient, requireReason, throwIfAborted } from '@/shared/api/supabase-service-utils';
+import { toDateOnly as toDate, toDateTimeMinutes as toDateTime } from '@/shared/model/date-format';
 
 type OperationFaqRow = {
   id: string;
@@ -88,35 +89,6 @@ const FAQ_CURATION_COLUMNS =
   'id, faq_id, surface, curation_mode, display_rank, exposure_status, pinned_start_at, pinned_end_at, updated_at, updated_by';
 const FAQ_METRIC_COLUMNS =
   'faq_id, view_count, search_hit_count, helpful_count, not_helpful_count, last_viewed_at';
-
-function requireClient() {
-  if (!supabaseClient) {
-    throw new Error('Supabase client not configured');
-  }
-  return supabaseClient;
-}
-
-function requireReason(reason: string | undefined): string {
-  const trimmed = (reason ?? '').trim();
-  if (!trimmed) {
-    throw new Error('사유/근거를 입력하세요. (RPC p_reason 필수)');
-  }
-  return trimmed;
-}
-
-function throwIfAborted(signal?: AbortSignal): void {
-  if (signal?.aborted) {
-    throw new DOMException('Request aborted', 'AbortError');
-  }
-}
-
-function toDate(ts: string | null | undefined): string {
-  return ts ? ts.slice(0, 10) : '';
-}
-
-function toDateTime(ts: string | null | undefined): string {
-  return ts ? ts.slice(0, 16).replace('T', ' ') : '';
-}
 
 function toNullableDate(ts: string | null | undefined): string | null {
   return ts ? ts.slice(0, 10) : null;

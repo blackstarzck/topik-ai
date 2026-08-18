@@ -1,4 +1,4 @@
-import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
+import { resolveDataSource } from '@/shared/api/data-source';
 
 /**
  * Operation > 공지사항 데이터 소스 스위치.
@@ -10,14 +10,8 @@ import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
  */
 export type OperationNoticesDataSource = 'mock' | 'supabase';
 
-const env = import.meta.env as unknown as Record<string, string | undefined>;
-
 export function resolveOperationNoticesDataSource(): OperationNoticesDataSource {
-  if (!isSupabaseConfigured) {
-    return 'mock';
-  }
-
-  return env.VITE_OPERATION_NOTICES_SOURCE === 'mock' ? 'mock' : 'supabase';
+  return resolveDataSource('VITE_OPERATION_NOTICES_SOURCE');
 }
 
 export const operationNoticesDataSource = resolveOperationNoticesDataSource();

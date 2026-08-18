@@ -1,15 +1,9 @@
-import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
+import { resolveDataSource } from '@/shared/api/data-source';
 
 export type SystemMetadataDataSource = 'mock' | 'supabase';
 
-const env = import.meta.env as unknown as Record<string, string | undefined>;
-
 export function resolveSystemMetadataDataSource(): SystemMetadataDataSource {
-  if (!isSupabaseConfigured) {
-    return 'mock';
-  }
-
-  return env.VITE_SYSTEM_METADATA_SOURCE === 'mock' ? 'mock' : 'supabase';
+  return resolveDataSource('VITE_SYSTEM_METADATA_SOURCE');
 }
 
 export const systemMetadataDataSource = resolveSystemMetadataDataSource();

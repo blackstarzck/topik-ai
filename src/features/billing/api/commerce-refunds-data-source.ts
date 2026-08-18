@@ -1,15 +1,9 @@
-import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
+import { resolveDataSource } from '@/shared/api/data-source';
 
 export type CommerceRefundsDataSource = 'mock' | 'supabase';
 
-const env = import.meta.env as unknown as Record<string, string | undefined>;
-
 export function resolveCommerceRefundsDataSource(): CommerceRefundsDataSource {
-  if (!isSupabaseConfigured) {
-    return 'mock';
-  }
-
-  return env.VITE_COMMERCE_REFUNDS_SOURCE === 'mock' ? 'mock' : 'supabase';
+  return resolveDataSource('VITE_COMMERCE_REFUNDS_SOURCE');
 }
 
 export const commerceRefundsDataSource = resolveCommerceRefundsDataSource();

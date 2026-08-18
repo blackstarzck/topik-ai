@@ -1,5 +1,6 @@
-import { supabaseClient } from '../../../shared/api/supabase-client';
 import type { PaymentRow, PaymentStatus, RefundRow, RefundStatus } from '../model/types';
+import { requireClient, requireReason } from '@/shared/api/supabase-service-utils';
+import { toDateOnly as toDate } from '@/shared/model/date-format';
 
 /**
  * Payments remain a read-only v13 payment_history integration. Refund workflow
@@ -64,25 +65,6 @@ const REFUND_COLUMNS = [
   'processed_at',
   'review_reason'
 ].join(', ');
-
-function requireClient() {
-  if (!supabaseClient) {
-    throw new Error('Supabase client not configured');
-  }
-  return supabaseClient;
-}
-
-function requireReason(reason: string): string {
-  const trimmed = reason.trim();
-  if (!trimmed) {
-    throw new Error('사유/근거를 입력하세요. (RPC p_reason 필수)');
-  }
-  return trimmed;
-}
-
-function toDate(ts: string | null): string {
-  return ts ? ts.slice(0, 10) : '';
-}
 
 function toDateTime(ts: string | null): string | undefined {
   return ts ? ts.slice(0, 16).replace('T', ' ') : undefined;

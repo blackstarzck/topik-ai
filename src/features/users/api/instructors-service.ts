@@ -1,12 +1,13 @@
 import type { InstructorDetail, InstructorStatus } from '../model/types';
 import { mockInstructors } from './mock-instructors';
-import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
+import { toSafeResult, withRetry } from '@/shared/api/safe-request';
 import { instructorsDataSource } from './instructors-data-source';
 import {
   loadInstructorFromSupabase,
   loadInstructorsFromSupabase,
   setInstructorStatusViaRpc
 } from './supabase-instructors-service';
+import { sleep } from '@/shared/api/supabase-service-utils';
 
 const isSupabaseSource = instructorsDataSource === 'supabase';
 
@@ -18,32 +19,6 @@ export type SetInstructorStatusPayload = {
   nextStatus: InstructorStatus;
   reason: string;
 };
-
-function sleep(ms: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) {
-      reject(new DOMException('Request aborted', 'AbortError'));
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      cleanup();
-      resolve();
-    }, ms);
-
-    const onAbort = (): void => {
-      cleanup();
-      reject(new DOMException('Request aborted', 'AbortError'));
-    };
-
-    const cleanup = (): void => {
-      window.clearTimeout(timer);
-      signal?.removeEventListener('abort', onAbort);
-    };
-
-    signal?.addEventListener('abort', onAbort, { once: true });
-  });
-}
 
 async function loadInstructors(signal?: AbortSignal): Promise<InstructorDetail[]> {
   if (isSupabaseSource) {

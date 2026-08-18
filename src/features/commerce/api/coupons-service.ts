@@ -1,5 +1,5 @@
-import { AppApiError } from '../../../shared/api/api-error';
-import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
+import { AppApiError, createNotFoundError } from '@/shared/api/api-error';
+import { toSafeResult, withRetry } from '@/shared/api/safe-request';
 import { getMockUserById } from '../../users/api/mock-users';
 import {
   couponTemplateCategoryOptions,
@@ -29,6 +29,7 @@ import {
   setCouponIssueStateViaRpc,
   setCouponTemplateStatusViaRpc
 } from './supabase-commerce-coupons-service';
+import { sleep } from '@/shared/api/supabase-service-utils';
 
 export type { CouponPlanTier };
 
@@ -89,40 +90,6 @@ async function enforceTemplateFreePlanLimit(isCreate: boolean): Promise<void> {
   if (templates.length >= 1) {
     throw createFreePlanLimitError();
   }
-}
-
-function sleep(ms: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) {
-      reject(new DOMException('Request aborted', 'AbortError'));
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      cleanup();
-      resolve();
-    }, ms);
-
-    const onAbort = (): void => {
-      cleanup();
-      reject(new DOMException('Request aborted', 'AbortError'));
-    };
-
-    const cleanup = (): void => {
-      window.clearTimeout(timer);
-      signal?.removeEventListener('abort', onAbort);
-    };
-
-    signal?.addEventListener('abort', onAbort, { once: true });
-  });
-}
-
-function createNotFoundError(message = '대상을 찾을 수 없습니다.'): AppApiError {
-  return new AppApiError(message, {
-    code: 'NOT_FOUND',
-    status: 404,
-    retryable: false
-  });
 }
 
 function createValidationError(message: string): AppApiError {

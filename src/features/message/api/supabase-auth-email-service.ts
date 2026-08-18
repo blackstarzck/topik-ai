@@ -1,6 +1,6 @@
-import { supabaseClient } from '../../../shared/api/supabase-client';
 import type { AuthEmailStatus, AuthEmailSyncStatus, AuthEmailTemplate, AuthEmailType } from '../model/auth-email-types';
 import { AUTH_EMAIL_TYPE_ORDER } from '../model/auth-email-types';
+import { requireClient, requireReason } from '@/shared/api/supabase-service-utils';
 
 /**
  * Supabase 어댑터 — auth_email_templates (admin-0020).
@@ -11,21 +11,6 @@ import { AUTH_EMAIL_TYPE_ORDER } from '../model/auth-email-types';
 
 const COLUMNS =
   'id, auth_type, subject, body_html, status, sync_status, synced_at, sync_error, last_live_checked_at, updated_at';
-
-function requireClient() {
-  if (!supabaseClient) {
-    throw new Error('Supabase client not configured');
-  }
-  return supabaseClient;
-}
-
-function requireReason(reason: string | undefined): string {
-  const trimmed = (reason ?? '').trim();
-  if (!trimmed) {
-    throw new Error('사유/근거를 입력하세요. (RPC p_reason 필수)');
-  }
-  return trimmed;
-}
 
 function toDateTime(ts: string | null | undefined): string | undefined {
   return ts ? ts.slice(0, 16).replace('T', ' ') : undefined;

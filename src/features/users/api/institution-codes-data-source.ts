@@ -1,4 +1,4 @@
-import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
+import { resolveDataSource } from '@/shared/api/data-source';
 
 /**
  * Users > 기관 코드 데이터 소스 스위치.
@@ -9,14 +9,8 @@ import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
  */
 export type InstitutionCodesDataSource = 'mock' | 'supabase';
 
-const env = import.meta.env as unknown as Record<string, string | undefined>;
-
 export function resolveInstitutionCodesDataSource(): InstitutionCodesDataSource {
-  if (!isSupabaseConfigured) {
-    return 'mock';
-  }
-
-  return env.VITE_INSTITUTION_CODES_SOURCE === 'mock' ? 'mock' : 'supabase';
+  return resolveDataSource('VITE_INSTITUTION_CODES_SOURCE');
 }
 
 export const institutionCodesDataSource = resolveInstitutionCodesDataSource();

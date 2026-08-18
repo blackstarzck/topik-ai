@@ -1,4 +1,3 @@
-import { supabaseClient } from '../../../shared/api/supabase-client';
 import {
   defaultInstitutionExposureMode,
   institutionExposureModes
@@ -13,6 +12,7 @@ import type {
   InstitutionInvitation,
   InstitutionInvitationStatus
 } from '../model/institution-codes-types';
+import { requireClient, throwIfAborted } from '@/shared/api/supabase-service-utils';
 
 /**
  * Users > 기관 코드 Supabase 어댑터.
@@ -30,19 +30,6 @@ type InstitutionCodeRow = {
   created_at: string | null;
   updated_at: string | null;
 };
-
-function requireClient() {
-  if (!supabaseClient) {
-    throw new Error('Supabase client not configured');
-  }
-  return supabaseClient;
-}
-
-function throwIfAborted(signal?: AbortSignal): void {
-  if (signal?.aborted) {
-    throw new DOMException('Request aborted', 'AbortError');
-  }
-}
 
 function toDateText(value: string | null): string {
   if (!value) {

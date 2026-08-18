@@ -1,4 +1,4 @@
-import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
+import { resolveDataSource } from '@/shared/api/data-source';
 
 /**
  * Operation > 이벤트 data source switch.
@@ -11,14 +11,8 @@ import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
  */
 export type OperationEventsDataSource = 'mock' | 'supabase';
 
-const env = import.meta.env as unknown as Record<string, string | undefined>;
-
 export function resolveOperationEventsDataSource(): OperationEventsDataSource {
-  if (!isSupabaseConfigured) {
-    return 'mock';
-  }
-
-  return env.VITE_OPERATION_EVENTS_SOURCE === 'mock' ? 'mock' : 'supabase';
+  return resolveDataSource('VITE_OPERATION_EVENTS_SOURCE');
 }
 
 export const operationEventsDataSource = resolveOperationEventsDataSource();

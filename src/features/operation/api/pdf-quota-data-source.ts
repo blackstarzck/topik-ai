@@ -1,4 +1,4 @@
-import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
+import { resolveDataSource } from '@/shared/api/data-source';
 
 /**
  * Operation > PDF 내보내기 제한 data source switch.
@@ -11,14 +11,8 @@ import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
  */
 export type OperationPdfQuotaDataSource = 'mock' | 'supabase';
 
-const env = import.meta.env as unknown as Record<string, string | undefined>;
-
 export function resolveOperationPdfQuotaDataSource(): OperationPdfQuotaDataSource {
-  if (!isSupabaseConfigured) {
-    return 'mock';
-  }
-
-  return env.VITE_OPERATION_PDF_QUOTA_SOURCE === 'mock' ? 'mock' : 'supabase';
+  return resolveDataSource('VITE_OPERATION_PDF_QUOTA_SOURCE');
 }
 
 export const operationPdfQuotaDataSource = resolveOperationPdfQuotaDataSource();

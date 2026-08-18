@@ -1,4 +1,4 @@
-import { supabaseClient } from '../../../shared/api/supabase-client';
+import { supabaseClient } from '@/shared/api/supabase-client';
 import type {
   UserLearningOverview,
   EmailVerificationStatus,
@@ -10,6 +10,7 @@ import type {
   UserTier
 } from '../model/types';
 import type { ExportUsersOptions, UserExportRow } from '../model/user-export-types';
+import { toDateOnly as toDateString } from '@/shared/model/date-format';
 
 export type { ExportUsersOptions, UserExportRow } from '../model/user-export-types';
 
@@ -225,10 +226,6 @@ function mapTier(planLabel: string | null): UserTier {
     return '일반';
   }
   return '프리미엄';
-}
-
-function toDateString(ts: string | null): string {
-  return ts ? ts.slice(0, 10) : '';
 }
 
 // timestamptz(UTC) -> 'YYYY-MM-DD HH:mm' (KST, UTC+9 고정·한국은 DST 없음). 빈/유효하지 않은 값은 ''.

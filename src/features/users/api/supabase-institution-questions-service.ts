@@ -1,8 +1,8 @@
-import { supabaseClient } from '../../../shared/api/supabase-client';
 import type {
   InstitutionExposableQuestion,
   InstitutionQuestionMutationResult
 } from '../model/institution-questions-types';
+import { requireClient } from '@/shared/api/supabase-service-utils';
 
 /**
  * 기관 중심 노출 문항 Supabase 어댑터. 순환 의존 회피를 위해 assessment facade를
@@ -19,13 +19,6 @@ type ExposableRow = {
   service_status: string | null;
   is_exposed: boolean | null;
 };
-
-function requireClient() {
-  if (!supabaseClient) {
-    throw new Error('Supabase client not configured');
-  }
-  return supabaseClient;
-}
 
 function mapResult(data: unknown): InstitutionQuestionMutationResult {
   const row = (data ?? {}) as Record<string, unknown>;

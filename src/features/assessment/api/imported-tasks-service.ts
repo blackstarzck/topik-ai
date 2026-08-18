@@ -1,11 +1,12 @@
-import { supabaseClient } from '../../../shared/api/supabase-client';
-import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
+import { supabaseClient } from '@/shared/api/supabase-client';
+import { toSafeResult, withRetry } from '@/shared/api/safe-request';
 import { questionBankDataSource } from './question-bank-data-source';
 import type {
   ImportedTaskMappingStatus,
   ImportedTaskVersionDecision,
   ImportedWritingTask
 } from '../model/imported-task-types';
+import { toDateTimeMinutes as toDateTime } from '@/shared/model/date-format';
 
 /**
  * 가져온 문항(인박스) 읽기 서비스. 인박스 테이블은 admin SELECT RLS가 열려 있어
@@ -39,10 +40,6 @@ type ImportRow = {
   content_hash: string | null;
   version_decision: string;
 };
-
-function toDateTime(ts: string | null | undefined): string {
-  return ts ? ts.slice(0, 16).replace('T', ' ') : '';
-}
 
 function payloadString(payload: unknown, key: string): string {
   if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
