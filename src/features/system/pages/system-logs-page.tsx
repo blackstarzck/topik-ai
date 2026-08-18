@@ -1,9 +1,10 @@
 import { Alert, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import { fetchSystemLogsSafe } from '../api/system-logs-service';
+import { useAsyncResource } from '@/shared/model/use-async-resource';
 import type { SystemLogLevel as LogLevel, SystemLogRow } from '../model/system-log-types';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
@@ -55,9 +56,16 @@ function getComponentRoute(component: string): string | null {
 }
 
 export default function SystemLogsPage(): JSX.Element {
-  const [rows, setRows] = useState<SystemLogRow[]>([]);
-  const [loadState, setLoadState] = useState<'pending' | 'success' | 'error'>('pending');
-  const [loadErrorMessage, setLoadErrorMessage] = useState('');
+  const fetchLogs = useCallback(
+    (signal: AbortSignal) => fetchSystemLogsSafe(signal),
+    []
+  );
+  const { state: logsState } = useAsyncResource<SystemLogRow[]>(fetchLogs, {
+    initialData: []
+  });
+  const rows = logsState.data;
+  const loadState = logsState.status;
+  const loadErrorMessage = logsState.errorMessage ?? '';
   const [searchParams, setSearchParams] = useSearchParams();
   const searchField = searchParams.get('searchField') ?? 'all';
   const startDate = parseSearchDate(searchParams.get('startDate'));
@@ -71,31 +79,6 @@ export default function SystemLogsPage(): JSX.Element {
     handleDetailOpenChange
   } = useSearchBarDateDraft(startDate, endDate);
   const [selectedRow, setSelectedRow] = useState<SystemLogRow | null>(null);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    setLoadState('pending');
-    setLoadErrorMessage('');
-    void fetchSystemLogsSafe(controller.signal).then((result) => {
-      if (controller.signal.aborted) {
-        return;
-      }
-
-      if (result.ok) {
-        setRows(result.data);
-        setLoadState('success');
-        return;
-      }
-
-      setLoadErrorMessage(result.error.message);
-      setLoadState('error');
-    });
-
-    return () => {
-      controller.abort();
-    };
-  }, []);
 
   const filteredRows = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();

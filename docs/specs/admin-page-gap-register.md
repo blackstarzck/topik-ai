@@ -158,6 +158,13 @@
   - jscpd 중복 임계(`check:duplication`, `harness:check` 배선): 도입 시점 실측 4.52%(296 클론·3,955줄)에 임계 5% 로 시작 → **Phase 3a 중복 제거 후 4.38%(285 클론·3,827줄) 재실측, 임계 4.5% 로 하향**(래칫 정책 이행). 대규모 중복 제거 후 같은 PR 에서 임계를 하향한다. 설정 SoT 는 `package.json` `jscpd` 키(신규 루트 설정 파일을 만들지 않아 분류기 unknown-path 를 피함).
 - 분류기 v9: 이 작업이 `.eslintrc.cjs` 를 수정하는데 app 목록에는 flat config(`eslint.config.js`)만 있어 **unknown-path → blocked 를 사전 실측으로 확인**하고(§3.10·§3.11 의 함정 3번째 재발을 선제 차단), `.eslintrc.cjs` 를 app 경로에 등재 + 회귀 테스트를 추가했다.
 
+### 3.13 fetch 수명주기가 42개 컴포넌트에 수기 배선됨 — **파일럿 전환 (2026-08-18, Phase 3b)**
+
+- `fetch*Safe` 조회의 수명주기(AbortController 생성 → pending 전환 → abort 가드 → 성공/실패 반영 → cleanup abort)가 42개 컴포넌트에 72회 수기 복제되어 있다. `AsyncState` 는 타입만 공유되고 훅이 없어, §3.8(router state 이중 발화) 같은 effect 배선 실수가 페이지마다 재현될 수 있는 구조였다.
+- 조치(2026-08-18, 파일럿): `src/shared/model/use-async-resource.ts` 신설 — 계약은 기존 배선과 동일(초기 `'pending'`·실패 시 직전 data 보존·abort 무시·빈 결과 `'empty'` 매핑·fetcher 는 `useCallback` 강제로 exhaustive-deps 검증 유지). 파일럿 2곳(system-logs·system-audit-logs — 기존 e2e 스펙 보유 페이지로 선정) 전환, 수기 effect 2개 제거.
+- 신규 fetch effect 는 이 훅으로만 작성한다(원문: `docs/guidelines/react-optimization-rule.md` §3-5). 나머지 40개 파일은 점진 전환 대상이며, 전환 시 해당 페이지의 e2e 스펙 존재 여부를 먼저 확인하고 없으면 성공 경로 스펙을 같은 작업에서 추가한다.
+- 파일럿을 단순 read-only 목록 2곳으로 한정한 이유: 다수 페이지는 reloadKey·연쇄 조회·폴링·조건부 재조회가 결합되어 있어(§3.8 전례) 페이지별 정독 없이 일괄 전환하면 동작 변경 위험이 있다. 훅의 `reload()` 가 reloadKey 계열을 흡수하는지부터 다음 확산 단계에서 검증한다.
+
 ## 4. 모듈별 레지스트리
 
 ### 4.1 Dashboard

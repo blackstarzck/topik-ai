@@ -1,9 +1,10 @@
 import { Alert, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import { fetchSystemAuditLogsSafe } from '../api/system-audit-logs-service';
+import { useAsyncResource } from '@/shared/model/use-async-resource';
 import type { SystemAuditLogRow as AuditLogRow } from '../model/system-log-types';
 import {
   getTargetTypeLabel,
@@ -180,9 +181,16 @@ function getAuditTargetDisplay(record: AuditLogRow): string {
 }
 
 export default function SystemAuditLogsPage(): JSX.Element {
-  const [rows, setRows] = useState<AuditLogRow[]>([]);
-  const [loadState, setLoadState] = useState<'pending' | 'success' | 'error'>('pending');
-  const [loadErrorMessage, setLoadErrorMessage] = useState('');
+  const fetchAuditLogs = useCallback(
+    (signal: AbortSignal) => fetchSystemAuditLogsSafe(signal),
+    []
+  );
+  const { state: auditLogsState } = useAsyncResource<AuditLogRow[]>(fetchAuditLogs, {
+    initialData: []
+  });
+  const rows = auditLogsState.data;
+  const loadState = auditLogsState.status;
+  const loadErrorMessage = auditLogsState.errorMessage ?? '';
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedRow, setSelectedRow] = useState<AuditLogRow | null>(null);
   const targetTypeFilter = normalizeTargetType(searchParams.get('targetType') ?? '');
@@ -198,31 +206,6 @@ export default function SystemAuditLogsPage(): JSX.Element {
     handleDraftReset,
     handleDetailOpenChange
   } = useSearchBarDateDraft(startDate, endDate);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    setLoadState('pending');
-    setLoadErrorMessage('');
-    void fetchSystemAuditLogsSafe(controller.signal).then((result) => {
-      if (controller.signal.aborted) {
-        return;
-      }
-
-      if (result.ok) {
-        setRows(result.data);
-        setLoadState('success');
-        return;
-      }
-
-      setLoadErrorMessage(result.error.message);
-      setLoadState('error');
-    });
-
-    return () => {
-      controller.abort();
-    };
-  }, []);
 
   const filteredRows = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
