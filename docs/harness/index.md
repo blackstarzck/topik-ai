@@ -53,8 +53,8 @@
   - 라우트-IA 커버리지 검사
   - 발송 이력 경계 검사
   - router state 저장 알림 경계 검사
-  - 중복 코드 임계 검사 (`npm run check:duplication` — jscpd, `package.json` `jscpd` 키가 설정 SoT. 임계 5% 는 도입 시점 실측 4.52% 의 래칫이며, 대규모 중복 제거 후 같은 PR 에서 하향한다 — 배경은 `docs/specs/admin-page-gap-register.md` §3.12)
-  - lint (Phase 2 게이트 포함: `max-lines` 800 — 기존 위반 24개는 `.eslintrc.cjs` overrides baseline 으로 동결(줄이기만 허용), `no-restricted-imports` — mock 픽스처의 feature 경계 밖 import 차단, baseline 5개)
+  - 중복 코드 임계 검사 (`npm run check:duplication` — jscpd, `package.json` `jscpd` 키가 설정 SoT. 임계 4.5% — Phase 3a 중복 제거 후 실측 4.38% 의 래칫. 대규모 중복 제거 후 같은 PR 에서 하향한다 — 배경은 `docs/specs/admin-page-gap-register.md` §3.12)
+  - lint (Phase 2 게이트 포함: `max-lines` 800 — 기존 위반 24개는 `.eslintrc.cjs` overrides baseline 으로 동결(줄이기만 허용), `no-restricted-imports` — mock 픽스처의 feature 경계 밖 import 차단, baseline 0 — Phase 3a 에서 mock facade 전환으로 전면 활성)
   - typecheck (`tsc -b --noEmit`. 루트 `tsconfig.json` 이 solution-style 이라 `-b` 없이는 **아무 파일도 검사하지 않는다** — 배경은 `docs/specs/admin-page-gap-register.md` §3.9)
 - `npm run harness:e2e:smoke`
   - 공통 테이블 정렬 baseline
