@@ -162,8 +162,10 @@
 
 - `fetch*Safe` 조회의 수명주기(AbortController 생성 → pending 전환 → abort 가드 → 성공/실패 반영 → cleanup abort)가 42개 컴포넌트에 72회 수기 복제되어 있다. `AsyncState` 는 타입만 공유되고 훅이 없어, §3.8(router state 이중 발화) 같은 effect 배선 실수가 페이지마다 재현될 수 있는 구조였다.
 - 조치(2026-08-18, 파일럿): `src/shared/model/use-async-resource.ts` 신설 — 계약은 기존 배선과 동일(초기 `'pending'`·실패 시 직전 data 보존·abort 무시·빈 결과 `'empty'` 매핑·fetcher 는 `useCallback` 강제로 exhaustive-deps 검증 유지). 파일럿 2곳(system-logs·system-audit-logs — 기존 e2e 스펙 보유 페이지로 선정) 전환, 수기 effect 2개 제거.
-- 신규 fetch effect 는 이 훅으로만 작성한다(원문: `docs/guidelines/react-optimization-rule.md` §3-5). 나머지 40개 파일은 점진 전환 대상이며, 전환 시 해당 페이지의 e2e 스펙 존재 여부를 먼저 확인하고 없으면 성공 경로 스펙을 같은 작업에서 추가한다.
+- 신규 fetch effect 는 이 훅으로만 작성한다(원문: `docs/guidelines/react-optimization-rule.md` §3-5). 나머지 파일은 점진 전환 대상이며, 전환 시 해당 페이지의 e2e 스펙 존재 여부를 먼저 확인하고 없으면 성공 경로 스펙을 같은 작업에서 추가한다.
 - 파일럿을 단순 read-only 목록 2곳으로 한정한 이유: 다수 페이지는 reloadKey·연쇄 조회·폴링·조건부 재조회가 결합되어 있어(§3.8 전례) 페이지별 정독 없이 일괄 전환하면 동작 변경 위험이 있다. 훅의 `reload()` 가 reloadKey 계열을 흡수하는지부터 다음 확산 단계에서 검증한다.
+- 확산 1차(2026-08-18): 후보 전수를 정독 분류한 뒤 **훅 계약과 의미가 완전히 일치하는 4곳만 전환** — dashboard-page(reload 흡수 실증), use-imported-tasks·use-assessment-question-list(반환 계약까지 동일한 위임형), master-catalog-section(fetch 2개 → 훅 2개 + 결합 reload). 신규 성공 경로 스펙 2건(dashboard·imported-tasks) 추가.
+- 확산 1차에서 **의미 상이로 이월(전환 금지 아님 — 훅 확장 결정 필요)**: ①조치 후 목록 로컬 변이(`setRows`/`setState` 를 effect 밖에서 호출 — community-reports·operation-notices·operation-events 등) ②에러 시 데이터 소거 계약(institution-code-detail·contract-tab·system-permissions — 훅은 직전 데이터 보존) ③조건부 fetch(`canRead`/`code` 가드 — analytics-overview·system-reports 등) ④응답을 복수 상태로 분배(message-channel) ⑤fail-open 부가 조회 결합(institution-codes 3-fetch) ⑥재조회 시 pending 미전환(billing-refunds) ⑦fetch 미사용 deps 로 재조회(instructor-management·users-referrals — 의도 여부 오너 확인 필요) ⑧비 SafeResult 서비스 계약(system-admins) ⑨에러 무시 fetch(billing-payments refunds 분기). 확산 2차는 이 분류에 대한 훅 옵션 설계(로컬 변이 대체 경로·enabled·에러 정책)부터 시작한다.
 
 ## 4. 모듈별 레지스트리
 
