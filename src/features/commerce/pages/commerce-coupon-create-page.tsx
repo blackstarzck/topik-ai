@@ -1,14 +1,9 @@
-﻿import { InfoCircleOutlined } from "@ant-design/icons";
+import { InfoCircleOutlined } from "@ant-design/icons";
 import {
   Alert,
   Button,
-  DatePicker,
   Descriptions,
   Form,
-  Input,
-  InputNumber,
-  Radio,
-  Select,
   Space,
   Typography,
 } from "antd";
@@ -19,7 +14,7 @@ import {
   useParams,
   useSearchParams,
 } from "react-router-dom";
-import dayjs, { type Dayjs } from "dayjs";
+import dayjs from "dayjs";
 
 import { fetchCouponSafe, saveCouponSafe } from "../api/coupons-service";
 import { fetchMessageOptionSourcesSafe } from "../../message/api/messages-service";
@@ -29,10 +24,6 @@ import type {
 } from "../../message/model/types";
 import {
   createCouponDraftDefaults,
-  getCouponAutoIssueTriggerOptions,
-  getCouponBenefitTypeOptions,
-  getCouponCodeGenerationOptions,
-  getCouponIssueTargetOptions,
   getCouponPolicyNotes,
   parseCouponUserIds,
   serializeCouponUserIds,
@@ -40,383 +31,39 @@ import {
 import {
   getCouponKindLabel,
   type CommerceCoupon,
-  type CouponKind,
-  type CouponValidityMode,
 } from "../model/coupon-types";
+import {
+  buildCouponBenefitFieldMeta,
+  buildCouponValidityModeOptions,
+  couponCreateSectionMeta,
+  couponCreateStepFieldMap,
+  couponKindMetaMap,
+  createDefaultValidityRange,
+  findCouponStepIndexByFieldName,
+  getAllowedValidityModes,
+  getFirstHiddenCouponValidationError,
+  parseCouponKind,
+  resolveCouponStatus,
+  type CouponCreateSectionKey,
+  type CouponFormValues,
+} from "../model/commerce-coupon-create-page-schema";
+import {
+  createCouponAlertItems,
+  createCouponBasicItems,
+  createCouponBenefitItems,
+  createCouponMemoItems,
+  createCouponOperationItems,
+} from "../ui/commerce-coupon-create-form-items";
 import type { AsyncState } from "../../../shared/model/async-state";
 import { routerSavedState } from "../../../shared/model/router-saved-state";
 import {
   AdminEditorForm,
   AdminEditorFormSection,
 } from "../../../shared/ui/admin-editor-form/admin-editor-form";
-import { markRequiredDescriptionItems } from "../../../shared/ui/descriptions/description-label";
 import { AdminListCard } from "../../../shared/ui/list-page-card/admin-list-card";
 import { PageTitle } from "../../../shared/ui/page-title/page-title";
 
 const { Text } = Typography;
-
-type CouponFormValues = {
-  couponName: string;
-  issueTargetType: CommerceCoupon["issueTargetType"];
-  targetGroupId: string;
-  targetUserIdsText: string;
-  autoIssueTriggerType: CommerceCoupon["autoIssueTriggerType"];
-  codeGenerationMode: CommerceCoupon["codeGenerationMode"];
-  couponCode: string;
-  codeCount: number | null;
-  audience: CommerceCoupon["audience"];
-  benefitType: CommerceCoupon["benefitType"];
-  benefitValue: number;
-  minOrderAmount: number;
-  maxDiscountAmount: number | null;
-  applicableScope: CommerceCoupon["applicableScope"];
-  isStackable: boolean;
-  isSecretCoupon: boolean;
-  issueLimitMode: CommerceCoupon["issueLimitMode"];
-  issueLimit: number | null;
-  downloadLimitMode: CommerceCoupon["downloadLimitMode"];
-  downloadLimit: number | null;
-  usageLimitMode: CommerceCoupon["usageLimitMode"];
-  usageLimit: number | null;
-  validityMode: CommerceCoupon["validityMode"];
-  validityRange: [Dayjs, Dayjs];
-  expireAfterDays: number | null;
-  linkedMessageTemplateId: string;
-  linkedCrmCampaignId: string;
-  linkedEventId: string;
-  issueAlertEnabled: boolean;
-  issueAlertChannel: CommerceCoupon["issueAlert"]["channel"];
-  expireAlertEnabled: boolean;
-  expireAlertChannel: CommerceCoupon["expireAlert"]["channel"];
-  adminMemo: string;
-};
-
-type CouponKindMeta = {
-  description: string;
-  examples: string[];
-  basicDescription: string;
-  operationsDescription: string;
-  alertDescription: string | null;
-};
-
-const couponKindMetaMap: Record<CouponKind, CouponKindMeta> = {
-  customerDownload: {
-    description: "고객이 직접 다운로드해서 사용하는 일반 쿠폰을 설정합니다.",
-    examples: ["장바구니 쿠폰", "이벤트 쿠폰", "채널 친구 추가 쿠폰"],
-    basicDescription:
-      "쿠폰명, 발행 대상, 쿠폰 수량과 시크릿 쿠폰 정책을 설정합니다.",
-    operationsDescription: "사용 기간, 발급 후 만료, 사용 횟수를 설정합니다.",
-    alertDescription: "발급 알림과 만료 알림, 미리보기 위치를 정리합니다.",
-  },
-  autoIssue: {
-    description: "조건을 만족한 고객에게 자동으로 발행되는 쿠폰을 설정합니다.",
-    examples: [
-      "신규 회원 웰컴 쿠폰",
-      "생일 쿠폰",
-      "첫 구매 쿠폰",
-      "쇼핑 적립금 쿠폰",
-    ],
-    basicDescription: "자동 발행 트리거와 기본 쿠폰명을 설정합니다.",
-    operationsDescription:
-      "발급 후 만료 또는 무기한 정책과 사용 횟수를 설정합니다.",
-    alertDescription: "발급 알림, 만료 알림, CRM 연동 위치를 안내합니다.",
-  },
-  couponCode: {
-    description: "코드를 입력해 사용하는 쿠폰을 발행합니다.",
-    examples: ["오프라인 쿠폰", "시크릿 코드 쿠폰"],
-    basicDescription:
-      "대상 범위, 단일 또는 복수 코드 생성, 입력 정책을 설정합니다.",
-    operationsDescription: "고정 사용 기간과 사용 횟수를 설정합니다.",
-    alertDescription: null,
-  },
-  manualIssue: {
-    description:
-      "특정 그룹 또는 특정 회원에게 직접 발행하는 쿠폰을 설정합니다.",
-    examples: ["정기 멤버십 혜택", "재구매 유도 쿠폰"],
-    basicDescription:
-      "발행 대상을 전체 회원, 특정 그룹, 특정 회원으로 나누어 설정합니다.",
-    operationsDescription: "사용 시작일과 종료일을 고정 기간으로 설정합니다.",
-    alertDescription:
-      "푸시 알림 발송 영역은 구조만 맞추고 후속 연동은 placeholder로 둡니다.",
-  },
-};
-
-function parseCouponKind(value: string | null): CouponKind {
-  if (
-    value === "autoIssue" ||
-    value === "couponCode" ||
-    value === "manualIssue"
-  ) {
-    return value;
-  }
-
-  return "customerDownload";
-}
-
-function createDefaultValidityRange(): [Dayjs, Dayjs] {
-  return [dayjs().startOf("day"), dayjs().add(30, "day").startOf("day")];
-}
-
-function resolveCouponStatus(
-  validityMode: CouponFormValues["validityMode"],
-  validityRange: CouponFormValues["validityRange"],
-): CommerceCoupon["couponStatus"] {
-  if (validityMode !== "fixedDate") {
-    return "진행 중";
-  }
-
-  const today = dayjs().startOf("day");
-
-  if (today.isBefore(validityRange[0], "day")) {
-    return "대기";
-  }
-
-  if (today.isAfter(validityRange[1], "day")) {
-    return "종료";
-  }
-
-  return "진행 중";
-}
-
-function getAllowedValidityModes(couponKind: CouponKind): CouponValidityMode[] {
-  if (couponKind === "customerDownload") {
-    return ["fixedDate", "afterIssued", "unlimited"];
-  }
-
-  if (couponKind === "autoIssue") {
-    return ["afterIssued", "unlimited"];
-  }
-
-  if (couponKind === "couponCode") {
-    return ["fixedDate", "unlimited"];
-  }
-
-  return ["fixedDate"];
-}
-
-type CouponCreateSectionKey =
-  | "basic"
-  | "benefit"
-  | "operation"
-  | "alert"
-  | "memo";
-
-const couponCreateSectionMeta: Record<
-  CouponCreateSectionKey,
-  { title: string; description: string }
-> = {
-  basic: {
-    title: "기본 정보",
-    description: "쿠폰명과 발행 대상, 발행 수량 정책을 설정합니다.",
-  },
-  benefit: {
-    title: "혜택 설정",
-    description: "할인 방식과 최소 주문 조건, 적용 범위를 설정합니다.",
-  },
-  operation: {
-    title: "운영 설정",
-    description: "사용 기한과 만료 조건, 사용 횟수를 설정합니다.",
-  },
-  alert: {
-    title: "알림 설정",
-    description: "발급 및 만료 알림, CRM 연동 구조를 정리합니다.",
-  },
-  memo: {
-    title: "관리자 메모",
-    description: "운영 검토 메모와 내부 공유 사항을 기록합니다.",
-  },
-};
-
-const couponCreateStepFieldMap: Record<
-  CouponCreateSectionKey,
-  Array<keyof CouponFormValues>
-> = {
-  basic: [
-    "couponName",
-    "autoIssueTriggerType",
-    "audience",
-    "codeGenerationMode",
-    "codeCount",
-    "issueTargetType",
-    "targetGroupId",
-    "issueLimitMode",
-    "issueLimit",
-  ],
-  benefit: ["benefitType", "benefitValue", "minOrderAmount", "applicableScope"],
-  operation: [
-    "validityMode",
-    "validityRange",
-    "expireAfterDays",
-    "usageLimitMode",
-    "usageLimit",
-  ],
-  alert: [
-    "issueAlertEnabled",
-    "issueAlertChannel",
-    "expireAlertEnabled",
-    "expireAlertChannel",
-    "linkedMessageTemplateId",
-    "linkedCrmCampaignId",
-  ],
-  memo: ["adminMemo"],
-};
-
-function hasValidCouponDateRange(
-  value: Partial<CouponFormValues>["validityRange"],
-): value is [Dayjs, Dayjs] {
-  return (
-    Array.isArray(value) &&
-    value.length === 2 &&
-    dayjs.isDayjs(value[0]) &&
-    dayjs.isDayjs(value[1])
-  );
-}
-
-function findCouponStepIndexByFieldName(
-  fieldName: string | number | undefined,
-  stepKeys: CouponCreateSectionKey[],
-): number {
-  if (typeof fieldName !== "string") {
-    return 0;
-  }
-
-  const nextIndex = stepKeys.findIndex((stepKey) =>
-    couponCreateStepFieldMap[stepKey].includes(
-      fieldName as keyof CouponFormValues,
-    ),
-  );
-
-  return nextIndex >= 0 ? nextIndex : 0;
-}
-
-function getFirstHiddenCouponValidationError(
-  values: Partial<CouponFormValues>,
-  couponKind: CouponKind,
-  hasAlertSection: boolean,
-): { field: keyof CouponFormValues } | null {
-  if (!values.couponName?.trim()) {
-    return { field: "couponName" };
-  }
-
-  if (couponKind === "autoIssue" && !values.autoIssueTriggerType) {
-    return { field: "autoIssueTriggerType" };
-  }
-
-  if (couponKind === "couponCode") {
-    if (!values.audience) {
-      return { field: "audience" };
-    }
-
-    if (!values.codeGenerationMode) {
-      return { field: "codeGenerationMode" };
-    }
-
-    if (
-      values.codeGenerationMode === "bulk" &&
-      !(values.codeCount && values.codeCount > 0)
-    ) {
-      return { field: "codeCount" };
-    }
-  }
-
-  if (couponKind !== "autoIssue" && couponKind !== "couponCode") {
-    if (!values.issueTargetType) {
-      return { field: "issueTargetType" };
-    }
-
-    if (
-      values.issueTargetType === "specificGroup" &&
-      !values.targetGroupId?.trim()
-    ) {
-      return { field: "targetGroupId" };
-    }
-
-    if (
-      couponKind === "customerDownload" &&
-      values.issueLimitMode === "limited" &&
-      !(values.issueLimit && values.issueLimit > 0)
-    ) {
-      return { field: "issueLimit" };
-    }
-  }
-
-  if (!values.benefitType) {
-    return { field: "benefitType" };
-  }
-
-  if (
-    values.benefitType !== "freeShipping" &&
-    !(values.benefitValue && values.benefitValue > 0)
-  ) {
-    return { field: "benefitValue" };
-  }
-
-  if (!(values.minOrderAmount && values.minOrderAmount > 0)) {
-    return { field: "minOrderAmount" };
-  }
-
-  if (!values.applicableScope) {
-    return { field: "applicableScope" };
-  }
-
-  if (couponKind === "manualIssue") {
-    if (!hasValidCouponDateRange(values.validityRange)) {
-      return { field: "validityRange" };
-    }
-  } else {
-    if (!values.validityMode) {
-      return { field: "validityMode" };
-    }
-
-    if (
-      values.validityMode === "fixedDate" &&
-      !hasValidCouponDateRange(values.validityRange)
-    ) {
-      return { field: "validityRange" };
-    }
-
-    if (
-      values.validityMode === "afterIssued" &&
-      !(values.expireAfterDays && values.expireAfterDays > 0)
-    ) {
-      return { field: "expireAfterDays" };
-    }
-  }
-
-  if (
-    values.usageLimitMode === "limited" &&
-    !(values.usageLimit && values.usageLimit > 0)
-  ) {
-    return { field: "usageLimit" };
-  }
-
-  if (hasAlertSection) {
-    if (values.issueAlertEnabled && !values.issueAlertChannel) {
-      return { field: "issueAlertChannel" };
-    }
-
-    if (values.expireAlertEnabled && !values.expireAlertChannel) {
-      return { field: "expireAlertChannel" };
-    }
-  }
-
-  return null;
-}
-
-function CouponPlaceholderNote({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}): JSX.Element {
-  return (
-    <div className="coupon-create-imweb-placeholder">
-      <Text strong>{title}</Text>
-      <Text type="secondary">{description}</Text>
-    </div>
-  );
-}
 
 export default function CommerceCouponCreatePage(): JSX.Element {
   const navigate = useNavigate();
@@ -493,66 +140,14 @@ export default function CommerceCouponCreatePage(): JSX.Element {
     () => getAllowedValidityModes(activeCouponKind),
     [activeCouponKind],
   );
-  const benefitFieldMeta = useMemo(() => {
-    if (selectedBenefitType === "rateDiscount") {
-      return {
-        valueLabel: "할인 비율",
-        valuePlaceholder: "1~100% 사이로 입력해 주세요.",
-        valueRequiredMessage: "할인 비율을 입력해 주세요.",
-        max: 100,
-      };
-    }
-
-    if (selectedBenefitType === "freeShipping") {
-      return {
-        valueLabel: "혜택 내용",
-        valuePlaceholder: "",
-        valueRequiredMessage: "",
-        max: undefined as number | undefined,
-      };
-    }
-
-    if (selectedBenefitType === "fixedPrice") {
-      return {
-        valueLabel: "고정가",
-        valuePlaceholder: "1원 이상 입력해 주세요.",
-        valueRequiredMessage: "고정가를 입력해 주세요.",
-        max: undefined as number | undefined,
-      };
-    }
-
-    return {
-      valueLabel: "할인 금액",
-      valuePlaceholder: "1원 이상 입력해 주세요.",
-      valueRequiredMessage: "할인 금액을 입력해 주세요.",
-      max: undefined as number | undefined,
-    };
-  }, [selectedBenefitType]);
-  const validityModeOptions = useMemo(() => {
-    if (activeCouponKind === "customerDownload") {
-      return [
-        { label: "사용 기한 설정", value: "fixedDate" },
-        { label: "발급 후 N일 만료", value: "afterIssued" },
-        { label: "제한 없음", value: "unlimited" },
-      ];
-    }
-
-    if (activeCouponKind === "autoIssue") {
-      return [
-        { label: "발급 후 N일 만료", value: "afterIssued" },
-        { label: "제한 없음", value: "unlimited" },
-      ];
-    }
-
-    if (activeCouponKind === "couponCode") {
-      return [
-        { label: "사용 기한 설정", value: "fixedDate" },
-        { label: "제한 없음", value: "unlimited" },
-      ];
-    }
-
-    return [{ label: "사용 기한 설정", value: "fixedDate" }];
-  }, [activeCouponKind]);
+  const benefitFieldMeta = useMemo(
+    () => buildCouponBenefitFieldMeta(selectedBenefitType),
+    [selectedBenefitType],
+  );
+  const validityModeOptions = useMemo(
+    () => buildCouponValidityModeOptions(activeCouponKind),
+    [activeCouponKind],
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -892,736 +487,62 @@ export default function CommerceCouponCreatePage(): JSX.Element {
     });
   };
 
-  const basicItems = useMemo(() => {
-    const commonItems = [
-      {
-        key: "couponName",
-        label: activeCouponKind === "manualIssue" ? "정기 쿠폰명" : "쿠폰명",
-        children: (
-          <Form.Item
-            name="couponName"
-            rules={[{ required: true, message: "쿠폰명을 입력해 주세요." }]}
-            style={{ margin: 0 }}
-          >
-            <Input placeholder="쿠폰명을 입력해 주세요." />
-          </Form.Item>
-        ),
-      },
-    ];
-
-    if (activeCouponKind === "autoIssue") {
-      return markRequiredDescriptionItems(
-        [
-          ...commonItems,
-          {
-            key: "autoIssueTriggerType",
-            label: "발행 대상",
-            children: (
-              <Space direction="vertical" size={12} style={{ width: "100%" }}>
-                <Form.Item
-                  name="autoIssueTriggerType"
-                  rules={[
-                    { required: true, message: "발행 대상을 선택해 주세요." },
-                  ]}
-                  style={{ margin: 0 }}
-                >
-                  <Radio.Group
-                    className="coupon-choice-radio-group coupon-choice-radio-group--wrap"
-                    options={getCouponAutoIssueTriggerOptions()}
-                  />
-                </Form.Item>
-                <CouponPlaceholderNote
-                  title="트리거별 상세 조건"
-                  description="회원가입, 첫 주문, 생일, 등급 변경 세부 계약은 후속 API 연동 단계에서 구체화합니다."
-                />
-              </Space>
-            ),
-          },
-        ],
-        ["couponName", "autoIssueTriggerType"],
-      );
-    }
-
-    if (activeCouponKind === "couponCode") {
-      return markRequiredDescriptionItems(
-        [
-          ...commonItems,
-          {
-            key: "audience",
-            label: "발행 대상",
-            children: (
-              <Form.Item
-                name="audience"
-                rules={[
-                  { required: true, message: "발행 대상을 선택해 주세요." },
-                ]}
-                style={{ margin: 0 }}
-              >
-                <Radio.Group
-                  className="coupon-choice-radio-group"
-                  options={[
-                    { label: "회원", value: "memberOnly" },
-                    { label: "회원 및 비회원", value: "memberAndGuest" },
-                  ]}
-                />
-              </Form.Item>
-            ),
-          },
-          {
-            key: "codeGenerationMode",
-            label: "쿠폰 수량",
-            children: (
-              <Space direction="vertical" size={12} style={{ width: "100%" }}>
-                <Form.Item
-                  name="codeGenerationMode"
-                  rules={[
-                    {
-                      required: true,
-                      message: "쿠폰 수량 방식을 선택해 주세요.",
-                    },
-                  ]}
-                  style={{ margin: 0 }}
-                >
-                  <Radio.Group
-                    className="coupon-choice-radio-group"
-                    options={getCouponCodeGenerationOptions()}
-                  />
-                </Form.Item>
-                {selectedCodeGenerationMode === "bulk" ? (
-                  <Form.Item
-                    name="codeCount"
-                    rules={[
-                      { required: true, message: "생성 수량을 입력해 주세요." },
-                    ]}
-                    style={{ margin: 0 }}
-                  >
-                    <InputNumber
-                      min={1}
-                      max={10000}
-                      style={{ width: "100%" }}
-                      placeholder="수량을 입력하면 코드가 자동 생성돼요. 최대 10,000개까지 가능합니다."
-                    />
-                  </Form.Item>
-                ) : (
-                  <Form.Item name="couponCode" style={{ margin: 0 }}>
-                    <Input placeholder="직접 쿠폰 코드를 입력하거나 비워 두면 자동 생성돼요." />
-                  </Form.Item>
-                )}
-              </Space>
-            ),
-          },
-        ],
-        ["couponName", "audience", "codeGenerationMode"],
-      );
-    }
-
-    return markRequiredDescriptionItems(
-      [
-        ...commonItems,
-        {
-          key: "issueTargetType",
-          label: "발행 대상",
-          children: (
-            <Space direction="vertical" size={12} style={{ width: "100%" }}>
-              <Form.Item
-                name="issueTargetType"
-                rules={[
-                  { required: true, message: "발행 대상을 선택해 주세요." },
-                ]}
-                style={{ margin: 0 }}
-              >
-                <Radio.Group
-                  className="coupon-choice-radio-group coupon-choice-radio-group--wrap"
-                  options={getCouponIssueTargetOptions()}
-                />
-              </Form.Item>
-              {selectedIssueTargetType === "specificGroup" ? (
-                <Form.Item
-                  name="targetGroupId"
-                  rules={[{ required: true, message: "그룹을 선택해 주세요." }]}
-                  style={{ margin: 0 }}
-                >
-                  <Select
-                    options={groupOptions}
-                    placeholder={
-                      groupOptions.length > 0
-                        ? "그룹을 선택해 주세요."
-                        : "설정 가능한 그룹이 없습니다."
-                    }
-                    disabled={groupOptions.length === 0}
-                  />
-                </Form.Item>
-              ) : null}
-              {selectedIssueTargetType === "specificMembers" ? (
-                <Form.Item name="targetUserIdsText" style={{ margin: 0 }}>
-                  <Input.TextArea
-                    rows={4}
-                    placeholder="회원 ID를 입력해 주세요. 여러 명이면 줄바꿈 또는 쉼표로 구분합니다."
-                  />
-                </Form.Item>
-              ) : null}
-            </Space>
-          ),
-        },
-        ...(activeCouponKind === "customerDownload"
-          ? [
-              {
-                key: "issueLimitMode",
-                label: "쿠폰 수량",
-                children: (
-                  <Space
-                    direction="vertical"
-                    size={12}
-                    style={{ width: "100%" }}
-                  >
-                    <Form.Item name="issueLimitMode" style={{ margin: 0 }}>
-                      <Radio.Group
-                        className="coupon-choice-radio-group"
-                        options={[
-                          { label: "제한 없음", value: "unlimited" },
-                          { label: "제한", value: "limited" },
-                        ]}
-                      />
-                    </Form.Item>
-                    {selectedIssueLimitMode === "limited" ? (
-                      <Form.Item name="issueLimit" style={{ margin: 0 }}>
-                        <InputNumber
-                          min={1}
-                          style={{ width: "100%" }}
-                          placeholder="발행 가능한 쿠폰 수량을 입력해 주세요."
-                        />
-                      </Form.Item>
-                    ) : null}
-                  </Space>
-                ),
-              },
-              {
-                key: "isSecretCoupon",
-                label: "시크릿 쿠폰",
-                children: (
-                  <Space
-                    direction="vertical"
-                    size={8}
-                    style={{ width: "100%" }}
-                  >
-                    <Form.Item name="isSecretCoupon" style={{ margin: 0 }}>
-                      <Radio.Group
-                        className="coupon-choice-radio-group"
-                        options={[
-                          { label: "설정", value: true },
-                          { label: "설정 안 함", value: false },
-                        ]}
-                      />
-                    </Form.Item>
-                    <Text type="secondary">
-                      다운로드 링크를 외부 채널에만 공유하고 싶다면 시크릿
-                      쿠폰으로 운영합니다.
-                    </Text>
-                  </Space>
-                ),
-              },
-            ]
-          : []),
-      ],
-      ["couponName", "issueTargetType"],
-    );
-  }, [
-    activeCouponKind,
-    groupOptions,
-    selectedCodeGenerationMode,
-    selectedIssueLimitMode,
-    selectedIssueTargetType,
-  ]);
+  const basicItems = useMemo(
+    () =>
+      createCouponBasicItems({
+        activeCouponKind,
+        groupOptions,
+        selectedCodeGenerationMode,
+        selectedIssueLimitMode,
+        selectedIssueTargetType,
+      }),
+    [
+      activeCouponKind,
+      groupOptions,
+      selectedCodeGenerationMode,
+      selectedIssueLimitMode,
+      selectedIssueTargetType,
+    ],
+  );
 
   const benefitItems = useMemo(
-    () =>
-      markRequiredDescriptionItems(
-        [
-          {
-            key: "benefitType",
-            label: "혜택",
-            children: (
-              <Form.Item
-                name="benefitType"
-                rules={[
-                  { required: true, message: "혜택 유형을 선택해 주세요." },
-                ]}
-                style={{ margin: 0 }}
-              >
-                <Radio.Group
-                  className="coupon-choice-radio-group coupon-choice-radio-group--wrap"
-                  options={getCouponBenefitTypeOptions()}
-                />
-              </Form.Item>
-            ),
-          },
-          {
-            key: "benefitValue",
-            label: benefitFieldMeta.valueLabel,
-            children:
-              selectedBenefitType === "freeShipping" ? (
-                <Space direction="vertical" size={8} style={{ width: "100%" }}>
-                  <Form.Item name="benefitValue" hidden>
-                    <InputNumber />
-                  </Form.Item>
-                  <Text type="secondary">
-                    배송비 무료 혜택은 할인 금액 대신 배송비 면제 안내로
-                    처리합니다.
-                  </Text>
-                </Space>
-              ) : (
-                <Form.Item
-                  name="benefitValue"
-                  rules={[
-                    {
-                      required: true,
-                      message: benefitFieldMeta.valueRequiredMessage,
-                    },
-                  ]}
-                  style={{ margin: 0 }}
-                >
-                  <InputNumber
-                    min={1}
-                    max={benefitFieldMeta.max}
-                    style={{ width: "100%" }}
-                    placeholder={benefitFieldMeta.valuePlaceholder}
-                    formatter={
-                      selectedBenefitType === "rateDiscount"
-                        ? (value) =>
-                            // antd 가 넘기는 값은 number | undefined 라 빈 문자열 비교는
-                            // 도달할 수 없다(남기면 number 와 string 대조가 된다).
-                            value === undefined || value === null
-                              ? ""
-                              : `${value}%`
-                        : undefined
-                    }
-                    parser={
-                      selectedBenefitType === "rateDiscount"
-                        ? // antd 타입은 number 반환을 요구하지만 rc-input-number 는 숫자
-                          // 문자열도 그대로 파싱한다(공식 예제도 문자열을 돌려준다).
-                          // 빈 입력에서 Number("") = 0 이 되어 0 이 찍히는 동작 변경을
-                          // 피하려고 런타임 표현식은 유지하고 타입만 맞춘다.
-                          ((value: string | undefined) => value?.replaceAll("%", "") ?? "") as unknown as (
-                            displayValue: string | undefined,
-                          ) => number
-                        : undefined
-                    }
-                  />
-                </Form.Item>
-              ),
-          },
-          {
-            key: "minOrderAmount",
-            label: "최소 주문 금액",
-            children: (
-              <Form.Item
-                name="minOrderAmount"
-                rules={[
-                  {
-                    required: true,
-                    message: "최소 주문 금액을 입력해 주세요.",
-                  },
-                ]}
-                style={{ margin: 0 }}
-              >
-                <InputNumber
-                  min={1}
-                  style={{ width: "100%" }}
-                  placeholder="1 이상 입력해 주세요."
-                />
-              </Form.Item>
-            ),
-          },
-          ...(selectedBenefitType === "rateDiscount" ||
-          selectedBenefitType === "freeShipping"
-            ? [
-                {
-                  key: "maxDiscountAmount",
-                  label: "최대 할인 금액",
-                  children: (
-                    <Form.Item name="maxDiscountAmount" style={{ margin: 0 }}>
-                      <InputNumber
-                        min={1}
-                        style={{ width: "100%" }}
-                        placeholder="선택 입력"
-                      />
-                    </Form.Item>
-                  ),
-                },
-              ]
-            : []),
-          {
-            key: "applicableScope",
-            label: "쿠폰 적용 범위",
-            children: (
-              <Form.Item
-                name="applicableScope"
-                rules={[
-                  { required: true, message: "적용 범위를 선택해 주세요." },
-                ]}
-                style={{ margin: 0 }}
-              >
-                <Radio.Group
-                  className="coupon-choice-radio-group coupon-choice-radio-group--wrap"
-                  options={[
-                    { label: "전체 상품", value: "allProducts" },
-                    { label: "특정 카테고리", value: "specificCategory" },
-                    { label: "특정 상품", value: "specificProduct" },
-                  ]}
-                />
-              </Form.Item>
-            ),
-          },
-          {
-            key: "excludedProducts",
-            label: "적용 제외 상품",
-            children: (
-              <Space direction="vertical" size={8} style={{ width: "100%" }}>
-                <Radio.Group
-                  disabled
-                  value="none"
-                  className="coupon-choice-radio-group"
-                  options={[
-                    { label: "지정 안 함", value: "none" },
-                    { label: "상품 지정", value: "custom" },
-                  ]}
-                />
-                <Input
-                  disabled
-                  placeholder="상품명 또는 재고번호(SKU)로 검색해 주세요."
-                />
-                <Text type="secondary">
-                  상품 엔티티 검색/선택 UI가 확정되면 연결합니다.
-                </Text>
-              </Space>
-            ),
-          },
-          {
-            key: "isStackable",
-            label: "중복 할인",
-            children: (
-              <Form.Item name="isStackable" style={{ margin: 0 }}>
-                <Radio.Group
-                  className="coupon-choice-radio-group coupon-choice-radio-group--wrap"
-                  options={[
-                    { label: "단독으로만 사용 가능", value: false },
-                    { label: "다른 쿠폰과 함께 사용 가능", value: true },
-                  ]}
-                />
-              </Form.Item>
-            ),
-          },
-        ],
-        [
-          "benefitType",
-          ...(selectedBenefitType === "freeShipping" ? [] : ["benefitValue"]),
-          "minOrderAmount",
-          "applicableScope",
-        ],
-      ),
+    () => createCouponBenefitItems({ benefitFieldMeta, selectedBenefitType }),
     [benefitFieldMeta, selectedBenefitType],
   );
 
-  const operationItems = useMemo(() => {
-    if (activeCouponKind === "manualIssue") {
-      return markRequiredDescriptionItems(
-        [
-          {
-            key: "validityRange",
-            label: "사용 기한 설정",
-            children: (
-              <Space direction="vertical" size={12} style={{ width: "100%" }}>
-                <Form.Item
-                  name="validityRange"
-                  rules={[
-                    { required: true, message: "사용 기한을 선택해 주세요." },
-                  ]}
-                  style={{ margin: 0 }}
-                >
-                  <DatePicker.RangePicker style={{ width: "100%" }} />
-                </Form.Item>
-                <Text type="secondary">
-                  시간 단위 선택은 후속 API 계약 전까지 날짜 기준으로만
-                  처리합니다.
-                </Text>
-              </Space>
-            ),
-          },
-        ],
-        ["validityRange"],
-      );
-    }
-
-    return markRequiredDescriptionItems(
-      [
-        {
-          key: "validityMode",
-          label: "만료일 설정",
-          children: (
-            <Form.Item
-              name="validityMode"
-              rules={[
-                { required: true, message: "만료일 설정을 선택해 주세요." },
-              ]}
-              style={{ margin: 0 }}
-            >
-              <Radio.Group
-                className="coupon-choice-radio-group coupon-choice-radio-group--wrap"
-                options={validityModeOptions}
-              />
-            </Form.Item>
-          ),
-        },
-        ...(selectedValidityMode === "fixedDate"
-          ? [
-              {
-                key: "validityRange",
-                label: "사용 기한",
-                children: (
-                  <Space
-                    direction="vertical"
-                    size={12}
-                    style={{ width: "100%" }}
-                  >
-                    <Form.Item
-                      name="validityRange"
-                      rules={[
-                        {
-                          required: true,
-                          message: "사용 기한을 선택해 주세요.",
-                        },
-                      ]}
-                      style={{ margin: 0 }}
-                    >
-                      <DatePicker.RangePicker style={{ width: "100%" }} />
-                    </Form.Item>
-                    <Text type="secondary">
-                      시간 단위 설정은 후속 계약 확정 전까지 placeholder
-                      성격으로 유지합니다.
-                    </Text>
-                  </Space>
-                ),
-              },
-            ]
-          : []),
-        ...(selectedValidityMode === "afterIssued"
-          ? [
-              {
-                key: "expireAfterDays",
-                label: "발급 후 N일 만료",
-                children: (
-                  <Form.Item
-                    name="expireAfterDays"
-                    rules={[
-                      { required: true, message: "만료 일수를 입력해 주세요." },
-                    ]}
-                    style={{ margin: 0 }}
-                  >
-                    <InputNumber
-                      min={1}
-                      style={{ width: "100%" }}
-                      placeholder="발급 후 몇 일까지 사용할지 입력해 주세요."
-                    />
-                  </Form.Item>
-                ),
-              },
-            ]
-          : []),
-        {
-          key: "usageLimitMode",
-          label: "사용 횟수",
-          children: (
-            <Space direction="vertical" size={12} style={{ width: "100%" }}>
-              <Form.Item name="usageLimitMode" style={{ margin: 0 }}>
-                <Radio.Group
-                  className="coupon-choice-radio-group"
-                  options={[
-                    { label: "제한", value: "limited" },
-                    { label: "제한 없음", value: "unlimited" },
-                  ]}
-                />
-              </Form.Item>
-              {selectedUsageLimitMode === "limited" ? (
-                <Form.Item name="usageLimit" style={{ margin: 0 }}>
-                  <InputNumber
-                    min={1}
-                    style={{ width: "100%" }}
-                    placeholder="최대 사용 횟수를 입력해 주세요."
-                  />
-                </Form.Item>
-              ) : null}
-            </Space>
-          ),
-        },
-      ],
-      ["validityMode"],
-    );
-  }, [
-    activeCouponKind,
-    selectedUsageLimitMode,
-    selectedValidityMode,
-    validityModeOptions,
-  ]);
-
-  const alertItems = useMemo(() => {
-    if (activeCouponKind === "couponCode") {
-      return null;
-    }
-
-    if (activeCouponKind === "manualIssue") {
-      return [
-        {
-          key: "pushPlaceholder",
-          label: "푸시 알림(앱 사용 시)",
-          children: (
-            <CouponPlaceholderNote
-              title="알림 미리보기"
-              description="지정 발행 안내 푸시 구조만 먼저 맞추고, 실제 메시지 발송 계약은 후속 구현으로 넘깁니다."
-            />
-          ),
-        },
-      ];
-    }
-
-    return [
-      {
-        key: "messageCredit",
-        label: "메시지 크레딧",
-        children: (
-          <CouponPlaceholderNote
-            title="알림 발송 전 크레딧 차감"
-            description="실제 잔액, 검수 상태, 차감 기준, 발송 수량 계산은 메시지 서비스 연동 후 연결합니다."
-          />
-        ),
-      },
-      {
-        key: "issueAlertEnabled",
-        label: "쿠폰 발급 알림",
-        children: (
-          <Space direction="vertical" size={12} style={{ width: "100%" }}>
-            <Form.Item name="issueAlertEnabled" style={{ margin: 0 }}>
-              <Radio.Group
-                className="coupon-choice-radio-group"
-                options={[
-                  { label: "발송 안 함", value: false },
-                  { label: "발송", value: true },
-                ]}
-              />
-            </Form.Item>
-            {selectedIssueAlertEnabled ? (
-              <Form.Item name="issueAlertChannel" style={{ margin: 0 }}>
-                <Radio.Group
-                  className="coupon-choice-radio-group coupon-choice-radio-group--wrap"
-                  options={[
-                    { label: "알림톡", value: "alimtalk" },
-                    { label: "웹·앱 푸시", value: "webPush" },
-                  ]}
-                />
-              </Form.Item>
-            ) : null}
-            <CouponPlaceholderNote
-              title="알림 미리보기"
-              description="알림 미리보기와 CRM 캠페인 연결은 실제 메시지 템플릿 계약 확정 전까지 placeholder로 유지합니다."
-            />
-          </Space>
-        ),
-      },
-      {
-        key: "expireAlertEnabled",
-        label: "쿠폰 만료 알림",
-        children: (
-          <Space direction="vertical" size={12} style={{ width: "100%" }}>
-            <Form.Item name="expireAlertEnabled" style={{ margin: 0 }}>
-              <Radio.Group
-                className="coupon-choice-radio-group"
-                options={[
-                  { label: "발송 안 함", value: false },
-                  { label: "발송", value: true },
-                ]}
-              />
-            </Form.Item>
-            {selectedExpireAlertEnabled ? (
-              <Form.Item name="expireAlertChannel" style={{ margin: 0 }}>
-                <Radio.Group
-                  className="coupon-choice-radio-group coupon-choice-radio-group--wrap"
-                  options={[
-                    { label: "알림톡", value: "alimtalk" },
-                    { label: "웹·앱 푸시", value: "webPush" },
-                  ]}
-                />
-              </Form.Item>
-            ) : null}
-            <CouponPlaceholderNote
-              title="만료 알림 미리보기"
-              description="유효 기간, 발송 시점, 발송 템플릿은 추후 메시지/CRM 계약과 함께 확정합니다."
-            />
-          </Space>
-        ),
-      },
-      {
-        key: "linkedMessageTemplateId",
-        label: "CRM 캠페인 연동",
-        children: (
-          <Space direction="vertical" size={12} style={{ width: "100%" }}>
-            <Form.Item name="linkedMessageTemplateId" style={{ margin: 0 }}>
-              <Select
-                allowClear
-                options={templateOptions}
-                placeholder="메시지 템플릿을 선택해 주세요."
-              />
-            </Form.Item>
-            <Form.Item name="linkedCrmCampaignId" style={{ margin: 0 }}>
-              <Select
-                allowClear
-                options={[
-                  { label: "장바구니 상품 구매 유도", value: "CRM-CART-001" },
-                  { label: "자동 발행 쿠폰 안내", value: "CRM-WELCOME-001" },
-                  { label: "쿠폰 기간 만료 안내", value: "CRM-EXPIRE-001" },
-                  { label: "지정 발행 쿠폰 알림", value: "CRM-MANUAL-001" },
-                ]}
-                placeholder="CRM 캠페인을 선택해 주세요."
-              />
-            </Form.Item>
-          </Space>
-        ),
-      },
-      {
-        key: "adminMemo",
-        label: "운영 메모",
-        children: (
-          <Form.Item name="adminMemo" style={{ margin: 0 }}>
-            <Input.TextArea
-              rows={4}
-              placeholder="운영 검토 메모, 발행 목적, 주의사항을 기록해 주세요."
-            />
-          </Form.Item>
-        ),
-      },
-    ];
-  }, [
-    activeCouponKind,
-    selectedExpireAlertEnabled,
-    selectedIssueAlertEnabled,
-    templateOptions,
-  ]);
-
-  const memoItems = useMemo(
-    () => [
-      {
-        key: "adminMemo",
-        label: "운영 메모",
-        children: (
-          <Form.Item name="adminMemo" style={{ margin: 0 }}>
-            <Input.TextArea
-              rows={6}
-              placeholder="운영 검토 메모, 내부 공유 사항, 후속 확인 포인트를 기록해 주세요."
-            />
-          </Form.Item>
-        ),
-      },
+  const operationItems = useMemo(
+    () =>
+      createCouponOperationItems({
+        activeCouponKind,
+        selectedUsageLimitMode,
+        selectedValidityMode,
+        validityModeOptions,
+      }),
+    [
+      activeCouponKind,
+      selectedUsageLimitMode,
+      selectedValidityMode,
+      validityModeOptions,
     ],
-    [],
   );
+
+  const alertItems = useMemo(
+    () =>
+      createCouponAlertItems({
+        activeCouponKind,
+        selectedExpireAlertEnabled,
+        selectedIssueAlertEnabled,
+        templateOptions,
+      }),
+    [
+      activeCouponKind,
+      selectedExpireAlertEnabled,
+      selectedIssueAlertEnabled,
+      templateOptions,
+    ],
+  );
+
+  const memoItems = useMemo(() => createCouponMemoItems(), []);
   const visibleAlertItems = useMemo(
     () => alertItems?.filter((item) => item.key !== "adminMemo") ?? null,
     [alertItems],
