@@ -85,9 +85,22 @@ jobs:
       - name: Run the unit suite for unit-test changes
         if: ${{ needs.classify.outputs.run_unit == 'true' }}
         run: npm run test:unit
-      - name: Install Chromium for mock E2E changes
+      # apt 미러 행(playwright install --with-deps 중 아카이브 응답 정지)이 job 을
+      # 45분 타임아웃까지 끌고 가는 재발 플레이크를 캐시로 우회한다. 캐시 히트 시
+      # 브라우저는 이미 있으므로 apt 를 건드리지 않는 설치(no --with-deps)만 수행한다.
+      - name: Cache Playwright browsers
         if: ${{ needs.classify.outputs.run_e2e == 'true' }}
+        id: playwright-cache-light
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Install Chromium for mock E2E changes
+        if: ${{ needs.classify.outputs.run_e2e == 'true' && steps.playwright-cache-light.outputs.cache-hit != 'true' }}
         run: npx playwright install --with-deps chromium
+      - name: Install Chromium without system deps (cache hit)
+        if: ${{ needs.classify.outputs.run_e2e == 'true' && steps.playwright-cache-light.outputs.cache-hit == 'true' }}
+        run: npx playwright install chromium
       - name: Run the mock browser suite for E2E changes
         if: ${{ needs.classify.outputs.run_e2e == 'true' }}
         run: npm run test:e2e
@@ -197,7 +210,17 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      # 위 light-validation 과 같은 apt 행 우회: 캐시 히트면 apt 미접촉 설치만 한다.
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - if: ${{ steps.playwright-cache.outputs.cache-hit != 'true' }}
+        run: npx playwright install --with-deps chromium
+      - if: ${{ steps.playwright-cache.outputs.cache-hit == 'true' }}
+        run: npx playwright install chromium
       - run: npm run test:e2e
         env:
           CI: 'true'
