@@ -1,19 +1,12 @@
 import {
   Alert,
   Button,
-  DatePicker,
-  Descriptions,
   Form,
-  Input,
-  Modal,
-  Select,
   Space,
   Tabs,
   Typography,
   notification
 } from 'antd';
-import type { TableColumnsType } from 'antd';
-import type { Dayjs } from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -25,27 +18,42 @@ import {
   sendMessageTemplateSafe,
   toggleMessageTemplateSafe
 } from '../api/messages-service';
+import {
+  MESSAGE_SEND_DATE_TIME_FORMAT,
+  type MessageLiveSendFormValues,
+  type MessageTemplateDangerState,
+  type MessageTemplateEditorState,
+  type MessageTestSendFormValues
+} from '../model/message-channel-page-schema';
 import type {
   MessageChannel,
   MessageGroup,
-  MessageTemplate,
-  MessageTemplateStatus
+  MessageTemplate
 } from '../model/types';
+import { buildMessageAuditNoticeDescription } from '../ui/message-audit-notice';
+import {
+  createMessageChannelColumns,
+  createMessageChannelTabItems,
+  createMessageTemplateActionItems
+} from '../ui/message-channel-columns';
+import {
+  buildMessageTemplatePreviewItems,
+  getMessageEditBodyActionLabel,
+  MessageLiveSendModal,
+  MessageTemplateEditorModal,
+  MessageTestSendModal
+} from '../ui/message-channel-modals';
 import {
   createEmptyMessageBodyJson,
   createTemplateMetaDefaults,
-  MessageTemplateFormFields,
   getMessageChannelMeta,
   parseMessageTemplateMode,
   shouldShowNotificationLink,
   type TemplateMetaFormValues
 } from '../ui/message-template-form-fields';
 import type { AsyncState } from '../../../shared/model/async-state';
-import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 import { useRouterStateNotice } from '../../../shared/model/use-router-state-notice';
-import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
-import { markRequiredDescriptionItems } from '../../../shared/ui/descriptions/description-label';
 import { HtmlPreviewModal } from '../../../shared/ui/html-preview-modal/html-preview-modal';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
@@ -60,57 +68,13 @@ import {
   matchesSearchField,
   parseSearchDate
 } from '../../../shared/ui/search-bar/search-bar-utils';
-import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
-import { BinaryStatusSwitch } from '../../../shared/ui/table/binary-status-switch';
-import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
-import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
-import {
-  createDefinedColumnFilterProps,
-  createTextSorter
-} from '../../../shared/ui/table/table-column-utils';
-
 const { Text } = Typography;
 
-const messageTemplateStatusFilterValues = ['활성', '비활성', '초안'] as const;
-const DATE_TIME_FORMAT = 'YYYY-MM-DD HH:mm';
 
 type MessageChannelPageProps = {
   channel: MessageChannel;
 };
-
-type TestSendFormValues = {
-  recipient: string;
-  reason: string;
-};
-
-type LiveSendFormValues = {
-  targetGroupIds: string[];
-  actionType: '즉시 발송' | '예약 발송';
-  scheduledAt?: Dayjs;
-  reason: string;
-};
-
-type TemplateEditorState =
-  | { kind: 'create' }
-  | { kind: 'edit'; template: MessageTemplate }
-  | null;
-
-type DangerState =
-  | { type: 'delete'; template: MessageTemplate }
-  | {
-    type: 'toggle';
-    template: MessageTemplate;
-    nextStatus: Extract<MessageTemplateStatus, '활성' | '비활성'>;
-  }
-  | null;
-
-function renderGroupNames(groups: MessageGroup[], groupIds: string[]): string {
-  const names = groups
-    .filter((group) => groupIds.includes(group.id))
-    .map((group) => group.name);
-  return names.length > 0 ? names.join(', ') : '-';
-}
 
 export function MessageChannelPage({
   channel
@@ -143,15 +107,15 @@ export function MessageChannelPage({
     errorCode: null
   });
   const [reloadKey, setReloadKey] = useState(0);
-  const [editorState, setEditorState] = useState<TemplateEditorState>(null);
+  const [editorState, setEditorState] = useState<MessageTemplateEditorState>(null);
   const [previewTemplate, setPreviewTemplate] = useState<MessageTemplate | null>(null);
   const [testTemplate, setTestTemplate] = useState<MessageTemplate | null>(null);
   const [liveTemplate, setLiveTemplate] = useState<MessageTemplate | null>(null);
-  const [dangerState, setDangerState] = useState<DangerState>(null);
+  const [dangerState, setDangerState] = useState<MessageTemplateDangerState>(null);
   const [notificationApi, notificationContextHolder] = notification.useNotification();
   const [templateForm] = Form.useForm<TemplateMetaFormValues>();
-  const [testForm] = Form.useForm<TestSendFormValues>();
-  const [liveSendForm] = Form.useForm<LiveSendFormValues>();
+  const [testForm] = Form.useForm<MessageTestSendFormValues>();
+  const [liveSendForm] = Form.useForm<MessageLiveSendFormValues>();
 
   const liveActionType = Form.useWatch('actionType', liveSendForm);
   useEffect(() => {
@@ -268,17 +232,9 @@ export function MessageChannelPage({
     (saved) => {
       notificationApi.success({
         message: `${meta.title} 본문 저장 완료`,
-        description: (
-          <Space direction="vertical">
-            <Text>대상 유형: {getTargetTypeLabel('Message')}</Text>
-            <Text>대상 ID: {saved.templateId}</Text>
-            <Text>
-              조치:{' '}
-              {saved.mode === 'auto' ? '자동 발송 본문 작성' : '수동 발송 본문 작성'}
-            </Text>
-            <AuditLogLink targetType="Message" targetId={saved.templateId} />
-          </Space>
-        )
+        description: buildMessageAuditNoticeDescription(saved.templateId, [
+          `조치: ${saved.mode === 'auto' ? '자동 발송 본문 작성' : '수동 발송 본문 작성'}`
+        ])
       });
     }
   );
@@ -387,26 +343,19 @@ export function MessageChannelPage({
         editorState.kind === 'create'
           ? `${meta.title} 템플릿 등록 완료`
           : `${meta.title} 템플릿 정보 수정 완료`,
-      description: (
-        <Space direction="vertical">
-          <Text>대상 유형: {getTargetTypeLabel('Message')}</Text>
-          <Text>대상 ID: {saved.id}</Text>
-          <Text>
-            조치:{' '}
-            {editorState.kind === 'create'
-              ? activeMode === 'auto'
-                ? '자동 발송 템플릿 등록'
-                : '수동 발송 템플릿 등록'
-              : activeMode === 'auto'
-                ? '자동 발송 템플릿 정보 수정'
-                : '수동 발송 템플릿 정보 수정'}
-          </Text>
-          {editorState.kind === 'create' ? (
-            <Text>다음 단계: 생성된 행을 클릭해 등록 상세에서 본문을 작성하세요.</Text>
-          ) : null}
-          <AuditLogLink targetType="Message" targetId={saved.id} />
-        </Space>
-      )
+      description: buildMessageAuditNoticeDescription(saved.id, [
+        `조치: ${
+          editorState.kind === 'create'
+            ? activeMode === 'auto'
+              ? '자동 발송 템플릿 등록'
+              : '수동 발송 템플릿 등록'
+            : activeMode === 'auto'
+              ? '자동 발송 템플릿 정보 수정'
+              : '수동 발송 템플릿 정보 수정'
+        }`,
+        editorState.kind === 'create' &&
+          '다음 단계: 생성된 행을 클릭해 등록 상세에서 본문을 작성하세요.'
+      ])
     });
     closeEditor();
   }, [
@@ -444,14 +393,9 @@ export function MessageChannelPage({
         );
         notificationApi.success({
           message: meta.title + ' \uD15C\uD50C\uB9BF \uC0AD\uC81C \uC644\uB8CC',
-          description: (
-            <Space direction="vertical">
-              <Text>\uB300\uC0C1 \uC720\uD615: {getTargetTypeLabel('Message')}</Text>
-              <Text>\uB300\uC0C1 ID: {removed.id}</Text>
-              <Text>\uC0AC\uC720/\uADFC\uAC70: {reason}</Text>
-              <AuditLogLink targetType="Message" targetId={removed.id} />
-            </Space>
-          )
+          description: buildMessageAuditNoticeDescription(removed.id, [
+            `사유/근거: ${reason}`
+          ])
         });
       }
 
@@ -478,14 +422,9 @@ export function MessageChannelPage({
         );
         notificationApi.success({
           message: meta.title + ' \uD15C\uD50C\uB9BF \uC0C1\uD0DC \uBCC0\uACBD \uC644\uB8CC',
-          description: (
-            <Space direction="vertical">
-              <Text>\uB300\uC0C1 \uC720\uD615: {getTargetTypeLabel('Message')}</Text>
-              <Text>\uB300\uC0C1 ID: {updated.id}</Text>
-              <Text>\uC0AC\uC720/\uADFC\uAC70: {reason}</Text>
-              <AuditLogLink targetType="Message" targetId={updated.id} />
-            </Space>
-          )
+          description: buildMessageAuditNoticeDescription(updated.id, [
+            `사유/근거: ${reason}`
+          ])
         });
       }
 
@@ -548,15 +487,10 @@ export function MessageChannelPage({
 
       notificationApi.success({
         message: `${meta.title} 나에게 보내기 실행 생성 완료`,
-        description: (
-          <Space direction="vertical">
-            <Text>대상 유형: {getTargetTypeLabel('Message')}</Text>
-            <Text>대상 ID: {result.data.id}</Text>
-            <Text>사유/근거: {values.reason}</Text>
-            <Text>전달은 발송 파이프라인이 처리합니다. 발송 이력에서 상태를 확인하세요.</Text>
-            <AuditLogLink targetType="Message" targetId={result.data.id} />
-          </Space>
-        )
+        description: buildMessageAuditNoticeDescription(result.data.id, [
+          `사유/근거: ${values.reason}`,
+          '전달은 발송 파이프라인이 처리합니다. 발송 이력에서 상태를 확인하세요.'
+        ])
       });
       setTestTemplate(null);
       return;
@@ -564,15 +498,10 @@ export function MessageChannelPage({
 
     notificationApi.success({
       message: `${meta.title} 나에게 보내기 완료`,
-      description: (
-        <Space direction="vertical">
-          <Text>대상 유형: {getTargetTypeLabel('Message')}</Text>
-          <Text>대상 ID: {testTemplate.id}</Text>
-          <Text>테스트 수신자: {values.recipient}</Text>
-          <Text>사유/근거: {values.reason}</Text>
-          <AuditLogLink targetType="Message" targetId={testTemplate.id} />
-        </Space>
-      )
+      description: buildMessageAuditNoticeDescription(testTemplate.id, [
+        `테스트 수신자: ${values.recipient}`,
+        `사유/근거: ${values.reason}`
+      ])
     });
     setTestTemplate(null);
   }, [channel, isSupabaseSource, meta.title, notificationApi, testForm, testTemplate]);
@@ -619,7 +548,7 @@ export function MessageChannelPage({
       actionType: values.actionType,
       scheduledAt:
         values.actionType === '예약 발송'
-          ? values.scheduledAt?.format(DATE_TIME_FORMAT)
+          ? values.scheduledAt?.format(MESSAGE_SEND_DATE_TIME_FORMAT)
           : undefined,
       reason: values.reason,
       targetType: 'group'
@@ -640,188 +569,41 @@ export function MessageChannelPage({
         values.actionType === '예약 발송'
           ? `${meta.title} 예약 발송 등록 완료`
           : `${meta.title} 발송 완료`,
-      description: (
-        <Space direction="vertical">
-          <Text>대상 유형: {getTargetTypeLabel('Message')}</Text>
-          <Text>대상 ID: {result.data.id}</Text>
-          <Text>사유/근거: {values.reason}</Text>
-          <AuditLogLink targetType="Message" targetId={result.data.id} />
-        </Space>
-      )
+      description: buildMessageAuditNoticeDescription(result.data.id, [
+        `사유/근거: ${values.reason}`
+      ])
     });
     setLiveTemplate(null);
     setReloadKey((prev) => prev + 1);
   }, [channel, groups, liveSendForm, liveTemplate, meta.title, notificationApi]);
 
   const buildActionItems = useCallback(
-    (template: MessageTemplate) => {
-      const commonItems = [
-        {
-          key: `edit-meta-${template.id}`,
-          label: '템플릿 정보 수정',
-          onClick: () => openEditModal(template)
-        },
-        {
-          key: `test-${template.id}`,
-          label: '나에게 보내기',
-          disabled: isSendBlocked,
-          onClick: () => openTestSendModal(template)
-        }
-      ];
-
-      if (activeMode === 'auto') {
-        return [
-          ...commonItems,
-          {
-            key: `send-${template.id}`,
-            label: '즉시 실행',
-            disabled: isSendBlocked,
-            onClick: () => openLiveSendModal(template)
-          },
-          {
-            key: `delete-${template.id}`,
-            label: '템플릿 삭제',
-            danger: true,
-            onClick: () => setDangerState({ type: 'delete', template })
-          }
-        ];
-      }
-
-      return [
-        ...commonItems,
-        {
-          key: `send-${template.id}`,
-          label: '즉시/예약 발송',
-          disabled: isSendBlocked,
-          onClick: () => openLiveSendModal(template)
-        },
-        {
-          key: `delete-${template.id}`,
-          label: '템플릿 삭제',
-          danger: true,
-          onClick: () => setDangerState({ type: 'delete', template })
-        }
-      ];
-    },
+    (template: MessageTemplate) =>
+      createMessageTemplateActionItems(template, {
+        activeMode,
+        isSendBlocked,
+        onEditMeta: openEditModal,
+        onTestSend: openTestSendModal,
+        onLiveSend: openLiveSendModal,
+        onDelete: (target) => setDangerState({ type: 'delete', template: target })
+      }),
     [activeMode, isSendBlocked, openEditModal, openLiveSendModal, openTestSendModal]
   );
 
-  const columns = useMemo<TableColumnsType<MessageTemplate>>(
-    () => {
-      const baseColumns: TableColumnsType<MessageTemplate> = [
-        {
-          title: '템플릿 ID',
-          dataIndex: 'id',
-          width: 150,
-          sorter: createTextSorter((record) => record.id)
-        },
-        {
-          title: '카테고리',
-          dataIndex: 'category',
-          width: 120,
-          ...createDefinedColumnFilterProps(meta.categories, (record) => record.category),
-          sorter: createTextSorter((record) => record.category)
-        },
-        {
-          title: '템플릿명',
-          dataIndex: 'name',
-          width: 220,
-          sorter: createTextSorter((record) => record.name)
-        },
-        {
-          title: meta.subjectLabel,
-          dataIndex: 'subject',
-          width: 260,
-          sorter: createTextSorter((record) => record.subject)
-        },
-        {
-          title: '발송 그룹',
-          dataIndex: 'targetGroupIds',
-          width: 220,
-          sorter: createTextSorter((record) => renderGroupNames(groups, record.targetGroupIds)),
-          render: (targetGroupIds: string[]) => renderGroupNames(groups, targetGroupIds)
-        }
-      ];
-
-      if (activeMode === 'auto') {
-        baseColumns.push(
-          {
-            title: '자동 조건',
-            dataIndex: 'triggerLabel',
-            width: 180,
-            sorter: createTextSorter((record) => record.triggerLabel ?? ''),
-            render: (value?: string) => value ?? '-'
-          },
-          {
-            title: '최근 발송',
-            dataIndex: 'lastSentAt',
-            width: 160,
-            sorter: createTextSorter((record) => record.lastSentAt ?? ''),
-            render: (value?: string) => value ?? '-'
-          }
-        );
-      } else {
-        baseColumns.push({
-          title: '최근 수정',
-          dataIndex: 'updatedAt',
-          width: 160,
-          sorter: createTextSorter((record) => record.updatedAt)
-        });
-      }
-
-      baseColumns.push(
-        {
-          title: createStatusColumnTitle('상태', ['활성', '비활성', '초안']),
-          dataIndex: 'status',
-          width: activeMode === 'auto' ? 120 : 100,
-          ...createDefinedColumnFilterProps(
-            messageTemplateStatusFilterValues,
-            (record) => record.status
-          ),
-          sorter: createTextSorter((record) => record.status),
-          render: (status: MessageTemplateStatus, record) =>
-            activeMode === 'auto' && (status === '활성' || status === '비활성') ? (
-              <BinaryStatusSwitch
-                checked={status === '활성'}
-                checkedLabel="활성"
-                uncheckedLabel="비활성"
-                onToggle={() => openStatusToggleConfirm(record)}
-              />
-            ) : (
-              <StatusBadge status={status} />
-            )
-        },
-        {
-          title: '액션',
-          key: 'actions',
-          width: 150,
-          onCell: () => ({
-            onClick: (event) => {
-              event.stopPropagation();
-            }
-          }),
-          render: (_, record) => <TableActionMenu items={buildActionItems(record)} />
-        }
-      );
-
-      return baseColumns;
-    },
+  const columns = useMemo(
+    () =>
+      createMessageChannelColumns({
+        activeMode,
+        groups,
+        categories: meta.categories,
+        subjectLabel: meta.subjectLabel,
+        buildActionItems,
+        onStatusToggle: openStatusToggleConfirm
+      }),
     [activeMode, buildActionItems, groups, meta.categories, meta.subjectLabel, openStatusToggleConfirm]
   );
 
-  const tabItems = useMemo(
-    () => [
-      {
-        key: 'auto',
-        label: `자동 발송 (${templates.filter((template) => template.mode === 'auto').length})`
-      },
-      {
-        key: 'manual',
-        label: `수동 발송 (${templates.filter((template) => template.mode === 'manual').length})`
-      }
-    ],
-    [templates]
-  );
+  const tabItems = useMemo(() => createMessageChannelTabItems(templates), [templates]);
 
   const handleRetryLoad = useCallback(() => {
     setReloadKey((prev) => prev + 1);
@@ -838,65 +620,12 @@ export function MessageChannelPage({
   const editorMode =
     editorState?.kind === 'edit' ? editorState.template.mode : activeMode;
   const previewDescriptionItems = previewTemplate
-    ? [
-      {
-        key: 'templateId',
-        label: '템플릿 ID',
-        children: previewTemplate.id
-      },
-      {
-        key: 'templateName',
-        label: '템플릿명',
-        children: previewTemplate.name
-      },
-      {
-        key: 'targetGroups',
-        label: '발송 그룹',
-        children: renderGroupNames(groups, previewTemplate.targetGroupIds)
-      },
-      ...(shouldShowNotificationLink(channel)
-        ? [
-            {
-              key: 'linkUrl',
-              label: channel === 'mail' ? 'CTA 링크' : '이동 경로',
-              children:
-                previewTemplate.linkUrl && previewTemplate.linkUrl.trim().length > 0
-                  ? previewTemplate.linkUrl
-                  : channel === 'mail'
-                    ? '미설정 (CTA 버튼 없음)'
-                    : '미설정 (앱 기본 화면)'
-            }
-          ]
-        : []),
-      // 메일: 발송 시 본문 하단에 자동 삽입되는 CTA 버튼 문구(편집 화면 본문에는 미노출).
-      ...(channel === 'mail' &&
-      previewTemplate.linkUrl &&
-      previewTemplate.linkUrl.trim().length > 0
-        ? [
-            {
-              key: 'ctaLabel',
-              label: 'CTA 버튼 문구',
-              children:
-                previewTemplate.ctaLabel && previewTemplate.ctaLabel.trim().length > 0
-                  ? previewTemplate.ctaLabel
-                  : '알림 확인하기 (기본값)'
-            }
-          ]
-        : [])
-    ]
+    ? buildMessageTemplatePreviewItems(previewTemplate, groups, channel)
     : [];
-  // 미리보기의 기본 액션은 본문 작성 화면(등록 상세)으로 이동하므로 '본문 수정'으로 라벨링.
-  // 공용 channel page이므로 채널별로 표기를 맞춘다.
-  const editBodyActionLabel =
-    channel === 'mail'
-      ? '이메일 본문 수정'
-      : channel === 'push'
-        ? '푸시 본문 수정'
-        : '인앱 알림 본문 수정';
   const previewFooterActions = previewTemplate
     ? [
         <Button key="edit" type="primary" onClick={() => openTemplateDetail(previewTemplate)}>
-          {editBodyActionLabel}
+          {getMessageEditBodyActionLabel(channel)}
         </Button>
       ]
     : [];
@@ -1029,35 +758,15 @@ export function MessageChannelPage({
         />
       </AdminListCard>
 
-      <Modal
-        open={Boolean(editorState)}
-        title={
-          editorState?.kind === 'create'
-            ? editorMode === 'auto'
-              ? '자동 발송 템플릿 등록'
-              : '수동 발송 템플릿 등록'
-            : editorMode === 'auto'
-              ? '자동 발송 템플릿 정보 수정'
-              : '수동 발송 템플릿 정보 수정'
-        }
-        okText={editorState?.kind === 'create' ? '등록' : '저장'}
-        cancelText="취소"
-        width={840}
-        onCancel={closeEditor}
+      <MessageTemplateEditorModal
+        editorState={editorState}
+        editorMode={editorMode}
+        channel={channel}
+        groups={groups}
+        form={templateForm}
         onOk={handleSaveTemplate}
-      destroyOnHidden
-      >
-        <Form form={templateForm}>
-          <MessageTemplateFormFields
-            channel={channel}
-            mode={editorMode}
-            groups={groups}
-            variant="descriptions"
-            showBodyHtml={false}
-            showJsonBody={false}
-          />
-        </Form>
-      </Modal>
+        onCancel={closeEditor}
+      />
 
       <HtmlPreviewModal
         open={Boolean(previewTemplate)}
@@ -1070,159 +779,26 @@ export function MessageChannelPage({
         emptyDescription="행을 클릭해 등록 상세에서 본문을 먼저 저장하세요."
       />
 
-      <Modal
-        open={Boolean(testTemplate)}
-        title={`${meta.title} 나에게 보내기`}
-        okText="발송"
-        cancelText="취소"
-        onCancel={closeTestModal}
+      <MessageTestSendModal
+        template={testTemplate}
+        metaTitle={meta.title}
+        recipientLabel={meta.recipientLabel}
+        recipientPlaceholder={meta.recipientPlaceholder}
+        form={testForm}
         onOk={handleTestSend}
-        destroyOnHidden
-      >
-        <Form form={testForm}>
-          <Descriptions
-            bordered
-            size="small"
-            column={1}
-            className="message-template-form-descriptions"
-            items={markRequiredDescriptionItems(
-              [
-                {
-                  key: 'recipient',
-                  label: meta.recipientLabel,
-                  children: (
-                    <Form.Item
-                      name="recipient"
-                      rules={[{ required: true, message: `${meta.recipientLabel}을 입력하세요.` }]}
-                      style={{ marginBottom: 0 }}
-                    >
-                      <Input placeholder={meta.recipientPlaceholder} />
-                    </Form.Item>
-                  )
-                },
-                {
-                  key: 'reason',
-                  label: '사유/근거',
-                  children: (
-                    <Form.Item
-                      name="reason"
-                      rules={[{ required: true, message: '테스트 발송 사유를 입력하세요.' }]}
-                      style={{ marginBottom: 0 }}
-                    >
-                      <Input.TextArea rows={4} placeholder="예: 템플릿 렌더링과 링크 확인" />
-                    </Form.Item>
-                  )
-                }
-              ],
-              ['recipient', 'reason']
-            )}
-          />
-        </Form>
-      </Modal>
+        onCancel={closeTestModal}
+      />
 
-      <Modal
-        open={Boolean(liveTemplate)}
-        title={`${meta.title} ${activeMode === 'auto' ? '즉시 실행' : '발송 실행'}`}
-        okText={liveActionType === '예약 발송' ? '예약 등록' : '발송 실행'}
-        cancelText="취소"
-        onCancel={closeLiveModal}
+      <MessageLiveSendModal
+        template={liveTemplate}
+        metaTitle={meta.title}
+        activeMode={activeMode}
+        groups={groups}
+        liveActionType={liveActionType}
+        form={liveSendForm}
         onOk={handleLiveSend}
-        destroyOnHidden
-      >
-        <Form form={liveSendForm}>
-          <Descriptions
-            bordered
-            size="small"
-            column={1}
-            className="message-template-form-descriptions"
-            items={markRequiredDescriptionItems(
-              [
-                {
-                  key: 'targetGroupIds',
-                  label: '발송 그룹',
-                  children: (
-                    <Form.Item
-                      name="targetGroupIds"
-                      rules={[{ required: true, message: '발송 그룹을 선택하세요.' }]}
-                      style={{ marginBottom: 0 }}
-                    >
-                      <Select
-                        mode="multiple"
-                        options={groups.map((group) => ({
-                          label: `${group.name} (${group.memberCount.toLocaleString()}명)`,
-                          value: group.id
-                        }))}
-                      />
-                    </Form.Item>
-                  )
-                },
-                {
-                  key: 'actionType',
-                  label: '발송 방식',
-                  children: (
-                    <Form.Item
-                      name="actionType"
-                      rules={[{ required: true, message: '발송 방식을 선택하세요.' }]}
-                      style={{ marginBottom: 0 }}
-                    >
-                      <Select
-                        options={[
-                          { label: '즉시 발송', value: '즉시 발송' },
-                          { label: '예약 발송', value: '예약 발송' }
-                        ]}
-                      />
-                    </Form.Item>
-                  )
-                },
-                ...(liveActionType === '예약 발송'
-                  ? [
-                      {
-                        key: 'scheduledAt',
-                        label: '예약 시각',
-                        children: (
-                          <Form.Item
-                            name="scheduledAt"
-                            rules={[{ required: true, message: '예약 시각을 선택하세요.' }]}
-                            style={{ marginBottom: 0 }}
-                          >
-                            <DatePicker
-                              showTime
-                              format={DATE_TIME_FORMAT}
-                              placeholder="예약 시각 선택"
-                              style={{ width: '100%' }}
-                            />
-                          </Form.Item>
-                        )
-                      }
-                    ]
-                  : []),
-                {
-                  key: 'reason',
-                  label: '사유/근거',
-                  children: (
-                    <Form.Item
-                      name="reason"
-                      rules={[{ required: true, message: '발송 사유를 입력하세요.' }]}
-                      style={{ marginBottom: 0 }}
-                    >
-                      <Input.TextArea
-                        rows={4}
-                        placeholder="예: 월간 캠페인 발송, 결제 실패 대응"
-                      />
-                    </Form.Item>
-                  )
-                }
-              ],
-              [
-                'targetGroupIds',
-                'actionType',
-                'reason',
-                ...(liveActionType === '예약 발송' ? ['scheduledAt'] : [])
-              ]
-            )}
-          />
-        </Form>
-      </Modal>
+        onCancel={closeLiveModal}
+      />
 
       {dangerState ? (
         <ConfirmAction

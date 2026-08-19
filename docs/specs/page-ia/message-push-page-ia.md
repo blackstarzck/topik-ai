@@ -157,7 +157,7 @@
 ## 13. 구현 메모
 
 - 현재 코드베이스에서 재사용할 컴포넌트: PageTitle, SearchBar, AdminDataTable, ConfirmAction, AuditLogLink
-- 예상 feature 파일: src/features/message/pages/*
+- 구현 파일: 메일 IA(`docs/specs/page-ia/message-mail-page-ia.md`) §13의 공용 channel page 구현 파일 목록과 동일(channel='push' 렌더링)
 - 권한/로그 처리 메모: 파괴적 액션에는 확인 단계와 사유 입력, Target Type, Target ID, 감사 로그 확인 경로를 함께 둡니다.
 
 ## 14. 오픈 이슈
