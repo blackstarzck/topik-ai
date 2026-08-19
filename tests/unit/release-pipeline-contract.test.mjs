@@ -414,7 +414,7 @@ describe('repository execution guards', () => {
   function jobEntries(workflow) {
     const jobsIndex = position(workflow, '\njobs:');
     const body = workflow.slice(jobsIndex + '\njobs:'.length);
-    const headings = [...body.matchAll(/^  ([A-Za-z][\w-]*):[ \t]*\r?\n/gm)];
+    const headings = [...body.matchAll(/^ {2}([A-Za-z][\w-]*):[ \t]*\r?\n/gm)];
     expect(headings.length).toBeGreaterThan(0);
     return headings.map((heading, index) => ({
       id: heading[1],

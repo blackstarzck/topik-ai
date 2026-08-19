@@ -179,13 +179,11 @@ report.adminCounts = adminCounts;
 }
 
 // ── 4. admin RPC 왕복 + 감사 로그 ───────────────────────────────────────
-let tagAssignmentId = null;
 {
   const { data, error } = await adminClient.rpc('admin_assign_question_tag', {
     p_question_id: PILOTS[51].question_id, p_item_number: 51,
     p_tag_code: 'rec_first_entry', p_tag_value: null, p_memo: '파일럿 태그 부여',
   });
-  tagAssignmentId = data;
   step('admin_assign_question_tag RPC', !error && Number.isInteger(data), error?.message ?? `assignment_id=${data}`);
 }
 {

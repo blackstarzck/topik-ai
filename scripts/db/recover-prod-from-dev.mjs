@@ -177,7 +177,7 @@ async function getStorageClient(projectRef, token) {
 async function listStorageObjects(client, bucketId, prefix = '') {
   const objects = [];
   let offset = 0;
-  while (true) {
+  for (;;) {
     const { data, error } = await client.storage.from(bucketId).list(prefix, {
       limit: 1000,
       offset,

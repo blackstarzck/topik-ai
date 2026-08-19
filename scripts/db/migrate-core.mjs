@@ -610,7 +610,6 @@ async function assertBatchPrecondition({ target, manifestPath, batchName, batch 
 async function applyRecords({
   target,
   trackTable,
-  migrationsDir,
   manifestPath,
   batchName,
   batch,

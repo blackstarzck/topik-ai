@@ -25,7 +25,7 @@ const BATCH = flag('--batch', 'p2-2026-06-10');
 const OUT = flag('--out', join(ETL_EVIDENCE_DIR, 'transform-out'));
 const CLS_PATH = join(REPO_ROOT, 'data', 'etl', 'reclassification-input.json');
 
-const readJson = (p) => JSON.parse(readFileSync(p, 'utf8').replace(/^﻿/, ''));
+const readJson = (p) => JSON.parse(readFileSync(p, 'utf8').replace(/^\uFEFF/, ''));
 const rows = readJson(DUMP);
 const clsRows = readJson(CLS_PATH).rows;
 const classificationById = new Map(clsRows.map((c) => [c.legacy_problem_id, c]));

@@ -14,7 +14,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 import { loadEnvLocal, requireEnv, ETL_EVIDENCE_DIR } from './lib/env.mjs';
-import { TABLES, canonical, jsonEqual, reassembleMatches } from './lib/transform-core.mjs';
+import { TABLES, jsonEqual, reassembleMatches } from './lib/transform-core.mjs';
 
 loadEnvLocal();
 requireEnv('VITE_SUPABASE_URL', 'SUPABASE_SECRET_KEY');

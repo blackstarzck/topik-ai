@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { cwd } from 'node:process';
 import { describe, expect, it } from 'vitest';
@@ -165,7 +165,6 @@ describe('manifest 배선', () => {
 
   it('expectedLocalCount 가 실제 forward 파일 수와 같다', () => {
     // 상수로 박아두면 파일이 늘 때마다 무관한 실패가 난다 — 파일 수와 비교한다.
-    const { readdirSync } = require('node:fs');
     const files = readdirSync(join(cwd(), 'supabase', 'migrations-admin'))
       .filter((name) => /^\d{14}_[a-z0-9_]+\.sql$/.test(name));
     for (const { name, data } of manifests) {
