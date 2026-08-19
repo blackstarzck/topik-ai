@@ -162,3 +162,14 @@
 - `FAQ-NNN`/`FAQCUR-NNN` max+1 채번의 동시성 보장 방식(sequence/table 등)은 미확정입니다.
 - `updated_by`는 현재 호출자 uuid 저장이며 관리자 표시명 매핑 정책이 미확정입니다.
 - `operation_faq_metrics`는 현재 seed/read 전용이며 조회/검색/도움됨 실집계 파이프라인이 미확정입니다.
+
+## 구현 파일
+
+- `src/features/operation/pages/operation-faq-page.tsx` (탭 URL·조회 상태·폼 인스턴스·조치 컨텍스트 소유)
+- `src/features/operation/model/operation-faq-page-schema.ts` (탭/검색 상수·타입·파서·포맷터·폼 빌더·가시 목록 필터·요약 카드 빌더 — Phase 4 분해)
+- `src/features/operation/ui/operation-faq-columns.tsx` (마스터·노출·지표 컬럼 — Phase 4 분해)
+- `src/features/operation/ui/operation-faq-tab-sections.tsx` (탭별 검색 툴바+상태 알림+테이블 섹션 3종 — 상세 검색 초안은 섹션 내부)
+- `src/features/operation/ui/operation-faq-modals.tsx` (FAQ·노출 편집 모달 — 폼 인스턴스는 페이지가 전달)
+- `src/features/operation/ui/operation-faq-drawers.tsx` (FAQ·노출 상세 Drawer — 표시 항목은 Drawer 내부 파생)
+- `src/features/operation/ui/operation-faq-actions.tsx` (저장·위험 조치 실행기 — 페이지 컨텍스트 주입)
+- `src/features/operation/ui/operation-faq-audit-notice.tsx` (조치 알림 description 빌더)
