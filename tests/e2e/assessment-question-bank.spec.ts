@@ -250,7 +250,13 @@ test('버전 이력 UI는 데스크톱과 모바일에서 본문 카드 안에 �
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/assessment/question-bank/topik-writing-51-9901?detailTab=history');
   await skipIfAuthRequired(page);
-  await expect(page.getByRole('tab', { name: '변경 이력보기' })).toBeVisible();
+  // 첫 앵커는 dev 서버 모듈 변환 + 상세 fetch + 버전 이력 fetch 체인 전체를 기다린다.
+  // 병렬 배치 + 외부 부하가 겹치면 기본 10s 를 넘길 수 있어(2026-08-18 1회 관찰,
+  // 단독/부하 재현 8회는 전부 통과) 이 단정에만 여유를 준다 — 요소가 아예 안 나타나는
+  // 회귀는 여전히 실패한다(검출력 무손실).
+  await expect(page.getByRole('tab', { name: '변경 이력보기' })).toBeVisible({
+    timeout: 20_000
+  });
   await expect(page.getByTestId('question-version-history-table')).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
