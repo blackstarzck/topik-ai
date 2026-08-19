@@ -157,7 +157,13 @@
 ## 13. 구현 메모
 
 - 현재 코드베이스에서 재사용할 컴포넌트: PageTitle, SearchBar, AdminDataTable, ConfirmAction, AuditLogLink
-- 예상 feature 파일: src/features/message/pages/*
+- 구현 파일(메일·푸시·인앱 공용 channel page)
+  - `src/features/message/pages/message-channel-page.tsx` (조회·URL 동기화·발송/저장/삭제 핸들러·폼 인스턴스 소유)
+  - `src/features/message/model/message-channel-page-schema.ts` (상태 필터 상수·발송 폼 타입·에디터/위험 조치 상태 타입·그룹명 표시)
+  - `src/features/message/ui/message-channel-columns.tsx` (목록 컬럼·행 액션·탭 카운트 팩토리 — 핸들러는 페이지 소유·인자 전달)
+  - `src/features/message/ui/message-channel-modals.tsx` (정보 등록/수정·나에게 보내기·발송 실행 모달과 미리보기 항목 빌더 — 폼 인스턴스는 페이지가 만들어 props 로 전달)
+  - `src/features/message/ui/message-audit-notice.tsx` (조치 완료 알림 description 공통 빌더)
+  - `src/features/message/ui/message-template-form-fields.tsx` (템플릿 메타 폼 필드 공용)
 - 권한/로그 처리 메모: 파괴적 액션에는 확인 단계와 사유 입력, Target Type, Target ID, 감사 로그 확인 경로를 함께 둡니다.
 
 ## 14. 오픈 이슈
