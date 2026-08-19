@@ -36,7 +36,11 @@ export async function loadNotificationDispatchAttempts(dispatchId) {
 `
   );
   writeProjectFile(root, 'src/features/message/api/messages-service.ts', 'notification_dispatches\n');
-  writeProjectFile(root, 'src/features/message/pages/message-history-page.tsx', 'notification_dispatches\n');
+  writeProjectFile(
+    root,
+    'src/features/message/pages/message-history-dispatch-page.tsx',
+    'notification_dispatches\n'
+  );
   writeProjectFile(
     root,
     'docs/specs/admin-data-contract.md',
@@ -70,6 +74,22 @@ describe('check-message-history-boundary', () => {
 
     expect(result).toEqual({ failures: [] });
     expect(formatMessageHistoryBoundaryReport(result)).toBe('Message history boundary check passed.');
+  });
+
+  it('fails when the supabase dispatch page loses its ledger reference', () => {
+    const root = createTempRoot();
+    writeValidProject(root);
+    writeProjectFile(
+      root,
+      'src/features/message/pages/message-history-dispatch-page.tsx',
+      'no ledger reference here\n'
+    );
+
+    const result = evaluateMessageHistoryBoundary({ rootDir: root });
+
+    expect(result.failures).toContain(
+      'src/features/message/pages/message-history-dispatch-page.tsx must reference notification_dispatches.'
+    );
   });
 
   it('fails when stale message history table candidates reappear', () => {

@@ -126,7 +126,12 @@
 ## 13. 구현 메모
 
 - 현재 코드베이스에서 재사용할 컴포넌트: PageTitle, SearchBar, AdminDataTable, ConfirmAction, AuditLogLink
-- 예상 feature 파일: src/features/message/pages/*
+- 구현 파일
+  - `src/features/message/pages/message-history-page.tsx` (데이터소스 선택자 — supabase 면 dispatch 변형, 아니면 mock 변형)
+  - `src/features/message/pages/message-history-dispatch-page.tsx` (supabase 변형 — notification_dispatches 실행 ledger + delivery_attempts 집계, 예약 취소)
+  - `src/features/message/pages/message-history-mock-page.tsx` (mock 변형 — 채널 탭·요약 카드·CSV·수신자 Drawer·재시도)
+  - `src/features/message/model/message-history-page-schema.ts` (두 변형 공용 상수·타입·표시 헬퍼)
+  - 서비스 파사드·어댑터: `messages-service.ts`, `notification-supabase-adapter.ts` (둘 다 `src/features/message/api/` — 전체 경로 표기는 route-doc 검사의 라우트 오탐을 피해 생략)
 - 본문 레이아웃 메모: `PageTitle` 아래에 `전체 발송`, `자동 발송`, `수동 발송` 요약 카드 3개를 두고, 카드 안에서는 채널 탭 아래 한 줄에 `SearchBar` 검색 입력부, `총 건수`, `CSV` 내보내기만 배치합니다. 카드 body는 안내 문구 -> 테이블 순서를 유지합니다.
 - 테이블 상호작용 메모: 별도 `미리보기` 액션 컬럼을 두지 않고, 행 클릭만 상세 Drawer 진입 트리거로 사용합니다.
 - 권한/로그 처리 메모: 조회 중심 화면이라도 관련 원본 화면의 감사 로그로 역추적할 수 있어야 합니다.
