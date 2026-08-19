@@ -1,6 +1,7 @@
 import { Alert, Button, Space, Tabs, Tag, Tooltip, Typography, notification } from 'antd';
 import type { TableColumnsType } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { useAsyncResource } from '@/shared/model/use-async-resource';
 
 import {
   fetchQuestionBankTagMasterCatalogSafe,
@@ -50,10 +51,6 @@ const CATALOG_PAGINATION = {
 
 type CatalogState<T> = AsyncState<T[]>;
 
-function createInitialState<T>(): CatalogState<T> {
-  return { status: 'pending', data: [], errorMessage: null, errorCode: null };
-}
-
 function renderActiveTag(isActive: boolean): JSX.Element {
   return <Tag color={isActive ? 'green' : 'default'}>{isActive ? '활성' : '비활성'}</Tag>;
 }
@@ -76,17 +73,27 @@ function buildCountSummary(total: number, activeCount: number): string {
 }
 
 export function AssessmentMasterCatalogSection(): JSX.Element {
-  const [topicState, setTopicState] = useState<
-    CatalogState<TopikWritingTopicMasterCatalogRow>
-  >(createInitialState);
-  const [tagState, setTagState] = useState<
-    CatalogState<TopikWritingTagMasterCatalogRow>
-  >(createInitialState);
-  const [reloadKey, setReloadKey] = useState(0);
+  const fetchTopicCatalog = useCallback(
+    (signal: AbortSignal) => fetchQuestionBankTopicMasterCatalogSafe(signal),
+    []
+  );
+  const fetchTagCatalog = useCallback(
+    (signal: AbortSignal) => fetchQuestionBankTagMasterCatalogSafe(signal),
+    []
+  );
+  const { state: topicState, reload: reloadTopics } = useAsyncResource<
+    TopikWritingTopicMasterCatalogRow[]
+  >(fetchTopicCatalog, { initialData: [] });
+  const { state: tagState, reload: reloadTags } = useAsyncResource<
+    TopikWritingTagMasterCatalogRow[]
+  >(fetchTagCatalog, { initialData: [] });
   const [tagStatusAction, setTagStatusAction] = useState<TagStatusActionState>(null);
   const [notificationApi, notificationContextHolder] = notification.useNotification();
 
-  const reload = useCallback(() => setReloadKey((prev) => prev + 1), []);
+  const reload = useCallback(() => {
+    reloadTopics();
+    reloadTags();
+  }, [reloadTags, reloadTopics]);
 
   const handleTagStatusAction = useCallback(
     async (reason: string) => {
@@ -120,53 +127,6 @@ export function AssessmentMasterCatalogSection(): JSX.Element {
     },
     [notificationApi, reload, tagStatusAction]
   );
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    setTopicState((prev) => ({ ...prev, status: 'pending', errorMessage: null, errorCode: null }));
-    setTagState((prev) => ({ ...prev, status: 'pending', errorMessage: null, errorCode: null }));
-
-    void fetchQuestionBankTopicMasterCatalogSafe(controller.signal).then((result) => {
-      if (controller.signal.aborted) return;
-      if (result.ok) {
-        setTopicState({
-          status: result.data.length === 0 ? 'empty' : 'success',
-          data: result.data,
-          errorMessage: null,
-          errorCode: null
-        });
-        return;
-      }
-      setTopicState((prev) => ({
-        ...prev,
-        status: 'error',
-        errorMessage: result.error.message,
-        errorCode: result.error.code
-      }));
-    });
-
-    void fetchQuestionBankTagMasterCatalogSafe(controller.signal).then((result) => {
-      if (controller.signal.aborted) return;
-      if (result.ok) {
-        setTagState({
-          status: result.data.length === 0 ? 'empty' : 'success',
-          data: result.data,
-          errorMessage: null,
-          errorCode: null
-        });
-        return;
-      }
-      setTagState((prev) => ({
-        ...prev,
-        status: 'error',
-        errorMessage: result.error.message,
-        errorCode: result.error.code
-      }));
-    });
-
-    return () => controller.abort();
-  }, [reloadKey]);
 
   const topicColumns = useMemo<TableColumnsType<TopikWritingTopicMasterCatalogRow>>(
     () => [

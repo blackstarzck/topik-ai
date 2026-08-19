@@ -17,7 +17,8 @@ import {
   TeamOutlined,
   WarningOutlined
 } from '@ant-design/icons';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
+import { useAsyncResource } from '@/shared/model/use-async-resource';
 import { useNavigate } from 'react-router-dom';
 
 import { useCommerceStore } from '../../billing/model/commerce-store';
@@ -26,7 +27,6 @@ import {
   type DashboardStats
 } from '../api/dashboard-stats-service';
 import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
-import type { AsyncState } from '../../../shared/model/async-state';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import { BackupStatusCard } from '../components/backup-status-card';
 
@@ -73,41 +73,19 @@ export default function DashboardPage(): JSX.Element {
   const pendingRefundCount = refunds.filter((refund) => refund.status === '처리 대기').length;
 
   // Supabase 모드 실데이터 집계(get_admin_dashboard_stats). mock 모드는 data=null.
-  const [statsState, setStatsState] = useState<AsyncState<DashboardStats | null>>({
-    status: 'pending',
-    data: null,
-    errorMessage: null,
-    errorCode: null
-  });
-  const [reloadKey, setReloadKey] = useState(0);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    setStatsState((prev) => ({ ...prev, status: 'pending', errorMessage: null, errorCode: null }));
-    void fetchDashboardStatsSafe(controller.signal).then((result) => {
-      if (controller.signal.aborted) {
-        return;
-      }
-      if (result.ok) {
-        setStatsState({ status: 'success', data: result.data, errorMessage: null, errorCode: null });
-        return;
-      }
-      setStatsState((prev) => ({
-        ...prev,
-        status: 'error',
-        errorMessage: result.error.message,
-        errorCode: result.error.code
-      }));
-    });
-    return () => controller.abort();
-  }, [reloadKey]);
+  const fetchStats = useCallback(
+    (signal: AbortSignal) => fetchDashboardStatsSafe(signal),
+    []
+  );
+  const { state: statsState, reload: reloadStats } = useAsyncResource<DashboardStats | null>(
+    fetchStats,
+    { initialData: null }
+  );
 
   const stats = statsState.data;
   const statsLoading = isSupabaseConfigured && statsState.status === 'pending';
 
-  const handleRetryStats = useCallback(() => {
-    setReloadKey((prev) => prev + 1);
-  }, []);
+  const handleRetryStats = reloadStats;
 
   // 실데이터가 있으면 그대로, Supabase 모드 로딩/오류면 '—', mock 모드면 목업 값.
   const displayCount = useCallback(
