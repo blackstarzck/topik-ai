@@ -125,7 +125,13 @@
 ## 13. 구현 메모
 
 - 현재 코드베이스에서 재사용할 컴포넌트: PageTitle, SearchBar, AdminDataTable, ConfirmAction, AuditLogLink
-- 예상 feature 파일: src/features/users/pages/*
+- 구현 파일
+  - `src/features/users/pages/user-detail-page.tsx` (조회 상태·탭 URL·조치/메모 핸들러·모달 상태 소유)
+  - `src/features/users/model/user-detail-page-schema.ts` (필터 상수·라벨·포맷터·탭 가드·조치 카피·mock 표시 행 빌더)
+  - `src/features/users/ui/user-detail-columns.tsx` (탭 테이블 컬럼 8종과 상태 렌더 헬퍼 — 메모 삭제 콜백만 인자)
+  - `src/features/users/ui/user-detail-profile-tab.tsx` (프로필 탭)
+  - `src/features/users/ui/user-detail-learning-tab.tsx` (학습 현황 탭 — 온보딩 요약 등 파생 표시값은 탭 내부 계산)
+  - `src/features/users/ui/user-detail-affiliation-tab.tsx` (기관 소속 탭 — 기존 내장 컴포넌트의 파일 분리)
 - 프로필 성별/전화번호 메모: `get_admin_user(target_id)`는 `gender`, `phone`, `phone_masked`를 함께 반환합니다. `phone`은 canonical `profiles.phone_country_code` + `profiles.phone_number` 조합값이며 optional legacy 필드는 JSON fallback으로만 읽습니다. 상세 프로필은 단건 운영 확인 목적의 `phone`을 우선 표시하고, 목록 테이블은 성별과 `phone_masked`만 표시합니다.
 - 탭 테이블 메모: `커뮤니티` 탭 작성글 목록의 `상태` 컬럼은 `게시/숨김` 배지로 표시합니다.
 - 권한/로그 처리 메모: 파괴적 액션에는 확인 단계와 사유 입력, Target Type, Target ID, 감사 로그 확인 경로를 함께 둡니다.
