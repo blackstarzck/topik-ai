@@ -53,7 +53,6 @@ module.exports = {
         'src/features/operation/pages/operation-faq-page.tsx',
         'src/features/operation/pages/operation-pdf-quota-page.tsx',
         'src/features/operation/pages/operation-policies-page.tsx',
-        'src/features/operation/pages/operation-policy-create-page.tsx',
         'src/features/system/model/system-metadata-store.ts',
         'src/features/system/pages/system-metadata-page.tsx',
         'src/features/users/pages/user-detail-page.tsx',

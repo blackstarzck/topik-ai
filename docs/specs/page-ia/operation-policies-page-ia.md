@@ -206,6 +206,8 @@
 - 관련 코드
   - `src/features/operation/pages/operation-policies-page.tsx`
   - `src/features/operation/pages/operation-policy-create-page.tsx`
+  - `src/features/operation/model/operation-policy-create-page-schema.ts` (등록 화면 타입·프리셋·스텝 정의·파서·검증)
+  - `src/features/operation/ui/operation-policy-create-form-items.tsx` (등록 단계별 Descriptions 아이템 팩토리 — Form.Item 은 상위 Form 컨텍스트로 동작)
   - `src/features/operation/api/policies-service.ts`
   - `src/features/operation/model/policy-store.ts`
   - `src/features/operation/model/policy-types.ts`
