@@ -50,7 +50,6 @@ module.exports = {
         'src/features/message/pages/message-history-page.tsx',
         'src/features/operation/pages/operation-event-create-page.tsx',
         'src/features/operation/pages/operation-faq-page.tsx',
-        'src/features/operation/pages/operation-pdf-quota-page.tsx',
         'src/features/operation/pages/operation-policies-page.tsx',
         'src/features/system/model/system-metadata-store.ts',
         'src/features/system/pages/system-metadata-page.tsx',
