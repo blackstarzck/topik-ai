@@ -43,9 +43,7 @@ module.exports = {
       files: [
         'src/features/commerce/pages/commerce-coupons-page.tsx',
         'src/features/commerce/pages/commerce-points-page.tsx',
-        'src/features/message/pages/message-groups-page.tsx',
-        'src/features/system/pages/system-metadata-page.tsx',
-        'src/features/users/pages/users-referrals-page.tsx'
+        'src/features/system/pages/system-metadata-page.tsx'
       ],
       rules: {
         'max-lines': 'off'
