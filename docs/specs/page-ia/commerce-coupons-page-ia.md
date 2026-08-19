@@ -476,3 +476,13 @@
 - `src/features/commerce/pages/commerce-coupon-create-page.tsx` (폼 인스턴스·워치·검증·저장 소유)
 - `src/features/commerce/model/commerce-coupon-create-page-schema.ts` (폼 타입·쿠폰 종류 메타·스텝 정의·숨은 필드 검증·혜택 필드 메타/유효기간 옵션 파생 — Phase 4 분해)
 - `src/features/commerce/ui/commerce-coupon-create-form-items.tsx` (단계별 Descriptions 아이템 팩토리 5종 — Form.Item 은 상위 Form 컨텍스트로 동작, 워치 값·옵션만 인자 — Phase 4 분해)
+
+## 19. 구현 파일 (쿠폰 목록)
+
+- `src/features/commerce/pages/commerce-coupons-page.tsx` (URL 뷰/탭/정렬/선택 상태·조회 상태·네비게이션·조치 컨텍스트 소유)
+- `src/features/commerce/model/commerce-coupons-page-schema.ts` (검색/정렬/위험 조치 타입·URL 파서·탭 매칭·목록 필터/정렬·요약 카운트/카드 빌더 — Phase 4 분해)
+- `src/features/commerce/ui/commerce-coupon-type-card.tsx` (쿠폰 유형 선택 카드 — ripple 애니메이션 내부 관리)
+- `src/features/commerce/ui/commerce-coupons-columns.tsx` (쿠폰 목록·정기 템플릿 컬럼 팩토리 — 행 액션 메뉴 빌더 내장)
+- `src/features/commerce/ui/commerce-coupons-list-section.tsx` (메인 탭+검색 툴바+상태 알림+테이블 2종 — 빈 목록 가이드 토글은 섹션 내부)
+- `src/features/commerce/ui/commerce-coupons-detail-drawer.tsx` (쿠폰/정기 템플릿 상세 Drawer)
+- `src/features/commerce/ui/commerce-coupons-actions.tsx` (링크/코드 복사·복제·발행 중지/재개/삭제 실행기 — 페이지 컨텍스트 주입)
