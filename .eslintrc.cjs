@@ -59,7 +59,6 @@ module.exports = {
         'src/features/operation/pages/operation-policy-create-page.tsx',
         'src/features/system/model/system-metadata-store.ts',
         'src/features/system/pages/system-metadata-page.tsx',
-        'src/features/system/pages/system-permissions-page.tsx',
         'src/features/users/pages/instructor-management-page.tsx',
         'src/features/users/pages/user-detail-page.tsx',
         'src/features/users/pages/users-page.tsx',
