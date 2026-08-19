@@ -46,7 +46,6 @@ module.exports = {
         'src/features/commerce/pages/commerce-coupons-page.tsx',
         'src/features/commerce/pages/commerce-points-page.tsx',
         'src/features/message/pages/message-groups-page.tsx',
-        'src/features/operation/pages/operation-event-create-page.tsx',
         'src/features/operation/pages/operation-faq-page.tsx',
         'src/features/operation/pages/operation-policies-page.tsx',
         'src/features/system/model/system-metadata-store.ts',
