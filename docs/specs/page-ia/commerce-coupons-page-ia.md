@@ -464,3 +464,9 @@
 - 정기 템플릿은 `issue_target_type='shoppingGrade'`, `status='active'/'paused'`, `issue_schedule`/`usage_end_schedule` JSONB를 사용한다.
 - 조치/감사: 쿠폰 Target Type `CommerceCoupon`, 템플릿 Target Type `CommerceCouponTemplate`. action은 `coupon_saved`/`coupon_duplicated`/`coupon_paused`/`coupon_resumed`/`coupon_deleted`/`coupon_template_saved`/`coupon_template_paused`/`coupon_template_resumed`/`coupon_template_deleted`이며 reason 필수다. 감사 딥링크는 `/commerce/coupons` 기준이다.
 - 잔여 미확정: 발급/사용 원장, scope-ref/대상 그룹/알림 정규화, `planTier` 영속화, `target_user_ids` v13 profiles 느슨참조 정합.
+
+## 18. 구현 파일 (쿠폰 등록/수정 상세)
+
+- `src/features/commerce/pages/commerce-coupon-create-page.tsx` (폼 인스턴스·워치·검증·저장 소유)
+- `src/features/commerce/model/commerce-coupon-create-page-schema.ts` (폼 타입·쿠폰 종류 메타·스텝 정의·숨은 필드 검증·혜택 필드 메타/유효기간 옵션 파생 — Phase 4 분해)
+- `src/features/commerce/ui/commerce-coupon-create-form-items.tsx` (단계별 Descriptions 아이템 팩토리 5종 — Form.Item 은 상위 Form 컨텍스트로 동작, 워치 값·옵션만 인자 — Phase 4 분해)
