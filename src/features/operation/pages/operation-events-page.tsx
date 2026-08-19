@@ -1,16 +1,8 @@
-import {
-  Alert,
-  Button,
-  Descriptions,
-  Space,
-  Tag,
-  Typography,
-  notification
-} from 'antd';
-import type { TableColumnsType, TableProps } from 'antd';
+import { Alert, Button, Space, Typography, notification } from 'antd';
+import type { TableProps } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAsyncResource } from '@/shared/model/use-async-resource';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import {
   endEventSafe,
@@ -18,20 +10,21 @@ import {
   publishEventSafe,
   scheduleEventPublishSafe
 } from '../api/events-service';
+import type { OperationEvent } from '../model/types';
 import {
-  operationEventTypeValues,
-  operationEventVisibilityStatusValues,
-  type OperationEvent
-} from '../model/types';
+  getEventActionCopy,
+  matchesEventPeriod,
+  parseEventSortField,
+  parseEventType,
+  parseVisibilityStatus,
+  type EventActionState
+} from '../model/operation-events-page-schema';
+import { createOperationEventColumns } from '../ui/operation-events-columns';
+import { OperationEventDetailDrawer } from '../ui/operation-event-detail-drawer';
 import { getTargetTypeLabel } from '@/shared/model/target-type-label';
 import { useRouterStateNotice } from '@/shared/model/use-router-state-notice';
 import { AuditLogLink } from '@/shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
-import {
-  DetailDrawer,
-  DetailDrawerBody,
-  DetailDrawerSection
-} from '@/shared/ui/detail-drawer/detail-drawer';
 import { HtmlPreviewModal } from '@/shared/ui/html-preview-modal/html-preview-modal';
 import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
 import { ListSummaryCards } from '@/shared/ui/list-summary-cards/list-summary-cards';
@@ -46,94 +39,10 @@ import {
   matchesSearchField,
   parseSearchDate
 } from '@/shared/ui/search-bar/search-bar-utils';
-import { StatusBadge } from '@/shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
-import { createStatusColumnTitle } from '@/shared/ui/table/status-column-title';
-import { createDefinedColumnFilterProps, createTextSorter, parseSortOrder } from '@/shared/ui/table/table-column-utils';
+import { parseSortOrder } from '@/shared/ui/table/table-column-utils';
 
-const { Paragraph, Text } = Typography;
-
-const sortableFieldValues = [
-  'id',
-  'title',
-  'eventType',
-  'startAt',
-  'visibilityStatus',
-  'updatedAt'
-] as const;
-
-type EventSortField = (typeof sortableFieldValues)[number];
-
-type EventActionState =
-  | { type: 'schedule'; event: OperationEvent }
-  | { type: 'publish'; event: OperationEvent }
-  | { type: 'end'; event: OperationEvent }
-  | null;
-
-function parseEventType(value: string | null): OperationEvent['eventType'] | null {
-  return operationEventTypeValues.includes(value as OperationEvent['eventType'])
-    ? (value as OperationEvent['eventType'])
-    : null;
-}
-
-function parseVisibilityStatus(
-  value: string | null
-): OperationEvent['visibilityStatus'] | null {
-  return operationEventVisibilityStatusValues.includes(
-    value as OperationEvent['visibilityStatus']
-  )
-    ? (value as OperationEvent['visibilityStatus'])
-    : null;
-}
-
-function parseSortField(value: string | null): EventSortField | null {
-  return sortableFieldValues.includes(value as EventSortField)
-    ? (value as EventSortField)
-    : null;
-}
-
-function matchesEventPeriod(
-  event: OperationEvent,
-  startDate: string,
-  endDate: string
-): boolean {
-  if (startDate && event.endAt < startDate) {
-    return false;
-  }
-
-  if (endDate && event.startAt > endDate) {
-    return false;
-  }
-
-  return true;
-}
-
-function getActionCopy(type: NonNullable<EventActionState>['type']) {
-  if (type === 'schedule') {
-    return {
-      title: '이벤트 게시 예약',
-      description: '이벤트 노출을 예약 상태로 변경합니다. 예약 사유를 입력하세요.',
-      confirmText: '게시 예약 실행',
-      successMessage: '이벤트 게시 예약 완료'
-    };
-  }
-
-  if (type === 'publish') {
-    return {
-      title: '이벤트 즉시 게시',
-      description: '이벤트를 즉시 노출 상태로 전환합니다. 게시 사유를 입력하세요.',
-      confirmText: '즉시 게시 실행',
-      successMessage: '이벤트 즉시 게시 완료'
-    };
-  }
-
-  return {
-    title: '이벤트 종료',
-    description: '이벤트를 종료하고 노출을 중단합니다. 종료 사유를 입력하세요.',
-    confirmText: '이벤트 종료 실행',
-    successMessage: '이벤트 종료 완료'
-  };
-}
+const { Text } = Typography;
 
 export default function OperationEventsPage(): JSX.Element {
   const navigate = useNavigate();
@@ -146,7 +55,7 @@ export default function OperationEventsPage(): JSX.Element {
   const visibilityStatusFilter = parseVisibilityStatus(
     searchParams.get('visibilityStatus')
   );
-  const sortField = parseSortField(searchParams.get('sortField'));
+  const sortField = parseEventSortField(searchParams.get('sortField'));
   const sortOrder = parseSortOrder(searchParams.get('sortOrder'));
   const selectedEventId = searchParams.get('selected') ?? '';
   const {
@@ -393,7 +302,7 @@ export default function OperationEventsPage(): JSX.Element {
 
       if (!result.ok) {
         notificationApi.error({
-          message: `${getActionCopy(actionState.type).title} 실패`,
+          message: `${getEventActionCopy(actionState.type).title} 실패`,
           description: (
             <Space direction="vertical">
               <Text>{result.error.message}</Text>
@@ -409,7 +318,7 @@ export default function OperationEventsPage(): JSX.Element {
       );
 
       notificationApi.success({
-        message: getActionCopy(actionState.type).successMessage,
+        message: getEventActionCopy(actionState.type).successMessage,
         description: (
           <Space direction="vertical">
             <Text>대상 유형: {getTargetTypeLabel('OperationEvent')}</Text>
@@ -436,7 +345,7 @@ export default function OperationEventsPage(): JSX.Element {
       const nextSorter = Array.isArray(sorter) ? sorter[0] : sorter;
       const nextField =
         nextSorter && typeof nextSorter.field === 'string'
-          ? parseSortField(nextSorter.field)
+          ? parseEventSortField(nextSorter.field)
           : null;
 
       commitParams({
@@ -449,105 +358,16 @@ export default function OperationEventsPage(): JSX.Element {
     [commitParams]
   );
 
-  const columns = useMemo<TableColumnsType<OperationEvent>>(
-    () => [
-      {
-        title: '이벤트 ID',
-        dataIndex: 'id',
-        width: 132,
-        sorter: createTextSorter((record) => record.id),
-        sortOrder: sortField === 'id' ? sortOrder : null,
-        render: (value: string, record) => (
-          <Link
-            className="table-navigation-link"
-            to={`/operation/events/create/${record.id}${listSearch}`}
-            onClick={(event) => event.stopPropagation()}
-          >
-            {value}
-          </Link>
-        )
-      },
-      {
-        title: '이벤트명',
-        dataIndex: 'title',
-        width: 280,
-        sorter: createTextSorter((record) => record.title),
-        sortOrder: sortField === 'title' ? sortOrder : null
-      },
-      {
-        title: '유형',
-        dataIndex: 'eventType',
-        width: 118,
-        filteredValue: eventTypeFilter ? [eventTypeFilter] : null,
-        ...createDefinedColumnFilterProps(operationEventTypeValues, (record) => record.eventType),
-        sorter: createTextSorter((record) => record.eventType),
-        sortOrder: sortField === 'eventType' ? sortOrder : null,
-        render: (value: OperationEvent['eventType']) => <Tag color="blue">{value}</Tag>
-      },
-      {
-        title: '진행 기간',
-        dataIndex: 'startAt',
-        width: 210,
-        sorter: createTextSorter((record) => `${record.startAt}-${record.endAt}`),
-        sortOrder: sortField === 'startAt' ? sortOrder : null,
-        render: (_, record) => `${record.startAt} ~ ${record.endAt}`
-      },
-      {
-        title: createStatusColumnTitle('노출 상태', operationEventVisibilityStatusValues),
-        dataIndex: 'visibilityStatus',
-        width: 118,
-        filteredValue: visibilityStatusFilter ? [visibilityStatusFilter] : null,
-        ...createDefinedColumnFilterProps(
-          operationEventVisibilityStatusValues,
-          (record) => record.visibilityStatus
-        ),
-        sorter: createTextSorter((record) => record.visibilityStatus),
-        sortOrder: sortField === 'visibilityStatus' ? sortOrder : null,
-        render: (value: OperationEvent['visibilityStatus']) => <StatusBadge status={value} />
-      },
-      {
-        title: '참여자 수',
-        dataIndex: 'participantCount',
-        width: 130,
-        render: (_, record) =>
-          record.participantLimit
-            ? `${record.participantCount.toLocaleString()} / ${record.participantLimit.toLocaleString()}`
-            : `${record.participantCount.toLocaleString()}명`
-      },
-      {
-        title: '보상 정책',
-        dataIndex: 'rewardPolicySummary',
-        width: 220,
-        ellipsis: true
-      },
-      {
-        title: '최근 수정일',
-        dataIndex: 'updatedAt',
-        width: 150,
-        sorter: createTextSorter((record) => record.updatedAt),
-        sortOrder: sortField === 'updatedAt' ? sortOrder : null
-      },
-      {
-        title: '최근 수정자',
-        dataIndex: 'updatedBy',
-        width: 130
-      },
-      {
-        title: '액션',
-        key: 'actions',
-        width: 96,
-        onCell: () => ({
-          onClick: (event) => {
-            event.stopPropagation();
-          }
-        }),
-        render: (_, record) => (
-          <Button type="link" onClick={() => openPreviewModal(record)}>
-            미리보기
-          </Button>
-        )
-      }
-    ],
+  const columns = useMemo(
+    () =>
+      createOperationEventColumns({
+        sortField,
+        sortOrder,
+        eventTypeFilter,
+        visibilityStatusFilter,
+        listSearch,
+        onPreview: openPreviewModal
+      }),
     [eventTypeFilter, listSearch, openPreviewModal, sortField, sortOrder, visibilityStatusFilter]
   );
 
@@ -680,191 +500,23 @@ export default function OperationEventsPage(): JSX.Element {
       {actionState ? (
         <ConfirmAction
           open
-          title={getActionCopy(actionState.type).title}
-          description={getActionCopy(actionState.type).description}
+          title={getEventActionCopy(actionState.type).title}
+          description={getEventActionCopy(actionState.type).description}
           targetType="OperationEvent"
           targetId={actionState.event.id}
-          confirmText={getActionCopy(actionState.type).confirmText}
+          confirmText={getEventActionCopy(actionState.type).confirmText}
           onCancel={() => setActionState(null)}
           onConfirm={handleActionConfirm}
         />
       ) : null}
 
-      <DetailDrawer
-        open={Boolean(selectedEvent)}
-        title={selectedEvent ? `이벤트 상세 · ${selectedEvent.id}` : '이벤트 상세'}
+      <OperationEventDetailDrawer
+        event={selectedEvent}
         onClose={closeDetail}
-        destroyOnHidden
-        width={760}
-        headerMeta={
-          selectedEvent ? (
-            <Space wrap size={8}>
-              <StatusBadge status={selectedEvent.progressStatus} />
-              <StatusBadge status={selectedEvent.visibilityStatus} />
-              <Tag color="blue">{selectedEvent.eventType}</Tag>
-            </Space>
-          ) : null
-        }
-        footerStart={
-          selectedEvent ? (
-            <AuditLogLink targetType="OperationEvent" targetId={selectedEvent.id} />
-          ) : null
-        }
-        footerEnd={
-          selectedEvent ? (
-            <Space wrap>
-              <Button size="large" onClick={() => openPreviewModal(selectedEvent)}>
-                미리보기
-              </Button>
-              <Button size="large" onClick={() => openEditDetail(selectedEvent)}>
-                수정
-              </Button>
-              <Button
-                size="large"
-                disabled={
-                  selectedEvent.progressStatus === '종료' ||
-                  selectedEvent.visibilityStatus === '예약'
-                }
-                onClick={() => setActionState({ type: 'schedule', event: selectedEvent })}
-              >
-                게시 예약
-              </Button>
-              <Button
-                size="large"
-                disabled={
-                  selectedEvent.progressStatus === '종료' ||
-                  selectedEvent.visibilityStatus === '노출'
-                }
-                onClick={() => setActionState({ type: 'publish', event: selectedEvent })}
-              >
-                즉시 게시
-              </Button>
-              <Button
-                size="large"
-                danger
-                disabled={selectedEvent.progressStatus === '종료'}
-                onClick={() => setActionState({ type: 'end', event: selectedEvent })}
-              >
-                종료
-              </Button>
-            </Space>
-          ) : null
-        }
-      >
-        {selectedEvent ? (
-          <DetailDrawerBody>
-            <Alert
-              type={selectedEvent.progressStatus === '종료' ? 'warning' : 'info'}
-              showIcon
-              message={
-                selectedEvent.progressStatus === '종료'
-                  ? '종료된 이벤트입니다.'
-                  : '이벤트 운영 정보를 확인하세요.'
-              }
-              description={
-                selectedEvent.progressStatus === '종료'
-                  ? '종료된 이벤트는 자동으로 숨김 상태로 유지됩니다. 재사용이 필요하면 이벤트를 복제해 새로 등록하세요.'
-                  : '조치 후에는 감사 로그에서 대상 유형, 대상 ID, 수행 사유를 함께 검수하세요.'
-              }
-            />
-
-            <DetailDrawerSection title="기본 정보">
-              <Descriptions
-                bordered
-                size="small"
-                column={1}
-                items={[
-                  { key: 'id', label: '이벤트 ID', children: selectedEvent.id },
-                  { key: 'title', label: '이벤트명', children: selectedEvent.title },
-                  { key: 'period', label: '진행 기간', children: `${selectedEvent.startAt} ~ ${selectedEvent.endAt}` },
-                  { key: 'visibility', label: '노출 상태', children: <StatusBadge status={selectedEvent.visibilityStatus} /> },
-                  { key: 'channels', label: '노출 위치', children: selectedEvent.exposureChannels.join(', ') },
-                  {
-                    key: 'bannerCount',
-                    label: '배너 이미지',
-                    children: selectedEvent.bannerImages.length
-                      ? `총 ${selectedEvent.bannerImages.length}개 · 대표 ${selectedEvent.bannerImageFileName || '첨부 이미지'}`
-                      : '미등록'
-                  }
-                ]}
-              />
-            </DetailDrawerSection>
-
-            <DetailDrawerSection title="이벤트 요약">
-              <Paragraph style={{ marginBottom: 0, whiteSpace: 'pre-wrap' }}>
-                {selectedEvent.summary}
-              </Paragraph>
-            </DetailDrawerSection>
-
-            <DetailDrawerSection title="참여 조건">
-              <Descriptions
-                bordered
-                size="small"
-                column={1}
-                items={[
-                  { key: 'targetGroup', label: '대상 그룹', children: selectedEvent.targetGroupName },
-                  { key: 'targetGroupId', label: '대상 그룹 ID', children: selectedEvent.targetGroupId }
-                ]}
-              />
-            </DetailDrawerSection>
-
-            <DetailDrawerSection title="참여 현황">
-              <Descriptions
-                bordered
-                size="small"
-                column={1}
-                items={[
-                  { key: 'participants', label: '참여자 수', children: `${selectedEvent.participantCount.toLocaleString()}명` },
-                  {
-                    key: 'participantLimit',
-                    label: '참여 제한',
-                    children: selectedEvent.participantLimit
-                      ? `${selectedEvent.participantLimit.toLocaleString()}명`
-                      : '제한 없음'
-                  }
-                ]}
-              />
-            </DetailDrawerSection>
-
-            <DetailDrawerSection title="보상 정책">
-              <Descriptions
-                bordered
-                size="small"
-                column={1}
-                items={[
-                  { key: 'rewardType', label: '보상 유형', children: selectedEvent.rewardType },
-                  { key: 'rewardPolicyId', label: '보상 정책 ID', children: selectedEvent.rewardPolicyId || '미입력' },
-                  { key: 'rewardPolicyName', label: '보상 정책명', children: selectedEvent.rewardPolicyName || '미입력' },
-                  { key: 'rewardSummary', label: '보상 요약', children: selectedEvent.rewardPolicySummary }
-                ]}
-              />
-            </DetailDrawerSection>
-
-            <DetailDrawerSection title="메시지 및 SEO">
-              <Descriptions
-                bordered
-                size="small"
-                column={1}
-                items={[
-                  { key: 'messageTemplateId', label: '메시지 템플릿 ID', children: selectedEvent.messageTemplateId || '미연결' },
-                  { key: 'messageTemplateName', label: '메시지 템플릿', children: selectedEvent.messageTemplateName || '미연결' },
-                  { key: 'slug', label: '슬러그', children: selectedEvent.slug },
-                  { key: 'metaTitle', label: '공유 제목', children: selectedEvent.metaTitle || '자동 생성' },
-                  { key: 'metaDescription', label: '공유 설명', children: selectedEvent.metaDescription || '자동 생성' },
-                  { key: 'canonicalUrl', label: '대표 URL', children: selectedEvent.canonicalUrl || '자동 생성' },
-                  { key: 'indexingPolicy', label: '인덱싱 정책', children: selectedEvent.indexingPolicy }
-                ]}
-              />
-            </DetailDrawerSection>
-
-            <DetailDrawerSection title="운영 메모">
-              <Paragraph style={{ marginBottom: 0, whiteSpace: 'pre-wrap' }}>
-                {selectedEvent.adminMemo || '등록된 운영 메모가 없습니다.'}
-              </Paragraph>
-            </DetailDrawerSection>
-          </DetailDrawerBody>
-        ) : null}
-      </DetailDrawer>
+        onPreview={openPreviewModal}
+        onEdit={openEditDetail}
+        onAction={(type, event) => setActionState({ type, event })}
+      />
 
       <HtmlPreviewModal
         open={Boolean(previewEvent)}
