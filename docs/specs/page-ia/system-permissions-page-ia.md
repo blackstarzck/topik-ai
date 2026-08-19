@@ -115,7 +115,12 @@
 ## 13. 구현 메모
 
 - 현재 코드베이스에서 재사용할 컴포넌트: PageTitle, SearchBar, AdminDataTable, ConfirmAction, AuditLogLink
-- 예상 feature 파일: src/features/system/pages/*
+- 구현 파일:
+  - `src/features/system/pages/system-permissions-page.tsx`
+  - `src/features/system/model/system-permissions-page-schema.ts` (라벨·옵션 카탈로그 — Phase 4 분해)
+  - `src/features/system/ui/system-permissions-columns.tsx` (테이블 3종 컬럼 팩토리 — Phase 4 분해)
+  - `src/features/system/api/system-permissions-service.ts`
+  - `src/features/system/api/system-permissions-data-source.ts`
 - 관리자 등급 변경 Modal은 잠금 방지 Alert 다음에 `대상 관리자`, `현재 app_role/RoleKey`를 `Descriptions`로 보여주고 `새 app_role`(Select)과 `사유/근거`(필수)를 입력받습니다. 37 permission/5 RoleKey 카탈로그는 부여/회수 컨트롤 없이 읽기 전용 참고 테이블로 유지합니다.
 - 목록 상태 메모: `상태` 컬럼은 `활성/비활성` 배지로 표시합니다.
 - 권한/로그 처리 메모: 파괴적 액션에는 확인 단계와 사유 입력, Target Type, Target ID, 감사 로그 확인 경로를 함께 둡니다.

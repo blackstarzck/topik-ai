@@ -1,6 +1,5 @@
 import {
   Alert,
-  Button,
   Card,
   Descriptions,
   Form,
@@ -8,11 +7,9 @@ import {
   Modal,
   Select,
   Space,
-  Tag,
   Typography,
   notification
 } from 'antd';
-import type { TableColumnsType } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAsyncResource } from '@/shared/model/use-async-resource';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -24,7 +21,6 @@ import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
 import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
-import { createTextSorter } from '../../../shared/ui/table/table-column-utils';
 import {
   changeAdminAppRoleSafe,
   fetchAdminAppRolesSafe,
@@ -37,40 +33,21 @@ import {
   setAdminStatusSafe
 } from '../api/admin-accounts-service';
 import { systemPermissionsDataSource } from '../api/system-permissions-data-source';
+import {
+  appRoleLabelMap,
+  appRoleOptions,
+  getRoleLabel,
+  roleNameMap
+} from '../model/system-permissions-page-schema';
+import {
+  createAdminAppRoleColumns,
+  createPermissionCatalogColumns,
+  createRoleCatalogColumns
+} from '../ui/system-permissions-columns';
 import { permissionCatalog, roleCatalog } from '../model/permission-types';
-import type { PermissionDefinition, RoleDefinition, RoleKey } from '../model/permission-types';
+import type { PermissionDefinition, RoleDefinition } from '../model/permission-types';
 
 const { Paragraph, Text, Title } = Typography;
-
-const appRoleOptions: Array<{ value: V13AppRole; label: string; description: string }> = [
-  {
-    value: 'platform_admin',
-    label: '플랫폼 관리자',
-    description: '전체 관리자 기능과 관리자 app_role 변경 권한'
-  },
-  {
-    value: 'content_admin',
-    label: '콘텐츠 관리자',
-    description: '콘텐츠·평가 운영 중심 권한'
-  },
-  {
-    value: 'org_admin',
-    label: '조직 관리자',
-    description: '현재 임시 매핑상 READ_ONLY로 표시'
-  }
-];
-
-const roleNameMap: Record<RoleKey, string> = {
-  SUPER_ADMIN: '최고 관리자',
-  OPS_ADMIN: '운영 관리자',
-  CONTENT_MANAGER: '콘텐츠 관리자',
-  CS_MANAGER: '고객지원 관리자',
-  READ_ONLY: '읽기 전용'
-};
-
-const appRoleLabelMap: Record<V13AppRole, string> = Object.fromEntries(
-  appRoleOptions.map((option) => [option.value, option.label])
-) as Record<V13AppRole, string>;
 
 type RoleChangeModalState = {
   admin: AdminAppRoleRow;
@@ -86,32 +63,6 @@ type DetailModalState = {
   record: Record<string, unknown>;
 } | null;
 
-function getRoleLabel(roleKey: RoleKey | null): string {
-  return roleKey ? `${roleNameMap[roleKey]} (${roleKey})` : '관리자 접근 없음';
-}
-
-function getStatusLabel(status: string): string {
-  if (status === 'active') {
-    return '활성';
-  }
-  if (status === 'invited') {
-    return '초대됨';
-  }
-  if (status === 'suspended') {
-    return '정지';
-  }
-  return status;
-}
-
-function getRiskTag(risk: string): JSX.Element {
-  if (risk === 'high') {
-    return <Tag color="volcano">High</Tag>;
-  }
-  if (risk === 'medium') {
-    return <Tag color="gold">Medium</Tag>;
-  }
-  return <Tag color="green">Low</Tag>;
-}
 
 export default function SystemPermissionsPage(): JSX.Element {
   const [searchParams] = useSearchParams();
@@ -332,156 +283,18 @@ export default function SystemPermissionsPage(): JSX.Element {
     reloadRows();
   }, [notificationApi, reloadRows, statusForm, statusNext, statusState]);
 
-  const adminColumns = useMemo<TableColumnsType<AdminAppRoleRow>>(
-    () => [
-      {
-        title: '관리자',
-        dataIndex: 'displayName',
-        width: 180,
-        sorter: createTextSorter((record) => record.displayName),
-        render: (displayName: string, record) => (
-          <Space direction="vertical" size={0}>
-            <Text strong>{displayName}</Text>
-            <Text type="secondary">{record.email || record.adminId}</Text>
-          </Space>
-        )
-      },
-      {
-        title: 'app_role',
-        dataIndex: 'appRole',
-        width: 170,
-        sorter: createTextSorter((record) => record.appRole),
-        render: (appRole: V13AppRole) => (
-          <Tag color={appRole === 'platform_admin' ? 'blue' : 'default'}>
-            {appRoleLabelMap[appRole]} ({appRole})
-          </Tag>
-        )
-      },
-      {
-        title: '매핑 RoleKey',
-        dataIndex: 'roleKey',
-        width: 190,
-        sorter: createTextSorter((record) => record.roleKey ?? ''),
-        render: (roleKey: RoleKey | null) => getRoleLabel(roleKey)
-      },
-      {
-        title: '카탈로그 권한 수',
-        dataIndex: 'permissionCount',
-        width: 130,
-        sorter: createTextSorter((record) => String(record.permissionCount))
-      },
-      {
-        title: '상태',
-        dataIndex: 'status',
-        width: 100,
-        sorter: createTextSorter((record) => record.status),
-        render: (status: string) => getStatusLabel(status)
-      },
-      {
-        title: '최근 로그인',
-        dataIndex: 'lastLoginAt',
-        width: 170,
-        sorter: createTextSorter((record) => record.lastLoginAt)
-      },
-      {
-        title: '조치',
-        key: 'actions',
-        width: 280,
-        onCell: () => ({ onClick: (event) => event.stopPropagation() }),
-        render: (_, record) => (
-          <Space size="small" wrap>
-            <Button size="small" disabled={!isPlatformAdmin} onClick={() => openChangeModal(record)}>
-              등급 변경
-            </Button>
-            <Button
-              size="small"
-              disabled={!isPlatformAdmin}
-              onClick={() => void openPermModal(record)}
-            >
-              권한 관리
-            </Button>
-            {record.status === 'active' || record.status === 'suspended' ? (
-              <Button
-                size="small"
-                danger={record.status === 'active'}
-                disabled={!isPlatformAdmin}
-                onClick={() => openStatusModal(record)}
-              >
-                {record.status === 'active' ? '정지' : '복구'}
-              </Button>
-            ) : null}
-          </Space>
-        )
-      }
-    ],
+  const adminColumns = useMemo(
+    () =>
+      createAdminAppRoleColumns({
+        isPlatformAdmin,
+        onChangeRole: openChangeModal,
+        onManagePermissions: (admin) => void openPermModal(admin),
+        onChangeStatus: openStatusModal
+      }),
     [isPlatformAdmin, openChangeModal, openPermModal, openStatusModal]
   );
-
-  const roleColumns = useMemo<TableColumnsType<RoleDefinition>>(
-    () => [
-      {
-        title: 'RoleKey',
-        dataIndex: 'key',
-        width: 160,
-        sorter: createTextSorter((record) => record.key)
-      },
-      {
-        title: '표시명',
-        dataIndex: 'key',
-        width: 160,
-        sorter: createTextSorter((record) => roleNameMap[record.key]),
-        render: (roleKey: RoleKey) => roleNameMap[roleKey]
-      },
-      {
-        title: '기본 권한 수',
-        width: 130,
-        sorter: createTextSorter((record) => String(record.defaultPermissions.length)),
-        render: (_, role) => role.defaultPermissions.length
-      },
-      {
-        title: '설명',
-        dataIndex: 'description',
-        sorter: createTextSorter((record) => record.description)
-      }
-    ],
-    []
-  );
-
-  const permissionColumns = useMemo<TableColumnsType<PermissionDefinition>>(
-    () => [
-      {
-        title: '권한 코드',
-        dataIndex: 'key',
-        width: 240,
-        sorter: createTextSorter((record) => record.key)
-      },
-      {
-        title: '권한명',
-        dataIndex: 'name',
-        width: 180,
-        sorter: createTextSorter((record) => record.name)
-      },
-      {
-        title: '모듈',
-        dataIndex: 'module',
-        width: 120,
-        sorter: createTextSorter((record) => record.module)
-      },
-      {
-        title: '범위 설명',
-        dataIndex: 'scopeDescription',
-        sorter: createTextSorter((record) => record.scopeDescription)
-      },
-      {
-        title: '위험도',
-        dataIndex: 'risk',
-        width: 100,
-        sorter: createTextSorter((record) => record.risk),
-        render: (risk: string) => getRiskTag(risk)
-      }
-    ],
-    []
-  );
+  const roleColumns = useMemo(() => createRoleCatalogColumns(), []);
+  const permissionColumns = useMemo(() => createPermissionCatalogColumns(), []);
 
   const modalAdmin = modalState?.admin ?? null;
   const demotesSelf =
