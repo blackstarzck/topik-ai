@@ -227,7 +227,9 @@
   - `src/features/operation/model/operation-events-page-schema.ts` (URL 파서·조치 카피 — Phase 4 분해)
   - `src/features/operation/ui/operation-events-columns.tsx` (목록 컬럼 팩토리 — Phase 4 분해)
   - `src/features/operation/ui/operation-event-detail-drawer.tsx` (상세 Drawer — Phase 4 분해)
-  - `src/features/operation/pages/operation-event-create-page.tsx`
+  - `src/features/operation/pages/operation-event-create-page.tsx` (등록/수정 상세 — 폼 인스턴스·워치·검증·저장/예약 소유)
+  - `src/features/operation/model/operation-event-create-page-schema.ts` (등록 화면 폼 타입·스텝 정의·숨은 필드 검증·배너 파일 정규화 — Phase 4 분해)
+  - `src/features/operation/ui/operation-event-create-sections.tsx` (등록 스텝 섹션 7종 + 배너 드래그 업로드 — Phase 4 분해, 배너 정렬 센서는 섹션 내부)
 - 현재 데이터 소스 경계
   - `src/features/operation/api/events-service.ts`
   - `src/features/operation/api/operation-events-data-source.ts`
