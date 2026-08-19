@@ -152,3 +152,14 @@
 - 그룹은 발송 실행(`admin_send_notification` — group dispatch는 그룹 1개 이상 필수)의 대상 산정 입력입니다. 파이프라인 집행 시 opt-out 제외자는 `skipped`/`opted_out`으로 집계됩니다(계약: `notification-contract.md`(docs/specs) §2).
 - 스키마 소유권(topik-ai 소유)·RLS 기준은 `docs/architecture/shared-supabase-schema-ownership.md`를 따릅니다.
 
+## 16. 구현 파일
+
+- `src/features/message/pages/message-groups-page.tsx` (URL 검색/선택 상태·조회 상태·폼 인스턴스·쿼리 빌더 상태·저장/재계산/삭제 핸들러 소유)
+- `src/features/message/model/message-groups-page-schema.ts` (폼/저장 타입·쿼리 빌더 순수 함수·자연어/SQL 미리보기·폼 값 빌더·목록 가시 필터 — Phase 4 분해)
+- `src/features/message/ui/message-groups-query-builder.tsx` (전체 선택 체크박스 그룹·재귀 그룹/규칙 편집기)
+- `src/features/message/ui/message-groups-columns.tsx` (목록 컬럼 — 재계산 상태·행 조치 핸들러 인자)
+- `src/features/message/ui/message-groups-table-section.tsx` (검색 툴바+안내문+빈 결과 알림+테이블 — 상세 검색 날짜 초안은 섹션 내부)
+- `src/features/message/ui/message-groups-editor-drawer.tsx` (편집 Drawer — 조건 요약·재계산 로딩 표시는 내부 파생)
+- `src/features/message/ui/message-audit-notice.tsx` (조치 알림 description 빌더 — 템플릿 화면과 공용)
+- `tests/e2e/message-groups.spec.ts` (분해 검증 스모크 — 행 Drawer·쿼리 빌더 미리보기·정적 그룹 전환)
+
