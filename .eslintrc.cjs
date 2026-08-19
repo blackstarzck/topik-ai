@@ -42,8 +42,6 @@ module.exports = {
       // 추가하지 않는다. Phase 4 분해 작업의 대상 목록이기도 하다 (gap-register §3.12).
       files: [
         'src/features/analytics/pages/analytics-learning-page.tsx',
-        'src/features/assessment/pages/assessment-question-detail-page.tsx',
-        'src/features/assessment/pages/assessment-question-manage-page.tsx',
         'src/features/commerce/pages/commerce-coupon-create-page.tsx',
         'src/features/commerce/pages/commerce-coupon-template-create-page.tsx',
         'src/features/commerce/pages/commerce-coupons-page.tsx',

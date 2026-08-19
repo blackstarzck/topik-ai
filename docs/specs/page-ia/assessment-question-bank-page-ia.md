@@ -200,8 +200,11 @@
 
 - 문항 목록+관리 통합 페이지 파일
   - `src/features/assessment/pages/assessment-question-manage-page.tsx` (`/assessment/question-bank` route element)
+  - `src/features/assessment/model/assessment-question-manage-schema.ts` (조치 카피·상태 상수 — Phase 4 분해)
+  - `src/features/assessment/ui/assessment-question-manage-columns.tsx` (목록 컬럼·행 액션·버전 확장 팩토리 — Phase 4 분해)
 - 2depth 문항 상세 페이지 파일
   - `src/features/assessment/pages/assessment-question-detail-page.tsx` (구 `assessment-question-review-page.tsx` — 재정의 P3에서 조회 전용 상세로 개명·재작성 완료)
+  - `src/features/assessment/ui/assessment-question-detail-panel.tsx` (조회 전용 표시 계층: 번호별 항목 구성·버전/상태 사이드 카드 — Phase 4 분해)
 - 구 문항 관리 페이지(`/assessment/question-bank/manage`)는 현재 `/assessment/question-bank`로 redirect되는 역사 경로이며, 구 IA 문서는 supersede 상태로만 참조한다.
 - 모델/서비스
   - `src/features/assessment/model/assessment-question-bank-types.ts`
