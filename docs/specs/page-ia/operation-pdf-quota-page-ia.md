@@ -104,3 +104,12 @@
 - 2026-07-08 PR8 보완: 전체 초기화도 생성 시점에 `pdf_export_quota_reset_targets`로 모든 대상 회원을 실체화한다. 정책/초기화/이력 표시 시각은 KST 문자열로 반환하고, 정책 변경 이력 row key는 감사 로그 id를 사용한다.
 - 2026-07-08 PR8 추가 보완: 정책 자기치유의 중복 활성 비활성화와 비활성 잔여 행 정리는 `subject_scope='user' and resource_scope='problem'` 범위로 제한한다. 개인 초기화 모달은 `search_admin_pdf_quota_reset_users` 전용 RPC로 대상 회원을 서버 검색/페이지네이션한다.
 - 2026-07-08 범위 제외(후속 후보): v13 claim의 no-active-policy 폴백 하드닝(현재 fail closed 500), 한도 0일 때 v13 사용자 카피(resetAt 안내가 의도적 중단과 안 맞음).
+
+## 10. 구현 파일
+
+- `src/features/operation/pages/operation-pdf-quota-page.tsx` (조회 상태·URL 탭·폼 인스턴스·저장/초기화 핸들러 소유)
+- `src/features/operation/model/operation-pdf-quota-page-schema.ts` (페이지 상수·폼 타입·탭 파서·표시 헬퍼)
+- `src/features/operation/ui/operation-pdf-quota-columns.tsx` (변경 이력·초기화 이력 컬럼)
+- `src/features/operation/ui/operation-pdf-quota-policies-tab.tsx` (정책 탭 — 현재 정책 폼 + 변경 이력, 상태·핸들러는 페이지 소유)
+- `src/features/operation/ui/operation-pdf-quota-reset-modal.tsx` (초기화 실행 모달 — 폼 인스턴스는 페이지가 만들어 props 전달)
+- `src/features/operation/api/pdf-quota-service.ts`, `src/features/operation/model/pdf-quota-types.ts`
