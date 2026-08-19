@@ -204,7 +204,12 @@
 
 - 사용 컴포넌트: `PageTitle`, `ListSummaryCards`, `SearchBar`, `AdminListCard`, `AdminDataTable`, `DetailDrawer`, `HtmlPreviewModal`, `ConfirmAction`, `AdminEditorForm`
 - 관련 코드
-  - `src/features/operation/pages/operation-policies-page.tsx`
+  - `src/features/operation/pages/operation-policies-page.tsx` (조회·URL 커밋·조치 핸들러 소유)
+  - `src/features/operation/model/operation-policies-page-schema.ts` (파서·조치 카피·목록 필터·요약 카드 빌더 — Phase 4 분해)
+  - `src/features/operation/ui/operation-policies-columns.tsx` (목록·히스토리 컬럼과 스냅샷 확장 행 — Phase 4 분해)
+  - `src/features/operation/ui/operation-policies-toolbar.tsx` (검색/상세 필터 툴바 — 상세 필터 초안은 툴바 내부 상태)
+  - `src/features/operation/ui/operation-policy-detail-drawer.tsx` (정책 상세 Drawer — 히스토리 컬럼은 Drawer 내부 계산)
+  - `src/features/operation/ui/operation-policy-audit-notice.tsx` (조치 알림 description 빌더)
   - `src/features/operation/pages/operation-policy-create-page.tsx`
   - `src/features/operation/model/operation-policy-create-page-schema.ts` (등록 화면 타입·프리셋·스텝 정의·파서·검증)
   - `src/features/operation/ui/operation-policy-create-form-items.tsx` (등록 단계별 Descriptions 아이템 팩토리 — Form.Item 은 상위 Form 컨텍스트로 동작)
