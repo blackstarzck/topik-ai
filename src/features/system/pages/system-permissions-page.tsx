@@ -14,6 +14,7 @@ import {
 } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useAsyncResource } from '@/shared/model/use-async-resource';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import { useAuthStore } from '../../auth/model/auth-store';
@@ -116,9 +117,6 @@ export default function SystemPermissionsPage(): JSX.Element {
   const [searchParams] = useSearchParams();
   const session = useAuthStore((state) => state.session);
   const authStatus = useAuthStore((state) => state.status);
-  const [rows, setRows] = useState<AdminAppRoleRow[]>([]);
-  const [loadState, setLoadState] = useState<'pending' | 'success' | 'error'>('pending');
-  const [loadErrorMessage, setLoadErrorMessage] = useState('');
   const [modalState, setModalState] = useState<RoleChangeModalState>(null);
   const [detailModalState, setDetailModalState] = useState<DetailModalState>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -138,31 +136,18 @@ export default function SystemPermissionsPage(): JSX.Element {
     };
   }, []);
 
-  const loadRows = useCallback((signal?: AbortSignal) => {
-    setLoadState('pending');
-    setLoadErrorMessage('');
-    void fetchAdminAppRolesSafe(signal).then((result) => {
-      // Guard both the mount-time controller (signal) and the post-submit reload
-      // (called with no signal) so a resolved fetch never writes state after unmount.
-      if (signal?.aborted || !mountedRef.current) {
-        return;
-      }
-      if (result.ok) {
-        setRows(result.data);
-        setLoadState('success');
-        return;
-      }
-      setRows([]);
-      setLoadErrorMessage(result.error.message);
-      setLoadState('error');
-    });
-  }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    loadRows(controller.signal);
-    return () => controller.abort();
-  }, [loadRows]);
+  const fetchRows = useCallback(
+    (signal: AbortSignal) => fetchAdminAppRolesSafe(signal),
+    []
+  );
+  // 기존 배선은 실패 시 목록을 비웠다(직전 데이터 보존 대신 소거).
+  const { state: rowsState, reload: reloadRows } = useAsyncResource<AdminAppRoleRow[]>(
+    fetchRows,
+    { initialData: [], keepDataOnError: false }
+  );
+  const rows = rowsState.data;
+  const loadState = rowsState.status;
+  const loadErrorMessage = rowsState.errorMessage ?? '';
 
   const selectedModalAppRole = Form.useWatch('appRole', form);
 
@@ -213,8 +198,8 @@ export default function SystemPermissionsPage(): JSX.Element {
       )
     });
     closeChangeModal();
-    loadRows();
-  }, [closeChangeModal, form, loadRows, modalState, notificationApi]);
+    reloadRows();
+  }, [closeChangeModal, form, modalState, notificationApi, reloadRows]);
 
   // --- Per-admin permission grant/revoke ---------------------------------------
   const [permState, setPermState] = useState<{ admin: AdminAppRoleRow } | null>(null);
@@ -289,7 +274,7 @@ export default function SystemPermissionsPage(): JSX.Element {
 
     if (failure) {
       notificationApi.error({ message: '권한 변경 실패', description: failure });
-      loadRows();
+      reloadRows();
       return;
     }
     notificationApi.success({
@@ -302,8 +287,8 @@ export default function SystemPermissionsPage(): JSX.Element {
       )
     });
     closePermModal();
-    loadRows();
-  }, [closePermModal, loadRows, notificationApi, permBaseline, permForm, permState]);
+    reloadRows();
+  }, [closePermModal, notificationApi, permBaseline, permForm, permState, reloadRows]);
 
   // --- Suspend / reactivate ----------------------------------------------------
   const [statusState, setStatusState] = useState<{ admin: AdminAppRoleRow } | null>(null);
@@ -344,8 +329,8 @@ export default function SystemPermissionsPage(): JSX.Element {
     });
     setStatusState(null);
     statusForm.resetFields();
-    loadRows();
-  }, [loadRows, notificationApi, statusForm, statusNext, statusState]);
+    reloadRows();
+  }, [notificationApi, reloadRows, statusForm, statusNext, statusState]);
 
   const adminColumns = useMemo<TableColumnsType<AdminAppRoleRow>>(
     () => [

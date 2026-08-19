@@ -9,6 +9,7 @@ import {
 } from 'antd';
 import type { TableColumnsType, TableProps } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAsyncResource } from '@/shared/model/use-async-resource';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 import {
@@ -22,7 +23,6 @@ import {
   operationEventVisibilityStatusValues,
   type OperationEvent
 } from '../model/types';
-import type { AsyncState } from '@/shared/model/async-state';
 import { getTargetTypeLabel } from '@/shared/model/target-type-label';
 import { useRouterStateNotice } from '@/shared/model/use-router-state-notice';
 import { AuditLogLink } from '@/shared/ui/audit-log-link/audit-log-link';
@@ -157,13 +157,15 @@ export default function OperationEventsPage(): JSX.Element {
     handleDetailOpenChange
   } = useSearchBarDateDraft(startDate, endDate);
 
-  const [eventsState, setEventsState] = useState<AsyncState<OperationEvent[]>>({
-    status: 'pending',
-    data: [],
-    errorMessage: null,
-    errorCode: null
-  });
-  const [reloadKey, setReloadKey] = useState(0);
+  const fetchEvents = useCallback(
+    (signal: AbortSignal) => fetchEventsSafe(signal),
+    []
+  );
+  const {
+    state: eventsState,
+    reload: reloadEvents,
+    mutate: mutateEvents
+  } = useAsyncResource<OperationEvent[]>(fetchEvents, { initialData: [] });
   const [actionState, setActionState] = useState<EventActionState>(null);
   const [previewEvent, setPreviewEvent] = useState<OperationEvent | null>(null);
   const [notificationApi, notificationContextHolder] = notification.useNotification();
@@ -192,44 +194,6 @@ export default function OperationEventsPage(): JSX.Element {
     },
     [searchParams, setSearchParams]
   );
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    setEventsState((prev) => ({
-      ...prev,
-      status: 'pending',
-      errorMessage: null,
-      errorCode: null
-    }));
-
-    void fetchEventsSafe(controller.signal).then((result) => {
-      if (controller.signal.aborted) {
-        return;
-      }
-
-      if (result.ok) {
-        setEventsState({
-          status: result.data.length === 0 ? 'empty' : 'success',
-          data: result.data,
-          errorMessage: null,
-          errorCode: null
-        });
-        return;
-      }
-
-      setEventsState((prev) => ({
-        ...prev,
-        status: 'error',
-        errorMessage: result.error.message,
-        errorCode: result.error.code
-      }));
-    });
-
-    return () => {
-      controller.abort();
-    };
-  }, [reloadKey]);
 
   useRouterStateNotice(
     'operationEventSaved',
@@ -387,7 +351,7 @@ export default function OperationEventsPage(): JSX.Element {
     setPreviewEvent(null);
   }, []);
 
-  const handleReload = useCallback(() => setReloadKey((prev) => prev + 1), []);
+  const handleReload = reloadEvents;
   const openDetail = useCallback(
     (eventId: string) => commitParams({ selected: eventId }),
     [commitParams]
@@ -440,12 +404,9 @@ export default function OperationEventsPage(): JSX.Element {
         return;
       }
 
-      setEventsState((prev) => ({
-        status: prev.data.length === 0 ? 'empty' : 'success',
-        data: prev.data.map((event) => (event.id === result.data.id ? result.data : event)),
-        errorMessage: null,
-        errorCode: null
-      }));
+      mutateEvents((data) =>
+        data.map((event) => (event.id === result.data.id ? result.data : event))
+      );
 
       notificationApi.success({
         message: getActionCopy(actionState.type).successMessage,
@@ -461,7 +422,7 @@ export default function OperationEventsPage(): JSX.Element {
 
       setActionState(null);
     },
-    [actionState, notificationApi]
+    [actionState, mutateEvents, notificationApi]
   );
 
   const handleTableChange = useCallback<NonNullable<TableProps<OperationEvent>['onChange']>>(

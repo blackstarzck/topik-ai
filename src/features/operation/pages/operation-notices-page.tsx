@@ -2,6 +2,7 @@ import { DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { Alert, Button, Space, Tooltip, Typography, notification } from 'antd';
 import type { TableColumnsType, TableProps } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAsyncResource } from '@/shared/model/use-async-resource';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 import {
@@ -10,7 +11,6 @@ import {
   toggleNoticeStatusSafe
 } from '../api/notices-service';
 import type { OperationNotice } from '../model/types';
-import type { AsyncState } from '@/shared/model/async-state';
 import { getTargetTypeLabel } from '@/shared/model/target-type-label';
 import { useRouterStateNotice } from '@/shared/model/use-router-state-notice';
 import { AuditLogLink } from '@/shared/ui/audit-log-link/audit-log-link';
@@ -68,13 +68,15 @@ export default function OperationNoticesPage(): JSX.Element {
   const sortField = parseSortField(searchParams.get('sortField'));
   const sortOrder = parseSortOrder(searchParams.get('sortOrder'));
   const previewNoticeId = searchParams.get('preview');
-  const [noticesState, setNoticesState] = useState<AsyncState<OperationNotice[]>>({
-    status: 'pending',
-    data: [],
-    errorMessage: null,
-    errorCode: null
-  });
-  const [reloadKey, setReloadKey] = useState(0);
+  const fetchNotices = useCallback(
+    (signal: AbortSignal) => fetchNoticesSafe(signal),
+    []
+  );
+  const {
+    state: noticesState,
+    reload: reloadNotices,
+    mutate: mutateNotices
+  } = useAsyncResource<OperationNotice[]>(fetchNotices, { initialData: [] });
   const [dangerState, setDangerState] = useState<DangerState>(null);
   const [notificationApi, notificationContextHolder] = notification.useNotification();
 
@@ -104,44 +106,6 @@ export default function OperationNoticesPage(): JSX.Element {
     },
     [searchParams, setSearchParams]
   );
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    setNoticesState((prev) => ({
-      ...prev,
-      status: 'pending',
-      errorMessage: null,
-      errorCode: null
-    }));
-
-    void fetchNoticesSafe(controller.signal).then((result) => {
-      if (controller.signal.aborted) {
-        return;
-      }
-
-      if (result.ok) {
-        setNoticesState({
-          status: result.data.length === 0 ? 'empty' : 'success',
-          data: result.data,
-          errorMessage: null,
-          errorCode: null
-        });
-        return;
-      }
-
-      setNoticesState((prev) => ({
-        ...prev,
-        status: 'error',
-        errorMessage: result.error.message,
-        errorCode: result.error.code
-      }));
-    });
-
-    return () => {
-      controller.abort();
-    };
-  }, [reloadKey]);
 
   useRouterStateNotice(
     'operationNoticeSaved',
@@ -243,7 +207,7 @@ export default function OperationNoticesPage(): JSX.Element {
 
   const closeDangerModal = useCallback(() => setDangerState(null), []);
   const closePreviewModal = useCallback(() => commitParams({ preview: null }), [commitParams]);
-  const handleReload = useCallback(() => setReloadKey((prev) => prev + 1), []);
+  const handleReload = reloadNotices;
 
   const handleDangerAction = useCallback(
     async (reason: string) => {
@@ -266,16 +230,9 @@ export default function OperationNoticesPage(): JSX.Element {
           return;
         }
 
-        setNoticesState((prev) => {
-          const nextData = prev.data.filter((notice) => notice.id !== result.data.id);
-
-          return {
-            status: nextData.length === 0 ? 'empty' : 'success',
-            data: nextData,
-            errorMessage: null,
-            errorCode: null
-          };
-        });
+        mutateNotices((data) =>
+          data.filter((notice) => notice.id !== result.data.id)
+        );
 
         notificationApi.success({
           message: '공지 삭제 완료',
@@ -311,14 +268,11 @@ export default function OperationNoticesPage(): JSX.Element {
           return;
         }
 
-        setNoticesState((prev) => ({
-          status: prev.data.length === 0 ? 'empty' : 'success',
-          data: prev.data.map((notice) =>
+        mutateNotices((data) =>
+          data.map((notice) =>
             notice.id === result.data.id ? result.data : notice
-          ),
-          errorMessage: null,
-          errorCode: null
-        }));
+          )
+        );
 
         notificationApi.success({
           message: result.data.status === '게시' ? '공지 게시 완료' : '공지 숨김 완료',
@@ -335,7 +289,7 @@ export default function OperationNoticesPage(): JSX.Element {
 
       setDangerState(null);
     },
-    [dangerState, notificationApi]
+    [dangerState, mutateNotices, notificationApi]
   );
 
   const columns = useMemo<TableColumnsType<OperationNotice>>(

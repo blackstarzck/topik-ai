@@ -6,7 +6,8 @@ import {
   notification
 } from 'antd';
 import type { TableColumnsType } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { useAsyncResource } from '@/shared/model/use-async-resource';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import {
@@ -16,7 +17,6 @@ import {
   rejectBillingRefundSafe
 } from '../api/billing-service';
 import type { RefundRow, RefundStatus } from '../api/billing-service';
-import type { AsyncState } from '../../../shared/model/async-state';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
@@ -76,31 +76,15 @@ function getRefundUserName(record: Pick<RefundRow, 'userId' | 'userNickname'>): 
 }
 
 export default function BillingRefundsPage(): JSX.Element {
-  const [refundsState, setRefundsState] = useState<AsyncState<RefundRow[]>>({
-    status: 'pending',
-    data: [],
-    errorMessage: null,
-    errorCode: null
-  });
-  const [reloadKey, setReloadKey] = useState(0);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    void fetchRefundsSafe(controller.signal).then((result) => {
-      if (controller.signal.aborted) return;
-      if (result.ok) {
-        setRefundsState({
-          status: result.data.length === 0 ? 'empty' : 'success',
-          data: result.data,
-          errorMessage: null,
-          errorCode: null
-        });
-      } else {
-        setRefundsState((prev) => ({ ...prev, status: 'error', errorMessage: result.error.message, errorCode: result.error.code }));
-      }
-    });
-    return () => controller.abort();
-  }, [reloadKey]);
+  const fetchRefunds = useCallback(
+    (signal: AbortSignal) => fetchRefundsSafe(signal),
+    []
+  );
+  // 기존 배선은 재조회(조치 후) 때 pending 으로 바꾸지 않고 직전 화면을 유지했다.
+  const { state: refundsState, reload: reloadRefunds } = useAsyncResource<RefundRow[]>(
+    fetchRefunds,
+    { initialData: [], pendingOnRefetch: false }
+  );
 
   const refunds = refundsState.data;
   const [searchParams, setSearchParams] = useSearchParams();
@@ -262,10 +246,10 @@ export default function BillingRefundsPage(): JSX.Element {
         )
       });
 
-      setReloadKey((key) => key + 1);
+      reloadRefunds();
       setPendingAction(null);
     },
-    [pendingAction]
+    [pendingAction, reloadRefunds]
   );
 
   const columns = useMemo<TableColumnsType<RefundRow>>(
