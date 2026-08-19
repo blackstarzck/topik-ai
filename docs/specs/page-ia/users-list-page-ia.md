@@ -132,7 +132,13 @@
 ## 13. 구현 메모
 
 - 현재 코드베이스에서 재사용할 컴포넌트: PageTitle, SearchBar, AdminDataTable, ConfirmAction, AuditLogLink
-- 예상 feature 파일: src/features/users/pages/*
+- 구현 파일
+  - `src/features/users/pages/users-page.tsx` (조회·URL/스토어 동기화·권한 판정·조치/일괄/내보내기 핸들러·폼 인스턴스 소유)
+  - `src/features/users/model/users-page-schema.ts` (필터 상수·검색 옵션·쿼리 파서/직렬화·목록 필터·기관 필터 옵션/범위 라벨·테이블 필터 파서)
+  - `src/features/users/ui/users-columns.tsx` (목록 컬럼 팩토리 — URL 필터 상태·조치 핸들러는 페이지 인자)
+  - `src/features/users/ui/users-export-modal.tsx` (회원 정보 내보내기 다이얼로그 — 열림 초기화·컬럼 선택 파생값은 내부 계산, 제출·감사 알림은 페이지)
+  - `src/features/users/ui/users-bulk-modal.tsx` (기관 초대/소속 해제 일괄 모달)
+  - `src/features/users/ui/users-memo-modal.tsx` (관리자 메모 모달)
 - Supabase source 메모: `supabase-users-service.ts`는 `get_admin_users(search, sort, page, page_size, affiliation)`, `admin_set_user_status(target_id, new_status)`, `admin_export_users(p_reason, p_include_full_phone, p_affiliation, p_scope, p_selected_user_ids, 목록 필터, p_selected_column_keys)`를 호출합니다. 목록/내보내기 표시 필드에는 `gender`와 `phone_masked`가 포함되며, 인자명은 PostgREST 함수 매칭 키이므로 임의 변경하지 않습니다.
 - 상태 표시 메모: `UserSummary.status`는 v13 `profiles.status` 원천 운영 상태로 보관하지만, 목록 컬럼의 `회원 상태`는 `get_admin_users.registration_status`를 우선 사용합니다. `정상 + 동의 완료 + 미인증`은 정상 표시가 아니며, 미인증 사용자의 약관 표시는 `동의 불가`로 보정합니다. 목록에는 내부 백필 진단 태그를 노출하지 않습니다.
 - 감사 메모: 정지/해제는 `admin_audit_logs.target_table='User'`, action `user_status_changed`, `target_id=userId`로 기록합니다.
