@@ -34,18 +34,7 @@ module.exports = {
         ]
       }
     ]
-  },
-  overrides: [
-    {
-      // ── Phase 2 baseline (2026-08-18) ─────────────────────────────────────
-      // 게이트 도입 시점의 기존 위반 24개. 이 목록은 "줄이기만" 한다 — 새 파일을
-      // 추가하지 않는다. Phase 4 분해 작업의 대상 목록이기도 하다 (gap-register §3.12).
-      files: [
-        'src/features/commerce/pages/commerce-points-page.tsx'
-      ],
-      rules: {
-        'max-lines': 'off'
-      }
-    }
-  ]
+  }
+  // Phase 2 baseline(2026-08-18, 기존 위반 24개)은 Phase 4 분해 1~22호로 전량
+  // 해소되어 override 를 제거했다 — max-lines 800 게이트가 예외 0 으로 전면 적용된다.
 };

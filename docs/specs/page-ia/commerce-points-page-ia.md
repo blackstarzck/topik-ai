@@ -268,11 +268,18 @@
   - `DetailDrawer`
   - `ConfirmAction`
   - `AuditLogLink`
-- 예상 feature 파일
-  - `src/features/commerce/pages/commerce-points-page.tsx`
+- 구현 파일 (Phase 4 22호 분해 반영 — 동작 동일)
+  - `src/features/commerce/pages/commerce-points-page.tsx` (URL 질의 store 동기화·조회 상태·폼 인스턴스 3종·모달/위험 상태·테이블 change·조치 컨텍스트 소유)
   - `src/features/commerce/api/points-service.ts`
   - `src/features/commerce/model/point-store.ts`
   - `src/features/commerce/model/point-schema.ts`
+  - `src/features/commerce/model/commerce-points-page-schema.ts` (폼/필터/위험 조치 타입·포맷터·정렬/필터·URL 정렬 파서·요약 카드 빌더·폼 기본값)
+  - `src/features/commerce/ui/commerce-points-render-utils.tsx` (상태 태그·발생 원천 링크·상세 요약 아이템 — 컬럼/Drawer 공용)
+  - `src/features/commerce/ui/commerce-points-columns.tsx` (정책·원장·소멸 컬럼 팩토리 3종)
+  - `src/features/commerce/ui/commerce-points-toolbar.tsx` (탭별 검색 필드/상세 필터/조치 버튼 — 상세 필터 초안·날짜 초안은 툴바 내부)
+  - `src/features/commerce/ui/commerce-points-detail-drawer.tsx` (정책/원장/소멸 상세 Drawer)
+  - `src/features/commerce/ui/commerce-points-modals.tsx` (정책 편집·수동 조정·소멸 보류 모달 — 보류 선택 옵션은 모달 내부 계산)
+  - `src/features/commerce/ui/commerce-points-actions.tsx` (저장 3종·위험 조치·내보내기 실행기 — 페이지 컨텍스트 주입)
 - 상태 관리/데이터 소스 메모
   - 페이지 state는 `Zustand` 단일 원칙을 유지한다.
   - 탭/필터/query metadata는 `point-schema.ts` 같은 feature model 레이어에서 SoT로 관리한다.
