@@ -1,6 +1,5 @@
 import {
   Alert,
-  Button,
   Descriptions,
   Form,
   Input,
@@ -10,7 +9,7 @@ import {
   Typography,
   notification
 } from 'antd';
-import type { AlertProps, DescriptionsProps, TableColumnsType } from 'antd';
+import type { DescriptionsProps } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -30,12 +29,19 @@ import type {
 } from '../model/types';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
-import {
-  DetailDrawer,
-  DetailDrawerBody,
-  DetailDrawerSection
-} from '../../../shared/ui/detail-drawer/detail-drawer';
 import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
+import {
+  getLatestAdminMemo,
+  getMemoTypeLabel,
+  memoTypeLabelMap,
+  memoTypeOptions,
+  moderationPolicyCodeLabelMap,
+  moderationPolicyCodeOptions,
+  type MemoType,
+  type PostActionState
+} from '../model/community-posts-page-schema';
+import { createCommunityPostColumns } from '../ui/community-posts-columns';
+import { CommunityPostDetailDrawer } from '../ui/community-post-detail-drawer';
 import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
 import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
@@ -50,114 +56,12 @@ import {
   matchesSearchField,
   parseSearchDate
 } from '../../../shared/ui/search-bar/search-bar-utils';
-import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
-import { BinaryStatusSwitch } from '../../../shared/ui/table/binary-status-switch';
-import { TableActionMenu } from '../../../shared/ui/table/table-action-menu';
-import {
-  createDrawerTableScroll,
-  DRAWER_TABLE_PAGINATION,
-  fixDrawerTableFirstColumn
-} from '../../../shared/ui/table/drawer-table';
-import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
-import {
-  createDefinedColumnFilterProps,
-  createNumberSorter,
-  createTextSorter
-} from '../../../shared/ui/table/table-column-utils';
 import {
   UserNavigationLink
 } from '../../../shared/ui/user/user-reference';
 
 const { Text } = Typography;
-
-type MemoType =
-  | 'SPAM'
-  | '욕설/혐오'
-  | '성인/불법'
-  | '광고/홍보'
-  | '개인정보 노출'
-  | '중복 게시'
-  | '기타';
-
-type PostActionState =
-  | { type: 'show'; post: CommunityPost }
-  | { type: 'hide'; post: CommunityPost }
-  | { type: 'delete'; post: CommunityPost }
-  | null;
-
-const postBoardFilterValues = ['자유게시판', '질문', '후기'] as const;
-const postStatusFilterValues = ['게시', '숨김'] as const;
-
-const moderationPolicyCodeOptions = [
-  {
-    label: 'SPAM · 스팸/도배',
-    value: 'SPAM',
-    description: '반복 게시, 도배, 자동 생성형 콘텐츠처럼 정상 이용을 방해하는 게시글입니다.'
-  },
-  {
-    label: 'ABUSE · 욕설/혐오',
-    value: 'ABUSE',
-    description: '욕설, 혐오 표현, 괴롭힘 등 커뮤니티 운영 정책 위반 게시글입니다.'
-  },
-  {
-    label: 'AD · 광고/홍보',
-    value: 'AD',
-    description: '허용되지 않은 외부 홍보, 제휴 링크, 영리 목적 광고 게시글입니다.'
-  },
-  {
-    label: 'PRIVACY · 개인정보 노출',
-    value: 'PRIVACY',
-    description: '전화번호, 계좌, 주소 등 민감한 개인정보가 직접 노출된 게시글입니다.'
-  },
-  {
-    label: 'DUPLICATE · 중복 게시',
-    value: 'DUPLICATE',
-    description: '동일 또는 유사한 내용을 반복 게시해 정리가 필요한 게시글입니다.'
-  },
-  {
-    label: 'OTHER · 기타',
-    value: 'OTHER',
-    description: '정책 코드에 없는 사유이지만 운영 검토 결과 조치가 필요한 게시글입니다.'
-  }
-] as const;
-
-const moderationPolicyCodeLabelMap: Record<PolicyCode, string> = {
-  SPAM: 'SPAM · 스팸/도배',
-  ABUSE: 'ABUSE · 욕설/혐오',
-  AD: 'AD · 광고/홍보',
-  PRIVACY: 'PRIVACY · 개인정보 노출',
-  DUPLICATE: 'DUPLICATE · 중복 게시',
-  OTHER: 'OTHER · 기타'
-};
-
-const memoTypeOptions = [
-  { label: 'SPAM', value: 'SPAM' },
-  { label: '욕설/혐오', value: '욕설/혐오' },
-  { label: '성인/불법', value: '성인/불법' },
-  { label: '광고/홍보', value: '광고/홍보' },
-  { label: '개인정보 노출', value: '개인정보 노출' },
-  { label: '중복 게시', value: '중복 게시' },
-  { label: '기타', value: '기타' }
-] as const;
-
-const memoTypeLabelMap: Record<MemoType, string> = {
-  SPAM: 'SPAM',
-  '욕설/혐오': '욕설/혐오',
-  '성인/불법': '성인/불법',
-  '광고/홍보': '광고/홍보',
-  '개인정보 노출': '개인정보 노출',
-  '중복 게시': '중복 게시',
-  기타: '기타'
-};
-
-function getMemoTypeLabel(type: string): string {
-  return memoTypeLabelMap[type as MemoType] ?? type;
-}
-
-function getLatestAdminMemo(post: CommunityPost): AdminMemo | null {
-  return [...post.adminNotes].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] ?? null;
-}
 
 export default function CommunityPostsPage(): JSX.Element {
   const [rows, setRows] = useState<CommunityPost[]>([]);
@@ -518,48 +422,6 @@ export default function CommunityPostsPage(): JSX.Element {
     });
   }, [currentAdmin, memoForm, notificationApi, selectedPost]);
 
-  const memoColumns = useMemo<TableColumnsType<AdminMemo>>(
-    () =>
-      fixDrawerTableFirstColumn<AdminMemo>([
-        {
-          title: '메모 ID',
-          dataIndex: 'id',
-          width: 150,
-          sorter: createTextSorter((record) => record.id)
-        },
-        {
-          title: '제목',
-          dataIndex: 'title',
-          width: 220,
-          sorter: createTextSorter((record) => record.title)
-        },
-        {
-          title: '유형',
-          dataIndex: 'type',
-          width: 120,
-          sorter: createTextSorter((record) => record.type),
-          render: (type: string) => getMemoTypeLabel(type)
-        },
-        {
-          title: '작성 관리자',
-          dataIndex: 'authorName',
-          width: 160,
-          sorter: createTextSorter(
-            (record) => `${record.authorName} ${record.authorId}`
-          ),
-          render: (_, record) =>
-            `${record.authorName} (${record.authorId})`
-        },
-        {
-          title: '작성일',
-          dataIndex: 'createdAt',
-          width: 180,
-          sorter: createTextSorter((record) => record.createdAt)
-        },
-      ]),
-    []
-  );
-
   const memoDetailItems = useMemo<DescriptionsProps['items']>(() => {
     if (!selectedMemo) {
       return [];
@@ -591,217 +453,16 @@ export default function CommunityPostsPage(): JSX.Element {
     ];
   }, [selectedMemo]);
 
-  const columns = useMemo<TableColumnsType<CommunityPost>>(
-    () => [
-      {
-        title: '게시글 ID',
-        dataIndex: 'id',
-        width: 110,
-        sorter: createTextSorter((record) => record.id)
-      },
-      {
-        title: '제목',
-        dataIndex: 'title',
-        width: 260,
-        sorter: createTextSorter((record) => record.title)
-      },
-      {
-        title: '작성자',
-        dataIndex: 'authorName',
-        width: 140,
-        sorter: createTextSorter((record) => record.authorName),
-        render: (_, record) => (
-          <UserNavigationLink
-            stopPropagation
-            userId={record.authorId}
-            userName={record.authorName}
-            withId
-          />
-        )
-      },
-      {
-        title: '게시판',
-        dataIndex: 'board',
-        width: 120,
-        ...createDefinedColumnFilterProps(postBoardFilterValues, (record) => record.board),
-        sorter: createTextSorter((record) => record.board)
-      },
-      {
-        title: '작성일',
-        dataIndex: 'createdAt',
-        width: 120,
-        sorter: createTextSorter((record) => record.createdAt)
-      },
-      {
-        title: '조회수',
-        dataIndex: 'views',
-        width: 90,
-        sorter: createNumberSorter((record) => record.views)
-      },
-      {
-        title: '댓글수',
-        dataIndex: 'comments',
-        width: 90,
-        sorter: createNumberSorter((record) => record.comments)
-      },
-      {
-        title: '신고수',
-        dataIndex: 'reports',
-        width: 90,
-        sorter: createNumberSorter((record) => record.reports)
-      },
-      {
-        title: createStatusColumnTitle('상태', ['게시', '숨김']),
-        dataIndex: 'status',
-        width: 100,
-        ...createDefinedColumnFilterProps(postStatusFilterValues, (record) => record.status),
-        sorter: createTextSorter((record) => record.status),
-        onCell: () => ({
-          onClick: (event) => {
-            event.stopPropagation();
-          }
-        }),
-        render: (_, record) => (
-          <BinaryStatusSwitch
-            checked={record.status === '게시'}
-            checkedLabel="게시"
-            uncheckedLabel="숨김"
-            onToggle={() => handleTogglePostStatus(record)}
-          />
-        )
-      },
-      {
-        title: '액션',
-        key: 'actions',
-        width: 160,
-        onCell: () => ({
-          onClick: (event) => {
-            event.stopPropagation();
-          }
-        }),
-        render: (_, record) => (
-          <TableActionMenu
-            items={[
-              {
-                key: `preview-${record.id}`,
-                label: '게시글 원문 보기',
-                onClick: () => handleOpenPostPreview(record.id)
-              },
-              {
-                key: `memo-${record.id}`,
-                label: '내부 메모',
-                onClick: () => handleOpenLatestMemoDetailModal(record)
-              }
-            ]}
-            footerItems={[
-              {
-                key: `delete-${record.id}`,
-                label: '게시글 삭제',
-                danger: true,
-                onClick: () => setActionState({ type: 'delete', post: record })
-              }
-            ]}
-          />
-        )
-      }
-    ],
+  const columns = useMemo(
+    () =>
+      createCommunityPostColumns({
+        onOpenPreview: handleOpenPostPreview,
+        onOpenLatestMemo: handleOpenLatestMemoDetailModal,
+        onToggleStatus: handleTogglePostStatus,
+        onDelete: (post) => setActionState({ type: 'delete', post })
+      }),
     [handleOpenLatestMemoDetailModal, handleOpenPostPreview, handleTogglePostStatus]
   );
-
-  const detailItems = useMemo<DescriptionsProps['items']>(() => {
-    if (!selectedPost) {
-      return [];
-    }
-
-    return [
-      { key: 'id', label: '게시글 ID', children: selectedPost.id },
-      { key: 'title', label: '제목', children: selectedPost.title },
-      {
-        key: 'author',
-        label: '작성자',
-        children: (
-          <UserNavigationLink
-            userId={selectedPost.authorId}
-            userName={selectedPost.authorName}
-            withId
-          />
-        )
-      },
-      { key: 'board', label: '게시판', children: selectedPost.board },
-      { key: 'createdAt', label: '작성일', children: selectedPost.createdAt },
-      { key: 'views', label: '조회수', children: selectedPost.views },
-      { key: 'comments', label: '댓글수', children: selectedPost.comments },
-      { key: 'reports', label: '신고수', children: selectedPost.reports },
-      {
-        key: 'status',
-        label: '상태',
-        children: <StatusBadge status={selectedPost.status} />
-      },
-      {
-        key: 'adminNotes',
-        label: '내부 메모 수',
-        children: `${selectedPost.adminNotes.length}건`
-      },
-      {
-        key: 'lastPolicyCode',
-        label: '최근 조치 정책 코드',
-        children: selectedPost.lastModerationPolicyCode
-          ? moderationPolicyCodeLabelMap[selectedPost.lastModerationPolicyCode]
-          : '-'
-      },
-      {
-        key: 'lastModeratedAt',
-        label: '최근 조치 시각',
-        children: selectedPost.lastModeratedAt ?? '-'
-      },
-      {
-        key: 'lastModerationReason',
-        label: '최근 조치 사유',
-        children: selectedPost.lastModerationReason ?? '-'
-      },
-      {
-        key: 'preview',
-        label: '게시글 원문 보기',
-        children: (
-          <Button
-            type="link"
-            style={{ padding: 0, height: 'auto', fontWeight: 600 }}
-            onClick={() => handleOpenPostPreview(selectedPost.id)}
-          >
-            보러가기
-          </Button>
-        )
-      },
-    ];
-  }, [handleOpenPostPreview, selectedPost]);
-
-  const drawerStatusAlert = useMemo<AlertProps | null>(() => {
-    if (!selectedPost) {
-      return null;
-    }
-
-    if (selectedPost.status === '숨김') {
-      return {
-        type: 'warning',
-        showIcon: true,
-        message: '현재 숨김 처리된 게시글입니다.',
-        description: selectedPost.lastModerationPolicyCode
-          ? `최근 조치 정책 코드: ${moderationPolicyCodeLabelMap[selectedPost.lastModerationPolicyCode]}`
-          : '사용자 화면 노출이 중단된 상태입니다.'
-      };
-    }
-
-    if (selectedPost.reports > 0) {
-      return {
-        type: 'info',
-        showIcon: true,
-        message: '신고 누적 게시글입니다.',
-        description: `현재 신고 ${selectedPost.reports}건이 누적되어 있습니다. 필요 시 신고 관리 화면에서 후속 검수를 이어가세요.`
-      };
-    }
-
-    return null;
-  }, [selectedPost]);
 
   const hiddenCount = rows.filter((row) => row.status === '숨김').length;
   const reportedCount = rows.filter((row) => row.reports > 0).length;
@@ -947,75 +608,15 @@ export default function CommunityPostsPage(): JSX.Element {
         />
       ) : null}
 
-      <DetailDrawer
-        open={Boolean(selectedPost)}
-        title={selectedPost ? `게시글 상세 · ${selectedPost.id}` : '게시글 상세'}
+      <CommunityPostDetailDrawer
+        post={selectedPost}
         onClose={handleCloseDetail}
-        destroyOnHidden
-        width={760}
-        headerMeta={
-          selectedPost ? <StatusBadge status={selectedPost.status} /> : null
-        }
-        footerStart={
-          selectedPost ? (
-            <AuditLogLink targetType="CommunityPost" targetId={selectedPost.id} />
-          ) : null
-        }
-        footerEnd={
-          selectedPost ? (
-            <Space wrap>
-              <Button
-                onClick={() => handleTogglePostStatus(selectedPost)}
-              >
-                {selectedPost.status === '게시' ? '게시글 숨김' : '게시글 재게시'}
-              </Button>
-              <Button
-                danger
-                onClick={() => setActionState({ type: 'delete', post: selectedPost })}
-              >
-                게시글 삭제
-              </Button>
-            </Space>
-          ) : null
-        }
-      >
-        {selectedPost ? (
-          <DetailDrawerBody>
-            {drawerStatusAlert ? <Alert {...drawerStatusAlert} /> : null}
-
-            <DetailDrawerSection title="게시글 정보">
-              <Descriptions
-                bordered
-                size="small"
-                column={1}
-                items={detailItems}
-              />
-            </DetailDrawerSection>
-
-            <DetailDrawerSection
-              title="메모 히스토리"
-              actions={
-                <Button type="primary" size="large" onClick={handleOpenMemoModal}>
-                  메모 등록
-                </Button>
-              }
-            >
-              <AdminDataTable<AdminMemo>
-                rowKey="id"
-                columns={memoColumns}
-                dataSource={selectedPost.adminNotes}
-                pagination={DRAWER_TABLE_PAGINATION}
-                scroll={createDrawerTableScroll(720)}
-                locale={{ emptyText: '등록된 내부 메모가 없습니다.' }}
-                onRow={(record) => ({
-                  onClick: () => handleOpenMemoDetailModal(record),
-                  style: { cursor: 'pointer' }
-                })}
-              />
-            </DetailDrawerSection>
-          </DetailDrawerBody>
-        ) : null}
-      </DetailDrawer>
+        onOpenPreview={handleOpenPostPreview}
+        onToggleStatus={handleTogglePostStatus}
+        onDelete={(post) => setActionState({ type: 'delete', post })}
+        onOpenMemoModal={handleOpenMemoModal}
+        onOpenMemoDetail={handleOpenMemoDetailModal}
+      />
 
       <Modal
         open={memoModalOpen}

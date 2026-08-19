@@ -46,7 +46,6 @@ module.exports = {
         'src/features/commerce/pages/commerce-coupon-template-create-page.tsx',
         'src/features/commerce/pages/commerce-coupons-page.tsx',
         'src/features/commerce/pages/commerce-points-page.tsx',
-        'src/features/community/pages/community-posts-page.tsx',
         'src/features/message/pages/message-channel-page.tsx',
         'src/features/message/pages/message-groups-page.tsx',
         'src/features/message/pages/message-history-page.tsx',
@@ -57,7 +56,6 @@ module.exports = {
         'src/features/operation/pages/operation-policy-create-page.tsx',
         'src/features/system/model/system-metadata-store.ts',
         'src/features/system/pages/system-metadata-page.tsx',
-        'src/features/users/pages/instructor-management-page.tsx',
         'src/features/users/pages/user-detail-page.tsx',
         'src/features/users/pages/users-page.tsx',
         'src/features/users/pages/users-referrals-page.tsx'
