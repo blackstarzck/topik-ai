@@ -224,6 +224,9 @@
   - `AuditLogLink`
 - 현재 feature 파일
   - `src/features/operation/pages/operation-events-page.tsx`
+  - `src/features/operation/model/operation-events-page-schema.ts` (URL 파서·조치 카피 — Phase 4 분해)
+  - `src/features/operation/ui/operation-events-columns.tsx` (목록 컬럼 팩토리 — Phase 4 분해)
+  - `src/features/operation/ui/operation-event-detail-drawer.tsx` (상세 Drawer — Phase 4 분해)
   - `src/features/operation/pages/operation-event-create-page.tsx`
 - 현재 데이터 소스 경계
   - `src/features/operation/api/events-service.ts`
