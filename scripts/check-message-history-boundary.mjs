@@ -20,7 +20,9 @@ const REQUIRED_SOURCE_REFERENCES = [
     terms: ['notification_dispatches']
   },
   {
-    file: 'src/features/message/pages/message-history-page.tsx',
+    // Phase 4 분해로 dispatch ledger 배선은 supabase 변형 페이지에 있다
+    // (message-history-page.tsx 는 데이터소스 선택자만 남는다).
+    file: 'src/features/message/pages/message-history-dispatch-page.tsx',
     terms: ['notification_dispatches']
   }
 ];
