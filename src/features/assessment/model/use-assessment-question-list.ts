@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
 
 import { fetchAssessmentQuestionSummariesSafe } from '../api/assessment-question-bank-service';
 import type { AssessmentQuestionSummary } from './assessment-question-bank-types';
 import type { AsyncState } from '../../../shared/model/async-state';
+import { useAsyncResource } from '@/shared/model/use-async-resource';
 
 export type UseAssessmentQuestionListResult = {
   state: AsyncState<AssessmentQuestionSummary[]>;
@@ -16,55 +17,11 @@ export type UseAssessmentQuestionListResult = {
  * status filter on top.
  */
 export function useAssessmentQuestionList(): UseAssessmentQuestionListResult {
-  const [state, setState] = useState<AsyncState<AssessmentQuestionSummary[]>>({
-    status: 'pending',
-    data: [],
-    errorMessage: null,
-    errorCode: null
+  const fetchSummaries = useCallback(
+    (signal: AbortSignal) => fetchAssessmentQuestionSummariesSafe(signal),
+    []
+  );
+  return useAsyncResource<AssessmentQuestionSummary[]>(fetchSummaries, {
+    initialData: []
   });
-  const [reloadKey, setReloadKey] = useState(0);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    setState((prev) => ({
-      ...prev,
-      status: 'pending',
-      errorMessage: null,
-      errorCode: null
-    }));
-
-    void fetchAssessmentQuestionSummariesSafe(controller.signal).then((result) => {
-      if (controller.signal.aborted) {
-        return;
-      }
-
-      if (!result.ok) {
-        setState((prev) => ({
-          ...prev,
-          status: 'error',
-          errorMessage: result.error.message,
-          errorCode: result.error.code
-        }));
-        return;
-      }
-
-      setState({
-        status: result.data.length === 0 ? 'empty' : 'success',
-        data: result.data,
-        errorMessage: null,
-        errorCode: null
-      });
-    });
-
-    return () => {
-      controller.abort();
-    };
-  }, [reloadKey]);
-
-  const reload = useCallback(() => {
-    setReloadKey((prev) => prev + 1);
-  }, []);
-
-  return { state, reload };
 }
