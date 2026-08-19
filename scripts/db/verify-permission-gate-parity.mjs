@@ -35,7 +35,7 @@ const NAMESPACES = {
 };
 
 const FUNCTION_HEAD = /create\s+or\s+replace\s+function\s+public\.([a-z0-9_]+)\s*\(/gi;
-const KEY_CALL = /admin_has_permission\s*\(\s*[^,]+,\s*'([a-z0-9.\-]+)'/g;
+const KEY_CALL = /admin_has_permission\s*\(\s*[^,]+,\s*'([a-z0-9.-]+)'/g;
 const ADMIN_FUNCTION = /^(admin_|get_admin_|search_admin_)/;
 
 function fail(message) {

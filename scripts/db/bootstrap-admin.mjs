@@ -307,12 +307,17 @@ async function withTemporaryLegacyKeys(callback) {
         await setLegacyKeysEnabled(false);
         console.log('legacy API key access restored to disabled');
       } catch (restoreError) {
+        // legacy API key 를 다시 잠그지 못한 사실은 원본 오류보다 우선해서 드러나야
+        // 한다(열린 채 남는 쪽이 더 위험). 그래서 finally 안에서 의도적으로 던지고,
+        // 둘 다 실패하면 AggregateError 로 원본 오류까지 함께 싣는다.
         if (callbackError) {
+          // eslint-disable-next-line no-unsafe-finally -- 위 사유로 의도된 throw
           throw new AggregateError(
             [callbackError, restoreError],
             'Auth user creation failed and legacy API key access could not be disabled.'
           );
         }
+        // eslint-disable-next-line no-unsafe-finally -- 위 사유로 의도된 throw
         throw restoreError;
       }
     }

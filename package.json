@@ -68,7 +68,7 @@
     "db:sql": "node ./scripts/db/run-sql.mjs",
     "db:permission-gate-parity": "node ./scripts/db/verify-permission-gate-parity.mjs",
     "db:permission-gate-repair": "node ./scripts/db/repair-permission-gate-drift.mjs",
-    "lint": "set ESLINT_USE_FLAT_CONFIG=false&& eslint \"src/**/*.{ts,tsx}\" \"api/**/*.ts\"",
+    "lint": "set ESLINT_USE_FLAT_CONFIG=false&& eslint \"src/**/*.{ts,tsx}\" \"api/**/*.ts\" \"scripts/**/*.mjs\" \"tests/**/*.mjs\" \"tests/**/*.ts\"",
     "typecheck": "tsc -b --noEmit",
     "test:e2e": "playwright test",
     "test:e2e:mock": "set VITE_SUPABASE_DISABLED=true&& playwright test tests/e2e/assessment-question-bank.spec.ts",

@@ -326,7 +326,7 @@ export function readMigrationFromGit({ v13Root, sourceGitSha, migrationsDir, fil
   } catch (error) {
     fail(`Cannot read ${target} from ${v13Root}: ${error.message.split('\n')[0]}`);
   }
-  return raw.replace(/^﻿/, '').replace(/\r\n/g, '\n');
+  return raw.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n');
 }
 
 // The learner history is vendored in this repo (ownership transfer M2), so the
@@ -352,7 +352,7 @@ export function readMigrationFromArchive({ archiveDir, manifest, fileName }) {
   if (actual !== entry.sha256) {
     fail(`${fileName} sha256 drift: manifest ${entry.sha256}, archive ${actual}.`);
   }
-  return bytes.toString('utf8').replace(/^﻿/, '').replace(/\r\n/g, '\n');
+  return bytes.toString('utf8').replace(/^\uFEFF/, '').replace(/\r\n/g, '\n');
 }
 
 function getArgValue(args, flag) {
