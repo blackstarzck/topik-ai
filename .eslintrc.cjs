@@ -68,7 +68,6 @@ module.exports = {
       files: [
         'scripts/db/migrate-core.mjs',
         'scripts/db/recover-prod-from-dev.mjs',
-        'scripts/git/session-lifecycle.mjs',
         'tests/live-e2e/analytics-learning-live.pw.ts'
       ],
       rules: {
