@@ -182,13 +182,17 @@
   - `ConfirmAction`
   - `AuditLogLink`
 - 구현 파일:
-  - `src/features/users/pages/users-referrals-page.tsx`
+  - `src/features/users/pages/users-referrals-page.tsx` (조회 훅·URL/스토어 동기화·조치 핸들러·폼 인스턴스 소유)
+  - `src/features/users/model/users-referrals-page-schema.ts` (검색/필터 옵션·쿼리 파서·목록 필터·보상 표시 헬퍼·정책 항목)
+  - `src/features/users/ui/users-referrals-columns.tsx` (목록·추천 관계·보상 원장 컬럼 팩토리와 이상치 태그)
+  - `src/features/users/ui/users-referrals-detail-drawer.tsx` (추천 코드 상세 Drawer — 보상 원장 그룹·상태 경보는 Drawer 내부 계산)
+  - `src/features/users/ui/users-referrals-adjustment-modal.tsx` (보상 수동 조정 모달 — 폼 인스턴스는 페이지가 만들어 props 전달)
   - `src/features/users/model/referrals-types.ts`
   - `src/features/users/model/referrals-query-store.ts`
   - `src/features/users/api/referrals-service.ts`
   - `src/features/users/api/mock-referrals.ts`
-- 페이지네이션 재조회 메모:
-  - `page`, `pageSize` 변경 시 추천 코드 목록을 다시 조회하고, 공통 `AdminDataTable` loading 애니메이션으로 페이지 전환 상태를 노출합니다.
+- 페이지네이션 메모:
+  - `page`, `pageSize` 변경은 화면 페이징만 갱신하고 목록을 다시 조회하지 않습니다(조회가 페이지 값을 쓰지 않아 같은 데이터를 재수신하던 기존 재조회는 오너 확인(2026-08-19)으로 제거 — `useAsyncResource` 전환).
 - 감사 로그 연계 메모:
   - `Referral` targetType 라벨과 `/users/referrals?selected={codeId}` 딥링크가 구현되어, 추천인 페이지 조치 후 감사 로그에서 원본 화면으로 역이동할 수 있습니다.
 - 구현 상태 메모:
