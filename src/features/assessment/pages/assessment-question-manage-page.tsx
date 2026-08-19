@@ -2,14 +2,10 @@ import {
   Alert,
   Button,
   Empty,
-  Input,
   Space,
-  Tag,
   Typography,
   notification
 } from 'antd';
-import type { TableColumnsType, TableProps } from 'antd';
-import { RightOutlined, SearchOutlined } from '@ant-design/icons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -37,11 +33,7 @@ import {
   SERVICE_STATUS_LABELS,
   TAG_GROUP_OPERATION_CAUTION,
   TAG_GROUP_REPEAT_AVOID,
-  assessmentDifficultyLevels,
-  assessmentQuestionNumbers,
   assessmentServiceStatuses,
-  getServiceStatusColor,
-  getServiceStatusLabel,
   parseAssessmentServiceStatus
 } from '../model/assessment-question-bank-schema';
 import {
@@ -49,13 +41,16 @@ import {
   filterQuestionsByNumbers
 } from '../model/assessment-question-bank-presenter';
 import { buildQuestionDetailHref } from '../model/question-version-navigation';
-import { QuestionVersionHistoryTable } from '../ui/question-version-history-table';
 import {
-  TableActionMenu,
-  type TableActionMenuItem
-} from '../../../shared/ui/table/table-action-menu';
+  EMPTY_VERSION_HISTORY_STATE,
+  OPERATION_ACTIONS,
+  type OperationActionState
+} from '../model/assessment-question-manage-schema';
+import {
+  createManageColumns,
+  createVersionExpandable
+} from '../ui/assessment-question-manage-columns';
 import type {
-  AssessmentQuestionNumber,
   AssessmentQuestionSummary,
   AssessmentQuestionVersionEntry,
   AssessmentQuestionVersionSummary,
@@ -69,17 +64,8 @@ import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card
 import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
-import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
-import { createTextSorter } from '../../../shared/ui/table/table-column-utils';
 
 const { Text } = Typography;
-
-const EMPTY_VERSION_HISTORY_STATE: AsyncState<AssessmentQuestionVersionEntry[]> = {
-  status: 'idle',
-  data: [],
-  errorMessage: null,
-  errorCode: null
-};
 
 /**
  * P4 관리 포인트 개방 (실행계획안 §8, 2026-06-11): 노출 통제(service_status)와
@@ -89,64 +75,6 @@ const EMPTY_VERSION_HISTORY_STATE: AsyncState<AssessmentQuestionVersionEntry[]> 
  * available 전환 경고(+사유 필수) ③ 반복방지 태그 활성 과다 시 excluded 권고.
  */
 
-const serviceStatusLabels = assessmentServiceStatuses.map(
-  (status) => SERVICE_STATUS_LABELS[status]
-);
-
-type OperationActionState = {
-  questionId: string;
-  nextStatus: AssessmentServiceStatus;
-} | null;
-
-type OperationActionCopy = {
-  label: string;
-  title: string;
-  description: string;
-  confirmText: string;
-  successMessage: string;
-  reasonPlaceholder: string;
-};
-
-// D-6: 노출 가능(available) / 노출 제외(excluded). '운영 제외'는 excluded +
-// 운영주의 태그 '운영 제외' 부여로 구분한다(태그 편집은 P4 — 버튼만 자리 확보).
-const OPERATION_ACTIONS: { nextStatus: AssessmentServiceStatus; copy: OperationActionCopy }[] = [
-  {
-    nextStatus: 'available',
-    copy: {
-      label: '노출 가능',
-      title: '노출 가능 전환',
-      description:
-        '이 문항을 노출 가능(available)으로 전환합니다. 운영주의 태그 활성 문항은 전환 사유가 필수이며(POL-018), 변경 사유는 감사 로그로 남습니다.',
-      confirmText: '노출 가능',
-      successMessage: '노출 가능으로 변경했습니다.',
-      reasonPlaceholder: '노출 가능 전환 사유를 입력해 주세요.'
-    }
-  },
-  {
-    nextStatus: 'excluded',
-    copy: {
-      label: '노출 제외',
-      title: '노출 제외 전환',
-      description:
-        '이 문항을 노출 제외(excluded)로 전환합니다. 변경 사유는 감사 로그로 남습니다.',
-      confirmText: '노출 제외',
-      successMessage: '노출 제외로 변경했습니다.',
-      reasonPlaceholder: '노출 제외 사유를 입력해 주세요.'
-    }
-  },
-  {
-    nextStatus: 'internal_test',
-    copy: {
-      label: '내부 테스트',
-      title: '내부 테스트 전환',
-      description:
-        '이 문항을 내부 테스트(internal_test)로 되돌립니다. 사용자 노출이 차단되며, 변경 사유는 감사 로그로 남습니다.',
-      confirmText: '내부 테스트',
-      successMessage: '내부 테스트로 변경했습니다.',
-      reasonPlaceholder: '내부 테스트 전환 사유를 입력해 주세요.'
-    }
-  }
-];
 
 export default function AssessmentQuestionManagePage(): JSX.Element {
   const navigate = useNavigate();
@@ -573,282 +501,39 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
   );
 
   // 더보기 메뉴 — 상세 보기 + 운영 조치(노출 상태 전환). 현재 상태 조치는 비활성.
-  const createRowActionItems = useCallback(
-    (record: AssessmentQuestionSummary): TableActionMenuItem[] => [
-      {
-        key: 'detail',
-        label: '상세 보기',
-        onClick: () => openDetail(record.questionId)
-      },
-      ...OPERATION_ACTIONS.map((action) => ({
-        key: `status-${action.nextStatus}`,
-        label: action.copy.label,
-        disabled: record.serviceStatus === action.nextStatus,
-        onClick: () =>
-          setActionState({
-            questionId: record.questionId,
-            nextStatus: action.nextStatus
-          })
-      }))
-    ],
-    [openDetail]
-  );
-
-  const manageColumns = useMemo<TableColumnsType<AssessmentQuestionSummary>>(
-    () => [
-      {
-        title: '문항 번호',
-        dataIndex: 'questionNumber',
-        width: 110,
-        sorter: createTextSorter((record) => record.questionNumber),
-        filters: assessmentQuestionNumbers.map((number) => ({
-          text: `${number}번`,
-          value: number
-        })),
-        onFilter: (value, record) => record.questionNumber === value,
-        render: (questionNumber: AssessmentQuestionNumber) => `${questionNumber}번`
-      },
-      {
-        title: '문항 ID',
-        dataIndex: 'questionId',
-        width: 230,
-        sorter: createTextSorter((record) => record.questionId),
-        filterIcon: (filtered) => (
-          <SearchOutlined style={{ color: filtered ? '#1677ff' : undefined }} />
-        ),
-        filterDropdown: ({
-          setSelectedKeys,
-          selectedKeys,
-          confirm,
-          clearFilters
-        }) => (
-          <div
-            style={{ padding: 8 }}
-            onKeyDown={(event) => event.stopPropagation()}
-          >
-            <Input
-              allowClear
-              placeholder="문항 ID 검색"
-              value={selectedKeys[0] as string | undefined}
-              onChange={(event) =>
-                setSelectedKeys(event.target.value ? [event.target.value] : [])
-              }
-              onPressEnter={() => confirm()}
-              style={{ marginBottom: 8, display: 'block', width: 220 }}
-            />
-            <Space>
-              <Button
-                type="primary"
-                size="small"
-                icon={<SearchOutlined />}
-                onClick={() => confirm()}
-              >
-                검색
-              </Button>
-              <Button
-                size="small"
-                onClick={() => {
-                  clearFilters?.();
-                  confirm();
-                }}
-              >
-                초기화
-              </Button>
-            </Space>
-          </div>
-        ),
-        onFilter: (value, record) =>
-          record.questionId.toLowerCase().includes(String(value).toLowerCase()),
-        render: (questionId: string) => (
-          <Button
-            type="link"
-            style={{ padding: 0, height: 'auto' }}
-            onClick={() => openDetail(questionId)}
-          >
-            {questionId}
-          </Button>
-        )
-      },
-      {
-        title: '버전',
-        key: 'version',
-        width: 140,
-        sorter: (a, b) => {
-          const left = versionSummaryState.data[a.questionId];
-          const right = versionSummaryState.data[b.questionId];
-          const leftValue = left?.canonicalImportId == null ? -1 : left.revisionCount;
-          const rightValue =
-            right?.canonicalImportId == null ? -1 : right.revisionCount;
-          return leftValue - rightValue;
-        },
-        render: (_, record) => {
-          const summary = versionSummaryState.data[record.questionId];
-          if (!summary) {
-            return versionSummaryState.status === 'error' ? (
-              <Text type="danger">확인 실패</Text>
-            ) : versionSummaryState.status === 'pending' ? (
-              <Text type="secondary">확인 중</Text>
-            ) : (
-              <Text type="secondary">버전 연결 없음</Text>
-            );
-          }
-          if (summary.canonicalImportId == null) {
-            return <Text type="secondary">버전 연결 없음</Text>;
-          }
-          return <Text>{summary.revisionCount.toLocaleString()}회</Text>;
-        }
-      },
-      {
-        title: '주제',
-        dataIndex: 'topicMain',
-        width: 160,
-        sorter: createTextSorter((record) => record.topicMain),
-        filters: topicMainFilterOptions,
-        onFilter: (value, record) => record.topicMain === value,
-        render: (topicMain: string) => <Text>{topicMain || '-'}</Text>
-      },
-      {
-        title: '난이도',
-        dataIndex: 'difficultyLevel',
-        width: 110,
-        sorter: (a, b) => (a.difficultyLevel ?? 0) - (b.difficultyLevel ?? 0),
-        filters: assessmentDifficultyLevels.map((level) => ({
-          text: `난이도 ${level}`,
-          value: level
-        })),
-        onFilter: (value, record) => record.difficultyLevel === value,
-        render: (difficultyLevel: number | null) =>
-          difficultyLevel == null ? (
-            <Text type="secondary">-</Text>
-          ) : (
-            <Text>난이도 {difficultyLevel}</Text>
-          )
-      },
-      {
-        title: 'TOPIK 급수',
-        dataIndex: 'targetLevel',
-        width: 130,
-        sorter: createTextSorter((record) => record.targetLevel),
-        filters: targetLevelFilterOptions,
-        onFilter: (value, record) => record.targetLevel === value,
-        render: (targetLevel: string) =>
-          targetLevel ? (
-            <Text>{targetLevel}</Text>
-          ) : (
-            <Text type="secondary">-</Text>
-          )
-      },
-      {
-        title: createStatusColumnTitle('노출 상태', serviceStatusLabels),
-        dataIndex: 'serviceStatus',
-        width: 130,
-        sorter: createTextSorter((record) => record.serviceStatus ?? ''),
-        render: (_, record) => (
-          <Tag color={getServiceStatusColor(record.serviceStatus)}>
-            {getServiceStatusLabel(record.serviceStatus)}
-          </Tag>
-        )
-      },
-      {
-        title: '태그',
-        key: 'tags',
-        width: 150,
-        render: (_, record) => {
-          const count = tagCountByQuestionId[record.questionId] ?? 0;
-          return (
-            <Space size={6}>
-              {count > 0 ? <Text>{count}개</Text> : <Text type="secondary">-</Text>}
-              <Button
-                size="small"
-                aria-label={`태그 편집: ${record.questionId}`}
-                onClick={() => setTagEditQuestionId(record.questionId)}
-              >
-                태그 편집
-              </Button>
-            </Space>
-          );
-        }
-      },
-      {
-        title: '최근 수정',
-        key: 'updatedAt',
-        width: 160,
-        sorter: createTextSorter((record) => record.updatedAt),
-        render: (_, record) => <Text>{record.updatedAt || '-'}</Text>
-      },
-      {
-        title: '',
-        key: 'rowActions',
-        width: 100,
-        fixed: 'right',
-        render: (_, record) => (
-          <TableActionMenu items={createRowActionItems(record)} />
-        )
-      }
-    ],
+  const manageColumns = useMemo(
+    () =>
+      createManageColumns({
+        versionSummaryState,
+        topicMainFilterOptions,
+        targetLevelFilterOptions,
+        tagCountByQuestionId,
+        openDetail,
+        onEditTags: setTagEditQuestionId,
+        onOperationAction: setActionState
+      }),
     [
-      createRowActionItems,
       openDetail,
       tagCountByQuestionId,
       targetLevelFilterOptions,
       topicMainFilterOptions,
-      versionSummaryState.data,
-      versionSummaryState.status
+      versionSummaryState
     ]
   );
 
-  const versionExpandable = useMemo<
-    NonNullable<TableProps<AssessmentQuestionSummary>['expandable']>
-  >(
-    () => ({
-      expandIcon: ({ expanded, expandable, onExpand, record }) =>
-        expandable ? (
-          <Button
-            type="text"
-            size="small"
-            className="question-version-expand-button"
-            aria-label={expanded ? '문항 변경 이력 접기' : '문항 변경 이력 펼치기'}
-            icon={<RightOutlined rotate={expanded ? 90 : 0} />}
-            onClick={(event) => {
-              event.stopPropagation();
-              onExpand(record, event);
-            }}
-          />
-        ) : null,
-      rowExpandable: (record) => {
-        const summary = versionSummaryState.data[record.questionId];
-        return Boolean(
-          summary?.canonicalImportId != null && summary.revisionCount > 0
-        );
-      },
-      onExpand: (expanded, record) => {
-        if (!expanded) {
-          return;
-        }
-        const historyState = versionHistoryByQuestionId[record.questionId];
-        if (!historyState || historyState.status === 'idle') {
-          loadVersionHistory(record.questionId);
-        }
-      },
-      expandedRowRender: (record) => (
-        <QuestionVersionHistoryTable
-          state={
-            versionHistoryByQuestionId[record.questionId] ??
-            EMPTY_VERSION_HISTORY_STATE
-          }
-          currentImportId={
-            versionSummaryState.data[record.questionId]?.canonicalImportId ?? null
-          }
-          onOpenVersion={openVersionDetail}
-          onRetry={() => loadVersionHistory(record.questionId)}
-        />
-      )
-    }),
+  const versionExpandable = useMemo(
+    () =>
+      createVersionExpandable({
+        versionSummaryState,
+        versionHistoryByQuestionId,
+        loadVersionHistory,
+        openVersionDetail
+      }),
     [
       loadVersionHistory,
       openVersionDetail,
       versionHistoryByQuestionId,
-      versionSummaryState.data
+      versionSummaryState
     ]
   );
 
