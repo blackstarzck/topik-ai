@@ -124,6 +124,8 @@
 * fetcher 는 반드시 `useCallback` 으로 감싸 전달한다 — 재조회 조건이 fetcher 의 의존성 배열로 드러나고, `react-hooks/exhaustive-deps` 가 호출부에서 검증한다.
 * 훅 계약: 초기 status 는 `'pending'`(idle 프레임 없음), 실패 시 직전 data 보존(마지막 성공 상태 fallback), abort 된 응답 무시, 빈 결과는 `'empty'`(기본 배열 길이 0, `isEmpty` 로 재정의).
 * 수동 재조회는 반환된 `reload()` 를 사용한다 — reloadKey state 를 페이지에 직접 만들지 않는다.
+* 조치 성공 후 서버 재조회 없이 목록을 갱신할 때는 반환된 `mutate(updater)` 를 사용한다 — 기존 배선과 동일하게 empty/success 를 재판정하고 에러 표시를 지운다. 목록 상태에 별도 setState 를 두지 않는다.
+* 표준과 다른 기존 의미는 옵션으로 선언해 보존한다(확산 2차 — 2026-08-19): 권한/파라미터 준비 전 조회 금지는 `enabled`, 실패 시 데이터 소거 계약은 `keepDataOnError: false`, 재조회 중 직전 화면 유지형 재시도는 `pendingOnRefetch: false`, 에러 문구 번역·선택적 데이터 소거는 `mapError`. 옵션 없이 동작이 달라지는 전환은 금지다.
 
 ---
 
