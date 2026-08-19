@@ -138,7 +138,12 @@
 - 상세 UI 메모: 게시글 상세는 Drawer를 사용하고, 내부 메모 히스토리는 `제목/유형` 중심 Table, 메모 입력은 `Descriptions` 기반 Modal, 메모 상세 확인은 별도 Modal로 처리합니다. 게시글 원문은 Drawer 본문에 직접 렌더링하지 않고, 상세 `Descriptions`의 `게시글 원문 보기 > 보러가기` 링크 또는 `더보기`에서 여는 별도 Modal에서 HTML 그대로 보여줍니다.
 - 목록 상태 메모: `상태` 컬럼은 `게시/숨김` 스위치로 조치하고, 더보기 메뉴에는 `게시글 원문 보기`, `내부 메모`, 하단 분리 `게시글 삭제`만 유지합니다.
 - 상세 Drawer 레이아웃 메모: 이 화면의 `게시글 상세 Drawer`를 행 클릭 상세 Drawer의 공통 시각 baseline으로 사용합니다. 헤더 오른쪽은 상태 메타만 두고 `8px` 간격으로 정렬하며, 푸터 왼쪽은 `감사 로그 확인`, 푸터 오른쪽은 `large` 크기 조치 버튼을 `8px` 간격으로 배치합니다. 푸터는 폭이 좁아지면 wrap되는 좌우 분리 레이아웃을 유지합니다. 공통 기준은 `docs/guidelines/admin-detail-drawer-guidelines.md`를 따릅니다.
-- 예상 feature 파일: src/features/community/pages/*
+- 구현 파일:
+  - `src/features/community/pages/community-posts-page.tsx`
+  - `src/features/community/model/community-posts-page-schema.ts` (정책 코드·메모 유형 카탈로그 — Phase 4 분해)
+  - `src/features/community/ui/community-posts-columns.tsx` (목록·메모 컬럼 — Phase 4 분해)
+  - `src/features/community/ui/community-post-detail-drawer.tsx` (상세 Drawer — Phase 4 분해)
+  - `src/features/community/api/community-service.ts`
 - 권한/로그 처리 메모: 파괴적 액션에는 정책 코드 선택, 확인 단계, 사유 입력, Target Type, Target ID, 감사 로그 확인 경로를 함께 둡니다.
 
 ## 14. 오픈 이슈

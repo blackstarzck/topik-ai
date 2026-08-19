@@ -124,7 +124,12 @@
 ## 13. 구현 메모
 
 - 현재 코드베이스에서 재사용할 컴포넌트: PageTitle, SearchBar, AdminDataTable, ConfirmAction, AuditLogLink
-- 예상 feature 파일: src/features/users/pages/*
+- 구현 파일:
+  - `src/features/users/pages/instructor-management-page.tsx`
+  - `src/features/users/model/instructor-management-page-schema.ts` (URL 파서·필터·조치 상수 — Phase 4 분해)
+  - `src/features/users/ui/instructor-columns.tsx` (목록 컬럼 팩토리 — Phase 4 분해)
+  - `src/features/users/ui/instructor-detail-drawer.tsx` (상세 Drawer·내부 테이블 3종 — Phase 4 분해)
+  - `src/features/users/api/instructors-service.ts`
 - 권한/로그 처리 메모: 조회 중심 화면이라도 관련 원본 화면의 감사 로그로 역추적할 수 있어야 합니다.
 - 상세 Drawer 레이아웃 메모: 헤더 오른쪽은 상태/활동 메타만 두고, 푸터 왼쪽은 `감사 로그 확인`, 푸터 오른쪽은 `대상 그룹 보기`와 상태 조치 버튼을 배치합니다. 공통 기준은 `docs/guidelines/admin-detail-drawer-guidelines.md`를 따릅니다.
 - 구현된 상세 Drawer는 컬렉션 섹션을 `List` 대신 테이블로 렌더링하고, `관리자 메모`는 요약 컬럼 + expandable row로 긴 본문을 확인합니다.
