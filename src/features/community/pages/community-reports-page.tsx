@@ -5,7 +5,8 @@ import {
   notification
 } from 'antd';
 import type { TableColumnsType } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { useAsyncResource } from '@/shared/model/use-async-resource';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import {
@@ -79,9 +80,17 @@ const reportActionByState: Record<
 };
 
 export default function CommunityReportsPage(): JSX.Element {
-  const [rows, setRows] = useState<ReportRow[]>([]);
-  const [loadState, setLoadState] = useState<'pending' | 'success' | 'error'>('pending');
-  const [loadErrorMessage, setLoadErrorMessage] = useState('');
+  const fetchReports = useCallback(
+    (signal: AbortSignal) => fetchCommunityReportsSafe(signal),
+    []
+  );
+  const {
+    state: reportsState,
+    mutate: mutateReports
+  } = useAsyncResource<ReportRow[]>(fetchReports, { initialData: [] });
+  const rows = reportsState.data;
+  const loadState = reportsState.status;
+  const loadErrorMessage = reportsState.errorMessage ?? '';
   const [actionState, setActionState] = useState<ReportActionState>(null);
   const [selectedRow, setSelectedRow] = useState<ReportRow | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -97,31 +106,6 @@ export default function CommunityReportsPage(): JSX.Element {
     handleDetailOpenChange
   } = useSearchBarDateDraft(startDate, endDate);
   const [notificationApi, notificationContextHolder] = notification.useNotification();
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    setLoadState('pending');
-    setLoadErrorMessage('');
-    void fetchCommunityReportsSafe(controller.signal).then((result) => {
-      if (controller.signal.aborted) {
-        return;
-      }
-
-      if (result.ok) {
-        setRows(result.data);
-        setLoadState('success');
-        return;
-      }
-
-      setLoadErrorMessage(result.error.message);
-      setLoadState('error');
-    });
-
-    return () => {
-      controller.abort();
-    };
-  }, []);
 
   const commitParams = useCallback(
     (
@@ -217,8 +201,8 @@ export default function CommunityReportsPage(): JSX.Element {
         return;
       }
 
-      setRows((prev) =>
-        prev.map((item) => (item.id === result.data.id ? result.data : item))
+      mutateReports((data) =>
+        data.map((item) => (item.id === result.data.id ? result.data : item))
       );
 
       if (actionState.type === 'hide-post') {
@@ -263,7 +247,7 @@ export default function CommunityReportsPage(): JSX.Element {
 
       setActionState(null);
     },
-    [actionState, notificationApi]
+    [actionState, mutateReports, notificationApi]
   );
 
   const columns = useMemo<TableColumnsType<ReportRow>>(

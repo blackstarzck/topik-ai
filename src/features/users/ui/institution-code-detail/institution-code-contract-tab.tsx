@@ -13,7 +13,8 @@ import {
 } from 'antd';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { useAsyncResource } from '@/shared/model/use-async-resource';
 
 import {
   createInstitutionContractSafe,
@@ -82,10 +83,17 @@ export function InstitutionCodeContractTab({
   notificationApi,
   onChanged
 }: InstitutionCodeContractTabProps): JSX.Element {
-  const [contracts, setContracts] = useState<InstitutionContract[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [reloadKey, setReloadKey] = useState(0);
+  const fetchContracts = useCallback(
+    (signal: AbortSignal) => fetchInstitutionContractsSafe(institution.code, signal),
+    [institution.code]
+  );
+  // 기존 배선은 실패 시 목록을 비웠다(직전 데이터 보존 대신 소거).
+  const { state: contractsState, reload: reloadContracts } = useAsyncResource<
+    InstitutionContract[]
+  >(fetchContracts, { initialData: [], keepDataOnError: false });
+  const contracts = contractsState.data;
+  const loading = contractsState.status === 'pending';
+  const errorMessage = contractsState.errorMessage;
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<InstitutionContract | null>(null);
@@ -94,34 +102,10 @@ export function InstitutionCodeContractTab({
 
   const [contractForm] = Form.useForm<ContractFormValues>();
 
-  useEffect(() => {
-    const controller = new AbortController();
-    setLoading(true);
-    void fetchInstitutionContractsSafe(institution.code, controller.signal).then(
-      (result) => {
-        if (controller.signal.aborted) {
-          return;
-        }
-        setLoading(false);
-        if (result.ok) {
-          setContracts(result.data);
-          setErrorMessage(null);
-          return;
-        }
-        setContracts([]);
-        setErrorMessage(result.error.message);
-      }
-    );
-    return () => {
-      controller.abort();
-    };
-  }, [institution.code, reloadKey]);
-
-
   const reload = useCallback(() => {
-    setReloadKey((prev) => prev + 1);
+    reloadContracts();
     onChanged();
-  }, [onChanged]);
+  }, [onChanged, reloadContracts]);
 
   const openCreate = useCallback(() => {
     setEditTarget(null);

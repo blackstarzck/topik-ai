@@ -9,7 +9,8 @@ import {
   notification
 } from 'antd';
 import type { TableColumnsType } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { useAsyncResource } from '@/shared/model/use-async-resource';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import {
@@ -29,7 +30,6 @@ import {
   type SystemReportQuery
 } from '../model/system-report-types';
 import { usePermissionStore } from '../model/permission-store';
-import type { AsyncState } from '../../../shared/model/async-state';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
 import {
   DetailDrawer,
@@ -98,14 +98,6 @@ export default function SystemReportsPage(): JSX.Element {
   } = useSearchBarDateDraft(startDate, endDate);
   const [draftCategory, setDraftCategory] = useState<SystemReportCategory | undefined>(category);
   const [deleteTarget, setDeleteTarget] = useState<SystemReport | null>(null);
-  const [reloadKey, setReloadKey] = useState(0);
-
-  const [listState, setListState] = useState<AsyncState<SystemReportPage>>({
-    status: 'pending',
-    data: { rows: [], totalCount: 0 },
-    errorMessage: null,
-    errorCode: null
-  });
 
   const query = useMemo<SystemReportQuery>(() => ({
     category,
@@ -116,30 +108,18 @@ export default function SystemReportsPage(): JSX.Element {
     pageSize: PAGE_SIZE
   }), [category, endDate, keyword, page, startDate]);
 
-  useEffect(() => {
-    if (!canRead) return;
-    const controller = new AbortController();
-    setListState((current) => ({ ...current, status: 'pending', errorMessage: null, errorCode: null }));
-    void fetchSystemReportsSafe(query, controller.signal).then((response) => {
-      if (controller.signal.aborted) return;
-      if (response.ok) {
-        setListState({
-          status: response.data.totalCount === 0 ? 'empty' : 'success',
-          data: response.data,
-          errorMessage: null,
-          errorCode: null
-        });
-        return;
-      }
-      setListState((current) => ({
-        ...current,
-        status: 'error',
-        errorMessage: response.error.message,
-        errorCode: response.error.code
-      }));
-    });
-    return () => controller.abort();
-  }, [canRead, query, reloadKey]);
+  const fetchReports = useCallback(
+    (signal: AbortSignal) => fetchSystemReportsSafe(query, signal),
+    [query]
+  );
+  const { state: listState, reload: reloadReports } = useAsyncResource<SystemReportPage>(
+    fetchReports,
+    {
+      initialData: { rows: [], totalCount: 0 },
+      isEmpty: (data) => data.totalCount === 0,
+      enabled: canRead
+    }
+  );
 
   const commitParams = useCallback((next: Record<string, string | undefined>, resetPage = true) => {
     const merged = new URLSearchParams(searchParams);
@@ -182,8 +162,8 @@ export default function SystemReportsPage(): JSX.Element {
     });
     setDeleteTarget(null);
     commitParams({ reportId: undefined }, false);
-    setReloadKey((current) => current + 1);
-  }, [commitParams, deleteTarget, notificationApi]);
+    reloadReports();
+  }, [commitParams, deleteTarget, notificationApi, reloadReports]);
 
   const selectedReport = listState.data.rows.find((row) => row.reportId === selectedReportId) ?? null;
 
@@ -304,7 +284,7 @@ export default function SystemReportsPage(): JSX.Element {
             style={{ marginBottom: 16 }}
             message="사용자 리포트를 불러오지 못했습니다."
             description={listState.data.rows.length > 0 ? '마지막으로 확인된 목록을 유지하고 있습니다.' : listState.errorMessage}
-            action={<Button size="small" onClick={() => setReloadKey((current) => current + 1)}>재시도</Button>}
+            action={<Button size="small" onClick={reloadReports}>재시도</Button>}
           />
         ) : null}
         {listState.status === 'empty' ? (

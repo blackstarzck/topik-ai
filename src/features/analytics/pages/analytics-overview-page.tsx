@@ -13,7 +13,8 @@ import {
   Typography
 } from 'antd';
 import type { TableColumnsType } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
+import { useAsyncResource } from '@/shared/model/use-async-resource';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { useCommerceStore } from '../../billing/model/commerce-store';
@@ -27,7 +28,6 @@ import {
 } from '../api/analytics-permission-error';
 import { usePermissionStore } from '../../system/model/permission-store';
 import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
-import type { AsyncState } from '../../../shared/model/async-state';
 import { PageTitle } from '../../../shared/ui/page-title/page-title';
 import {
   createNumberSorter,
@@ -438,58 +438,27 @@ export default function AnalyticsOverviewPage(): JSX.Element {
   );
 
   // Supabase 모드 실데이터 집계(get_admin_analytics_overview). mock 모드는 data=null.
-  const [overviewState, setOverviewState] = useState<AsyncState<AnalyticsOverview | null>>({
-    status: 'pending',
-    data: null,
-    errorMessage: null,
-    errorCode: null
+  const fetchOverview = useCallback(
+    (signal: AbortSignal) =>
+      fetchAnalyticsOverviewSafe(periodDaysMap[activePeriod], signal),
+    [activePeriod]
+  );
+  const { state: overviewState, reload: reloadOverview } = useAsyncResource<
+    AnalyticsOverview | null
+  >(fetchOverview, {
+    initialData: null,
+    enabled: canRead,
+    // 권한 거절이면 직전 수치를 남기지 않는다(회수 즉시 화면에서도 사라져야 한다).
+    mapError: (error) => ({
+      message: translateAnalyticsError(error.message),
+      clearData: isAnalyticsPermissionError(error.message)
+    })
   });
-  const [reloadKey, setReloadKey] = useState(0);
-
-  useEffect(() => {
-    if (!canRead) {
-      return;
-    }
-    const controller = new AbortController();
-    setOverviewState((prev) => ({
-      ...prev,
-      status: 'pending',
-      errorMessage: null,
-      errorCode: null
-    }));
-    void fetchAnalyticsOverviewSafe(periodDaysMap[activePeriod], controller.signal).then(
-      (result) => {
-        if (controller.signal.aborted) {
-          return;
-        }
-        if (result.ok) {
-          setOverviewState({
-            status: 'success',
-            data: result.data,
-            errorMessage: null,
-            errorCode: null
-          });
-          return;
-        }
-        // 권한 거절이면 직전 수치를 남기지 않는다(회수 즉시 화면에서도 사라져야 한다).
-        setOverviewState((prev) => ({
-          ...prev,
-          status: 'error',
-          data: isAnalyticsPermissionError(result.error.message) ? null : prev.data,
-          errorMessage: translateAnalyticsError(result.error.message),
-          errorCode: result.error.code
-        }));
-      }
-    );
-    return () => controller.abort();
-  }, [activePeriod, canRead, reloadKey]);
 
   const overview = overviewState.data;
   const overviewLoading = isSupabaseConfigured && overviewState.status === 'pending';
 
-  const handleRetryOverview = useCallback(() => {
-    setReloadKey((prev) => prev + 1);
-  }, []);
+  const handleRetryOverview = reloadOverview;
 
   // ----- mock 폴백 계산(Supabase 미설정 시에만 사용; 기존 로직 유지) -----
   const periodStart = getPeriodStart(activePeriod);

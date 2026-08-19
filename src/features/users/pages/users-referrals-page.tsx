@@ -21,6 +21,7 @@ import type {
 } from 'antd/es/table/interface';
 import type { ChangeEvent } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAsyncResource } from '@/shared/model/use-async-resource';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import {
@@ -44,7 +45,6 @@ import type {
   ReferralStatusFilter,
   ReferralSummary
 } from '../model/referrals-types';
-import type { AsyncState } from '../../../shared/model/async-state';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
 import {
@@ -352,13 +352,17 @@ export default function UsersReferralsPage(): JSX.Element {
   const query = useReferralsQueryStore((state) => state.query);
   const replaceQuery = useReferralsQueryStore((state) => state.replaceQuery);
   const setQuery = useReferralsQueryStore((state) => state.setQuery);
-  const [referralsState, setReferralsState] = useState<AsyncState<ReferralSummary[]>>({
-    status: 'pending',
-    data: [],
-    errorMessage: null,
-    errorCode: null
-  });
-  const [reloadKey, setReloadKey] = useState(0);
+  const fetchReferrals = useCallback(
+    (signal: AbortSignal) => fetchReferralsSafe(signal),
+    []
+  );
+  // 페이지 이동(query.page/pageSize) 시 전체 목록 재조회하던 기존 deps 는 오너 확인
+  // (2026-08-19)으로 제거 — fetch 가 페이지 값을 쓰지 않아 같은 데이터를 재수신했다.
+  const {
+    state: referralsState,
+    reload: reloadReferrals,
+    mutate: mutateReferrals
+  } = useAsyncResource<ReferralSummary[]>(fetchReferrals, { initialData: [] });
   const [actionState, setActionState] = useState<ActionState>(null);
   const [adjustmentTarget, setAdjustmentTarget] = useState<ReferralSummary | null>(
     null
@@ -378,43 +382,6 @@ export default function UsersReferralsPage(): JSX.Element {
     replaceQuery(parseReferralQuery(searchParams));
   }, [replaceQuery, searchParams]);
 
-  useEffect(() => {
-    const controller = new AbortController();
-
-    setReferralsState((prev) => ({
-      ...prev,
-      status: 'pending',
-      errorMessage: null,
-      errorCode: null
-    }));
-
-    void fetchReferralsSafe(controller.signal).then((result) => {
-      if (controller.signal.aborted) {
-        return;
-      }
-
-      if (result.ok) {
-        setReferralsState({
-          status: result.data.length === 0 ? 'empty' : 'success',
-          data: result.data,
-          errorMessage: null,
-          errorCode: null
-        });
-        return;
-      }
-
-      setReferralsState((prev) => ({
-        ...prev,
-        status: 'error',
-        errorMessage: result.error.message,
-        errorCode: result.error.code
-      }));
-    });
-
-    return () => {
-      controller.abort();
-    };
-  }, [query.page, query.pageSize, reloadKey]);
 
   const commitQuery = useCallback(
     (next: Partial<ReferralQuery>) => {
@@ -577,10 +544,10 @@ export default function UsersReferralsPage(): JSX.Element {
         }
 
         // DB 반영분을 다시 불러와 화면을 동기화한다.
-        setReloadKey((prev) => prev + 1);
+        reloadReferrals();
       } else {
-        setReferralsState((prev) => {
-          const nextData = prev.data.map((item) => {
+        mutateReferrals((data) =>
+          data.map((item) => {
             if (item.id !== actionState.referral.id) {
               return item;
             }
@@ -603,14 +570,8 @@ export default function UsersReferralsPage(): JSX.Element {
                   : ('활성' as const),
               lastActionAt: formatCurrentDateTime()
             };
-          });
-
-          return {
-            ...prev,
-            data: nextData,
-            status: nextData.length === 0 ? 'empty' : 'success'
-          };
-        });
+          })
+        );
       }
 
       notificationApi.success({
@@ -630,7 +591,7 @@ export default function UsersReferralsPage(): JSX.Element {
 
       setActionState(null);
     },
-    [actionState, notificationApi]
+    [actionState, mutateReferrals, notificationApi, reloadReferrals]
   );
 
   const handleSubmitAdjustment = useCallback(async () => {
@@ -658,7 +619,7 @@ export default function UsersReferralsPage(): JSX.Element {
       }
 
       adjustmentId = result.data; // RPC가 생성한 원장 ID
-      setReloadKey((prev) => prev + 1);
+      reloadReferrals();
     } else {
       const entryType = getAdjustmentEntryType(values.amount);
       const nextEntry: ReferralRewardLedgerEntry = {
@@ -672,8 +633,8 @@ export default function UsersReferralsPage(): JSX.Element {
         reason
       };
 
-      setReferralsState((prev) => {
-        const nextData = prev.data.map((item) => {
+      mutateReferrals((data) =>
+        data.map((item) => {
           if (item.id !== adjustmentTarget.id) {
             return item;
           }
@@ -685,14 +646,8 @@ export default function UsersReferralsPage(): JSX.Element {
             totalRewardAmount: item.totalRewardAmount + values.amount,
             lastActionAt: nextEntry.actedAt
           };
-        });
-
-        return {
-          ...prev,
-          data: nextData,
-          status: nextData.length === 0 ? 'empty' : 'success'
-        };
-      });
+        })
+      );
     }
 
     notificationApi.success({
@@ -710,11 +665,11 @@ export default function UsersReferralsPage(): JSX.Element {
     });
 
     setAdjustmentTarget(null);
-  }, [adjustmentForm, adjustmentTarget, notificationApi]);
+  }, [adjustmentForm, adjustmentTarget, mutateReferrals, notificationApi, reloadReferrals]);
 
   const handleRetryLoad = useCallback(() => {
-    setReloadKey((prev) => prev + 1);
-  }, []);
+    reloadReferrals();
+  }, [reloadReferrals]);
 
   const handleKeywordChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {

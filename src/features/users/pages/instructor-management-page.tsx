@@ -13,6 +13,7 @@ import {
 import type { DescriptionsProps, TableColumnsType } from 'antd';
 import type { ChangeEvent } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAsyncResource } from '@/shared/model/use-async-resource';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import {
@@ -39,7 +40,6 @@ import type {
   InstructorSearchField,
   InstructorStatus
 } from '../model/types';
-import type { AsyncState } from '../../../shared/model/async-state';
 import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
 import {
@@ -300,15 +300,17 @@ export default function InstructorManagementPage(): JSX.Element {
   const query = useInstructorsQueryStore((state) => state.query);
   const replaceQuery = useInstructorsQueryStore((state) => state.replaceQuery);
   const setQuery = useInstructorsQueryStore((state) => state.setQuery);
-  const [instructorsState, setInstructorsState] = useState<
-    AsyncState<InstructorDetail[]>
-  >({
-    status: 'pending',
-    data: [],
-    errorMessage: null,
-    errorCode: null
-  });
-  const [reloadKey, setReloadKey] = useState(0);
+  const fetchInstructors = useCallback(
+    (signal: AbortSignal) => fetchInstructorsSafe(signal),
+    []
+  );
+  // 페이지 이동(query.page/pageSize) 시 전체 목록 재조회하던 기존 deps 는 오너 확인
+  // (2026-08-19)으로 제거 — fetch 가 페이지 값을 쓰지 않아 같은 데이터를 재수신했다.
+  const {
+    state: instructorsState,
+    reload: reloadInstructors,
+    mutate: mutateInstructors
+  } = useAsyncResource<InstructorDetail[]>(fetchInstructors, { initialData: [] });
   const [actionState, setActionState] = useState<ActionState>(null);
   const [notificationApi, notificationContextHolder] =
     notification.useNotification();
@@ -324,43 +326,6 @@ export default function InstructorManagementPage(): JSX.Element {
     replaceQuery(parseInstructorQuery(searchParams));
   }, [replaceQuery, searchParams]);
 
-  useEffect(() => {
-    const controller = new AbortController();
-
-    setInstructorsState((prev) => ({
-      ...prev,
-      status: 'pending',
-      errorMessage: null,
-      errorCode: null
-    }));
-
-    void fetchInstructorsSafe(controller.signal).then((result) => {
-      if (controller.signal.aborted) {
-        return;
-      }
-
-      if (result.ok) {
-        setInstructorsState({
-          status: result.data.length === 0 ? 'empty' : 'success',
-          data: result.data,
-          errorMessage: null,
-          errorCode: null
-        });
-        return;
-      }
-
-      setInstructorsState((prev) => ({
-        ...prev,
-        status: 'error',
-        errorMessage: result.error.message,
-        errorCode: result.error.code
-      }));
-    });
-
-    return () => {
-      controller.abort();
-    };
-  }, [query.page, query.pageSize, reloadKey]);
 
   const commitQuery = useCallback(
     (next: Partial<InstructorQuery>) => {
@@ -453,10 +418,10 @@ export default function InstructorManagementPage(): JSX.Element {
         }
 
         // DB 반영분을 다시 불러와 화면을 동기화한다.
-        setReloadKey((prev) => prev + 1);
+        reloadInstructors();
       } else {
-        setInstructorsState((prev) => {
-          const nextData = prev.data.map((item) =>
+        mutateInstructors((data) =>
+          data.map((item) =>
             item.id === actionState.instructor.id
               ? {
                   ...item,
@@ -466,14 +431,8 @@ export default function InstructorManagementPage(): JSX.Element {
                   lastActionAt: formatCurrentDateTime()
                 }
               : item
-          );
-
-          return {
-            ...prev,
-            data: nextData,
-            status: nextData.length === 0 ? 'empty' : 'success'
-          };
-        });
+          )
+        );
       }
 
       notificationApi.success({
@@ -492,12 +451,12 @@ export default function InstructorManagementPage(): JSX.Element {
       });
       setActionState(null);
     },
-    [actionState, notificationApi]
+    [actionState, mutateInstructors, notificationApi, reloadInstructors]
   );
 
   const handleRetryLoad = useCallback(() => {
-    setReloadKey((prev) => prev + 1);
-  }, []);
+    reloadInstructors();
+  }, [reloadInstructors]);
 
   const handleKeywordChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
