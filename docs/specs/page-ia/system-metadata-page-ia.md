@@ -176,7 +176,7 @@
 ## 14. 구현 메모
 
 - 현재 코드베이스에서 재사용할 컴포넌트: `PageTitle`, `SearchBar`, `ListSummaryCards`, `AdminListCard`, `DetailDrawer`, `AdminFormDescriptions`, `AdminDataTable`, `ConfirmAction`, `AuditLogLink`
-- 예상 feature 파일: `src/features/system/pages/system-metadata-page.tsx`, `src/features/system/api/system-metadata-service.ts`, `src/features/system/model/system-metadata-store.ts`, `src/features/system/model/system-metadata-types.ts`
+- 구현 파일: `src/features/system/pages/system-metadata-page.tsx`, `src/features/system/api/system-metadata-service.ts`, `src/features/system/model/system-metadata-store.ts` (mock 상태 store — Phase 4 분해로 시드·팩토리 분리), `src/features/system/model/system-metadata-seed.ts` (초기 그룹/감사 시드), `src/features/system/model/system-metadata-factories.ts` (이력·아이템·관리자 위치 팩토리), `src/features/system/model/system-metadata-types.ts`
 - 마스터 카탈로그 섹션: `src/features/assessment/ui/master-catalog-section.tsx` (facade `assessment-question-bank-service.ts`의 마스터 카탈로그 로더를 사용 — 평가 도메인 데이터라 assessment feature에 두고 이 페이지가 마운트)
 - 권한/로그/알림 처리 메모: 생성/수정/상태 변경/순서 변경 결과는 notification과 감사 로그를 같이 유지합니다.
 
