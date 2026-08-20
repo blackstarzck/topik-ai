@@ -51,13 +51,16 @@ function createQueryMock(table: string, options: Required<MockSupabaseOptions>) 
     updatePayload: undefined as unknown
   };
 
+  // update(...).eq(...) 는 Promise 를 돌려준다 — query 체인과 모양이 다르다.
+  const eq = vi.fn(async () => ({ error: null }));
+
   const query = {
     select: vi.fn(() => query),
     eq: vi.fn(() => query),
     order: vi.fn(() => query),
     update: vi.fn((payload: unknown) => {
       state.updatePayload = payload;
-      return query;
+      return { eq };
     }),
     limit: vi.fn(async () => {
       if (table === 'notification_delivery_attempts') {
@@ -102,12 +105,6 @@ function createQueryMock(table: string, options: Required<MockSupabaseOptions>) 
     }),
     then: undefined as never
   };
-
-  const eq = vi.fn(async () => ({ error: null }));
-  query.update = vi.fn((payload: unknown) => {
-    state.updatePayload = payload;
-    return { eq };
-  });
 
   return { query, state, eq };
 }

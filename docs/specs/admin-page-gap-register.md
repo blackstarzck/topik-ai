@@ -133,6 +133,25 @@
 - 동작을 바꿀 수 있었던 지점은 보수적으로 처리했다: `faqs-service` 의 비표준 코드 `'INVALID_STATE'`(소비처 0건)는 형제 서비스와 같은 `'VALIDATION_ERROR'` 로, `InputNumber` 의 `parser` 는 `Number("") = 0` 이 되는 동작 변경을 피하려고 런타임 표현식을 유지하고 타입만 맞췄다(rc-input-number 는 숫자 문자열도 파싱한다).
 - 남은 관련 사실: `*.tsbuildinfo` 는 `tsc -b` 가 만드는 증분 캐시이며 §3.10 에서 gitignore 했다.
 
+#### 3.9.2 `tests/**` 는 그 뒤로도 검사되지 않았다 — **해소 (2026-08-20)**
+
+- §3.9 로 `tsc -b` 를 배선한 뒤에도 검사 대상은 `tsconfig.app.json`(include: `src`)과 `tsconfig.node.json`(include: `vite.config.ts`·`api`·assessment server) 둘뿐이었다. **`tests` 는 어느 프로젝트에도 없었다** — 테스트 코드 전체가 타입 검사 밖이었다.
+- 조치: `tsconfig.tests.json` 신설 + 루트 solution 에 참조 추가.
+- 🚨**`references` 로 app/node 를 가리킬 수 없다** — 두 프로젝트가 `noEmit: true` 라 `TS6310: Referenced project may not disable emit` 로 거부된다. 그래서 테스트가 import 하는 소스(`src`·`api`·`vite.config.ts`)를 **tests 프로젝트의 include 에 함께 넣었다**. src·api 가 두 번 검사되므로 cold typecheck 가 **10.1s → 19.1s** 가 된다. 이걸 피하려면 app/node 를 `emitDeclarationOnly` 로 바꿔 선언을 내보내야 하는데, 빌드 산출물이 생기는 구조 변경이라 채택하지 않았다.
+- 옵션은 app 과 같게 두되 `types: ["node", "vite/client"]` 만 다르다 — 테스트가 브라우저 코드(src)와 서버 코드(api)를 동시에 import 하고, src 의 `import.meta.env` 접근에 `vite/client` 가 필요하다.
+- **역검증**: `tests/unit` 과 `tests/e2e` **각각**에 타입 위반을 주입해 `npm run typecheck` 가 exit 1 로 끝나는 것을 확인했다(복원 후 exit 0). 대상이 유지되는지는 `tests/unit/typecheck-project-coverage.test.ts` 가 지킨다 — 루트 참조 3개·tests include·`-b` 플래그를 고정하고, tests 참조를 빼는 red 주입에서 1케이스 실패를 확인했다.
+
+##### 드러난 오류 4건 — 절반은 테스트가, 절반은 타입이 틀렸다
+
+| 위치 | 무엇이 틀렸나 | 판단 |
+| --- | --- | --- |
+| `system-permissions-service.ts` `AdminUserRpcRow.created_at` | 테스트가 `created_at: null` 을 넣는데 타입은 `string` | **타입이 낡았다** — postgres `returns table` 컬럼은 항상 nullable 이고 `mapRpcRow` 는 이미 null 을 처리한다(`toDateTimeSeconds` 가 null→`''`). `string \| null` 로 넓혔다 |
+| `users-export-xlsx.test.ts` `affiliation: null` | 타입은 `affiliation?: string` | **테스트가 틀렸다** — 실제 생산자(`users-page`)는 `query.affiliation \|\| undefined` 를 넘긴다. `undefined` 로 고쳤다 |
+| `notification-dispatch-email-worker.test.ts` `query.update` 재대입 | 리터럴은 `query` 를, 재대입은 `{ eq }` 를 돌려줬다 | **죽은 선언** — 실제 계약은 `update(...).eq(...)` 가 Promise 다. 리터럴에서 바로 `{ eq }` 를 돌려주게 하고 재대입을 지웠다 |
+| `list-loading-consistency.spec.ts` `window.setTimeout` 스텁 | node 의 `setTimeout`(`__promisify__` 보유)과 교차 타입 | **환경 차이** — 이 함수는 `addInitScript` 로 브라우저에서 돌지만 tests 프로젝트는 node 타입도 본다. 대입 지점만 단정(`as typeof window.setTimeout`)했고 e2e 11/11 로 런타임 동작 불변을 확인했다 |
+
+- 🔑 교훈 재확인: 타입 오류를 볼 때 **낡은 타입 vs 틀린 코드**를 먼저 가른다. 4건 중 2건은 테스트가 옳고 타입/선언이 틀린 쪽이었다.
+
 ### 3.10 테스트 산출물이 git 에 추적되어 워킹트리를 오염시킴 — **해소 (2026-08-04)**
 
 - `test-results/.last-run.json` 이 초기 대량 커밋(`63727e2`)에 우발적으로 포함돼 추적되고 있었고 `.gitignore` 에 `test-results/` 항목이 없었다. e2e 를 돌릴 때마다 이 파일이 변경되고, 실패 시에는 `test-results/<테스트명>/` 아래에 스크린샷·trace·`error-context.md` 가 생겨 `git status` 가 산출물로 덮였다. 다른 작업 중 `git add -A` 로 산출물을 함께 스테이징할 위험이 실제로 있었다.

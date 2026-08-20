@@ -1,0 +1,38 @@
+{
+  // 테스트 코드 전용 검사 프로젝트.
+  //
+  // `tsconfig.app.json`(include: src)·`tsconfig.node.json`(include: vite.config·api)
+  // 어디에도 `tests` 가 없어서 `npm run typecheck` 가 테스트 코드를 **한 줄도 검사하지
+  // 않았다**. 이 프로젝트를 루트 solution 에 참조로 걸어 편입한다.
+  //
+  // 🚨 `references` 로 app/node 를 가리킬 수는 없다 — 두 프로젝트가 `noEmit: true` 라
+  // TS6310("Referenced project may not disable emit")로 거부된다. 그래서 테스트가
+  // import 하는 소스(src·api·vite.config)를 이 프로젝트의 include 에 함께 넣는다.
+  // src·api 는 app/node 에서도 검사되므로 중복 검사가 되지만, 옵션이 서로 달라
+  // (여기는 DOM+node+vite/client 타입이 함께 필요하다) 통합할 수 없다.
+  "compilerOptions": {
+    "composite": true,
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    // 테스트는 브라우저 코드(src)와 서버 코드(api)를 동시에 import 한다.
+    // vite/client 는 src 의 `import.meta.env` 접근 때문에 필요하다.
+    "types": ["node", "vite/client"],
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["tests", "src", "api", "vite.config.ts"]
+}

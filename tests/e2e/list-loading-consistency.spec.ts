@@ -17,7 +17,7 @@ const auditedInitialLoadingPages = [
 function stretchAsyncFetchDelay(): void {
   const originalSetTimeout = window.setTimeout;
 
-  window.setTimeout = function patchedSetTimeout(
+  function patchedSetTimeout(
     handler: TimerHandler,
     timeout?: number,
     ...args: unknown[]
@@ -27,7 +27,12 @@ function stretchAsyncFetchDelay(): void {
     }
 
     return originalSetTimeout(handler, timeout, ...args);
-  };
+  }
+
+  // 이 함수는 page.addInitScript 로 브라우저에서 실행되지만, tests 프로젝트에는 node 타입도
+  // 함께 들어 있어 window.setTimeout 이 node 의 setTimeout(`__promisify__` 보유)과 교차
+  // 타입이 된다. 스텁은 호출 시그니처만 대체하므로 그 지점을 명시적으로 단정한다.
+  window.setTimeout = patchedSetTimeout as typeof window.setTimeout;
 }
 
 for (const { name, url } of auditedInitialLoadingPages) {

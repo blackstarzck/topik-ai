@@ -139,6 +139,9 @@ function isControlPlanePath(filePath) {
 function isAppPath(filePath) {
   return (
     /^(src|public|api)\//.test(filePath)
+    // tsconfig 프로젝트는 이름을 열거하지 않는다 — 새 프로젝트를 추가하면
+    // pathKind 가 'unknown' 이 되어 릴리스가 blocked 되기 때문이다(PR #130).
+    || /^tsconfig(\.[A-Za-z0-9-]+)?\.json$/.test(filePath)
     || [
       'index.html',
       'package.json',
@@ -147,9 +150,6 @@ function isAppPath(filePath) {
       'yarn.lock',
       'vercel.json',
       'vite.config.ts',
-      'tsconfig.json',
-      'tsconfig.app.json',
-      'tsconfig.node.json',
       'eslint.config.js',
       '.eslintrc.cjs',
     ].includes(filePath)
