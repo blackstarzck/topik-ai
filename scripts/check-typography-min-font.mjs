@@ -18,15 +18,21 @@ import { fileURLToPath } from 'node:url';
  * 예외는 아래 allowlist 에 파일·근거와 함께 명시하며 **줄이기만 한다**(max-lines baseline 과
  * 같은 래칫 정책). 새 예외를 추가하려면 그 값이 텍스트가 아니라는 근거가 필요하다.
  *
- * 🚨범위 한계 — 이 검사가 통과해도 "규칙 100% 충족"은 아니다. `src/**` 만 보므로 **antd 가
- * 자기 토큰으로 그리는 12px 은 잡지 못한다**. 실측(2026-08-20 프로덕션 프리뷰 computed
- * font-size 전수 감사): 우리가 쓴 값은 전부 14 이상인데 `ant-tag` 만 12px 로 남았다. 원인은
- * 전역 antd 테마에 `fontSize` 가 없어 기본 14 → 파생 `fontSizeSM` 이 12 이기 때문이고, 해소
- * 수단은 전역 `fontSize: 16`(파생 SM=14) 하나뿐인데 그러면 앱 전체 본문이 커진다 —
- * 오너 결정 대기 사항이다(gap-register §3.16).
+ * 🚨`src/**` 리터럴 스캔만으로는 부족하다 — **antd 가 자기 토큰으로 그리는 텍스트**는
+ * 우리 소스에 숫자가 없다. 실측(2026-08-20 프로덕션 프리뷰 computed font-size 전수 감사)에서
+ * 우리 값은 전부 14 이상인데 `ant-tag`(Tag 본문)와 `ant-switch-inner-*`(Switch 라벨)가
+ * 12px 로 남았고, 원인은 antd 파생값 `fontSizeSM = fontSize(14) - 2 = 12` 였다. Badge count 나
+ * 표 필터 빈 목록 문구처럼 DOM 을 훑어도 안 걸리는 표면도 같은 토큰에서 나온다.
+ *
+ * 그래서 이 검사는 리터럴 스캔에 더해 **테마 토큰이 소형 텍스트 기준값을 14 이상으로
+ * 선언하는지**까지 본다(`src/app/theme.ts`). 토큰이 사라지면 리터럴은 깨끗한데 화면에는
+ * 12px 이 되돌아오므로, 둘 중 하나만으로는 규칙을 지킬 수 없다.
+ * (컴포넌트 단위로 좁히는 `components: { Tag: { fontSizeSM: 14 } }` 도 antd 가 허용하지만,
+ * 파생 표면을 전수 열거해야 해서 전역 토큰 한 곳으로 뒀다.)
  */
 const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SRC_DIR = path.join(ROOT_DIR, 'src');
+const THEME_FILE = 'src/app/theme.ts';
 const MIN_FONT_PX = 14;
 
 /** 아이콘 글리프 크기 예외. 줄이기만 하고 늘리지 않는다. */
@@ -99,7 +105,36 @@ function collectViolations() {
   return violations;
 }
 
-const violations = collectViolations();
+/**
+ * antd 소형 텍스트 파생 기준값(`fontSizeSM`)을 테마가 14 이상으로 선언하는지 본다.
+ * 값 자체는 단위 테스트(`tests/unit/admin-theme-token.test.ts`)가 실물 import 로 확인하고,
+ * 여기서는 harness:check 단독 실행에서도 선언 누락을 잡도록 소스 텍스트로 한 번 더 막는다.
+ */
+function collectThemeViolations() {
+  const absoluteFile = path.join(ROOT_DIR, THEME_FILE);
+  let source;
+  try {
+    source = readFileSync(absoluteFile, 'utf8');
+  } catch {
+    return [`${THEME_FILE}: antd 테마 토큰 파일이 없습니다 — 소형 텍스트 기준값을 선언할 곳이 필요합니다.`];
+  }
+
+  // 🚨주석에도 `fontSizeSM: 14` 예시가 들어 있어(컴포넌트 토큰 대안 설명) 주석을 먼저 걷어낸다.
+  // 걷어내지 않으면 실제 선언을 지워도 주석이 매치돼 검사가 통과한다(red 검증에서 실측).
+  const executable = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+  const match = /fontSizeSM:\s*(?:MIN_VISIBLE_FONT_SIZE_PX|(\d+(?:\.\d+)?))/.exec(executable);
+  if (!match) {
+    return [
+      `${THEME_FILE}: \`fontSizeSM\` 선언이 없습니다 — antd 기본 파생값 12px 이 Tag·Switch 라벨에 그대로 나갑니다.`
+    ];
+  }
+
+  const declared = match[1] === undefined ? MIN_FONT_PX : Number(match[1]);
+  if (declared >= MIN_FONT_PX) return [];
+  return [`${THEME_FILE}: fontSizeSM ${declared} — 소형 텍스트 기준값도 ${MIN_FONT_PX}px 이상이어야 합니다.`];
+}
+
+const violations = [...collectViolations(), ...collectThemeViolations()];
 
 if (violations.length > 0) {
   console.error('Typography minimum font check failed.');
@@ -110,4 +145,6 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
-console.log(`Typography minimum font check passed (최소 ${MIN_FONT_PX}px, 아이콘 예외 ${ICON_GLYPH_ALLOWLIST.length}건).`);
+console.log(
+  `Typography minimum font check passed (최소 ${MIN_FONT_PX}px, 아이콘 예외 ${ICON_GLYPH_ALLOWLIST.length}건, 테마 fontSizeSM 확인).`
+);

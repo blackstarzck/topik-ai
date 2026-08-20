@@ -228,8 +228,13 @@
 - 조치: 33곳을 14px 로 올리고(아이콘 글리프 3곳 제외), 규칙 원문을 `docs/guidelines/admin-ux-ui-design.md` 로 명문화하고, `check:typography-min-font` 게이트를 `harness:check` 에 배선했다.
 - 🔑**예외는 아이콘 글리프뿐**이다 — `<RightOutlined style={{ fontSize: 12 }} />`, `<CheckOutlined style={{ fontSize: 11 }} />`, 컬럼 도움말 아이콘 래퍼(`cursor: 'help'`, `lineHeight: 1`) 3곳. 아이콘은 텍스트가 아니라 도형이라 규칙 대상이 아니다. allowlist 는 근거와 함께 스크립트에 두고 **줄이기만 한다**(max-lines baseline 과 같은 래칫).
 - 🚨판정 기준을 "`<Text>` 인가"로 잡으면 틀린다 — `<pre>`(원본 JSON 뷰어)·`<summary>`(토글 문구)·`<span>`(범례 행)·`CSSProperties` 상수(툴팁 라벨/설명)도 전부 가시 텍스트다. 반대로 `<Text>` 가 아니어도 아이콘 크기 지정이면 대상이 아니다. **엘리먼트 종류가 아니라 "사람이 읽는 글자인가"로 갈라야 한다.**
-- 🚨**게이트 범위 한계 — 게이트 green 이 "규칙 100% 충족"은 아니다.** 검사는 `src/**` 만 보므로 **antd 자체 컴포넌트가 antd 토큰으로 그리는 12px 은 잡지 못한다.** 프로덕션 빌드 프리뷰에서 텍스트 노드 전수 computed font-size 를 감사한 결과, 우리가 쓴 값은 전부 14 이상인데 **`ant-tag` 만 12px 로 남았다**(/dashboard 12개, /users 70개, /analytics/learning 4개 — 그 밖 텍스트 노드 90·368·569개는 모두 14 이상). 원인은 전역 antd 테마에 `fontSize` 가 없어 기본 14 → 파생 `fontSizeSM` 이 12 이기 때문이다. **해소 수단은 전역 `fontSize: 16`(파생 SM=14) 하나뿐인데, 그러면 앱 전체 본문이 14→16 으로 커진다** — 2026-07-14 오너 지시는 "앱 전체가 아니라 페이지 단위로" 였고 셸 전역 적용은 결정 대기 상태였다([[typography-min-font-rule]]). 이번 PR 은 우리가 쓴 값만 올렸고 **전역 토큰은 건드리지 않았다 — 오너 결정 대기**.
-- 남은 것: Phase 6 의 나머지 절반 — **인라인 style 676곳을 디자인 토큰으로 걷어내는 작업은 토큰 기계(antd theme token vs CSS 변수 vs TS 상수)를 오너가 정해야 착수할 수 있다**. 이번 PR 은 14px 값만 올렸고 토큰화는 하지 않았다.
+- 🚨**게이트 범위 한계 — `src/**` 리터럴 스캔만으로는 "규칙 100% 충족"이 아니다.** antd 컴포넌트가 자기 토큰으로 그리는 텍스트는 우리 소스에 숫자가 없다. 프로덕션 빌드 프리뷰에서 텍스트 노드 전수 computed font-size 를 감사한 결과, 우리가 쓴 값은 전부 14 이상인데 **`ant-tag`(Tag 본문)와 `ant-switch-inner-*`(Switch 내부 라벨)가 12px 로 남았다**. 원인은 antd 파생값 `fontSizeSM = fontSize(14) - 2 = 12` 다.
+- **해소 (2026-08-20, Phase 6a 보강)**: 전역 테마에 `fontSizeSM: 14` 한 줄을 선언해 닫았다(`src/app/theme.ts`). 재실측에서 7개 화면 **텍스트 노드 1,718개 중 14px 미만 0건**, 드롭다운·표 필터·행 액션 오버레이를 열어도 0건이다.
+- 🔑**정정**: 직전 서술의 "해소 수단은 전역 `fontSize: 16` 하나뿐"은 **틀렸다**. antd 의 `fontSizeSM` 은 `ThemeConfig.token`(`Partial<AliasToken>`)에 직접 넣을 수 있는 alias 토큰이고, `components: { Tag: { fontSizeSM: 14 } }` 처럼 **컴포넌트 단위 덮어쓰기도 타입상 허용**된다(`OverrideTokenMap[key] = Partial<CompTokenMap[key]> & Partial<AliasToken>`). 즉 본문(`fontSize`)을 키우지 않고 소형 텍스트만 올리는 길이 처음부터 있었다.
+- 전역 토큰을 택한 이유: 같은 `fontSizeSM` 에서 Tag·Switch 말고도 Badge count·표 필터 빈 목록 문구(`:empty::after`)처럼 **DOM 을 훑어도 안 걸리는 표면**이 파생된다. 컴포넌트 단위로 좁히면 그 표면을 전수 열거해야 한다.
+- 실측 부작용은 **`.ant-badge-dot` 6→7px 하나뿐**이다(도형이라 규칙 대상 아님). 본문 크기는 불변(`.ant-layout-content` computed 14px) — "앱 전체를 키우지 말라"는 2026-07-14 제약과 충돌하지 않는다. 레이아웃 A/B(같은 화면 2회 빌드)에서 `docScrollX` 386, `.ant-layout-content` 넘침 346px, `.ant-table-body` 넘침 2,750px, 행 높이 42px 이 **모두 불변**이고 Tag 는 전부 한 줄(높이 22→25px, 최대 폭 153→176px)이다.
+- 🚨**게이트 자체의 결함을 red 검증이 잡았다**: 새 토큰 검사가 `fontSizeSM` 을 정규식으로 찾는데, **같은 파일 주석에 대안 예시 `components: { Tag: { fontSizeSM: 14 } }` 가 있어 선언을 지워도 통과**했다. 주석을 걷어낸 뒤 매칭하도록 고쳤고, "선언 삭제 + 주석 예시 잔존" 케이스를 red 3종 중 하나로 상설화했다(같은 함정 5회째 — 부재·위치 단정은 낱말이 아니라 실행 코드 표현식으로 해야 한다).
+- 남은 것: Phase 6 의 나머지 절반 — **인라인 style 676곳을 디자인 토큰으로 걷어내는 작업은 토큰 기계(antd theme token vs CSS 변수 vs TS 상수)를 오너가 정해야 착수할 수 있다**.
 
 ## 4. 모듈별 레지스트리
 

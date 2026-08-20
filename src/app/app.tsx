@@ -5,16 +5,11 @@ import { BrowserRouter } from 'react-router-dom';
 import { AppRouter } from './router/app-router';
 import { AuthGate } from '@/features/auth/ui/auth-gate';
 import { AppErrorBoundary } from '@/shared/ui/error-boundary/app-error-boundary';
-
-const themeToken = {
-  colorPrimary: '#0f4da8',
-  borderRadius: 10,
-  fontFamily: "'Freesentation', 'Noto Sans KR', 'Segoe UI', sans-serif"
-};
+import { adminThemeToken } from './theme';
 
 export function App(): JSX.Element {
   return (
-    <ConfigProvider locale={koKR} theme={{ token: themeToken }}>
+    <ConfigProvider locale={koKR} theme={{ token: adminThemeToken }}>
       <AntApp>
         <AppErrorBoundary>
           <BrowserRouter>
