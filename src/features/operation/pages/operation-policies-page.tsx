@@ -47,6 +47,7 @@ import { PageTitle } from '@/shared/ui/page-title/page-title';
 import { parseSearchDate } from '@/shared/ui/search-bar/search-bar-utils';
 import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
 import { parseSortOrder } from '@/shared/ui/table/table-column-utils';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 const { Text } = Typography;
 
@@ -669,7 +670,7 @@ export default function OperationPoliciesPage(): JSX.Element {
           <Alert
             type="error"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message="정책 목록을 불러오지 못했습니다."
             description={
               <Space direction="vertical">
@@ -696,7 +697,7 @@ export default function OperationPoliciesPage(): JSX.Element {
           <Alert
             type="info"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message="최신 정책 목록을 다시 불러오는 중입니다."
             description="마지막 성공 상태를 유지한 채 현재 데이터를 확인합니다."
           />
@@ -706,7 +707,7 @@ export default function OperationPoliciesPage(): JSX.Element {
           <Alert
             type="info"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message="등록된 정책 문서가 없습니다."
             description="새 정책 등록 버튼으로 법률/약관 문서뿐 아니라 추천인, 포인트, 쿠폰, 이벤트, FAQ, 메시지, 권한 변경 정책까지 함께 등록해주세요."
           />
@@ -716,7 +717,7 @@ export default function OperationPoliciesPage(): JSX.Element {
           <Alert
             type="info"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message="선택한 조건에 맞는 정책 문서가 없습니다."
             description="운영 영역, 정책 유형, 추적 상태, 시행일 필터를 조정하거나 검색어를 다시 확인해주세요."
           />

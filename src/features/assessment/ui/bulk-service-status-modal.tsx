@@ -2,6 +2,7 @@ import { Alert, Descriptions, Input, Modal, Space, Typography } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 
 import { markRequiredDescriptionItems } from '@/shared/ui/descriptions/description-label';
+import { FONT_SIZE, SPACE } from '@/shared/styles/design-tokens';
 import {
   SERVICE_STATUS_LABELS,
   assessmentQuestionNumbers,
@@ -127,10 +128,10 @@ export function BulkServiceStatusModal({
             message="선택한 문항을 노출하시겠습니까?"
             description={
               <Space direction="vertical" size={6}>
-                <Text strong style={{ fontSize: 15 }}>
+                <Text strong style={{ fontSize: FONT_SIZE.lg }}>
                   총 {total.toLocaleString()}개
                   {numberBreakdown.map((entry) => (
-                    <Text key={entry.number} strong style={{ fontSize: 15 }}>
+                    <Text key={entry.number} strong style={{ fontSize: FONT_SIZE.lg }}>
                       {' | '}
                       {entry.number}번 {entry.count.toLocaleString()}개
                     </Text>
@@ -155,7 +156,7 @@ export function BulkServiceStatusModal({
           <Alert
             type="warning"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message="일괄 운영 조치 확인"
             description={
               <Space direction="vertical" size={4}>

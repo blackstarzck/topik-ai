@@ -28,6 +28,7 @@ import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
 import { TableRowDetailModal } from '@/shared/ui/table/table-row-detail-modal';
 import { createTextSorter } from '@/shared/ui/table/table-column-utils';
 import { UserNavigationLink } from '@/shared/ui/user/user-reference';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 const { Paragraph, Text } = Typography;
 
@@ -424,7 +425,7 @@ export default function SystemAuditLogsPage(): JSX.Element {
           />
         }
       >
-        <Paragraph type="secondary" style={{ marginBottom: 16 }}>
+        <Paragraph type="secondary" style={{ marginBottom: SPACE.base }}>
           대상 ID 링크를 누르면 관련 운영 화면으로 이동합니다.
           {targetIdFilter ? (
             <>
@@ -438,7 +439,7 @@ export default function SystemAuditLogsPage(): JSX.Element {
           <Alert
             type="error"
             showIcon
-            style={{ marginBottom: 16 }}
+            style={{ marginBottom: SPACE.base }}
             message="\uAC10\uC0AC \uB85C\uADF8\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
             description={loadErrorMessage}
           />

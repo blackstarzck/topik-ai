@@ -1,5 +1,6 @@
 import { Tag, Tooltip } from 'antd';
 import type { CSSProperties } from 'react';
+import { SPACE } from '../../styles/design-tokens';
 
 /**
  * 소셜 로그인 provider 브랜드 아이콘.
@@ -157,7 +158,7 @@ export function SocialProviderTags({
         if (!glyph) {
           // 아이콘이 없는 provider 는 라벨 텍스트 태그로 폴백.
           return (
-            <Tag key={provider} style={{ marginInlineEnd: 6 }}>
+            <Tag key={provider} style={{ marginInlineEnd: SPACE.xs }}>
               {label}
             </Tag>
           );

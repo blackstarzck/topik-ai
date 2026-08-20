@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 type InstitutionTabToolbarProps = {
   /** 왼쪽 요약 — 이 탭의 "지금 상태"를 한 줄로. 편집은 여기 두지 않는다. */
@@ -23,7 +24,7 @@ export function InstitutionTabToolbar({
   actions
 }: InstitutionTabToolbarProps): JSX.Element {
   return (
-    <div className="admin-list-card-toolbar-side" style={{ marginBottom: 16 }}>
+    <div className="admin-list-card-toolbar-side" style={{ marginBottom: SPACE.base }}>
       <div className="admin-list-card-toolbar-summary">{summary}</div>
       {actions ? <div className="admin-list-card-toolbar-actions">{actions}</div> : null}
     </div>

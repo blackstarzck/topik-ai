@@ -30,6 +30,7 @@ import type {
 } from '../model/institution-codes-types';
 import { InstitutionExposureModeTag } from './institution-exposure-mode-tag';
 import type { AsyncState } from '@/shared/model/async-state';
+import { COLOR, FONT_SIZE, RADIUS, SPACE } from '@/shared/styles/design-tokens';
 
 const { Text } = Typography;
 
@@ -569,9 +570,9 @@ export function InstitutionQuestionExposurePanel({
         {canManage ? (
           <div
             style={{
-              border: '0.5px solid #d9d9d9',
-              borderRadius: 8,
-              padding: '12px 14px'
+              border: `0.5px solid ${COLOR.border}`,
+              borderRadius: RADIUS.base,
+              padding: '12px 16px'
             }}
           >
             <Space wrap size={12} style={{ width: '100%' }}>
@@ -597,29 +598,29 @@ export function InstitutionQuestionExposurePanel({
                 불러오기
               </Button>
             </Space>
-            <div style={{ marginTop: 6 }}>
-              <Text type="secondary" style={{ fontSize: 14 }}>
+            <div style={{ marginTop: SPACE.xs }}>
+              <Text type="secondary" style={{ fontSize: FONT_SIZE.base }}>
                 불러온 항목은 아래 목록에 채워지며, 적용을 눌러야 저장됩니다.
               </Text>
             </div>
           </div>
         ) : null}
 
-        <div style={{ display: 'flex', alignItems: 'stretch', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'stretch', gap: SPACE.sm }}>
           <div
             data-testid="institution-question-left-panel"
             style={{
               flex: 1,
               minWidth: 0,
-              border: '0.5px solid #d9d9d9',
-              borderRadius: 8,
+              border: `0.5px solid ${COLOR.border}`,
+              borderRadius: RADIUS.base,
               display: 'flex',
               flexDirection: 'column',
               height: TRANSFER_PANEL_HEIGHT
             }}
           >
-            <div style={{ padding: '8px 12px', borderBottom: '0.5px solid #f0f0f0' }}>
-              <Text type="secondary" style={{ fontSize: 14 }}>
+            <div style={{ padding: '8px 12px', borderBottom: `0.5px solid ${COLOR.borderSecondary}` }}>
+              <Text type="secondary" style={{ fontSize: FONT_SIZE.base }}>
                 추가 후보 · {availableQuestions.length.toLocaleString()}건
                 {inactiveCandidateCount > 0
                   ? ` (추가 가능 ${addableCandidateCount.toLocaleString()}건 · 비활성 ${inactiveCandidateCount.toLocaleString()}건)`
@@ -630,11 +631,11 @@ export function InstitutionQuestionExposurePanel({
                 allowClear
                 placeholder="유형·주제·문항 검색"
                 value={leftSearch}
-                style={{ marginTop: 6 }}
+                style={{ marginTop: SPACE.xs }}
                 onChange={(event) => setLeftSearch(event.target.value)}
               />
             </div>
-            <div style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: '6px 4px' }}>
+            <div style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: '8px 4px' }}>
               {leftTreeData.length === 0 ? (
                 <Empty
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -666,7 +667,7 @@ export function InstitutionQuestionExposurePanel({
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'center',
-                gap: 8,
+                gap: SPACE.xs,
                 flexShrink: 0
               }}
             >
@@ -693,15 +694,15 @@ export function InstitutionQuestionExposurePanel({
             style={{
               flex: 1,
               minWidth: 0,
-              border: '0.5px solid #d9d9d9',
-              borderRadius: 8,
+              border: `0.5px solid ${COLOR.border}`,
+              borderRadius: RADIUS.base,
               display: 'flex',
               flexDirection: 'column',
               height: TRANSFER_PANEL_HEIGHT
             }}
           >
-            <div style={{ padding: '8px 12px', borderBottom: '0.5px solid #f0f0f0' }}>
-              <Text strong style={{ fontSize: 14 }}>
+            <div style={{ padding: '8px 12px', borderBottom: `0.5px solid ${COLOR.borderSecondary}` }}>
+              <Text strong style={{ fontSize: FONT_SIZE.base }}>
                 노출 선택 · 배정 {effectiveExposedCount.toLocaleString()}건
                 {inactiveExposedCount > 0
                   ? ` / 전역 미노출 ${inactiveExposedCount.toLocaleString()}건`
@@ -712,7 +713,7 @@ export function InstitutionQuestionExposurePanel({
                 allowClear
                 placeholder="노출 문항 검색"
                 value={rightSearch}
-                style={{ marginTop: 6 }}
+                style={{ marginTop: SPACE.xs }}
                 onChange={(event) => setRightSearch(event.target.value)}
               />
             </div>
@@ -721,7 +722,7 @@ export function InstitutionQuestionExposurePanel({
                 flex: 1,
                 minHeight: 0,
                 overflow: 'auto',
-                padding: '6px 4px',
+                padding: '8px 4px',
                 ...(rightTreeData.length === 0
                   ? { display: 'flex', alignItems: 'center', justifyContent: 'center' }
                   : {})
@@ -763,10 +764,10 @@ export function InstitutionQuestionExposurePanel({
 
         {canManage ? (
           <div>
-            <Text strong style={{ fontSize: 14 }}>
+            <Text strong style={{ fontSize: FONT_SIZE.base }}>
               사유 / 근거 <Text type="danger">*</Text>{' '}
               {hasChanges ? (
-                <Text type="secondary" style={{ fontWeight: 400, fontSize: 14 }}>
+                <Text type="secondary" style={{ fontWeight: 400, fontSize: FONT_SIZE.base }}>
                   (추가 {added.length} · 제거 {removed.length})
                 </Text>
               ) : null}
@@ -775,7 +776,7 @@ export function InstitutionQuestionExposurePanel({
               rows={2}
               value={reason}
               placeholder="감사 로그에 기록됩니다."
-              style={{ marginTop: 6 }}
+              style={{ marginTop: SPACE.xs }}
               onChange={(event) => setReason(event.target.value)}
             />
           </div>
@@ -797,7 +798,7 @@ export function InstitutionQuestionExposurePanel({
         ) : null}
 
         {!isSupabase ? (
-          <Text type="secondary" style={{ fontSize: 14 }}>
+          <Text type="secondary" style={{ fontSize: FONT_SIZE.base }}>
             현재 mock 데이터 — 추가/제거는 화면에만 반영됩니다.
           </Text>
         ) : null}

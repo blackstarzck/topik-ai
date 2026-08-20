@@ -28,6 +28,7 @@ import {
 } from '@/shared/ui/table/table-action-menu';
 import { createStatusColumnTitle } from '@/shared/ui/table/status-column-title';
 import { createTextSorter } from '@/shared/ui/table/table-column-utils';
+import { COLOR, SPACE } from '@/shared/styles/design-tokens';
 
 const { Text } = Typography;
 
@@ -94,7 +95,7 @@ export function createManageColumns(options: ManageColumnsOptions): TableColumns
         width: 230,
         sorter: createTextSorter((record) => record.questionId),
         filterIcon: (filtered) => (
-          <SearchOutlined style={{ color: filtered ? '#1677ff' : undefined }} />
+          <SearchOutlined style={{ color: filtered ? COLOR.primary : undefined }} />
         ),
         filterDropdown: ({
           setSelectedKeys,
@@ -103,7 +104,7 @@ export function createManageColumns(options: ManageColumnsOptions): TableColumns
           clearFilters
         }) => (
           <div
-            style={{ padding: 8 }}
+            style={{ padding: SPACE.xs }}
             onKeyDown={(event) => event.stopPropagation()}
           >
             <Input
@@ -114,7 +115,7 @@ export function createManageColumns(options: ManageColumnsOptions): TableColumns
                 setSelectedKeys(event.target.value ? [event.target.value] : [])
               }
               onPressEnter={() => confirm()}
-              style={{ marginBottom: 8, display: 'block', width: 220 }}
+              style={{ marginBottom: SPACE.xs, display: 'block', width: 220 }}
             />
             <Space>
               <Button

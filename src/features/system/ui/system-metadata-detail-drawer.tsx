@@ -38,6 +38,7 @@ import {
   DetailDrawerSection
 } from '@/shared/ui/detail-drawer/detail-drawer';
 import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
+import { COLOR, SPACE } from '@/shared/styles/design-tokens';
 import {
   createDrawerTableScroll,
   fixDrawerTableFirstColumn
@@ -188,7 +189,7 @@ export function SystemMetadataDetailDrawer({
               '이 설정이 어떤 기능에서 쓰이고 누구에게 영향을 주는지 먼저 확인하는 영역입니다.'
             )}
           >
-            <Paragraph type="secondary" style={{ marginBottom: 12 }}>
+            <Paragraph type="secondary" style={{ marginBottom: SPACE.sm }}>
               화면에서 바로 값을 바꾸기 전에, 어떤 기능의 기준값인지와 사용자 화면에 영향이 있는지부터
               확인한 뒤 아래 운영 값을 조정해 주세요.
             </Paragraph>
@@ -262,7 +263,7 @@ export function SystemMetadataDetailDrawer({
               '설정 그룹 아래에 어떤 운영 값이 연결되는지 트리 구조로 보여줍니다.'
             )}
           >
-            <Paragraph type="secondary" style={{ marginBottom: 12 }}>
+            <Paragraph type="secondary" style={{ marginBottom: SPACE.sm }}>
               설정 구조는 상위 설정 아래에 실제 운영 값이 매달리는 방식으로 구성됩니다. 각 계층의 마지막 `추가`
               노드로 같은 레벨의 값을 만들 수 있고, 기존 값은 드래그로 순서를 바꾸거나 눌러서 바로 수정할 수 있습니다.
             </Paragraph>
@@ -290,7 +291,7 @@ export function SystemMetadataDetailDrawer({
               '실제 선택지 목록입니다. 드래그로 순서를 바꾸고 우측 액션으로 수정 또는 상태 변경을 진행합니다.'
             )}
           >
-            <Paragraph type="secondary" style={{ marginBottom: 12 }}>
+            <Paragraph type="secondary" style={{ marginBottom: SPACE.sm }}>
               왼쪽 핸들을 드래그하면 정렬 순서가 즉시 바뀝니다. 라벨은 운영자가 이해하기 쉽게,
               코드는 로그와 API 추적에 맞게 유지해 주세요.
             </Paragraph>
@@ -328,8 +329,8 @@ export function SystemMetadataDetailDrawer({
                       }
                     : dragOverItemId === record.itemId
                       ? {
-                          backgroundColor: 'rgba(22, 119, 255, 0.08)',
-                          boxShadow: 'inset 0 2px 0 #1677ff'
+                          backgroundColor: COLOR.primaryBg,
+                          boxShadow: `inset 0 2px 0 ${COLOR.primary}`
                         }
                       : undefined
               })}
@@ -341,7 +342,7 @@ export function SystemMetadataDetailDrawer({
               '연동 체계와 책임 역할처럼 일반 운영자보다 시스템 관리자에게 더 중요한 정보입니다.'
             )}
           >
-            <Paragraph type="secondary" style={{ marginBottom: 12 }}>
+            <Paragraph type="secondary" style={{ marginBottom: SPACE.sm }}>
               문제 추적이나 개발 작업이 필요할 때 참고하는 정보입니다. 일반 운영 업무에서는 위 섹션 확인만으로도
               충분한 경우가 많습니다.
             </Paragraph>
@@ -398,7 +399,7 @@ export function SystemMetadataDetailDrawer({
               '누가 어떤 설정을 바꿨는지 확인하는 기록입니다.'
             )}
           >
-            <Paragraph type="secondary" style={{ marginBottom: 12 }}>
+            <Paragraph type="secondary" style={{ marginBottom: SPACE.sm }}>
               최근 조치 사유와 수행자를 확인하면서 현재 값이 왜 유지되고 있는지 판단할 수 있습니다.
             </Paragraph>
             <AdminDataTable<SystemMetadataHistoryEntry>

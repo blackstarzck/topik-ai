@@ -20,8 +20,22 @@ export const MIN_VISIBLE_FONT_SIZE_PX = 14;
  * (antd `ComponentsConfig` 는 컴포넌트별 alias 토큰 덮어쓰기를 허용한다), 파생 표면을
  * 전수 열거해야 해서 전역 한 곳에 두는 편을 택했다.
  */
+const BRAND_PRIMARY = '#0f4da8';
+
 export const adminThemeToken: ThemeConfig['token'] = {
-  colorPrimary: '#0f4da8',
+  colorPrimary: BRAND_PRIMARY,
+  /**
+   * antd 의 `colorLink` 는 `colorPrimary` 에서 파생되지 않는 **별도 시드**라, 지정하지 않으면
+   * 브랜드색을 바꿔도 링크와 링크 Button 만 antd 기본 파랑(`#1677ff`)으로 남는다.
+   * 실측(프로덕션 프리뷰 computed style): `/dashboard` 에서 링크 계열 요소 33개가 그랬다.
+   *
+   * 브랜드색으로 맞추면 접근성도 같이 개선된다 — 흰 배경 대비비가
+   * `#1677ff` **4.10:1**(본문 크기 WCAG AA 4.5:1 미달) → `#0f4da8` **7.93:1**(AAA) 이다.
+   *
+   * `colorInfo`(정보 상태색)는 일부러 건드리지 않았다 — 브랜드색과 같아지면 정보 Alert 이
+   * 주요 액션과 구분되지 않는다. 시맨틱 상태색이라 별도 판단 사항이다(gap-register §3.17).
+   */
+  colorLink: BRAND_PRIMARY,
   borderRadius: 10,
   fontFamily: "'Freesentation', 'Noto Sans KR', 'Segoe UI', sans-serif",
   fontSizeSM: MIN_VISIBLE_FONT_SIZE_PX

@@ -37,6 +37,7 @@ import {
   validateAuthEmailTemplate
 } from '../model/auth-email-types';
 import type { AuthEmailTemplate, AuthEmailType } from '../model/auth-email-types';
+import { COLOR, FONT_SIZE, RADIUS, SPACE } from '@/shared/styles/design-tokens';
 
 const { Text, Title } = Typography;
 
@@ -218,7 +219,7 @@ export function AuthEmailPanel(): JSX.Element {
       render: (_, record) => (
         <Space direction="vertical" size={0}>
           <Text strong>{AUTH_EMAIL_TYPE_LABELS[record.authType]}</Text>
-          <Text type="secondary" style={{ fontSize: 14 }}>
+          <Text type="secondary" style={{ fontSize: FONT_SIZE.base }}>
             {AUTH_EMAIL_TYPE_DESCRIPTIONS[record.authType]}
           </Text>
         </Space>
@@ -285,11 +286,11 @@ export function AuthEmailPanel(): JSX.Element {
   ];
 
   return (
-    <div style={{ padding: 24 }}>
+    <div style={{ padding: SPACE.lg }}>
       {notificationContextHolder}
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
         <div>
-          <Title level={4} style={{ marginBottom: 4 }}>
+          <Title level={4} style={{ marginBottom: SPACE.xxs }}>
             인증 메일 템플릿
           </Title>
           <Text type="secondary">
@@ -389,7 +390,7 @@ export function AuthEmailPanel(): JSX.Element {
                 showIcon
                 message="검증 경고 (동기화 전 해결 필요)"
                 description={
-                  <ul style={{ margin: 0, paddingLeft: 18 }}>
+                  <ul style={{ margin: 0, paddingLeft: SPACE.base }}>
                     {editIssues.map((issue) => (
                       <li key={issue}>{issue}</li>
                     ))}
@@ -405,7 +406,7 @@ export function AuthEmailPanel(): JSX.Element {
                   label: '미리보기',
                   children: (
                     <div
-                      style={{ border: '1px solid #f0f0f0', borderRadius: 6, padding: 16 }}
+                      style={{ border: `1px solid ${COLOR.borderSecondary}`, borderRadius: RADIUS.sm, padding: SPACE.base }}
                       // 미리보기 전용 — 관리자만 접근하는 화면이며 본문은 관리자 입력값이다.
                       dangerouslySetInnerHTML={{
                         __html: watchedBody || '<p style="color:#999">본문이 비어 있습니다.</p>'

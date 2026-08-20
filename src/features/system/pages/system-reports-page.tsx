@@ -47,6 +47,7 @@ import { useSearchBarDateDraft } from '@/shared/ui/search-bar/use-search-bar-dat
 import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
 import { createTextSorter } from '@/shared/ui/table/table-column-utils';
 import { UserNavigationLink } from '@/shared/ui/user/user-reference';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 const { Paragraph, Text } = Typography;
 const PAGE_SIZE = 20;
@@ -230,7 +231,7 @@ export default function SystemReportsPage(): JSX.Element {
       <Alert
         type="info"
         showIcon
-        style={{ marginBottom: 16 }}
+        style={{ marginBottom: SPACE.base }}
         message="접수 내용에는 제출자가 직접 입력한 이메일과 본문이 포함됩니다."
         description="회신 외 목적으로 사용하지 마세요. 삭제하면 되돌릴 수 없고, 감사 로그에는 사유와 비식별 진단 정보만 남습니다."
       />
@@ -281,7 +282,7 @@ export default function SystemReportsPage(): JSX.Element {
           <Alert
             type="error"
             showIcon
-            style={{ marginBottom: 16 }}
+            style={{ marginBottom: SPACE.base }}
             message="사용자 리포트를 불러오지 못했습니다."
             description={listState.data.rows.length > 0 ? '마지막으로 확인된 목록을 유지하고 있습니다.' : listState.errorMessage}
             action={<Button size="small" onClick={reloadReports}>재시도</Button>}
@@ -291,7 +292,7 @@ export default function SystemReportsPage(): JSX.Element {
           <Alert
             type="info"
             showIcon
-            style={{ marginBottom: 16 }}
+            style={{ marginBottom: SPACE.base }}
             message="조건에 맞는 접수 내역이 없습니다."
             description="검색 조건을 바꾸어 다시 확인하세요."
           />

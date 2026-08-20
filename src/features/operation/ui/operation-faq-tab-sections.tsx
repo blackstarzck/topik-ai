@@ -37,6 +37,7 @@ import {
 } from '@/shared/ui/search-bar/search-bar';
 import { useSearchBarDateDraft } from '@/shared/ui/search-bar/use-search-bar-date-draft';
 import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 const { Text } = Typography;
 
@@ -123,7 +124,7 @@ const faqAlert =
     <Alert
       type="error"
       showIcon
-      style={{ marginBottom: 12 }}
+      style={{ marginBottom: SPACE.sm }}
       message="FAQ 목록을 불러오지 못했습니다."
       description={
         <Space direction="vertical">
@@ -148,7 +149,7 @@ const faqAlert =
     <Alert
       type="info"
       showIcon
-      style={{ marginBottom: 12 }}
+      style={{ marginBottom: SPACE.sm }}
       message="FAQ 목록을 새로 불러오는 중입니다."
       description="마지막 성공 상태를 유지한 채 최신 데이터를 동기화하고 있습니다."
     />
@@ -156,7 +157,7 @@ const faqAlert =
     <Alert
       type="info"
       showIcon
-      style={{ marginBottom: 12 }}
+      style={{ marginBottom: SPACE.sm }}
       message="등록된 FAQ가 없습니다."
       description="FAQ 등록 버튼으로 첫 FAQ를 추가하세요."
     />
@@ -164,7 +165,7 @@ const faqAlert =
     <Alert
       type="info"
       showIcon
-      style={{ marginBottom: 12 }}
+      style={{ marginBottom: SPACE.sm }}
       message="검색 조건에 맞는 FAQ가 없습니다."
       description="검색어, 카테고리, 공개 상태, 날짜 조건을 다시 조정하세요."
     />
@@ -315,7 +316,7 @@ const curationAlert =
     <Alert
       type="error"
       showIcon
-      style={{ marginBottom: 12 }}
+      style={{ marginBottom: SPACE.sm }}
       message="FAQ 노출 목록을 불러오지 못했습니다."
       description={
         <Space direction="vertical">
@@ -335,7 +336,7 @@ const curationAlert =
     <Alert
       type="info"
       showIcon
-      style={{ marginBottom: 12 }}
+      style={{ marginBottom: SPACE.sm }}
       message="FAQ 노출 정보를 새로 불러오는 중입니다."
       description="마지막 성공 상태를 유지한 채 최신 노출 규칙을 반영하고 있습니다."
     />
@@ -343,7 +344,7 @@ const curationAlert =
     <Alert
       type="info"
       showIcon
-      style={{ marginBottom: 12 }}
+      style={{ marginBottom: SPACE.sm }}
       message="등록된 FAQ 노출 규칙이 없습니다."
       description="노출 추가 버튼으로 홈/고객센터 대표 FAQ를 관리하세요."
     />
@@ -351,7 +352,7 @@ const curationAlert =
     <Alert
       type="info"
       showIcon
-      style={{ marginBottom: 12 }}
+      style={{ marginBottom: SPACE.sm }}
       message="검색 조건에 맞는 노출 규칙이 없습니다."
       description="노출 위치, 설정 방식, 노출 상태 조건을 다시 조정하세요."
     />
@@ -497,7 +498,7 @@ const metricAlert =
     <Alert
       type="error"
       showIcon
-      style={{ marginBottom: 12 }}
+      style={{ marginBottom: SPACE.sm }}
       message="FAQ 지표를 불러오지 못했습니다."
       description={
         <Space direction="vertical">
@@ -517,7 +518,7 @@ const metricAlert =
     <Alert
       type="info"
       showIcon
-      style={{ marginBottom: 12 }}
+      style={{ marginBottom: SPACE.sm }}
       message="FAQ 지표를 새로 불러오는 중입니다."
       description="마지막 성공 상태를 유지한 채 최신 조회/검색 지표를 갱신하고 있습니다."
     />
@@ -525,7 +526,7 @@ const metricAlert =
     <Alert
       type="info"
       showIcon
-      style={{ marginBottom: 12 }}
+      style={{ marginBottom: SPACE.sm }}
       message="표시할 FAQ 지표가 없습니다."
       description="FAQ가 등록되면 조회/검색 지표 스냅샷이 함께 생성됩니다."
     />
@@ -533,7 +534,7 @@ const metricAlert =
     <Alert
       type="info"
       showIcon
-      style={{ marginBottom: 12 }}
+      style={{ marginBottom: SPACE.sm }}
       message="검색 조건에 맞는 FAQ 지표가 없습니다."
       description="FAQ ID, 질문, 검색 키워드 기준으로 다시 검색하세요."
     />

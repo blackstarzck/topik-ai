@@ -26,6 +26,7 @@ import type { InstitutionCode } from '../../model/institution-codes-types';
 import type { NotificationApi } from './institution-code-detail-tab-types';
 import { AuditLogLink } from '@/shared/ui/audit-log-link/audit-log-link';
 import { createDescriptionLabel } from '@/shared/ui/descriptions/description-label';
+import { SPACE } from '@/shared/styles/design-tokens';
 import {
   DrawerFooter,
   DrawerTitle,
@@ -177,7 +178,7 @@ export function InstitutionMemberPolicyDrawer({
             <Alert
               type="warning"
               showIcon
-              style={{ marginBottom: 12 }}
+              style={{ marginBottom: SPACE.sm }}
               message="계약이 만료돼 신규 배정·초대가 차단된 상태입니다."
               description="계약 탭에서 기간을 갱신하거나 아래 차단 옵션을 해제하세요. 이미 소속된 회원은 그대로 유지됩니다."
             />
@@ -186,7 +187,7 @@ export function InstitutionMemberPolicyDrawer({
             <Alert
               type="warning"
               showIcon
-              style={{ marginBottom: 12 }}
+              style={{ marginBottom: SPACE.sm }}
               message="정원이 모두 사용됐습니다."
               description="정원을 늘리거나 대기 중 초대를 취소해야 새로 초대할 수 있습니다."
             />
@@ -240,7 +241,7 @@ export function InstitutionMemberPolicyDrawer({
                           addonAfter="명"
                         />
                       </Form.Item>
-                      <Text type="secondary" style={{ display: 'block', marginTop: 6 }}>
+                      <Text type="secondary" style={{ display: 'block', marginTop: SPACE.xs }}>
                         현재 좌석 사용량보다 낮게 설정할 수 없습니다.
                       </Text>
                     </>
@@ -261,7 +262,7 @@ export function InstitutionMemberPolicyDrawer({
                           addonAfter="일"
                         />
                       </Form.Item>
-                      <Text type="secondary" style={{ display: 'block', marginTop: 6 }}>
+                      <Text type="secondary" style={{ display: 'block', marginTop: SPACE.xs }}>
                         회원 초대 폼의 만료 기간에 기본으로 채워집니다.
                       </Text>
                     </>
@@ -282,7 +283,7 @@ export function InstitutionMemberPolicyDrawer({
                           data-testid="institution-block-intake-switch"
                         />
                       </Form.Item>
-                      <Text type="secondary" style={{ display: 'block', marginTop: 6 }}>
+                      <Text type="secondary" style={{ display: 'block', marginTop: SPACE.xs }}>
                         계약이 만료된 동안 새 배정·초대를 막습니다. 문항 노출을 가리는 옵션(노출
                         문항 탭)과는 별개입니다 — 노출은 그대로 두고 유입만 막고 싶을 때 씁니다.
                       </Text>

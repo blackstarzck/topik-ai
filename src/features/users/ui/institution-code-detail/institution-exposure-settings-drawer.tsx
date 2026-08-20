@@ -18,6 +18,7 @@ import type {
 import type { NotificationApi } from './institution-code-detail-tab-types';
 import { AuditLogLink } from '@/shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
+import { FONT_SIZE, SPACE } from '@/shared/styles/design-tokens';
 import {
   DrawerFooter,
   DrawerTitle,
@@ -254,10 +255,10 @@ export function InstitutionExposureSettingsDrawer({
     >
       <div className="detail-drawer__body" data-testid="institution-exposure-settings-drawer">
         <div data-testid="institution-exposure-mode-section">
-          <Text strong style={{ fontSize: 15 }}>
+          <Text strong style={{ fontSize: FONT_SIZE.lg }}>
             노출 모드
           </Text>
-          <div style={{ marginTop: 8 }}>
+          <div style={{ marginTop: SPACE.xs }}>
             {/*
               Select 가 아니라 Radio 인 이유: 값이 2개뿐이고 각 값마다 "그래서 학습자에게
               무엇이 보이는가"를 함께 읽혀야 한다. 소속 회원 전원의 노출 범위를 바꾸는
@@ -271,14 +272,14 @@ export function InstitutionExposureSettingsDrawer({
               <Space direction="vertical" size={8}>
                 <Space direction="vertical" size={0}>
                   <Radio value="제한 없음">제한 없음</Radio>
-                  <Text type="secondary" style={{ paddingInlineStart: 24 }}>
+                  <Text type="secondary" style={{ paddingInlineStart: SPACE.lg }}>
                     이 기관 학습자도 노출 허용 문항을 모두 봅니다. 앞으로 추가되는 문항도 자동
                     포함됩니다.
                   </Text>
                 </Space>
                 <Space direction="vertical" size={0}>
                   <Radio value="배정분만">배정분만</Radio>
-                  <Text type="secondary" style={{ paddingInlineStart: 24 }}>
+                  <Text type="secondary" style={{ paddingInlineStart: SPACE.lg }}>
                     이 기관 학습자는 노출 문항에서 배정한 문항만 봅니다. 배정이 0건이면 쓰기
                     문항이 하나도 보이지 않습니다.
                   </Text>
@@ -291,7 +292,7 @@ export function InstitutionExposureSettingsDrawer({
             <Alert
               type="error"
               showIcon
-              style={{ marginTop: 10 }}
+              style={{ marginTop: SPACE.sm }}
               message={`배정된 문항이 0건입니다. 지금 배정분만으로 바꾸면 이 코드 소속 학습자 ${institution.memberCount.toLocaleString()}명에게 쓰기 문항이 한 건도 보이지 않습니다.`}
               description="노출 문항에서 먼저 배정하세요."
             />
@@ -300,25 +301,25 @@ export function InstitutionExposureSettingsDrawer({
             <Alert
               type="warning"
               showIcon
-              style={{ marginTop: 10 }}
+              style={{ marginTop: SPACE.sm }}
               message="배정된 문항이 0건입니다. 앞으로 이 코드로 소속되는 학습자에게는 쓰기 문항이 보이지 않습니다."
             />
           ) : null}
-          <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+          <Text type="secondary" style={{ display: 'block', marginTop: SPACE.xs }}>
             배정 목록은 모드와 무관하게 보존됩니다. 배정분만으로 되돌리면 기존 배정이 그대로
             적용됩니다. 현재 배정 {assignedQuestionCount.toLocaleString()}건.
           </Text>
 
           {canManage ? (
-            <div style={{ marginTop: 12 }}>
-              <Text strong style={{ fontSize: 14 }}>
+            <div style={{ marginTop: SPACE.sm }}>
+              <Text strong style={{ fontSize: FONT_SIZE.base }}>
                 사유 / 근거 <Text type="danger">*</Text>
               </Text>
               <Input.TextArea
                 rows={2}
                 value={modeReason}
                 placeholder="감사 로그에 기록됩니다."
-                style={{ marginTop: 6 }}
+                style={{ marginTop: SPACE.xs }}
                 onChange={(event) => setModeReason(event.target.value)}
               />
             </div>
@@ -328,11 +329,11 @@ export function InstitutionExposureSettingsDrawer({
         <Divider />
 
         <div data-testid="institution-exposure-options-section">
-          <Text strong style={{ fontSize: 15 }}>
+          <Text strong style={{ fontSize: FONT_SIZE.lg }}>
             계약 연동 옵션
           </Text>
 
-          <Space direction="vertical" size={12} style={{ marginTop: 10, width: '100%' }}>
+          <Space direction="vertical" size={12} style={{ marginTop: SPACE.sm, width: '100%' }}>
             <Space align="start" size={10}>
               <Switch
                 // 옵션 값을 아직 못 읽었으면 토글을 잠근다. 기본값 false 로 그려두고 켜게 하면

@@ -13,6 +13,7 @@ import type {
 } from '../model/pdf-quota-types';
 import type { InstitutionCode } from '@/features/users/model/institution-codes-types';
 import type { AsyncState } from '@/shared/model/async-state';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 // 초기화 실행 모달 — Phase 4 분해로 페이지 본문에서 이동(동작 동일).
 // 폼 인스턴스·대상 옵션 조회 상태·검색/스크롤 핸들러·실행 로직은 페이지가 소유하고 props 로 받는다.
@@ -143,7 +144,7 @@ export function PdfQuotaResetModal({
             <Alert
               type="warning"
               showIcon
-              style={{ marginBottom: 12 }}
+              style={{ marginBottom: SPACE.sm }}
               message="모든 회원이 대상입니다."
               description="전체 초기화는 실행 시점의 회원 스냅샷을 대상 목록으로 확정합니다. 이후 가입자는 포함되지 않으며, 실행 시 한 번 더 확인합니다."
             />

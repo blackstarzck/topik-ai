@@ -67,6 +67,7 @@ import { AuditLogLink } from '@/shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
 import { PageTitle } from '@/shared/ui/page-title/page-title';
 import { TableRowDetailModal } from '@/shared/ui/table/table-row-detail-modal';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 export default function UserDetailPage(): JSX.Element {
   const { userId = '' } = useParams();
@@ -527,7 +528,7 @@ export default function UserDetailPage(): JSX.Element {
   if (userState.status === 'pending') {
     return (
       <Card>
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: SPACE.xxl }}>
           <Spin />
         </div>
       </Card>
@@ -560,7 +561,7 @@ export default function UserDetailPage(): JSX.Element {
             style={{
               display: 'flex',
               justifyContent: 'flex-end',
-              marginBottom: 12
+              marginBottom: SPACE.sm
             }}
           >
             <Space size={10} wrap>

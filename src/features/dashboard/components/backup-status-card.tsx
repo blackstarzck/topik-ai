@@ -15,6 +15,7 @@ import {
 import { usePermissionStore } from '@/features/system/model/permission-store';
 import type { AsyncState } from '@/shared/model/async-state';
 import { StatusBadge } from '@/shared/ui/status-badge/status-badge';
+import { FONT_SIZE } from '@/shared/styles/design-tokens';
 
 const { Text } = Typography;
 
@@ -178,7 +179,7 @@ export function BackupStatusCard(): JSX.Element {
                     <Space size={6} wrap>
                       <StatusBadge status={backupRunStatusLabels[value]} />
                       {failedParts.length > 0 ? (
-                        <Text type="secondary" style={{ fontSize: 14, whiteSpace: 'nowrap' }}>
+                        <Text type="secondary" style={{ fontSize: FONT_SIZE.base, whiteSpace: 'nowrap' }}>
                           {failedParts.join('·')} 실패
                         </Text>
                       ) : null}
@@ -218,7 +219,7 @@ export function BackupStatusCard(): JSX.Element {
         )}
 
         {backupViewContext === 'mirror' ? (
-          <Text type="secondary" style={{ fontSize: 14 }}>
+          <Text type="secondary" style={{ fontSize: FONT_SIZE.base }}>
             개발환경 복사본 · 마지막 동기화 {formatBackupDateTime(summary?.lastReportReceivedAt ?? null)}
           </Text>
         ) : null}

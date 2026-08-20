@@ -47,6 +47,7 @@ import {
   fixDrawerTableFirstColumn
 } from '@/shared/ui/table/drawer-table';
 import { createStatusColumnTitle } from '@/shared/ui/table/status-column-title';
+import { SPACE } from '@/shared/styles/design-tokens';
 import {
   createDefinedColumnFilterProps,
   createNumberSorter,
@@ -370,7 +371,7 @@ export function NotificationDispatchHistoryPage(): JSX.Element {
         <Alert
           type="error"
           showIcon
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: SPACE.sm }}
           message="발송 이력 조회에 실패했습니다."
           description={
             <Space direction="vertical" size={4}>
@@ -399,7 +400,7 @@ export function NotificationDispatchHistoryPage(): JSX.Element {
           <Alert
             type="info"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message="발송 이력이 없습니다."
             description="템플릿 발송 실행 또는 나에게 보내기를 수행하면 이력이 생성됩니다."
           />

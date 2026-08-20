@@ -1,4 +1,5 @@
 import dayjs, { type Dayjs } from "dayjs";
+import { APP_COLOR, COLOR, RADIUS } from '@/shared/styles/design-tokens';
 
 import type {
   CommerceCouponSubscriptionTemplate,
@@ -11,10 +12,10 @@ import type {
 
 export const couponTemplateReadOnlyFieldStyle = {
   width: "100%",
-  padding: "10px 12px",
-  border: "1px solid #d9d9d9",
-  borderRadius: 8,
-  backgroundColor: "#fafafa",
+  padding: "12px 12px",
+  border: `1px solid ${COLOR.border}`,
+  borderRadius: RADIUS.base,
+  backgroundColor: APP_COLOR.panelHeaderBg,
 };
 export const monthlyUsageEndDateReference = dayjs("2026-01-01");
 

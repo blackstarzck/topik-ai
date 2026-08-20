@@ -1,4 +1,5 @@
 import { Typography } from 'antd';
+import { APP_COLOR, COLOR, FONT_SIZE, RADIUS, SPACE } from '@/shared/styles/design-tokens';
 
 const { Text } = Typography;
 
@@ -213,25 +214,25 @@ function LegendRow({
       style={{
         display: 'flex',
         flexWrap: 'wrap',
-        gap: '4px 14px',
-        marginTop: 10
+        gap: '4px 16px',
+        marginTop: SPACE.sm
       }}
     >
       {items.map((item) => (
         <span
           key={item.label}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 14 }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: SPACE.xs, fontSize: FONT_SIZE.base }}
         >
           <span
             style={{
               width: 12,
               height: 12,
-              borderRadius: 3,
+              borderRadius: RADIUS.xs,
               background: item.color,
               flexShrink: 0
             }}
           />
-          <Text style={{ fontSize: 14 }}>
+          <Text style={{ fontSize: FONT_SIZE.base }}>
             {item.label}
             {item.suffix ? <Text type="secondary">{` ${item.suffix}`}</Text> : null}
           </Text>
@@ -280,7 +281,7 @@ function CategoryChart({ chart }: { chart: NormalizedChart }): JSX.Element {
                 y1={y}
                 x2={margin.left + plotW}
                 y2={y}
-                stroke="#eef0f4"
+                stroke={APP_COLOR.chartGridLine}
                 strokeWidth={1}
               />
               <text
@@ -288,7 +289,7 @@ function CategoryChart({ chart }: { chart: NormalizedChart }): JSX.Element {
                 y={y + 3}
                 textAnchor="end"
                 fontSize={9}
-                fill="#8c8c8c"
+                fill={COLOR.textTertiary}
               >
                 {formatNumber(tick)}
               </text>
@@ -302,14 +303,14 @@ function CategoryChart({ chart }: { chart: NormalizedChart }): JSX.Element {
           y1={margin.top}
           x2={margin.left}
           y2={margin.top + plotH}
-          stroke="#d9d9d9"
+          stroke={COLOR.border}
         />
         <line
           x1={margin.left}
           y1={margin.top + plotH}
           x2={margin.left + plotW}
           y2={margin.top + plotH}
-          stroke="#d9d9d9"
+          stroke={COLOR.border}
         />
 
         {/* 막대 */}
@@ -336,7 +337,7 @@ function CategoryChart({ chart }: { chart: NormalizedChart }): JSX.Element {
                       y={r2(y - 4)}
                       textAnchor="middle"
                       fontSize={9}
-                      fill="#595959"
+                      fill={COLOR.textSecondary}
                     >
                       {formatNumber(value)}
                     </text>
@@ -369,7 +370,7 @@ function CategoryChart({ chart }: { chart: NormalizedChart }): JSX.Element {
                       cx={r2(xCenter(index))}
                       cy={r2(yOf(value))}
                       r={3}
-                      fill="#fff"
+                      fill={COLOR.bgContainer}
                       stroke={color}
                       strokeWidth={2}
                     />
@@ -379,7 +380,7 @@ function CategoryChart({ chart }: { chart: NormalizedChart }): JSX.Element {
                         y={r2(yOf(value) - 8)}
                         textAnchor="middle"
                         fontSize={9}
-                        fill="#595959"
+                        fill={COLOR.textSecondary}
                       >
                         {formatNumber(value)}
                       </text>
@@ -398,7 +399,7 @@ function CategoryChart({ chart }: { chart: NormalizedChart }): JSX.Element {
             y={margin.top + plotH + 16}
             textAnchor="middle"
             fontSize={9}
-            fill="#595959"
+            fill={COLOR.textSecondary}
           >
             {category}
           </text>
@@ -429,7 +430,7 @@ function PieChart({ chart }: { chart: NormalizedChart }): JSX.Element {
   let cursor = 0;
 
   return (
-    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+    <div style={{ display: 'flex', gap: SPACE.base, flexWrap: 'wrap', alignItems: 'center' }}>
       <svg
         viewBox={`0 0 ${size} ${size}`}
         role="img"
@@ -437,11 +438,11 @@ function PieChart({ chart }: { chart: NormalizedChart }): JSX.Element {
         style={{ width: 180, height: 180, flexShrink: 0 }}
       >
         {total <= 0 ? (
-          <circle cx={cx} cy={cy} r={rOuter} fill="#f0f0f0" />
+          <circle cx={cx} cy={cy} r={rOuter} fill={COLOR.borderSecondary} />
         ) : slices.length === 1 ? (
           <g>
             <circle cx={cx} cy={cy} r={rOuter} fill={PALETTE[0]} />
-            {rInner > 0 ? <circle cx={cx} cy={cy} r={rInner} fill="#fff" /> : null}
+            {rInner > 0 ? <circle cx={cx} cy={cy} r={rInner} fill={COLOR.bgContainer} /> : null}
           </g>
         ) : (
           slices.map((slice, index) => {
@@ -454,7 +455,7 @@ function PieChart({ chart }: { chart: NormalizedChart }): JSX.Element {
                 key={`slice-${slice.label}-${index}`}
                 d={arcPath(cx, cy, rOuter, rInner, start, end)}
                 fill={PALETTE[index % PALETTE.length]}
-                stroke="#fff"
+                stroke={COLOR.bgContainer}
                 strokeWidth={1}
               />
             );
@@ -489,19 +490,19 @@ function ChartCard({ chart }: { chart: NormalizedChart }): JSX.Element {
       style={{
         flex: '1 1 300px',
         minWidth: 0,
-        border: '1px solid #e7ebf3',
-        borderRadius: 12,
-        padding: '12px 14px',
-        background: '#fff'
+        border: `1px solid ${APP_COLOR.chartPanelBorder}`,
+        borderRadius: RADIUS.lg,
+        padding: '12px 16px',
+        background: COLOR.bgContainer
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: SPACE.xs, flexWrap: 'wrap' }}>
         <Text strong>{chart.title}</Text>
         {chart.unit ? <Text type="secondary">{`(단위: ${chart.unit})`}</Text> : null}
       </div>
       {chart.surveyOrg ? (
-        <div style={{ marginBottom: 4 }}>
-          <Text type="secondary" style={{ fontSize: 14 }}>
+        <div style={{ marginBottom: SPACE.xxs }}>
+          <Text type="secondary" style={{ fontSize: FONT_SIZE.base }}>
             {`출처: ${chart.surveyOrg}`}
           </Text>
         </div>
@@ -522,9 +523,9 @@ export function SourceDataCharts({ sourceData }: { sourceData: unknown }): JSX.E
           margin: 0,
           maxHeight: 260,
           overflow: 'auto',
-          fontSize: 14,
-          background: 'rgba(0, 0, 0, 0.03)',
-          padding: 8
+          fontSize: FONT_SIZE.base,
+          background: APP_COLOR.codeBlockBg,
+          padding: SPACE.xs
         }}
       >
         {JSON.stringify(sourceData, null, 2)}
@@ -534,14 +535,14 @@ export function SourceDataCharts({ sourceData }: { sourceData: unknown }): JSX.E
 
   return (
     <div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: SPACE.base }}>
         {charts.map((chart) => (
           <ChartCard key={chart.key} chart={chart} />
         ))}
       </div>
 
-      <details style={{ marginTop: 12 }}>
-        <summary style={{ cursor: 'pointer', fontSize: 14, color: '#8c8c8c' }}>
+      <details style={{ marginTop: SPACE.sm }}>
+        <summary style={{ cursor: 'pointer', fontSize: FONT_SIZE.base, color: COLOR.textTertiary }}>
           원본 수치(JSON) 보기
         </summary>
         <pre
@@ -549,9 +550,9 @@ export function SourceDataCharts({ sourceData }: { sourceData: unknown }): JSX.E
             margin: '8px 0 0',
             maxHeight: 260,
             overflow: 'auto',
-            fontSize: 14,
-            background: 'rgba(0, 0, 0, 0.03)',
-            padding: 8
+            fontSize: FONT_SIZE.base,
+            background: APP_COLOR.codeBlockBg,
+            padding: SPACE.xs
           }}
         >
           {JSON.stringify(sourceData, null, 2)}

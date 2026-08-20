@@ -22,6 +22,7 @@ import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
 import { BinaryStatusSwitch } from '@/shared/ui/table/binary-status-switch';
 import { createStatusColumnTitle } from '@/shared/ui/table/status-column-title';
 import { createDefinedColumnFilterProps, createTextSorter, parseSortOrder } from '@/shared/ui/table/table-column-utils';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 const { Text } = Typography;
 
@@ -467,7 +468,7 @@ export default function OperationNoticesPage(): JSX.Element {
           <Alert
             type="error"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message="공지사항을 불러오지 못했습니다."
             description={
               <Space direction="vertical">
@@ -494,7 +495,7 @@ export default function OperationNoticesPage(): JSX.Element {
           <Alert
             type="info"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message="최신 공지사항을 다시 불러오는 중입니다."
             description="마지막 성공 상태를 유지한 채 현재 데이터를 확인합니다."
           />
@@ -504,7 +505,7 @@ export default function OperationNoticesPage(): JSX.Element {
           <Alert
             type="info"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message="등록된 공지가 없습니다."
             description="공지 등록 버튼으로 첫 공지를 작성해주세요. 신규 공지는 기본적으로 숨김 상태로 저장됩니다."
           />
@@ -514,7 +515,7 @@ export default function OperationNoticesPage(): JSX.Element {
           <Alert
             type="info"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message="선택한 상태 조건에 맞는 공지가 없습니다."
             description="상태 필터를 해제하거나 다른 상태를 선택해 다시 확인해주세요."
           />

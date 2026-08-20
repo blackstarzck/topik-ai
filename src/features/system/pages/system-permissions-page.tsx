@@ -46,6 +46,7 @@ import {
 } from '../ui/system-permissions-columns';
 import { permissionCatalog, roleCatalog } from '../model/permission-types';
 import type { PermissionDefinition, RoleDefinition } from '../model/permission-types';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -307,7 +308,7 @@ export default function SystemPermissionsPage(): JSX.Element {
       {notificationContextHolder}
       <PageTitle title="권한 관리" />
 
-      <Card style={{ marginBottom: 12 }}>
+      <Card style={{ marginBottom: SPACE.sm }}>
         <Space direction="vertical" size={12} style={{ width: '100%' }}>
           <Alert
             type="info"
@@ -340,7 +341,7 @@ export default function SystemPermissionsPage(): JSX.Element {
         </Space>
       </Card>
 
-      <Card style={{ marginBottom: 12 }}>
+      <Card style={{ marginBottom: SPACE.sm }}>
         <Title level={5} style={{ marginTop: 0 }}>
           관리자별 app_role
         </Title>
@@ -353,7 +354,7 @@ export default function SystemPermissionsPage(): JSX.Element {
             showIcon
             message="관리자 목록을 불러오지 못했습니다."
             description={loadErrorMessage}
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
           />
         ) : null}
         <AdminDataTable<AdminAppRoleRow>
@@ -380,7 +381,7 @@ export default function SystemPermissionsPage(): JSX.Element {
         />
       </Card>
 
-      <Card style={{ marginBottom: 12 }}>
+      <Card style={{ marginBottom: SPACE.sm }}>
         <Title level={5} style={{ marginTop: 0 }}>
           app_role 변경 감사 경로
         </Title>
@@ -404,7 +405,7 @@ export default function SystemPermissionsPage(): JSX.Element {
         />
       </Card>
 
-      <Card style={{ marginBottom: 12 }}>
+      <Card style={{ marginBottom: SPACE.sm }}>
         <Title level={5} style={{ marginTop: 0 }}>
           RoleKey 카탈로그(읽기 전용)
         </Title>

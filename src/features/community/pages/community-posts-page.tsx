@@ -57,6 +57,7 @@ import {
   parseSearchDate
 } from '@/shared/ui/search-bar/search-bar-utils';
 import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
+import { COLOR, RADIUS, SPACE } from '@/shared/styles/design-tokens';
 import {
   UserNavigationLink
 } from '@/shared/ui/user/user-reference';
@@ -536,7 +537,7 @@ export default function CommunityPostsPage(): JSX.Element {
           />
         }
       >
-        <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
+        <Text type="secondary" style={{ display: 'block', marginBottom: SPACE.base }}>
           신고 건은{' '}
           <Link className="table-navigation-link" to="/community/reports">
             신고 관리
@@ -547,7 +548,7 @@ export default function CommunityPostsPage(): JSX.Element {
           <Alert
             type="error"
             showIcon
-            style={{ marginBottom: 16 }}
+            style={{ marginBottom: SPACE.base }}
             message="\uCEE4\uBBA4\uB2C8\uD2F0 \uAC8C\uC2DC\uAE00\uC744 \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
             description={loadErrorMessage}
           />
@@ -758,10 +759,10 @@ export default function CommunityPostsPage(): JSX.Element {
             />
             <div
               style={{
-                border: '1px solid #f0f0f0',
-                borderRadius: 12,
-                padding: 20,
-                background: '#fff',
+                border: `1px solid ${COLOR.borderSecondary}`,
+                borderRadius: RADIUS.lg,
+                padding: SPACE.md,
+                background: COLOR.bgContainer,
                 lineHeight: 1.7
               }}
               dangerouslySetInnerHTML={{ __html: previewPost.contentHtml }}

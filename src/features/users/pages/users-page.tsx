@@ -73,6 +73,7 @@ import { useSearchBarDateDraft } from '@/shared/ui/search-bar/use-search-bar-dat
 import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
 import type { AsyncState } from '@/shared/model/async-state';
 import { getTargetTypeLabel } from '@/shared/model/target-type-label';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 const { Text } = Typography;
 
@@ -615,7 +616,7 @@ export default function UsersPage(): JSX.Element {
         <Alert
           type="error"
           showIcon
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: SPACE.sm }}
           message="회원 목록 조회에 실패했습니다."
           description={
             <Space direction="vertical" size={4}>
@@ -678,7 +679,7 @@ export default function UsersPage(): JSX.Element {
           <Alert
             type="info"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message={`${selectedCount.toLocaleString()}명 선택됨`}
             action={
               <Space>
@@ -699,7 +700,7 @@ export default function UsersPage(): JSX.Element {
           <Alert
             type="info"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message="조회된 회원 데이터가 없습니다."
             description="필터 조건을 확인하거나 잠시 후 다시 조회해주세요."
           />

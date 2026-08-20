@@ -8,6 +8,7 @@ import {
 import type { UserLearningOverview, UserSummary } from '../model/types';
 import type { AsyncState } from '@/shared/model/async-state';
 import { DRAWER_TABLE_PAGINATION } from '@/shared/ui/table/drawer-table';
+import { SPACE } from '@/shared/styles/design-tokens';
 import {
   createLearningQuestionColumns,
   createLearningTagColumns,
@@ -58,7 +59,7 @@ export function UserDetailLearningTab({
 
   return (
 learningState.status === 'pending' ? (
-  <div style={{ display: 'flex', justifyContent: 'center', padding: 32 }}>
+  <div style={{ display: 'flex', justifyContent: 'center', padding: SPACE.xl }}>
     <Spin />
   </div>
 ) : learningState.status === 'error' ? (
@@ -161,7 +162,7 @@ learningState.status === 'pending' ? (
         showSorterTooltip={false}
         size="small"
         pagination={false}
-        style={{ marginTop: 8 }}
+        style={{ marginTop: SPACE.xs }}
         dataSource={learningState.data.perQuestion}
         columns={learningQuestionColumns}
       />
@@ -174,7 +175,7 @@ learningState.status === 'pending' ? (
         showSorterTooltip={false}
         size="small"
         pagination={DRAWER_TABLE_PAGINATION}
-        style={{ marginTop: 8 }}
+        style={{ marginTop: SPACE.xs }}
         dataSource={learningState.data.tagStats}
         columns={learningTagColumns}
       />
@@ -187,7 +188,7 @@ learningState.status === 'pending' ? (
         showSorterTooltip={false}
         size="small"
         pagination={DRAWER_TABLE_PAGINATION}
-        style={{ marginTop: 8 }}
+        style={{ marginTop: SPACE.xs }}
         dataSource={learningState.data.weaknesses}
         columns={learningWeaknessColumns}
       />
@@ -200,7 +201,7 @@ learningState.status === 'pending' ? (
         showSorterTooltip={false}
         size="small"
         pagination={DRAWER_TABLE_PAGINATION}
-        style={{ marginTop: 8 }}
+        style={{ marginTop: SPACE.xs }}
         dataSource={learningState.data.recentWriting}
         columns={learningWritingColumns}
         onRow={(record) => ({
@@ -238,7 +239,7 @@ learningState.status === 'pending' ? (
           {learningState.data.objectiveAttempts.latestAttemptAt || '-'}
         </Descriptions.Item>
       </Descriptions>
-      <Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
+      <Text type="secondary" style={{ display: 'block', marginTop: SPACE.xxs }}>
         객관식(읽기/듣기) 풀이 기록(problem_attempts) 원천입니다. 객관식 기능 도입
         전까지는 수집 전 상태로 0이 표시됩니다. TOPIK 쓰기 지표와 원천이 다릅니다.
       </Text>

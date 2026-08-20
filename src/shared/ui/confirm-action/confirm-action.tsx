@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { getTargetTypeLabel } from '../../model/target-type-label';
 import { markRequiredDescriptionItems } from '../descriptions/description-label';
+import { SPACE } from '../../styles/design-tokens';
 
 const { Text } = Typography;
 
@@ -99,7 +100,7 @@ export function ConfirmAction({
       <Alert
         type="warning"
         showIcon
-        style={{ marginBottom: 12 }}
+        style={{ marginBottom: SPACE.sm }}
         message="고위험 액션 확인"
         description={description}
       />
@@ -134,7 +135,7 @@ export function ConfirmAction({
                           onChange={(value) => setPolicyCode(value)}
                         />
                         {selectedPolicyDescription ? (
-                          <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+                          <Text type="secondary" style={{ display: 'block', marginTop: SPACE.xs }}>
                             {selectedPolicyDescription}
                           </Text>
                         ) : null}

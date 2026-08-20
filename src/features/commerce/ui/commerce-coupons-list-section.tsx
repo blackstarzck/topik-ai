@@ -15,6 +15,7 @@ import { AdminListCard } from "@/shared/ui/list-page-card/admin-list-card";
 import { SearchBar } from "@/shared/ui/search-bar/search-bar";
 import { AdminDataTable } from "@/shared/ui/table/admin-data-table";
 import type { CouponPlanTier } from "../api/coupons-service";
+import { SPACE } from '@/shared/styles/design-tokens';
 
 const { Text, Title } = Typography;
 
@@ -112,7 +113,7 @@ export function CommerceCouponsListSection({
         <Alert
           type="info"
           showIcon
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: SPACE.sm }}
           message="Free 버전은 쿠폰 1개까지만 생성할 수 있습니다."
           description="저장 시점에 생성 제한이 걸리므로, 유형별 입력을 다 작성한 뒤에도 제한 오류가 발생할 수 있습니다."
         />
@@ -122,7 +123,7 @@ export function CommerceCouponsListSection({
         <Alert
           type="error"
           showIcon
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: SPACE.sm }}
           message="쿠폰 목록을 불러오지 못했어요"
           description={
             <Space direction="vertical">
@@ -154,7 +155,7 @@ export function CommerceCouponsListSection({
         <Alert
           type="error"
           showIcon
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: SPACE.sm }}
           message="정기 쿠폰 템플릿 목록을 불러오지 못했어요"
           description={
             <Space direction="vertical">
@@ -188,7 +189,7 @@ export function CommerceCouponsListSection({
             <Alert
               type="info"
               showIcon
-              style={{ marginBottom: 12 }}
+              style={{ marginBottom: SPACE.sm }}
               message="선택한 조건에 맞는 정기 쿠폰 템플릿이 없어요"
               description="검색어를 조정해서 다시 확인해 주세요."
             />
@@ -248,7 +249,7 @@ export function CommerceCouponsListSection({
                 <Alert
                   type="info"
                   showIcon
-                  style={{ marginTop: 16, textAlign: "left" }}
+                  style={{ marginTop: SPACE.base, textAlign: "left" }}
                   message="쿠폰 운영 가이드"
                   description={
                     <Space direction="vertical" size={4}>
@@ -274,7 +275,7 @@ export function CommerceCouponsListSection({
             <Alert
               type="info"
               showIcon
-              style={{ marginBottom: 12 }}
+              style={{ marginBottom: SPACE.sm }}
               message="선택한 조건에 맞는 쿠폰이 없어요"
               description="상태 탭, 검색어, 유효 기간을 조정해서 다시 확인해 주세요."
             />

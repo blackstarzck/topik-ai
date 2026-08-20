@@ -206,6 +206,16 @@
 - 게이트: `npm run check:typography-min-font`(`harness:check` 배선). `src/**` 의 인라인 `fontSize` 와 `*.css` 의 `font-size` 에 더해 **테마의 `fontSizeSM` 선언**까지 본다. 토큰 값 자체는 `tests/unit/admin-theme-token.test.ts` 가 실물 import 로 고정한다.
 - 함정: antd cssinjs 는 페이지 CSS 보다 늦게 주입되므로, `.ant-table` 같은 antd 루트를 덮을 때 명시도가 동점이면 antd 가 이긴다 — `.패널클래스.ant-card .ant-table` 처럼 클래스 두 개로 올려야 실제로 적용된다.
 
+## 디자인 값(강제)
+
+- **색·간격·모서리·글자 크기는 리터럴로 적지 않는다.** `@/shared/styles/design-tokens` 의 `COLOR`/`APP_COLOR`/`SPACE`/`RADIUS`/`FONT_SIZE`/`ICON_SIZE` 를 쓴다. 그 모듈은 `src/app/theme.ts` 의 antd 테마에서 값을 파생하므로 테마를 바꾸면 화면이 따라온다.
+- 간격은 antd 스케일(`0/4/8/12/16/20/24/32/48`)만 쓴다. 그 사이 값이 필요해 보이면 대개 배치 문제다.
+- `display`/`flex`/`width`/`position` 처럼 **구조 배치는 토큰 대상이 아니다** — 인라인으로 둔다.
+- 앱 고유값(사이드바 브랜드색, 로그인 배경, 차트 눈금선 등)도 인라인에 흩지 않고 `APP_COLOR` 에 모은다.
+- 예외는 **색이 무엇을 뜻하는가**로 가른다 — 데이터 계열 팔레트(차트 시리즈)와 제3자 브랜드색(소셜 로그인 마크)은 대상이 아니다. `scripts/check-design-tokens.mjs` 의 예외 목록에 근거와 함께 등재하며 **줄이기만 한다**.
+- 🚨**antd 시드 토큰 중 `colorPrimary` 에서 파생되지 않는 것이 있다** — `colorLink`(링크·링크 Button)와 `colorInfo`(정보 상태) 는 별도 시드다. 브랜드색을 바꿀 때 이 둘을 같이 보지 않으면 링크만 antd 기본 파랑으로 남는다.
+- 게이트: `npm run check:design-tokens`(`harness:check` 배선). 값 고정은 `tests/unit/design-tokens.test.ts` 가 antd 계산값과 직접 비교한다.
+
 ## 사용자 표시 규칙
 
 - 테이블에서 사용자 또는 사용자 계정 참조 셀은 raw ID를 단독으로 노출하지 않고 `이름 (ID)` 형식의 공통 `table-navigation-link`로 표시합니다.

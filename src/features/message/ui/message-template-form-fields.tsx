@@ -16,6 +16,7 @@ import {
   TinyMceHtmlEditor
 } from '@/shared/ui/html-editor/tiny-mce-html-editor';
 import { markRequiredDescriptionItems } from '@/shared/ui/descriptions/description-label';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 export type TemplateFormValues = {
   category: string;
@@ -318,7 +319,7 @@ function MandatoryToggle({ value, onChange, disabled }: MandatoryToggleProps): J
     <div>
       <Switch checked={Boolean(value)} disabled={disabled} onChange={handleChange} />
       {disabled ? (
-        <Typography.Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
+        <Typography.Text type="secondary" style={{ display: 'block', marginTop: SPACE.xxs }}>
           마케팅(marketing) 분류는 강제 발송을 설정할 수 없습니다.
         </Typography.Text>
       ) : null}

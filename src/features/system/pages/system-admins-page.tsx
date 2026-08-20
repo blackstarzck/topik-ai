@@ -28,6 +28,7 @@ import { useSearchBarDateDraft } from '@/shared/ui/search-bar/use-search-bar-dat
 import { StatusBadge } from '@/shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
 import { TableRowDetailModal } from '@/shared/ui/table/table-row-detail-modal';
+import { SPACE } from '@/shared/styles/design-tokens';
 import {
   createNumberSorter,
   createTextSorter
@@ -325,7 +326,7 @@ export default function SystemAdminsPage(): JSX.Element {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: 12
+          gap: SPACE.sm
         }}
       >
         <PageTitle title="관리자 계정" />
@@ -375,13 +376,13 @@ export default function SystemAdminsPage(): JSX.Element {
           <Alert
             type="error"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message="관리자 계정 목록을 불러오지 못했습니다."
             description={loadErrorMessage}
           />
         ) : null}
 
-        <Paragraph type="secondary" style={{ marginBottom: 16 }}>
+        <Paragraph type="secondary" style={{ marginBottom: SPACE.base }}>
           관리자 계정 가시성은 계정 상태, 역할, 권한 수, 감사 로그 연결로 통일합니다.
           권한 부여/수정/회수는{' '}
           <Link className="table-navigation-link" to="/system/permissions">
@@ -403,7 +404,7 @@ export default function SystemAdminsPage(): JSX.Element {
           })}
         />
 
-        <Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0 }}>
+        <Paragraph type="secondary" style={{ marginTop: SPACE.sm, marginBottom: 0 }}>
           비활성 계정 {inactiveCount}명은 로그인만 차단하고, 구성 이력은 감사 로그에서 유지합니다.
         </Paragraph>
       </AdminListCard>

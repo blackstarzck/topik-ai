@@ -3,6 +3,7 @@ import type { FormInstance } from 'antd';
 
 import type { ReferralRewardAdjustmentFormValues } from '../model/users-referrals-page-schema';
 import type { ReferralSummary } from '../model/referrals-types';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 const { Text } = Typography;
 
@@ -49,7 +50,7 @@ export function ReferralAdjustmentModal({
                 }
               }
             ]}
-            style={{ marginTop: 12 }}
+            style={{ marginTop: SPACE.sm }}
             extra="양수는 수동 보정, 음수는 회수로 기록됩니다."
           >
             <InputNumber

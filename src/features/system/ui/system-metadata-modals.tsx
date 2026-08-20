@@ -17,6 +17,7 @@ import {
   createItemFormDescriptionItems
 } from './system-metadata-form-items';
 import { AdminFormDescriptions } from '@/shared/ui/descriptions/admin-form-descriptions';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 // 운영 설정/운영 값 편집 모달 — Phase 4 분해로 페이지 JSX 에서 통째 이동(동작 동일).
 // 폼 인스턴스·에디터 상태·제출 핸들러는 페이지가 소유해 props 로 전달하고,
@@ -56,7 +57,7 @@ export function MetadataGroupEditorModal({
       <Alert
         type="info"
         showIcon
-        style={{ marginBottom: 16 }}
+        style={{ marginBottom: SPACE.base }}
         message="여러 화면과 기능에서 공통으로 재사용하는 운영 설정을 만들거나 정리할 때 사용합니다."
         description="개별 화면 전용 문구나 임시 UI 값이 아니라, 여러 화면에서 공통으로 쓰는 선택지·상태값·노출 규칙만 등록하는 것을 기본으로 합니다. 연결 route는 참고용 정보이고, 실제 운영 조작은 상세 Drawer의 `설정 구조`와 `지금 운영 중인 값`에서 확인합니다."
       />
@@ -127,7 +128,7 @@ export function MetadataItemEditorModal({
             style={{
               display: 'flex',
               justifyContent: 'space-between',
-              gap: 12
+              gap: SPACE.sm
             }}
           >
             <Button
@@ -177,7 +178,7 @@ export function MetadataItemEditorModal({
       <Alert
         type="info"
         showIcon
-        style={{ marginBottom: 16 }}
+        style={{ marginBottom: SPACE.base }}
         message="운영 값은 실제 선택지, 상태값, 노출 값 항목입니다."
         description="라벨은 운영자가 이해하기 쉽게 작성하고, 코드는 감사 로그와 API 추적을 위한 식별자이므로 prefix 규칙을 유지해 주세요. 현재 mock 데이터 기준으로 같은 설정 그룹 안에서는 코드와 라벨 중복을 허용하지 않습니다."
       />

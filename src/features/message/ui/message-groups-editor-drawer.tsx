@@ -47,6 +47,7 @@ import type {
   MessageGroupQueryGroup
 } from '../model/types';
 import { MultiCheckboxGroup, QueryBuilderGroupEditor } from './message-groups-query-builder';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 const { Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -227,7 +228,7 @@ export function MessageGroupEditorDrawer({
               <div className="message-groups-editor-row">
                 <div className="message-groups-editor-label">설정 유형</div>
                 <div className="message-groups-editor-content">
-                  <Form.Item name="builderMode" style={{ marginBottom: 8 }}>
+                  <Form.Item name="builderMode" style={{ marginBottom: SPACE.xs }}>
                     <Radio.Group
                       disabled={isEditingExistingGroup}
                       options={messageGroupBuilderModeOptions}

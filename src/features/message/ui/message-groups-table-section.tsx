@@ -13,6 +13,7 @@ import {
 } from '@/shared/ui/search-bar/search-bar';
 import { useSearchBarDateDraft } from '@/shared/ui/search-bar/use-search-bar-date-draft';
 import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 const { Paragraph, Text } = Typography;
 
@@ -68,8 +69,8 @@ export function MessageGroupsTableSection({
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'flex-start',
-          gap: 12,
-          marginBottom: 8
+          gap: SPACE.sm,
+          marginBottom: SPACE.xs
         }}
       >
         <div style={{ flex: 1 }}>
@@ -122,7 +123,7 @@ export function MessageGroupsTableSection({
         <Alert
           type="info"
           showIcon
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: SPACE.sm }}
           message="조건에 맞는 대상 그룹이 없습니다."
           description="검색어 또는 정의 방식을 조정하거나 새 그룹을 생성하세요."
         />

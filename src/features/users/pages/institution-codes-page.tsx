@@ -34,6 +34,7 @@ import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
 import { PageTitle } from '@/shared/ui/page-title/page-title';
 import { StatusBadge } from '@/shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
+import { SPACE } from '@/shared/styles/design-tokens';
 import {
   createInfoColumnTitle,
   createStatusColumnTitle
@@ -386,7 +387,7 @@ export default function InstitutionCodesPage(): JSX.Element {
       style={{
         display: 'flex',
         flexWrap: 'wrap',
-        gap: 12,
+        gap: SPACE.sm,
         alignItems: 'center',
         justifyContent: 'space-between'
       }}
@@ -406,7 +407,7 @@ export default function InstitutionCodesPage(): JSX.Element {
     <>
       {notificationContextHolder}
       <PageTitle title="기관 코드" />
-      <Paragraph type="secondary" style={{ marginBottom: 16 }}>
+      <Paragraph type="secondary" style={{ marginBottom: SPACE.base }}>
         박람회/기관 유입 QR에 싣는 코드를 등록·관리합니다. 회원이 이 코드를 달고 가입하면 기관 회원으로 추적됩니다.
         {!isInstitutionCodesSupabase && ' (현재 mock 데이터 — 생성/수정/삭제는 화면에만 반영됩니다.)'}
       </Paragraph>

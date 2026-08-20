@@ -51,6 +51,7 @@ import { AuditLogLink } from '@/shared/ui/audit-log-link/audit-log-link';
 import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
 import { PageTitle } from '@/shared/ui/page-title/page-title';
 import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 const { Text } = Typography;
 
@@ -675,7 +676,7 @@ export default function OperationPdfQuotaPage(): JSX.Element {
                   <Alert
                     type="error"
                     showIcon
-                    style={{ marginBottom: 12 }}
+                    style={{ marginBottom: SPACE.sm }}
                     message="초기화 이력을 불러오지 못했습니다."
                     description={
                       <Space direction="vertical">
@@ -702,7 +703,7 @@ export default function OperationPdfQuotaPage(): JSX.Element {
                   <Alert
                     type="info"
                     showIcon
-                    style={{ marginBottom: 12 }}
+                    style={{ marginBottom: SPACE.sm }}
                     message="초기화 이력이 없습니다."
                     description="초기화 실행 버튼으로 개인/기관 코드/전체 초기화를 만들 수 있습니다. 이력은 수정/삭제하지 않고 보상 초기화로만 정정합니다."
                   />

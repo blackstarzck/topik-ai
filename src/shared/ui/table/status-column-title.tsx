@@ -1,6 +1,7 @@
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import type { CSSProperties, KeyboardEvent, MouseEvent } from 'react';
+import { APP_COLOR, COLOR, FONT_SIZE, SPACE } from '../../styles/design-tokens';
 
 export type StatusGuideItem = {
   label: string;
@@ -68,27 +69,27 @@ const statusDescriptionMap: Record<string, string> = {
 
 const tooltipContainerStyle: CSSProperties = {
   display: 'grid',
-  gap: 10,
+  gap: SPACE.sm,
   maxWidth: 280
 };
 
 const tooltipItemStyle: CSSProperties = {
   display: 'grid',
-  gap: 4
+  gap: SPACE.xxs
 };
 
 const tooltipLabelStyle: CSSProperties = {
-  color: '#fff',
+  color: COLOR.textLightSolid,
   display: 'block',
-  fontSize: 14,
+  fontSize: FONT_SIZE.base,
   fontWeight: 600,
   letterSpacing: '-0.01em',
   lineHeight: 1.4
 };
 
 const tooltipDescriptionStyle: CSSProperties = {
-  color: 'rgba(255, 255, 255, 0.72)',
-  fontSize: 14,
+  color: APP_COLOR.tooltipDescriptionText,
+  fontSize: FONT_SIZE.base,
   lineHeight: 1.5
 };
 
@@ -137,7 +138,7 @@ export function createInfoColumnTitle(
       style={{
         alignItems: 'center',
         display: 'inline-flex',
-        gap: 6
+        gap: SPACE.xs
       }}
     >
       <span>{title}</span>
@@ -153,7 +154,7 @@ export function createInfoColumnTitle(
           onMouseDown={stopHeaderInteraction}
           role="button"
           style={{
-            color: 'rgba(0, 0, 0, 0.45)',
+            color: COLOR.textTertiary,
             cursor: 'help',
             display: 'inline-flex',
             fontSize: 12,

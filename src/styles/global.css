@@ -165,7 +165,7 @@ body {
 }
 
 .table-navigation-link {
-  color: #1677ff;
+  color: #0f4da8;
   text-decoration: none;
   font-weight: 500;
 }
@@ -1262,7 +1262,7 @@ body {
 .question-tag-edit-modal__group-button:hover,
 .question-tag-edit-modal__group-button--active {
   background: #eef6ff;
-  color: #1677ff;
+  color: #0f4da8;
 }
 
 .question-tag-edit-modal__group-meta {
@@ -1366,7 +1366,7 @@ body {
 }
 
 .admin-description-label__icon:focus-visible {
-  outline: 2px solid #1677ff;
+  outline: 2px solid #0f4da8;
   outline-offset: 2px;
   border-radius: 999px;
 }
@@ -1719,7 +1719,7 @@ body {
 }
 
 .question-version-history-table .ant-table-tbody > tr.ant-table-row:focus-visible > td {
-  outline: 2px solid #1677ff;
+  outline: 2px solid #0f4da8;
   outline-offset: -2px;
 }
 

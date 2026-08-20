@@ -21,7 +21,7 @@ export function mergeDrawerFrameStyles(
   return {
     ...drawerStyles,
     footer: {
-      padding: '26px 16px',
+      padding: '24px 16px',
       ...drawerStyles?.footer
     }
   };

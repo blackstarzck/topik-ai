@@ -19,6 +19,7 @@ import type { InstitutionSettings } from '../../model/institution-contracts-type
 import type { NotificationApi } from './institution-code-detail-tab-types';
 import { AuditLogLink } from '@/shared/ui/audit-log-link/audit-log-link';
 import { createDescriptionLabel } from '@/shared/ui/descriptions/description-label';
+import { FONT_SIZE, SPACE } from '@/shared/styles/design-tokens';
 
 const { Text } = Typography;
 
@@ -245,7 +246,7 @@ export function InstitutionCodeInfoTab({
           >
             <Select options={statusOptions} style={{ width: '100%' }} />
           </Form.Item>
-          <Text type="secondary" style={{ display: 'block', marginTop: 6 }}>
+          <Text type="secondary" style={{ display: 'block', marginTop: SPACE.xs }}>
             종료로 바꾸면 새 배정·초대가 막힙니다. 이미 소속된 회원의 문항 노출은 그대로
             유지됩니다.
           </Text>
@@ -288,7 +289,7 @@ export function InstitutionCodeInfoTab({
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
       <div>
-        <Text strong style={{ fontSize: 15, display: 'block', marginBottom: 8 }}>
+        <Text strong style={{ fontSize: FONT_SIZE.lg, display: 'block', marginBottom: SPACE.xs }}>
           기본 정보
         </Text>
         <Form form={form} layout="vertical" disabled={!canManage}>
@@ -303,7 +304,7 @@ export function InstitutionCodeInfoTab({
         {canManage ? (
           <Button
             type="primary"
-            style={{ marginTop: 10 }}
+            style={{ marginTop: SPACE.sm }}
             loading={submitting}
             onClick={() => void handleSubmit()}
           >
@@ -313,7 +314,7 @@ export function InstitutionCodeInfoTab({
       </div>
 
       <div>
-        <Text strong style={{ fontSize: 15, display: 'block', marginBottom: 8 }}>
+        <Text strong style={{ fontSize: FONT_SIZE.lg, display: 'block', marginBottom: SPACE.xs }}>
           운영 담당자
         </Text>
         <Form form={contactForm} layout="vertical">
@@ -368,7 +369,7 @@ export function InstitutionCodeInfoTab({
         {canManage ? (
           <Button
             type="primary"
-            style={{ marginTop: 10 }}
+            style={{ marginTop: SPACE.sm }}
             loading={contactSubmitting}
             disabled={contactEditDisabled}
             onClick={() => void handleContactSubmit()}

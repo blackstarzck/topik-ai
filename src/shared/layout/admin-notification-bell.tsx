@@ -11,6 +11,7 @@ import {
 } from '@/features/system/api/admin-notifications-service';
 import type { AdminNotification } from '@/features/system/model/admin-notification-types';
 import { resolveAdminNotificationCategoryLabel } from '@/features/system/model/admin-notification-types';
+import { APP_COLOR, COLOR, FONT_SIZE, ICON_SIZE, RADIUS, SPACE } from '../styles/design-tokens';
 
 const { Text } = Typography;
 
@@ -113,13 +114,13 @@ export function AdminNotificationBell(): JSX.Element {
         width: 380,
         maxHeight: 460,
         overflowY: 'auto',
-        background: '#fff',
-        borderRadius: 8,
-        boxShadow: '0 6px 16px rgba(0,0,0,0.12)',
-        padding: 12
+        background: COLOR.bgContainer,
+        borderRadius: RADIUS.base,
+        boxShadow: APP_COLOR.dropdownPanelShadow,
+        padding: SPACE.sm
       }}
     >
-      <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 8 }}>
+      <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: SPACE.xs }}>
         <Text strong>알림</Text>
         <Button
           type="link"
@@ -144,9 +145,9 @@ export function AdminNotificationBell(): JSX.Element {
             <List.Item
               style={{
                 cursor: item.linkUrl ? 'pointer' : 'default',
-                background: item.readAt ? undefined : '#f6ffed',
-                paddingInline: 8,
-                borderRadius: 6
+                background: item.readAt ? undefined : COLOR.successBg,
+                paddingInline: SPACE.xs,
+                borderRadius: RADIUS.sm
               }}
               onClick={() => void handleOpenItem(item)}
             >
@@ -154,16 +155,16 @@ export function AdminNotificationBell(): JSX.Element {
                 <Space size={6} wrap>
                   {!item.readAt ? <Badge color="green" /> : null}
                   <Tag>{resolveAdminNotificationCategoryLabel(item.category)}</Tag>
-                  <Text strong style={{ fontSize: 14 }}>
+                  <Text strong style={{ fontSize: FONT_SIZE.base }}>
                     {item.title}
                   </Text>
                 </Space>
                 {item.body ? (
-                  <Text type="secondary" style={{ fontSize: 14 }}>
+                  <Text type="secondary" style={{ fontSize: FONT_SIZE.base }}>
                     {item.body}
                   </Text>
                 ) : null}
-                <Text type="secondary" style={{ fontSize: 14 }}>
+                <Text type="secondary" style={{ fontSize: FONT_SIZE.base }}>
                   {formatWhen(item.createdAt)}
                 </Text>
               </Space>
@@ -188,7 +189,7 @@ export function AdminNotificationBell(): JSX.Element {
           icon={<BellOutlined />}
           aria-label={unreadCount > 0 ? `알림 ${unreadCount}건 미읽음` : '알림'}
           data-testid="admin-notification-bell"
-          style={{ width: 40, height: 40, fontSize: 18 }}
+          style={{ width: 40, height: 40, fontSize: ICON_SIZE.button }}
         />
       </Badge>
     </Dropdown>

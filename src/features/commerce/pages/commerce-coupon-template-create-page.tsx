@@ -48,6 +48,7 @@ import {
 } from "@/shared/ui/admin-editor-form/admin-editor-form";
 import { AdminListCard } from "@/shared/ui/list-page-card/admin-list-card";
 import { PageTitle } from "@/shared/ui/page-title/page-title";
+import { SPACE } from '@/shared/styles/design-tokens';
 
 const { Text } = Typography;
 export default function CommerceCouponTemplateCreatePage(): JSX.Element {
@@ -510,7 +511,7 @@ export default function CommerceCouponTemplateCreatePage(): JSX.Element {
         <Alert
           type="error"
           showIcon
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: SPACE.base }}
           message="정기 쿠폰 템플릿을 불러오지 못했습니다."
           description={
             <Space direction="vertical">
@@ -562,7 +563,7 @@ export default function CommerceCouponTemplateCreatePage(): JSX.Element {
           <Alert
             type="info"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message="정기 쿠폰 템플릿 정보를 불러오는 중입니다."
             description="저장된 템플릿 정보를 확인한 뒤 수정 화면을 이어서 표시합니다."
           />
@@ -572,7 +573,7 @@ export default function CommerceCouponTemplateCreatePage(): JSX.Element {
           <Alert
             type="info"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message="최신 템플릿 정보를 다시 불러오는 중입니다."
             description="마지막으로 확인된 데이터를 유지한 채 상세 정보를 갱신합니다."
           />
@@ -582,7 +583,7 @@ export default function CommerceCouponTemplateCreatePage(): JSX.Element {
           <Alert
             type="error"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message="정기 쿠폰 템플릿 저장에 실패했습니다."
             description={
               <Space direction="vertical">

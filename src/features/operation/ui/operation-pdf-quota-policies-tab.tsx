@@ -30,6 +30,7 @@ import { createPdfQuotaHistoryColumns } from './operation-pdf-quota-columns';
 import type { AsyncState } from '@/shared/model/async-state';
 import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
 import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 const { Text } = Typography;
 
@@ -124,7 +125,7 @@ export function PdfQuotaPoliciesTab({
         <Alert
           type="error"
           showIcon
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: SPACE.sm }}
           message="정책을 불러오지 못했습니다."
           description={
             <Space direction="vertical">
@@ -148,7 +149,7 @@ export function PdfQuotaPoliciesTab({
         <Alert
           type="warning"
           showIcon
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: SPACE.sm }}
           message="활성 정책이 없어 사용자 PDF 내보내기가 실패하는 상태입니다."
           description="아래 설정을 저장하면 최신 정책이 자동으로 복구(활성화)됩니다."
         />
@@ -158,7 +159,7 @@ export function PdfQuotaPoliciesTab({
         <Alert
           type="info"
           showIcon
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: SPACE.sm }}
           message="등록된 정책이 없습니다."
           description="아래 설정을 저장하면 새 정책이 생성됩니다. 활성 정책이 없으면 v13 내보내기가 실패합니다."
         />
@@ -168,7 +169,7 @@ export function PdfQuotaPoliciesTab({
         <Alert
           type="error"
           showIcon
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: SPACE.sm }}
           message="현재 PDF 내보내기가 중단된 상태입니다(한도 0회)."
           description="한도를 1 이상으로 저장하면 내보내기가 재개됩니다."
         />
@@ -177,7 +178,7 @@ export function PdfQuotaPoliciesTab({
       <Alert
         type="warning"
         showIcon
-        style={{ marginBottom: 12 }}
+        style={{ marginBottom: SPACE.sm }}
         message="주기 변경 주의"
         description="주기(일/주/월)를 변경하면 기존 사용량이 새 주기 경계와 달라 카운트에서 제외됩니다. 사실상 전체 회원의 사용량이 초기화되는 효과가 있습니다."
       />
@@ -185,7 +186,7 @@ export function PdfQuotaPoliciesTab({
         <Alert
           type="error"
           showIcon
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: SPACE.sm }}
           message="이번 저장에서 주기가 변경됩니다."
         />
       ) : null}
@@ -193,7 +194,7 @@ export function PdfQuotaPoliciesTab({
         <Alert
           type="warning"
           showIcon
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: SPACE.sm }}
           message="한도 0회는 전 사용자의 PDF 내보내기를 중단합니다."
           description="저장 시 한 번 더 확인합니다. 사용자에게는 횟수 소진 안내(429)가 표시됩니다."
         />
@@ -256,7 +257,7 @@ export function PdfQuotaPoliciesTab({
         <Alert
           type="info"
           showIcon
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: SPACE.sm }}
           message="정책을 불러오는 중입니다."
         />
       ) : null}
@@ -268,7 +269,7 @@ export function PdfQuotaPoliciesTab({
         <Alert
           type="error"
           showIcon
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: SPACE.sm }}
           message="변경 이력을 불러오지 못했습니다."
           description={
             <Space direction="vertical">
@@ -292,7 +293,7 @@ export function PdfQuotaPoliciesTab({
         <Alert
           type="info"
           showIcon
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: SPACE.sm }}
           message="변경 이력이 없습니다."
           description="정책을 저장하면 변경 이력이 감사 로그 기반으로 쌓입니다."
         />

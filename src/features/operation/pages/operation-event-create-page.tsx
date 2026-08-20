@@ -49,6 +49,7 @@ import {
 } from "@/shared/ui/admin-editor-form/admin-editor-form";
 import { AdminListCard } from "@/shared/ui/list-page-card/admin-list-card";
 import { PageTitle } from "@/shared/ui/page-title/page-title";
+import { SPACE } from '@/shared/styles/design-tokens';
 
 
 export default function OperationEventCreatePage(): JSX.Element {
@@ -499,7 +500,7 @@ export default function OperationEventCreatePage(): JSX.Element {
         <Alert
           type="error"
           showIcon
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: SPACE.base }}
           message="이벤트 상세 대상을 불러오지 못했습니다."
           description={
             <Space direction="vertical">
@@ -559,7 +560,7 @@ export default function OperationEventCreatePage(): JSX.Element {
           <Alert
             type="info"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message="이벤트 상세를 불러오는 중입니다."
             description="저장된 이벤트 정보를 확인한 뒤 수정할 수 있습니다."
           />
@@ -569,7 +570,7 @@ export default function OperationEventCreatePage(): JSX.Element {
           <Alert
             type="info"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message="최신 이벤트 정보를 다시 확인하는 중입니다."
             description="마지막 성공 상태를 유지한 채 상세 정보를 계속 확인할 수 있습니다."
           />
@@ -579,7 +580,7 @@ export default function OperationEventCreatePage(): JSX.Element {
           <Alert
             type="error"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message="이벤트 저장에 실패했습니다."
             description={
               <Space direction="vertical">

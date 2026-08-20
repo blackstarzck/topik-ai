@@ -19,6 +19,7 @@ import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
 import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
 import { BinaryStatusSwitch } from '@/shared/ui/table/binary-status-switch';
 import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
+import { SPACE } from '@/shared/styles/design-tokens';
 import {
   createDefinedColumnFilterProps,
   createTextSorter
@@ -254,7 +255,7 @@ export function AssessmentMasterCatalogSection(): JSX.Element {
         <Alert
           type="error"
           showIcon
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: SPACE.sm }}
           message={`${subjectLabel}를 불러오지 못했습니다.`}
           description={state.errorMessage ?? ''}
           action={
@@ -270,7 +271,7 @@ export function AssessmentMasterCatalogSection(): JSX.Element {
         <Alert
           type="info"
           showIcon
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: SPACE.sm }}
           message={`등록된 ${subjectLabel}가 없습니다.`}
         />
       );
@@ -281,14 +282,14 @@ export function AssessmentMasterCatalogSection(): JSX.Element {
   return (
     <AdminListCard
       title="TOPIK 쓰기 마스터 데이터"
-      style={{ marginTop: 24 }}
+      style={{ marginTop: SPACE.lg }}
       data-testid="assessment-master-catalog-section"
     >
       {notificationContextHolder}
       <Alert
         type="info"
         showIcon
-        style={{ marginBottom: 16 }}
+        style={{ marginBottom: SPACE.base }}
         message="문항 메타데이터의 기준 축인 주제/태그 마스터를 조회하는 영역입니다."
         description={
           <Space direction="vertical" size={4}>
@@ -314,7 +315,7 @@ export function AssessmentMasterCatalogSection(): JSX.Element {
         <Alert
           type="info"
           showIcon
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: SPACE.base }}
           message="모크 모드로 동작 중입니다."
           description="Supabase가 구성되지 않아 화면 검증용 고정 마스터 데이터를 표시합니다."
         />
@@ -328,7 +329,7 @@ export function AssessmentMasterCatalogSection(): JSX.Element {
             children: (
               <div data-testid="topic-master-catalog">
                 {renderCatalogStateAlerts(topicState, '주제 마스터')}
-                <Paragraph type="secondary" style={{ marginBottom: 12 }}>
+                <Paragraph type="secondary" style={{ marginBottom: SPACE.sm }}>
                   {buildCountSummary(topicState.data.length, topicActiveCount)} — 17개 고정
                   종합 주제 × 세부 내용 축입니다. 문항 목록의 주제 필터가 이 마스터를
                   따릅니다.
@@ -350,7 +351,7 @@ export function AssessmentMasterCatalogSection(): JSX.Element {
             children: (
               <div data-testid="tag-master-catalog">
                 {renderCatalogStateAlerts(tagState, '태그 마스터')}
-                <Paragraph type="secondary" style={{ marginBottom: 12 }}>
+                <Paragraph type="secondary" style={{ marginBottom: SPACE.sm }}>
                   {buildCountSummary(tagState.data.length, tagActiveCount)} — 태그 부여
                   옵션의 값 사전입니다. 그룹별 사용 규칙이 노출 제외 기준(운영주의)과
                   연동됩니다.

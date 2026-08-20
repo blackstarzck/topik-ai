@@ -17,6 +17,7 @@ import { ListSummaryCards } from '@/shared/ui/list-summary-cards/list-summary-ca
 import { PageTitle } from '@/shared/ui/page-title/page-title';
 import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
 import { createTextSorter } from '@/shared/ui/table/table-column-utils';
+import { COLOR, SPACE } from '@/shared/styles/design-tokens';
 
 /**
  * 가져온 문항(인박스) 목록 — 조회 전용. 외부 공급 API(/api/writing/tasks)에서
@@ -136,7 +137,7 @@ export default function AssessmentImportedTasksPage(): JSX.Element {
         width: 300,
         sorter: createTextSorter((record) => record.sourceTaskId),
         filterIcon: (filtered) => (
-          <SearchOutlined style={{ color: filtered ? '#1677ff' : undefined }} />
+          <SearchOutlined style={{ color: filtered ? COLOR.primary : undefined }} />
         ),
         filterDropdown: ({
           setSelectedKeys,
@@ -145,7 +146,7 @@ export default function AssessmentImportedTasksPage(): JSX.Element {
           clearFilters
         }) => (
           <div
-            style={{ padding: 8 }}
+            style={{ padding: SPACE.xs }}
             onKeyDown={(event) => event.stopPropagation()}
           >
             <Input
@@ -156,7 +157,7 @@ export default function AssessmentImportedTasksPage(): JSX.Element {
                 setSelectedKeys(event.target.value ? [event.target.value] : [])
               }
               onPressEnter={() => confirm()}
-              style={{ marginBottom: 8, display: 'block', width: 220 }}
+              style={{ marginBottom: SPACE.xs, display: 'block', width: 220 }}
             />
             <Space>
               <Button
@@ -344,7 +345,7 @@ export default function AssessmentImportedTasksPage(): JSX.Element {
           <Alert
             type="info"
             showIcon
-            style={{ marginBottom: 16 }}
+            style={{ marginBottom: SPACE.base }}
             message="모크 모드로 동작 중입니다."
             description="Supabase가 구성되지 않아 화면 검증용 고정 데이터를 표시합니다. 실데이터에는 기록되지 않습니다."
           />
@@ -354,7 +355,7 @@ export default function AssessmentImportedTasksPage(): JSX.Element {
           <Alert
             type="error"
             showIcon
-            style={{ marginBottom: 16 }}
+            style={{ marginBottom: SPACE.base }}
             message="가져온 문항을 불러오지 못했습니다."
             description={state.errorMessage ?? ''}
             action={
@@ -369,7 +370,7 @@ export default function AssessmentImportedTasksPage(): JSX.Element {
           <Alert
             type="info"
             showIcon
-            style={{ marginBottom: 16 }}
+            style={{ marginBottom: SPACE.base }}
             message="가져온 문항을 불러오는 중입니다."
           />
         ) : null}

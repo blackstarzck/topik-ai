@@ -6,6 +6,7 @@ import {
   resolveContractTone
 } from '../model/institution-contracts-types';
 import type { InstitutionContractStatusSummary } from '../model/institution-contracts-types';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 const TONE_COLOR: Record<string, string | undefined> = {
   danger: 'red',
@@ -55,13 +56,13 @@ export function InstitutionContractDdayBadge({
           있어 `-` 만 찍히고, `- 만료` 는 정보가 아니라 잡음이다(실측하며 발견).
         */}
         {showPeriod && summary.activeStartsOn ? (
-          <span style={{ marginInlineEnd: 6 }}>{period}</span>
+          <span style={{ marginInlineEnd: SPACE.xs }}>{period}</span>
         ) : null}
         <Tag color={TONE_COLOR[tone]} style={{ marginInlineEnd: 0 }}>
           {label}
         </Tag>
         {summary.writingHiddenNow ? (
-          <Tag color="red" style={{ marginInlineStart: 6, marginInlineEnd: 0 }}>
+          <Tag color="red" style={{ marginInlineStart: SPACE.xs, marginInlineEnd: 0 }}>
             만료·비노출
           </Tag>
         ) : null}
