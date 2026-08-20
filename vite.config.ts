@@ -120,9 +120,101 @@ function localApiPlugin(): Plugin {
   };
 }
 
+/**
+ * 번들 분할 — 엔트리 청크(초기 페이로드)에 뭉쳐 있던 vendor 를 배포 간 안정된 청크로 떼어낸다.
+ *
+ * 판별 규칙이 핵심이다: **엔트리에서 정적 import 로 도달하는 모듈만** 그룹에 넣는다.
+ * dynamic import 로만 도달하는 vendor(표 전용 `rc-table`, 날짜 전용 `rc-picker` 등)를
+ * 패키지 이름만 보고 그룹에 넣으면 지연 로딩되던 코드가 초기 페이로드로 끌려와
+ * 첫 로드가 오히려 커진다. 그래서 이름이 아니라 도달 방식으로 판별한다.
+ *
+ * 이득은 바이트 감소가 아니라 캐시 수명이다 — 앱 코드만 바뀌는 배포에서
+ * vendor 청크 해시가 유지돼 재다운로드가 사라진다.
+ */
+const VENDOR_REACT_PACKAGES = new Set([
+  '@remix-run/router',
+  'react',
+  'react-dom',
+  'react-router',
+  'react-router-dom',
+  'scheduler'
+]);
+
+export function packageNameOfModuleId(moduleId: string): string | undefined {
+  const normalized = moduleId.replace(/\\/g, '/');
+  const marker = normalized.lastIndexOf('node_modules/');
+  if (marker < 0) return undefined;
+  const segments = normalized.slice(marker + 'node_modules/'.length).split('/');
+  const [first, second] = segments;
+  if (!first) return undefined;
+  if (!first.startsWith('@')) return first;
+  return second ? `${first}/${second}` : undefined;
+}
+
+export function vendorChunkOfPackage(packageName: string): string | undefined {
+  if (VENDOR_REACT_PACKAGES.has(packageName)) return 'vendor-react';
+  if (packageName.startsWith('@supabase/')) return 'vendor-supabase';
+  return undefined;
+}
+
+type ModuleInfoLookup = (
+  moduleId: string
+) => { isEntry: boolean; importers: readonly string[] } | null;
+
+/**
+ * 엔트리에서 정적 import 만 밟아 도달하는지 판정한다.
+ * `true` 는 실제 경로가 증인이라 캐시하고, `false` 는 순환 차단으로 잘린 결과일 수 있어
+ * 캐시하지 않는다(다른 경로로 다시 물으면 `true` 가 나올 수 있다).
+ */
+function createEagerModuleTest(getModuleInfo: ModuleInfoLookup): (moduleId: string) => boolean {
+  const eagerIds = new Set<string>();
+
+  const walk = (moduleId: string, visiting: Set<string>): boolean => {
+    if (eagerIds.has(moduleId)) return true;
+    if (visiting.has(moduleId)) return false;
+    const info = getModuleInfo(moduleId);
+    if (!info) return false;
+    if (info.isEntry) {
+      eagerIds.add(moduleId);
+      return true;
+    }
+    visiting.add(moduleId);
+    const eager = info.importers.some((importer) => walk(importer, visiting));
+    visiting.delete(moduleId);
+    if (eager) eagerIds.add(moduleId);
+    return eager;
+  };
+
+  return (moduleId) => walk(moduleId, new Set());
+}
+
+/** 판정 캐시는 빌드(=`getModuleInfo` 인스턴스) 단위로 유지한다. watch 재빌드 간 누수 방지. */
+const eagerModuleTests = new WeakMap<ModuleInfoLookup, (moduleId: string) => boolean>();
+
+function eagerModuleTestFor(getModuleInfo: ModuleInfoLookup): (moduleId: string) => boolean {
+  const cached = eagerModuleTests.get(getModuleInfo);
+  if (cached) return cached;
+  const created = createEagerModuleTest(getModuleInfo);
+  eagerModuleTests.set(getModuleInfo, created);
+  return created;
+}
+
 export default defineConfig({
   envPrefix: ['VITE_', 'REACT_APP_'],
   plugins: [react(), localApiPlugin()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(moduleId, { getModuleInfo }) {
+          const packageName = packageNameOfModuleId(moduleId);
+          if (!packageName) return undefined;
+          const vendorChunk = vendorChunkOfPackage(packageName);
+          if (!vendorChunk) return undefined;
+          return eagerModuleTestFor(getModuleInfo)(moduleId) ? vendorChunk : undefined;
+        }
+      }
+    }
+  },
   resolve: {
     // tsconfig.app.json paths(`@/*` → `src/*`)와 짝을 이루는 번들러측 alias.
     // vitest 는 vite.config 를 그대로 읽으므로 단위 테스트에도 동일 적용된다.

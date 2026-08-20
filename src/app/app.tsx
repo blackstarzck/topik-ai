@@ -5,7 +5,6 @@ import { BrowserRouter } from 'react-router-dom';
 import { AppRouter } from './router/app-router';
 import { AuthGate } from '../features/auth/ui/auth-gate';
 import { AppErrorBoundary } from '../shared/ui/error-boundary/app-error-boundary';
-import '../shared/api/http-client';
 
 const themeToken = {
   colorPrimary: '#0f4da8',

@@ -47,7 +47,7 @@
     "harness:admin-boundary:production": "npm run harness:admin-boundary:local && npm run check:vercel-worker-readiness -- --strict-env && npm run check:notification-worker-smoke -- --dispatch && npm run check:notification-production-evidence -- --require && npm run check:admin-transfer-completion",
     "harness:admin-transfer:local": "npm run harness:admin-boundary:local && pnpm --dir ../topik-project/v13 harness:admin-boundary",
     "harness:e2e:smoke": "playwright test tests/e2e/table-text-alignment.spec.ts tests/e2e/table-action-column.spec.ts tests/e2e/operation-policies.spec.ts tests/e2e/router-state-notice.spec.ts tests/e2e/system-metadata.spec.ts",
-    "harness:full": "npm run harness:check && npm run build && npm run harness:e2e:smoke",
+    "harness:full": "npm run harness:check && npm run build && npm run check:bundle-budget && npm run harness:e2e:smoke",
     "git:session": "node ./scripts/git/session-lifecycle.mjs",
     "git:sessions:audit": "node ./scripts/git/session-lifecycle.mjs audit",
     "git:sessions:status": "node ./scripts/git/session-lifecycle.mjs status",
@@ -82,7 +82,8 @@
     "etl:verify": "node ./scripts/etl/verify-backfill.mjs",
     "preview": "vite preview",
     "sync:tinymce": "node ./scripts/copy-tinymce-assets.mjs",
-    "postinstall": "node ./scripts/copy-tinymce-assets.mjs"
+    "postinstall": "node ./scripts/copy-tinymce-assets.mjs",
+    "check:bundle-budget": "node ./scripts/check-bundle-budget.mjs"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",
@@ -92,7 +93,6 @@
     "@supabase/supabase-js": "^2.107.0",
     "@tinymce/tinymce-react": "^6.3.0",
     "antd": "5.28.0",
-    "axios": "^1.8.4",
     "exceljs": "^4.4.0",
     "nodemailer": "^9.0.1",
     "react": "18.3.1",
@@ -116,5 +116,9 @@
     "typescript": "5.6.3",
     "vite": "5.4.10",
     "vitest": "^2.1.9"
+  },
+  "bundleBudget": {
+    "initialJsBytes": 1180000,
+    "initialCssBytes": 40000
   }
 }
