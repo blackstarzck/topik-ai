@@ -684,7 +684,7 @@ export function AdminShell(): JSX.Element {
             justifyContent: 'center'
           }}
         >
-          <Text style={{ color: '#ffffffcc', display: 'block', fontSize: 12 }}>
+          <Text style={{ color: '#ffffffcc', display: 'block', fontSize: 14 }}>
             {isSidebarCollapsed ? 'TA' : 'TOPIK AI'}
           </Text>
           <Title

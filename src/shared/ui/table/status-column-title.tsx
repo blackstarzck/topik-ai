@@ -80,7 +80,7 @@ const tooltipItemStyle: CSSProperties = {
 const tooltipLabelStyle: CSSProperties = {
   color: '#fff',
   display: 'block',
-  fontSize: 13,
+  fontSize: 14,
   fontWeight: 600,
   letterSpacing: '-0.01em',
   lineHeight: 1.4
@@ -88,7 +88,7 @@ const tooltipLabelStyle: CSSProperties = {
 
 const tooltipDescriptionStyle: CSSProperties = {
   color: 'rgba(255, 255, 255, 0.72)',
-  fontSize: 13,
+  fontSize: 14,
   lineHeight: 1.5
 };
 

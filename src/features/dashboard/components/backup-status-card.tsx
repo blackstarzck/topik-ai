@@ -178,7 +178,7 @@ export function BackupStatusCard(): JSX.Element {
                     <Space size={6} wrap>
                       <StatusBadge status={backupRunStatusLabels[value]} />
                       {failedParts.length > 0 ? (
-                        <Text type="secondary" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+                        <Text type="secondary" style={{ fontSize: 14, whiteSpace: 'nowrap' }}>
                           {failedParts.join('·')} 실패
                         </Text>
                       ) : null}
@@ -218,7 +218,7 @@ export function BackupStatusCard(): JSX.Element {
         )}
 
         {backupViewContext === 'mirror' ? (
-          <Text type="secondary" style={{ fontSize: 12 }}>
+          <Text type="secondary" style={{ fontSize: 14 }}>
             개발환경 복사본 · 마지막 동기화 {formatBackupDateTime(summary?.lastReportReceivedAt ?? null)}
           </Text>
         ) : null}

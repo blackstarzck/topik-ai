@@ -311,7 +311,7 @@ export function InstitutionExposureSettingsDrawer({
 
           {canManage ? (
             <div style={{ marginTop: 12 }}>
-              <Text strong style={{ fontSize: 13 }}>
+              <Text strong style={{ fontSize: 14 }}>
                 사유 / 근거 <Text type="danger">*</Text>
               </Text>
               <Input.TextArea

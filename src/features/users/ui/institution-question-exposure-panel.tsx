@@ -619,7 +619,7 @@ export function InstitutionQuestionExposurePanel({
             }}
           >
             <div style={{ padding: '8px 12px', borderBottom: '0.5px solid #f0f0f0' }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>
+              <Text type="secondary" style={{ fontSize: 14 }}>
                 추가 후보 · {availableQuestions.length.toLocaleString()}건
                 {inactiveCandidateCount > 0
                   ? ` (추가 가능 ${addableCandidateCount.toLocaleString()}건 · 비활성 ${inactiveCandidateCount.toLocaleString()}건)`
@@ -701,7 +701,7 @@ export function InstitutionQuestionExposurePanel({
             }}
           >
             <div style={{ padding: '8px 12px', borderBottom: '0.5px solid #f0f0f0' }}>
-              <Text strong style={{ fontSize: 13 }}>
+              <Text strong style={{ fontSize: 14 }}>
                 노출 선택 · 배정 {effectiveExposedCount.toLocaleString()}건
                 {inactiveExposedCount > 0
                   ? ` / 전역 미노출 ${inactiveExposedCount.toLocaleString()}건`
@@ -763,10 +763,10 @@ export function InstitutionQuestionExposurePanel({
 
         {canManage ? (
           <div>
-            <Text strong style={{ fontSize: 13 }}>
+            <Text strong style={{ fontSize: 14 }}>
               사유 / 근거 <Text type="danger">*</Text>{' '}
               {hasChanges ? (
-                <Text type="secondary" style={{ fontWeight: 400, fontSize: 12 }}>
+                <Text type="secondary" style={{ fontWeight: 400, fontSize: 14 }}>
                   (추가 {added.length} · 제거 {removed.length})
                 </Text>
               ) : null}
@@ -797,7 +797,7 @@ export function InstitutionQuestionExposurePanel({
         ) : null}
 
         {!isSupabase ? (
-          <Text type="secondary" style={{ fontSize: 12 }}>
+          <Text type="secondary" style={{ fontSize: 14 }}>
             현재 mock 데이터 — 추가/제거는 화면에만 반영됩니다.
           </Text>
         ) : null}
