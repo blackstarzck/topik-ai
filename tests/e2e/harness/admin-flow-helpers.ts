@@ -1,5 +1,32 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 
+/**
+ * mock 조회의 인위적 지연을 늘려 **로딩 상태를 관측 가능하게** 만든다.
+ *
+ * `page.addInitScript` 로 브라우저에 주입되므로 바깥 스코프를 참조하지 않는다.
+ * 초기 로딩 표현을 보는 스펙과, 반대로 **재조회가 없어야 하는 것**을 보는 스펙이
+ * 같이 쓴다(지연이 짧으면 재조회 유무를 구분할 수 없다).
+ */
+export function stretchAsyncFetchDelay(): void {
+  const originalSetTimeout = window.setTimeout;
+
+  function patchedSetTimeout(
+    handler: TimerHandler,
+    timeout?: number,
+    ...args: unknown[]
+  ): number {
+    if (typeof timeout === 'number' && timeout > 0 && timeout < 1000) {
+      return originalSetTimeout(handler, 2500, ...args);
+    }
+
+    return originalSetTimeout(handler, timeout, ...args);
+  }
+
+  // tests 프로젝트는 node 타입도 보므로 window.setTimeout 이 node 의 setTimeout
+  // (`__promisify__` 보유)과 교차 타입이 된다. 스텁은 호출 시그니처만 대체한다.
+  window.setTimeout = patchedSetTimeout as typeof window.setTimeout;
+}
+
 export async function getVisibleModal(page: Page): Promise<Locator> {
   const modal = page.locator('.ant-modal:visible').last();
   await expect(modal).toBeVisible();
