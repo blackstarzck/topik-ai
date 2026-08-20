@@ -129,6 +129,8 @@ jobs:
           npm run db:contracts:verify -- --json-out ci-artifacts/migration-contracts.json
       - run: npm run test:unit
       - run: npm run build
+      # 초기 페이로드 예산(package.json bundleBudget). build 산출물이 있어야 하므로 바로 뒤에 둔다.
+      - run: npm run check:bundle-budget
 
   db-contract:
     name: db-contract

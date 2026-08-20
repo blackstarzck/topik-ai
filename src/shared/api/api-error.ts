@@ -1,6 +1,4 @@
-﻿import axios from 'axios';
-
-export type ApiErrorCode =
+﻿export type ApiErrorCode =
   | 'NETWORK_ERROR'
   | 'TIMEOUT'
   | 'CANCELED'
@@ -58,6 +56,27 @@ function mapStatusToCode(status?: number): ApiErrorCode {
   return 'UNKNOWN_ERROR';
 }
 
+/**
+ * axios 형태 오류 판별. axios 패키지를 제거하면서 `axios.isAxiosError` 를 대체한다 —
+ * axios 구현과 동일한 형태 검사(`isAxiosError === true`)라 판정 결과가 바뀌지 않는다.
+ * 현재 앱의 전송 계층은 `@supabase/supabase-js` 와 네이티브 `fetch` 뿐이므로 이 분기는
+ * 방어적으로만 남아 있다(같은 형태를 쓰는 클라이언트가 다시 들어와도 매핑이 유지된다).
+ */
+type AxiosLikeError = {
+  isAxiosError: true;
+  code?: string;
+  message?: string;
+  response?: { status?: number; headers?: Record<string, unknown> };
+};
+
+function isAxiosLikeError(error: unknown): error is AxiosLikeError {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    (error as { isAxiosError?: unknown }).isAxiosError === true
+  );
+}
+
 function isRetryableStatus(status?: number): boolean {
   if (!status) {
     return true;
@@ -70,7 +89,7 @@ export function toAppApiError(error: unknown): AppApiError {
     return error;
   }
 
-  if (axios.isAxiosError(error)) {
+  if (isAxiosLikeError(error)) {
     const status = error.response?.status;
     const requestId = error.response?.headers?.['x-request-id'] as string | undefined;
 

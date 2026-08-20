@@ -59,7 +59,7 @@
 - 디자인 시스템: `Ant Design`
 - 라우팅: `React Router`
 - 상태관리: `Zustand`
-- 통신 계층: `axios`
+- 통신 계층: `@supabase/supabase-js`(도메인 데이터) + 네이티브 `fetch`(자체 `/api` 서버 함수)
 - 빌드 도구: `Vite`
 - 테이블 중심 화면은 server-side pagination/filter/sort를 기본값으로 둔다.
 - 네트워크/서버 상태는 최소 `pending`, `success`, `empty`, `error`를 구분한다.
