@@ -85,6 +85,12 @@ describe('release change classifier v7', () => {
       'vercel.json',
       // v9: 이 repo 의 실제 lint 설정은 flat config 가 아니라 .eslintrc.cjs 다
       '.eslintrc.cjs',
+      // v8: tsconfig 프로젝트는 이름을 열거하지 않는다 — 새로 추가한 프로젝트가
+      // 'unknown' 으로 떨어져 릴리스를 blocked 시킨 사고가 있었다(PR #130).
+      'tsconfig.json',
+      'tsconfig.app.json',
+      'tsconfig.node.json',
+      'tsconfig.tests.json',
     ]) {
       const report = classify(path);
       expect(report.releasePlan, path).toBe('app-only');
