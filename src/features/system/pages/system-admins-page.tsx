@@ -1,6 +1,6 @@
 import { Alert, Button, Form, Input, Modal, Select, Space, Typography, notification } from 'antd';
 import type { TableColumnsType } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import { fetchSystemAdminsSafe } from '../api/system-admins-service';
@@ -8,6 +8,7 @@ import {
   inviteAdminSafe,
   type AdminAccountRole
 } from '../api/admin-accounts-service';
+import { useAsyncResource } from '@/shared/model/use-async-resource';
 import { permissionCatalog, roleCatalog } from '../model/permission-types';
 import type { AdminPermissionAssignment, RoleKey } from '../model/permission-types';
 import { mapAppRoleToRoleKey, permissionKeysForRole } from '@/features/auth/model/app-role-mapping';
@@ -71,10 +72,11 @@ function templatePermissionKeys(role: AdminAccountRole): string[] {
 
 type InviteFormValues = { email: string; role: AdminAccountRole; permissionKeys: string[] };
 
+/** 훅의 initialData 는 안정 참조로 둔다(렌더마다 새 배열을 만들지 않는다). */
+const EMPTY_ADMINS: AdminPermissionAssignment[] = [];
+
 export default function SystemAdminsPage(): JSX.Element {
-  const [admins, setAdmins] = useState<AdminPermissionAssignment[]>([]);
-  const [loadState, setLoadState] = useState<'pending' | 'success' | 'error'>('pending');
-  const [loadErrorMessage, setLoadErrorMessage] = useState('');
+
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedRow, setSelectedRow] = useState<AdminPermissionAssignment | null>(null);
   const searchField = searchParams.get('searchField') ?? 'all';
@@ -95,29 +97,15 @@ export default function SystemAdminsPage(): JSX.Element {
   const [inviteForm] = Form.useForm<InviteFormValues>();
   const inviteRole = Form.useWatch('role', inviteForm);
 
-  const loadAdmins = useCallback(async (signal?: AbortSignal) => {
-    setLoadState('pending');
-    setLoadErrorMessage('');
-    const result = await fetchSystemAdminsSafe(signal);
-    if (signal?.aborted) {
-      return;
-    }
-    if (result.ok) {
-      setAdmins(result.data);
-      setLoadState('success');
-      return;
-    }
-    setLoadErrorMessage(result.error);
-    setLoadState('error');
-  }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    void loadAdmins(controller.signal);
-    return () => {
-      controller.abort();
-    };
-  }, [loadAdmins]);
+  const fetchAdmins = useCallback(
+    (signal: AbortSignal) => fetchSystemAdminsSafe(signal),
+    []
+  );
+  const {
+    state: adminsState,
+    reload: reloadAdmins
+  } = useAsyncResource<AdminPermissionAssignment[]>(fetchAdmins, { initialData: EMPTY_ADMINS });
+  const admins = adminsState.data;
 
   const handleInviteRoleChange = useCallback(
     (role: AdminAccountRole) => {
@@ -163,8 +151,8 @@ export default function SystemAdminsPage(): JSX.Element {
     }
     setInviteOpen(false);
     inviteForm.resetFields();
-    void loadAdmins();
-  }, [inviteForm, loadAdmins, notificationApi]);
+    reloadAdmins();
+  }, [inviteForm, notificationApi, reloadAdmins]);
 
   const filteredRows = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
@@ -372,13 +360,13 @@ export default function SystemAdminsPage(): JSX.Element {
           />
         }
       >
-        {loadState === 'error' ? (
+        {adminsState.status === 'error' ? (
           <Alert
             type="error"
             showIcon
             style={{ marginBottom: SPACE.sm }}
             message="관리자 계정 목록을 불러오지 못했습니다."
-            description={loadErrorMessage}
+            description={adminsState.errorMessage ?? undefined}
           />
         ) : null}
 
@@ -394,7 +382,7 @@ export default function SystemAdminsPage(): JSX.Element {
         <AdminDataTable<AdminPermissionAssignment>
           rowKey="adminId"
           pagination={false}
-          loading={loadState === 'pending'}
+          loading={adminsState.status === 'pending'}
           scroll={{ x: 1200 }}
           columns={columns}
           dataSource={filteredRows}

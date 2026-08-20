@@ -1,3 +1,4 @@
+import type { SafeResult } from '@/shared/api/safe-request';
 import { toSafeResult, withRetry } from '@/shared/api/safe-request';
 import { supabaseClient } from '@/shared/api/supabase-client';
 import { mapAppRoleToRoleKey, permissionKeysForRole } from '@/features/auth/model/app-role-mapping';
@@ -20,9 +21,6 @@ export type AdminListRpcRow = {
 };
 
 type AdminStatus = AdminPermissionAssignment['status'];
-type FetchSystemAdminsResult =
-  | { ok: true; data: AdminPermissionAssignment[]; error: null }
-  | { ok: false; data: null; error: string };
 
 function mapAdminStatus(status: string | null): AdminStatus {
   if (status === 'active') {
@@ -78,16 +76,16 @@ async function loadSystemAdmins(signal?: AbortSignal): Promise<AdminPermissionAs
   return ((data ?? []) as AdminListRpcRow[]).map(mapAdminRow);
 }
 
+/**
+ * 다른 safe facade 와 같은 `SafeResult` 를 돌려준다.
+ *
+ * 이전에는 내부에서 계산한 `SafeResult` 를 `{ ok, data, error: string }` 으로 낮춰
+ * 반환해서 호출부가 `AppApiError` 의 code 를 볼 수 없었고, 공용 수명주기 훅
+ * (`useAsyncResource`)도 그대로 쓸 수 없었다(gap-register §3.13 ⑧).
+ * 표시 문구는 이전과 같다 — 호출부가 `error.message` 를 쓴다.
+ */
 export async function fetchSystemAdminsSafe(
   signal?: AbortSignal
-): Promise<FetchSystemAdminsResult> {
-  const result = await toSafeResult(() =>
-    withRetry(() => loadSystemAdmins(signal), { maxRetries: 1 })
-  );
-
-  if (result.ok) {
-    return { ok: true, data: result.data, error: null };
-  }
-
-  return { ok: false, data: null, error: result.error.message };
+): Promise<SafeResult<AdminPermissionAssignment[]>> {
+  return toSafeResult(() => withRetry(() => loadSystemAdmins(signal), { maxRetries: 1 }));
 }
