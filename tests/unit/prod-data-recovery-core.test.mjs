@@ -807,10 +807,18 @@ describe('prod data recovery core', () => {
   });
 
   it('wires every recovery safety guard into the executable runner', () => {
-    const source = readFileSync(
-      new URL('../../scripts/db/recover-prod-from-dev.mjs', import.meta.url),
-      'utf8',
-    );
+    // 러너는 2026-08-20 분해로 카탈로그·순수 SQL·읽기 I/O·백업/스테이지 계층이
+    // 갈라졌다. 가드가 "실행 경로 어딘가에 배선돼 있다"는 계약은 그대로여야 하므로
+    // 러너와 그 분해 모듈 전체를 한 소스로 보고 단정한다(파일이 늘어도 계약은 불변).
+    const source = [
+      'recover-prod-from-dev.mjs',
+      'prod-recovery-catalog.mjs',
+      'prod-recovery-sql.mjs',
+      'prod-recovery-readers.mjs',
+      'prod-recovery-stage.mjs',
+    ]
+      .map((name) => readFileSync(new URL(`../../scripts/db/${name}`, import.meta.url), 'utf8'))
+      .join('\n');
 
     expect(source).toContain('AUTH_USER_COPY_COLUMN_ALLOWLIST');
     expect(source).toContain('buildCopiedAuthTokenCleanupPlan');
