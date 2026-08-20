@@ -71,7 +71,7 @@ import {
 } from '@/shared/ui/search-bar/search-bar';
 import { useSearchBarDateDraft } from '@/shared/ui/search-bar/use-search-bar-date-draft';
 import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
-import type { AsyncState } from '@/shared/model/async-state';
+import { useAsyncResource } from '@/shared/model/use-async-resource';
 import { getTargetTypeLabel } from '@/shared/model/target-type-label';
 import { SPACE } from '@/shared/styles/design-tokens';
 
@@ -84,13 +84,6 @@ export default function UsersPage(): JSX.Element {
   const query = useUsersQueryStore((state) => state.query);
   const replaceQuery = useUsersQueryStore((state) => state.replaceQuery);
   const setQuery = useUsersQueryStore((state) => state.setQuery);
-  const [usersState, setUsersState] = useState<AsyncState<UserSummary[]>>({
-    status: 'pending',
-    data: [],
-    errorMessage: null,
-    errorCode: null
-  });
-  const [reloadKey, setReloadKey] = useState(0);
   const [actionState, setActionState] = useState<UsersListActionState>(null);
   const [memoForm] = Form.useForm<{ memo: string }>();
   const [memoTarget, setMemoTarget] = useState<UserSummary | null>(null);
@@ -140,45 +133,31 @@ export default function UsersPage(): JSX.Element {
     replaceQuery(parsed);
   }, [replaceQuery, searchParams]);
 
+  /**
+   * 서버 조회는 `affiliation` 하나만 쓴다 — 페이징·정렬·나머지 필터는 모두
+   * 클라이언트에서 처리한다(`filterUsers` + antd 클라이언트 페이징).
+   *
+   * 그런데 이전 배선은 재조회 deps 에 `query.page`·`query.pageSize` 가 들어 있어서
+   * **페이지를 넘길 때마다 같은 데이터를 다시 받았다**(gap-register §3.13 ⑩).
+   * 조회가 실제로 쓰는 값만 deps 에 남긴다.
+   */
+  const fetchUsers = useCallback(
+    (signal: AbortSignal) => fetchUsersSafe(signal, query.affiliation),
+    [query.affiliation]
+  );
+  const {
+    state: usersState,
+    reload: reloadUsers,
+    mutate: mutateUsers
+  } = useAsyncResource<UserSummary[]>(fetchUsers, { initialData: [] });
+
+  /**
+   * 데이터셋이 새로 로드되면 이전 선택은 무효다. 조회 트리거와 같은 축(`affiliation`)에
+   * 걸어 둔다 — 뒤로가기로 URL 이 바뀌어 `commitQuery` 를 거치지 않는 경로도 덮는다.
+   */
   useEffect(() => {
-    const controller = new AbortController();
-
-    // 데이터셋이 새로 로드되면(필터/재조회 포함) 이전 선택은 무효 → 초기화.
     setSelectedRowKeys([]);
-    setUsersState((prev) => ({
-      ...prev,
-      status: 'pending',
-      errorMessage: null,
-      errorCode: null
-    }));
-
-    void fetchUsersSafe(controller.signal, query.affiliation).then((result) => {
-      if (controller.signal.aborted) {
-        return;
-      }
-
-      if (result.ok) {
-        setUsersState({
-          status: result.data.length === 0 ? 'empty' : 'success',
-          data: result.data,
-          errorMessage: null,
-          errorCode: null
-        });
-        return;
-      }
-
-      setUsersState((prev) => ({
-        ...prev,
-        status: 'error',
-        errorMessage: result.error.message,
-        errorCode: result.error.code
-      }));
-    });
-
-    return () => {
-      controller.abort();
-    };
-  }, [query.page, query.pageSize, reloadKey, query.affiliation]);
+  }, [query.affiliation]);
 
   // 기관 코드 카탈로그 로드(필터 옵션 + 일괄 배정 코드 피커). 실패해도 목록 기능엔 영향 없음.
   useEffect(() => {
@@ -197,7 +176,14 @@ export default function UsersPage(): JSX.Element {
   const commitQuery = useCallback(
     (next: Partial<UsersQuery>) => {
       const merged = { ...query, ...next };
-      setSelectedRowKeys([]);
+      // 페이지·페이지크기만 바뀌면 대상 집합이 그대로다(페이징은 클라이언트에서 한다)
+      // → 선택을 유지한다. 검색·필터가 바뀌면 이전 선택이 무효이므로 초기화한다.
+      const changesDataset = Object.keys(next).some(
+        (key) => key !== 'page' && key !== 'pageSize'
+      );
+      if (changesDataset) {
+        setSelectedRowKeys([]);
+      }
       setQuery(next);
       setSearchParams(buildUsersSearchParams(merged), { replace: true });
     },
@@ -413,8 +399,8 @@ export default function UsersPage(): JSX.Element {
     });
     setBulkMode(null);
     setSelectedRowKeys([]);
-    setReloadKey((prev) => prev + 1);
-  }, [bulkForm, bulkMode, bulkSubmitting, notificationApi, selectedRowKeys]);
+    reloadUsers();
+  }, [bulkForm, bulkMode, bulkSubmitting, notificationApi, reloadUsers, selectedRowKeys]);
 
   const handleSuspend = useCallback((user: UserSummary) => {
     setActionState({ type: 'suspend', user });
@@ -465,17 +451,11 @@ export default function UsersPage(): JSX.Element {
         return;
       }
 
-      setUsersState((prev) => {
-        const nextData = prev.data.map((item) =>
+      mutateUsers((users) =>
+        users.map((item) =>
           item.id === actionState.user.id ? { ...item, status: nextStatus } : item
-        );
-
-        return {
-          ...prev,
-          data: nextData,
-          status: nextData.length === 0 ? 'empty' : 'success'
-        };
-      });
+        )
+      );
 
       notificationApi.success({
         message: `${actionLabel} 완료`,
@@ -490,7 +470,7 @@ export default function UsersPage(): JSX.Element {
       });
       setActionState(null);
     },
-    [actionState, notificationApi]
+    [actionState, mutateUsers, notificationApi]
   );
 
   const handleMemoSubmit = useCallback(async () => {
@@ -593,8 +573,10 @@ export default function UsersPage(): JSX.Element {
   );
 
   const handleRetryLoad = useCallback(() => {
-    setReloadKey((prev) => prev + 1);
-  }, []);
+    // 재조회 결과가 직전 목록과 다를 수 있으므로 선택을 비운다.
+    setSelectedRowKeys([]);
+    reloadUsers();
+  }, [reloadUsers]);
 
   // 다중 선택은 기관 코드 관리 권한자와 회원 내보내기 권한자에게 노출한다.
   // 단, 기관 초대/해제 일괄 액션은 users.institution-codes.manage 권한자에게만 유지한다.

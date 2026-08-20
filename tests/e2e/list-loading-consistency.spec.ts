@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+import { stretchAsyncFetchDelay } from './harness/admin-flow-helpers';
+
 const auditedInitialLoadingPages = [
   { name: '회원 목록', url: '/users' },
   { name: '강사 관리', url: '/users/groups' },
@@ -13,27 +15,6 @@ const auditedInitialLoadingPages = [
   { name: 'TOPIK 쓰기 문제은행', url: '/assessment/question-bank' },
   { name: '메타데이터 관리', url: '/system/metadata' }
 ] as const;
-
-function stretchAsyncFetchDelay(): void {
-  const originalSetTimeout = window.setTimeout;
-
-  function patchedSetTimeout(
-    handler: TimerHandler,
-    timeout?: number,
-    ...args: unknown[]
-  ): number {
-    if (typeof timeout === 'number' && timeout > 0 && timeout < 1000) {
-      return originalSetTimeout(handler, 2500, ...args);
-    }
-
-    return originalSetTimeout(handler, timeout, ...args);
-  }
-
-  // 이 함수는 page.addInitScript 로 브라우저에서 실행되지만, tests 프로젝트에는 node 타입도
-  // 함께 들어 있어 window.setTimeout 이 node 의 setTimeout(`__promisify__` 보유)과 교차
-  // 타입이 된다. 스텁은 호출 시그니처만 대체하므로 그 지점을 명시적으로 단정한다.
-  window.setTimeout = patchedSetTimeout as typeof window.setTimeout;
-}
 
 for (const { name, url } of auditedInitialLoadingPages) {
   test(`${name} 초기 로딩은 본문 로딩 Alert 없이 테이블 loading 오버레이로 표시된다`, async ({
