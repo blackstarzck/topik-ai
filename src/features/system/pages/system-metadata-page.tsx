@@ -63,6 +63,7 @@ import {
 } from '@/shared/ui/search-bar/search-bar-utils';
 import { useSearchBarDateDraft } from '@/shared/ui/search-bar/use-search-bar-date-draft';
 import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
+import { SPACE } from '@/shared/styles/design-tokens';
 import type {
   SystemMetadataGroup,
   SystemMetadataItem
@@ -568,7 +569,7 @@ export default function SystemMetadataPage(): JSX.Element {
       <Alert
         type="info"
         showIcon
-        style={{ marginBottom: 24 }}
+        style={{ marginBottom: SPACE.lg }}
         message="쿠폰 적용 범위, 회원 상태, FAQ 노출 위치처럼 운영자가 직접 바꾸는 설정을 기능 기준으로 모아 보는 페이지입니다."
         description={
           <Space direction="vertical" size={4}>
@@ -579,7 +580,7 @@ export default function SystemMetadataPage(): JSX.Element {
         }
       />
       <ListSummaryCards items={summaryItems} />
-      <Paragraph type="secondary" style={{ marginBottom: 24 }}>
+      <Paragraph type="secondary" style={{ marginBottom: SPACE.lg }}>
         카드는 기능 영역을 빠르게 좁히는 용도이고, 실제 수정 여부 판단은 상세 Drawer의
         `기본 정보`, `설정 구조`, `지금 운영 중인 값`을 기준으로 진행하는 것을 기본으로 합니다.
       </Paragraph>
@@ -619,12 +620,12 @@ export default function SystemMetadataPage(): JSX.Element {
           />
         }
       >
-        {metadataState.status === 'error' ? <Alert type="error" showIcon style={{ marginBottom: 12 }} message="운영 설정 목록을 불러오지 못했습니다." description={metadataState.errorMessage ?? ''} action={<Button size="small" onClick={() => setReloadKey((prev) => prev + 1)}>다시 시도</Button>} /> : null}
-        {metadataState.status === 'pending' && hasCachedGroups ? <Alert type="info" showIcon style={{ marginBottom: 12 }} message="최신 운영 설정을 다시 불러오는 중입니다." /> : null}
-        {metadataState.status === 'empty' ? <Alert type="info" showIcon style={{ marginBottom: 12 }} message="등록된 운영 설정이 없습니다." /> : null}
-        {isFilteredEmpty ? <Alert type="info" showIcon style={{ marginBottom: 12 }} message="현재 검색 조건과 일치하는 운영 설정이 없습니다." /> : null}
+        {metadataState.status === 'error' ? <Alert type="error" showIcon style={{ marginBottom: SPACE.sm }} message="운영 설정 목록을 불러오지 못했습니다." description={metadataState.errorMessage ?? ''} action={<Button size="small" onClick={() => setReloadKey((prev) => prev + 1)}>다시 시도</Button>} /> : null}
+        {metadataState.status === 'pending' && hasCachedGroups ? <Alert type="info" showIcon style={{ marginBottom: SPACE.sm }} message="최신 운영 설정을 다시 불러오는 중입니다." /> : null}
+        {metadataState.status === 'empty' ? <Alert type="info" showIcon style={{ marginBottom: SPACE.sm }} message="등록된 운영 설정이 없습니다." /> : null}
+        {isFilteredEmpty ? <Alert type="info" showIcon style={{ marginBottom: SPACE.sm }} message="현재 검색 조건과 일치하는 운영 설정이 없습니다." /> : null}
 
-        <Paragraph type="secondary" style={{ marginBottom: 16 }}>
+        <Paragraph type="secondary" style={{ marginBottom: SPACE.base }}>
           설정명을 눌러 상세를 열면 사용처, 현재 운영 값, 변경 영향, 감사 로그 확인 경로를 한 화면에서 볼 수 있습니다.
         </Paragraph>
 

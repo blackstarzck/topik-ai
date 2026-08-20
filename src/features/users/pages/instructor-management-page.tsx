@@ -47,6 +47,7 @@ import {
 } from '@/shared/ui/search-bar/search-bar';
 import { useSearchBarDateDraft } from '@/shared/ui/search-bar/use-search-bar-date-draft';
 import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 const { Text, Title } = Typography;
 
@@ -269,7 +270,7 @@ export default function InstructorManagementPage(): JSX.Element {
         <Alert
           type="error"
           showIcon
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: SPACE.sm }}
           message="강사 목록 조회에 실패했습니다."
           description={
             <Space direction="vertical" size={4}>
@@ -288,7 +289,7 @@ export default function InstructorManagementPage(): JSX.Element {
         />
       ) : null}
 
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+      <Row gutter={[16, 16]} style={{ marginBottom: SPACE.base }}>
         <Col xs={24} md={6}>
           <Card>
             <Text type="secondary">전체 강사</Text>
@@ -357,7 +358,7 @@ export default function InstructorManagementPage(): JSX.Element {
           <Alert
             type="info"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message="조건에 맞는 강사가 없습니다."
             description="검색어 또는 필터 조건을 조정한 뒤 다시 확인하세요."
           />

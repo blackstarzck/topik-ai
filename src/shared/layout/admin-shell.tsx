@@ -21,6 +21,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { usePermissionStore } from '@/features/system/model/permission-store';
 import { adminMenuLabels, adminRoleLabels } from './admin-labels';
 import { AdminNotificationBell } from './admin-notification-bell';
+import { APP_COLOR, COLOR, FONT_SIZE, ICON_SIZE, RADIUS, SPACE } from '../styles/design-tokens';
 
 const { Header, Sider, Content } = Layout;
 const { Text, Title } = Typography;
@@ -673,24 +674,24 @@ export function AdminShell(): JSX.Element {
         <div
           style={{
             height: 72,
-            margin: 12,
+            margin: SPACE.sm,
             padding: isSidebarCollapsed ? '12px 8px' : '12px 14px',
-            borderRadius: 10,
-            background: '#10233c',
-            color: '#fff',
+            borderRadius: RADIUS.base,
+            background: APP_COLOR.sidebarBrandBg,
+            color: COLOR.textLightSolid,
             display: 'flex',
             flexDirection: 'column',
             alignItems: isSidebarCollapsed ? 'center' : 'flex-start',
             justifyContent: 'center'
           }}
         >
-          <Text style={{ color: '#ffffffcc', display: 'block', fontSize: 14 }}>
+          <Text style={{ color: APP_COLOR.sidebarBrandTextMuted, display: 'block', fontSize: FONT_SIZE.base }}>
             {isSidebarCollapsed ? 'TA' : 'TOPIK AI'}
           </Text>
           <Title
             level={5}
             style={{
-              color: '#fff',
+              color: COLOR.textLightSolid,
               margin: 0,
               lineHeight: '22px',
               display: isSidebarCollapsed ? 'none' : 'block'
@@ -716,7 +717,7 @@ export function AdminShell(): JSX.Element {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(16, 35, 60, 0.28)',
+            background: APP_COLOR.sidebarToggleBg,
             zIndex: 25
           }}
         />
@@ -725,9 +726,9 @@ export function AdminShell(): JSX.Element {
         <Header
           style={{
             background: colorBgContainer,
-            borderBottom: '1px solid #e8edf5',
-            paddingInline: 20,
-            paddingBlock: 8,
+            borderBottom: `1px solid ${APP_COLOR.shellDividerBorder}`,
+            paddingInline: SPACE.md,
+            paddingBlock: SPACE.xs,
             minHeight: 64,
             height: 'auto',
             lineHeight: 'normal',
@@ -738,7 +739,7 @@ export function AdminShell(): JSX.Element {
             alignItems: 'center',
             justifyContent: 'flex-start',
             flexWrap: 'wrap',
-            gap: 12
+            gap: SPACE.sm
           }}
         >
           <Button
@@ -749,7 +750,7 @@ export function AdminShell(): JSX.Element {
             style={{
               width: 48,
               height: 48,
-              fontSize: 18,
+              fontSize: ICON_SIZE.button,
               flex: '0 0 auto'
             }}
           />
@@ -777,7 +778,7 @@ export function AdminShell(): JSX.Element {
         </Header>
         <Content
           style={{
-            padding: 20,
+            padding: SPACE.md,
             flex: 1,
             display: 'flex',
             flexDirection: 'column',

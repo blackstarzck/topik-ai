@@ -16,6 +16,7 @@ import { routerSavedState } from '@/shared/model/router-saved-state';
 import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
 import { PageTitle } from '@/shared/ui/page-title/page-title';
 import { createDescriptionLabel } from '@/shared/ui/descriptions/description-label';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 const { Paragraph, Text } = Typography;
 
@@ -158,7 +159,7 @@ export default function InstitutionCodeCreatePage(): JSX.Element {
             여기서는 실제 기본값을 읽기 전용으로 안내하고 전환은 상세 노출 문항 탭에서만 받는다.
           */}
           <InstitutionExposureModeTag mode={defaultInstitutionExposureMode} />
-          <Text type="secondary" style={{ display: 'block', marginTop: 6 }}>
+          <Text type="secondary" style={{ display: 'block', marginTop: SPACE.xs }}>
             새 코드는 배정분만으로 시작합니다. 생성 후 노출 문항 탭에서 문항을 최소 1건
             배정하거나 제한 없음으로 바꾸세요.
           </Text>
@@ -180,7 +181,7 @@ export default function InstitutionCodeCreatePage(): JSX.Element {
     <>
       {notificationContextHolder}
       <PageTitle title="기관 코드 생성" />
-      <Paragraph type="secondary" style={{ marginBottom: 16 }}>
+      <Paragraph type="secondary" style={{ marginBottom: SPACE.base }}>
         박람회/기관 유입 QR에 실을 코드를 등록합니다. 생성 후 노출 문항 탭으로 이동합니다.
         {!isInstitutionCodesSupabase && ' (현재 mock 데이터 — 생성은 화면에만 반영됩니다.)'}
       </Paragraph>
@@ -195,7 +196,7 @@ export default function InstitutionCodeCreatePage(): JSX.Element {
             items={items}
           />
         </Form>
-        <Space style={{ marginTop: 16 }}>
+        <Space style={{ marginTop: SPACE.base }}>
           <Button type="primary" loading={submitting} onClick={() => void handleSubmit()}>
             생성
           </Button>

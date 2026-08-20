@@ -1,6 +1,7 @@
 import { Button, Card, Form, Input, Typography } from 'antd';
 
 import { useAuthStore } from '../model/auth-store';
+import { APP_COLOR, SPACE } from '@/shared/styles/design-tokens';
 
 type LoginValues = {
   email: string;
@@ -24,12 +25,12 @@ export function LoginPage(): JSX.Element {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#f5f7fb',
-        padding: 24
+        background: APP_COLOR.loginBg,
+        padding: SPACE.lg
       }}
     >
       <Card style={{ width: 400 }}>
-        <Typography.Title level={4} style={{ marginBottom: 4 }}>
+        <Typography.Title level={4} style={{ marginBottom: SPACE.xxs }}>
           TOPIK 관리자 로그인
         </Typography.Title>
         <Typography.Paragraph type="secondary" style={{ marginTop: 0 }}>
@@ -51,12 +52,12 @@ export function LoginPage(): JSX.Element {
             <Input.Password autoComplete="current-password" size="large" />
           </Form.Item>
           {error ? (
-            <Typography.Paragraph type="danger" style={{ marginTop: -4 }}>
+            <Typography.Paragraph type="danger" style={{ marginTop: -SPACE.xxs }}>
               {error}
             </Typography.Paragraph>
           ) : null}
           {status === 'unauthorized' && !error ? (
-            <Typography.Paragraph type="danger" style={{ marginTop: -4 }}>
+            <Typography.Paragraph type="danger" style={{ marginTop: -SPACE.xxs }}>
               관리자 권한이 없는 계정입니다.
             </Typography.Paragraph>
           ) : null}

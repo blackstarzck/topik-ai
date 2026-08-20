@@ -1,6 +1,7 @@
 import { memo } from 'react';
 
 import type { LearningAnalyticsTopicStat } from '../api/analytics-learning-service';
+import { APP_COLOR } from '@/shared/styles/design-tokens';
 import {
   formatNumber,
   type PdfUsageHierarchyRow,
@@ -67,11 +68,11 @@ export function PdfUsageCompositionPie({
     return `${slice.color} ${start.toFixed(3)}% ${accumulatedPercentage.toFixed(3)}%`;
   });
   if (accumulatedPercentage < 100) {
-    gradientSegments.push(`#eef2f7 ${accumulatedPercentage.toFixed(3)}% 100%`);
+    gradientSegments.push(`${APP_COLOR.chartTrackBg} ${accumulatedPercentage.toFixed(3)}% 100%`);
   }
   const pieBackground = gradientSegments.length > 0
     ? `conic-gradient(${gradientSegments.join(', ')})`
-    : '#eef2f7';
+    : APP_COLOR.chartTrackBg;
 
   return (
     <div className="pdf-composition-chart">

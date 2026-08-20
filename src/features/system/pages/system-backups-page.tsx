@@ -52,6 +52,7 @@ import { useSearchBarDateDraft } from '@/shared/ui/search-bar/use-search-bar-dat
 import { StatusBadge } from '@/shared/ui/status-badge/status-badge';
 import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
 import { createTextSorter } from '@/shared/ui/table/table-column-utils';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 const { Paragraph, Text } = Typography;
 const PAGE_SIZE = 20;
@@ -362,7 +363,7 @@ export default function SystemBackupsPage(): JSX.Element {
         <Alert
           type="info"
           showIcon
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: SPACE.base }}
           message="운영 백업 상태의 개발환경 복사본입니다."
           description={`실제 백업 대상은 topik-prod이며 개발 데이터베이스 자체는 백업하지 않습니다. 마지막 동기화: ${formatBackupDateTime(summary?.lastReportReceivedAt ?? null)}`}
         />
@@ -371,7 +372,7 @@ export default function SystemBackupsPage(): JSX.Element {
       <Alert
         type="warning"
         showIcon
-        style={{ marginBottom: 16 }}
+        style={{ marginBottom: SPACE.base }}
         message="현재 백업 사본은 온프레미스 디스크 한 곳에만 보관됩니다."
         description="외부 저장소와 외장 디스크를 사용하지 않으므로 운영 데이터와 온프레미스 디스크가 동시에 손상되면 복구할 수 없습니다."
       />
@@ -380,7 +381,7 @@ export default function SystemBackupsPage(): JSX.Element {
         <Alert
           type="error"
           showIcon
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: SPACE.base }}
           message="백업 요약을 불러오지 못했습니다."
           description={summary ? '마지막으로 확인된 요약을 유지하고 있습니다.' : summaryState.errorMessage}
           action={<Button size="small" onClick={() => setReloadKey((current) => current + 1)}>재시도</Button>}
@@ -450,7 +451,7 @@ export default function SystemBackupsPage(): JSX.Element {
           <Alert
             type="error"
             showIcon
-            style={{ marginBottom: 16 }}
+            style={{ marginBottom: SPACE.base }}
             message="백업 실행 이력을 불러오지 못했습니다."
             description={listState.data.rows.length > 0 ? '마지막으로 확인된 목록을 유지하고 있습니다.' : listState.errorMessage}
             action={<Button size="small" onClick={() => setReloadKey((current) => current + 1)}>재시도</Button>}
@@ -460,7 +461,7 @@ export default function SystemBackupsPage(): JSX.Element {
           <Alert
             type="info"
             showIcon
-            style={{ marginBottom: 16 }}
+            style={{ marginBottom: SPACE.base }}
             message="조건에 맞는 백업 실행 이력이 없습니다."
             description="검색 조건을 바꾸거나 온프레미스 보고 설정을 확인하세요."
           />

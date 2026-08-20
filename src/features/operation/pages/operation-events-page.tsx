@@ -41,6 +41,7 @@ import {
 } from '@/shared/ui/search-bar/search-bar-utils';
 import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
 import { parseSortOrder } from '@/shared/ui/table/table-column-utils';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 const { Text } = Typography;
 
@@ -429,7 +430,7 @@ export default function OperationEventsPage(): JSX.Element {
           <Alert
             type="error"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message="이벤트 목록을 불러오지 못했습니다."
             description={
               <Space direction="vertical">
@@ -456,7 +457,7 @@ export default function OperationEventsPage(): JSX.Element {
           <Alert
             type="info"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message="최신 이벤트 목록을 다시 불러오는 중입니다."
             description="마지막 성공 상태를 유지한 채 새 데이터를 계속 확인할 수 있습니다."
           />
@@ -466,7 +467,7 @@ export default function OperationEventsPage(): JSX.Element {
           <Alert
             type="info"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message="등록된 이벤트가 없습니다."
             description="이벤트 등록 버튼을 눌러 첫 이벤트를 생성하세요."
           />
@@ -476,7 +477,7 @@ export default function OperationEventsPage(): JSX.Element {
           <Alert
             type="info"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message="선택한 조건에 맞는 이벤트가 없습니다."
             description="검색어, 진행 기간, 노출 상태, 이벤트 유형 조건을 조정해 다시 확인하세요."
           />

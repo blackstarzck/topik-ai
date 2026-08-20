@@ -23,6 +23,7 @@ import {
   type UserExportColumnKey
 } from '../model/user-export-types';
 import type { UsersExportFormValues } from '../model/users-page-schema';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 const { Text } = Typography;
 
@@ -116,7 +117,7 @@ const handleClearExportColumns = useCallback(() => {
         columns: [...defaultUserExportColumnKeys]
       }}
     >
-      <Form.Item label="대상 회원" name="scope" style={{ marginBottom: 12 }}>
+      <Form.Item label="대상 회원" name="scope" style={{ marginBottom: SPACE.sm }}>
         <Radio.Group>
           <Space direction="vertical" size={4}>
             <Radio value="filters">현재 목록 조건</Radio>

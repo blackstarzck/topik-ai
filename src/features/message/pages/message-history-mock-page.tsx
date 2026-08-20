@@ -71,6 +71,7 @@ import {
   createTextSorter
 } from '@/shared/ui/table/table-column-utils';
 import { UserNavigationLink } from '@/shared/ui/user/user-reference';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 const { Text } = Typography;
 
@@ -496,7 +497,7 @@ export function MockMessageHistoryPage(): JSX.Element {
         <Alert
           type="error"
           showIcon
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: SPACE.sm }}
           message="발송 이력 조회에 실패했습니다."
           description={
             <Space direction="vertical" size={4}>
@@ -584,7 +585,7 @@ export function MockMessageHistoryPage(): JSX.Element {
           <Alert
             type="info"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message="조건에 맞는 발송 이력이 없습니다."
             description="채널, 유형, 상태, 검색어를 조정해서 다시 확인하세요."
           />

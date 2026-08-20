@@ -25,6 +25,7 @@ import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
 import { createStatusColumnTitle } from '@/shared/ui/table/status-column-title';
 import { createTextSorter } from '@/shared/ui/table/table-column-utils';
 import { TableRowDetailModal } from '@/shared/ui/table/table-row-detail-modal';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 const { Paragraph, Text } = Typography;
 
@@ -251,7 +252,7 @@ export default function SystemLogsPage(): JSX.Element {
         }
       >
 
-        <Paragraph type="secondary" style={{ marginBottom: 16 }}>
+        <Paragraph type="secondary" style={{ marginBottom: SPACE.base }}>
           컴포넌트 링크를 누르면 해당 오류가 주로 영향을 주는 운영 화면으로 이동합니다.{' '}
           <Link className="table-navigation-link" to="/system/audit-logs">
             감사 로그
@@ -263,7 +264,7 @@ export default function SystemLogsPage(): JSX.Element {
           <Alert
             type="error"
             showIcon
-            style={{ marginBottom: 16 }}
+            style={{ marginBottom: SPACE.base }}
             message="\uC2DC\uC2A4\uD15C \uB85C\uADF8\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
             description={loadErrorMessage}
           />

@@ -3,6 +3,7 @@ import { DeleteOutlined, MenuOutlined, PlusSquareOutlined } from '@ant-design/ic
 import type { DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent } from 'react';
 
 import type { SystemMetadataItem } from '../model/system-metadata-types';
+import { COLOR, SPACE } from '@/shared/styles/design-tokens';
 
 // 설정 구조 트리 조각 — Phase 4 분해로 페이지 모듈에서 이동(동작 동일).
 // 드래그 핸들·트리 항목 타이틀·추가 노드 타이틀. 트리 데이터 조립과 상태는 페이지가 소유한다.
@@ -43,9 +44,9 @@ export function MetadataItemDragHandle({
         justifyContent: 'center',
         border: 0,
         background: 'transparent',
-        padding: 4,
+        padding: SPACE.xxs,
         cursor: disabled ? 'not-allowed' : 'grab',
-        color: 'rgba(0, 0, 0, 0.45)'
+        color: COLOR.textTertiary
       }}
       onClick={(event) => {
         event.preventDefault();
@@ -71,7 +72,7 @@ export function MetadataTreeItemTitle({
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        gap: 8,
+        gap: SPACE.xs,
         maxWidth: '100%'
       }}
       onMouseEnter={() => onHoverChange(true)}
@@ -101,7 +102,7 @@ export function MetadataTreeAddTitle({ onClick }: MetadataTreeAddTitleProps): JS
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        gap: 8,
+        gap: SPACE.xs,
         cursor: 'pointer'
       }}
       onClick={(event) => {
@@ -118,7 +119,7 @@ export function MetadataTreeAddTitle({ onClick }: MetadataTreeAddTitleProps): JS
         onClick();
       }}
     >
-      <PlusSquareOutlined style={{ color: 'rgba(0, 0, 0, 0.65)' }} />
+      <PlusSquareOutlined style={{ color: COLOR.textSecondary }} />
       <span>추가</span>
     </span>
   );

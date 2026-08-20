@@ -21,6 +21,7 @@ import {
   TinyMceHtmlEditor
 } from '@/shared/ui/html-editor/tiny-mce-html-editor';
 import { markRequiredDescriptionItems } from '@/shared/ui/descriptions/description-label';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 type NoticeContentFormValues = {
   title: string;
@@ -178,7 +179,7 @@ export default function OperationNoticeCreatePage(): JSX.Element {
         <Alert
           type="error"
           showIcon
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: SPACE.base }}
           message="공지 등록 상세 대상을 불러오지 못했습니다."
           description={
             <Space direction="vertical">
@@ -235,7 +236,7 @@ export default function OperationNoticeCreatePage(): JSX.Element {
             <Alert
               type="info"
               showIcon
-              style={{ marginBottom: 12 }}
+              style={{ marginBottom: SPACE.sm }}
               message="최신 공지 정보를 다시 확인하는 중입니다."
               description="마지막 성공 상태를 유지한 채 본문을 계속 확인할 수 있습니다."
             />
@@ -245,7 +246,7 @@ export default function OperationNoticeCreatePage(): JSX.Element {
             <Alert
               type="error"
               showIcon
-              style={{ marginBottom: 12 }}
+              style={{ marginBottom: SPACE.sm }}
               message="공지 저장에 실패했습니다."
               description={
                 <Space direction="vertical">
@@ -263,7 +264,7 @@ export default function OperationNoticeCreatePage(): JSX.Element {
               <Alert
                 type="info"
                 showIcon
-                style={{ marginBottom: 12 }}
+                style={{ marginBottom: SPACE.sm }}
                 message="저장 정책"
                 description="신규 공지는 저장 시 숨김 상태로 보관됩니다. 사용자 화면에 노출하려면 목록에서 게시 조치를 실행하세요."
               />

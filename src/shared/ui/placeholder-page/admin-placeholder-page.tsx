@@ -1,6 +1,7 @@
 import { Alert, Card, Empty, Space, Tag, Typography } from 'antd';
 
 import { PageTitle } from '../page-title/page-title';
+import { SPACE } from '../../styles/design-tokens';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -33,13 +34,13 @@ export default function AdminPlaceholderPage({
             description="상세 기능 정의 전이지만 정보구조와 권한 체계를 먼저 고정하기 위해 placeholder 화면으로 연결했습니다."
           />
           <div>
-            <Title level={5} style={{ marginBottom: 8 }}>
+            <Title level={5} style={{ marginBottom: SPACE.xs }}>
               화면 목적
             </Title>
             <Paragraph style={{ marginBottom: 0 }}>{summary}</Paragraph>
           </div>
           <div>
-            <Title level={5} style={{ marginBottom: 8 }}>
+            <Title level={5} style={{ marginBottom: SPACE.xs }}>
               권한 후보
             </Title>
             <Space wrap>
@@ -51,12 +52,12 @@ export default function AdminPlaceholderPage({
           </div>
           {capabilities.length > 0 ? (
             <div>
-              <Title level={5} style={{ marginBottom: 8 }}>
+              <Title level={5} style={{ marginBottom: SPACE.xs }}>
                 예정 기능
               </Title>
-              <ul style={{ margin: 0, paddingInlineStart: 18 }}>
+              <ul style={{ margin: 0, paddingInlineStart: SPACE.base }}>
                 {capabilities.map((capability) => (
-                  <li key={capability} style={{ marginBottom: 6 }}>
+                  <li key={capability} style={{ marginBottom: SPACE.xs }}>
                     <Text>{capability}</Text>
                   </li>
                 ))}
@@ -65,12 +66,12 @@ export default function AdminPlaceholderPage({
           ) : null}
           {notes.length > 0 ? (
             <div>
-              <Title level={5} style={{ marginBottom: 8 }}>
+              <Title level={5} style={{ marginBottom: SPACE.xs }}>
                 메모
               </Title>
-              <ul style={{ margin: 0, paddingInlineStart: 18 }}>
+              <ul style={{ margin: 0, paddingInlineStart: SPACE.base }}>
                 {notes.map((note) => (
-                  <li key={note} style={{ marginBottom: 6 }}>
+                  <li key={note} style={{ marginBottom: SPACE.xs }}>
                     <Text type="secondary">{note}</Text>
                   </li>
                 ))}

@@ -29,6 +29,7 @@ import {
 import { usePermissionStore } from '@/features/system/model/permission-store';
 import { isSupabaseConfigured } from '@/shared/api/supabase-client';
 import { PageTitle } from '@/shared/ui/page-title/page-title';
+import { SPACE } from '@/shared/styles/design-tokens';
 import {
   createNumberSorter,
   createTextSorter
@@ -589,7 +590,7 @@ export default function AnalyticsOverviewPage(): JSX.Element {
         <Alert
           type="error"
           showIcon
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: SPACE.base }}
           message="분석 지표 조회에 실패했습니다."
           description={
             <Space direction="vertical" size={4}>
@@ -602,7 +603,7 @@ export default function AnalyticsOverviewPage(): JSX.Element {
         />
       ) : null}
 
-      <Card style={{ marginBottom: 16 }}>
+      <Card style={{ marginBottom: SPACE.base }}>
         <Space
           style={{ width: '100%', justifyContent: 'space-between', alignItems: 'center' }}
           wrap
@@ -674,7 +675,7 @@ export default function AnalyticsOverviewPage(): JSX.Element {
         </Col>
       </Row>
 
-      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+      <Row gutter={[16, 16]} style={{ marginTop: SPACE.base }}>
         <Col xs={24} xl={16}>
           <Card
             title="모듈별 핵심 지표"

@@ -64,6 +64,7 @@ import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
 import { ListSummaryCards } from '@/shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '@/shared/ui/page-title/page-title';
 import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
+import { COLOR, RADIUS, SPACE } from '@/shared/styles/design-tokens';
 
 const { Text } = Typography;
 
@@ -594,7 +595,7 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
             <Alert
               type="info"
               showIcon
-              style={{ marginBottom: 16 }}
+              style={{ marginBottom: SPACE.base }}
               message="모크 모드로 동작 중입니다."
               description="Supabase가 구성되지 않아 화면 검증용 고정 데이터를 표시합니다. 실데이터·감사 로그에는 기록되지 않습니다."
             />
@@ -604,7 +605,7 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
             <Alert
               type="error"
               showIcon
-              style={{ marginBottom: 16 }}
+              style={{ marginBottom: SPACE.base }}
               message="문항 목록을 불러오지 못했습니다."
               description={state.errorMessage ?? ''}
               action={
@@ -619,7 +620,7 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
             <Alert
               type="warning"
               showIcon
-              style={{ marginBottom: 16 }}
+              style={{ marginBottom: SPACE.base }}
               message="버전 정보를 불러오지 못했습니다."
               description="문항 목록은 계속 사용할 수 있습니다. 버전 컬럼만 다시 불러옵니다."
               action={
@@ -639,13 +640,13 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 12,
+                gap: SPACE.sm,
                 flexWrap: 'wrap',
-                marginBottom: 16,
+                marginBottom: SPACE.base,
                 padding: '8px 12px',
-                background: '#f5f5f5',
-                border: '1px solid #f0f0f0',
-                borderRadius: 6
+                background: COLOR.bgLayout,
+                border: `1px solid ${COLOR.borderSecondary}`,
+                borderRadius: RADIUS.sm
               }}
             >
               <Text strong>선택 {selectedQuestions.length.toLocaleString()}건</Text>

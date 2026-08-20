@@ -60,6 +60,7 @@ import {
 } from '@/shared/ui/search-bar/search-bar';
 import { useSearchBarDateDraft } from '@/shared/ui/search-bar/use-search-bar-date-draft';
 import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
+import { FONT_SIZE, SPACE } from '@/shared/styles/design-tokens';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -453,7 +454,7 @@ export default function UsersReferralsPage(): JSX.Element {
       {notificationContextHolder}
       <PageTitle title="추천인 관리" />
 
-      <Paragraph type="secondary" style={{ marginBottom: 16 }}>
+      <Paragraph type="secondary" style={{ marginBottom: SPACE.base }}>
         추천 코드, 추천 관계, 보상 원장을 같은 운영 흐름에서 관리합니다. 사용자
         화면은 아직 구현되지 않았기 때문에, 이 화면의 상태값과 조치 이력은 향후
         가입 프로모션, 친구 초대, 보상 내역 UI의 기준 데이터로 사용됩니다.
@@ -462,7 +463,7 @@ export default function UsersReferralsPage(): JSX.Element {
       <Alert
         type="warning"
         showIcon
-        style={{ marginBottom: 16 }}
+        style={{ marginBottom: SPACE.base }}
         message="미확정 정책 확인 필요"
         description={
           <Space direction="vertical" size={4}>
@@ -477,7 +478,7 @@ export default function UsersReferralsPage(): JSX.Element {
         <Alert
           type="error"
           showIcon
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: SPACE.sm }}
           message="추천인 목록 조회에 실패했습니다."
           description={
             <Space direction="vertical" size={4}>
@@ -496,43 +497,43 @@ export default function UsersReferralsPage(): JSX.Element {
         />
       ) : null}
 
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+      <Row gutter={[16, 16]} style={{ marginBottom: SPACE.base }}>
         <Col xs={24} md={6}>
           <Card>
-            <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
+            <Title level={5} style={{ marginTop: 0, marginBottom: SPACE.xs }}>
               활성 코드 수
             </Title>
-            <Text strong style={{ fontSize: 28 }}>
+            <Text strong style={{ fontSize: FONT_SIZE.metric }}>
               {summary.activeCodeCount.toLocaleString()}건
             </Text>
           </Card>
         </Col>
         <Col xs={24} md={6}>
           <Card>
-            <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
+            <Title level={5} style={{ marginTop: 0, marginBottom: SPACE.xs }}>
               총 추천 수
             </Title>
-            <Text strong style={{ fontSize: 28 }}>
+            <Text strong style={{ fontSize: FONT_SIZE.metric }}>
               {summary.totalReferralCount.toLocaleString()}건
             </Text>
           </Card>
         </Col>
         <Col xs={24} md={6}>
           <Card>
-            <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
+            <Title level={5} style={{ marginTop: 0, marginBottom: SPACE.xs }}>
               보상 지급 건수
             </Title>
-            <Text strong style={{ fontSize: 28 }}>
+            <Text strong style={{ fontSize: FONT_SIZE.metric }}>
               {summary.rewardPayoutCount.toLocaleString()}건
             </Text>
           </Card>
         </Col>
         <Col xs={24} md={6}>
           <Card>
-            <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
+            <Title level={5} style={{ marginTop: 0, marginBottom: SPACE.xs }}>
               검토 필요 건수
             </Title>
-            <Text strong style={{ fontSize: 28 }}>
+            <Text strong style={{ fontSize: FONT_SIZE.metric }}>
               {summary.reviewNeededCount.toLocaleString()}건
             </Text>
           </Card>
@@ -573,7 +574,7 @@ export default function UsersReferralsPage(): JSX.Element {
           <Alert
             type="info"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message="조건에 맞는 추천 코드가 없습니다."
             description="검색어 또는 필터 조건을 조정한 뒤 다시 확인하세요."
           />

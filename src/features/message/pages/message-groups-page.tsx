@@ -37,6 +37,7 @@ import type { AsyncState } from '@/shared/model/async-state';
 import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
 import { PageTitle } from '@/shared/ui/page-title/page-title';
 import { parseSearchDate } from '@/shared/ui/search-bar/search-bar-utils';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 const { Text } = Typography;
 
@@ -492,7 +493,7 @@ export default function MessageGroupsPage(): JSX.Element {
         <Alert
           type="error"
           showIcon
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: SPACE.sm }}
           message="대상 그룹 조회에 실패했습니다."
           description={
             <Space direction="vertical" size={4}>

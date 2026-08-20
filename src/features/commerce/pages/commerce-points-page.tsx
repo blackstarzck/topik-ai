@@ -89,6 +89,7 @@ import { ListSummaryCards } from '@/shared/ui/list-summary-cards/list-summary-ca
 import { PageTitle } from '@/shared/ui/page-title/page-title';
 import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
 import { parseSortOrder } from '@/shared/ui/table/table-column-utils';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 const { Paragraph, Text } = Typography;
 
@@ -660,7 +661,7 @@ export default function CommercePointsPage(): JSX.Element {
       {notificationContextHolder}
       <PageTitle title="포인트 관리" />
 
-      <Paragraph type="secondary" style={{ marginBottom: 16 }}>
+      <Paragraph type="secondary" style={{ marginBottom: SPACE.base }}>
         현재 화면은 포인트 정책, 포인트 원장, 소멸 예정 건을 한 곳에서 운영하기 위한
         기준 화면입니다. 포인트 발생 원천, 차감 우선순위, 소멸 예외 정책은 아직
         확정 중이므로 이 페이지와 IA 문서는 운영/정책 합의에 맞춰 계속 갱신하는
@@ -670,7 +671,7 @@ export default function CommercePointsPage(): JSX.Element {
       <Alert
         type="warning"
         showIcon
-        style={{ marginBottom: 16 }}
+        style={{ marginBottom: SPACE.base }}
         message="운영 정책 미확정 항목이 남아 있습니다."
         description={
           <Space direction="vertical" size={4}>
@@ -685,7 +686,7 @@ export default function CommercePointsPage(): JSX.Element {
         <Alert
           type="error"
           showIcon
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: SPACE.sm }}
           message="포인트 관리 데이터를 불러오지 못했습니다."
           description={
             <Space direction="vertical" size={4}>
@@ -738,7 +739,7 @@ export default function CommercePointsPage(): JSX.Element {
           <Alert
             type="info"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message={emptyMessage.message}
             description={emptyMessage.description}
           />

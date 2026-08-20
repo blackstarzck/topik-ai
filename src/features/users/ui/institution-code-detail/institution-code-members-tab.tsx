@@ -28,6 +28,7 @@ import { InvitationEmailStatusTag } from '../invitation-email-status-tag';
 import type { AsyncState } from '@/shared/model/async-state';
 import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
 import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 const { Text } = Typography;
 
@@ -442,7 +443,7 @@ export function InstitutionCodeMembersTab({
           <Alert
             type="error"
             showIcon
-            style={{ marginTop: 8 }}
+            style={{ marginTop: SPACE.xs }}
             message={membersState.errorMessage ?? '회원 목록 조회에 실패했습니다.'}
           />
         ) : null}
@@ -450,11 +451,11 @@ export function InstitutionCodeMembersTab({
           <Alert
             type="error"
             showIcon
-            style={{ marginTop: 8 }}
+            style={{ marginTop: SPACE.xs }}
             message={invitationsState.errorMessage ?? '초대 목록 조회에 실패했습니다.'}
           />
         ) : null}
-        <div style={{ marginTop: 8 }}>
+        <div style={{ marginTop: SPACE.xs }}>
           <AdminDataTable<MemberRosterRow>
             rowKey="key"
             columns={rosterColumns}

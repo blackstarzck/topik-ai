@@ -23,6 +23,7 @@ import {
 import { routerSavedState } from '@/shared/model/router-saved-state';
 import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
 import { PageTitle } from '@/shared/ui/page-title/page-title';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 type MessageTemplateCreatePageProps = {
   channel: MessageChannel;
@@ -175,7 +176,7 @@ export default function MessageTemplateCreatePage({
                   label="사유/근거"
                   name="reason"
                   rules={[{ required: true, message: '본문 저장 사유를 입력하세요.' }]}
-                  style={{ marginBottom: 16 }}
+                  style={{ marginBottom: SPACE.base }}
                 >
                   <Input.TextArea rows={2} placeholder="예: 공지 본문 문구 갱신" />
                 </Form.Item>

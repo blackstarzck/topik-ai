@@ -16,6 +16,7 @@ import type {
   TopikWritingTagMasterRow
 } from '../model/assessment-question-bank-types';
 import { getTargetTypeLabel } from '@/shared/model/target-type-label';
+import { APP_COLOR, COLOR, FONT_SIZE, RADIUS, SPACE } from '@/shared/styles/design-tokens';
 
 const { Text, Paragraph } = Typography;
 
@@ -356,22 +357,22 @@ export function QuestionTagEditModal({
         <div
           style={{
             display: 'flex',
-            border: '1px solid #f0f0f0',
-            borderRadius: 8,
+            border: `1px solid ${COLOR.borderSecondary}`,
+            borderRadius: RADIUS.base,
             overflow: 'hidden'
           }}
         >
           <div
             style={{
               flex: '0 0 168px',
-              borderRight: '1px solid #f0f0f0',
+              borderRight: `1px solid ${COLOR.borderSecondary}`,
               maxHeight: 300,
               overflowY: 'auto',
-              background: '#fafafa'
+              background: APP_COLOR.panelHeaderBg
             }}
           >
             {groups.length === 0 ? (
-              <div style={{ padding: 12 }}>
+              <div style={{ padding: SPACE.sm }}>
                 <Text type="secondary">그룹이 없습니다.</Text>
               </div>
             ) : (
@@ -387,10 +388,10 @@ export function QuestionTagEditModal({
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      padding: '9px 12px',
+                      padding: '8px 12px',
                       cursor: 'pointer',
-                      background: isSelected ? '#e6f4ff' : 'transparent',
-                      color: isSelected ? '#1677ff' : 'inherit',
+                      background: isSelected ? COLOR.primaryBg : 'transparent',
+                      color: isSelected ? COLOR.primary : 'inherit',
                       fontWeight: isSelected ? 600 : 400
                     }}
                     onClick={() => {
@@ -409,7 +410,7 @@ export function QuestionTagEditModal({
                     {isSelected ? (
                       <RightOutlined style={{ fontSize: 12 }} />
                     ) : (
-                      <Text type="secondary" style={{ fontSize: 14 }}>
+                      <Text type="secondary" style={{ fontSize: FONT_SIZE.base }}>
                         {tagsByGroup.get(group)?.length ?? 0}
                       </Text>
                     )}
@@ -422,13 +423,13 @@ export function QuestionTagEditModal({
           <div
             style={{
               flex: '0 0 256px',
-              borderRight: '1px solid #f0f0f0',
+              borderRight: `1px solid ${COLOR.borderSecondary}`,
               maxHeight: 300,
               overflowY: 'auto'
             }}
           >
             {visibleTags.length === 0 ? (
-              <div style={{ padding: 12 }}>
+              <div style={{ padding: SPACE.sm }}>
                 <Text type="secondary">
                   {trimmedQuery ? '검색 결과가 없습니다.' : '태그가 없습니다.'}
                 </Text>
@@ -451,10 +452,10 @@ export function QuestionTagEditModal({
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 8,
-                      padding: '9px 12px',
+                      gap: SPACE.xs,
+                      padding: '8px 12px',
                       cursor: 'pointer',
-                      background: isFocused ? '#e6f4ff' : 'transparent'
+                      background: isFocused ? COLOR.primaryBg : 'transparent'
                     }}
                     onClick={() => toggleTag(tag.tagCode)}
                     onKeyDown={(event) => {
@@ -470,13 +471,13 @@ export function QuestionTagEditModal({
                         flex: '0 0 16px',
                         width: 16,
                         height: 16,
-                        borderRadius: 3,
-                        border: checked ? 'none' : '1px solid #d9d9d9',
-                        background: checked ? '#1677ff' : '#fff',
+                        borderRadius: RADIUS.xs,
+                        border: checked ? 'none' : `1px solid ${COLOR.border}`,
+                        background: checked ? COLOR.primary : COLOR.bgContainer,
                         display: 'inline-flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: '#fff'
+                        color: COLOR.textLightSolid
                       }}
                     >
                       {checked ? <CheckOutlined style={{ fontSize: 11 }} /> : null}
@@ -509,13 +510,13 @@ export function QuestionTagEditModal({
               minWidth: 0,
               maxHeight: 300,
               overflowY: 'auto',
-              padding: '12px 14px'
+              padding: '12px 16px'
             }}
           >
             {focusedMaster ? (
               <Space direction="vertical" size={6} style={{ width: '100%' }}>
                 <Text strong>{focusedMaster.tagNameKo}</Text>
-                <Text type="secondary" style={{ fontSize: 14 }}>
+                <Text type="secondary" style={{ fontSize: FONT_SIZE.base }}>
                   {focusedMaster.tagCode} · {focusedMaster.tagGroup}
                 </Text>
                 {focusedMaster.description ? (
@@ -525,7 +526,7 @@ export function QuestionTagEditModal({
                 ) : null}
                 {focusedMaster.usageRule ? (
                   <div>
-                    <Text type="secondary" style={{ fontSize: 14 }}>
+                    <Text type="secondary" style={{ fontSize: FONT_SIZE.base }}>
                       운영 가이드
                     </Text>
                     <Paragraph type="secondary" style={{ marginBottom: 0 }}>
@@ -562,7 +563,7 @@ export function QuestionTagEditModal({
               초기화
             </Button>
           </Space>
-          <div style={{ marginTop: 8 }}>
+          <div style={{ marginTop: SPACE.xs }}>
             {activeTags.length === 0 && pendingAdd.size === 0 ? (
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}

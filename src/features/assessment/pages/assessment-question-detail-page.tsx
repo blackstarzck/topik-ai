@@ -26,6 +26,7 @@ import {
 } from '../model/question-version-navigation';
 import { QuestionVersionHistoryTable } from '../ui/question-version-history-table';
 import { QuestionDetailPanel } from '../ui/assessment-question-detail-panel';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 const { useBreakpoint } = Grid;
 
@@ -329,7 +330,7 @@ export default function AssessmentQuestionDetailPage(): JSX.Element {
         <Alert
           type="error"
           showIcon
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: SPACE.sm }}
           message="문항을 불러오지 못했습니다."
           description={questionState.errorMessage ?? ''}
           action={
@@ -344,7 +345,7 @@ export default function AssessmentQuestionDetailPage(): JSX.Element {
         <Alert
           type="info"
           showIcon
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: SPACE.sm }}
           message="문항 상세 데이터를 불러오는 중입니다."
         />
       ) : null}
@@ -495,7 +496,7 @@ export default function AssessmentQuestionDetailPage(): JSX.Element {
           <Alert
             type="info"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message="모크 모드로 동작 중입니다."
             description="Supabase가 구성되지 않아 화면 검증용 고정 데이터를 표시합니다. 실데이터·감사 로그에는 기록되지 않습니다."
           />

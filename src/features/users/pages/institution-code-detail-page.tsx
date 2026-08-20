@@ -34,6 +34,7 @@ import { AuditLogLink } from '@/shared/ui/audit-log-link/audit-log-link';
 import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
 import { PageTitle } from '@/shared/ui/page-title/page-title';
 import { StatusBadge } from '@/shared/ui/status-badge/status-badge';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 const { Paragraph, Text } = Typography;
 
@@ -223,7 +224,7 @@ export default function InstitutionCodeDetailPage(): JSX.Element {
             message={codeState.errorMessage ?? `기관 코드를 찾을 수 없습니다: ${code}`}
             description="삭제되었거나 주소가 잘못되었을 수 있습니다."
           />
-          <Button style={{ marginTop: 12 }} onClick={handleBackToList}>
+          <Button style={{ marginTop: SPACE.sm }} onClick={handleBackToList}>
             기관 코드 목록으로
           </Button>
         </AdminListCard>
@@ -235,7 +236,7 @@ export default function InstitutionCodeDetailPage(): JSX.Element {
     <>
       {notificationContextHolder}
       <PageTitle title={`기관 코드 · ${code}`} />
-      <Paragraph type="secondary" style={{ marginBottom: 16 }}>
+      <Paragraph type="secondary" style={{ marginBottom: SPACE.base }}>
         <Space size={8} wrap>
           <Text type="secondary">{institution?.label ?? '불러오는 중…'}</Text>
           {institution ? <StatusBadge status={institution.status} /> : null}
@@ -252,7 +253,7 @@ export default function InstitutionCodeDetailPage(): JSX.Element {
           ) : null}
         </Space>
         {!isInstitutionCodesSupabase ? (
-          <Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
+          <Text type="secondary" style={{ display: 'block', marginTop: SPACE.xxs }}>
             현재 mock 데이터 — 변경은 화면에만 반영됩니다.
           </Text>
         ) : null}

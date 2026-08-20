@@ -55,6 +55,7 @@ import {
 } from '@/shared/ui/admin-editor-form/admin-editor-form';
 import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
 import { PageTitle } from '@/shared/ui/page-title/page-title';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 const { Text } = Typography;
 
@@ -444,7 +445,7 @@ export default function OperationPolicyCreatePage(): JSX.Element {
         <Alert
           type="error"
           showIcon
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: SPACE.base }}
           message={loadErrorMessage}
           description={
             <Space direction="vertical">
@@ -469,7 +470,7 @@ export default function OperationPolicyCreatePage(): JSX.Element {
         <Alert
           type="info"
           showIcon
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: SPACE.base }}
           message="현재 정책 내용을 복사해 새 버전 초안을 작성합니다."
           description="버전과 시행일은 새 값으로 다시 입력해야 하며, 저장 후 새 버전은 숨김 상태로 목록에 추가됩니다."
         />
@@ -502,7 +503,7 @@ export default function OperationPolicyCreatePage(): JSX.Element {
           <Alert
             type="info"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message="정책 정보를 불러오는 중입니다."
             description="저장된 정책 메타와 본문을 확인한 뒤 수정 화면을 이어서 표시합니다."
           />
@@ -512,7 +513,7 @@ export default function OperationPolicyCreatePage(): JSX.Element {
           <Alert
             type="info"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message="최신 정책 정보를 다시 불러오는 중입니다."
             description="마지막으로 확인된 데이터를 유지한 채 상세 정보를 갱신합니다."
           />
@@ -522,7 +523,7 @@ export default function OperationPolicyCreatePage(): JSX.Element {
           <Alert
             type="error"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message="정책 저장에 실패했습니다."
             description={
               <Space direction="vertical">
@@ -550,7 +551,7 @@ export default function OperationPolicyCreatePage(): JSX.Element {
                     <Alert
                       type="info"
                       showIcon
-                      style={{ marginBottom: 12 }}
+                      style={{ marginBottom: SPACE.sm }}
                       message={selectedPolicyType}
                       description={
                         <Space direction="vertical" size={4}>

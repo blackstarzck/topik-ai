@@ -69,6 +69,7 @@ import {
   parseSearchDate
 } from '@/shared/ui/search-bar/search-bar-utils';
 import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
+import { SPACE } from '@/shared/styles/design-tokens';
 const { Text } = Typography;
 
 
@@ -639,7 +640,7 @@ export function MessageChannelPage({
         <Alert
           type="warning"
           showIcon
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: SPACE.sm }}
           message="푸시 발송 준비 중"
           description="푸시 provider 미연동으로 발송 실행과 나에게 보내기가 비활성화되어 있습니다. 템플릿 등록/수정/삭제는 가능합니다."
         />
@@ -649,7 +650,7 @@ export function MessageChannelPage({
         <Alert
           type="error"
           showIcon
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: SPACE.sm }}
           message={`${meta.title} 데이터 조회에 실패했습니다.`}
           description={
             <Space direction="vertical" size={4}>
@@ -733,7 +734,7 @@ export function MessageChannelPage({
           <Alert
             type="warning"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message="선택 가능한 발송 그룹이 없습니다."
             description="대상 그룹을 먼저 생성한 뒤 템플릿 등록을 진행하세요."
           />
@@ -742,7 +743,7 @@ export function MessageChannelPage({
           <Alert
             type="info"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: SPACE.sm }}
             message={`${meta.title} ${activeMode === 'auto' ? '자동 발송' : '수동 발송'} 템플릿이 없습니다.`}
             description="필터 조건을 조정하거나 새 템플릿을 등록하세요."
           />

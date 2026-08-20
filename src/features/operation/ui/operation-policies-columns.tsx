@@ -15,6 +15,7 @@ import type {
 } from '../model/policy-types';
 import { BinaryStatusSwitch } from '@/shared/ui/table/binary-status-switch';
 import { createStatusColumnTitle } from '@/shared/ui/table/status-column-title';
+import { SPACE } from '@/shared/styles/design-tokens';
 import {
   createDefinedColumnFilterProps,
   createTextSorter
@@ -278,7 +279,7 @@ export function renderPolicyHistoryExpandedRow(
           span: 2,
           children:
             snapshot.relatedAdminPages.length > 0 ? (
-              <ul style={{ margin: 0, paddingInlineStart: 18 }}>
+              <ul style={{ margin: 0, paddingInlineStart: SPACE.base }}>
                 {snapshot.relatedAdminPages.map((pageName) => (
                   <li key={pageName}>{pageName}</li>
                 ))}
@@ -293,7 +294,7 @@ export function renderPolicyHistoryExpandedRow(
           span: 2,
           children:
             snapshot.relatedUserPages.length > 0 ? (
-              <ul style={{ margin: 0, paddingInlineStart: 18 }}>
+              <ul style={{ margin: 0, paddingInlineStart: SPACE.base }}>
                 {snapshot.relatedUserPages.map((pageName) => (
                   <li key={pageName}>{pageName}</li>
                 ))}
@@ -308,7 +309,7 @@ export function renderPolicyHistoryExpandedRow(
           span: 2,
           children:
             snapshot.sourceDocuments.length > 0 ? (
-              <ul style={{ margin: 0, paddingInlineStart: 18 }}>
+              <ul style={{ margin: 0, paddingInlineStart: SPACE.base }}>
                 {snapshot.sourceDocuments.map((documentPath) => (
                   <li key={documentPath}>
                     <Text code>{documentPath}</Text>
@@ -325,7 +326,7 @@ export function renderPolicyHistoryExpandedRow(
           span: 2,
           children:
             snapshot.legalReferences.length > 0 ? (
-              <ul style={{ margin: 0, paddingInlineStart: 18 }}>
+              <ul style={{ margin: 0, paddingInlineStart: SPACE.base }}>
                 {snapshot.legalReferences.map((reference) => (
                   <li key={reference}>{reference}</li>
                 ))}

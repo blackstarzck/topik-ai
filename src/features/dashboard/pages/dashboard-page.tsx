@@ -29,6 +29,7 @@ import {
 import { isSupabaseConfigured } from '@/shared/api/supabase-client';
 import { PageTitle } from '@/shared/ui/page-title/page-title';
 import { BackupStatusCard } from '../components/backup-status-card';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 const { Paragraph, Text } = Typography;
 
@@ -297,7 +298,7 @@ export default function DashboardPage(): JSX.Element {
         <Alert
           type="error"
           showIcon
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: SPACE.sm }}
           message="대시보드 지표 조회에 실패했습니다."
           description={
             <Space direction="vertical" size={4}>
@@ -325,7 +326,7 @@ export default function DashboardPage(): JSX.Element {
         ))}
       </Row>
 
-      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+      <Row gutter={[16, 16]} style={{ marginTop: SPACE.base }}>
         <Col xs={24} xl={8}>
           <Card
             title="빠른 진입"

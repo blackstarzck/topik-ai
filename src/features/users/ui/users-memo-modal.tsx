@@ -3,6 +3,7 @@ import type { FormInstance } from 'antd';
 
 import type { UserSummary } from '../model/types';
 import { getTargetTypeLabel } from '@/shared/model/target-type-label';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 const { Text } = Typography;
 
@@ -39,7 +40,7 @@ export function UsersMemoModal({
       label="메모"
       name="memo"
       rules={[{ required: true, message: '메모 내용을 입력하세요.' }]}
-      style={{ marginTop: 12, marginBottom: 0 }}
+      style={{ marginTop: SPACE.sm, marginBottom: 0 }}
     >
       <Input.TextArea rows={4} placeholder="운영 메모를 입력하세요." />
     </Form.Item>

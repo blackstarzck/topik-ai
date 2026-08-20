@@ -9,6 +9,7 @@ import {
   DetailDrawerSection
 } from '@/shared/ui/detail-drawer/detail-drawer';
 import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 import type {
   OperationPolicy,
@@ -221,7 +222,7 @@ export function OperationPolicyDetailDrawer({
               label: '연관 관리자 화면',
               children:
                 policy.relatedAdminPages.length > 0 ? (
-                  <ul style={{ margin: 0, paddingInlineStart: 18 }}>
+                  <ul style={{ margin: 0, paddingInlineStart: SPACE.base }}>
                     {policy.relatedAdminPages.map((pageName) => (
                       <li key={pageName}>{pageName}</li>
                     ))}
@@ -235,7 +236,7 @@ export function OperationPolicyDetailDrawer({
               label: '연관 사용자 화면',
               children:
                 policy.relatedUserPages.length > 0 ? (
-                  <ul style={{ margin: 0, paddingInlineStart: 18 }}>
+                  <ul style={{ margin: 0, paddingInlineStart: SPACE.base }}>
                     {policy.relatedUserPages.map((pageName) => (
                       <li key={pageName}>{pageName}</li>
                     ))}
@@ -249,7 +250,7 @@ export function OperationPolicyDetailDrawer({
               label: '추적 근거 문서',
               children:
                 policy.sourceDocuments.length > 0 ? (
-                  <ul style={{ margin: 0, paddingInlineStart: 18 }}>
+                  <ul style={{ margin: 0, paddingInlineStart: SPACE.base }}>
                     {policy.sourceDocuments.map((documentPath) => (
                       <li key={documentPath}>
                         <Text code>{documentPath}</Text>
@@ -266,7 +267,7 @@ export function OperationPolicyDetailDrawer({
 
       <DetailDrawerSection title="법령 및 근거">
         {policy.legalReferences.length > 0 ? (
-          <ul style={{ margin: 0, paddingInlineStart: 18 }}>
+          <ul style={{ margin: 0, paddingInlineStart: SPACE.base }}>
             {policy.legalReferences.map((reference) => (
               <li key={reference}>{reference}</li>
             ))}

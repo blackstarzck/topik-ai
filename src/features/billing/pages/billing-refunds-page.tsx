@@ -41,6 +41,7 @@ import {
   createTextSorter
 } from '@/shared/ui/table/table-column-utils';
 import { TableRowDetailModal } from '@/shared/ui/table/table-row-detail-modal';
+import { SPACE } from '@/shared/styles/design-tokens';
 import {
   formatUserDisplayName,
   UserNavigationLink
@@ -351,7 +352,7 @@ export default function BillingRefundsPage(): JSX.Element {
         <Alert
           type="error"
           showIcon
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: SPACE.base }}
           message="환불 내역을 불러오지 못했습니다."
           description={refundsState.errorMessage ?? ''}
         />
@@ -395,7 +396,7 @@ export default function BillingRefundsPage(): JSX.Element {
         }
       >
 
-        <Paragraph type="secondary" style={{ marginBottom: 16 }}>
+        <Paragraph type="secondary" style={{ marginBottom: SPACE.base }}>
           환불 승인/거절은 admin 환불 워크플로 상태를 갱신합니다. 실제 결제 환불 집행과
           v13 결제 상태 반영은 후속 연동 대상입니다.
         </Paragraph>

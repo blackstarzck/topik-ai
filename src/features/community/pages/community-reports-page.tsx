@@ -43,6 +43,7 @@ import {
   createTextSorter
 } from '@/shared/ui/table/table-column-utils';
 import { TableRowDetailModal } from '@/shared/ui/table/table-row-detail-modal';
+import { SPACE } from '@/shared/styles/design-tokens';
 import {
   formatUserDisplayName,
   UserNavigationLink
@@ -433,7 +434,7 @@ export default function CommunityReportsPage(): JSX.Element {
           />
         }
       >
-        <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
+        <Text type="secondary" style={{ display: 'block', marginBottom: SPACE.base }}>
           원본 게시글 흐름은{' '}
           <Link className="table-navigation-link" to="/community/posts">
             게시글 관리
@@ -444,7 +445,7 @@ export default function CommunityReportsPage(): JSX.Element {
           <Alert
             type="error"
             showIcon
-            style={{ marginBottom: 16 }}
+            style={{ marginBottom: SPACE.base }}
             message="\uCEE4\uBBA4\uB2C8\uD2F0 \uC2E0\uACE0\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
             description={loadErrorMessage}
           />

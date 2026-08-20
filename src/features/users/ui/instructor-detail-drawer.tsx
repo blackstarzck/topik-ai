@@ -24,6 +24,7 @@ import {
 } from '@/shared/ui/table/drawer-table';
 import { createStatusColumnTitle } from '@/shared/ui/table/status-column-title';
 import { formatUserDisplayName } from '@/shared/ui/user/user-reference';
+import { SPACE } from '@/shared/styles/design-tokens';
 import {
   createNumberSorter,
   createTextSorter
@@ -333,7 +334,7 @@ export function InstructorDetailDrawer({
           </DetailDrawerSection>
 
           <DetailDrawerSection title="소개 및 전문 분야">
-            <Paragraph style={{ marginBottom: 8 }}>
+            <Paragraph style={{ marginBottom: SPACE.xs }}>
               {selectedInstructor.introduction}
             </Paragraph>
             <Space wrap>

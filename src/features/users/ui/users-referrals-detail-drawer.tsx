@@ -26,6 +26,7 @@ import {
   fixDrawerTableFirstColumn
 } from '@/shared/ui/table/drawer-table';
 import { UserNavigationLink } from '@/shared/ui/user/user-reference';
+import { SPACE } from '@/shared/styles/design-tokens';
 
 const { Paragraph, Title } = Typography;
 
@@ -271,8 +272,8 @@ export function ReferralDetailDrawer({
               }}
             />
             {rewardGroups.codeLevelEntries.length > 0 ? (
-              <div style={{ marginTop: 16 }}>
-                <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
+              <div style={{ marginTop: SPACE.base }}>
+                <Title level={5} style={{ marginTop: 0, marginBottom: SPACE.xs }}>
                   코드 단위 조정
                 </Title>
                 <AdminDataTable
@@ -294,13 +295,13 @@ export function ReferralDetailDrawer({
               column={1}
               items={buildPolicyItems(referral)}
             />
-            <Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0 }}>
+            <Paragraph type="secondary" style={{ marginTop: SPACE.xs, marginBottom: 0 }}>
               {referral.policySnapshot.note}
             </Paragraph>
           </DetailDrawerSection>
 
           <DetailDrawerSection title="이상치 및 운영 메모">
-            <Space wrap style={{ marginBottom: 8 }}>
+            <Space wrap style={{ marginBottom: SPACE.xs }}>
               {referral.anomalyFlags.length > 0 ? (
                 referral.anomalyFlags.map((flag) => (
                   <Tag color="volcano" key={flag}>

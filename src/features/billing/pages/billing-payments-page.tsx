@@ -32,6 +32,7 @@ import {
   createTextSorter
 } from '@/shared/ui/table/table-column-utils';
 import { TableRowDetailModal } from '@/shared/ui/table/table-row-detail-modal';
+import { SPACE } from '@/shared/styles/design-tokens';
 import {
   formatUserDisplayName,
   UserNavigationLink
@@ -294,7 +295,7 @@ export default function BillingPaymentsPage(): JSX.Element {
         <Alert
           type="error"
           showIcon
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: SPACE.base }}
           message="결제 내역을 불러오지 못했습니다."
           description={paymentsState.errorMessage ?? ''}
         />
@@ -337,7 +338,7 @@ export default function BillingPaymentsPage(): JSX.Element {
         }
       >
 
-        <Paragraph type="secondary" style={{ marginBottom: 16 }}>
+        <Paragraph type="secondary" style={{ marginBottom: SPACE.base }}>
           환불 관리에서 승인된 요청은 같은 원본 데이터를 공유하므로 이 페이지의 결제 상태에도 즉시 반영됩니다.{' '}
           <Link className="table-navigation-link" to="/commerce/refunds">
             환불 관리

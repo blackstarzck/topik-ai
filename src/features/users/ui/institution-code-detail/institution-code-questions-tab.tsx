@@ -13,6 +13,7 @@ import type {
 import type { NotificationApi } from './institution-code-detail-tab-types';
 import { InstitutionExposureSettingsDrawer } from './institution-exposure-settings-drawer';
 import { InstitutionTabToolbar } from './institution-tab-toolbar';
+import { FONT_SIZE, SPACE } from '@/shared/styles/design-tokens';
 import {
   InstitutionQuestionExposurePanel,
   type InstitutionQuestionMutationSummary
@@ -132,10 +133,10 @@ export function InstitutionCodeQuestionsTab({
       ) : null}
 
       <div>
-        <Text strong style={{ fontSize: 15 }}>
+        <Text strong style={{ fontSize: FONT_SIZE.lg }}>
           노출 문항
         </Text>
-        <div style={{ marginTop: 8 }}>
+        <div style={{ marginTop: SPACE.xs }}>
           <InstitutionQuestionExposurePanel
             institution={institution}
             exposureMode={exposureMode}

@@ -4,6 +4,7 @@ import { QuestionCircleOutlined } from '@ant-design/icons';
 import { TEXT } from '../model/system-metadata-page-schema';
 import type { SystemMetadataGroup } from '../model/system-metadata-types';
 import { AuditLogLink } from '@/shared/ui/audit-log-link/audit-log-link';
+import { COLOR } from '@/shared/styles/design-tokens';
 
 const { Text } = Typography;
 
@@ -29,7 +30,7 @@ export function createHelpLabel(label: string, description: string): JSX.Element
     <Space size={4}>
       <span>{label}</span>
       <Tooltip title={description}>
-        <QuestionCircleOutlined style={{ color: 'rgba(0, 0, 0, 0.45)' }} />
+        <QuestionCircleOutlined style={{ color: COLOR.textTertiary }} />
       </Tooltip>
     </Space>
   );

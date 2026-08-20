@@ -1,6 +1,7 @@
 import { Space, Tag, Typography } from 'antd';
 
 import type { InstitutionExposureMode } from '../model/institution-codes-types';
+import { FONT_SIZE } from '@/shared/styles/design-tokens';
 
 const { Text } = Typography;
 
@@ -47,7 +48,7 @@ export function InstitutionExposureModeTag({
     <Space size={6} wrap>
       <Tag color={MODE_COLOR[mode]}>{mode}</Tag>
       {caption ? (
-        <Text type="secondary" style={{ fontSize: 14 }}>
+        <Text type="secondary" style={{ fontSize: FONT_SIZE.base }}>
           {caption}
         </Text>
       ) : null}

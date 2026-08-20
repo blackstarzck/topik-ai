@@ -37,6 +37,7 @@ import { AuditLogLink } from '@/shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
 import { createDescriptionLabel } from '@/shared/ui/descriptions/description-label';
 import { fixDrawerTableFirstColumn } from '@/shared/ui/table/drawer-table';
+import { FONT_SIZE, SPACE } from '@/shared/styles/design-tokens';
 
 const { Text } = Typography;
 
@@ -318,10 +319,10 @@ export function InstitutionCodeContractTab({
       />
 
       <div data-testid="institution-contract-summary">
-        <Text strong style={{ fontSize: 15 }}>
+        <Text strong style={{ fontSize: FONT_SIZE.lg }}>
           현재 계약
         </Text>
-        <div style={{ marginTop: 8 }}>
+        <div style={{ marginTop: SPACE.xs }}>
           <Descriptions
             bordered
             column={1}
@@ -357,7 +358,7 @@ export function InstitutionCodeContractTab({
           <Alert
             type="error"
             showIcon
-            style={{ marginTop: 10 }}
+            style={{ marginTop: SPACE.sm }}
             message="계약이 만료되어 이 기관 학습자에게 쓰기 문항이 보이지 않습니다."
             description="계약 기간을 연장하면 즉시 다시 보입니다 — 배정된 문항은 그대로 남아 있으므로 다시 배정할 필요가 없습니다."
           />
@@ -366,7 +367,7 @@ export function InstitutionCodeContractTab({
           <Alert
             type="info"
             showIcon
-            style={{ marginTop: 10 }}
+            style={{ marginTop: SPACE.sm }}
             message="등록된 계약이 없습니다."
             description="만료할 계약이 없으므로 노출은 제한되지 않습니다. 계약 기간을 관리하려면 위 계약 추가를 누르세요."
           />
@@ -374,11 +375,11 @@ export function InstitutionCodeContractTab({
       </div>
 
       <div>
-        <Text strong style={{ fontSize: 15, display: 'block', marginBottom: 8 }}>
+        <Text strong style={{ fontSize: FONT_SIZE.lg, display: 'block', marginBottom: SPACE.xs }}>
           계약 히스토리
         </Text>
         {errorMessage ? (
-          <Alert type="error" showIcon message={errorMessage} style={{ marginBottom: 8 }} />
+          <Alert type="error" showIcon message={errorMessage} style={{ marginBottom: SPACE.xs }} />
         ) : null}
         <Table<InstitutionContract>
           rowKey="contractId"
@@ -390,7 +391,7 @@ export function InstitutionCodeContractTab({
           scroll={{ x: 'max-content' }}
           locale={{ emptyText: '등록된 계약이 없습니다.' }}
         />
-        <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+        <Text type="secondary" style={{ display: 'block', marginTop: SPACE.xs }}>
           같은 기관의 계약 기간은 겹칠 수 없습니다. 종료일을 비우면 무기한 계약입니다.
         </Text>
       </div>
