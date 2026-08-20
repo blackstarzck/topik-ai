@@ -1,6 +1,6 @@
 import { Alert, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import {
@@ -9,7 +9,8 @@ import {
   getBillingUserNameSafe
 } from '../api/billing-service';
 import type { PaymentRow, PaymentStatus, RefundRow } from '../api/billing-service';
-import type { AsyncState } from '@/shared/model/async-state';
+import { resolveRefundRelatedSummary } from '../model/refund-summary';
+import { useAsyncResource } from '@/shared/model/use-async-resource';
 import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
 import { ListSummaryCards } from '@/shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '@/shared/ui/page-title/page-title';
@@ -60,47 +61,27 @@ function getPaymentUserName(record: Pick<PaymentRow, 'userId' | 'userNickname'>)
 }
 
 export default function BillingPaymentsPage(): JSX.Element {
-  const [paymentsState, setPaymentsState] = useState<AsyncState<PaymentRow[]>>({
-    status: 'pending',
-    data: [],
-    errorMessage: null,
-    errorCode: null
-  });
-  const [refundsState, setRefundsState] = useState<AsyncState<RefundRow[]>>({
-    status: 'pending',
-    data: [],
-    errorMessage: null,
-    errorCode: null
+  const fetchPayments = useCallback(
+    (signal: AbortSignal) => fetchPaymentsSafe(signal),
+    []
+  );
+  const { state: paymentsState } = useAsyncResource<PaymentRow[]>(fetchPayments, {
+    initialData: []
   });
 
-  useEffect(() => {
-    const controller = new AbortController();
-    void fetchPaymentsSafe(controller.signal).then((result) => {
-      if (controller.signal.aborted) return;
-      if (result.ok) {
-        setPaymentsState({
-          status: result.data.length === 0 ? 'empty' : 'success',
-          data: result.data,
-          errorMessage: null,
-          errorCode: null
-        });
-      } else {
-        setPaymentsState((prev) => ({ ...prev, status: 'error', errorMessage: result.error.message, errorCode: result.error.code }));
-      }
-    });
-    void fetchRefundsSafe(controller.signal).then((result) => {
-      if (controller.signal.aborted) return;
-      if (result.ok) {
-        setRefundsState({
-          status: result.data.length === 0 ? 'empty' : 'success',
-          data: result.data,
-          errorMessage: null,
-          errorCode: null
-        });
-      }
-    });
-    return () => controller.abort();
-  }, []);
+  const fetchRefunds = useCallback(
+    (signal: AbortSignal) => fetchRefundsSafe(signal),
+    []
+  );
+  /**
+   * 환불 요청은 `환불 관련 건수` 카드에만 쓰이는 부가 조회다. 이전 배선에는 실패
+   * 분기가 아예 없어서 조회가 실패하면 status 가 'pending' 에 영구히 머물고 data 는
+   * [] 로 남았다 — 카드가 처리 대기 요청을 0 으로 더한 낮은 수치를 아무 표시 없이
+   * 정상처럼 보여줬다(gap-register §3.13 ⑨). 공용 훅으로 실패를 상태로 드러낸다.
+   */
+  const { state: refundsState } = useAsyncResource<RefundRow[]>(fetchRefunds, {
+    initialData: []
+  });
 
   const payments = paymentsState.data;
   const refunds = refundsState.data;
@@ -146,8 +127,10 @@ export default function BillingPaymentsPage(): JSX.Element {
         .reduce((sum, row) => sum + row.amount, 0),
     [payments]
   );
-  const refundedCount = payments.filter((row) => row.status === '환불').length;
-  const pendingRefundCount = refunds.filter((row) => row.status === '처리 대기').length;
+  const refundRelated = useMemo(
+    () => resolveRefundRelatedSummary(payments, refunds, refundsState.status),
+    [payments, refunds, refundsState.status]
+  );
   const paymentSummaryCards = useMemo(
     () => [
       {
@@ -163,10 +146,11 @@ export default function BillingPaymentsPage(): JSX.Element {
       {
         key: 'refund-related',
         label: '환불 관련 건수',
-        value: `${(refundedCount + pendingRefundCount).toLocaleString()}건`
+        value: refundRelated.value,
+        hint: refundRelated.hint
       }
     ],
-    [completedAmount, payments.length, pendingRefundCount, refundedCount]
+    [completedAmount, payments.length, refundRelated]
   );
 
   const commitParams = useCallback(
@@ -298,6 +282,15 @@ export default function BillingPaymentsPage(): JSX.Element {
           style={{ marginBottom: SPACE.base }}
           message="결제 내역을 불러오지 못했습니다."
           description={paymentsState.errorMessage ?? ''}
+        />
+      ) : null}
+      {refundsState.status === 'error' ? (
+        <Alert
+          type="error"
+          showIcon
+          style={{ marginBottom: SPACE.base }}
+          message="환불 요청 정보를 불러오지 못해 환불 관련 건수를 집계할 수 없습니다."
+          description={refundsState.errorMessage ?? ''}
         />
       ) : null}
       <ListSummaryCards items={paymentSummaryCards} />
