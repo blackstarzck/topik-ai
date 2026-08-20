@@ -45,24 +45,24 @@ import {
   MetadataTreeAddTitle,
   MetadataTreeItemTitle
 } from '../ui/system-metadata-tree';
-import { AssessmentMasterCatalogSection } from '../../assessment/ui/master-catalog-section';
-import type { AsyncState } from '../../../shared/model/async-state';
-import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
-import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
-import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
-import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import { AssessmentMasterCatalogSection } from '@/features/assessment/ui/master-catalog-section';
+import type { AsyncState } from '@/shared/model/async-state';
+import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
+import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
+import { ListSummaryCards } from '@/shared/ui/list-summary-cards/list-summary-cards';
+import { PageTitle } from '@/shared/ui/page-title/page-title';
 import {
   SearchBar,
   SearchBarDateRange,
   SearchBarDetailField
-} from '../../../shared/ui/search-bar/search-bar';
+} from '@/shared/ui/search-bar/search-bar';
 import {
   matchesSearchDateRange,
   matchesSearchField,
   parseSearchDate
-} from '../../../shared/ui/search-bar/search-bar-utils';
-import { useSearchBarDateDraft } from '../../../shared/ui/search-bar/use-search-bar-date-draft';
-import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
+} from '@/shared/ui/search-bar/search-bar-utils';
+import { useSearchBarDateDraft } from '@/shared/ui/search-bar/use-search-bar-date-draft';
+import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
 import type {
   SystemMetadataGroup,
   SystemMetadataItem

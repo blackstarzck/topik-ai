@@ -11,7 +11,7 @@ import type {
   PdfQuotaResetScope,
   PdfQuotaResetUserOption
 } from '../model/pdf-quota-types';
-import type { InstitutionCode } from '../../users/model/institution-codes-types';
+import type { InstitutionCode } from '@/features/users/model/institution-codes-types';
 import type { AsyncState } from '@/shared/model/async-state';
 
 // 초기화 실행 모달 — Phase 4 분해로 페이지 본문에서 이동(동작 동일).

@@ -10,28 +10,28 @@ import {
 } from '../api/admin-accounts-service';
 import { permissionCatalog, roleCatalog } from '../model/permission-types';
 import type { AdminPermissionAssignment, RoleKey } from '../model/permission-types';
-import { mapAppRoleToRoleKey, permissionKeysForRole } from '../../auth/model/app-role-mapping';
-import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
-import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
-import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import { mapAppRoleToRoleKey, permissionKeysForRole } from '@/features/auth/model/app-role-mapping';
+import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
+import { ListSummaryCards } from '@/shared/ui/list-summary-cards/list-summary-cards';
+import { PageTitle } from '@/shared/ui/page-title/page-title';
 import {
   SearchBar,
   SearchBarDateRange,
   SearchBarDetailField
-} from '../../../shared/ui/search-bar/search-bar';
+} from '@/shared/ui/search-bar/search-bar';
 import {
   matchesSearchDateRange,
   matchesSearchField,
   parseSearchDate
-} from '../../../shared/ui/search-bar/search-bar-utils';
-import { useSearchBarDateDraft } from '../../../shared/ui/search-bar/use-search-bar-date-draft';
-import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
-import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
-import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
+} from '@/shared/ui/search-bar/search-bar-utils';
+import { useSearchBarDateDraft } from '@/shared/ui/search-bar/use-search-bar-date-draft';
+import { StatusBadge } from '@/shared/ui/status-badge/status-badge';
+import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
+import { TableRowDetailModal } from '@/shared/ui/table/table-row-detail-modal';
 import {
   createNumberSorter,
   createTextSorter
-} from '../../../shared/ui/table/table-column-utils';
+} from '@/shared/ui/table/table-column-utils';
 
 const { Paragraph, Text } = Typography;
 

@@ -6,25 +6,25 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { fetchSystemLogsSafe } from '../api/system-logs-service';
 import { useAsyncResource } from '@/shared/model/use-async-resource';
 import type { SystemLogLevel as LogLevel, SystemLogRow } from '../model/system-log-types';
-import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
-import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
-import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
+import { ListSummaryCards } from '@/shared/ui/list-summary-cards/list-summary-cards';
+import { PageTitle } from '@/shared/ui/page-title/page-title';
 import {
   SearchBar,
   SearchBarDateRange,
   SearchBarDetailField
-} from '../../../shared/ui/search-bar/search-bar';
-import { useSearchBarDateDraft } from '../../../shared/ui/search-bar/use-search-bar-date-draft';
+} from '@/shared/ui/search-bar/search-bar';
+import { useSearchBarDateDraft } from '@/shared/ui/search-bar/use-search-bar-date-draft';
 import {
   matchesSearchDateRange,
   matchesSearchField,
   parseSearchDate
-} from '../../../shared/ui/search-bar/search-bar-utils';
-import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
-import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
-import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
-import { createTextSorter } from '../../../shared/ui/table/table-column-utils';
-import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
+} from '@/shared/ui/search-bar/search-bar-utils';
+import { StatusBadge } from '@/shared/ui/status-badge/status-badge';
+import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
+import { createStatusColumnTitle } from '@/shared/ui/table/status-column-title';
+import { createTextSorter } from '@/shared/ui/table/table-column-utils';
+import { TableRowDetailModal } from '@/shared/ui/table/table-row-detail-modal';
 
 const { Paragraph, Text } = Typography;
 

@@ -12,10 +12,10 @@ import {
 } from '../model/institution-codes-types';
 import type { InstitutionCodeKind } from '../model/institution-codes-types';
 import { InstitutionExposureModeTag } from '../ui/institution-exposure-mode-tag';
-import { routerSavedState } from '../../../shared/model/router-saved-state';
-import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
-import { PageTitle } from '../../../shared/ui/page-title/page-title';
-import { createDescriptionLabel } from '../../../shared/ui/descriptions/description-label';
+import { routerSavedState } from '@/shared/model/router-saved-state';
+import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
+import { PageTitle } from '@/shared/ui/page-title/page-title';
+import { createDescriptionLabel } from '@/shared/ui/descriptions/description-label';
 
 const { Paragraph, Text } = Typography;
 

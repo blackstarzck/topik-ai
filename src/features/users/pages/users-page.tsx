@@ -32,9 +32,9 @@ import {
   inviteInstitutionMembersGuardedSafe,
   translateInstitutionContractError
 } from '../api/institution-contracts-service';
-import { kickNotificationEmailDispatch } from '../../../shared/api/notification-email-kick';
+import { kickNotificationEmailDispatch } from '@/shared/api/notification-email-kick';
 import type { InstitutionCode } from '../model/institution-codes-types';
-import { usePermissionStore } from '../../system/model/permission-store';
+import { usePermissionStore } from '@/features/system/model/permission-store';
 import { useUsersQueryStore } from '../model/users-query-store';
 import type {
   UserStatus,
@@ -60,19 +60,19 @@ import { createUsersColumns } from '../ui/users-columns';
 import { UsersBulkModal } from '../ui/users-bulk-modal';
 import { UsersExportModal } from '../ui/users-export-modal';
 import { UsersMemoModal } from '../ui/users-memo-modal';
-import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
-import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
-import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
-import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import { AuditLogLink } from '@/shared/ui/audit-log-link/audit-log-link';
+import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
+import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
+import { PageTitle } from '@/shared/ui/page-title/page-title';
 import {
   SearchBar,
   SearchBarDateRange,
   SearchBarDetailField
-} from '../../../shared/ui/search-bar/search-bar';
-import { useSearchBarDateDraft } from '../../../shared/ui/search-bar/use-search-bar-date-draft';
-import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
-import type { AsyncState } from '../../../shared/model/async-state';
-import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
+} from '@/shared/ui/search-bar/search-bar';
+import { useSearchBarDateDraft } from '@/shared/ui/search-bar/use-search-bar-date-draft';
+import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
+import type { AsyncState } from '@/shared/model/async-state';
+import { getTargetTypeLabel } from '@/shared/model/target-type-label';
 
 const { Text } = Typography;
 

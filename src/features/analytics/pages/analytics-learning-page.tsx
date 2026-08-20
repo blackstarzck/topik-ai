@@ -34,7 +34,7 @@ import {
   isAnalyticsPermissionError,
   translateAnalyticsError
 } from '../api/analytics-permission-error';
-import { usePermissionStore } from '../../system/model/permission-store';
+import { usePermissionStore } from '@/features/system/model/permission-store';
 import {
   areLearningAnalyticsQueriesEqual,
   countLearningAnalyticsConditions,
@@ -64,7 +64,7 @@ import {
 import { PdfUsageCompositionPie } from '../ui/analytics-learning-charts';
 import { LearningConditionDrawer } from '../ui/analytics-learning-condition-drawer';
 import { buildLearningKpiCards, KpiCard } from '../ui/analytics-learning-kpi';
-import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import { PageTitle } from '@/shared/ui/page-title/page-title';
 
 import './analytics-learning-page.css';
 

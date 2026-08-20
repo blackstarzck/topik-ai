@@ -2,8 +2,8 @@ import { Alert, Button, Card, Descriptions, Space, Table, Typography } from 'ant
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { fetchBackupRunsSafe, fetchBackupSummarySafe } from '../../system/api/backups-service';
-import { backupViewContext } from '../../system/api/backup-data-source';
+import { fetchBackupRunsSafe, fetchBackupSummarySafe } from '@/features/system/api/backups-service';
+import { backupViewContext } from '@/features/system/api/backup-data-source';
 import {
   backupComponentStatusLabels,
   backupRunStatusLabels,
@@ -11,10 +11,10 @@ import {
   resolveBackupHealth,
   type BackupRun,
   type BackupSummary
-} from '../../system/model/backup-types';
-import { usePermissionStore } from '../../system/model/permission-store';
-import type { AsyncState } from '../../../shared/model/async-state';
-import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
+} from '@/features/system/model/backup-types';
+import { usePermissionStore } from '@/features/system/model/permission-store';
+import type { AsyncState } from '@/shared/model/async-state';
+import { StatusBadge } from '@/shared/ui/status-badge/status-badge';
 
 const { Text } = Typography;
 

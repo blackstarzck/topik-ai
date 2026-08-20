@@ -1,4 +1,4 @@
-import type { V13AppRole } from '../../auth/model/session-types';
+import type { V13AppRole } from '@/features/auth/model/session-types';
 import type { RoleKey } from './permission-types';
 
 // 권한 관리 페이지의 라벨·옵션 카탈로그 — Phase 4 분해로 페이지 본문에서 이동(값 동일).

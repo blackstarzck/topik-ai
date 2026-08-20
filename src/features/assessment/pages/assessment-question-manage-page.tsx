@@ -56,14 +56,14 @@ import type {
   AssessmentQuestionVersionSummary,
   AssessmentServiceStatus
 } from '../model/assessment-question-bank-types';
-import type { AsyncState } from '../../../shared/model/async-state';
-import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
-import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
-import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
-import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
-import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
-import { PageTitle } from '../../../shared/ui/page-title/page-title';
-import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
+import type { AsyncState } from '@/shared/model/async-state';
+import { getTargetTypeLabel } from '@/shared/model/target-type-label';
+import { AuditLogLink } from '@/shared/ui/audit-log-link/audit-log-link';
+import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
+import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
+import { ListSummaryCards } from '@/shared/ui/list-summary-cards/list-summary-cards';
+import { PageTitle } from '@/shared/ui/page-title/page-title';
+import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
 
 const { Text } = Typography;
 

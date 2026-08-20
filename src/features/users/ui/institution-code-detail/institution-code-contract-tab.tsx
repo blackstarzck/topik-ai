@@ -33,10 +33,10 @@ import type { InstitutionCode } from '../../model/institution-codes-types';
 import type { NotificationApi } from './institution-code-detail-tab-types';
 import { InstitutionTabToolbar } from './institution-tab-toolbar';
 import { InstitutionContractDdayBadge } from '../institution-contract-dday-badge';
-import { AuditLogLink } from '../../../../shared/ui/audit-log-link/audit-log-link';
-import { ConfirmAction } from '../../../../shared/ui/confirm-action/confirm-action';
-import { createDescriptionLabel } from '../../../../shared/ui/descriptions/description-label';
-import { fixDrawerTableFirstColumn } from '../../../../shared/ui/table/drawer-table';
+import { AuditLogLink } from '@/shared/ui/audit-log-link/audit-log-link';
+import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
+import { createDescriptionLabel } from '@/shared/ui/descriptions/description-label';
+import { fixDrawerTableFirstColumn } from '@/shared/ui/table/drawer-table';
 
 const { Text } = Typography;
 

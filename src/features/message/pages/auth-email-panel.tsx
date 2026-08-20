@@ -17,11 +17,11 @@ import type { TableColumnsType } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import type { Editor as TinyMceEditor } from 'tinymce';
 
-import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
+import { isSupabaseConfigured } from '@/shared/api/supabase-client';
 import {
   DEFAULT_TINYMCE_PLUGINS,
   TinyMceHtmlEditor
-} from '../../../shared/ui/html-editor/tiny-mce-html-editor';
+} from '@/shared/ui/html-editor/tiny-mce-html-editor';
 import {
   fetchAuthEmailTemplatesSafe,
   saveAuthEmailTemplateSafe,

@@ -43,14 +43,14 @@ import {
 import { createPdfQuotaResetColumns } from '../ui/operation-pdf-quota-columns';
 import { PdfQuotaPoliciesTab } from '../ui/operation-pdf-quota-policies-tab';
 import { PdfQuotaResetModal } from '../ui/operation-pdf-quota-reset-modal';
-import { fetchInstitutionCodesSafe } from '../../users/api/institution-codes-service';
-import type { InstitutionCode } from '../../users/model/institution-codes-types';
-import type { AsyncState } from '../../../shared/model/async-state';
-import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
-import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
-import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
-import { PageTitle } from '../../../shared/ui/page-title/page-title';
-import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
+import { fetchInstitutionCodesSafe } from '@/features/users/api/institution-codes-service';
+import type { InstitutionCode } from '@/features/users/model/institution-codes-types';
+import type { AsyncState } from '@/shared/model/async-state';
+import { getTargetTypeLabel } from '@/shared/model/target-type-label';
+import { AuditLogLink } from '@/shared/ui/audit-log-link/audit-log-link';
+import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
+import { PageTitle } from '@/shared/ui/page-title/page-title';
+import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
 
 const { Text } = Typography;
 

@@ -13,16 +13,16 @@ import type {
   TopikWritingTagMasterCatalogRow,
   TopikWritingTopicMasterCatalogRow
 } from '../model/assessment-question-bank-types';
-import type { AsyncState } from '../../../shared/model/async-state';
-import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
-import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
-import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
-import { BinaryStatusSwitch } from '../../../shared/ui/table/binary-status-switch';
-import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
+import type { AsyncState } from '@/shared/model/async-state';
+import { AuditLogLink } from '@/shared/ui/audit-log-link/audit-log-link';
+import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
+import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
+import { BinaryStatusSwitch } from '@/shared/ui/table/binary-status-switch';
+import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
 import {
   createDefinedColumnFilterProps,
   createTextSorter
-} from '../../../shared/ui/table/table-column-utils';
+} from '@/shared/ui/table/table-column-utils';
 
 const { Paragraph, Text } = Typography;
 

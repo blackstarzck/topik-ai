@@ -37,10 +37,10 @@ import {
   DEFAULT_TINYMCE_PLUGINS,
   DEFAULT_TINYMCE_TOOLBAR,
   TinyMceHtmlEditor,
-} from "../../../shared/ui/html-editor/tiny-mce-html-editor";
-import { AdminEditorFormSection } from "../../../shared/ui/admin-editor-form/admin-editor-form";
-import { markRequiredDescriptionItems } from "../../../shared/ui/descriptions/description-label";
-import type { MessageGroup } from "../../message/model/types";
+} from "@/shared/ui/html-editor/tiny-mce-html-editor";
+import { AdminEditorFormSection } from "@/shared/ui/admin-editor-form/admin-editor-form";
+import { markRequiredDescriptionItems } from "@/shared/ui/descriptions/description-label";
+import type { MessageGroup } from "@/features/message/model/types";
 
 const { Text } = Typography;
 

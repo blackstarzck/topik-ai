@@ -1,7 +1,7 @@
 import { toSafeResult, withRetry } from '@/shared/api/safe-request';
 import { supabaseClient } from '@/shared/api/supabase-client';
-import { mapAppRoleToRoleKey, permissionKeysForRole } from '../../auth/model/app-role-mapping';
-import type { V13AppRole } from '../../auth/model/session-types';
+import { mapAppRoleToRoleKey, permissionKeysForRole } from '@/features/auth/model/app-role-mapping';
+import type { V13AppRole } from '@/features/auth/model/session-types';
 import { usePermissionStore } from '../model/permission-store';
 import type { AdminPermissionAssignment } from '../model/permission-types';
 import { systemAdminsDataSource } from './system-admins-data-source';

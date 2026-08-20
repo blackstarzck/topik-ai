@@ -29,8 +29,8 @@ import type {
 } from '../model/institution-codes-types';
 import { renderProfileValue } from '../model/user-detail-page-schema';
 import { InvitationEmailStatusTag } from './invitation-email-status-tag';
-import { kickNotificationEmailDispatch } from '../../../shared/api/notification-email-kick';
-import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
+import { kickNotificationEmailDispatch } from '@/shared/api/notification-email-kick';
+import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
 
 const { Text } = Typography;
 

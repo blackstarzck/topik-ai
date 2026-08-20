@@ -5,7 +5,7 @@ import {
   inviteInstitutionMembersGuardedSafe,
   translateInstitutionContractError
 } from '../../api/institution-contracts-service';
-import { kickNotificationEmailDispatch } from '../../../../shared/api/notification-email-kick';
+import { kickNotificationEmailDispatch } from '@/shared/api/notification-email-kick';
 import { GLOBAL_INVITE_EXPIRY_DAYS } from '../../model/institution-contracts-types';
 import type { InstitutionSettings } from '../../model/institution-contracts-types';
 import type { NotificationApi } from './institution-code-detail-tab-types';
@@ -13,7 +13,7 @@ import {
   DrawerFooter,
   DrawerTitle,
   mergeDrawerFrameStyles
-} from '../../../../shared/ui/drawer-frame/drawer-frame';
+} from '@/shared/ui/drawer-frame/drawer-frame';
 
 type InviteFormValues = {
   userIds: string[];

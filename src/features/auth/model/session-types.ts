@@ -1,4 +1,4 @@
-import type { RoleKey } from '../../system/model/permission-types';
+import type { RoleKey } from '@/features/system/model/permission-types';
 
 /** v13 profiles.app_role enum (4 roles). SoT: v13 src/lib/auth/roles.ts. */
 export type V13AppRole = 'learner' | 'content_admin' | 'org_admin' | 'platform_admin';

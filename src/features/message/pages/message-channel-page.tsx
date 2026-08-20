@@ -51,24 +51,24 @@ import {
   shouldShowNotificationLink,
   type TemplateMetaFormValues
 } from '../ui/message-template-form-fields';
-import type { AsyncState } from '../../../shared/model/async-state';
-import { useRouterStateNotice } from '../../../shared/model/use-router-state-notice';
-import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
-import { HtmlPreviewModal } from '../../../shared/ui/html-preview-modal/html-preview-modal';
-import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
-import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import type { AsyncState } from '@/shared/model/async-state';
+import { useRouterStateNotice } from '@/shared/model/use-router-state-notice';
+import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
+import { HtmlPreviewModal } from '@/shared/ui/html-preview-modal/html-preview-modal';
+import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
+import { PageTitle } from '@/shared/ui/page-title/page-title';
 import {
   SearchBar,
   SearchBarDateRange,
   SearchBarDetailField
-} from '../../../shared/ui/search-bar/search-bar';
-import { useSearchBarDateDraft } from '../../../shared/ui/search-bar/use-search-bar-date-draft';
+} from '@/shared/ui/search-bar/search-bar';
+import { useSearchBarDateDraft } from '@/shared/ui/search-bar/use-search-bar-date-draft';
 import {
   matchesSearchDateRange,
   matchesSearchField,
   parseSearchDate
-} from '../../../shared/ui/search-bar/search-bar-utils';
-import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
+} from '@/shared/ui/search-bar/search-bar-utils';
+import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
 const { Text } = Typography;
 
 

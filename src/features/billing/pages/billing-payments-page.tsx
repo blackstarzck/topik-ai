@@ -9,33 +9,33 @@ import {
   getBillingUserNameSafe
 } from '../api/billing-service';
 import type { PaymentRow, PaymentStatus, RefundRow } from '../api/billing-service';
-import type { AsyncState } from '../../../shared/model/async-state';
-import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
-import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
-import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import type { AsyncState } from '@/shared/model/async-state';
+import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
+import { ListSummaryCards } from '@/shared/ui/list-summary-cards/list-summary-cards';
+import { PageTitle } from '@/shared/ui/page-title/page-title';
 import {
   SearchBar,
   SearchBarDateRange,
   SearchBarDetailField
-} from '../../../shared/ui/search-bar/search-bar';
-import { useSearchBarDateDraft } from '../../../shared/ui/search-bar/use-search-bar-date-draft';
+} from '@/shared/ui/search-bar/search-bar';
+import { useSearchBarDateDraft } from '@/shared/ui/search-bar/use-search-bar-date-draft';
 import {
   matchesSearchDateRange,
   matchesSearchField,
   parseSearchDate
-} from '../../../shared/ui/search-bar/search-bar-utils';
-import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
-import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
-import { createStatusColumnTitle } from '../../../shared/ui/table/status-column-title';
+} from '@/shared/ui/search-bar/search-bar-utils';
+import { StatusBadge } from '@/shared/ui/status-badge/status-badge';
+import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
+import { createStatusColumnTitle } from '@/shared/ui/table/status-column-title';
 import {
   createNumberSorter,
   createTextSorter
-} from '../../../shared/ui/table/table-column-utils';
-import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
+} from '@/shared/ui/table/table-column-utils';
+import { TableRowDetailModal } from '@/shared/ui/table/table-row-detail-modal';
 import {
   formatUserDisplayName,
   UserNavigationLink
-} from '../../../shared/ui/user/user-reference';
+} from '@/shared/ui/user/user-reference';
 
 const { Paragraph, Text } = Typography;
 

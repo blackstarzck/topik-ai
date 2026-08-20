@@ -12,7 +12,7 @@ import type {
   PdfQuotaResetUserOption,
   PdfQuotaResetUserOptionPage
 } from '../model/pdf-quota-types';
-import { getMockUsers } from '../../users/api/users-service';
+import { getMockUsers } from '@/features/users/api/users-service';
 import { operationPdfQuotaDataSource } from './pdf-quota-data-source';
 import {
   createPdfQuotaReset,

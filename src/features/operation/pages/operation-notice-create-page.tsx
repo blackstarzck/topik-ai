@@ -11,16 +11,16 @@ import {
   saveNoticeSafe
 } from '../api/notices-service';
 import type { OperationNotice } from '../model/types';
-import type { AsyncState } from '../../../shared/model/async-state';
-import { routerSavedState } from '../../../shared/model/router-saved-state';
-import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
-import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import type { AsyncState } from '@/shared/model/async-state';
+import { routerSavedState } from '@/shared/model/router-saved-state';
+import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
+import { PageTitle } from '@/shared/ui/page-title/page-title';
 import {
   DEFAULT_TINYMCE_PLUGINS,
   DEFAULT_TINYMCE_TOOLBAR,
   TinyMceHtmlEditor
-} from '../../../shared/ui/html-editor/tiny-mce-html-editor';
-import { markRequiredDescriptionItems } from '../../../shared/ui/descriptions/description-label';
+} from '@/shared/ui/html-editor/tiny-mce-html-editor';
+import { markRequiredDescriptionItems } from '@/shared/ui/descriptions/description-label';
 
 type NoticeContentFormValues = {
   title: string;

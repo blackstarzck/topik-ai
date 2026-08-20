@@ -33,10 +33,10 @@ import { buildMessageAuditNoticeDescription } from '../ui/message-audit-notice';
 import { createMessageGroupColumns } from '../ui/message-groups-columns';
 import { MessageGroupEditorDrawer } from '../ui/message-groups-editor-drawer';
 import { MessageGroupsTableSection } from '../ui/message-groups-table-section';
-import type { AsyncState } from '../../../shared/model/async-state';
-import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
-import { PageTitle } from '../../../shared/ui/page-title/page-title';
-import { parseSearchDate } from '../../../shared/ui/search-bar/search-bar-utils';
+import type { AsyncState } from '@/shared/model/async-state';
+import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
+import { PageTitle } from '@/shared/ui/page-title/page-title';
+import { parseSearchDate } from '@/shared/ui/search-bar/search-bar-utils';
 
 const { Text } = Typography;
 

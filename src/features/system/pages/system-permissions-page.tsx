@@ -14,13 +14,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAsyncResource } from '@/shared/model/use-async-resource';
 import { Link, useSearchParams } from 'react-router-dom';
 
-import { useAuthStore } from '../../auth/model/auth-store';
-import type { V13AppRole } from '../../auth/model/session-types';
-import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
-import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
-import { PageTitle } from '../../../shared/ui/page-title/page-title';
-import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
-import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
+import { useAuthStore } from '@/features/auth/model/auth-store';
+import type { V13AppRole } from '@/features/auth/model/session-types';
+import { getTargetTypeLabel } from '@/shared/model/target-type-label';
+import { AuditLogLink } from '@/shared/ui/audit-log-link/audit-log-link';
+import { PageTitle } from '@/shared/ui/page-title/page-title';
+import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
+import { TableRowDetailModal } from '@/shared/ui/table/table-row-detail-modal';
 import {
   changeAdminAppRoleSafe,
   fetchAdminAppRolesSafe,

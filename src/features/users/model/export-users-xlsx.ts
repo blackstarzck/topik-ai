@@ -1,4 +1,4 @@
-import { formatNationality } from '../../../shared/model/country-name';
+import { formatNationality } from '@/shared/model/country-name';
 import {
   getTermsConsentDisplayStatus,
   getUserMembershipStatus
