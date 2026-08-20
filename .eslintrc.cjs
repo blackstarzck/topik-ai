@@ -47,8 +47,9 @@ module.exports = {
       }
     ]
   },
-  // Phase 2 baseline(2026-08-18, src 기존 위반 24개)은 Phase 4 분해 1~22호로 전량
-  // 해소되어 override 를 제거했다 — src/api 는 max-lines 예외 0 이다.
+  // Phase 2 baseline(2026-08-18, src 기존 위반 24개)은 Phase 4 분해 1~22호로,
+  // 스코프 확장 baseline(2026-08-20, scripts·tests 위반 5개)은 스크립트 분해
+  // 1~5호로 전량 해소됐다 — max-lines 800 은 이제 저장소 전체에서 예외 0 이다.
   overrides: [
     {
       // 운영/검증 스크립트와 테스트는 Node 런타임에서 돈다. 2026-08-20 lint 스코프
@@ -58,18 +59,6 @@ module.exports = {
       env: {
         browser: false,
         node: true
-      }
-    },
-    {
-      // ── 스코프 확장 baseline (2026-08-20) ─────────────────────────────────
-      // lint 스코프를 scripts·tests 로 넓히자 드러난 기존 max-lines 위반 5개.
-      // src 쪽 Phase 2 baseline 과 같은 규칙: 목록은 "줄이기만" 한다 — 새 파일을
-      // 추가하지 않는다. 다음 분해 라운드의 대상 목록이다 (gap-register §3.12).
-      files: [
-        'scripts/db/recover-prod-from-dev.mjs'
-      ],
-      rules: {
-        'max-lines': 'off'
       }
     }
   ]
