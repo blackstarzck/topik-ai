@@ -66,8 +66,7 @@ module.exports = {
       // src 쪽 Phase 2 baseline 과 같은 규칙: 목록은 "줄이기만" 한다 — 새 파일을
       // 추가하지 않는다. 다음 분해 라운드의 대상 목록이다 (gap-register §3.12).
       files: [
-        'scripts/db/recover-prod-from-dev.mjs',
-        'tests/live-e2e/analytics-learning-live.pw.ts'
+        'scripts/db/recover-prod-from-dev.mjs'
       ],
       rules: {
         'max-lines': 'off'
