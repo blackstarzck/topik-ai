@@ -1,40 +1,44 @@
-import { createHash } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  readdirSync,
-  writeFileSync,
-} from 'node:fs';
-import { dirname, isAbsolute, join, resolve } from 'node:path';
+  DEFAULT_SQL_MAX_ATTEMPTS,
+  PRODUCTION_PROJECT_REF,
+  fail,
+  loadLocalEnv,
+  requireIdentifier,
+  requireMigrationName,
+  sqlLiteral,
+  stripOuterTransaction
+} from './migration-primitives.mjs';
+import {
+  buildMigrationVerificationReport,
+  listLocalMigrations,
+  migrationRecord,
+  printVerificationReport,
+  readManifest,
+  resolveManifestBatch,
+  resolveManifestFile,
+  validateBlocked,
+  validateLocalSet,
+  writeJsonReport
+} from './migration-contract.mjs';
 
-const PRODUCTION_PROJECT_REF = 'eymlabowhfgtxbiqwxqh';
-const DEFAULT_SQL_MAX_ATTEMPTS = 4;
-const IDENTIFIER_PATTERN = /^[a-z_][a-z0-9_]*$/;
-const MIGRATION_NAME_PATTERN = /^\d{14}_[a-z0-9_]+\.sql$/;
-
-function fail(message) {
-  throw new Error(message);
-}
-
-function parseEnvFile(contents) {
-  const values = new Map();
-  for (const line of contents.split(/\r?\n/)) {
-    const match = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/.exec(line);
-    if (!match || match[1].startsWith('#')) continue;
-    values.set(match[1], match[2].replace(/^["']|["']$/g, ''));
-  }
-  return values;
-}
-
-export function loadLocalEnv(filePath = resolve('.env.local')) {
-  if (!existsSync(filePath)) return;
-  const values = parseEnvFile(readFileSync(filePath, 'utf8'));
-  for (const [name, value] of values) {
-    if (process.env[name] === undefined) process.env[name] = value;
-  }
-}
-
+// 마이그 실행 계층 — 접속 대상 해석·SQL 실행·트래커·적용/롤백 오케스트레이션.
+// 상수/유틸은 migration-primitives.mjs, 매니페스트·정적 계약은 migration-contract.mjs
+// 로 분해했고, 아래 재수출로 기존 import 경로(스크립트 13개·테스트 4개)를 유지한다.
+export {
+  loadLocalEnv,
+  sha256,
+  stripOuterTransaction
+} from './migration-primitives.mjs';
+export {
+  classifyMigrationVerification,
+  inspectStaticMigrationContract,
+  listLocalMigrations,
+  resolveManifestBatch,
+  validateLocalSet
+} from './migration-contract.mjs';
 function getArgValue(args, flag) {
   const index = args.indexOf(flag);
   if (index < 0) return null;
@@ -76,291 +80,6 @@ export function parseMigrationArgs(args) {
     requireClean,
     jsonOut: getArgValue(args, '--json-out'),
   };
-}
-
-function requireIdentifier(value, label) {
-  if (!IDENTIFIER_PATTERN.test(value)) fail(`Invalid ${label}: ${value}`);
-  return value;
-}
-
-function requireMigrationName(value) {
-  if (!MIGRATION_NAME_PATTERN.test(value)) fail(`Invalid migration name: ${value}`);
-  return value;
-}
-
-export function sha256(contents) {
-  return createHash('sha256').update(contents).digest('hex');
-}
-
-function sqlLiteral(value) {
-  if (value === null || value === undefined) return 'null';
-  return `'${String(value).replaceAll("'", "''")}'`;
-}
-
-export function stripOuterTransaction(sql) {
-  const lines = sql.replace(/^\uFEFF/, '').split(/\r?\n/);
-  const transactionLines = lines
-    .map((line, index) => ({ index, value: line.trim().toLowerCase() }))
-    .filter(({ value }) => value === 'begin;' || value === 'commit;');
-
-  if (transactionLines.length === 0) return lines.join('\n').trim();
-  if (
-    transactionLines.length !== 2
-    || transactionLines[0].value !== 'begin;'
-    || transactionLines[1].value !== 'commit;'
-  ) {
-    fail('Migration contains unsupported transaction control.');
-  }
-
-  lines.splice(transactionLines[1].index, 1);
-  lines.splice(transactionLines[0].index, 1);
-  return lines.join('\n').trim();
-}
-
-export function listLocalMigrations(migrationsDir) {
-  if (!existsSync(migrationsDir)) return [];
-  return readdirSync(migrationsDir)
-    .filter((name) => name.endsWith('.sql') && MIGRATION_NAME_PATTERN.test(name))
-    .sort();
-}
-
-function readManifest(manifestPath) {
-  if (!manifestPath) fail('--manifest is required for this action.');
-  const absolutePath = resolve(manifestPath);
-  if (!existsSync(absolutePath)) fail(`Manifest not found: ${absolutePath}`);
-  const manifest = JSON.parse(readFileSync(absolutePath, 'utf8'));
-  if (!manifest.projectRef || !manifest.batches) fail('Manifest is missing projectRef or batches.');
-  return { manifest, absolutePath };
-}
-
-function resolveManifestFile(manifestPath, relativePath) {
-  if (!relativePath) return null;
-  return isAbsolute(relativePath)
-    ? relativePath
-    : resolve(dirname(manifestPath), relativePath);
-}
-
-export function resolveManifestBatch({ manifest, batchName, localMigrations }) {
-  if (!batchName) fail('--batch is required with a manifest.');
-  const batch = manifest.batches[batchName];
-  if (!batch) fail(`Unknown manifest batch: ${batchName}`);
-
-  let entries;
-  if (Array.isArray(batch.migrations)) {
-    entries = batch.migrations.map((entry) => (
-      typeof entry === 'string' ? { name: entry, mode: 'apply' } : {
-        mode: 'apply',
-        ...entry,
-      }
-    ));
-  } else {
-    const from = batch.from ?? localMigrations[0];
-    const to = batch.to ?? localMigrations.at(-1);
-    const excluded = new Set(batch.exclude ?? []);
-    entries = localMigrations
-      .filter((name) => name >= from && name <= to && !excluded.has(name))
-      .map((name) => ({ name, mode: 'apply' }));
-  }
-
-  const seen = new Set();
-  for (const entry of entries) {
-    requireMigrationName(entry.name);
-    if (seen.has(entry.name)) fail(`Duplicate migration in batch ${batchName}: ${entry.name}`);
-    if (!localMigrations.includes(entry.name)) {
-      fail(`Manifest migration is missing locally: ${entry.name}`);
-    }
-    if (!['apply', 'adopt'].includes(entry.mode)) {
-      fail(`Unsupported migration mode for ${entry.name}: ${entry.mode}`);
-    }
-    seen.add(entry.name);
-  }
-
-  return { batch, entries };
-}
-
-export function validateLocalSet(manifest, localMigrations) {
-  if (
-    Number.isInteger(manifest.expectedLocalCount)
-    && localMigrations.length !== manifest.expectedLocalCount
-  ) {
-    fail(
-      `Local migration count mismatch: expected ${manifest.expectedLocalCount}, `
-      + `found ${localMigrations.length}.`
-    );
-  }
-
-  const blocked = new Set(manifest.blockedMigrations ?? []);
-  for (const name of blocked) {
-    if (!localMigrations.includes(name)) fail(`Blocked migration is missing locally: ${name}`);
-  }
-}
-
-export function inspectStaticMigrationContract({
-  manifest,
-  batchName,
-  localMigrations,
-  migrationsDir,
-}) {
-  validateLocalSet(manifest, localMigrations);
-  const { batch, entries } = resolveManifestBatch({
-    manifest,
-    batchName,
-    localMigrations,
-  });
-  validateBlocked(manifest, entries);
-
-  const blocked = new Set(manifest.blockedMigrations ?? []);
-  const selected = new Set(entries.map((entry) => entry.name));
-  const manifestMissing = localMigrations.filter(
-    (name) => !blocked.has(name) && !selected.has(name)
-  );
-  const missingDown = localMigrations.filter(
-    (name) => !existsSync(join(migrationsDir, 'down', name))
-  );
-
-  return {
-    batch,
-    entries,
-    manifestMissing,
-    missingDown,
-    clean: manifestMissing.length === 0 && missingDown.length === 0,
-  };
-}
-
-export function classifyMigrationVerification({
-  localRecords,
-  selectedEntries,
-  blockedMigrations = [],
-  approvedRemoteOnly = [],
-  appliedRows,
-  manifestMissing = [],
-  missingDown = [],
-}) {
-  const applied = new Map(appliedRows.map((row) => [row.name, row]));
-  const blocked = new Set(blockedMigrations);
-  const selected = new Set(selectedEntries.map((entry) => entry.name));
-  const approvedRemote = new Set(approvedRemoteOnly);
-  const migrations = [];
-  const issues = {
-    manifestMissing: [...manifestMissing],
-    missingDown: [...missingDown],
-    pending: [],
-    checksumMissing: [],
-    checksumMismatch: [],
-    remoteOnly: [],
-    blockedApplied: [],
-  };
-
-  for (const record of localRecords) {
-    const row = applied.get(record.name);
-    let state;
-    if (blocked.has(record.name)) {
-      state = row ? 'blocked-applied' : 'blocked-not-applied';
-      if (row) issues.blockedApplied.push(record.name);
-    } else if (!selected.has(record.name)) {
-      state = 'manifest-missing';
-    } else if (!row) {
-      state = 'pending';
-      issues.pending.push(record.name);
-    } else if (!row.checksum_sha256) {
-      state = 'checksum-missing';
-      issues.checksumMissing.push(record.name);
-    } else if (row.checksum_sha256 !== record.checksum) {
-      state = 'checksum-mismatch';
-      issues.checksumMismatch.push(record.name);
-    } else {
-      state = 'applied';
-    }
-    migrations.push({
-      name: record.name,
-      checksumSha256: record.checksum,
-      state,
-    });
-  }
-
-  const localNames = new Set(localRecords.map((record) => record.name));
-  const remoteOnlyApproved = [];
-  for (const row of appliedRows) {
-    if (localNames.has(row.name)) continue;
-    if (approvedRemote.has(row.name)) remoteOnlyApproved.push(row.name);
-    else issues.remoteOnly.push(row.name);
-  }
-
-  const issueCount = Object.values(issues).reduce(
-    (total, values) => total + values.length,
-    0
-  );
-  return {
-    clean: issueCount === 0,
-    issueCount,
-    issues,
-    migrations,
-    remoteOnlyApproved,
-  };
-}
-
-function buildMigrationVerificationReport({
-  manifest,
-  manifestPath,
-  batchName,
-  localMigrations,
-  migrationsDir,
-  appliedRows,
-  trackTable,
-  projectRef,
-}) {
-  const staticContract = inspectStaticMigrationContract({
-    manifest,
-    batchName,
-    localMigrations,
-    migrationsDir,
-  });
-  const localRecords = localMigrations.map((name) => migrationRecord({
-    migrationsDir,
-    entry: { name, mode: 'apply' },
-  }));
-  const verification = classifyMigrationVerification({
-    localRecords,
-    selectedEntries: staticContract.entries,
-    blockedMigrations: manifest.blockedMigrations,
-    approvedRemoteOnly: manifest.approvedRemoteOnly,
-    appliedRows,
-    manifestMissing: staticContract.manifestMissing,
-    missingDown: staticContract.missingDown,
-  });
-
-  return {
-    schemaVersion: 1,
-    generatedAt: new Date().toISOString(),
-    commitSha: process.env.GITHUB_SHA ?? process.env.CI_COMMIT_SHA ?? null,
-    namespace: manifest.namespace ?? trackTable,
-    environment: manifest.environment ?? null,
-    projectRef,
-    tracker: trackTable,
-    batch: batchName,
-    manifestSha256: sha256(readFileSync(manifestPath)),
-    localMigrationCount: localMigrations.length,
-    appliedTrackerCount: appliedRows.length,
-    ...verification,
-  };
-}
-
-function writeJsonReport(path, report) {
-  if (!path) return;
-  const absolutePath = resolve(path);
-  mkdirSync(dirname(absolutePath), { recursive: true });
-  writeFileSync(absolutePath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
-}
-
-function printVerificationReport(report) {
-  console.log(`verification namespace=${report.namespace} batch=${report.batch}`);
-  console.log(
-    `local=${report.localMigrationCount} tracker=${report.appliedTrackerCount} `
-    + `issues=${report.issueCount} clean=${report.clean}`
-  );
-  for (const [name, values] of Object.entries(report.issues)) {
-    for (const value of values) console.log(`[${name}] ${value}`);
-  }
 }
 
 function getTarget({ manifest = null, write = false }) {
@@ -501,17 +220,6 @@ where table_schema = 'public' and table_name = ${sqlLiteral(table)}`,
   });
 }
 
-function migrationRecord({ migrationsDir, entry }) {
-  const path = join(migrationsDir, entry.name);
-  const contents = readFileSync(path);
-  return {
-    ...entry,
-    path,
-    contents,
-    checksum: sha256(contents),
-  };
-}
-
 function printStatus({ localMigrations, appliedRows }) {
   const applied = new Map(appliedRows.map((row) => [row.name, row]));
   for (const name of localMigrations) {
@@ -526,13 +234,6 @@ function printStatus({ localMigrations, appliedRows }) {
   }
   for (const row of appliedRows) {
     if (!localMigrations.includes(row.name)) console.log(`[remote-only] ${row.name}`);
-  }
-}
-
-function validateBlocked(manifest, records) {
-  const blocked = new Set(manifest.blockedMigrations ?? []);
-  for (const record of records) {
-    if (blocked.has(record.name)) fail(`Blocked migration cannot be selected: ${record.name}`);
   }
 }
 
