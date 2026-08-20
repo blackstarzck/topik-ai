@@ -7,7 +7,7 @@ import {
   Typography,
   notification
 } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { messageDataSource } from '../api/message-data-source';
@@ -26,8 +26,8 @@ import {
   type MessageTestSendFormValues
 } from '../model/message-channel-page-schema';
 import type {
+  ChannelSnapshot,
   MessageChannel,
-  MessageGroup,
   MessageTemplate
 } from '../model/types';
 import { buildMessageAuditNoticeDescription } from '../ui/message-audit-notice';
@@ -51,7 +51,7 @@ import {
   shouldShowNotificationLink,
   type TemplateMetaFormValues
 } from '../ui/message-template-form-fields';
-import type { AsyncState } from '@/shared/model/async-state';
+import { useAsyncResource } from '@/shared/model/use-async-resource';
 import { useRouterStateNotice } from '@/shared/model/use-router-state-notice';
 import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
 import { HtmlPreviewModal } from '@/shared/ui/html-preview-modal/html-preview-modal';
@@ -77,6 +77,9 @@ type MessageChannelPageProps = {
   channel: MessageChannel;
 };
 
+/** 훅의 initialData 는 안정 참조로 둔다(렌더마다 새 객체를 만들지 않는다). */
+const EMPTY_CHANNEL_SNAPSHOT: ChannelSnapshot = { templates: [], groups: [] };
+
 export function MessageChannelPage({
   channel
 }: MessageChannelPageProps): JSX.Element {
@@ -99,15 +102,6 @@ export function MessageChannelPage({
     handleDetailOpenChange
   } = useSearchBarDateDraft(startDate, endDate);
 
-  const [templates, setTemplates] = useState<MessageTemplate[]>([]);
-  const [groups, setGroups] = useState<MessageGroup[]>([]);
-  const [loadState, setLoadState] = useState<AsyncState<null>>({
-    status: 'pending',
-    data: null,
-    errorMessage: null,
-    errorCode: null
-  });
-  const [reloadKey, setReloadKey] = useState(0);
   const [editorState, setEditorState] = useState<MessageTemplateEditorState>(null);
   const [previewTemplate, setPreviewTemplate] = useState<MessageTemplate | null>(null);
   const [testTemplate, setTestTemplate] = useState<MessageTemplate | null>(null);
@@ -119,45 +113,33 @@ export function MessageChannelPage({
   const [liveSendForm] = Form.useForm<MessageLiveSendFormValues>();
 
   const liveActionType = Form.useWatch('actionType', liveSendForm);
-  useEffect(() => {
-    const controller = new AbortController();
 
-    setLoadState({
-      status: 'pending',
-      data: null,
-      errorMessage: null,
-      errorCode: null
-    });
+  const fetchSnapshot = useCallback(
+    (signal: AbortSignal) => fetchChannelSnapshotSafe(channel, signal),
+    [channel]
+  );
+  /**
+   * 응답 하나가 templates·groups 두 상태로 갈리던 배선(gap-register §3.13 ④)을
+   * 스냅샷 한 덩이로 담고 구조분해로 나눈다. 빈 판정은 기존과 같이 templates 기준이고,
+   * 실패 시 직전 스냅샷을 보존하는 것도 기존 동작과 같다(setTemplates/setGroups 미호출).
+   */
+  const {
+    state: loadState,
+    reload: reloadSnapshot,
+    mutate: mutateSnapshot
+  } = useAsyncResource<ChannelSnapshot>(fetchSnapshot, {
+    initialData: EMPTY_CHANNEL_SNAPSHOT,
+    isEmpty: (snapshot) => snapshot.templates.length === 0
+  });
+  const { templates, groups } = loadState.data;
 
-    void fetchChannelSnapshotSafe(channel, controller.signal).then((result) => {
-      if (controller.signal.aborted) {
-        return;
-      }
-
-      if (result.ok) {
-        setTemplates(result.data.templates);
-        setGroups(result.data.groups);
-        setLoadState({
-          status: result.data.templates.length === 0 ? 'empty' : 'success',
-          data: null,
-          errorMessage: null,
-          errorCode: null
-        });
-        return;
-      }
-
-      setLoadState({
-        status: 'error',
-        data: null,
-        errorMessage: result.error.message,
-        errorCode: result.error.code
-      });
-    });
-
-    return () => {
-      controller.abort();
-    };
-  }, [channel, reloadKey]);
+  /** 조치 성공 후 목록만 로컬 갱신한다(서버 재조회 없음 — 기존 setTemplates 와 동일). */
+  const mutateTemplates = useCallback(
+    (updater: (previous: MessageTemplate[]) => MessageTemplate[]) => {
+      mutateSnapshot((snapshot) => ({ ...snapshot, templates: updater(snapshot.templates) }));
+    },
+    [mutateSnapshot]
+  );
 
   const visibleTemplates = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
@@ -332,7 +314,7 @@ export function MessageChannelPage({
     }
 
     const saved = result.data;
-    setTemplates((prev) => {
+    mutateTemplates((prev) => {
       const exists = prev.some((template) => template.id === saved.id);
       return exists
         ? prev.map((template) => (template.id === saved.id ? saved : template))
@@ -365,6 +347,7 @@ export function MessageChannelPage({
     closeEditor,
     editorState,
     meta.title,
+    mutateTemplates,
     notificationApi,
     templateForm
   ]);
@@ -389,7 +372,7 @@ export function MessageChannelPage({
         }
 
         const removed = result.data;
-        setTemplates((prev) =>
+        mutateTemplates((prev) =>
           prev.filter((template) => template.id !== removed.id)
         );
         notificationApi.success({
@@ -418,7 +401,7 @@ export function MessageChannelPage({
         }
 
         const updated = result.data;
-        setTemplates((prev) =>
+        mutateTemplates((prev) =>
           prev.map((template) => (template.id === updated.id ? updated : template))
         );
         notificationApi.success({
@@ -431,7 +414,7 @@ export function MessageChannelPage({
 
       setDangerState(null);
     },
-    [dangerState, meta.title, notificationApi]
+    [dangerState, meta.title, mutateTemplates, notificationApi]
   );
 
   const openTestSendModal = useCallback(
@@ -575,8 +558,8 @@ export function MessageChannelPage({
       ])
     });
     setLiveTemplate(null);
-    setReloadKey((prev) => prev + 1);
-  }, [channel, groups, liveSendForm, liveTemplate, meta.title, notificationApi]);
+    reloadSnapshot();
+  }, [channel, groups, liveSendForm, liveTemplate, meta.title, notificationApi, reloadSnapshot]);
 
   const buildActionItems = useCallback(
     (template: MessageTemplate) =>
@@ -607,8 +590,8 @@ export function MessageChannelPage({
   const tabItems = useMemo(() => createMessageChannelTabItems(templates), [templates]);
 
   const handleRetryLoad = useCallback(() => {
-    setReloadKey((prev) => prev + 1);
-  }, []);
+    reloadSnapshot();
+  }, [reloadSnapshot]);
 
   const handleRowClick = useCallback(
     (record: MessageTemplate) => ({
