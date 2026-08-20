@@ -201,7 +201,9 @@
 
 - **화면에 보이는 텍스트는 14px 미만을 쓰지 않는다.** antd 기본이 14 이므로, 인라인 `fontSize` 나 페이지 CSS 로 그보다 작게 덮어쓰지 않는다는 뜻이다.
 - 예외는 **아이콘 글리프 크기**뿐이다 — 아이콘은 텍스트가 아니라 도형이라 12px 등이 정상이다. 예외는 `scripts/check-typography-min-font.mjs` 의 allowlist 에 근거와 함께 등재하며 **줄이기만 한다**.
-- 게이트: `npm run check:typography-min-font`(`harness:check` 배선). `src/**` 의 인라인 `fontSize` 와 `*.css` 의 `font-size` 를 함께 본다.
+- **antd 가 자기 토큰으로 그리는 소형 텍스트도 규칙 대상이다.** Tag 본문·Switch 내부 라벨·Badge count·표 필터 빈 목록 문구는 전부 `fontSizeSM` 파생인데 antd 기본값은 `fontSize(14) - 2 = 12` 다. 그래서 전역 테마가 `fontSizeSM: 14` 를 선언한다(`src/app/theme.ts`). 본문 `fontSize` 는 건드리지 않는다 — 소형 변형만 본문과 같게 올리는 것이다.
+- 컴포넌트 하나만 좁혀야 하면 `theme={{ components: { Tag: { fontSizeSM: 14 } } }}` 도 유효하다(antd `ComponentsConfig` 는 컴포넌트별 alias 토큰 덮어쓰기를 허용한다). 전역 CSS 로 `.ant-tag` 를 덮는 방식은 **쓰지 않는다** — cssinjs 주입 순서 탓에 동점 명시도에서 antd 가 이긴다.
+- 게이트: `npm run check:typography-min-font`(`harness:check` 배선). `src/**` 의 인라인 `fontSize` 와 `*.css` 의 `font-size` 에 더해 **테마의 `fontSizeSM` 선언**까지 본다. 토큰 값 자체는 `tests/unit/admin-theme-token.test.ts` 가 실물 import 로 고정한다.
 - 함정: antd cssinjs 는 페이지 CSS 보다 늦게 주입되므로, `.ant-table` 같은 antd 루트를 덮을 때 명시도가 동점이면 antd 가 이긴다 — `.패널클래스.ant-card .ant-table` 처럼 클래스 두 개로 올려야 실제로 적용된다.
 
 ## 사용자 표시 규칙

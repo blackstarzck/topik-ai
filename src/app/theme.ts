@@ -1,0 +1,28 @@
+import type { ThemeConfig } from 'antd';
+
+/** 가시 텍스트 최소 크기(오너 지시 2026-07-14). 게이트 원문 = `scripts/check-typography-min-font.mjs`. */
+export const MIN_VISIBLE_FONT_SIZE_PX = 14;
+
+/**
+ * antd 전역 테마 토큰.
+ *
+ * `fontSizeSM` 을 14 로 고정한 이유 — antd 는 "작은 텍스트"를 이 토큰 하나에서 파생시킨다.
+ * 실측(2026-08-20 프로덕션 프리뷰 computed font-size 전수 감사)에서 우리 코드의 값은 전부
+ * 14 이상인데도 `ant-tag`(Tag 본문)와 `ant-switch-inner-*`(Switch 내부 라벨)가 12px 로
+ * 남았고, 원인은 antd 기본 파생값 `fontSizeSM = fontSize(14) - 2 = 12` 였다. 같은 토큰에서
+ * Badge count·표 필터 빈 목록 문구처럼 DOM 을 훑어서는 잡히지 않는 표면도 파생된다.
+ *
+ * 본문 크기(`fontSize`)는 건드리지 않는다 — 소형 변형만 본문과 같은 14 로 끌어올리는 것이라
+ * "앱 전체 본문을 키우지 말라"는 제약과 충돌하지 않는다. 파생 기하값 중 실측 변화는
+ * `.ant-badge-dot` 6→7px 하나뿐이다(도형이라 규칙 대상 아님).
+ *
+ * 컴포넌트 단위로 좁히려면 `components: { Tag: { fontSizeSM: 14 } }` 형태도 유효하지만
+ * (antd `ComponentsConfig` 는 컴포넌트별 alias 토큰 덮어쓰기를 허용한다), 파생 표면을
+ * 전수 열거해야 해서 전역 한 곳에 두는 편을 택했다.
+ */
+export const adminThemeToken: ThemeConfig['token'] = {
+  colorPrimary: '#0f4da8',
+  borderRadius: 10,
+  fontFamily: "'Freesentation', 'Noto Sans KR', 'Segoe UI', sans-serif",
+  fontSizeSM: MIN_VISIBLE_FONT_SIZE_PX
+};
