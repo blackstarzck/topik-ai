@@ -2,8 +2,8 @@ import { Alert, Button, Empty, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { useMemo } from 'react';
 
-import type { AsyncState } from '../../../shared/model/async-state';
-import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
+import type { AsyncState } from '@/shared/model/async-state';
+import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
 import type { AssessmentQuestionVersionEntry } from '../model/assessment-question-bank-types';
 
 const { Text } = Typography;

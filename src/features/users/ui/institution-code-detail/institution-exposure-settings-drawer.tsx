@@ -16,13 +16,13 @@ import type {
   InstitutionExposureOptions
 } from '../../model/institution-contracts-types';
 import type { NotificationApi } from './institution-code-detail-tab-types';
-import { AuditLogLink } from '../../../../shared/ui/audit-log-link/audit-log-link';
-import { ConfirmAction } from '../../../../shared/ui/confirm-action/confirm-action';
+import { AuditLogLink } from '@/shared/ui/audit-log-link/audit-log-link';
+import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
 import {
   DrawerFooter,
   DrawerTitle,
   mergeDrawerFrameStyles
-} from '../../../../shared/ui/drawer-frame/drawer-frame';
+} from '@/shared/ui/drawer-frame/drawer-frame';
 
 const { Text } = Typography;
 

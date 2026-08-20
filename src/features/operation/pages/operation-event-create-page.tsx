@@ -11,11 +11,11 @@ import {
   saveEventSafe,
   scheduleEventPublishSafe,
 } from "../api/events-service";
-import { fetchMessageOptionSourcesSafe } from "../../message/api/messages-service";
+import { fetchMessageOptionSourcesSafe } from "@/features/message/api/messages-service";
 import type {
   MessageGroup,
   MessageTemplate,
-} from "../../message/model/types";
+} from "@/features/message/model/types";
 import type { OperationEvent } from "../model/types";
 import {
   findOperationEventRewardPolicyById,
@@ -42,13 +42,13 @@ import {
   EventRewardSection,
   EventSeoSection,
 } from "../ui/operation-event-create-sections";
-import type { AsyncState } from "../../../shared/model/async-state";
-import { routerSavedState } from "../../../shared/model/router-saved-state";
+import type { AsyncState } from "@/shared/model/async-state";
+import { routerSavedState } from "@/shared/model/router-saved-state";
 import {
   AdminEditorForm,
-} from "../../../shared/ui/admin-editor-form/admin-editor-form";
-import { AdminListCard } from "../../../shared/ui/list-page-card/admin-list-card";
-import { PageTitle } from "../../../shared/ui/page-title/page-title";
+} from "@/shared/ui/admin-editor-form/admin-editor-form";
+import { AdminListCard } from "@/shared/ui/list-page-card/admin-list-card";
+import { PageTitle } from "@/shared/ui/page-title/page-title";
 
 
 export default function OperationEventCreatePage(): JSX.Element {

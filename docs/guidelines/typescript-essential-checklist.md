@@ -123,6 +123,15 @@
 * DTO를 그대로 화면에서 사용(널/타입 불일치로 런타임 버그)
 * `string`로 상태값 처리(오타가 런타임까지 감)
 
+## 14) import 경로 표기(강제)
+
+* **모듈 루트를 벗어나는 참조는 `@/` alias, 루트 안의 참조는 상대경로.**
+  * 모듈 루트 = `src/features/<feature>` · `src/shared` · `src/app`(그 밖은 `src`)
+  * 좋음: `src/features/users/pages/x.tsx` → `'../model/user-schema'`(같은 feature), `'@/shared/ui/table/admin-data-table'`(레이어 밖)
+  * 나쁨: `'../../shared/ui/table/admin-data-table'`(파일을 옮기면 깨지고, 몇 단계를 올라가는지 세어야 어느 레이어인지 알 수 있다), `'@/features/users/model/user-schema'`(같은 feature 인데 alias — 자기 것과 남의 것이 구분되지 않는다)
+* 배선: `@/*` → `src/*` 는 `tsconfig.app.json` `paths` + `vite.config.ts` `resolve.alias`(vitest 는 vite 설정을 승계).
+* 게이트: `npm run check:import-boundary`(`harness:check` 배선). **양방향으로 검사한다** — 루트를 벗어난 상대경로도, 루트 안을 가리키는 `@/` 도 실패한다.
+
 ## 13) 팀 운영 규칙(린트/리뷰 강제)
 
 * ESLint + typescript-eslint 룰로 강제:

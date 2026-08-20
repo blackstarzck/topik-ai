@@ -20,9 +20,9 @@ import {
   parseMessageTemplateMode,
   type TemplateContentFormValues
 } from '../ui/message-template-form-fields';
-import { routerSavedState } from '../../../shared/model/router-saved-state';
-import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
-import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import { routerSavedState } from '@/shared/model/router-saved-state';
+import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
+import { PageTitle } from '@/shared/ui/page-title/page-title';
 
 type MessageTemplateCreatePageProps = {
   channel: MessageChannel;

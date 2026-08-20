@@ -24,7 +24,7 @@ import type {
   UserPaymentRecord
 } from '../api/users-service';
 import type { UserLearningOverview, UserStatus, UserSummary } from '../model/types';
-import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
+import { isSupabaseConfigured } from '@/shared/api/supabase-client';
 import { formatWritingDimension } from '@/shared/model/writing-dimension-labels';
 import { StatusBadge } from '@/shared/ui/status-badge/status-badge';
 import {

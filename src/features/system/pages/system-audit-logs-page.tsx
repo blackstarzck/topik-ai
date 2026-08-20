@@ -9,25 +9,25 @@ import type { SystemAuditLogRow as AuditLogRow } from '../model/system-log-types
 import {
   getTargetTypeLabel,
   normalizeTargetType
-} from '../../../shared/model/target-type-label';
-import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
-import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
-import { PageTitle } from '../../../shared/ui/page-title/page-title';
+} from '@/shared/model/target-type-label';
+import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
+import { ListSummaryCards } from '@/shared/ui/list-summary-cards/list-summary-cards';
+import { PageTitle } from '@/shared/ui/page-title/page-title';
 import {
   SearchBar,
   SearchBarDateRange,
   SearchBarDetailField
-} from '../../../shared/ui/search-bar/search-bar';
+} from '@/shared/ui/search-bar/search-bar';
 import {
   matchesSearchDateRange,
   matchesSearchField,
   parseSearchDate
-} from '../../../shared/ui/search-bar/search-bar-utils';
-import { useSearchBarDateDraft } from '../../../shared/ui/search-bar/use-search-bar-date-draft';
-import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
-import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
-import { createTextSorter } from '../../../shared/ui/table/table-column-utils';
-import { UserNavigationLink } from '../../../shared/ui/user/user-reference';
+} from '@/shared/ui/search-bar/search-bar-utils';
+import { useSearchBarDateDraft } from '@/shared/ui/search-bar/use-search-bar-date-draft';
+import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
+import { TableRowDetailModal } from '@/shared/ui/table/table-row-detail-modal';
+import { createTextSorter } from '@/shared/ui/table/table-column-utils';
+import { UserNavigationLink } from '@/shared/ui/user/user-reference';
 
 const { Paragraph, Text } = Typography;
 

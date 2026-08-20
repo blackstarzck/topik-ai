@@ -1,4 +1,4 @@
-import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
+import { toSafeResult, withRetry } from '@/shared/api/safe-request';
 import { institutionCodesDataSource } from './institution-codes-data-source';
 import {
   addInstitutionQuestionsViaRpc,

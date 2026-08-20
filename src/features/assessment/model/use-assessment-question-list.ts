@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 
 import { fetchAssessmentQuestionSummariesSafe } from '../api/assessment-question-bank-service';
 import type { AssessmentQuestionSummary } from './assessment-question-bank-types';
-import type { AsyncState } from '../../../shared/model/async-state';
+import type { AsyncState } from '@/shared/model/async-state';
 import { useAsyncResource } from '@/shared/model/use-async-resource';
 
 export type UseAssessmentQuestionListResult = {

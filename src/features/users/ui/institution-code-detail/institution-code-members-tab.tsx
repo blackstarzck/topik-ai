@@ -25,9 +25,9 @@ import { InstitutionInviteDrawer } from './institution-invite-drawer';
 import { InstitutionMemberPolicyDrawer } from './institution-member-policy-drawer';
 import { InstitutionTabToolbar } from './institution-tab-toolbar';
 import { InvitationEmailStatusTag } from '../invitation-email-status-tag';
-import type { AsyncState } from '../../../../shared/model/async-state';
-import { ConfirmAction } from '../../../../shared/ui/confirm-action/confirm-action';
-import { AdminDataTable } from '../../../../shared/ui/table/admin-data-table';
+import type { AsyncState } from '@/shared/model/async-state';
+import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
+import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
 
 const { Text } = Typography;
 

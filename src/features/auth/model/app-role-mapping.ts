@@ -1,5 +1,5 @@
-import type { RoleKey } from '../../system/model/permission-types';
-import { roleCatalog } from '../../system/model/permission-types';
+import type { RoleKey } from '@/features/system/model/permission-types';
+import { roleCatalog } from '@/features/system/model/permission-types';
 import type { V13AppRole } from './session-types';
 
 /**

@@ -18,7 +18,7 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 
-import { usePermissionStore } from '../../features/system/model/permission-store';
+import { usePermissionStore } from '@/features/system/model/permission-store';
 import { adminMenuLabels, adminRoleLabels } from './admin-labels';
 import { AdminNotificationBell } from './admin-notification-bell';
 

@@ -15,7 +15,7 @@ import type {
   TopikWritingQuestionTagRow,
   TopikWritingTagMasterRow
 } from '../model/assessment-question-bank-types';
-import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
+import { getTargetTypeLabel } from '@/shared/model/target-type-label';
 
 const { Text, Paragraph } = Typography;
 

@@ -11,7 +11,7 @@ import type { AssessmentQuestionNumber } from '../model/assessment-question-bank
 import {
   SearchBar,
   SearchBarDetailField
-} from '../../../shared/ui/search-bar/search-bar';
+} from '@/shared/ui/search-bar/search-bar';
 
 const { Text } = Typography;
 

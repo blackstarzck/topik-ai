@@ -1,6 +1,6 @@
 import { AppApiError, createNotFoundError } from '@/shared/api/api-error';
 import { toSafeResult, withRetry } from '@/shared/api/safe-request';
-import { mockUserExists } from '../../users/api/users-service';
+import { mockUserExists } from '@/features/users/api/users-service';
 import {
   couponTemplateCategoryOptions,
   couponTemplateProductOptions,

@@ -36,17 +36,17 @@ import type {
   InstructorSearchField,
   InstructorStatus
 } from '../model/types';
-import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
-import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
-import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
-import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import { AuditLogLink } from '@/shared/ui/audit-log-link/audit-log-link';
+import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
+import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
+import { PageTitle } from '@/shared/ui/page-title/page-title';
 import {
   SearchBar,
   SearchBarDateRange,
   SearchBarDetailField
-} from '../../../shared/ui/search-bar/search-bar';
-import { useSearchBarDateDraft } from '../../../shared/ui/search-bar/use-search-bar-date-draft';
-import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
+} from '@/shared/ui/search-bar/search-bar';
+import { useSearchBarDateDraft } from '@/shared/ui/search-bar/use-search-bar-date-draft';
+import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
 
 const { Text, Title } = Typography;
 

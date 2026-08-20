@@ -29,7 +29,7 @@ import type {
   InstitutionExposureMode
 } from '../model/institution-codes-types';
 import { InstitutionExposureModeTag } from './institution-exposure-mode-tag';
-import type { AsyncState } from '../../../shared/model/async-state';
+import type { AsyncState } from '@/shared/model/async-state';
 
 const { Text } = Typography;
 

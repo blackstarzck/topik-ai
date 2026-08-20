@@ -1,7 +1,7 @@
 import { Button, Space, Tag, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 
-import type { V13AppRole } from '../../auth/model/session-types';
+import type { V13AppRole } from '@/features/auth/model/session-types';
 import type { AdminAppRoleRow } from '../api/system-permissions-service';
 import type { PermissionDefinition, RoleDefinition, RoleKey } from '../model/permission-types';
 import {

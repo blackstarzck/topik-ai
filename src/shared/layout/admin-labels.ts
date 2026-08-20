@@ -1,4 +1,4 @@
-import type { RoleKey } from '../../features/system/model/permission-types';
+import type { RoleKey } from '@/features/system/model/permission-types';
 
 export const adminMenuLabels = {
   dashboard: '대시보드',

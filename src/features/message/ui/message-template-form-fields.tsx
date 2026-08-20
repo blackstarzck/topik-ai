@@ -14,8 +14,8 @@ import type {
 import {
   DEFAULT_TINYMCE_PLUGINS,
   TinyMceHtmlEditor
-} from '../../../shared/ui/html-editor/tiny-mce-html-editor';
-import { markRequiredDescriptionItems } from '../../../shared/ui/descriptions/description-label';
+} from '@/shared/ui/html-editor/tiny-mce-html-editor';
+import { markRequiredDescriptionItems } from '@/shared/ui/descriptions/description-label';
 
 export type TemplateFormValues = {
   category: string;

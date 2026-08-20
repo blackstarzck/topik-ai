@@ -1,4 +1,4 @@
-import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
+import { toSafeResult, withRetry } from '@/shared/api/safe-request';
 import { backupDataSource } from './backup-data-source';
 import {
   createMockBackupSummary,

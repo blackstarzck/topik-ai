@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 
 import { fetchImportedTasksSafe } from '../api/imported-tasks-service';
 import type { ImportedWritingTask } from './imported-task-types';
-import type { AsyncState } from '../../../shared/model/async-state';
+import type { AsyncState } from '@/shared/model/async-state';
 import { useAsyncResource } from '@/shared/model/use-async-resource';
 
 export type UseImportedTasksResult = {

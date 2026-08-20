@@ -1,7 +1,7 @@
 import { lazy } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
-import { AdminShell } from '../../shared/layout/admin-shell';
+import { AdminShell } from '@/shared/layout/admin-shell';
 import { renderAdminRouteElement } from './route-elements';
 import {
   adminRouteDefinitions,
@@ -9,7 +9,7 @@ import {
 } from './routes';
 
 const NotFoundPage = lazy(
-  () => import('../../shared/ui/not-found/not-found-page')
+  () => import('@/shared/ui/not-found/not-found-page')
 );
 
 function renderAdminRoute(route: AdminRouteDefinition): JSX.Element {

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-import { getMockUsers } from '../../users/api/users-service';
+import { getMockUsers } from '@/features/users/api/users-service';
 import {
   createInitialMessageGroups,
   createInitialMessageHistories,

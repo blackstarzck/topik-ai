@@ -1,7 +1,7 @@
 import { toSafeResult, withRetry } from '@/shared/api/safe-request';
 import { formatUserDisplayName } from '@/shared/ui/user/user-reference';
-import { useCouponStore } from '../../commerce/model/coupon-store';
-import { getMockUserRealName } from '../../users/api/users-service';
+import { useCouponStore } from '@/features/commerce/model/coupon-store';
+import { getMockUserRealName } from '@/features/users/api/users-service';
 import { usePermissionStore } from '../model/permission-store';
 import { useSystemMetadataStore } from '../model/system-metadata-store';
 import type { SystemAuditLogRow } from '../model/system-log-types';

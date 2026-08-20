@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 import type { Session } from '@supabase/supabase-js';
 
-import { isSupabaseConfigured, supabaseClient } from '../../../shared/api/supabase-client';
-import { usePermissionStore } from '../../system/model/permission-store';
-import type { AdminPermissionAssignment } from '../../system/model/permission-types';
+import { isSupabaseConfigured, supabaseClient } from '@/shared/api/supabase-client';
+import { usePermissionStore } from '@/features/system/model/permission-store';
+import type { AdminPermissionAssignment } from '@/features/system/model/permission-types';
 import { mapAppRoleToRoleKey, permissionKeysForRole } from './app-role-mapping';
 import type { AdminSession, AuthStatus, V13AppRole } from './session-types';
 

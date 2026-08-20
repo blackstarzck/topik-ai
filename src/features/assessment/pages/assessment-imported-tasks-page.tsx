@@ -12,11 +12,11 @@ import type {
   ImportedTaskVersionDecision,
   ImportedWritingTask
 } from '../model/imported-task-types';
-import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
-import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
-import { PageTitle } from '../../../shared/ui/page-title/page-title';
-import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
-import { createTextSorter } from '../../../shared/ui/table/table-column-utils';
+import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
+import { ListSummaryCards } from '@/shared/ui/list-summary-cards/list-summary-cards';
+import { PageTitle } from '@/shared/ui/page-title/page-title';
+import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
+import { createTextSorter } from '@/shared/ui/table/table-column-utils';
 
 /**
  * 가져온 문항(인박스) 목록 — 조회 전용. 외부 공급 API(/api/writing/tasks)에서

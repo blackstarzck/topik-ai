@@ -16,9 +16,9 @@ import type {
   AssessmentQuestionVersionEntry,
   AssessmentQuestionVersionSummary
 } from '../model/assessment-question-bank-types';
-import type { AsyncState } from '../../../shared/model/async-state';
-import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
-import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import type { AsyncState } from '@/shared/model/async-state';
+import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
+import { PageTitle } from '@/shared/ui/page-title/page-title';
 import {
   buildQuestionBankListHref,
   buildQuestionDetailHref,

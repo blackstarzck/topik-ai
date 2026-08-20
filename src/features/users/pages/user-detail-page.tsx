@@ -34,14 +34,14 @@ import {
   type UserLegalConsent,
   type UserPaymentRecord
 } from '../api/users-service';
-import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
-import { usePermissionStore } from '../../system/model/permission-store';
+import { isSupabaseConfigured } from '@/shared/api/supabase-client';
+import { usePermissionStore } from '@/features/system/model/permission-store';
 import type {
   UserLearningOverview,
   UserStatus,
   UserSummary
 } from '../model/types';
-import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
+import { getTargetTypeLabel } from '@/shared/model/target-type-label';
 import {
   buildActionMeta,
   buildUserActivityRows,
@@ -62,11 +62,11 @@ import {
 } from '../ui/user-detail-columns';
 import { UserDetailLearningTab } from '../ui/user-detail-learning-tab';
 import { UserDetailProfileTab } from '../ui/user-detail-profile-tab';
-import type { AsyncState } from '../../../shared/model/async-state';
-import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
-import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
-import { PageTitle } from '../../../shared/ui/page-title/page-title';
-import { TableRowDetailModal } from '../../../shared/ui/table/table-row-detail-modal';
+import type { AsyncState } from '@/shared/model/async-state';
+import { AuditLogLink } from '@/shared/ui/audit-log-link/audit-log-link';
+import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
+import { PageTitle } from '@/shared/ui/page-title/page-title';
+import { TableRowDetailModal } from '@/shared/ui/table/table-row-detail-modal';
 
 export default function UserDetailPage(): JSX.Element {
   const { userId = '' } = useParams();

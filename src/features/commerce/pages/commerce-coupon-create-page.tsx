@@ -17,11 +17,11 @@ import {
 import dayjs from "dayjs";
 
 import { fetchCouponSafe, saveCouponSafe } from "../api/coupons-service";
-import { fetchMessageOptionSourcesSafe } from "../../message/api/messages-service";
+import { fetchMessageOptionSourcesSafe } from "@/features/message/api/messages-service";
 import type {
   MessageGroup,
   MessageTemplate,
-} from "../../message/model/types";
+} from "@/features/message/model/types";
 import {
   createCouponDraftDefaults,
   getCouponPolicyNotes,
@@ -54,14 +54,14 @@ import {
   createCouponMemoItems,
   createCouponOperationItems,
 } from "../ui/commerce-coupon-create-form-items";
-import type { AsyncState } from "../../../shared/model/async-state";
-import { routerSavedState } from "../../../shared/model/router-saved-state";
+import type { AsyncState } from "@/shared/model/async-state";
+import { routerSavedState } from "@/shared/model/router-saved-state";
 import {
   AdminEditorForm,
   AdminEditorFormSection,
-} from "../../../shared/ui/admin-editor-form/admin-editor-form";
-import { AdminListCard } from "../../../shared/ui/list-page-card/admin-list-card";
-import { PageTitle } from "../../../shared/ui/page-title/page-title";
+} from "@/shared/ui/admin-editor-form/admin-editor-form";
+import { AdminListCard } from "@/shared/ui/list-page-card/admin-list-card";
+import { PageTitle } from "@/shared/ui/page-title/page-title";
 
 const { Text } = Typography;
 

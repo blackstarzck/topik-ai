@@ -1,8 +1,8 @@
-import { toSafeResult } from '../../../shared/api/safe-request';
+import { toSafeResult } from '@/shared/api/safe-request';
 import {
   isSupabaseConfigured,
   supabaseClient
-} from '../../../shared/api/supabase-client';
+} from '@/shared/api/supabase-client';
 import {
   addCalendarDays,
   resolveLearningAnalyticsDateRange,

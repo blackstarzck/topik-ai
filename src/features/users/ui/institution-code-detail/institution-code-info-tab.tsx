@@ -17,8 +17,8 @@ import type {
 } from '../../model/institution-codes-types';
 import type { InstitutionSettings } from '../../model/institution-contracts-types';
 import type { NotificationApi } from './institution-code-detail-tab-types';
-import { AuditLogLink } from '../../../../shared/ui/audit-log-link/audit-log-link';
-import { createDescriptionLabel } from '../../../../shared/ui/descriptions/description-label';
+import { AuditLogLink } from '@/shared/ui/audit-log-link/audit-log-link';
+import { createDescriptionLabel } from '@/shared/ui/descriptions/description-label';
 
 const { Text } = Typography;
 

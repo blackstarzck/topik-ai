@@ -27,9 +27,9 @@ import type {
   CommunityPolicyCode as PolicyCode,
   CommunityPost
 } from '../model/types';
-import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
-import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
-import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
+import { AuditLogLink } from '@/shared/ui/audit-log-link/audit-log-link';
+import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
+import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
 import {
   getLatestAdminMemo,
   getMemoTypeLabel,
@@ -42,24 +42,24 @@ import {
 } from '../model/community-posts-page-schema';
 import { createCommunityPostColumns } from '../ui/community-posts-columns';
 import { CommunityPostDetailDrawer } from '../ui/community-post-detail-drawer';
-import { getTargetTypeLabel } from '../../../shared/model/target-type-label';
-import { ListSummaryCards } from '../../../shared/ui/list-summary-cards/list-summary-cards';
-import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import { getTargetTypeLabel } from '@/shared/model/target-type-label';
+import { ListSummaryCards } from '@/shared/ui/list-summary-cards/list-summary-cards';
+import { PageTitle } from '@/shared/ui/page-title/page-title';
 import {
   SearchBar,
   SearchBarDateRange,
   SearchBarDetailField
-} from '../../../shared/ui/search-bar/search-bar';
-import { useSearchBarDateDraft } from '../../../shared/ui/search-bar/use-search-bar-date-draft';
+} from '@/shared/ui/search-bar/search-bar';
+import { useSearchBarDateDraft } from '@/shared/ui/search-bar/use-search-bar-date-draft';
 import {
   matchesSearchDateRange,
   matchesSearchField,
   parseSearchDate
-} from '../../../shared/ui/search-bar/search-bar-utils';
-import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
+} from '@/shared/ui/search-bar/search-bar-utils';
+import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
 import {
   UserNavigationLink
-} from '../../../shared/ui/user/user-reference';
+} from '@/shared/ui/user/user-reference';
 
 const { Text } = Typography;
 

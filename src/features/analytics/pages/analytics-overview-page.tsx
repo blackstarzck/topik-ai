@@ -17,7 +17,7 @@ import { useCallback, useMemo } from 'react';
 import { useAsyncResource } from '@/shared/model/use-async-resource';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
-import { useCommerceStore } from '../../billing/model/commerce-store';
+import { useCommerceStore } from '@/features/billing/model/commerce-store';
 import {
   fetchAnalyticsOverviewSafe,
   type AnalyticsOverview
@@ -26,13 +26,13 @@ import {
   isAnalyticsPermissionError,
   translateAnalyticsError
 } from '../api/analytics-permission-error';
-import { usePermissionStore } from '../../system/model/permission-store';
-import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
-import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import { usePermissionStore } from '@/features/system/model/permission-store';
+import { isSupabaseConfigured } from '@/shared/api/supabase-client';
+import { PageTitle } from '@/shared/ui/page-title/page-title';
 import {
   createNumberSorter,
   createTextSorter
-} from '../../../shared/ui/table/table-column-utils';
+} from '@/shared/ui/table/table-column-utils';
 
 const { Paragraph, Text } = Typography;
 

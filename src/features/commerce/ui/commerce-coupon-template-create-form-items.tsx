@@ -17,7 +17,7 @@ import {
   toMonthlyUsageEndDate,
   type CouponTemplateFormValues,
 } from "../model/commerce-coupon-template-create-page-schema";
-import { markRequiredDescriptionItems } from "../../../shared/ui/descriptions/description-label";
+import { markRequiredDescriptionItems } from "@/shared/ui/descriptions/description-label";
 
 const { Text } = Typography;
 

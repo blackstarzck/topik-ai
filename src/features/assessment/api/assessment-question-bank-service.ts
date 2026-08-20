@@ -1,4 +1,4 @@
-import { toSafeResult, withRetry } from '../../../shared/api/safe-request';
+import { toSafeResult, withRetry } from '@/shared/api/safe-request';
 import { questionBankDataSource } from './question-bank-data-source';
 import {
   assignMockQuestionTag,

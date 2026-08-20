@@ -33,7 +33,7 @@ import type {
   CouponStatus,
   CouponValidityMode,
 } from "./coupon-types";
-import { getMessageOptionSnapshot } from "../../message/api/messages-service";
+import { getMessageOptionSnapshot } from "@/features/message/api/messages-service";
 import { formatNowMinutes as formatNow } from '@/shared/model/date-format';
 
 export type CouponPlanTier = "free" | "pro";

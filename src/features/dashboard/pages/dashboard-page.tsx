@@ -21,13 +21,13 @@ import { useCallback, useMemo } from 'react';
 import { useAsyncResource } from '@/shared/model/use-async-resource';
 import { useNavigate } from 'react-router-dom';
 
-import { useCommerceStore } from '../../billing/model/commerce-store';
+import { useCommerceStore } from '@/features/billing/model/commerce-store';
 import {
   fetchDashboardStatsSafe,
   type DashboardStats
 } from '../api/dashboard-stats-service';
-import { isSupabaseConfigured } from '../../../shared/api/supabase-client';
-import { PageTitle } from '../../../shared/ui/page-title/page-title';
+import { isSupabaseConfigured } from '@/shared/api/supabase-client';
+import { PageTitle } from '@/shared/ui/page-title/page-title';
 import { BackupStatusCard } from '../components/backup-status-card';
 
 const { Paragraph, Text } = Typography;

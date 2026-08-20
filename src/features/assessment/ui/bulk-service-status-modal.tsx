@@ -1,7 +1,7 @@
 import { Alert, Descriptions, Input, Modal, Space, Typography } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 
-import { markRequiredDescriptionItems } from '../../../shared/ui/descriptions/description-label';
+import { markRequiredDescriptionItems } from '@/shared/ui/descriptions/description-label';
 import {
   SERVICE_STATUS_LABELS,
   assessmentQuestionNumbers,

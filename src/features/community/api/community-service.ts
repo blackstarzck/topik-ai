@@ -1,8 +1,8 @@
 import { createNotFoundError } from '@/shared/api/api-error';
 import { toSafeResult, withRetry } from '@/shared/api/safe-request';
-import { useAuthStore } from '../../auth/model/auth-store';
-import { usePermissionStore } from '../../system/model/permission-store';
-import type { AdminPermissionAssignment } from '../../system/model/permission-types';
+import { useAuthStore } from '@/features/auth/model/auth-store';
+import { usePermissionStore } from '@/features/system/model/permission-store';
+import type { AdminPermissionAssignment } from '@/features/system/model/permission-types';
 import { useCommunityStore } from '../model/community-store';
 import type {
   CommunityAdminMemo,

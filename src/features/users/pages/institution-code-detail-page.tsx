@@ -27,13 +27,13 @@ import { InstitutionCodeContractTab } from '../ui/institution-code-detail/instit
 import { InstitutionCodeInfoTab } from '../ui/institution-code-detail/institution-code-info-tab';
 import { InstitutionCodeMembersTab } from '../ui/institution-code-detail/institution-code-members-tab';
 import { InstitutionCodeQuestionsTab } from '../ui/institution-code-detail/institution-code-questions-tab';
-import { usePermissionStore } from '../../system/model/permission-store';
-import type { AsyncState } from '../../../shared/model/async-state';
-import { useRouterStateNotice } from '../../../shared/model/use-router-state-notice';
-import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
-import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
-import { PageTitle } from '../../../shared/ui/page-title/page-title';
-import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
+import { usePermissionStore } from '@/features/system/model/permission-store';
+import type { AsyncState } from '@/shared/model/async-state';
+import { useRouterStateNotice } from '@/shared/model/use-router-state-notice';
+import { AuditLogLink } from '@/shared/ui/audit-log-link/audit-log-link';
+import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
+import { PageTitle } from '@/shared/ui/page-title/page-title';
+import { StatusBadge } from '@/shared/ui/status-badge/status-badge';
 
 const { Paragraph, Text } = Typography;
 

@@ -30,23 +30,23 @@ import {
   type SystemReportQuery
 } from '../model/system-report-types';
 import { usePermissionStore } from '../model/permission-store';
-import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
+import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
 import {
   DetailDrawer,
   DetailDrawerBody,
   DetailDrawerSection
-} from '../../../shared/ui/detail-drawer/detail-drawer';
-import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
-import { PageTitle } from '../../../shared/ui/page-title/page-title';
+} from '@/shared/ui/detail-drawer/detail-drawer';
+import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
+import { PageTitle } from '@/shared/ui/page-title/page-title';
 import {
   SearchBar,
   SearchBarDateRange,
   SearchBarDetailField
-} from '../../../shared/ui/search-bar/search-bar';
-import { useSearchBarDateDraft } from '../../../shared/ui/search-bar/use-search-bar-date-draft';
-import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
-import { createTextSorter } from '../../../shared/ui/table/table-column-utils';
-import { UserNavigationLink } from '../../../shared/ui/user/user-reference';
+} from '@/shared/ui/search-bar/search-bar';
+import { useSearchBarDateDraft } from '@/shared/ui/search-bar/use-search-bar-date-draft';
+import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
+import { createTextSorter } from '@/shared/ui/table/table-column-utils';
+import { UserNavigationLink } from '@/shared/ui/user/user-reference';
 
 const { Paragraph, Text } = Typography;
 const PAGE_SIZE = 20;

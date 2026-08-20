@@ -20,7 +20,7 @@ import type {
   buildCouponBenefitFieldMeta,
   CouponFormValues,
 } from "../model/commerce-coupon-create-page-schema";
-import { markRequiredDescriptionItems } from "../../../shared/ui/descriptions/description-label";
+import { markRequiredDescriptionItems } from "@/shared/ui/descriptions/description-label";
 
 const { Text } = Typography;
 

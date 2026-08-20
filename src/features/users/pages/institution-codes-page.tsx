@@ -26,27 +26,27 @@ import type {
   InstitutionExposureMode,
   InstitutionExposureModeRow
 } from '../model/institution-codes-types';
-import { usePermissionStore } from '../../system/model/permission-store';
-import type { AsyncState } from '../../../shared/model/async-state';
-import { AuditLogLink } from '../../../shared/ui/audit-log-link/audit-log-link';
-import { ConfirmAction } from '../../../shared/ui/confirm-action/confirm-action';
-import { AdminListCard } from '../../../shared/ui/list-page-card/admin-list-card';
-import { PageTitle } from '../../../shared/ui/page-title/page-title';
-import { StatusBadge } from '../../../shared/ui/status-badge/status-badge';
-import { AdminDataTable } from '../../../shared/ui/table/admin-data-table';
+import { usePermissionStore } from '@/features/system/model/permission-store';
+import type { AsyncState } from '@/shared/model/async-state';
+import { AuditLogLink } from '@/shared/ui/audit-log-link/audit-log-link';
+import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
+import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
+import { PageTitle } from '@/shared/ui/page-title/page-title';
+import { StatusBadge } from '@/shared/ui/status-badge/status-badge';
+import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
 import {
   createInfoColumnTitle,
   createStatusColumnTitle
-} from '../../../shared/ui/table/status-column-title';
+} from '@/shared/ui/table/status-column-title';
 import {
   TableActionMenu,
   type TableActionMenuItem
-} from '../../../shared/ui/table/table-action-menu';
+} from '@/shared/ui/table/table-action-menu';
 import {
   createDefinedColumnFilterProps,
   createNumberSorter,
   createTextSorter
-} from '../../../shared/ui/table/table-column-utils';
+} from '@/shared/ui/table/table-column-utils';
 
 const { Paragraph, Text } = Typography;
 

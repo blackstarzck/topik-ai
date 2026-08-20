@@ -8,9 +8,9 @@ import {
   fetchAdminUnreadCountSafe,
   markAdminNotificationReadSafe,
   markAllAdminNotificationsReadSafe
-} from '../../features/system/api/admin-notifications-service';
-import type { AdminNotification } from '../../features/system/model/admin-notification-types';
-import { resolveAdminNotificationCategoryLabel } from '../../features/system/model/admin-notification-types';
+} from '@/features/system/api/admin-notifications-service';
+import type { AdminNotification } from '@/features/system/model/admin-notification-types';
+import { resolveAdminNotificationCategoryLabel } from '@/features/system/model/admin-notification-types';
 
 const { Text } = Typography;
 
