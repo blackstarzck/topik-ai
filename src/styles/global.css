@@ -134,13 +134,13 @@ body {
 .page-title-description {
   margin-top: 6px;
   color: rgba(0, 0, 0, 0.62);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.55;
 }
 
 .page-title-meta {
   color: rgba(0, 0, 0, 0.58);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.5;
 }
 
@@ -560,7 +560,7 @@ body {
 
 .search-bar-detail-label {
   color: #667085;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
 }
 
@@ -642,7 +642,7 @@ body {
 
 .list-summary-card__hint {
   color: rgba(0, 0, 0, 0.45);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.5;
 }
 
@@ -1207,7 +1207,7 @@ body {
 }
 
 .question-tag-edit-modal__title .ant-typography {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 400;
 }
 
@@ -1270,7 +1270,7 @@ body {
   align-items: center;
   gap: 6px;
   color: inherit;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .question-tag-edit-modal__tag-list {
@@ -1557,7 +1557,7 @@ body {
   min-height: 32px;
   padding: 6px 12px;
   border-radius: 999px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   line-height: 1;
 }
@@ -1711,7 +1711,7 @@ body {
 
 .assessment-detail-page__memo-footnote {
   display: block;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .question-version-history-table .ant-table-tbody > tr.ant-table-row {

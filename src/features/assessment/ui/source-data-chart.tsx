@@ -220,7 +220,7 @@ function LegendRow({
       {items.map((item) => (
         <span
           key={item.label}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 14 }}
         >
           <span
             style={{
@@ -231,7 +231,7 @@ function LegendRow({
               flexShrink: 0
             }}
           />
-          <Text style={{ fontSize: 12 }}>
+          <Text style={{ fontSize: 14 }}>
             {item.label}
             {item.suffix ? <Text type="secondary">{` ${item.suffix}`}</Text> : null}
           </Text>
@@ -501,7 +501,7 @@ function ChartCard({ chart }: { chart: NormalizedChart }): JSX.Element {
       </div>
       {chart.surveyOrg ? (
         <div style={{ marginBottom: 4 }}>
-          <Text type="secondary" style={{ fontSize: 12 }}>
+          <Text type="secondary" style={{ fontSize: 14 }}>
             {`출처: ${chart.surveyOrg}`}
           </Text>
         </div>
@@ -522,7 +522,7 @@ export function SourceDataCharts({ sourceData }: { sourceData: unknown }): JSX.E
           margin: 0,
           maxHeight: 260,
           overflow: 'auto',
-          fontSize: 12,
+          fontSize: 14,
           background: 'rgba(0, 0, 0, 0.03)',
           padding: 8
         }}
@@ -541,7 +541,7 @@ export function SourceDataCharts({ sourceData }: { sourceData: unknown }): JSX.E
       </div>
 
       <details style={{ marginTop: 12 }}>
-        <summary style={{ cursor: 'pointer', fontSize: 12, color: '#8c8c8c' }}>
+        <summary style={{ cursor: 'pointer', fontSize: 14, color: '#8c8c8c' }}>
           원본 수치(JSON) 보기
         </summary>
         <pre
@@ -549,7 +549,7 @@ export function SourceDataCharts({ sourceData }: { sourceData: unknown }): JSX.E
             margin: '8px 0 0',
             maxHeight: 260,
             overflow: 'auto',
-            fontSize: 12,
+            fontSize: 14,
             background: 'rgba(0, 0, 0, 0.03)',
             padding: 8
           }}

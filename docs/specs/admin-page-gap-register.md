@@ -221,6 +221,16 @@
 - 🔑**검증 축 = 번들 자산 목록 해시 불변**. import 표기만 바뀌었다면 빌드 산출물은 바이트 단위로 같아야 한다 — 치환 전/후 `dist/assets` 파일명(내용 해시 포함) 146개가 완전히 동일했다(엔트리·vendor 청크 해시까지 같음). typecheck·lint·단위 테스트보다 강한 무드리프트 증명이라 이후 표기 전용 치환에도 이 축을 쓴다.
 - 함정: codemod 의 specifier 정규식은 주석 속 `import './x'` 같은 문자열에도 걸릴 수 있다 → diff 전수로 **변경 라인 427개가 모두 `import`/`from`/`export` 를 포함**하는지, 주석 라인 변경이 0인지 확인했다.
 
+### 3.16 가시 텍스트 14px 미만이 화면·전역 CSS 에 남아 있음 — **해소 (2026-08-20, 리팩토링 Phase 6a)**
+
+- 오너 규칙은 2026-07-14 에 정해졌다(가시 텍스트 14px 미만 금지, 베이스 16). 그때는 `/analytics/learning` **한 화면만** 페이지 `ConfigProvider` 로 올렸고, 규칙 원문은 어느 가이드에도 없었으며 나머지 화면과 전역 `global.css` 는 그대로 남았다.
+- 실측(2026-08-20): 14px 미만이 **33곳** — 인라인 `fontSize` 21곳(11·12·13px)과 CSS `font-size` 12곳. 전역 `global.css` 의 `.page-title-description`(13px)·`.page-title-meta`(12px) 처럼 **모든 페이지 머리글에 걸리는 것**과, 2026-07-14 에 올렸다던 `/analytics/learning` 의 KPI 툴팁(11·12·13px)까지 포함돼 있었다 — 한 화면을 올려도 **나중에 추가된 CSS 는 다시 작아진다**는 뜻이다.
+- 조치: 33곳을 14px 로 올리고(아이콘 글리프 3곳 제외), 규칙 원문을 `docs/guidelines/admin-ux-ui-design.md` 로 명문화하고, `check:typography-min-font` 게이트를 `harness:check` 에 배선했다.
+- 🔑**예외는 아이콘 글리프뿐**이다 — `<RightOutlined style={{ fontSize: 12 }} />`, `<CheckOutlined style={{ fontSize: 11 }} />`, 컬럼 도움말 아이콘 래퍼(`cursor: 'help'`, `lineHeight: 1`) 3곳. 아이콘은 텍스트가 아니라 도형이라 규칙 대상이 아니다. allowlist 는 근거와 함께 스크립트에 두고 **줄이기만 한다**(max-lines baseline 과 같은 래칫).
+- 🚨판정 기준을 "`<Text>` 인가"로 잡으면 틀린다 — `<pre>`(원본 JSON 뷰어)·`<summary>`(토글 문구)·`<span>`(범례 행)·`CSSProperties` 상수(툴팁 라벨/설명)도 전부 가시 텍스트다. 반대로 `<Text>` 가 아니어도 아이콘 크기 지정이면 대상이 아니다. **엘리먼트 종류가 아니라 "사람이 읽는 글자인가"로 갈라야 한다.**
+- 🚨**게이트 범위 한계 — 게이트 green 이 "규칙 100% 충족"은 아니다.** 검사는 `src/**` 만 보므로 **antd 자체 컴포넌트가 antd 토큰으로 그리는 12px 은 잡지 못한다.** 프로덕션 빌드 프리뷰에서 텍스트 노드 전수 computed font-size 를 감사한 결과, 우리가 쓴 값은 전부 14 이상인데 **`ant-tag` 만 12px 로 남았다**(/dashboard 12개, /users 70개, /analytics/learning 4개 — 그 밖 텍스트 노드 90·368·569개는 모두 14 이상). 원인은 전역 antd 테마에 `fontSize` 가 없어 기본 14 → 파생 `fontSizeSM` 이 12 이기 때문이다. **해소 수단은 전역 `fontSize: 16`(파생 SM=14) 하나뿐인데, 그러면 앱 전체 본문이 14→16 으로 커진다** — 2026-07-14 오너 지시는 "앱 전체가 아니라 페이지 단위로" 였고 셸 전역 적용은 결정 대기 상태였다([[typography-min-font-rule]]). 이번 PR 은 우리가 쓴 값만 올렸고 **전역 토큰은 건드리지 않았다 — 오너 결정 대기**.
+- 남은 것: Phase 6 의 나머지 절반 — **인라인 style 676곳을 디자인 토큰으로 걷어내는 작업은 토큰 기계(antd theme token vs CSS 변수 vs TS 상수)를 오너가 정해야 착수할 수 있다**. 이번 PR 은 14px 값만 올렸고 토큰화는 하지 않았다.
+
 ## 4. 모듈별 레지스트리
 
 ### 4.1 Dashboard

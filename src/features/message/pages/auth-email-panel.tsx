@@ -218,7 +218,7 @@ export function AuthEmailPanel(): JSX.Element {
       render: (_, record) => (
         <Space direction="vertical" size={0}>
           <Text strong>{AUTH_EMAIL_TYPE_LABELS[record.authType]}</Text>
-          <Text type="secondary" style={{ fontSize: 12 }}>
+          <Text type="secondary" style={{ fontSize: 14 }}>
             {AUTH_EMAIL_TYPE_DESCRIPTIONS[record.authType]}
           </Text>
         </Space>

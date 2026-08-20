@@ -41,7 +41,7 @@
     "check:learning-analytics-metadata-coverage": "node ./scripts/check-learning-analytics-metadata-coverage.mjs",
     "ci:classify": "node ./scripts/ci/classify-release-change.mjs",
     "harness:docs": "npm run check:mojibake && node ./scripts/check-doc-crosslinks.mjs && node ./scripts/check-route-doc-coverage.mjs",
-    "harness:check": "npm run check:mojibake && node ./scripts/check-doc-crosslinks.mjs && node ./scripts/check-route-doc-coverage.mjs && npm run check:message-history-boundary && npm run check:router-state-notice-boundary && npm run check:import-boundary && npm run check:duplication && npm run lint && npm run typecheck",
+    "harness:check": "npm run check:mojibake && node ./scripts/check-doc-crosslinks.mjs && node ./scripts/check-route-doc-coverage.mjs && npm run check:message-history-boundary && npm run check:router-state-notice-boundary && npm run check:import-boundary && npm run check:typography-min-font && npm run check:duplication && npm run lint && npm run typecheck",
     "harness:admin-boundary": "npm run harness:admin-boundary:local",
     "harness:admin-boundary:local": "npm run check:transfer-sot-checklist && npm run check:admin-verification-env && npm run check:client-source-secrets && npm run check:message-history-boundary && npm run check:migration-boundary && npm run check:v13-archive && npm run check:notification-cross-app-state && npm run check:notification-production-evidence",
     "harness:admin-boundary:production": "npm run harness:admin-boundary:local && npm run check:vercel-worker-readiness -- --strict-env && npm run check:notification-worker-smoke -- --dispatch && npm run check:notification-production-evidence -- --require && npm run check:admin-transfer-completion",
@@ -84,7 +84,8 @@
     "sync:tinymce": "node ./scripts/copy-tinymce-assets.mjs",
     "postinstall": "node ./scripts/copy-tinymce-assets.mjs",
     "check:bundle-budget": "node ./scripts/check-bundle-budget.mjs",
-    "check:import-boundary": "node ./scripts/check-import-boundary.mjs"
+    "check:import-boundary": "node ./scripts/check-import-boundary.mjs",
+    "check:typography-min-font": "node ./scripts/check-typography-min-font.mjs"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",

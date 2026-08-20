@@ -142,7 +142,7 @@
 
 .analytics-kpi-tooltip-content__eyebrow {
   color: #91caff;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.04em;
 }
@@ -163,7 +163,7 @@
 
 .analytics-kpi-tooltip-content__summary > span {
   color: rgb(255 255 255 / 60%);
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 600;
 }
 
@@ -193,14 +193,14 @@
 
 .analytics-kpi-tooltip-content__details dt {
   color: rgb(255 255 255 / 62%);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
 }
 
 .analytics-kpi-tooltip-content__details dd {
   margin: 0;
   color: rgb(255 255 255 / 90%);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .analytics-kpi-tooltip-content__caution dt {

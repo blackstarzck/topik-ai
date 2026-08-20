@@ -409,7 +409,7 @@ export function QuestionTagEditModal({
                     {isSelected ? (
                       <RightOutlined style={{ fontSize: 12 }} />
                     ) : (
-                      <Text type="secondary" style={{ fontSize: 12 }}>
+                      <Text type="secondary" style={{ fontSize: 14 }}>
                         {tagsByGroup.get(group)?.length ?? 0}
                       </Text>
                     )}
@@ -515,7 +515,7 @@ export function QuestionTagEditModal({
             {focusedMaster ? (
               <Space direction="vertical" size={6} style={{ width: '100%' }}>
                 <Text strong>{focusedMaster.tagNameKo}</Text>
-                <Text type="secondary" style={{ fontSize: 12 }}>
+                <Text type="secondary" style={{ fontSize: 14 }}>
                   {focusedMaster.tagCode} · {focusedMaster.tagGroup}
                 </Text>
                 {focusedMaster.description ? (
@@ -525,7 +525,7 @@ export function QuestionTagEditModal({
                 ) : null}
                 {focusedMaster.usageRule ? (
                   <div>
-                    <Text type="secondary" style={{ fontSize: 12 }}>
+                    <Text type="secondary" style={{ fontSize: 14 }}>
                       운영 가이드
                     </Text>
                     <Paragraph type="secondary" style={{ marginBottom: 0 }}>

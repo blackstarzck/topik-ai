@@ -197,6 +197,13 @@
 - URL 파라미터로 목록, 필터, 탭 상태를 복원합니다.
 - Drawer나 편집 패널을 닫아도 목록 필터와 선택 상태는 가능한 한 유지합니다.
 
+## 타이포 최소 크기(강제)
+
+- **화면에 보이는 텍스트는 14px 미만을 쓰지 않는다.** antd 기본이 14 이므로, 인라인 `fontSize` 나 페이지 CSS 로 그보다 작게 덮어쓰지 않는다는 뜻이다.
+- 예외는 **아이콘 글리프 크기**뿐이다 — 아이콘은 텍스트가 아니라 도형이라 12px 등이 정상이다. 예외는 `scripts/check-typography-min-font.mjs` 의 allowlist 에 근거와 함께 등재하며 **줄이기만 한다**.
+- 게이트: `npm run check:typography-min-font`(`harness:check` 배선). `src/**` 의 인라인 `fontSize` 와 `*.css` 의 `font-size` 를 함께 본다.
+- 함정: antd cssinjs 는 페이지 CSS 보다 늦게 주입되므로, `.ant-table` 같은 antd 루트를 덮을 때 명시도가 동점이면 antd 가 이긴다 — `.패널클래스.ant-card .ant-table` 처럼 클래스 두 개로 올려야 실제로 적용된다.
+
 ## 사용자 표시 규칙
 
 - 테이블에서 사용자 또는 사용자 계정 참조 셀은 raw ID를 단독으로 노출하지 않고 `이름 (ID)` 형식의 공통 `table-navigation-link`로 표시합니다.
