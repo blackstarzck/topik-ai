@@ -73,7 +73,8 @@ const meta: UsersWorkbookMeta = {
 const baseExportOptions: ExportUsersOptions = {
   reason: '테스트',
   includeFullPhone: false,
-  affiliation: null,
+  // 실제 호출부(users-page)는 `query.affiliation || undefined` 를 넘긴다 — null 이 아니다.
+  affiliation: undefined,
   scope: 'filters',
   selectedUserIds: [],
   filters: {

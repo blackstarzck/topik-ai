@@ -27,7 +27,9 @@ export type AdminUserRpcRow = {
   app_role: string;
   status: string;
   last_sign_in_at: string | null;
-  created_at: string;
+  // postgres `returns table` 컬럼은 항상 nullable 이다 — mapRpcRow 도 이미 null 을
+  // 처리한다(toDateTimeSeconds 가 null 을 받아 '' 를 돌려준다).
+  created_at: string | null;
 };
 
 export type ChangeAdminAppRolePayload = {
