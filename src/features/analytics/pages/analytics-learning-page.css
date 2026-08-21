@@ -1,11 +1,11 @@
 /* 타이포 기준(오너 지시 2026-07-14): 이 페이지 가시 텍스트는 14px 미만 금지.
    antd 컴포넌트는 페이지 ConfigProvider(token.fontSize=16)로 베이스 16px·SM 14px. */
 .analytics-learning-page {
-  --analytics-primary: #0958d9;
-  --analytics-surface: #ffffff;
-  --analytics-subtle: #f5f8fc;
+  --analytics-primary: var(--admin-analytics-primary);
+  --analytics-surface: var(--admin-surface-default);
+  --analytics-subtle: var(--admin-analytics-subtle);
   min-width: 0;
-  color: #111827;
+  color: var(--admin-analytics-text-strong);
   transition: margin-right 180ms ease;
 }
 
@@ -47,9 +47,9 @@
 
 .analytics-condition-tags .ant-tag {
   margin: 0;
-  border-color: #d6e4ff;
-  background: #f0f5ff;
-  color: #1d4ed8;
+  border-color: var(--admin-analytics-tag-border);
+  background: var(--admin-analytics-tag-bg);
+  color: var(--admin-doc-accent-strong);
   font-size: 14px;
 }
 
@@ -95,7 +95,7 @@
 }
 
 .analytics-kpi-category {
-  color: #1668dc;
+  color: var(--admin-analytics-category-text);
   font-size: 14px;
   font-weight: 650;
 }
@@ -113,19 +113,19 @@
   width: 30px;
   min-width: 30px;
   height: 30px;
-  color: #475569;
+  color: var(--admin-chart-legend-text);
 }
 
 .analytics-kpi-tooltip.ant-tooltip {
   max-width: min(420px, calc(100vw - 32px));
-  --antd-arrow-background-color: #1f1f1f;
+  --antd-arrow-background-color: var(--admin-tooltip-bg);
 }
 
 .analytics-kpi-tooltip .ant-tooltip-inner {
   padding: 0;
   overflow: hidden;
-  background: #1f1f1f;
-  box-shadow: 0 12px 30px rgb(15 23 42 / 28%);
+  background: var(--admin-tooltip-bg);
+  box-shadow: 0 12px 30px var(--admin-tooltip-shadow);
 }
 
 .analytics-kpi-tooltip-content {
@@ -137,18 +137,18 @@
   display: grid;
   gap: 2px;
   padding: 14px 16px 11px;
-  border-bottom: 1px solid rgb(255 255 255 / 14%);
+  border-bottom: 1px solid var(--admin-tooltip-header-divider);
 }
 
 .analytics-kpi-tooltip-content__eyebrow {
-  color: #91caff;
+  color: var(--admin-tooltip-eyebrow);
   font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.04em;
 }
 
 .analytics-kpi-tooltip-content__title {
-  color: #ffffff;
+  color: var(--admin-surface-default);
   font-size: 17px;
   line-height: 1.35;
 }
@@ -157,19 +157,19 @@
   display: grid;
   gap: 4px;
   padding: 11px 16px 12px;
-  background: rgb(255 255 255 / 5%);
-  border-bottom: 1px solid rgb(255 255 255 / 10%);
+  background: var(--admin-tooltip-summary-bg);
+  border-bottom: 1px solid var(--admin-tooltip-divider);
 }
 
 .analytics-kpi-tooltip-content__summary > span {
-  color: rgb(255 255 255 / 60%);
+  color: var(--admin-tooltip-summary-muted);
   font-size: 14px;
   font-weight: 600;
 }
 
 .analytics-kpi-tooltip-content__summary p {
   margin: 0;
-  color: #ffffff;
+  color: var(--admin-surface-default);
   font-size: 14px;
 }
 
@@ -184,7 +184,7 @@
   grid-template-columns: 70px minmax(0, 1fr);
   gap: 12px;
   padding: 9px 0;
-  border-bottom: 1px solid rgb(255 255 255 / 10%);
+  border-bottom: 1px solid var(--admin-tooltip-divider);
 }
 
 .analytics-kpi-tooltip-content__details > div:last-child {
@@ -192,19 +192,19 @@
 }
 
 .analytics-kpi-tooltip-content__details dt {
-  color: rgb(255 255 255 / 62%);
+  color: var(--admin-tooltip-term);
   font-size: 14px;
   font-weight: 600;
 }
 
 .analytics-kpi-tooltip-content__details dd {
   margin: 0;
-  color: rgb(255 255 255 / 90%);
+  color: var(--admin-tooltip-definition);
   font-size: 14px;
 }
 
 .analytics-kpi-tooltip-content__caution dt {
-  color: #fcd34d;
+  color: var(--admin-tooltip-caution);
 }
 
 .analytics-kpi-value-row {
@@ -217,7 +217,7 @@
 }
 
 .analytics-kpi-value {
-  color: #0a0a0a;
+  color: var(--admin-kpi-value-text);
   font-size: clamp(25px, 2vw, 31px);
   font-weight: 500;
   line-height: 1.15;
@@ -226,7 +226,7 @@
 }
 
 .analytics-kpi-unit {
-  color: #111827;
+  color: var(--admin-analytics-text-strong);
   font-size: 14px;
 }
 
@@ -240,18 +240,18 @@
 
 .analytics-learning-trend.is-good,
 .is-positive {
-  color: #047857;
+  color: var(--admin-delta-positive);
 }
 
 .analytics-learning-trend.is-bad,
 .is-negative {
-  color: #b42318;
+  color: var(--admin-delta-negative);
 }
 
 .analytics-kpi-helper {
   margin-top: auto;
   overflow: hidden;
-  color: rgba(0, 0, 0, 0.58);
+  color: var(--admin-page-title-meta);
   font-size: 14px;
   line-height: 1.4;
   text-overflow: ellipsis;
@@ -275,7 +275,7 @@
 
 .topic-performance-table .ant-table-thead > tr > th:last-child,
 .topic-performance-table .ant-table-tbody > tr > td:last-child {
-  border-inline-start: 20px solid #ffffff;
+  border-inline-start: 20px solid var(--admin-surface-default);
 }
 
 .topic-submission-chart__heading {
@@ -309,11 +309,11 @@
 }
 
 .topic-submission-chart__track {
-  fill: #eef2f7;
+  fill: var(--admin-chart-track-bg);
 }
 
 .topic-submission-chart__bar {
-  fill: #2563eb;
+  fill: var(--admin-doc-accent);
 }
 
 .topic-submission-chart__value {
@@ -381,7 +381,7 @@
   display: block;
   margin-top: 8px;
   padding: 0 2px;
-  color: rgba(0, 0, 0, 0.58);
+  color: var(--admin-page-title-meta);
   font-size: 14px;
   line-height: 1.45;
 }
@@ -397,7 +397,7 @@
   flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 16px;
-  color: #475569;
+  color: var(--admin-chart-legend-text);
   font-size: 14px;
 }
 
@@ -429,7 +429,7 @@
   height: 27px;
   overflow: hidden;
   border-radius: 2px;
-  background: #eef2f7;
+  background: var(--admin-chart-track-bg);
 }
 
 .score-distribution-segment {
@@ -438,12 +438,12 @@
   justify-content: center;
   min-width: 0;
   overflow: hidden;
-  color: #ffffff;
+  color: var(--admin-surface-default);
   font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
-  border-right: 1px solid rgba(255, 255, 255, 0.7);
+  border-right: 1px solid var(--admin-segment-divider);
 }
 
 .pdf-usage-panel .ant-card-body {
@@ -461,9 +461,9 @@
 .pdf-hierarchy {
   min-width: 0;
   padding: 12px;
-  border: 1px solid #e5eaf0;
+  border: 1px solid var(--admin-hierarchy-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--admin-surface-default);
 }
 
 .pdf-composition {
@@ -485,9 +485,9 @@
   gap: 2px;
   min-width: 0;
   padding: 9px 8px;
-  border: 1px solid #f0f0f0;
+  border: 1px solid var(--admin-border-secondary);
   border-radius: 6px;
-  background: #fbfdff;
+  background: var(--admin-stat-tile-bg);
 }
 
 .pdf-usage-stats .ant-typography {
@@ -512,7 +512,7 @@
 
 .pdf-usage-stats > div > small {
   overflow: hidden;
-  color: rgba(0, 0, 0, 0.58);
+  color: var(--admin-page-title-meta);
   font-size: 14px;
   line-height: 1.35;
   text-overflow: ellipsis;
@@ -548,9 +548,9 @@
   width: min(176px, 60vw);
   aspect-ratio: 1;
   flex: 0 0 auto;
-  border: 1px solid #dbe4f0;
+  border: 1px solid var(--admin-doc-card-border);
   border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 1px 3px var(--admin-panel-shadow-color);
 }
 
 .pdf-hierarchy__table .ant-table {
@@ -558,7 +558,7 @@
 }
 
 .pdf-hierarchy__table .ant-table-thead > tr > th {
-  color: #475569;
+  color: var(--admin-chart-legend-text);
   font-weight: 600;
 }
 
@@ -577,7 +577,7 @@
 
 .pdf-hierarchy__table .pdf-hierarchy-row.is-zero .pdf-hierarchy-label,
 .pdf-hierarchy__table .pdf-hierarchy-row.is-zero .pdf-hierarchy-count {
-  color: #64748b;
+  color: var(--admin-hierarchy-zero-text);
 }
 
 .pdf-hierarchy__table .ant-table-row-expand-icon:focus-visible {
@@ -623,7 +623,7 @@
   height: 8px;
   overflow: hidden;
   border-radius: 999px;
-  background: #e8eef7;
+  background: var(--admin-usage-track-bg);
 }
 
 .pdf-hierarchy-count__track > span {
@@ -644,11 +644,11 @@
 }
 
 .pdf-hierarchy-count small {
-  color: rgba(0, 0, 0, 0.58);
+  color: var(--admin-page-title-meta);
 }
 
 .analytics-condition-drawer-root .ant-drawer-content-wrapper {
-  box-shadow: -4px 0 18px rgba(15, 23, 42, 0.12);
+  box-shadow: -4px 0 18px var(--admin-panel-shadow-color);
 }
 
 .analytics-condition-drawer-root .ant-drawer-header {
@@ -661,7 +661,7 @@
 }
 
 .analytics-condition-drawer-root .ant-drawer-footer {
-  background: #ffffff;
+  background: var(--admin-surface-default);
 }
 
 .analytics-condition-drawer-root .detail-drawer__footer {
@@ -690,7 +690,7 @@
   flex-wrap: wrap;
   gap: 8px;
   padding: 10px 0;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--admin-border-secondary);
   font-size: 14px;
 }
 
@@ -743,7 +743,7 @@
 .question-checkbox-group {
   display: grid;
   grid-template-columns: 1fr;
-  border: 1px solid #d9d9d9;
+  border: 1px solid var(--admin-border);
   border-radius: 6px;
   overflow: hidden;
 }
@@ -752,7 +752,7 @@
   min-height: 40px;
   margin: 0;
   padding: 8px 10px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--admin-border-secondary);
 }
 
 .question-checkbox-group .ant-checkbox-wrapper:last-child {
@@ -770,9 +770,9 @@
 .condition-summary {
   margin-top: 14px;
   padding: 10px;
-  border: 1px solid #d9d9d9;
+  border: 1px solid var(--admin-border);
   border-radius: 7px;
-  background: #f8fafc;
+  background: var(--admin-selected-bar-bg);
 }
 
 @media (max-width: 1280px) {

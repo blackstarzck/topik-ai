@@ -216,6 +216,10 @@
 - `display`/`flex`/`width`/`position` 처럼 **구조 배치는 토큰 대상이 아니다** — 인라인으로 둔다.
 - 앱 고유값(사이드바 브랜드색, 로그인 배경, 차트 눈금선 등)도 인라인에 흩지 않고 `APP_COLOR` 에 모은다.
 - 예외는 **색이 무엇을 뜻하는가**로 가른다 — 데이터 계열 팔레트(차트 시리즈)와 제3자 브랜드색(소셜 로그인 마크)은 대상이 아니다. `scripts/check-design-tokens.mjs` 의 예외 목록에 근거와 함께 등재하며 **줄이기만 한다**.
+- **CSS 파일에는 색 리터럴을 두지 않는다** — `var(--admin-*)` 만 쓴다. CSS 는 TS 모듈을 import 할 수 없으므로 값은 `design-tokens.ts` 의 `CSS_COLOR_VARIABLES` 가 소유하고, 거기서 생성한 `src/styles/generated-design-tokens.css` 가 변수를 내려준다.
+  - 새 색이 필요하면 **CSS 를 고치지 말고** `CSS_COLOR_VARIABLES` 에 추가한 뒤 `npm run gen:design-token-css` 로 재생성하고 **생성물을 커밋한다**. 커밋본이 낡으면 `npm run check:design-token-css` 가 막는다.
+  - 변수 파일은 `main.tsx` 에서 `global.css` **보다 먼저** import 해야 한다.
+  - 값을 옮기는 작업의 검증 축은 **computed color 집합 불변**이다(값별 등장 횟수는 일시적 노드 때문에 흔들리므로 빼고 비교한다).
 - 🚨**antd 시드 토큰 중 `colorPrimary` 에서 파생되지 않는 것이 있다** — `colorLink`(링크·링크 Button)와 `colorInfo`(정보 상태) 는 별도 시드다. 브랜드색을 바꿀 때 이 둘을 같이 보지 않으면 링크만 antd 기본 파랑으로 남는다.
 - 게이트: `npm run check:design-tokens`(`harness:check` 배선). 값 고정은 `tests/unit/design-tokens.test.ts` 가 antd 계산값과 직접 비교한다.
 
