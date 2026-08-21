@@ -8,6 +8,7 @@ import { adminThemeToken } from '../../src/app/theme';
 import {
   APP_COLOR,
   CSS_COLOR_VARIABLES,
+  CSS_FONT_VARIABLES,
   COLOR,
   FONT_SIZE,
   ICON_SIZE,
@@ -47,12 +48,54 @@ describe('디자인 토큰', () => {
     });
   });
 
-  it('글자 크기는 antd fontSize 스케일과 같다(KPI 전용값만 앱 고유)', () => {
+  it('글자 크기는 antd fontSize 스케일과 같다(metric 만 앱 고유)', () => {
     expect(FONT_SIZE.sm).toBe(designToken.fontSizeSM);
     expect(FONT_SIZE.base).toBe(designToken.fontSize);
     expect(FONT_SIZE.lg).toBe(designToken.fontSizeLG);
     expect(FONT_SIZE.xl).toBe(designToken.fontSizeXL);
+    expect(FONT_SIZE.heading3).toBe(designToken.fontSizeHeading3);
+    expect(FONT_SIZE.heading2).toBe(designToken.fontSizeHeading2);
+    expect(FONT_SIZE.heading1).toBe(designToken.fontSizeHeading1);
     expect(FONT_SIZE.metric).toBe(28);
+  });
+
+  /**
+   * 스케일이 두 벌이 되지 않게 하는 단정 — CSS 가 받는 값과 TS 가 쓰는 값이 **같은 숫자**여야
+   * 한다. 게이트(`check:typography-min-font`)는 리터럴이 없는지만 보고, 브리지가 잘못된
+   * 값을 내려도 막지 못한다.
+   */
+  it('CSS 글자 크기 변수는 FONT_SIZE 와 같은 값을 내려준다', () => {
+    const expected = Object.fromEntries(
+      Object.entries(FONT_SIZE).map(([key, value]) => [`font-${key}`, `${value}px`])
+    );
+    expect(CSS_FONT_VARIABLES).toEqual(expected);
+  });
+
+  it('CSS 글자 크기 변수도 최소 크기를 지킨다', () => {
+    for (const [name, value] of Object.entries(CSS_FONT_VARIABLES)) {
+      expect(Number.parseFloat(value), name).toBeGreaterThanOrEqual(14);
+    }
+  });
+
+  /**
+   * antd 가 그리는 크기와 우리가 쓰는 크기가 같은 스케일에서 나오는지 — `metric` 을 뺀 모든
+   * 단계가 antd 파생값 집합에 실제로 존재해야 한다. 누군가 `lg: 17` 처럼 손으로 적으면
+   * 여기서 걸린다.
+   */
+  it('metric 을 뺀 모든 단계가 antd 파생 스케일의 값이다', () => {
+    const antdScale = new Set([
+      designToken.fontSizeSM,
+      designToken.fontSize,
+      designToken.fontSizeLG,
+      designToken.fontSizeXL,
+      designToken.fontSizeHeading3,
+      designToken.fontSizeHeading2,
+      designToken.fontSizeHeading1
+    ]);
+    for (const [key, value] of Object.entries(FONT_SIZE)) {
+      if (key === 'metric') continue;
+      expect(antdScale.has(value), `FONT_SIZE.${key} = ${value}`).toBe(true);
+    }
   });
 
   it('색은 antd 토큰과 같다', () => {

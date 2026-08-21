@@ -14,7 +14,19 @@ import { fileURLToPath } from 'node:url';
  * - `src/**` 의 인라인 `fontSize: <숫자>`(px 단위 숫자 리터럴)
  * - `src/**` 의 `*.css` 의 `font-size: <숫자>px`
  *
- * 예외는 **아이콘 글리프 크기**뿐이다 — 아이콘은 텍스트가 아니라 도형이라 14 미만이 정상이다.
+ * 두 가지를 본다.
+ * 1. **최소 크기** — 14px 미만 금지(오너 지시 2026-07-14).
+ * 2. **스케일 출처** — 글자 크기 숫자는 `FONT_SIZE`(TS) 와 `var(--admin-font-*)`(CSS) 에서만
+ *    나와야 한다. 리터럴은 값이 규칙을 지키더라도 위반이다.
+ *
+ * 🚨(2)를 나중에 붙인 이유 — 최소값만 보던 때 CSS 50곳이 리터럴이었고 그중 5곳이 스케일에
+ * 없는 값이었다(17px 3곳·22px 1곳·`clamp(25px, 2vw, 31px)` 1곳). 전부 14 이상이라
+ * 게이트는 green 이었다. **"규칙을 지키는 리터럴"이 스케일을 두 벌로 만든다** — 그래서 값이
+ * 아니라 출처를 검사한다(오너 결정 2026-08-21: base 14 하나에서 파생한 스케일을 antd 와
+ * 우리 컴포넌트가 똑같이 쓴다).
+ *
+ * 예외는 **아이콘 글리프 크기**와 **스케일 원본 파일**뿐이다 — 아이콘은 텍스트가 아니라
+ * 도형이라 14 미만이 정상이고, 원본 파일은 숫자를 처음 정하는 곳이라 리터럴이 있어야 한다.
  * 예외는 아래 allowlist 에 파일·근거와 함께 명시하며 **줄이기만 한다**(max-lines baseline 과
  * 같은 래칫 정책). 새 예외를 추가하려면 그 값이 텍스트가 아니라는 근거가 필요하다.
  *
@@ -34,6 +46,13 @@ const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const SRC_DIR = path.join(ROOT_DIR, 'src');
 const THEME_FILE = 'src/app/theme.ts';
 const MIN_FONT_PX = 14;
+
+/**
+ * 스케일 숫자를 **처음 정하는** 파일 — 여기서는 리터럴이 정상이다.
+ *
+ * 그래도 최소값 검사는 그대로 받는다(원본이 12 를 선언하면 앱 전체가 12 가 되므로).
+ */
+const SCALE_SOURCE_FILES = new Set([THEME_FILE, 'src/shared/styles/design-tokens.ts']);
 
 /** 아이콘 글리프 크기 예외. 줄이기만 하고 늘리지 않는다. */
 const ICON_GLYPH_ALLOWLIST = [
@@ -181,9 +200,21 @@ function collectViolations() {
           ?? /fontSize="(\d+(?:\.\d+)?)(?:px)?"/.exec(line);
       if (!match) return;
       const size = Number(match[1]);
-      if (size >= MIN_FONT_PX) return;
       if (isAllowed(posixFile, lines, index)) return;
-      violations.push(`${posixFile}:${index + 1}: ${match[0]} — 가시 텍스트는 ${MIN_FONT_PX}px 이상이어야 합니다.`);
+
+      if (size < MIN_FONT_PX) {
+        violations.push(
+          `${posixFile}:${index + 1}: ${match[0]} — 가시 텍스트는 ${MIN_FONT_PX}px 이상이어야 합니다.`
+        );
+        return;
+      }
+      // 값이 규칙을 지켜도 **리터럴 자체**가 스케일을 두 벌로 만든다.
+      if (SCALE_SOURCE_FILES.has(posixFile)) return;
+      violations.push(
+        `${posixFile}:${index + 1}: ${match[0]} — 글자 크기 리터럴 금지. `
+          + (isCss ? '`var(--admin-font-*)`' : '`FONT_SIZE.*`')
+          + ' 를 쓰세요(스케일 원본 = src/shared/styles/design-tokens.ts).'
+      );
     });
   }
 
@@ -191,7 +222,14 @@ function collectViolations() {
 }
 
 /**
- * antd 소형 텍스트 파생 기준값(`fontSizeSM`)을 테마가 14 이상으로 선언하는지 본다.
+ * 테마가 선언하는 **두 기준값**을 본다 — 프로젝트 base(`fontSize`)와 소형 파생
+ * 기준값(`fontSizeSM`).
+ *
+ * 🚨 base 검사는 나중에 붙였다. base 를 명시 선언으로 바꾼 직후 red 검증에서
+ * `BASE_FONT_SIZE_PX = 12` 를 주입했더니 **게이트가 통과했다** — 리터럴 스캐너는
+ * `fontSize:` 패턴만 보므로 `BASE_FONT_SIZE_PX = 12` 를 못 보고, 테마 검사는
+ * `fontSizeSM` 만 봤다. base 가 스케일의 유일한 출처가 된 뒤로는 이 한 줄이 앱 전체
+ * 글자 크기를 정하므로, 여기가 뚫리면 나머지 검사가 전부 무의미하다.
  * 값 자체는 단위 테스트(`tests/unit/admin-theme-token.test.ts`)가 실물 import 로 확인하고,
  * 여기서는 harness:check 단독 실행에서도 선언 누락을 잡도록 소스 텍스트로 한 번 더 막는다.
  */
@@ -214,9 +252,32 @@ function collectThemeViolations() {
     ];
   }
 
+  const problems = [];
   const declared = match[1] === undefined ? MIN_FONT_PX : Number(match[1]);
-  if (declared >= MIN_FONT_PX) return [];
-  return [`${THEME_FILE}: fontSizeSM ${declared} — 소형 텍스트 기준값도 ${MIN_FONT_PX}px 이상이어야 합니다.`];
+  if (declared < MIN_FONT_PX) {
+    problems.push(
+      `${THEME_FILE}: fontSizeSM ${declared} — 소형 텍스트 기준값도 ${MIN_FONT_PX}px 이상이어야 합니다.`
+    );
+  }
+
+  // 프로젝트 base — 스케일 전 단계가 여기서 파생하므로 이 한 줄이 앱 전체를 정한다.
+  const baseConst = /BASE_FONT_SIZE_PX\s*=\s*(\d+(?:\.\d+)?)/.exec(executable);
+  if (!baseConst) {
+    problems.push(
+      `${THEME_FILE}: \`BASE_FONT_SIZE_PX\` 선언이 없습니다 — base 가 antd 기본값 상속으로 돌아갑니다.`
+    );
+  } else if (Number(baseConst[1]) < MIN_FONT_PX) {
+    problems.push(
+      `${THEME_FILE}: BASE_FONT_SIZE_PX ${baseConst[1]} — 본문 base 는 ${MIN_FONT_PX}px 이상이어야 합니다(스케일 전 단계가 여기서 파생).`
+    );
+  }
+  if (!/fontSize:\s*BASE_FONT_SIZE_PX/.test(executable)) {
+    problems.push(
+      `${THEME_FILE}: 테마 토큰에 \`fontSize: BASE_FONT_SIZE_PX\` 가 없습니다 — 상수만 있고 antd 에 전달되지 않으면 base 는 여전히 상속값입니다.`
+    );
+  }
+
+  return problems;
 }
 
 const violations = [...collectViolations(), ...collectThemeViolations()];
@@ -227,9 +288,11 @@ if (violations.length > 0) {
     console.error(`  - ${violation}`);
   }
   console.error(`  아이콘 글리프 크기라면 ${path.basename(fileURLToPath(import.meta.url))} 의 ICON_GLYPH_ALLOWLIST 에 근거와 함께 등재하세요.`);
+  console.error('  스케일에 없는 크기가 정말 필요하면 FONT_SIZE 에 이름과 근거를 붙여 추가하세요(예: metric 28).');
   process.exit(1);
 }
 
 console.log(
-  `Typography minimum font check passed (최소 ${MIN_FONT_PX}px, 아이콘 예외 ${ICON_GLYPH_ALLOWLIST.length}건, 테마 fontSizeSM 확인).`
+  `Typography check passed (최소 ${MIN_FONT_PX}px + 리터럴 금지, 아이콘 예외 ${ICON_GLYPH_ALLOWLIST.length}건, `
+    + `스케일 원본 ${SCALE_SOURCE_FILES.size}개, 테마 base·fontSizeSM 확인).`
 );

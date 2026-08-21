@@ -4,7 +4,7 @@ import { cwd } from 'node:process';
 import { theme } from 'antd';
 import { describe, expect, it } from 'vitest';
 
-import { MIN_VISIBLE_FONT_SIZE_PX, adminThemeToken } from '../../src/app/theme';
+import { BASE_FONT_SIZE_PX, MIN_VISIBLE_FONT_SIZE_PX, adminThemeToken } from '../../src/app/theme';
 
 /**
  * 가시 텍스트 최소 14px 규칙 중 **antd 가 자기 토큰으로 그리는 표면**을 고정한다.
@@ -19,11 +19,30 @@ describe('admin antd 테마 토큰', () => {
     expect(adminThemeToken?.fontSizeSM).toBeGreaterThanOrEqual(MIN_VISIBLE_FONT_SIZE_PX);
   });
 
-  it('본문 크기를 임의로 키우지 않는다(설정하더라도 최소 크기 이상)', () => {
-    const bodyFontSize = adminThemeToken?.fontSize;
-    if (bodyFontSize !== undefined) {
-      expect(bodyFontSize).toBeGreaterThanOrEqual(MIN_VISIBLE_FONT_SIZE_PX);
-    }
+  /**
+   * base 를 **상속이 아니라 선언**으로 두는 것이 이 테스트의 요점이다.
+   *
+   * 지정하지 않으면 프로젝트의 base 가 antd seed 기본값이 되고, antd 가 그 값을 바꾸면
+   * 우리 스케일 전 단계가 조용히 따라 움직인다. 그러면 "우리 결정"이라는 근거가 사라진다.
+   */
+  it('본문 base 를 antd 상속이 아니라 명시로 선언한다', () => {
+    expect(adminThemeToken?.fontSize).toBe(BASE_FONT_SIZE_PX);
+  });
+
+  it('본문 base 는 오너 결정값 14 다(2026-08-21)', () => {
+    expect(BASE_FONT_SIZE_PX).toBe(14);
+    expect(BASE_FONT_SIZE_PX).toBeGreaterThanOrEqual(MIN_VISIBLE_FONT_SIZE_PX);
+  });
+
+  /**
+   * 🚨 base 14 에서는 `sm` 이 base 와 같아진다 — antd 자연 파생은 12 인데 최소 14 규칙이
+   * 12 를 금지하므로 올릴 수 있는 최소가 14 = base 다. 이걸 "버그"로 보고 sm 을 12 로
+   * 되돌리거나, base 만 16 으로 올려 앱 전체를 키우는 것을 둘 다 막는다.
+   */
+  it('sm 이 base 와 같다는 사실을 알고 있다(두 규칙의 귀결)', () => {
+    const derived = theme.getDesignToken({ token: adminThemeToken });
+    expect(derived.fontSizeSM).toBe(derived.fontSize);
+    expect(theme.getDesignToken({ token: { fontSize: BASE_FONT_SIZE_PX } }).fontSizeSM).toBe(12);
   });
 
   /**

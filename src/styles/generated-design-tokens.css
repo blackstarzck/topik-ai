@@ -1,8 +1,9 @@
 /* 생성 파일 — 직접 편집하지 마세요. */
-/* 원본: src/shared/styles/design-tokens.ts 의 CSS_COLOR_VARIABLES */
+/* 원본: src/shared/styles/design-tokens.ts 의 CSS_COLOR_VARIABLES + CSS_FONT_VARIABLES */
 /* 재생성: npm run gen:design-token-css */
 
 :root {
+  /* 색 */
   --admin-color-primary: #0f4da8;
   --admin-color-error: #ff4d4f;
   --admin-color-error-hover: #ff7875;
@@ -87,4 +88,14 @@
   --admin-tooltip-caution: #fcd34d;
   --admin-usage-track-bg: #e8eef7;
   --admin-chart-track-bg: #eef2f7;
+
+  /* 글자 크기 — 스케일 원본은 FONT_SIZE, base 는 theme.ts 의 BASE_FONT_SIZE_PX */
+  --admin-font-sm: 14px;
+  --admin-font-base: 14px;
+  --admin-font-lg: 16px;
+  --admin-font-xl: 20px;
+  --admin-font-heading3: 24px;
+  --admin-font-heading2: 30px;
+  --admin-font-heading1: 38px;
+  --admin-font-metric: 28px;
 }
