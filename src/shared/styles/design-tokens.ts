@@ -54,19 +54,43 @@ export const RADIUS = {
 } as const;
 
 /**
- * 글자 크기 — antd fontSize 계열과 1:1. 가시 텍스트 최소 14px 규칙([[typography-min-font-rule]])
- * 때문에 `sm` 도 14 다(테마가 `fontSizeSM: 14`).
+ * 글자 크기 스케일 — **프로젝트의 유일한 출처**.
+ *
+ * base 는 `src/app/theme.ts` 의 `BASE_FONT_SIZE_PX`(14, 오너 결정 2026-08-21)이고 나머지
+ * 단계는 antd 가 그 base 에서 파생한 값을 그대로 읽는다. 그래서 antd 가 자기 컴포넌트를
+ * 그릴 때 쓰는 크기와 우리가 직접 쓰는 크기가 **같은 숫자**가 된다 — 두 스케일이 갈라지지
+ * 않게 하는 것이 이 객체의 존재 이유다.
+ *
+ * CSS 는 TS 를 import 할 수 없으므로 `CSS_FONT_VARIABLES` 브리지를 통해 같은 값을 받는다
+ * (`var(--admin-font-*)`). **CSS 파일에 px 리터럴을 쓰면 게이트가 막는다** —
+ * `scripts/check-typography-min-font.mjs`.
+ *
+ * 🚨 `sm` 은 `base` 와 값이 같다(둘 다 14). 작아 보이는 이름이지만 실제로 더 작지 않다 —
+ * 이유는 `src/app/theme.ts` 의 `fontSizeSM` 주석에 있다. 더 작은 글자가 필요해서 이걸
+ * 고르는 것은 의미가 없다.
  */
 export const FONT_SIZE = {
-  /** 14 (antd fontSizeSM — 테마가 14 로 올린 값) */
+  /** 14 (antd fontSizeSM — 테마가 14 로 올린 값. `base` 와 같다) */
   sm: designToken.fontSizeSM,
-  /** 14 (antd fontSize, 본문) */
+  /** 14 (antd fontSize, 본문 = 프로젝트 base) */
   base: designToken.fontSize,
-  /** 16 (antd fontSizeLG — 소제목) */
+  /** 16 (antd fontSizeLG — 소제목·패널 제목·Drawer 제목) */
   lg: designToken.fontSizeLG,
-  /** 20 (antd fontSizeXL) */
+  /** 20 (antd fontSizeXL — 문서 제목·강조 수치) */
   xl: designToken.fontSizeXL,
-  /** 28 — KPI 수치 전용. antd 스케일 밖(heading3 24 / heading2 30 사이)이라 앱 고유값으로 둔다. */
+  /** 24 (antd fontSizeHeading3 — 요약 카드 값) */
+  heading3: designToken.fontSizeHeading3,
+  /** 30 (antd fontSizeHeading2) */
+  heading2: designToken.fontSizeHeading2,
+  /** 38 (antd fontSizeHeading1) */
+  heading1: designToken.fontSizeHeading1,
+  /**
+   * 28 — antd 스케일 밖(heading3 24 / heading2 30 사이)의 앱 고유 단계.
+   *
+   * 쓰는 곳: 추천 현황 KPI 수치, 학습분석 페이지 제목·KPI 값, 문항 상세 문서 번호.
+   * antd 스케일로 억지로 끌어오지 않는다(24 는 작고 30 은 크다는 판단) — 대신 여기 한 곳에
+   * 두어 흩어지지 않게 한다.
+   */
   metric: 28
 } as const;
 
@@ -137,6 +161,24 @@ export const APP_COLOR = {
  * 값은 토큰을 참조하고(그러면 테마를 바꿀 때 CSS 도 따라온다), 대응이 없는 앱 고유값은
  * 기존 리터럴을 그대로 들고 있다. 값을 통합·정리하는 것은 별개의 시각 변경이다.
  */
+/**
+ * 글자 크기 CSS 변수 브리지 — `FONT_SIZE` 와 **같은 값**을 CSS 에 내려준다.
+ *
+ * CSS 파일이 px 리터럴을 쓰면 스케일이 두 벌이 된다(실측 2026-08-21: CSS 50곳이 리터럴이었고
+ * 그중 5곳은 스케일에 없는 17·22·clamp 였다 — 최소값만 보는 게이트가 통과시켰다).
+ * 생성물은 `src/styles/generated-design-tokens.css`, 재생성은 `npm run gen:design-token-css`.
+ */
+export const CSS_FONT_VARIABLES: Record<string, string> = {
+  'font-sm': `${FONT_SIZE.sm}px`,
+  'font-base': `${FONT_SIZE.base}px`,
+  'font-lg': `${FONT_SIZE.lg}px`,
+  'font-xl': `${FONT_SIZE.xl}px`,
+  'font-heading3': `${FONT_SIZE.heading3}px`,
+  'font-heading2': `${FONT_SIZE.heading2}px`,
+  'font-heading1': `${FONT_SIZE.heading1}px`,
+  'font-metric': `${FONT_SIZE.metric}px`
+};
+
 export const CSS_COLOR_VARIABLES: Record<string, string> = {
   // ── antd 토큰에 대응하는 것 ────────────────────────────────────────────────
   'color-primary': COLOR.primary,

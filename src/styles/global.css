@@ -134,13 +134,13 @@ body {
 .page-title-description {
   margin-top: 6px;
   color: var(--admin-page-title-description);
-  font-size: 14px;
+  font-size: var(--admin-font-base);
   line-height: 1.55;
 }
 
 .page-title-meta {
   color: var(--admin-page-title-meta);
-  font-size: 14px;
+  font-size: var(--admin-font-base);
   line-height: 1.5;
 }
 
@@ -557,7 +557,7 @@ body {
 
 .search-bar-detail-label {
   color: var(--admin-text-muted);
-  font-size: 14px;
+  font-size: var(--admin-font-base);
   font-weight: 500;
 }
 
@@ -625,21 +625,21 @@ body {
 
 .list-summary-card__label {
   color: var(--admin-text-tertiary);
-  font-size: 14px;
+  font-size: var(--admin-font-base);
   font-weight: 400;
   line-height: 1.5714;
 }
 
 .list-summary-card__value {
   color: var(--admin-text);
-  font-size: 24px;
+  font-size: var(--admin-font-heading3);
   font-weight: 400;
   line-height: 1.2;
 }
 
 .list-summary-card__hint {
   color: var(--admin-text-tertiary);
-  font-size: 14px;
+  font-size: var(--admin-font-base);
   line-height: 1.5;
 }
 
@@ -1204,7 +1204,7 @@ body {
 }
 
 .question-tag-edit-modal__title .ant-typography {
-  font-size: 14px;
+  font-size: var(--admin-font-base);
   font-weight: 400;
 }
 
@@ -1267,7 +1267,7 @@ body {
   align-items: center;
   gap: 6px;
   color: inherit;
-  font-size: 14px;
+  font-size: var(--admin-font-base);
 }
 
 .question-tag-edit-modal__tag-list {
@@ -1431,7 +1431,7 @@ body {
 }
 
 .assessment-detail-page__document-number {
-  font-size: 28px;
+  font-size: var(--admin-font-metric);
   font-weight: 700;
   line-height: 1;
   color: var(--admin-doc-accent);
@@ -1445,7 +1445,7 @@ body {
 }
 
 .assessment-detail-page__document-title {
-  font-size: 20px;
+  font-size: var(--admin-font-xl);
 }
 
 .assessment-detail-page__descriptions .ant-descriptions-view {
@@ -1554,7 +1554,7 @@ body {
   min-height: 32px;
   padding: 6px 12px;
   border-radius: 999px;
-  font-size: 14px;
+  font-size: var(--admin-font-base);
   font-weight: 600;
   line-height: 1;
 }
@@ -1708,7 +1708,7 @@ body {
 
 .assessment-detail-page__memo-footnote {
   display: block;
-  font-size: 14px;
+  font-size: var(--admin-font-base);
 }
 
 .question-version-history-table .ant-table-tbody > tr.ant-table-row {

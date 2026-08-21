@@ -1,4 +1,4 @@
-import { CSS_COLOR_VARIABLES } from '@/shared/styles/design-tokens';
+import { CSS_COLOR_VARIABLES, CSS_FONT_VARIABLES } from '@/shared/styles/design-tokens';
 
 /**
  * `src/styles/generated-design-tokens.css` 의 본문을 stdout 으로 낸다.
@@ -9,18 +9,24 @@ import { CSS_COLOR_VARIABLES } from '@/shared/styles/design-tokens';
  *
  * 커밋된 결과물과 이 출력이 어긋나면 `scripts/check-design-token-css-drift.mjs` 가 막는다.
  */
-export function renderDesignTokenCss(): string {
-  const declarations = Object.entries(CSS_COLOR_VARIABLES)
+function declare(group: Record<string, string>): string {
+  return Object.entries(group)
     .map(([name, value]) => `  --admin-${name}: ${value};`)
     .join('\n');
+}
 
+export function renderDesignTokenCss(): string {
   return [
     '/* 생성 파일 — 직접 편집하지 마세요. */',
-    '/* 원본: src/shared/styles/design-tokens.ts 의 CSS_COLOR_VARIABLES */',
+    '/* 원본: src/shared/styles/design-tokens.ts 의 CSS_COLOR_VARIABLES + CSS_FONT_VARIABLES */',
     '/* 재생성: npm run gen:design-token-css */',
     '',
     ':root {',
-    declarations,
+    '  /* 색 */',
+    declare(CSS_COLOR_VARIABLES),
+    '',
+    '  /* 글자 크기 — 스케일 원본은 FONT_SIZE, base 는 theme.ts 의 BASE_FONT_SIZE_PX */',
+    declare(CSS_FONT_VARIABLES),
     '}',
     ''
   ].join('\n');
