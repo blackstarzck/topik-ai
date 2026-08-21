@@ -230,6 +230,11 @@ type InstitutionQuestionExposurePanelProps = {
    * "먼저 배정 → 그다음 배정분만 전환"이라 여기서 잠그면 그 순서가 불가능해진다.
    */
   exposureMode: InstitutionExposureMode;
+  /**
+   * 모드 원장 조회가 실패했으면 true — 이때 `exposureMode` 는 도메인 기본값이라
+   * **실제 값이 아니다**. 모드를 설명하는 안내를 그리면 틀린 전제를 확정해 준다.
+   */
+  exposureModeUnavailable?: boolean;
   canManage: boolean;
   isSupabase: boolean;
   onMutated: (summary: InstitutionQuestionMutationSummary) => void;
@@ -238,6 +243,7 @@ type InstitutionQuestionExposurePanelProps = {
 export function InstitutionQuestionExposurePanel({
   institution,
   exposureMode,
+  exposureModeUnavailable = false,
   canManage,
   isSupabase,
   onMutated
@@ -541,7 +547,11 @@ export function InstitutionQuestionExposurePanel({
       <Space direction="vertical" size={14} style={{ width: '100%' }}>
         <Space size={8} wrap>
           <Text type="secondary">{institution.label}</Text>
-          <InstitutionExposureModeTag mode={exposureMode} />
+          {exposureModeUnavailable ? (
+            <Tag>노출 모드 조회 실패</Tag>
+          ) : (
+            <InstitutionExposureModeTag mode={exposureMode} />
+          )}
         </Space>
 
         {/* 기관 할당제 규칙을 화면에 명시한다. 배정은 이 기관 학습자에게 문항을 허용하는
@@ -549,7 +559,14 @@ export function InstitutionQuestionExposurePanel({
             20260730120000 + 모드 도입 20260801100000). 모드가 `제한 없음` 이면 아래 배정이
             지금은 학습자 화면에 영향을 주지 않으므로, 관리자가 트리를 만지기 **전에** 알아야
             한다 → info 가 아니라 warning 으로 승격한다. */}
-        {isUnrestricted ? (
+        {exposureModeUnavailable ? (
+          <Alert
+            type="warning"
+            showIcon
+            message="노출 모드를 불러오지 못해 지금 어떤 모드인지 알 수 없습니다."
+            description="아래 배정이 학습자 화면에 반영되는지는 모드에 따라 달라집니다. 위 안내의 다시 시도로 모드를 먼저 확인하세요."
+          />
+        ) : isUnrestricted ? (
           <Alert
             type="warning"
             showIcon

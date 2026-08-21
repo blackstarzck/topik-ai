@@ -1,5 +1,5 @@
 import { Alert, Button, Space, Tabs, Tag, Typography, notification } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import {
@@ -28,7 +28,9 @@ import { InstitutionCodeInfoTab } from '../ui/institution-code-detail/institutio
 import { InstitutionCodeMembersTab } from '../ui/institution-code-detail/institution-code-members-tab';
 import { InstitutionCodeQuestionsTab } from '../ui/institution-code-detail/institution-code-questions-tab';
 import { usePermissionStore } from '@/features/system/model/permission-store';
-import type { AsyncState } from '@/shared/model/async-state';
+import { useAsyncResource } from '@/shared/model/use-async-resource';
+
+import { resolveSideFetchOutcome } from '../model/institution-side-fetch';
 import { useRouterStateNotice } from '@/shared/model/use-router-state-notice';
 import { AuditLogLink } from '@/shared/ui/audit-log-link/audit-log-link';
 import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
@@ -58,25 +60,76 @@ export default function InstitutionCodeDetailPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
   const [notificationApi, notificationContextHolder] = notification.useNotification();
 
-  const [codeState, setCodeState] = useState<AsyncState<InstitutionCode | null>>({
-    status: 'pending',
-    data: null,
-    errorMessage: null,
-    errorCode: null
-  });
-  const [exposureModeRow, setExposureModeRow] = useState<InstitutionExposureModeRow | null>(
-    null
+  /**
+   * 조회 5개를 **각각** 훅으로 나눈다.
+   *
+   * 이전에는 한 effect 에 묶여 있고 부가 조회 4개가 실패를 `null` 로 삼켜서, 화면이 "조회
+   * 실패"와 "원장에 행이 없음"을 구분하지 못했다 — 특히 노출 모드는 실패 시 도메인 기본값
+   * `배정분만` 으로 해석돼 **제한된 기관처럼** 보였다(gap-register §3.13 ⑤).
+   *
+   * 계약 요약·운영 설정·노출 옵션은 여러 탭이 함께 읽으므로 셸에서 한 번 읽어 내린다
+   * (탭을 옮길 때마다 다시 받거나 서로 stale 해지지 않게).
+   */
+  const fetchCode = useCallback(
+    (signal: AbortSignal) => fetchInstitutionCodeSafe(code, signal),
+    [code]
   );
-  // 계약 요약·운영 설정·노출 옵션은 여러 탭이 함께 읽는다(계약 탭은 D-day 와 담당자,
-  // 회원 탭은 정원·초대 기본값, 노출 문항 탭은 토글 2종). 셸에서 한 번 읽어 내려야
-  // 탭을 옮길 때마다 같은 값을 다시 받거나 서로 stale 해지지 않는다.
-  const [contractStatus, setContractStatus] =
-    useState<InstitutionContractStatusSummary | null>(null);
-  const [settings, setSettings] = useState<InstitutionSettings | null>(null);
-  const [exposureOptions, setExposureOptions] = useState<InstitutionExposureOptions | null>(
-    null
+  const { state: codeState, reload: reloadCode } = useAsyncResource<InstitutionCode | null>(
+    fetchCode,
+    { initialData: null, enabled: Boolean(code), keepDataOnError: false }
   );
-  const [reloadKey, setReloadKey] = useState(0);
+
+  const fetchExposureModes = useCallback(
+    (signal: AbortSignal) => fetchInstitutionExposureModesSafe(signal),
+    []
+  );
+  const { state: exposureModesState, reload: reloadExposureModes } = useAsyncResource<
+    InstitutionExposureModeRow[]
+  >(fetchExposureModes, { initialData: [], enabled: Boolean(code), keepDataOnError: false });
+
+  const fetchContractStatus = useCallback(
+    (signal: AbortSignal) => fetchInstitutionContractStatusSafe(code, signal),
+    [code]
+  );
+  const { state: contractStatusState, reload: reloadContractStatus } = useAsyncResource<
+    InstitutionContractStatusSummary[]
+  >(fetchContractStatus, { initialData: [], enabled: Boolean(code), keepDataOnError: false });
+
+  const fetchSettings = useCallback(
+    (signal: AbortSignal) => fetchInstitutionSettingsSafe(code, signal),
+    [code]
+  );
+  const { state: settingsState, reload: reloadSettings } =
+    useAsyncResource<InstitutionSettings | null>(fetchSettings, {
+      initialData: null,
+      enabled: Boolean(code),
+      keepDataOnError: false
+    });
+
+  const fetchExposureOptions = useCallback(
+    (signal: AbortSignal) => fetchInstitutionExposureOptionsSafe(code, signal),
+    [code]
+  );
+  const { state: exposureOptionsState, reload: reloadExposureOptions } =
+    useAsyncResource<InstitutionExposureOptions | null>(fetchExposureOptions, {
+      initialData: null,
+      enabled: Boolean(code),
+      keepDataOnError: false
+    });
+
+  const reloadAll = useCallback(() => {
+    reloadCode();
+    reloadExposureModes();
+    reloadContractStatus();
+    reloadSettings();
+    reloadExposureOptions();
+  }, [
+    reloadCode,
+    reloadContractStatus,
+    reloadExposureModes,
+    reloadExposureOptions,
+    reloadSettings
+  ]);
 
   const listPath = '/users/institution-codes';
 
@@ -88,81 +141,6 @@ export default function InstitutionCodeDetailPage(): JSX.Element {
     const me = admins.find((item) => item.adminId === currentAdminId);
     return me?.permissions.includes('users.institution-codes.manage') ?? false;
   }, [admins, currentAdminId]);
-
-  useEffect(() => {
-    if (!code) {
-      return;
-    }
-    const controller = new AbortController();
-
-    setCodeState((prev) => ({
-      ...prev,
-      status: 'pending',
-      errorMessage: null,
-      errorCode: null
-    }));
-
-    void fetchInstitutionCodeSafe(code, controller.signal).then((result) => {
-      if (controller.signal.aborted) {
-        return;
-      }
-      if (result.ok) {
-        setCodeState({
-          status: 'success',
-          data: result.data,
-          errorMessage: null,
-          errorCode: null
-        });
-        return;
-      }
-      setCodeState({
-        status: 'error',
-        data: null,
-        errorMessage: result.error.message,
-        errorCode: result.error.code
-      });
-    });
-
-    // 모드 원장은 코드 조회와 독립적으로 실패할 수 있다. 실패하면 기본값(`배정분만`)으로
-    // 해석되며 나머지 탭은 계속 동작한다 — 노출 모드는 부가 정보다.
-    void fetchInstitutionExposureModesSafe(controller.signal).then((result) => {
-      if (controller.signal.aborted) {
-        return;
-      }
-      setExposureModeRow(
-        result.ok ? (result.data.find((row) => row.code === code) ?? null) : null
-      );
-    });
-
-    // 계약·설정·옵션도 각각 독립적으로 실패할 수 있다. null 로 두면 각 탭이 "불러오는 중"
-    // 또는 기본값으로 degrade 하며, 코드 메타가 살아 있으면 화면 자체는 계속 쓸 수 있다.
-    void fetchInstitutionContractStatusSafe(code, controller.signal).then((result) => {
-      if (controller.signal.aborted) {
-        return;
-      }
-      setContractStatus(
-        result.ok ? (result.data.find((row) => row.code === code) ?? null) : null
-      );
-    });
-
-    void fetchInstitutionSettingsSafe(code, controller.signal).then((result) => {
-      if (controller.signal.aborted) {
-        return;
-      }
-      setSettings(result.ok ? result.data : null);
-    });
-
-    void fetchInstitutionExposureOptionsSafe(code, controller.signal).then((result) => {
-      if (controller.signal.aborted) {
-        return;
-      }
-      setExposureOptions(result.ok ? result.data : null);
-    });
-
-    return () => {
-      controller.abort();
-    };
-  }, [code, reloadKey]);
 
   // 생성 페이지는 성공 알림을 자기 화면에서 띄울 수 없다(즉시 이동으로 contextHolder 가
   // 사라진다). router state 로 받아 여기서 한 번만 띄운다 — 소비 기록과 state 초기화 계약은
@@ -202,18 +180,76 @@ export default function InstitutionCodeDetailPage(): JSX.Element {
   );
 
   const handleChanged = useCallback(() => {
-    setReloadKey((prev) => prev + 1);
-  }, []);
+    reloadAll();
+  }, [reloadAll]);
 
   const handleBackToList = useCallback(() => {
     navigate(listPath);
   }, [navigate]);
 
-  const institution = codeState.data;
-  const exposureMode = exposureModeRow?.exposureMode ?? defaultInstitutionExposureMode;
-  const assignedQuestionCount = exposureModeRow?.assignedQuestionCount ?? 0;
+  /**
+   * 🚨 코드가 바뀌는 동안(재조회 pending)에는 **직전 코드의 값을 쓰지 않는다** — 훅은 재조회
+   * 중 직전 데이터를 유지하므로, 그대로 그리면 다른 기관의 이름·상태가 잠깐 보인다.
+   */
+  const institution = codeState.data?.code === code ? codeState.data : null;
 
-  if (codeState.status === 'error' || (codeState.status === 'success' && !institution)) {
+  const exposureModeOutcome = resolveSideFetchOutcome(
+    exposureModesState.status,
+    exposureModesState.data.find((row) => row.code === code)
+  );
+  // 실패면 도메인 기본값으로 해석하지 않는다 — 표시는 탭이 '조회 실패'로 그린다.
+  const exposureMode =
+    exposureModeOutcome.kind === 'loaded'
+      ? exposureModeOutcome.row.exposureMode
+      : defaultInstitutionExposureMode;
+  const assignedQuestionCount =
+    exposureModeOutcome.kind === 'loaded' ? exposureModeOutcome.row.assignedQuestionCount : 0;
+
+  const contractOutcome = resolveSideFetchOutcome(
+    contractStatusState.status,
+    contractStatusState.data.find((row) => row.code === code)
+  );
+  const contractStatus = contractOutcome.kind === 'loaded' ? contractOutcome.row : null;
+  const settings = settingsState.data;
+  const exposureOptions = exposureOptionsState.data;
+
+  /** 부가 조회 실패 안내 — 어떤 값이 실제가 아닌지 이름으로 알린다. */
+  const sideFetchFailures = [
+    exposureModeOutcome.kind === 'failed'
+      ? {
+          key: 'exposureMode',
+          label: '노출 모드',
+          message: exposureModesState.errorMessage,
+          retry: reloadExposureModes
+        }
+      : null,
+    contractOutcome.kind === 'failed'
+      ? {
+          key: 'contract',
+          label: '계약 정보',
+          message: contractStatusState.errorMessage,
+          retry: reloadContractStatus
+        }
+      : null,
+    settingsState.status === 'error'
+      ? {
+          key: 'settings',
+          label: '운영 설정(담당자·정원·초대 기본값)',
+          message: settingsState.errorMessage,
+          retry: reloadSettings
+        }
+      : null,
+    exposureOptionsState.status === 'error'
+      ? {
+          key: 'exposureOptions',
+          label: '노출 옵션',
+          message: exposureOptionsState.errorMessage,
+          retry: reloadExposureOptions
+        }
+      : null
+  ].filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+
+  if (codeState.status === 'error' || (codeState.status === 'success' && !codeState.data)) {
     return (
       <>
         <PageTitle title="기관 코드 상세" />
@@ -258,6 +294,28 @@ export default function InstitutionCodeDetailPage(): JSX.Element {
           </Text>
         ) : null}
       </Paragraph>
+
+      {sideFetchFailures.length > 0 ? (
+        <Alert
+          type="warning"
+          showIcon
+          style={{ marginBottom: SPACE.sm }}
+          // 라벨을 문장에 붙이면 조사(을/를)를 맞출 수 없다 — 목록 형태로 적는다.
+          message={`불러오지 못한 항목: ${sideFetchFailures
+            .map((entry) => entry.label)
+            .join(', ')}. 해당 값은 실제가 아닙니다.`}
+          description={sideFetchFailures.find((entry) => entry.message)?.message ?? undefined}
+          action={
+            <Space size={4}>
+              {sideFetchFailures.map((entry) => (
+                <Button key={entry.key} size="small" onClick={entry.retry}>
+                  {entry.label} 다시 시도
+                </Button>
+              ))}
+            </Space>
+          }
+        />
+      ) : null}
 
       <AdminListCard>
         <Tabs
@@ -312,6 +370,7 @@ export default function InstitutionCodeDetailPage(): JSX.Element {
                 <InstitutionCodeQuestionsTab
                   institution={institution}
                   exposureMode={exposureMode}
+                  exposureModeUnavailable={exposureModeOutcome.kind !== 'loaded' && exposureModeOutcome.kind !== 'missing'}
                   assignedQuestionCount={assignedQuestionCount}
                   exposureOptions={exposureOptions}
                   contractStatus={contractStatus}
