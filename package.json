@@ -74,6 +74,8 @@
     "test:e2e:mock": "set VITE_SUPABASE_DISABLED=true&& playwright test tests/e2e/assessment-question-bank.spec.ts",
     "test:e2e:prod-admin": "playwright test --config=playwright.prod-admin.config.ts",
     "test:e2e:release-admin": "playwright test --config=playwright.release-admin.config.ts",
+    "release:verify": "playwright test --config=playwright.release-verify.config.ts tests/live-e2e/release-browser-verify.pw.ts",
+    "release:probe": "playwright test --config=playwright.release-verify.config.ts tests/live-e2e/release-baseline-probe.pw.ts",
     "test:e2e:analytics-permission": "playwright test --config=playwright.analytics-permission.config.ts",
     "test:unit": "vitest run tests/unit",
     "etl:extract": "node ./scripts/etl/extract-problems.mjs",
