@@ -289,7 +289,48 @@
   - ~~**차트 축·눈금 라벨이 `fontSize={9}`** 4곳~~ → 레이아웃 재설계로 14px 적용(§3.17.1).
   - ~~**`colorInfo` 는 antd 기본 파랑 그대로**~~ → 분리 유지로 결정 완료(§3.17.1).
   - ~~**`/analytics/learning` 만 페이지 단위 `fontSize: 16`**~~ → 제거하고 전역 14 와 통일(§3.17.1).
-  - **`global.css` 에 색 리터럴이 107줄**(실측 112회·59종) 남아 있다. CSS 는 TS 모듈을 import 할 수 없어 CSS 변수 브리지가 선행돼야 하는 별도 작업이다.
+  - ~~**`global.css` 색 리터럴**~~ → CSS 변수 브리지로 해소(§3.17.2). 실수치는 주석 제외 110회·59종·105줄이었고, 세지 않았던 `analytics-learning-page.css` 54곳도 함께 처리했다.
+
+#### 3.17.2 CSS 가 색 값을 직접 들고 있던 문제 — **해소 (2026-08-20)**
+
+CSS 는 TS 모듈을 import 할 수 없어서 `design-tokens.ts` 의 값이 스타일시트에 닿지 못했다. 그래서 디자인 토큰 게이트도 CSS 는 `#1677ff` 금지 한 줄만 봤다.
+
+**CSS 변수 브리지**를 넣었다.
+
+```
+design-tokens.ts (CSS_COLOR_VARIABLES)   ← 값의 단일 소스
+        │  scripts/emit-design-token-css.ts (vite-node)
+        ▼
+generated-design-tokens.css (커밋)        ← :root { --admin-* }
+        │  main.tsx 에서 global.css 보다 먼저 import
+        ▼
+global.css · analytics-learning-page.css  ← var(--admin-*) 만 쓴다
+```
+
+| | 실측 |
+| --- | --- |
+| 변수 | **84개** |
+| `global.css` | 치환 107회 + 여러 줄 box-shadow 1건, 리터럴 **0** |
+| `analytics-learning-page.css` | 치환 **54회**, 리터럴 **0** |
+
+- 🚨 **`global.css` 만이 아니었다.** 게이트를 CSS 전체로 확장하니 `src/features/analytics/pages/analytics-learning-page.css` 에 54곳이 더 있었다. §3.17 의 "106줄"은 이 파일을 세지 않았다.
+- 🚨 **이전 보고 수치는 CSS 주석 안의 색까지 셌다.** `global.css` 실수치는 주석 제외 **110회·59종·105줄**이다(주석 포함 112회). 그래서 검사·치환 모두 **주석을 먼저 걷어낸다**.
+- 🔑 **생성물을 커밋한다.** 빌드 타임에만 만들면 개발·테스트 경로에서 파일이 없거나 낡을 수 있고, 리뷰 diff 에 색 변경이 보이지 않는다. 대신 낡음을 `check:design-token-css`(harness:check 배선)가 막는다 — 생성기를 다시 돌려 커밋본과 줄 단위로 대조한다.
+- 🔑 **CSS 는 TS 를 못 읽으니 생성기가 TS 를 읽어야 한다.** 생성기는 `vite-node` 로 `scripts/emit-design-token-css.ts` 를 실행한다(그래야 `@/` alias 와 antd 가 해석된다). `node` 로 직접 돌릴 수 없다.
+- **import 순서가 계약이다** — 변수 파일이 `global.css` 보다 먼저 들어와야 `var()` 가 해석된다. `src/main.tsx` 에 근거 주석을 남겼다.
+
+##### 🔑 검증 축 = computed color 집합 불변
+
+값을 옮기기만 했으므로 **화면에 나오는 색의 집합이 그대로여야 한다.** 이건 스냅샷 이미지보다 강한 단정이다.
+
+7개 화면(`/dashboard`·`/users`·`/commerce/coupons`·`/messages/groups`·문항 상세·`/analytics/learning`·`/operation/notices`)에서 모든 엘리먼트의 `color`/`backgroundColor`/테두리 4방향/`outlineColor`/`boxShadow`/`backgroundImage` 를 모아 **값 집합과 해시를 치환 전후로 대조 → 7/7 완전 동일**.
+
+- 🚨 처음에는 **값별 등장 횟수까지 넣은 다이제스트**를 썼는데, 알림 벨·툴팁 같은 일시적 노드 때문에 노드 수가 실행마다 달라져 전환과 무관하게 해시가 어긋났다. 불변식은 "**어떤 색이 쓰이는가**"이므로 **횟수를 뺀 집합**으로 비교해야 한다.
+
+##### 예외로 남긴 것
+
+- `--admin-link-hover: #4096ff` 는 **antd 기본 파랑**이다(브랜드색 파생이 아니다). `colorLink` 와 같은 계열의 드리프트지만, 이 작업은 **값을 옮기는 것**이라 값을 바꾸지 않았다. 브랜드 hover 색(`colorPrimaryHover` = `#2d68b5`)으로 맞출지는 별도 판단이다.
+- 여러 개의 근접 흰색·회색(`#fcfdff`·`#fcfcfd`·`#fbfdff`·`#f8fbff` …)을 하나로 통합하지 않았다. 통합은 시각 변경이다.
 
 #### 3.17.1 잔여 타이포·상태색 판단 3건 종결 (2026-08-20)
 

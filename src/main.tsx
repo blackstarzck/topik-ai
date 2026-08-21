@@ -15,6 +15,8 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 
 import { App } from './app/app';
+// 🚨 순서가 중요하다 — 생성된 CSS 변수가 global.css 보다 **먼저** 들어와야 var() 가 해석된다.
+import './styles/generated-design-tokens.css';
 import './styles/global.css';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(

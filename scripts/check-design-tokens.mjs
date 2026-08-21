@@ -20,8 +20,11 @@ import { fileURLToPath } from 'node:url';
  * 2. 제3자 브랜드색 — 소셜 로그인 마크는 그쪽 브랜드 가이드가 정한다.
  * 3. mock 픽스처·HTML 문자열 — 앱 크롬이 아니라 콘텐츠다.
  *
- * 🚨범위 한계: `src/**` 만 본다. `src/styles/global.css` 의 색·크기는 아직 리터럴이고,
- * CSS 는 TS 모듈을 import 할 수 없어 CSS 변수 브리지가 선행돼야 한다(후속 작업).
+ * CSS 도 같은 규칙을 받는다 — 다만 CSS 는 TS 모듈을 import 할 수 없으므로 **CSS 변수
+ * 브리지**를 거친다: 토큰에서 생성한 `src/styles/generated-design-tokens.css` 가 변수를
+ * 내려주고, 사람이 쓰는 CSS 는 `var(--admin-*)` 만 쓴다(gap-register §3.17.2).
+ * 생성 파일 자체는 값이 들어 있는 것이 정상이라 검사 대상이 아니고, 커밋본이 낡지 않도록
+ * `scripts/check-design-token-css-drift.mjs` 가 따로 대조한다.
  */
 const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SRC_DIR = path.join(ROOT_DIR, 'src');
@@ -180,13 +183,22 @@ function collectViolations() {
 }
 
 /**
- * CSS 파일은 TS 모듈을 import 할 수 없어 전면 토큰화는 CSS 변수 브리지가 선행돼야 한다
- * (`src/styles/global.css` 에 색 리터럴이 아직 100줄 넘게 있다 — gap-register §3.17).
- * 다만 **antd 기본 파랑이 되돌아오는 것**만은 지금 막는다. 테마가 `colorLink` 를 브랜드색으로
- * 지정했는데 CSS 가 `#1677ff` 로 덮으면 antd 링크와 순수 `<a>` 링크의 색이 갈린다
- * (이 PR 에서 실제로 겪은 회귀 — 프리뷰 computed style 에서 `/users` 20개가 stock blue 였다).
+ * 사람이 쓰는 CSS 에는 색 리터럴을 두지 않는다 — `var(--admin-*)` 만 쓴다.
+ *
+ * 값의 소유권은 `src/shared/styles/design-tokens.ts` 의 `CSS_COLOR_VARIABLES` 에 있고,
+ * 거기서 생성된 `src/styles/generated-design-tokens.css` 가 변수를 내려준다. 생성 파일은
+ * 값이 들어 있는 것이 정상이므로 검사에서 제외한다.
+ *
+ * 🚨 **주석은 걷어낸 뒤 검사한다** — 규칙을 설명하는 주석에 색을 예시로 적으면 위반으로
+ * 잡힌다(타이포 게이트에서 같은 함정을 여섯 번 겪었다).
  */
-const ANTD_STOCK_BLUE = /#1677ff/i;
+const GENERATED_CSS = 'src/styles/generated-design-tokens.css';
+const CSS_COLOR_LITERAL = /#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)/g;
+
+/** CSS 주석을 공백으로 덮는다(라인 번호 보존). */
+function stripCssComments(source) {
+  return source.replace(/\/\*[\s\S]*?\*\//g, (match) => match.replace(/[^\n]/g, ' '));
+}
 
 function collectCssViolations() {
   const results = [];
@@ -201,13 +213,17 @@ function collectCssViolations() {
       }
       if (!entry.name.endsWith('.css')) continue;
       const posixFile = toPosix(path.relative(ROOT_DIR, full));
-      readFileSync(full, 'utf8')
+      if (posixFile === GENERATED_CSS) continue;
+      stripCssComments(readFileSync(full, 'utf8'))
         .split('\n')
         .forEach((line, index) => {
-          if (!ANTD_STOCK_BLUE.test(line)) return;
-          results.push(
-            `${posixFile}:${index + 1}: antd 기본 파랑 #1677ff — 테마가 지정한 브랜드색을 쓰세요(링크 색이 antd 와 갈립니다).`
-          );
+          const matches = line.match(CSS_COLOR_LITERAL);
+          if (!matches) return;
+          for (const value of matches) {
+            results.push(
+              `${posixFile}:${index + 1}: 색 리터럴 ${value} — var(--admin-*) 를 쓰세요(값은 design-tokens.ts 의 CSS_COLOR_VARIABLES 가 소유합니다).`
+            );
+          }
         });
     }
   }
