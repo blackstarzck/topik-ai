@@ -30,6 +30,8 @@ import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
 import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
 import { SPACE } from '@/shared/styles/design-tokens';
 
+import { resolveIntakeBlockNotice } from '../../model/institution-side-fetch';
+
 const { Text } = Typography;
 
 // 대기 중 초대와 소속 회원을 한 테이블로 묶는 통합 로스터 행(오너 결정 2026-07-07).
@@ -52,6 +54,13 @@ type InstitutionCodeMembersTabProps = {
   settings: InstitutionSettings | null;
   /** 만료 차단이 지금 실제로 걸리는지 판단하려면 계약 요약이 필요하다. */
   contractStatus: InstitutionContractStatusSummary | null;
+  /**
+   * 계약 조회가 실패했거나 아직 안 끝났으면 true.
+   *
+   * 🚨 `contractStatus === null` 만으로는 "계약 없음"과 "조회 실패"를 구별할 수 없다 —
+   * 이전 배선은 실패를 조용히 "차단 아님"으로 읽었다.
+   */
+  contractStatusUnavailable?: boolean;
   canManage: boolean;
   notificationApi: NotificationApi;
   onChanged: () => void;
@@ -68,6 +77,7 @@ export function InstitutionCodeMembersTab({
   institution,
   settings,
   contractStatus,
+  contractStatusUnavailable = false,
   canManage,
   notificationApi,
   onChanged
@@ -224,8 +234,21 @@ export function InstitutionCodeMembersTab({
   // 툴바 요약과 본문 경보가 같은 판정을 쓰도록 여기서 한 번만 계산한다.
   const seatFull =
     settings !== null && settings.maxMembers !== null && settings.seatsUsed >= settings.maxMembers;
-  const blockedNow =
-    (settings?.blockIntakeOnExpiry ?? false) && contractStatus?.hasActiveContract === false;
+  /**
+   * 차단 안내는 3갈래다 — 확실히 차단 / 모름 / 차단 없음.
+   *
+   * 강제는 서버(`admin_invite_institution_members_guarded`)가 하므로 **모를 때 화면이 막지
+   * 않는다**. 막으면 서버가 허용할 초대를 표시 조회 실패 때문에 화면이 막는 것이 된다.
+   */
+  const intakeNotice = resolveIntakeBlockNotice(
+    settings?.blockIntakeOnExpiry ?? false,
+    contractStatusUnavailable
+      ? { kind: 'failed' }
+      : contractStatus
+        ? { kind: 'loaded', row: { hasActiveContract: contractStatus.hasActiveContract } }
+        : { kind: 'missing' }
+  );
+  const blockedNow = intakeNotice === 'blocked';
 
   const handleCancelInvitationConfirm = useCallback(
     async (reason: string) => {
@@ -423,6 +446,14 @@ export function InstitutionCodeMembersTab({
           showIcon
           message="계약이 만료돼 신규 배정·초대가 차단된 상태입니다."
           description="계약 탭에서 기간을 갱신하거나 회원 정책에서 차단 옵션을 해제하세요. 이미 소속된 회원은 그대로 유지됩니다."
+        />
+      ) : null}
+      {intakeNotice === 'unknown' ? (
+        <Alert
+          type="warning"
+          showIcon
+          message="계약 정보를 확인하지 못해 신규 배정·초대가 차단 상태인지 알 수 없습니다."
+          description="회원 정책의 만료 시 유입 차단이 켜져 있습니다. 초대는 서버가 계약을 다시 확인해 판정하므로, 차단 중이라면 초대가 거부됩니다. 상단 안내의 다시 시도로 계약 정보를 먼저 확인하세요."
         />
       ) : null}
       {seatFull ? (

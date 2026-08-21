@@ -57,3 +57,39 @@ export function isSideFetchFailed(outcome: SideFetchOutcome<unknown>): boolean {
 export const SIDE_FETCH_FAILED_LABEL = '조회 실패';
 /** 아직 조회 중인 셀에 쓰는 문구. */
 export const SIDE_FETCH_PENDING_LABEL = '…';
+
+/**
+ * 신규 유입(배정·초대) 차단 안내 상태.
+ *
+ * 🚨 **강제는 서버가 한다.** 초대는 `admin_invite_institution_members_guarded` 로 나가고
+ * 그 안에서 `block_intake_on_expiry` 와 계약 유효성을 검사해 예외를 던진다
+ * (`20260804100400_institution_intake_guards.sql`). 화면의 이 판정은 **안내**일 뿐이다.
+ *
+ * 그래서 계약 조회가 실패했을 때 화면이 취할 태도는 두 가지가 아니라 세 가지다:
+ * - `blocked` — 차단이 확실하다(옵션 ON + 계약 무효).
+ * - `unknown` — 옵션은 ON 인데 계약 상태를 모른다. **막지 않는다** — 막으면 서버가 허용할
+ *   초대를 표시 조회 실패 때문에 화면이 막는 것이 된다. 대신 모른다고 말한다.
+ * - `none` — 차단 없음(옵션 OFF 이거나 계약 유효).
+ *
+ * 이전 배선은 `contractStatus?.hasActiveContract === false` 라서 조회 실패 시 `undefined`
+ * 비교로 조용히 `none` 이 됐다 — 운영자는 "차단 아님"으로 읽는다.
+ */
+export type IntakeBlockNotice = 'none' | 'blocked' | 'unknown';
+
+export function resolveIntakeBlockNotice(
+  blockIntakeOnExpiry: boolean,
+  contract: SideFetchOutcome<{ hasActiveContract: boolean }>
+): IntakeBlockNotice {
+  if (!blockIntakeOnExpiry) {
+    return 'none';
+  }
+  if (contract.kind === 'failed' || contract.kind === 'pending') {
+    return 'unknown';
+  }
+  // 조회 성공 + 원장에 행 없음 = 계약 없음. 도메인 규칙상 계약 0건 기관은 유효로 본다
+  // (그러지 않으면 계약을 한 번도 넣지 않은 기관이 옵션만 켜도 전원 차단된다).
+  if (contract.kind === 'missing') {
+    return 'none';
+  }
+  return contract.row.hasActiveContract ? 'none' : 'blocked';
+}
