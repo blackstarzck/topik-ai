@@ -60,13 +60,69 @@ async function collectRenderedFontSizes(page: Page) {
   });
 }
 
+/**
+ * 셸조차 그려지지 않았으면 한 번만 다시 불러온다.
+ *
+ * 🚨 실패를 숨기는 재시도가 아니다. 이 spec 은 한 파일에서 서로 다른 라우트 6개를 방문하는데
+ * (저장소에서 가장 많다), Vite dev 서버가 간헐적으로 연결을 떨군다 — 진단해 보니 화면이
+ * 완전히 비고(`hasShell: false`, `bodyText: ""`) 콘솔에 `net::ERR_CONNECTION_FAILED` 만
+ * 있었다. 타임아웃을 30초로 늘려도 그대로 떨어졌으니 **느림이 아니라 전송 실패**다.
+ *
+ * 그래서 되살리는 조건을 **"셸이 아예 없다"로 좁혔다.** 셸이 있으면(=문서가 왔으면) 그대로
+ * 단언으로 넘어가므로, 글자 크기 위반이 재시도로 가려지는 경우는 없다. 저장소 전역
+ * `retries` 를 켜는 방식은 반대로 진짜 실패를 전부 가리므로 택하지 않았다.
+ */
+async function gotoWithShell(page: Page, url: string) {
+  await page.goto(url);
+  const shell = page.locator('.ant-layout').first();
+  const rendered = await shell
+    .waitFor({ state: 'attached', timeout: 5_000 })
+    .then(() => true)
+    .catch(() => false);
+  if (!rendered) await page.reload();
+  await expect(shell).toBeAttached();
+}
+
 for (const { name, url } of auditedPages) {
   test(`${name} 의 렌더된 글자 크기가 전부 스케일 안이다`, async ({ page }) => {
-    await page.goto(url);
+    await gotoWithShell(page, url);
 
-    // 표·카드가 그려진 뒤에 재야 antd 내부 텍스트(Tag·Badge·빈 목록 문구)가 포함된다.
-    await expect(page.locator('main')).toBeVisible();
-    await page.waitForLoadState('networkidle');
+    /**
+     * 페이지 **자기 콘텐츠**가 마운트됐는지 — 공통 `PageTitle`(감사 대상 6화면 전부 사용).
+     *
+     * 🚨 셸의 `<main>`(antd `Content`)을 앵커로 쓰면 안 된다. 셸은 페이지보다 먼저 그려져서
+     * 라우트 청크가 아직 안 왔을 때도 통과한다.
+     *
+     * 참고 — `--repeat-each=4`(24회) 로 돌리면 1~2회 이 앵커에서 떨어진다. 원인은 **느림이
+     * 아니다**(30초를 줘도 떨어졌다). 진단해 보니 화면이 완전히 비어 있고
+     * (`hasShell: false`, `bodyText: ""`) 콘솔에 `net::ERR_CONNECTION_FAILED` 가 있었다 —
+     * Vite dev 서버가 짧은 시간에 24번 탐색을 받으면 간헐적으로 연결을 떨군다.
+     *
+     * 이 저장소는 `retries` 를 두지 않으므로 그 순간에는 **어느 spec 이든** 떨어진다(spec
+     * 고유 문제가 아니다). CI 는 각 테스트를 한 번만 돌려 이 spec 의 탐색이 6회라 재현되지
+     * 않는다. 그래서 여기서 타임아웃을 늘리거나 재시도를 넣지 않는다 — 늘려도 안 낫고,
+     * 넣으면 진짜 실패를 가린다.
+     */
+    await expect(page.locator('.page-title-block')).toBeVisible();
+
+    /**
+     * 🚨 `waitForLoadState('networkidle')` 를 쓰지 않는다 — 알림 벨이 모든 화면에서
+     * 60초마다 폴링하므로(`admin-notification-bell.tsx`) 네트워크가 조용해지는 시점이
+     * 대기 조건이 되면 안 된다. 저장소의 다른 spec 도 쓰지 않는다.
+     *
+     * 대신 이 감사가 노리는 것 자체를 기다린다 — 셸의 antd `Tag`("현재 세션")는 모든
+     * 화면에 있고, **antd 가 자기 토큰으로 그리는 텍스트**의 대표다(테마에서 `fontSizeSM`
+     * 을 빼면 바로 이 노드가 12px 로 떨어진다).
+     */
+    await expect(page.locator('.ant-tag').first()).toBeVisible();
+
+    /**
+     * 표가 있는 화면은 로딩 오버레이가 걷힐 때까지 기다린다(없는 화면은 즉시 통과).
+     *
+     * 🔑 여기서 `toHaveCount(0)` 은 **"없다"는 단언이 아니라 "0 이 될 때까지 기다림"**
+     * 으로 쓰는 것이 맞다 — 부재 증명에 쓰면 안 되지만 완료 대기에는 정확히 맞는 도구다.
+     */
+    await expect(page.locator('.admin-data-table--loading')).toHaveCount(0);
 
     const { sizes, samples } = await collectRenderedFontSizes(page);
 
