@@ -24,6 +24,11 @@ const { Text } = Typography;
 type InstitutionCodeQuestionsTabProps = {
   institution: InstitutionCode;
   exposureMode: InstitutionExposureMode;
+  /**
+   * 모드 원장 조회가 실패했거나 아직 안 끝났으면 true — 이때 `exposureMode` 는 도메인
+   * 기본값이라 **실제 값이 아니다**. 기본값을 실제처럼 보여주면 제한된 기관으로 오해한다.
+   */
+  exposureModeUnavailable?: boolean;
   /** 셸이 모드 원장에서 읽은 실제 배정 건수. 전환 차단 판정의 입력값이다. */
   assignedQuestionCount: number;
   /** 계약 연동 옵션 2종의 현재 값. null 이면 아직 못 읽은 상태(토글 비활성). */
@@ -48,6 +53,7 @@ type InstitutionCodeQuestionsTabProps = {
 export function InstitutionCodeQuestionsTab({
   institution,
   exposureMode,
+  exposureModeUnavailable = false,
   assignedQuestionCount,
   exposureOptions,
   contractStatus,
@@ -98,8 +104,16 @@ export function InstitutionCodeQuestionsTab({
           // 배정 패널도 자체 모드 Tag 를 그린다 → 요약에 testid 로 스코프를 준다.
           // 없으면 e2e 의 `제한 없음` 단언이 2개를 잡아 strict violation 이 난다.
           <Space size={8} wrap data-testid="institution-exposure-summary">
-            <Tag color={exposureMode === '제한 없음' ? 'blue' : 'purple'}>{exposureMode}</Tag>
-            <Text type="secondary">배정 {assignedQuestionCount.toLocaleString()}건</Text>
+            {exposureModeUnavailable ? (
+              <Tag>노출 모드 조회 실패</Tag>
+            ) : (
+              <>
+                <Tag color={exposureMode === '제한 없음' ? 'blue' : 'purple'}>
+                  {exposureMode}
+                </Tag>
+                <Text type="secondary">배정 {assignedQuestionCount.toLocaleString()}건</Text>
+              </>
+            )}
             {exposureOptions ? (
               <Text type="secondary">
                 자동 비노출 {exposureOptions.autoHideOnExpiry ? '켬' : '끔'} · 자동 배정{' '}
@@ -139,6 +153,7 @@ export function InstitutionCodeQuestionsTab({
         <div style={{ marginTop: SPACE.xs }}>
           <InstitutionQuestionExposurePanel
             institution={institution}
+            exposureModeUnavailable={exposureModeUnavailable}
             exposureMode={exposureMode}
             canManage={canManage}
             isSupabase={isInstitutionCodesSupabase}

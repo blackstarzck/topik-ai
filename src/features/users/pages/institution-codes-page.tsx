@@ -1,4 +1,4 @@
-import { Button, Space, Tag, Typography, notification } from 'antd';
+import { Alert, Button, Space, Tag, Typography, notification } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
@@ -27,7 +27,14 @@ import type {
   InstitutionExposureModeRow
 } from '../model/institution-codes-types';
 import { usePermissionStore } from '@/features/system/model/permission-store';
-import type { AsyncState } from '@/shared/model/async-state';
+import { useAsyncResource } from '@/shared/model/use-async-resource';
+
+import {
+  isSideFetchFailed,
+  resolveSideFetchOutcome,
+  SIDE_FETCH_FAILED_LABEL,
+  SIDE_FETCH_PENDING_LABEL
+} from '../model/institution-side-fetch';
 import { AuditLogLink } from '@/shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
 import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
@@ -65,14 +72,16 @@ export default function InstitutionCodesPage(): JSX.Element {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const [notificationApi, notificationContextHolder] = notification.useNotification();
-  const [codesState, setCodesState] = useState<AsyncState<InstitutionCode[]>>({
-    status: 'pending',
-    data: [],
-    errorMessage: null,
-    errorCode: null
-  });
-  const [reloadKey, setReloadKey] = useState(0);
   const [deleteTarget, setDeleteTarget] = useState<InstitutionCode | null>(null);
+
+  const fetchCodes = useCallback(
+    (signal: AbortSignal) => fetchInstitutionCodesSafe(signal),
+    []
+  );
+  const { state: codesState, reload: reloadCodes } = useAsyncResource<InstitutionCode[]>(
+    fetchCodes,
+    { initialData: [] }
+  );
 
   // 기관별 노출 모드 원장. admin_list_institution_codes 는 반환 타입을 바꿀 수 없어
   // (expand 게이트가 drop function 차단) 별도 RPC 로 조회해 코드 목록과 병합한다.
@@ -80,27 +89,49 @@ export default function InstitutionCodesPage(): JSX.Element {
   // 계약 요약은 목록 RPC 와 별개다(admin_list_institution_codes 는 반환 타입을 바꿀 수
   // 없다 — expand 게이트가 함수 삭제·재생성을 차단한다). 모드 컬럼과 같은 방식으로
   // 별도 조회해 화면에서 코드별로 병합한다.
-  const [contractStatuses, setContractStatuses] = useState<
+  /**
+   * 🚨 부가 조회는 **조회별로** 나눈다. 이전에는 세 조회가 한 effect 에 묶여 있고 실패를
+   * `result.ok ? result.data : []` 로 삼켜서, 조회 실패와 "원장에 행이 없음"이 화면에서
+   * 구분되지 않았다 — 실패하면 전 코드가 `배정분만`·계약 `-` 로 보였다(둘 다 유효한
+   * 도메인 상태라 틀린 값이 정상처럼 보인다). `keepDataOnError: false` 로 실패 시 데이터를
+   * 비우고, 표시는 `resolveSideFetchOutcome` 이 네 갈래로 가른다.
+   */
+  const fetchContractStatuses = useCallback(
+    (signal: AbortSignal) => fetchInstitutionContractStatusSafe(null, signal),
+    []
+  );
+  const { state: contractStatusesState, reload: reloadContractStatuses } = useAsyncResource<
     InstitutionContractStatusSummary[]
-  >([]);
+  >(fetchContractStatuses, { initialData: [], keepDataOnError: false });
   const contractStatusByCode = useMemo(
-    () => new Map(contractStatuses.map((row) => [row.code, row])),
-    [contractStatuses]
+    () => new Map(contractStatusesState.data.map((row) => [row.code, row])),
+    [contractStatusesState.data]
   );
 
-  const [exposureModes, setExposureModes] = useState<InstitutionExposureModeRow[]>([]);
+  const fetchExposureModes = useCallback(
+    (signal: AbortSignal) => fetchInstitutionExposureModesSafe(signal),
+    []
+  );
+  const { state: exposureModesState, reload: reloadExposureModes } = useAsyncResource<
+    InstitutionExposureModeRow[]
+  >(fetchExposureModes, { initialData: [], keepDataOnError: false });
   const exposureModeByCode = useMemo(
-    () => new Map(exposureModes.map((row) => [row.code, row])),
-    [exposureModes]
+    () => new Map(exposureModesState.data.map((row) => [row.code, row])),
+    [exposureModesState.data]
   );
-  const resolveExposureMode = useCallback(
-    (code: string): InstitutionExposureMode =>
-      exposureModeByCode.get(code)?.exposureMode ?? defaultInstitutionExposureMode,
-    [exposureModeByCode]
+
+  /** 조치 후에는 세 조회를 함께 다시 받는다(하나만 갱신하면 화면 안에서 기준 시각이 갈린다). */
+  const reloadAll = useCallback(() => {
+    reloadCodes();
+    reloadContractStatuses();
+    reloadExposureModes();
+  }, [reloadCodes, reloadContractStatuses, reloadExposureModes]);
+
+  const exposureModeFailed = isSideFetchFailed(
+    resolveSideFetchOutcome(exposureModesState.status, null)
   );
-  const resolveAssignedCount = useCallback(
-    (code: string): number => exposureModeByCode.get(code)?.assignedQuestionCount ?? 0,
-    [exposureModeByCode]
+  const contractStatusFailed = isSideFetchFailed(
+    resolveSideFetchOutcome(contractStatusesState.status, null)
   );
 
   // 회원 배정/해제 권한(메뉴 게이팅과 동일 키). 권한 미보유자에겐 회원·노출 문항 진입점을 숨긴다.
@@ -120,61 +151,6 @@ export default function InstitutionCodesPage(): JSX.Element {
     }
     navigate(`${DETAIL_BASE_PATH}/${selectedCode}`, { replace: true });
   }, [navigate, selectedCode]);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    setCodesState((prev) => ({
-      ...prev,
-      status: 'pending',
-      errorMessage: null,
-      errorCode: null
-    }));
-
-    void fetchInstitutionCodesSafe(controller.signal).then((result) => {
-      if (controller.signal.aborted) {
-        return;
-      }
-
-      if (result.ok) {
-        setCodesState({
-          status: result.data.length === 0 ? 'empty' : 'success',
-          data: result.data,
-          errorMessage: null,
-          errorCode: null
-        });
-        return;
-      }
-
-      setCodesState((prev) => ({
-        ...prev,
-        status: 'error',
-        errorMessage: result.error.message,
-        errorCode: result.error.code
-      }));
-    });
-
-    // 모드 원장은 목록과 독립적으로 실패할 수 있다. 실패하면 전 코드가 기본값
-    // (`배정분만`)으로 표시되며 목록 자체는 계속 동작한다 — 노출 모드는 부가 정보다.
-    void fetchInstitutionExposureModesSafe(controller.signal).then((result) => {
-      if (controller.signal.aborted) {
-        return;
-      }
-      setExposureModes(result.ok ? result.data : []);
-    });
-
-    // 계약 요약도 독립적으로 실패할 수 있다. 실패하면 계약 컬럼이 비고 목록은 계속 쓴다.
-    void fetchInstitutionContractStatusSafe(null, controller.signal).then((result) => {
-      if (controller.signal.aborted) {
-        return;
-      }
-      setContractStatuses(result.ok ? result.data : []);
-    });
-
-    return () => {
-      controller.abort();
-    };
-  }, [reloadKey]);
 
   const summary = useMemo(
     () => ({
@@ -262,7 +238,7 @@ export default function InstitutionCodesPage(): JSX.Element {
       }
 
       setDeleteTarget(null);
-      setReloadKey((prev) => prev + 1);
+      reloadAll();
       notificationApi.success({
         message: '기관 코드 삭제 완료',
         description: (
@@ -274,7 +250,7 @@ export default function InstitutionCodesPage(): JSX.Element {
         )
       });
     },
-    [deleteTarget, notificationApi]
+    [deleteTarget, notificationApi, reloadAll]
   );
 
   const columns = useMemo<TableColumnsType<InstitutionCode>>(
@@ -328,15 +304,42 @@ export default function InstitutionCodesPage(): JSX.Element {
         dataIndex: 'code',
         key: 'exposureMode',
         width: 190,
-        ...createDefinedColumnFilterProps(institutionExposureModes, (record) =>
-          resolveExposureMode(record.code)
-        ),
-        render: (_code: string, record: InstitutionCode) => (
-          <InstitutionExposureModeTag
-            mode={resolveExposureMode(record.code)}
-            assignedQuestionCount={resolveAssignedCount(record.code)}
-          />
-        )
+        // 필터는 원장이 살아 있을 때만 의미가 있다 — 실패·조회 중에는 기본값으로 걸러지면
+        // 실제와 다른 결과가 나오므로, 값을 아는 행만 기본값 해석에 넣는다.
+        ...createDefinedColumnFilterProps(institutionExposureModes, (record) => {
+          const outcome = resolveSideFetchOutcome(
+            exposureModesState.status,
+            exposureModeByCode.get(record.code)
+          );
+          return outcome.kind === 'loaded'
+            ? outcome.row.exposureMode
+            : defaultInstitutionExposureMode;
+        }),
+        render: (_code: string, record: InstitutionCode) => {
+          const outcome = resolveSideFetchOutcome(
+            exposureModesState.status,
+            exposureModeByCode.get(record.code)
+          );
+          if (outcome.kind === 'pending') {
+            return <Text type="secondary">{SIDE_FETCH_PENDING_LABEL}</Text>;
+          }
+          if (outcome.kind === 'failed') {
+            // 🚨 기본값(`배정분만`)으로 그리면 제한된 기관처럼 보인다 — 실패는 실패로 적는다.
+            return <Text type="secondary">{SIDE_FETCH_FAILED_LABEL}</Text>;
+          }
+          const mode: InstitutionExposureMode =
+            outcome.kind === 'loaded'
+              ? outcome.row.exposureMode
+              : defaultInstitutionExposureMode;
+          const assignedQuestionCount =
+            outcome.kind === 'loaded' ? outcome.row.assignedQuestionCount : 0;
+          return (
+            <InstitutionExposureModeTag
+              mode={mode}
+              assignedQuestionCount={assignedQuestionCount}
+            />
+          );
+        }
       },
       {
         // 마스터 관리자 요구: 목록에서 계약 기간과 만료 D-day 를 바로 본다. 만료된 기관을
@@ -346,11 +349,22 @@ export default function InstitutionCodesPage(): JSX.Element {
         key: 'contract',
         width: 220,
         render: (_code: string, record: InstitutionCode) => {
-          const summary = contractStatusByCode.get(record.code);
-          if (!summary) {
+          const outcome = resolveSideFetchOutcome(
+            contractStatusesState.status,
+            contractStatusByCode.get(record.code)
+          );
+          if (outcome.kind === 'pending') {
+            return <Text type="secondary">{SIDE_FETCH_PENDING_LABEL}</Text>;
+          }
+          if (outcome.kind === 'failed') {
+            // 🚨 `-` 는 도메인에서 "계약 없음"이라는 유효한 상태다 — 실패를 그것으로 쓰면
+            // 계약이 있는 기관을 없는 것처럼 보이게 한다.
+            return <Text type="secondary">{SIDE_FETCH_FAILED_LABEL}</Text>;
+          }
+          if (outcome.kind === 'missing') {
             return <Text type="secondary">-</Text>;
           }
-          return <InstitutionContractDdayBadge summary={summary} showPeriod />;
+          return <InstitutionContractDdayBadge summary={outcome.row} showPeriod />;
         }
       },
       {
@@ -379,7 +393,13 @@ export default function InstitutionCodesPage(): JSX.Element {
         render: (_, record) => <TableActionMenu items={buildCodeActionItems(record)} />
       }
     ],
-    [buildCodeActionItems, contractStatusByCode, resolveAssignedCount, resolveExposureMode]
+    [
+      buildCodeActionItems,
+      contractStatusByCode,
+      contractStatusesState.status,
+      exposureModeByCode,
+      exposureModesState.status
+    ]
   );
 
   const toolbar = (
@@ -411,6 +431,35 @@ export default function InstitutionCodesPage(): JSX.Element {
         박람회/기관 유입 QR에 싣는 코드를 등록·관리합니다. 회원이 이 코드를 달고 가입하면 기관 회원으로 추적됩니다.
         {!isInstitutionCodesSupabase && ' (현재 mock 데이터 — 생성/수정/삭제는 화면에만 반영됩니다.)'}
       </Paragraph>
+
+      {exposureModeFailed ? (
+        <Alert
+          type="warning"
+          showIcon
+          style={{ marginBottom: SPACE.sm }}
+          message="노출 모드를 불러오지 못했습니다. 목록의 노출 모드 컬럼은 실제 값이 아닙니다."
+          description={exposureModesState.errorMessage ?? undefined}
+          action={
+            <Button size="small" onClick={reloadExposureModes}>
+              다시 시도
+            </Button>
+          }
+        />
+      ) : null}
+      {contractStatusFailed ? (
+        <Alert
+          type="warning"
+          showIcon
+          style={{ marginBottom: SPACE.sm }}
+          message="계약 정보를 불러오지 못했습니다. 목록의 계약 컬럼은 실제 값이 아닙니다."
+          description={contractStatusesState.errorMessage ?? undefined}
+          action={
+            <Button size="small" onClick={reloadContractStatuses}>
+              다시 시도
+            </Button>
+          }
+        />
+      ) : null}
 
       <AdminListCard toolbar={toolbar}>
         <AdminDataTable<InstitutionCode>
