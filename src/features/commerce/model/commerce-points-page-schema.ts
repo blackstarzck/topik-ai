@@ -1,4 +1,6 @@
 import type { TableProps } from 'antd';
+
+import type { PointsOverview } from './point-page-contract';
 import type { SortOrder } from 'antd/es/table/interface';
 
 import type {
@@ -456,19 +458,27 @@ export function getDangerCopy(state: DangerState) {
 }
 
 // 상단 요약 카드 — 페이지 useMemo 본문을 함수화(Phase 4 분해, 동작 동일).
+/**
+ * 요약 카드.
+ *
+ * 서버 페이징으로 바뀌면서 전량 배열이 사라졌으므로 **개요 건수**(`PointsOverview`)를 받는다.
+ * 카드가 세는 값은 이전과 같은 의미다 — 상태 **필터 무관** 탭 전체 기준. 필터를 적용해 세면
+ * 카드가 자기 자신을 0 으로 만들어 버린다.
+ */
 export function buildPointsSummaryCards(
-  snapshot: CommercePointsSnapshot,
+  overview: PointsOverview,
   query: CommercePointsQuery,
   commitPolicyQuery: (next: Partial<PointPolicyQuery>) => void,
   commitLedgerQuery: (next: Partial<PointLedgerQuery>) => void,
   commitExpirationQuery: (next: Partial<PointExpirationQuery>) => void
 ) {
   if (query.tab === 'policy') {
+    const counts = overview.policyStatusCounts;
     const statusCounts = {
-      all: snapshot.policies.length,
-      draft: snapshot.policies.filter((item) => item.status === '초안').length,
-      active: snapshot.policies.filter((item) => item.status === '운영 중').length,
-      paused: snapshot.policies.filter((item) => item.status === '중지').length
+      all: counts.all ?? 0,
+      draft: counts['초안'] ?? 0,
+      active: counts['운영 중'] ?? 0,
+      paused: counts['중지'] ?? 0
     };
 
     return [
@@ -504,11 +514,12 @@ export function buildPointsSummaryCards(
   }
 
   if (query.tab === 'ledger') {
+    const counts = overview.ledgerStatusCounts;
     const statusCounts = {
-      all: snapshot.ledgers.length,
-      completed: snapshot.ledgers.filter((item) => item.status === '완료').length,
-      held: snapshot.ledgers.filter((item) => item.status === '보류').length,
-      canceled: snapshot.ledgers.filter((item) => item.status === '취소').length
+      all: counts.all ?? 0,
+      completed: counts['완료'] ?? 0,
+      held: counts['보류'] ?? 0,
+      canceled: counts['취소'] ?? 0
     };
 
     return [
@@ -543,12 +554,13 @@ export function buildPointsSummaryCards(
     ];
   }
 
+  const expirationCounts = overview.expirationStatusCounts;
   const statusCounts = {
-    all: snapshot.expirations.length,
-    scheduled: snapshot.expirations.filter((item) => item.status === '예정').length,
-    held: snapshot.expirations.filter((item) => item.status === '보류').length,
-    completed: snapshot.expirations.filter((item) => item.status === '완료').length,
-    canceled: snapshot.expirations.filter((item) => item.status === '취소').length
+    all: expirationCounts.all ?? 0,
+    scheduled: expirationCounts['예정'] ?? 0,
+    held: expirationCounts['보류'] ?? 0,
+    completed: expirationCounts['완료'] ?? 0,
+    canceled: expirationCounts['취소'] ?? 0
   };
 
   return [

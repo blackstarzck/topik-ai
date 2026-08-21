@@ -1,14 +1,8 @@
 import type {
   CommercePointsSnapshot,
   PointExpiration,
-  PointExpirationStatus,
   PointLedger,
-  PointLedgerSourceType,
-  PointLedgerStatus,
-  PointLedgerType,
-  PointPolicy,
-  PointPolicyStatus,
-  PointPolicyType
+  PointPolicy
 } from '../model/point-types';
 import type {
   CreateManualPointAdjustmentPayload,
@@ -19,6 +13,33 @@ import type {
   UpdatePointPolicyStatusPayload
 } from './points-service';
 import { requireClient, requireReason, throwIfAborted } from '@/shared/api/supabase-service-utils';
+import {
+  EXPIRATION_STATUS_PAIRS,
+  LEDGER_STATUS_PAIRS,
+  POLICY_STATUS_PAIRS,
+  UI_EXPIRATION_STATUS_BY_DB,
+  UI_LEDGER_SOURCE_TYPE_BY_DB as UI_SOURCE_TYPE_BY_DB,
+  UI_LEDGER_STATUS_BY_DB,
+  UI_LEDGER_TYPE_BY_DB,
+  UI_POLICY_STATUS_BY_DB,
+  UI_POLICY_TYPE_BY_DB,
+  DB_POLICY_STATUS_BY_UI,
+  DB_POLICY_TYPE_BY_UI
+} from '../model/point-enum-codec';
+import {
+  applyPlan,
+  planExpirationQuery,
+  planLedgerQuery,
+  planPolicyQuery
+} from './supabase-points-page-queries';
+import type { PointsQueryChain } from './supabase-points-page-queries';
+import { POINTS_SORT_TIE_BREAKER } from '../model/point-page-contract';
+import type { PointsOverview, PointsPageSlice } from '../model/point-page-contract';
+import type {
+  PointExpirationQuery,
+  PointLedgerQuery,
+  PointPolicyQuery
+} from '../model/point-types';
 import { toDateOnly as toDate, toDateTimeMinutes as toDateTime } from '@/shared/model/date-format';
 
 type PointPolicyRow = {
@@ -86,60 +107,8 @@ type PointExpirationRow = {
   created_at: string | null;
 };
 
-const DB_POLICY_STATUS_BY_UI: Record<PointPolicyStatus, string> = {
-  초안: 'draft',
-  '운영 중': 'active',
-  중지: 'inactive'
-};
-
-const UI_POLICY_STATUS_BY_DB: Record<string, PointPolicyStatus> = {
-  draft: '초안',
-  active: '운영 중',
-  inactive: '중지'
-};
-
-const DB_POLICY_TYPE_BY_UI: Record<PointPolicyType, string> = {
-  적립: 'earn',
-  차감: 'debit',
-  소멸: 'expire'
-};
-
-const UI_POLICY_TYPE_BY_DB: Record<string, PointPolicyType> = {
-  earn: '적립',
-  debit: '차감',
-  expire: '소멸'
-};
-
-const UI_LEDGER_TYPE_BY_DB: Record<string, PointLedgerType> = {
-  earn: '적립',
-  debit: '차감',
-  revoke: '회수',
-  restore: '복구',
-  expire: '소멸'
-};
-
-const UI_SOURCE_TYPE_BY_DB: Record<string, PointLedgerSourceType> = {
-  referral: '추천',
-  mission: '미션',
-  event: '이벤트',
-  payment: '결제',
-  refund: '환불',
-  admin: '관리자',
-  system: '시스템'
-};
-
-const UI_LEDGER_STATUS_BY_DB: Record<string, PointLedgerStatus> = {
-  completed: '완료',
-  held: '보류',
-  cancelled: '취소'
-};
-
-const UI_EXPIRATION_STATUS_BY_DB: Record<string, PointExpirationStatus> = {
-  scheduled: '예정',
-  held: '보류',
-  completed: '완료',
-  cancelled: '취소'
-};
+// 변환 맵은 공용 코덱이 소유한다 — 쌍 목록 하나에서 양방향이 파생되므로 어긋날 수 없고,
+// CHECK 제약과의 일치는 `tests/unit/point-enum-codec.test.ts` 가 고정한다.
 
 const POLICY_COLUMNS = [
   'id',
@@ -353,6 +322,233 @@ export async function loadPointsSnapshotFromSupabase(
     expirations: (
       (expirations.data ?? []) as unknown as PointExpirationRow[]
     ).map(mapExpirationRow)
+  };
+}
+
+
+/**
+ * 탭별 서버 페이징 조회.
+ *
+ * 조건 수립은 순수 함수(`supabase-points-page-queries`)가 하고 여기서는 실행만 한다 —
+ * 그래야 라이브 DB 없이 **호출 조건을 단위 테스트로 검사**할 수 있다.
+ *
+ * 🚨 정렬에는 항상 `id` 후속 키를 붙인다. 열거형 정렬키는 값이 3~7종뿐이라 동률이 흔하고,
+ * 동률 순서를 고정하지 않으면 **페이지 경계에서 행이 중복·누락**된다.
+ */
+function toSlice<TRow, TItem>(
+  rows: TRow[] | null,
+  count: number | null,
+  map: (row: TRow) => TItem
+): PointsPageSlice<TItem> {
+  return { rows: (rows ?? []).map(map), total: count ?? 0 };
+}
+
+export async function loadPointPoliciesPageFromSupabase(
+  query: PointPolicyQuery,
+  signal?: AbortSignal
+): Promise<PointsPageSlice<PointPolicy>> {
+  const client = requireClient();
+  const plan = planPolicyQuery(query);
+  // 경계 단언 1회 — 이후 체인은 우리 타입으로만 다룬다(모듈 주석 참고).
+  const base = client
+    .from('commerce_point_policies')
+    .select(POLICY_COLUMNS, { count: 'exact' }) as unknown as PointsQueryChain;
+  const { data, count, error } = await applyPlan(base, plan)
+    .order(plan.order.column, { ascending: plan.order.ascending })
+    .order(POINTS_SORT_TIE_BREAKER, { ascending: true })
+    .range(plan.window.from, plan.window.to);
+
+  throwIfAborted(signal);
+  if (error) throw new Error(error.message);
+  return toSlice(data as unknown as PointPolicyRow[] | null, count, mapPolicyRow);
+}
+
+export async function loadPointLedgersPageFromSupabase(
+  query: PointLedgerQuery,
+  signal?: AbortSignal
+): Promise<PointsPageSlice<PointLedger>> {
+  const client = requireClient();
+  const plan = planLedgerQuery(query);
+  // 경계 단언 1회 — 이후 체인은 우리 타입으로만 다룬다(모듈 주석 참고).
+  const base = client
+    .from('commerce_point_ledgers')
+    .select(LEDGER_COLUMNS, { count: 'exact' }) as unknown as PointsQueryChain;
+  const { data, count, error } = await applyPlan(base, plan)
+    .order(plan.order.column, { ascending: plan.order.ascending })
+    .order(POINTS_SORT_TIE_BREAKER, { ascending: true })
+    .range(plan.window.from, plan.window.to);
+
+  throwIfAborted(signal);
+  if (error) throw new Error(error.message);
+  return toSlice(data as unknown as PointLedgerRow[] | null, count, mapLedgerRow);
+}
+
+export async function loadPointExpirationsPageFromSupabase(
+  query: PointExpirationQuery,
+  signal?: AbortSignal
+): Promise<PointsPageSlice<PointExpiration>> {
+  const client = requireClient();
+  const plan = planExpirationQuery(query);
+  // 경계 단언 1회 — 이후 체인은 우리 타입으로만 다룬다(모듈 주석 참고).
+  const base = client
+    .from('commerce_point_expirations')
+    .select(EXPIRATION_COLUMNS, { count: 'exact' }) as unknown as PointsQueryChain;
+  const { data, count, error } = await applyPlan(base, plan)
+    .order(plan.order.column, { ascending: plan.order.ascending })
+    .order(POINTS_SORT_TIE_BREAKER, { ascending: true })
+    .range(plan.window.from, plan.window.to);
+
+  throwIfAborted(signal);
+  if (error) throw new Error(error.message);
+  return toSlice(data as unknown as PointExpirationRow[] | null, count, mapExpirationRow);
+}
+
+/**
+ * 소멸 보류 등록 모달의 **선택 후보**.
+ *
+ * 🚨 이 모달은 목록의 현재 페이지가 아니라 **보류 가능한 전체 후보**에서 대상을 고른다.
+ * 페이지 행만 넘기면 다른 페이지의 건을 고를 수 없어 기능이 줄어든다.
+ *
+ * 상한을 두지 않는 이유: 후보는 종결되지 않은 상태(`예정`·`보류`)로 도메인상 제한되고,
+ * 상한을 두면 목록에 없는 건이 조용히 빠진다(선택 UI 에서는 그 사실을 알 수 없다).
+ */
+export async function loadHoldableExpirationsFromSupabase(
+  signal?: AbortSignal
+): Promise<PointExpiration[]> {
+  const client = requireClient();
+  const { data, error } = await client
+    .from('commerce_point_expirations')
+    .select(EXPIRATION_COLUMNS)
+    .in('status', ['scheduled', 'held'])
+    .order('expire_at', { ascending: true })
+    .order('id', { ascending: true });
+
+  throwIfAborted(signal);
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as unknown as PointExpirationRow[]).map(mapExpirationRow);
+}
+
+/** 단건 조회 — 현재 페이지 밖에 있는 `selected` 를 URL 로 복원할 때 쓴다. */
+async function loadOneById<TRow, TItem>(
+  table: string,
+  columns: string,
+  id: string,
+  map: (row: TRow) => TItem,
+  signal?: AbortSignal
+): Promise<TItem | null> {
+  const client = requireClient();
+  const { data, error } = await client
+    .from(table)
+    .select(columns)
+    .eq('id', id)
+    .maybeSingle();
+
+  throwIfAborted(signal);
+  if (error) throw new Error(error.message);
+  return data ? map(data as unknown as TRow) : null;
+}
+
+export function loadPointPolicyByIdFromSupabase(id: string, signal?: AbortSignal) {
+  return loadOneById<PointPolicyRow, PointPolicy>(
+    'commerce_point_policies',
+    POLICY_COLUMNS,
+    id,
+    mapPolicyRow,
+    signal
+  );
+}
+
+export function loadPointLedgerByIdFromSupabase(id: string, signal?: AbortSignal) {
+  return loadOneById<PointLedgerRow, PointLedger>(
+    'commerce_point_ledgers',
+    LEDGER_COLUMNS,
+    id,
+    mapLedgerRow,
+    signal
+  );
+}
+
+export function loadPointExpirationByIdFromSupabase(id: string, signal?: AbortSignal) {
+  return loadOneById<PointExpirationRow, PointExpiration>(
+    'commerce_point_expirations',
+    EXPIRATION_COLUMNS,
+    id,
+    mapExpirationRow,
+    signal
+  );
+}
+
+/**
+ * 요약 카드·탭 라벨용 건수.
+ *
+ * 요약 카드는 **상태 필터 역할**이므로 필터를 적용해 세면 자기 자신이 0 이 된다 → 필터 무관
+ * 전체 기준으로 센다(지금 화면과 같은 의미). `head: true` 라 행을 받지 않는다.
+ */
+async function countRows(
+  table: string,
+  column: string | null,
+  value: string | null
+): Promise<number> {
+  const client = requireClient();
+  let builder = client.from(table).select('id', { count: 'exact', head: true });
+  if (column && value) {
+    builder = builder.eq(column, value);
+  }
+  const { count, error } = await builder;
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
+export async function loadPointsOverviewFromSupabase(
+  signal?: AbortSignal
+): Promise<PointsOverview> {
+  const policyStatuses = POLICY_STATUS_PAIRS;
+  const ledgerStatuses = LEDGER_STATUS_PAIRS;
+  const expirationStatuses = EXPIRATION_STATUS_PAIRS;
+
+  const [
+    policyAll,
+    ledgerAll,
+    expirationAll,
+    policyByStatus,
+    ledgerByStatus,
+    expirationByStatus
+  ] = await Promise.all([
+    countRows('commerce_point_policies', null, null),
+    countRows('commerce_point_ledgers', null, null),
+    countRows('commerce_point_expirations', null, null),
+    Promise.all(
+      policyStatuses.map(([dbCode]) => countRows('commerce_point_policies', 'status', dbCode))
+    ),
+    Promise.all(
+      ledgerStatuses.map(([dbCode]) => countRows('commerce_point_ledgers', 'status', dbCode))
+    ),
+    Promise.all(
+      expirationStatuses.map(([dbCode]) =>
+        countRows('commerce_point_expirations', 'status', dbCode)
+      )
+    )
+  ]);
+
+  throwIfAborted(signal);
+
+  const toCounts = (
+    pairs: readonly (readonly [string, string])[],
+    counts: number[],
+    all: number
+  ) => {
+    const result: Record<string, number> = { all };
+    pairs.forEach(([, ui], index) => {
+      result[ui] = counts[index];
+    });
+    return result;
+  };
+
+  return {
+    tabCounts: { policy: policyAll, ledger: ledgerAll, expiration: expirationAll },
+    policyStatusCounts: toCounts(policyStatuses, policyByStatus, policyAll),
+    ledgerStatusCounts: toCounts(ledgerStatuses, ledgerByStatus, ledgerAll),
+    expirationStatusCounts: toCounts(expirationStatuses, expirationByStatus, expirationAll)
   };
 }
 

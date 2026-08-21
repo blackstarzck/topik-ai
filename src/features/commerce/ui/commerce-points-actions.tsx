@@ -35,7 +35,13 @@ export type PointsActionContext = {
   query: CommercePointsQuery;
   updateUrl: (nextQuery: CommercePointsQuery) => void;
   showActionError: (message: string, description?: string) => void;
-  setReloadKey: Dispatch<SetStateAction<number>>;
+  /**
+   * 조치 성공 후 개요 건수와 활성 탭 페이지를 함께 다시 받는다.
+   *
+   * 🚨 서버 페이징에서는 "행"과 "건수"가 서로 다른 조회에서 온다 — 하나만 갱신하면
+   * 요약 카드와 목록이 다른 시점을 보여준다.
+   */
+  reloadActive: () => void;
   setPolicyModalState: Dispatch<SetStateAction<PolicyModalState>>;
   setAdjustmentModalOpen: Dispatch<SetStateAction<boolean>>;
   setAdjustmentTarget: Dispatch<SetStateAction<PointLedger | null>>;
@@ -61,7 +67,7 @@ export async function runPolicySubmit(
   }
 
   ctx.setPolicyModalState(null);
-  ctx.setReloadKey((prev) => prev + 1);
+  ctx.reloadActive();
   ctx.updateUrl({
     ...ctx.query,
     tab: 'policy',
@@ -106,7 +112,7 @@ export async function runManualAdjustmentSubmit(
 
   ctx.setAdjustmentModalOpen(false);
   ctx.setAdjustmentTarget(null);
-  ctx.setReloadKey((prev) => prev + 1);
+  ctx.reloadActive();
   ctx.updateUrl({
     ...ctx.query,
     tab: 'ledger',
@@ -146,7 +152,7 @@ export async function runExpirationHoldSubmit(
 
   ctx.setExpirationHoldModalOpen(false);
   ctx.setExpirationHoldTarget(null);
-  ctx.setReloadKey((prev) => prev + 1);
+  ctx.reloadActive();
   ctx.updateUrl({
     ...ctx.query,
     tab: 'expiration',
@@ -193,7 +199,7 @@ export async function runDangerConfirm(
     }
 
     ctx.setDangerState(null);
-    ctx.setReloadKey((prev) => prev + 1);
+    ctx.reloadActive();
     ctx.updateUrl({
       ...ctx.query,
       tab: 'policy',
@@ -227,7 +233,7 @@ export async function runDangerConfirm(
   }
 
   ctx.setDangerState(null);
-  ctx.setReloadKey((prev) => prev + 1);
+  ctx.reloadActive();
   ctx.updateUrl({
     ...ctx.query,
     tab: 'expiration',
