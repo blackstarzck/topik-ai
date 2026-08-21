@@ -43,7 +43,40 @@ node scripts/ci/release-manifest.mjs set --source-sha <sha> --stage stg --verdic
 node scripts/ci/release-manifest.mjs comment --source-sha <sha>   # → stg→main PR에 코멘트로 게시
 ```
 
-검증 항목: 로그인·핵심 운영 플로우(Users 목록/상세, 변경 영향 화면)·콘솔 오류 0·실패 네트워크 요청 0·직전 릴리스 대비 baseline·**배포 SHA 일치**(`<meta name="release-sha">` == source SHA)·스크린샷 저장. 게시된 `MCP-STG-EVIDENCE` 코멘트는 gate와 production verify가 `verify-mcp-evidence.mjs`로 검증한다(작성자·source/stg SHA 바인딩·verdict·체크리스트 전 항목). 운영 검증은 promote 후 같은 체크리스트를 운영 도메인에 수행하고 manifest `production` 스테이지에 기록한다 — verdict pass가 릴리스 종결.
+검증 항목: 로그인·핵심 운영 플로우(Users 목록/상세, 변경 영향 화면)·콘솔 오류 0·실패 네트워크 요청 0·직전 릴리스 대비 baseline·**배포 SHA 일치**(`<meta name="release-sha">` == source SHA)·스크린샷 저장.
+
+### 3.1 브라우저 검증을 손으로 하지 않는다 (2026-08-21부터)
+
+7항목 중 6개는 `npm run release:verify`가 수행한다(`tests/live-e2e/release-browser-verify.pw.ts`). 대상은 환경변수가 정하므로 **스테이징 프리뷰와 운영 도메인에 같은 계측**을 쓴다.
+
+```bash
+RELEASE_VERIFY_BASE_URL=<프리뷰 또는 운영 도메인> \
+VERCEL_AUTOMATION_BYPASS_SECRET=<보호된 프리뷰일 때만> \
+E2E_ADMIN_EMAIL=... E2E_ADMIN_PASSWORD=... \
+RELEASE_EXPECTED_SHA=<source SHA> \
+RELEASE_SHOT_DIR=%USERPROFILE%\.topik-ai\release-manifests\<source-sha>-stg \
+npm run release:verify
+```
+
+- 우회 시크릿은 **헤더**로 넘어간다(`x-vercel-protection-bypass`). 쿼리 문자열에 넣지 마라 — URL 이 로그·히스토리에 남는다.
+- 운영 대상에도 같은 spec 을 쓴다. **읽기 전용**이므로 쓰기 흐름은 들어 있지 않다.
+- 검증 화면 목록은 spec 안의 `auditedScreens` 다 — **릴리스가 바꾼 화면을 넣는 것이 릴리스 담당자 몫이다.** 목록에 없는 화면은 검사되지 않는다.
+
+### 3.2 `baselineCompared` 는 측정으로 한다
+
+`npm run release:probe` 를 **두 번** 돌려 JSON 을 대조한다(`release-baseline-probe.pw.ts`).
+
+| 회차 | 대상 | 방법 |
+| --- | --- | --- |
+| 전 | 직전 릴리스 SHA | 그 SHA 로 워크트리 생성 → **비교 대상과 같은 DB** 를 가리키게 빌드 → `RELEASE_VERIFY_BASE_URL` 없이 실행(로컬 preview) |
+| 후 | 새 배포 | `RELEASE_VERIFY_BASE_URL=<도메인>` 으로 실행 |
+
+측정 축은 화면별 **글자 크기 집합·링크색 집합·표 행 수**이고, 크기별 대표 엘리먼트를 함께 남겨 설명되지 않는 변화를 추적할 수 있다.
+
+- 🚨**행 수는 두 대상이 같은 DB 를 볼 때만 비교축이다.** 운영 검증에서 "전"은 dev DB, "후"는 prod DB 가 되므로 행 수 차이는 데이터 차이다 — 의심이 들면 **운영 DB 를 직접 조회**해 가린다(2026-08-21 릴리스에서 point 3표·refunds 가 실제로 0행이었다).
+- 🚨**`PROBE_ROUNDS` 를 1로 두지 마라.** 같은 릴리스에서 dashboard 행 수가 `0 → 4` 로 보였는데 데이터 도착 전을 잡은 것이었다(3라운드로는 4=4). 기본값 3이다.
+- 🚨**gate 는 PR 을 열 때 실행된다.** MCP 증거 코멘트를 그 뒤에 게시하면 `missing-mcp-evidence-comment` 로 실패하므로 **게시 후 gate 를 재실행**한다. 허용 작성자는 `blackstarzck`·`guestkeduall-design`.
+- 🚨**아티팩트 zip 은 `gh run download --name` 으로 받는다.** GitHub 아티팩트는 데이터 디스크립터를 써서 표준 unzip 이 실패하고, `gh api .../zip` 을 문자열로 받으면 UTF-8 디코딩으로 바이너리가 깨진다(중앙 디렉터리 파서는 `scripts/ci/company-promotion-gate.mjs` 의 `extractJsonFromZip`). 게시된 `MCP-STG-EVIDENCE` 코멘트는 gate와 production verify가 `verify-mcp-evidence.mjs`로 검증한다(작성자·source/stg SHA 바인딩·verdict·체크리스트 전 항목). 운영 검증은 promote 후 같은 체크리스트를 운영 도메인에 수행하고 manifest `production` 스테이지에 기록한다 — verdict pass가 릴리스 종결.
 
 ## 4. 긴급 수동 릴리스 (승격 체인 불가 시)
 
