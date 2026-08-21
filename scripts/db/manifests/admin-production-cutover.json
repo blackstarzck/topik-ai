@@ -2,7 +2,7 @@
   "namespace": "admin",
   "environment": "production",
   "projectRef": "eymlabowhfgtxbiqwxqh",
-  "expectedLocalCount": 102,
+  "expectedLocalCount": 103,
   "batches": {
     "notification-baseline": {
       "from": "20260612170000_notification_admin_tables.sql",
@@ -78,7 +78,7 @@
     },
     "release-all": {
       "from": "20260612170000_notification_admin_tables.sql",
-      "to": "20260806120000_admin_permission_alignment_system_users.sql"
+      "to": "20260821020000_commerce_points_sort_keys.sql"
     },
     "institution-assignment-prerequisite": {
       "reason": "배정 0건 기관에 회원을 배정/초대하면 그 회원은 쓰기 문항을 하나도 보지 못한다(기관 할당제). admin_assign_institution_code 와 admin_invite_institution_members 에 선행조건 검사를 끼운다. 짝 가드는 topik_writing 네임스페이스 20260731100100.",
@@ -365,6 +365,42 @@
         {
           "kind": "policy",
           "identity": "public.system_logs.system_logs_admin_select"
+        }
+      ]
+    },
+    "commerce-points-sort-keys": {
+      "reason": "포인트 화면 서버 페이징을 위한 한국어 라벨 정렬 계약. 포인트 3개 탭(정책·원장·소멸 예정)은 전량을 받아 화면에서 필터·정렬·페이징한다. 서버 페이징으로 바꿀 때 필터·기간·검색·건수는 그대로 옮겨진다 — 번역 맵과 CHECK 제약의 값 집합이 정확히 일치해 `.eq(코드)` 가 화면의 `=== 라벨` 과 같은 행을 고른다. 그런데 정렬만 달라진다: 화면은 한국어 라벨을 localeCompare(ko-KR) 로 정렬하는데 DB 열에는 영어 코드가 들어 있다(예: 정책 상태 오름차순이 화면에서는 운영 중→중지→초안 인데 코드 순서로는 active→draft→inactive = 운영 중→초안→중지). PostgREST 에는 CASE 정렬이 없으므로 순서를 보존하려면 DB 가 정렬키를 제공해야 한다. 이 마이그레이션은 사용자 정렬 가능한 열거형 열 7개에 한국어 오름차순을 숫자 순위로 고정하는 생성 컬럼(generated always as ... stored)만 추가한다. 값이 아니라 정렬 순서만 다루므로 적용 시점에 기존 조회·쓰기 동작은 바뀌지 않는다(아직 아무 코드도 이 컬럼을 읽지 않는다). 순위 표는 src/features/commerce/model/point-enum-codec.ts 에도 있고, tests/unit/point-enum-codec.test.ts 가 이 SQL 을 읽어 두 표가 어긋나지 않게 막는다. 인덱스는 일부러 만들지 않았다 — 관리자 화면은 LIMIT 20 으로 읽고 원장은 포인트 이벤트마다 INSERT 가 도는 표라 추측 인덱스는 쓰기 비용만 늘린다.",
+      "migrations": [
+        "20260821020000_commerce_points_sort_keys.sql"
+      ],
+      "expectPresentAfter": [
+        {
+          "kind": "column",
+          "identity": "public.commerce_point_policies.policy_type_sort_rank"
+        },
+        {
+          "kind": "column",
+          "identity": "public.commerce_point_policies.status_sort_rank"
+        },
+        {
+          "kind": "column",
+          "identity": "public.commerce_point_ledgers.entry_type_sort_rank"
+        },
+        {
+          "kind": "column",
+          "identity": "public.commerce_point_ledgers.source_type_sort_rank"
+        },
+        {
+          "kind": "column",
+          "identity": "public.commerce_point_ledgers.status_sort_rank"
+        },
+        {
+          "kind": "column",
+          "identity": "public.commerce_point_expirations.source_type_sort_rank"
+        },
+        {
+          "kind": "column",
+          "identity": "public.commerce_point_expirations.status_sort_rank"
         }
       ]
     }
