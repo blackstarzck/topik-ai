@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { adminThemeToken } from '../../src/app/theme';
 import {
   APP_COLOR,
+  CSS_COLOR_VARIABLES,
   COLOR,
   FONT_SIZE,
   ICON_SIZE,
@@ -97,5 +98,56 @@ describe('디자인 토큰', () => {
     const packageJson = readFileSync(join(cwd(), 'package.json'), 'utf8');
     expect(packageJson).toContain('"check:design-tokens": "node ./scripts/check-design-tokens.mjs"');
     expect(packageJson).toContain('npm run check:design-tokens');
+  });
+});
+
+/**
+ * 링크 계열 색의 **대비비**를 고정한다.
+ *
+ * 🚨 이 저장소에서 두 번 같은 실수가 났다 — `colorLink` 가 antd 기본 파랑으로 남아 4.10:1
+ * 이었고(#127), CSS 변수 브리지의 `link-hover` 는 `#4096ff` 로 **2.99:1** 이었다(#137 후속).
+ * 후자는 hover 라서 더 나쁘다: 평소엔 읽히는 링크가 마우스를 올리면 덜 읽힌다.
+ * 값이 아니라 **기준**을 테스트로 걸어 같은 계열 회귀를 막는다.
+ */
+function relativeLuminance(hex: string): number {
+  const normalized = hex.replace('#', '');
+  const channels = [0, 2, 4]
+    .map((index) => parseInt(normalized.slice(index, index + 2), 16) / 255)
+    .map((value) => (value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+}
+
+function contrastOnWhite(hex: string): number {
+  const luminance = relativeLuminance(hex);
+  return (1 + 0.05) / (luminance + 0.05);
+}
+
+describe('링크 색 대비비', () => {
+  /** WCAG AA 본문 기준. */
+  const AA_BODY = 4.5;
+
+  it('브랜드색과 링크색이 본문 대비 기준을 넘는다', () => {
+    const derived = theme.getDesignToken({ token: adminThemeToken });
+
+    expect(contrastOnWhite(derived.colorPrimary)).toBeGreaterThanOrEqual(AA_BODY);
+    expect(contrastOnWhite(derived.colorLink)).toBeGreaterThanOrEqual(AA_BODY);
+  });
+
+  it('링크 hover 도 같은 기준을 넘는다 — hover 에서 읽기 어려워지면 안 된다', () => {
+    const derived = theme.getDesignToken({ token: adminThemeToken });
+
+    expect(contrastOnWhite(derived.colorPrimaryHover)).toBeGreaterThanOrEqual(AA_BODY);
+    // CSS 변수 브리지가 그 값을 그대로 내려주는지도 함께 본다.
+    expect(CSS_COLOR_VARIABLES['link-hover']).toBe(derived.colorPrimaryHover);
+  });
+
+  it('antd 기본 파랑 계열이 링크 색으로 되돌아오지 않는다', () => {
+    const stockBlues = ['#1677ff', '#4096ff', '#69b1ff'];
+    const derived = theme.getDesignToken({ token: adminThemeToken });
+
+    for (const stock of stockBlues) {
+      expect(derived.colorLink.toLowerCase(), stock).not.toBe(stock);
+      expect(CSS_COLOR_VARIABLES['link-hover'].toLowerCase(), stock).not.toBe(stock);
+    }
   });
 });

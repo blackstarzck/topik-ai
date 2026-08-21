@@ -1,5 +1,6 @@
 import { toSafeResult, withRetry } from '@/shared/api/safe-request';
 import { isSupabaseConfigured } from '@/shared/api/supabase-client';
+import { sleep } from '@/shared/api/supabase-service-utils';
 import { getMockUserRealName } from '@/features/users/api/users-service';
 import { useCommerceStore } from '../model/commerce-store';
 import type {
@@ -28,6 +29,9 @@ async function loadPayments(signal?: AbortSignal): Promise<PaymentRow[]> {
   if (isSupabaseConfigured) {
     return loadPaymentsFromSupabase(signal);
   }
+  // 다른 mock 서비스와 같은 인위적 지연. 이게 없으면 pending 프레임이 마이크로태스크
+  // 한 번에 끝나 로딩 표시의 유무를 화면에서도 e2e 에서도 확인할 수 없다.
+  await sleep(200, signal);
   return useCommerceStore.getState().payments;
 }
 
@@ -35,6 +39,7 @@ async function loadRefunds(signal?: AbortSignal): Promise<RefundRow[]> {
   if (commerceRefundsDataSource === 'supabase') {
     return loadRefundsFromSupabase(signal);
   }
+  await sleep(200, signal);
   return useCommerceStore.getState().refunds;
 }
 
