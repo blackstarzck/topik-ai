@@ -49,7 +49,10 @@ import { AssessmentMasterCatalogSection } from '@/features/assessment/ui/master-
 import type { AsyncState } from '@/shared/model/async-state';
 import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
 import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
-import { ListSummaryCards } from '@/shared/ui/list-summary-cards/list-summary-cards';
+import {
+  isInitialSummaryLoad,
+  ListSummaryCards
+} from '@/shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '@/shared/ui/page-title/page-title';
 import {
   SearchBar,
@@ -579,7 +582,10 @@ export default function SystemMetadataPage(): JSX.Element {
           </Space>
         }
       />
-      <ListSummaryCards items={summaryItems} />
+      <ListSummaryCards
+        items={summaryItems}
+        loading={isInitialSummaryLoad(metadataState.status, metadataState.data.length > 0)}
+      />
       <Paragraph type="secondary" style={{ marginBottom: SPACE.lg }}>
         카드는 기능 영역을 빠르게 좁히는 용도이고, 실제 수정 여부 판단은 상세 Drawer의
         `기본 정보`, `설정 구조`, `지금 운영 중인 값`을 기준으로 진행하는 것을 기본으로 합니다.

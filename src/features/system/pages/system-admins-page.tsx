@@ -13,7 +13,10 @@ import { permissionCatalog, roleCatalog } from '../model/permission-types';
 import type { AdminPermissionAssignment, RoleKey } from '../model/permission-types';
 import { mapAppRoleToRoleKey, permissionKeysForRole } from '@/features/auth/model/app-role-mapping';
 import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
-import { ListSummaryCards } from '@/shared/ui/list-summary-cards/list-summary-cards';
+import {
+  isInitialSummaryLoad,
+  ListSummaryCards
+} from '@/shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '@/shared/ui/page-title/page-title';
 import {
   SearchBar,
@@ -322,7 +325,10 @@ export default function SystemAdminsPage(): JSX.Element {
           관리자 초대
         </Button>
       </div>
-      <ListSummaryCards items={summaryItems} />
+      <ListSummaryCards
+        items={summaryItems}
+        loading={isInitialSummaryLoad(adminsState.status, admins.length > 0)}
+      />
 
       <AdminListCard
         toolbar={

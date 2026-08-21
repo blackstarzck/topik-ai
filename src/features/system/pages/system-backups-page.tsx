@@ -41,7 +41,10 @@ import {
   DetailDrawerSection
 } from '@/shared/ui/detail-drawer/detail-drawer';
 import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
-import { ListSummaryCards } from '@/shared/ui/list-summary-cards/list-summary-cards';
+import {
+  isInitialSummaryLoad,
+  ListSummaryCards
+} from '@/shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '@/shared/ui/page-title/page-title';
 import {
   SearchBar,
@@ -388,7 +391,10 @@ export default function SystemBackupsPage(): JSX.Element {
         />
       ) : null}
 
-      <ListSummaryCards items={summaryItems} />
+      <ListSummaryCards
+        items={summaryItems}
+        loading={isInitialSummaryLoad(summaryState.status, summary !== null)}
+      />
 
       <AdminListCard
         toolbar={

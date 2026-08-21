@@ -45,7 +45,10 @@ import {
   DetailDrawerSection
 } from '@/shared/ui/detail-drawer/detail-drawer';
 import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
-import { ListSummaryCards } from '@/shared/ui/list-summary-cards/list-summary-cards';
+import {
+  isInitialSummaryLoad,
+  ListSummaryCards
+} from '@/shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '@/shared/ui/page-title/page-title';
 import {
   SearchBar,
@@ -491,7 +494,10 @@ export function MockMessageHistoryPage(): JSX.Element {
     <div>
       {notificationContextHolder}
       <PageTitle title="발송 이력" />
-      <ListSummaryCards items={historySummaryCards} />
+      <ListSummaryCards
+        items={historySummaryCards}
+        loading={isInitialSummaryLoad(loadState.status, histories.length > 0)}
+      />
 
       {loadState.status === 'error' ? (
         <Alert

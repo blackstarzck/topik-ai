@@ -13,7 +13,10 @@ import type {
   ImportedWritingTask
 } from '../model/imported-task-types';
 import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
-import { ListSummaryCards } from '@/shared/ui/list-summary-cards/list-summary-cards';
+import {
+  isInitialSummaryLoad,
+  ListSummaryCards
+} from '@/shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '@/shared/ui/page-title/page-title';
 import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
 import { createTextSorter } from '@/shared/ui/table/table-column-utils';
@@ -338,7 +341,10 @@ export default function AssessmentImportedTasksPage(): JSX.Element {
 
         <AssessmentBankTabs active="imported" />
 
-        <ListSummaryCards items={summaryItems} />
+        <ListSummaryCards
+          items={summaryItems}
+          loading={isInitialSummaryLoad(state.status, hasCached)}
+        />
 
         <AdminListCard toolbar={toolbar}>
         {questionBankDataSource === 'mock' ? (

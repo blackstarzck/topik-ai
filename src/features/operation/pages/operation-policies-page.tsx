@@ -42,7 +42,10 @@ import { useRouterStateNotice } from '@/shared/model/use-router-state-notice';
 import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
 import { HtmlPreviewModal } from '@/shared/ui/html-preview-modal/html-preview-modal';
 import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
-import { ListSummaryCards } from '@/shared/ui/list-summary-cards/list-summary-cards';
+import {
+  isInitialSummaryLoad,
+  ListSummaryCards
+} from '@/shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '@/shared/ui/page-title/page-title';
 import { parseSearchDate } from '@/shared/ui/search-bar/search-bar-utils';
 import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
@@ -648,7 +651,10 @@ export default function OperationPoliciesPage(): JSX.Element {
     <div>
       {notificationContextHolder}
       <PageTitle title="정책 관리" />
-      <ListSummaryCards items={policySummaryCards} />
+      <ListSummaryCards
+        items={policySummaryCards}
+        loading={isInitialSummaryLoad(policiesState.status, hasCachedPolicies)}
+      />
 
       <AdminListCard
         toolbar={

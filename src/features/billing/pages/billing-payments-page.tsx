@@ -12,7 +12,10 @@ import type { PaymentRow, PaymentStatus, RefundRow } from '../api/billing-servic
 import { resolveRefundRelatedSummary } from '../model/refund-summary';
 import { useAsyncResource } from '@/shared/model/use-async-resource';
 import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
-import { ListSummaryCards } from '@/shared/ui/list-summary-cards/list-summary-cards';
+import {
+  isInitialSummaryLoad,
+  ListSummaryCards
+} from '@/shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '@/shared/ui/page-title/page-title';
 import {
   SearchBar,
@@ -293,7 +296,10 @@ export default function BillingPaymentsPage(): JSX.Element {
           description={refundsState.errorMessage ?? ''}
         />
       ) : null}
-      <ListSummaryCards items={paymentSummaryCards} />
+      <ListSummaryCards
+        items={paymentSummaryCards}
+        loading={isInitialSummaryLoad(paymentsState.status, payments.length > 0)}
+      />
 
       <AdminListCard
         toolbar={
