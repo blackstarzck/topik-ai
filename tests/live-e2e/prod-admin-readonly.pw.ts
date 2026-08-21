@@ -1,4 +1,6 @@
-import { expect, test, type Page, type Response } from '@playwright/test';
+import { expect, test, type Response } from '@playwright/test';
+
+import { loginIfNeeded } from './admin-login';
 
 const REQUIRED_RPCS = [
   'get_admin_users',
@@ -16,16 +18,6 @@ const expectedProjectRef = process.env.SUPABASE_EXPECTED_PROJECT_REF;
 function rpcName(response: Response): string | null {
   const match = /\/rest\/v1\/rpc\/([^?]+)/.exec(response.url());
   return match?.[1] ?? null;
-}
-
-async function loginIfNeeded(page: Page): Promise<void> {
-  const password = page.locator('input[type="password"]');
-  if (!(await password.isVisible())) return;
-
-  await page.locator('input[type="email"], input#email').first().fill(adminEmail ?? '');
-  await password.fill(adminPassword ?? '');
-  await page.locator('button[type="submit"]').click();
-  await expect(password).not.toBeVisible();
 }
 
 test.beforeAll(() => {
@@ -52,7 +44,7 @@ test('검증 대상에서 Users 핵심 read-only 흐름과 내보내기 감사 �
   });
 
   await page.goto('/users');
-  await loginIfNeeded(page);
+  await loginIfNeeded(page, { email: adminEmail, password: adminPassword });
 
   await expect(page.getByRole('heading', { name: '회원 목록' })).toBeVisible();
   await expect.poll(() => responses.get('get_admin_users')?.length ?? 0).toBeGreaterThan(0);
