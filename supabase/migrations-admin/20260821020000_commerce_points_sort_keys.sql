@@ -30,8 +30,6 @@ begin;
 
 -- ── 정책: policy_type / status ───────────────────────────────────────────────
 alter table public.commerce_point_policies
-  drop column if exists policy_type_sort_rank;
-alter table public.commerce_point_policies
   add column policy_type_sort_rank smallint
   generated always as (
     case policy_type
@@ -42,8 +40,6 @@ alter table public.commerce_point_policies
     end
   ) stored;
 
-alter table public.commerce_point_policies
-  drop column if exists status_sort_rank;
 alter table public.commerce_point_policies
   add column status_sort_rank smallint
   generated always as (
@@ -56,8 +52,6 @@ alter table public.commerce_point_policies
   ) stored;
 
 -- ── 원장: entry_type / source_type / status ──────────────────────────────────
-alter table public.commerce_point_ledgers
-  drop column if exists entry_type_sort_rank;
 alter table public.commerce_point_ledgers
   add column entry_type_sort_rank smallint
   generated always as (
@@ -72,8 +66,6 @@ alter table public.commerce_point_ledgers
   ) stored;
 
 alter table public.commerce_point_ledgers
-  drop column if exists source_type_sort_rank;
-alter table public.commerce_point_ledgers
   add column source_type_sort_rank smallint
   generated always as (
     case source_type
@@ -88,8 +80,6 @@ alter table public.commerce_point_ledgers
     end
   ) stored;
 
-alter table public.commerce_point_ledgers
-  drop column if exists status_sort_rank;
 alter table public.commerce_point_ledgers
   add column status_sort_rank smallint
   generated always as (
@@ -103,8 +93,6 @@ alter table public.commerce_point_ledgers
 
 -- ── 소멸 예정: source_type / status ──────────────────────────────────────────
 alter table public.commerce_point_expirations
-  drop column if exists source_type_sort_rank;
-alter table public.commerce_point_expirations
   add column source_type_sort_rank smallint
   generated always as (
     case source_type
@@ -119,8 +107,6 @@ alter table public.commerce_point_expirations
     end
   ) stored;
 
-alter table public.commerce_point_expirations
-  drop column if exists status_sort_rank;
 alter table public.commerce_point_expirations
   add column status_sort_rank smallint
   generated always as (
