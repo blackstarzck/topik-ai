@@ -357,6 +357,9 @@ export default function InstitutionCodeDetailPage(): JSX.Element {
                   institution={institution}
                   settings={settings}
                   contractStatus={contractStatus}
+                  contractStatusUnavailable={
+                    contractOutcome.kind === 'failed' || contractOutcome.kind === 'pending'
+                  }
                   canManage={canManageMembers}
                   notificationApi={notificationApi}
                   onChanged={handleChanged}
