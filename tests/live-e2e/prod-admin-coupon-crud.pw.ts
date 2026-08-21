@@ -1,4 +1,6 @@
-import { expect, test, type Page, type Response } from '@playwright/test';
+import { expect, test, type Response } from '@playwright/test';
+
+import { loginIfNeeded } from './admin-login';
 
 const PRODUCTION_PROJECT_REF = 'eymlabowhfgtxbiqwxqh';
 const targetProjectRef = process.env.E2E_TARGET_PROJECT_REF ?? PRODUCTION_PROJECT_REF;
@@ -38,14 +40,6 @@ async function runSql<T extends Record<string, unknown>>(sql: string): Promise<T
   return JSON.parse(body) as T[];
 }
 
-async function loginIfNeeded(page: Page): Promise<void> {
-  if (await page.getByRole('heading', { name: 'TOPIK 관리자 로그인' }).isVisible()) {
-    await page.getByLabel('이메일').fill(adminEmail ?? '');
-    await page.getByLabel('비밀번호').fill(adminPassword ?? '');
-    await page.getByRole('button', { name: '로그인' }).click();
-  }
-}
-
 test.beforeAll(() => {
   if (!adminEmail || !adminPassword || !accessToken) {
     throw new Error(
@@ -80,7 +74,7 @@ test('현재 관리자 계정으로 대상 DB의 정기 쿠폰 CRUD와 감사 �
 
   try {
     await page.goto('/commerce/coupons?view=subscriptionTemplate');
-    await loginIfNeeded(page);
+    await loginIfNeeded(page, { email: adminEmail, password: adminPassword });
 
     await expect(page.getByRole('heading', { name: '쿠폰' })).toBeVisible();
     await expect(page.getByText('현재 세션: E2E Admin · 슈퍼')).toBeVisible();
