@@ -203,7 +203,10 @@
 - 예외는 **아이콘 글리프 크기**뿐이다 — 아이콘은 텍스트가 아니라 도형이라 12px 등이 정상이다. 예외는 `scripts/check-typography-min-font.mjs` 의 allowlist 에 근거와 함께 등재하며 **줄이기만 한다**.
 - **antd 가 자기 토큰으로 그리는 소형 텍스트도 규칙 대상이다.** Tag 본문·Switch 내부 라벨·Badge count·표 필터 빈 목록 문구는 전부 `fontSizeSM` 파생인데 antd 기본값은 `fontSize(14) - 2 = 12` 다. 그래서 전역 테마가 `fontSizeSM: 14` 를 선언한다(`src/app/theme.ts`). 본문 `fontSize` 는 건드리지 않는다 — 소형 변형만 본문과 같게 올리는 것이다.
 - 컴포넌트 하나만 좁혀야 하면 `theme={{ components: { Tag: { fontSizeSM: 14 } } }}` 도 유효하다(antd `ComponentsConfig` 는 컴포넌트별 alias 토큰 덮어쓰기를 허용한다). 전역 CSS 로 `.ant-tag` 를 덮는 방식은 **쓰지 않는다** — cssinjs 주입 순서 탓에 동점 명시도에서 antd 가 이긴다.
-- 게이트: `npm run check:typography-min-font`(`harness:check` 배선). `src/**` 의 인라인 `fontSize` 와 `*.css` 의 `font-size` 에 더해 **테마의 `fontSizeSM` 선언**까지 본다. 토큰 값 자체는 `tests/unit/admin-theme-token.test.ts` 가 실물 import 로 고정한다.
+- **인라인 SVG 안의 `fontSize` 는 CSS 픽셀이 아니다.** `viewBox` 가 스케일되면 글자도 함께 스케일되므로 실제 렌더 크기는 컨테이너 폭에 따라 달라진다. 차트에서 14px 을 지키려면 **스케일하지 않고**(`width` 를 산출 폭으로 지정) 좁은 곳에서는 가로 스크롤로 넘긴다 — 라벨을 생략하거나 줄이지 않는다. 폭·여백 계산은 순수 함수로 떼어 단위 테스트로 고정한다(선례 `src/features/assessment/model/category-chart-layout.ts`).
+- **정보 상태색(`colorInfo`)은 브랜드색과 분리한다**(2026-08-20 결정). 정보 Alert 이 주요 액션·링크와 같은 색이면 둘이 구분되지 않는다. 아이콘은 대비 3:1 이면 되지만, 이 색을 **본문 텍스트나 링크에 쓰면 4.5:1 을 못 넘기므로** 그때는 브랜드색을 쓴다.
+- **화면 하나만 본문 크기를 바꾸지 않는다.** `ConfigProvider` 로 페이지 전역 `fontSize` 를 재정의하면 "앱 전체 본문을 키우지 말라"는 제약을 그 화면에서 우회하는 것이 된다(`/analytics/learning` 사례, 2026-08-20 제거).
+- 게이트: `npm run check:typography-min-font`(`harness:check` 배선). `src/**` 의 인라인 `fontSize`(객체 리터럴 `fontSize: 12` + **JSX/SVG 속성형 `fontSize={9}`·`fontSize="11"`**)와 `*.css` 의 `font-size`, 그리고 **테마의 `fontSizeSM` 선언**까지 본다. 검사 전에 **주석을 걷어낸다** — 규칙을 설명하는 주석의 예시가 위반으로 잡히거나 반대로 진짜 위반을 가리기 때문이다. 토큰 값 자체는 `tests/unit/admin-theme-token.test.ts` 가 실물 import 로 고정한다.
 - 함정: antd cssinjs 는 페이지 CSS 보다 늦게 주입되므로, `.ant-table` 같은 antd 루트를 덮을 때 명시도가 동점이면 antd 가 이긴다 — `.패널클래스.ant-card .ant-table` 처럼 클래스 두 개로 올려야 실제로 적용된다.
 
 ## 디자인 값(강제)

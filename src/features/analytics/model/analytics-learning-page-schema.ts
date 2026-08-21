@@ -1,5 +1,3 @@
-import type { ThemeConfig } from 'antd';
-
 import type { LearningAnalytics } from '../api/analytics-learning-service';
 import {
   learningPeriodLabels,
@@ -137,9 +135,6 @@ export const pdfQuestionColors: Record<LearningQuestionNo, string> = {
   53: scoreColors[2],
   54: scoreColors[3]
 };
-
-// 학습 분석 페이지 타이포 기준: antd 베이스 16px(파생 SM 14px). 가시 텍스트는 14px 미만 금지.
-export const learningTypographyTheme: ThemeConfig = { token: { fontSize: 16 } };
 
 export function formatNumber(value: number | null | undefined, digits = 0): string {
   if (value == null) {

@@ -71,6 +71,81 @@ function listFiles(dir) {
   return files;
 }
 
+/**
+ * 주석을 공백으로 덮어 **실행 코드만** 남긴다(라인 수·라인 번호는 그대로 유지).
+ *
+ * 🚨 이 저장소에서 반복된 함정 — 규칙을 설명하는 주석에 위반 예시(`fontSize={9}` 같은 것)를
+ * 적으면 정규식이 그 예시에 매치된다. 방향에 따라 두 가지로 다 깨진다: 없는 위반을 만들거나
+ * (이 검사), 진짜 선언을 지워도 주석 예시 때문에 통과한다(테마 `fontSizeSM` 검사에서 실제로
+ * 겪었다). 그래서 문자열 리터럴은 남기고 주석만 지운다 — 문자열 안의 `//` 는 주석이 아니다.
+ */
+function stripComments(source) {
+  let out = '';
+  let index = 0;
+  let state = 'code';
+  let quote = '';
+
+  while (index < source.length) {
+    const char = source[index];
+    const next = source[index + 1];
+
+    if (state === 'code') {
+      if (char === '/' && next === '/') {
+        state = 'line-comment';
+        out += '  ';
+        index += 2;
+        continue;
+      }
+      if (char === '/' && next === '*') {
+        state = 'block-comment';
+        out += '  ';
+        index += 2;
+        continue;
+      }
+      if (char === '"' || char === "'" || char === '`') {
+        state = 'string';
+        quote = char;
+      }
+      out += char;
+      index += 1;
+      continue;
+    }
+
+    if (state === 'string') {
+      if (char === '\\') {
+        out += source.slice(index, index + 2);
+        index += 2;
+        continue;
+      }
+      if (char === quote) {
+        state = 'code';
+        quote = '';
+      }
+      out += char;
+      index += 1;
+      continue;
+    }
+
+    // 주석 안 — 개행만 살려 라인 번호를 지킨다.
+    if (char === '\n') {
+      state = state === 'line-comment' ? 'code' : state;
+      out += '\n';
+      index += 1;
+      continue;
+    }
+    if (state === 'block-comment' && char === '*' && next === '/') {
+      state = 'code';
+      out += '  ';
+      index += 2;
+      continue;
+    }
+    out += ' ';
+    index += 1;
+  }
+
+  return out;
+}
+
 /** 위반 라인이 allowlist 예외에 해당하는지. 같은 파일 + snippet 포함 블록으로 판정한다. */
 function isAllowed(posixFile, lines, lineIndex) {
   return ICON_GLYPH_ALLOWLIST.some((entry) => {
@@ -86,14 +161,24 @@ function collectViolations() {
 
   for (const absoluteFile of listFiles(SRC_DIR)) {
     const posixFile = toPosix(path.relative(ROOT_DIR, absoluteFile));
-    const lines = readFileSync(absoluteFile, 'utf8').split('\n');
+    const source = readFileSync(absoluteFile, 'utf8');
+    const lines = source.split('\n');
     const isCss = absoluteFile.endsWith('.css');
+    // CSS 는 `/* */` 만 쓰므로 같은 제거기로 처리된다.
+    const codeLines = stripComments(source).split('\n');
 
-    lines.forEach((line, index) => {
+    codeLines.forEach((line, index) => {
       // 인라인은 숫자 리터럴(`fontSize: 12`)과 문자열(`fontSize: '12px'`) 두 표기를 모두 본다.
+      //
+      // 🚨 JSX/SVG 속성형(`fontSize={9}`)은 콜론이 없어서 위 정규식이 놓쳤다 — 그래서
+      // 인라인 SVG 차트의 9px 라벨 4곳이 게이트를 통과해 왔다(2026-08-20 발견). 두 표기를
+      // 모두 본다. `fontSize={FONT_SIZE.base}` 처럼 식별자를 넘기는 형태는 숫자 리터럴이
+      // 아니므로 걸리지 않는다.
       const match = isCss
         ? /font-size:\s*(\d+(?:\.\d+)?)px/.exec(line)
-        : /fontSize:\s*'?(\d+(?:\.\d+)?)(?:px)?'?(?=[,\s}'])/.exec(line);
+        : /fontSize:\s*'?(\d+(?:\.\d+)?)(?:px)?'?(?=[,\s}']|$)/.exec(line)
+          ?? /fontSize=\{\s*(\d+(?:\.\d+)?)\s*\}/.exec(line)
+          ?? /fontSize="(\d+(?:\.\d+)?)(?:px)?"/.exec(line);
       if (!match) return;
       const size = Number(match[1]);
       if (size >= MIN_FONT_PX) return;

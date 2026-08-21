@@ -10,7 +10,6 @@ import {
   App,
   Button,
   Card,
-  ConfigProvider,
   Empty,
   Result,
   Segmented,
@@ -51,7 +50,6 @@ import {
   formatNumber,
   formatRefreshTime,
   getQuestionShortLabel,
-  learningTypographyTheme,
   scoreColors,
   type PdfUsageHierarchyRow,
   type PdfUsageSlice
@@ -292,26 +290,23 @@ export default function AnalyticsLearningPage(): JSX.Element {
   // 막는 최종 화면 게이트 — DB 는 어차피 거절하지만, 단순 장애로 오해하지 않게 한다.
   if (!canRead) {
     return (
-      <ConfigProvider theme={learningTypographyTheme}>
-        <main className="analytics-learning-page" data-testid="analytics-learning-page">
-          <PageTitle
-            title="학습 분석"
-            breadcrumbFirst
-            description="문제 유형, 주제, 기간 기준으로 학습 성과와 피드백 활용을 분석합니다."
-          />
-          <Result
-            status="403"
-            title="통계 조회 권한이 없습니다."
-            subTitle="통계 조회(analytics.read) 권한을 부여받은 관리자만 학습 분석을 볼 수 있습니다. 권한을 부여받은 뒤 새로고침하거나 다시 로그인하면 표시됩니다."
-            extra={<Button onClick={() => history.back()}>이전 화면</Button>}
-          />
-        </main>
-      </ConfigProvider>
+      <main className="analytics-learning-page" data-testid="analytics-learning-page">
+        <PageTitle
+          title="학습 분석"
+          breadcrumbFirst
+          description="문제 유형, 주제, 기간 기준으로 학습 성과와 피드백 활용을 분석합니다."
+        />
+        <Result
+          status="403"
+          title="통계 조회 권한이 없습니다."
+          subTitle="통계 조회(analytics.read) 권한을 부여받은 관리자만 학습 분석을 볼 수 있습니다. 권한을 부여받은 뒤 새로고침하거나 다시 로그인하면 표시됩니다."
+          extra={<Button onClick={() => history.back()}>이전 화면</Button>}
+        />
+      </main>
     );
   }
 
   return (
-    <ConfigProvider theme={learningTypographyTheme}>
     <main
       className={`analytics-learning-page${drawerOpen ? ' analytics-learning-page--drawer-open' : ''}`}
       data-testid="analytics-learning-page"
@@ -576,6 +571,5 @@ export default function AnalyticsLearningPage(): JSX.Element {
       />
 
     </main>
-    </ConfigProvider>
   );
 }
