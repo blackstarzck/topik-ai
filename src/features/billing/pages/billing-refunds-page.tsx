@@ -20,7 +20,10 @@ import type { RefundRow, RefundStatus } from '../api/billing-service';
 import { AuditLogLink } from '@/shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
 import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
-import { ListSummaryCards } from '@/shared/ui/list-summary-cards/list-summary-cards';
+import {
+  isInitialSummaryLoad,
+  ListSummaryCards
+} from '@/shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '@/shared/ui/page-title/page-title';
 import {
   SearchBar,
@@ -357,7 +360,10 @@ export default function BillingRefundsPage(): JSX.Element {
           description={refundsState.errorMessage ?? ''}
         />
       ) : null}
-      <ListSummaryCards items={refundSummaryCards} />
+      <ListSummaryCards
+        items={refundSummaryCards}
+        loading={isInitialSummaryLoad(refundsState.status, refunds.length > 0)}
+      />
 
       <AdminListCard
         toolbar={

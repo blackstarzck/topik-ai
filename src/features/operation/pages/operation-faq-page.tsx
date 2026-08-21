@@ -71,7 +71,10 @@ import {
 import type { AsyncState } from '@/shared/model/async-state';
 import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
 import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
-import { ListSummaryCards } from '@/shared/ui/list-summary-cards/list-summary-cards';
+import {
+  isInitialSummaryLoad,
+  ListSummaryCards
+} from '@/shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '@/shared/ui/page-title/page-title';
 import {
   parseSearchDate
@@ -590,7 +593,10 @@ export default function OperationFaqPage(): JSX.Element {
     <div>
       {notificationContextHolder}
       <PageTitle title="자주 묻는 질문" />
-      <ListSummaryCards items={faqSummaryCards} />
+      <ListSummaryCards
+        items={faqSummaryCards}
+        loading={isInitialSummaryLoad(faqsState.status, faqsState.data.length > 0)}
+      />
 
       <AdminListCard
         toolbar={

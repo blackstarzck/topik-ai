@@ -61,7 +61,10 @@ import { getTargetTypeLabel } from '@/shared/model/target-type-label';
 import { AuditLogLink } from '@/shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
 import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
-import { ListSummaryCards } from '@/shared/ui/list-summary-cards/list-summary-cards';
+import {
+  isInitialSummaryLoad,
+  ListSummaryCards
+} from '@/shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '@/shared/ui/page-title/page-title';
 import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
 import { COLOR, RADIUS, SPACE } from '@/shared/styles/design-tokens';
@@ -588,7 +591,10 @@ export default function AssessmentQuestionManagePage(): JSX.Element {
 
         <AssessmentBankTabs active="questions" />
 
-        <ListSummaryCards items={summaryItems} />
+        <ListSummaryCards
+          items={summaryItems}
+          loading={isInitialSummaryLoad(state.status, state.data.length > 0)}
+        />
 
         <AdminListCard>
           {questionBankDataSource === 'mock' ? (

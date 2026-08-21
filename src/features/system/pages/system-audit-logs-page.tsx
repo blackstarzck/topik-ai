@@ -11,7 +11,10 @@ import {
   normalizeTargetType
 } from '@/shared/model/target-type-label';
 import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
-import { ListSummaryCards } from '@/shared/ui/list-summary-cards/list-summary-cards';
+import {
+  isInitialSummaryLoad,
+  ListSummaryCards
+} from '@/shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '@/shared/ui/page-title/page-title';
 import {
   SearchBar,
@@ -385,7 +388,10 @@ export default function SystemAuditLogsPage(): JSX.Element {
   return (
     <div>
       <PageTitle title="감사 로그" />
-      <ListSummaryCards items={summaryItems} />
+      <ListSummaryCards
+        items={summaryItems}
+        loading={isInitialSummaryLoad(auditLogsState.status, auditLogsState.data.length > 0)}
+      />
 
       <AdminListCard
         toolbar={

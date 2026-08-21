@@ -43,7 +43,10 @@ import {
 import { createCommunityPostColumns } from '../ui/community-posts-columns';
 import { CommunityPostDetailDrawer } from '../ui/community-post-detail-drawer';
 import { getTargetTypeLabel } from '@/shared/model/target-type-label';
-import { ListSummaryCards } from '@/shared/ui/list-summary-cards/list-summary-cards';
+import {
+  isInitialSummaryLoad,
+  ListSummaryCards
+} from '@/shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '@/shared/ui/page-title/page-title';
 import {
   SearchBar,
@@ -492,7 +495,10 @@ export default function CommunityPostsPage(): JSX.Element {
     <div>
       {notificationContextHolder}
       <PageTitle title="게시글 관리" />
-      <ListSummaryCards items={postSummaryCards} />
+      <ListSummaryCards
+        items={postSummaryCards}
+        loading={isInitialSummaryLoad(loadState, rows.length > 0)}
+      />
 
       <AdminListCard
         toolbar={

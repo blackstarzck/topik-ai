@@ -54,7 +54,10 @@ import type { AsyncState } from "@/shared/model/async-state";
 import { useRouterStateNotice } from "@/shared/model/use-router-state-notice";
 import { AuditLogLink } from "@/shared/ui/audit-log-link/audit-log-link";
 import { ConfirmAction } from "@/shared/ui/confirm-action/confirm-action";
-import { ListSummaryCards } from "@/shared/ui/list-summary-cards/list-summary-cards";
+import {
+  isInitialSummaryLoad,
+  ListSummaryCards,
+} from "@/shared/ui/list-summary-cards/list-summary-cards";
 import { PageTitle } from "@/shared/ui/page-title/page-title";
 import { parseSortOrder } from '@/shared/ui/table/table-column-utils';
 
@@ -638,6 +641,11 @@ export default function CommerceCouponsPage(): JSX.Element {
           mainView === "list"
             ? couponStatusSummaryCards
             : couponTemplateSummaryCards
+        }
+        loading={
+          mainView === "list"
+            ? isInitialSummaryLoad(couponsState.status, hasCachedCoupons)
+            : isInitialSummaryLoad(templatesState.status, hasCachedTemplates)
         }
       />
       <CommerceCouponsListSection

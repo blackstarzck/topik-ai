@@ -7,7 +7,10 @@ import { fetchSystemLogsSafe } from '../api/system-logs-service';
 import { useAsyncResource } from '@/shared/model/use-async-resource';
 import type { SystemLogLevel as LogLevel, SystemLogRow } from '../model/system-log-types';
 import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
-import { ListSummaryCards } from '@/shared/ui/list-summary-cards/list-summary-cards';
+import {
+  isInitialSummaryLoad,
+  ListSummaryCards
+} from '@/shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '@/shared/ui/page-title/page-title';
 import {
   SearchBar,
@@ -211,7 +214,10 @@ export default function SystemLogsPage(): JSX.Element {
   return (
     <div>
       <PageTitle title="시스템 로그" />
-      <ListSummaryCards items={systemLogSummaryCards} />
+      <ListSummaryCards
+        items={systemLogSummaryCards}
+        loading={isInitialSummaryLoad(logsState.status, logsState.data.length > 0)}
+      />
 
       <AdminListCard
         toolbar={

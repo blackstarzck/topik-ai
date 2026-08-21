@@ -27,7 +27,10 @@ import { AuditLogLink } from '@/shared/ui/audit-log-link/audit-log-link';
 import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
 import { HtmlPreviewModal } from '@/shared/ui/html-preview-modal/html-preview-modal';
 import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
-import { ListSummaryCards } from '@/shared/ui/list-summary-cards/list-summary-cards';
+import {
+  isInitialSummaryLoad,
+  ListSummaryCards
+} from '@/shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '@/shared/ui/page-title/page-title';
 import {
   SearchBar,
@@ -384,7 +387,10 @@ export default function OperationEventsPage(): JSX.Element {
     <div>
       {notificationContextHolder}
       <PageTitle title="이벤트" />
-      <ListSummaryCards items={eventSummaryCards} />
+      <ListSummaryCards
+        items={eventSummaryCards}
+        loading={isInitialSummaryLoad(eventsState.status, hasCachedEvents)}
+      />
 
       <AdminListCard
         toolbar={

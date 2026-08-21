@@ -209,6 +209,14 @@
 - 게이트: `npm run check:typography-min-font`(`harness:check` 배선). `src/**` 의 인라인 `fontSize`(객체 리터럴 `fontSize: 12` + **JSX/SVG 속성형 `fontSize={9}`·`fontSize="11"`**)와 `*.css` 의 `font-size`, 그리고 **테마의 `fontSizeSM` 선언**까지 본다. 검사 전에 **주석을 걷어낸다** — 규칙을 설명하는 주석의 예시가 위반으로 잡히거나 반대로 진짜 위반을 가리기 때문이다. 토큰 값 자체는 `tests/unit/admin-theme-token.test.ts` 가 실물 import 로 고정한다.
 - 함정: antd cssinjs 는 페이지 CSS 보다 늦게 주입되므로, `.ant-table` 같은 antd 루트를 덮을 때 명시도가 동점이면 antd 가 이긴다 — `.패널클래스.ant-card .ant-table` 처럼 클래스 두 개로 올려야 실제로 적용된다.
 
+## 목록 요약 카드(강제)
+
+- **조회가 끝나기 전에는 수치를 그리지 않는다.** `ListSummaryCards` 에 `loading` 을 넘기면 라벨은 유지한 채 값·힌트만 스켈레톤이 된다. 넘기지 않으면 데이터가 빈 첫 프레임에 `0건` 이 정상 수치처럼 보인다.
+- 판정은 `isInitialSummaryLoad(status, hasData)` 하나만 쓴다 — **pending 이고 캐시가 없을 때만** 로딩이다. 재조회(조치 후 갱신)에 스켈레톤을 띄우면 이미 맞는 수치가 가려져 깜빡인다.
+- `empty`·`error` 는 로딩이 아니다 — 빈 결과의 `0` 은 진짜 `0` 이고, 실패는 Alert 로 따로 알린다.
+- 로딩 중 클릭형 카드는 정적으로 그린다(값이 없으면 필터로 쓸 수 없다).
+- **새 소비 화면을 추가하면 `tests/unit/summary-card-loading.test.ts` 의 목록에도 넣는다** — 한 화면만 빠지면 그 화면만 `0` 을 보여준다.
+
 ## 디자인 값(강제)
 
 - **색·간격·모서리·글자 크기는 리터럴로 적지 않는다.** `@/shared/styles/design-tokens` 의 `COLOR`/`APP_COLOR`/`SPACE`/`RADIUS`/`FONT_SIZE`/`ICON_SIZE` 를 쓴다. 그 모듈은 `src/app/theme.ts` 의 antd 테마에서 값을 파생하므로 테마를 바꾸면 화면이 따라온다.

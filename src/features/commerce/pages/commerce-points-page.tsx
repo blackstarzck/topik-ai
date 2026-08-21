@@ -85,7 +85,10 @@ import { CommercePointsSearchToolbar } from '../ui/commerce-points-toolbar';
 import type { AsyncState } from '@/shared/model/async-state';
 import { ConfirmAction } from '@/shared/ui/confirm-action/confirm-action';
 import { AdminListCard } from '@/shared/ui/list-page-card/admin-list-card';
-import { ListSummaryCards } from '@/shared/ui/list-summary-cards/list-summary-cards';
+import {
+  isInitialSummaryLoad,
+  ListSummaryCards
+} from '@/shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '@/shared/ui/page-title/page-title';
 import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
 import { parseSortOrder } from '@/shared/ui/table/table-column-utils';
@@ -710,7 +713,10 @@ export default function CommercePointsPage(): JSX.Element {
         />
       ) : null}
 
-      <ListSummaryCards items={summaryCards} />
+      <ListSummaryCards
+        items={summaryCards}
+        loading={isInitialSummaryLoad(pointsState.status, hasCachedData)}
+      />
 
       <AdminListCard
         toolbar={
