@@ -347,6 +347,7 @@ export default function BillingPaymentsPage(): JSX.Element {
 
         <AdminDataTable<PaymentRow>
           rowKey="id"
+          loading={paymentsState.status === 'pending'}
           pagination={false}
           scroll={{ x: 1100 }}
           columns={columns}

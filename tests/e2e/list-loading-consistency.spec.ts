@@ -12,6 +12,10 @@ const auditedInitialLoadingPages = [
   { name: '정책 관리', url: '/operation/policies' },
   { name: '쿠폰', url: '/commerce/coupons' },
   { name: '포인트', url: '/commerce/points' },
+  // 🚨 두 화면은 표에 loading 을 아예 넘기지 않고 있었다 — mock 경로에 지연이 없어
+  // pending 프레임이 관측되지 않아 누락이 드러나지 않았다(2026-08-21).
+  { name: '결제 내역', url: '/commerce/payments' },
+  { name: '환불 관리', url: '/commerce/refunds' },
   { name: 'TOPIK 쓰기 문제은행', url: '/assessment/question-bank' },
   { name: '메타데이터 관리', url: '/system/metadata' }
 ] as const;

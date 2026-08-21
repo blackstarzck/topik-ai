@@ -409,6 +409,7 @@ export default function BillingRefundsPage(): JSX.Element {
 
         <AdminDataTable<RefundRow>
           rowKey="id"
+          loading={refundsState.status === 'pending'}
           pagination={false}
           scroll={{ x: 1250 }}
           columns={columns}
