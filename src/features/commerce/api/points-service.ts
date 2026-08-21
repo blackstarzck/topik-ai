@@ -8,12 +8,35 @@ import { commercePointsDataSource } from './commerce-points-data-source';
 import {
   createManualPointAdjustmentViaRpc,
   exportPointExpirationsFromSupabase,
+  loadHoldableExpirationsFromSupabase,
+  loadPointExpirationByIdFromSupabase,
+  loadPointExpirationsPageFromSupabase,
+  loadPointLedgerByIdFromSupabase,
+  loadPointLedgersPageFromSupabase,
+  loadPointPolicyByIdFromSupabase,
+  loadPointPoliciesPageFromSupabase,
+  loadPointsOverviewFromSupabase,
   loadPointsSnapshotFromSupabase,
   releasePointExpirationHoldViaRpc,
   savePointExpirationHoldViaRpc,
   savePointPolicyViaRpc,
   updatePointPolicyStatusViaRpc
 } from './supabase-commerce-points-service';
+import {
+  filterExpirations,
+  filterLedgers,
+  filterPolicies,
+  paginateItems,
+  sortExpirations,
+  sortLedgers,
+  sortPolicies
+} from '../model/commerce-points-page-schema';
+import type { PointsOverview, PointsPageSlice } from '../model/point-page-contract';
+import type {
+  PointExpirationQuery,
+  PointLedgerQuery,
+  PointPolicyQuery
+} from '../model/point-types';
 import type {
   CommercePointsSnapshot,
   PointExpiration,
@@ -359,6 +382,164 @@ async function exportPointExpirations(
     exportedAt: formatNow(),
     itemCount: payload.itemCount
   };
+}
+
+
+/**
+ * mock 경로의 탭별 페이지 조회.
+ *
+ * 🔑 **기존 화면 로직(`filterX` → `sortX` → `paginateItems`)을 그대로 재사용한다.** 서버
+ * 전환에서 가장 위험한 것이 "필터·정렬·페이징 의미가 미묘하게 달라지는 것"인데, mock 경로가
+ * 같은 함수를 쓰면 그 경로에서는 **구조적으로** 동등하다. Supabase 경로의 동등성은
+ * `tests/unit/points-page-queries.test.ts` 가 조건 수립을 검사해 지킨다.
+ */
+function slicePolicies(query: PointPolicyQuery): PointsPageSlice<PointPolicy> {
+  const filtered = filterPolicies(clonePolicies(pointPolicies), query);
+  const sorted = sortPolicies(filtered, query);
+  return { rows: paginateItems(sorted, query.page, query.pageSize), total: filtered.length };
+}
+
+function sliceLedgers(query: PointLedgerQuery): PointsPageSlice<PointLedger> {
+  const filtered = filterLedgers(cloneLedgers(pointLedgers), query);
+  const sorted = sortLedgers(filtered, query);
+  return { rows: paginateItems(sorted, query.page, query.pageSize), total: filtered.length };
+}
+
+function sliceExpirations(query: PointExpirationQuery): PointsPageSlice<PointExpiration> {
+  const filtered = filterExpirations(cloneExpirations(pointExpirations), query);
+  const sorted = sortExpirations(filtered, query);
+  return { rows: paginateItems(sorted, query.page, query.pageSize), total: filtered.length };
+}
+
+function countByStatus<T extends { status: string }>(items: T[]): Record<string, number> {
+  const counts: Record<string, number> = { all: items.length };
+  for (const item of items) {
+    counts[item.status] = (counts[item.status] ?? 0) + 1;
+  }
+  return counts;
+}
+
+function buildMockOverview(): PointsOverview {
+  return {
+    tabCounts: {
+      policy: pointPolicies.length,
+      ledger: pointLedgers.length,
+      expiration: pointExpirations.length
+    },
+    policyStatusCounts: countByStatus(pointPolicies),
+    ledgerStatusCounts: countByStatus(pointLedgers),
+    expirationStatusCounts: countByStatus(pointExpirations)
+  };
+}
+
+export function fetchPointsOverviewSafe(signal?: AbortSignal) {
+  return toSafeResult(() =>
+    withRetry(
+      async () => {
+        if (isSupabaseSource) {
+          return loadPointsOverviewFromSupabase(signal);
+        }
+        await sleep(200, signal);
+        return buildMockOverview();
+      },
+      { maxRetries: 1 }
+    )
+  );
+}
+
+export function fetchPointPoliciesPageSafe(query: PointPolicyQuery, signal?: AbortSignal) {
+  return toSafeResult(() =>
+    withRetry(
+      async () => {
+        if (isSupabaseSource) {
+          return loadPointPoliciesPageFromSupabase(query, signal);
+        }
+        await sleep(220, signal);
+        return slicePolicies(query);
+      },
+      { maxRetries: 1 }
+    )
+  );
+}
+
+export function fetchPointLedgersPageSafe(query: PointLedgerQuery, signal?: AbortSignal) {
+  return toSafeResult(() =>
+    withRetry(
+      async () => {
+        if (isSupabaseSource) {
+          return loadPointLedgersPageFromSupabase(query, signal);
+        }
+        await sleep(220, signal);
+        return sliceLedgers(query);
+      },
+      { maxRetries: 1 }
+    )
+  );
+}
+
+export function fetchPointExpirationsPageSafe(
+  query: PointExpirationQuery,
+  signal?: AbortSignal
+) {
+  return toSafeResult(() =>
+    withRetry(
+      async () => {
+        if (isSupabaseSource) {
+          return loadPointExpirationsPageFromSupabase(query, signal);
+        }
+        await sleep(220, signal);
+        return sliceExpirations(query);
+      },
+      { maxRetries: 1 }
+    )
+  );
+}
+
+/** 소멸 보류 모달의 선택 후보(보류 가능 상태 전체). */
+export function fetchHoldableExpirationsSafe(signal?: AbortSignal) {
+  return toSafeResult(() =>
+    withRetry(
+      async () => {
+        if (isSupabaseSource) {
+          return loadHoldableExpirationsFromSupabase(signal);
+        }
+        await sleep(160, signal);
+        return cloneExpirations(pointExpirations).filter(
+          (item) => item.status === '예정' || item.status === '보류'
+        );
+      },
+      { maxRetries: 1 }
+    )
+  );
+}
+
+/**
+ * 현재 페이지 밖에 있는 `selected` 를 URL 로 복원한다.
+ *
+ * 🚨 서버 페이징에서는 상세 대상이 현재 페이지에 없을 수 있다. 이전 배선은 목록에서 못 찾으면
+ * URL 의 `selected` 를 **지웠다** — 전량 조회에서는 "없는 id"만 그랬지만 페이징에서는
+ * "다른 페이지의 id"까지 지워진다. 그래서 단건 조회로 복원한다.
+ */
+export function fetchPointRecordByIdSafe(
+  tab: 'policy' | 'ledger' | 'expiration',
+  id: string,
+  signal?: AbortSignal
+) {
+  return toSafeResult(async () => {
+    if (isSupabaseSource) {
+      if (tab === 'policy') return loadPointPolicyByIdFromSupabase(id, signal);
+      if (tab === 'ledger') return loadPointLedgerByIdFromSupabase(id, signal);
+      return loadPointExpirationByIdFromSupabase(id, signal);
+    }
+    await sleep(120, signal);
+    if (tab === 'policy') {
+      return clonePolicies(pointPolicies).find((item) => item.id === id) ?? null;
+    }
+    if (tab === 'ledger') {
+      return cloneLedgers(pointLedgers).find((item) => item.id === id) ?? null;
+    }
+    return cloneExpirations(pointExpirations).find((item) => item.id === id) ?? null;
+  });
 }
 
 export function fetchPointsSnapshotSafe(signal?: AbortSignal) {
