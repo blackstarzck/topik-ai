@@ -32,8 +32,11 @@ export const adminThemeToken: ThemeConfig['token'] = {
    * 브랜드색으로 맞추면 접근성도 같이 개선된다 — 흰 배경 대비비가
    * `#1677ff` **4.10:1**(본문 크기 WCAG AA 4.5:1 미달) → `#0f4da8` **7.93:1**(AAA) 이다.
    *
-   * `colorInfo`(정보 상태색)는 일부러 건드리지 않았다 — 브랜드색과 같아지면 정보 Alert 이
-   * 주요 액션과 구분되지 않는다. 시맨틱 상태색이라 별도 판단 사항이다(gap-register §3.17).
+   * `colorInfo`(정보 상태색)는 일부러 건드리지 않는다 — 브랜드색과 같아지면 정보 Alert 이
+   * 주요 액션과 구분되지 않는다. **2026-08-20 분리 유지로 결정 완료**(gap-register §3.17).
+   * 아이콘 용도의 대비 기준은 3:1 이라 antd 기본 파랑(4.10:1)도 충족한다 — 다만 이 색을
+   * 본문 텍스트나 링크에 쓰면 4.5:1 을 못 넘기므로 그때는 브랜드색을 써야 한다.
+   * 결정은 `tests/unit/admin-theme-token.test.ts` 가 고정한다.
    */
   colorLink: BRAND_PRIMARY,
   borderRadius: 10,

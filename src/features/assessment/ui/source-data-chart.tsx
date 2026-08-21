@@ -1,6 +1,11 @@
 import { Typography } from 'antd';
 import { APP_COLOR, COLOR, FONT_SIZE, RADIUS, SPACE } from '@/shared/styles/design-tokens';
 
+import {
+  CHART_LABEL_FONT_PX,
+  computeCategoryChartLayout
+} from '../model/category-chart-layout';
+
 const { Text } = Typography;
 
 /**
@@ -243,33 +248,46 @@ function LegendRow({
 }
 
 function CategoryChart({ chart }: { chart: NormalizedChart }): JSX.Element {
-  const width = 360;
-  const height = 220;
-  const margin = { top: 22, right: 14, bottom: 42, left: 48 };
-  const plotW = width - margin.left - margin.right;
-  const plotH = height - margin.top - margin.bottom;
-
   const allValues = chart.series.flatMap((entry) => entry.values);
   const maxVal = niceMax(Math.max(1, ...allValues));
-  const categoryCount = Math.max(1, chart.categories.length);
-  const bandW = plotW / categoryCount;
   const seriesCount = chart.series.length;
   const isLine = chart.kind === 'line';
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => maxVal * ratio);
+
+  // 값 라벨은 계열 수 조건을 만족할 때만 그린다 — 기하 계산에도 같은 조건을 넘긴다.
+  const showsValueLabels = isLine ? seriesCount === 1 : seriesCount <= 2;
+
+  /**
+   * 라벨을 14px 로 그리려면 기하가 라벨 폭을 따라가야 한다(고정 폭 + 스케일 방식으로는
+   * 실제 렌더 크기가 컨테이너에 따라 달라져 규칙을 지킬 수 없다 — 모듈 주석 참고).
+   */
+  const layout = computeCategoryChartLayout({
+    categories: chart.categories,
+    tickLabels: ticks.map((tick) => formatNumber(tick)),
+    valueLabels: showsValueLabels ? allValues.map((value) => formatNumber(value)) : [],
+    seriesCount
+  });
+  const { width, height, margin } = layout;
+  const plotW = layout.plotWidth;
+  const plotH = layout.plotHeight;
+  const bandW = layout.bandWidth;
+  const groupW = layout.groupWidth;
+  const barW = layout.barWidth;
 
   const xCenter = (index: number) => margin.left + bandW * (index + 0.5);
   const yOf = (value: number) => margin.top + plotH - (value / maxVal) * plotH;
-  const ticks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => maxVal * ratio);
-
-  const groupW = bandW * 0.66;
-  const barW = groupW / seriesCount;
 
   return (
     <div>
+      {/* 라벨 크기를 지키려고 스케일하지 않는다 — 좁은 컨테이너에서는 가로로 스크롤한다. */}
+      <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
       <svg
         viewBox={`0 0 ${width} ${height}`}
+        width={width}
+        height={height}
         role="img"
         aria-label={`${chart.title} ${chart.kind} 차트`}
-        style={{ width: '100%', height: 'auto', maxWidth: 480 }}
+        style={{ display: 'block' }}
       >
         {/* 가로 그리드 + y축 눈금 */}
         {ticks.map((tick) => {
@@ -286,9 +304,9 @@ function CategoryChart({ chart }: { chart: NormalizedChart }): JSX.Element {
               />
               <text
                 x={margin.left - 8}
-                y={y + 3}
+                y={y + CHART_LABEL_FONT_PX / 3}
                 textAnchor="end"
-                fontSize={9}
+                fontSize={CHART_LABEL_FONT_PX}
                 fill={COLOR.textTertiary}
               >
                 {formatNumber(tick)}
@@ -331,12 +349,12 @@ function CategoryChart({ chart }: { chart: NormalizedChart }): JSX.Element {
                     fill={PALETTE[seriesIndex % PALETTE.length]}
                     rx={2}
                   />
-                  {seriesCount <= 2 ? (
+                  {showsValueLabels ? (
                     <text
                       x={r2(x + Math.max(barW - 2, 1) / 2)}
-                      y={r2(y - 4)}
+                      y={r2(y - 5)}
                       textAnchor="middle"
-                      fontSize={9}
+                      fontSize={CHART_LABEL_FONT_PX}
                       fill={COLOR.textSecondary}
                     >
                       {formatNumber(value)}
@@ -374,12 +392,12 @@ function CategoryChart({ chart }: { chart: NormalizedChart }): JSX.Element {
                       stroke={color}
                       strokeWidth={2}
                     />
-                    {seriesCount === 1 ? (
+                    {showsValueLabels ? (
                       <text
                         x={r2(xCenter(index))}
-                        y={r2(yOf(value) - 8)}
+                        y={r2(yOf(value) - 9)}
                         textAnchor="middle"
-                        fontSize={9}
+                        fontSize={CHART_LABEL_FONT_PX}
                         fill={COLOR.textSecondary}
                       >
                         {formatNumber(value)}
@@ -396,15 +414,16 @@ function CategoryChart({ chart }: { chart: NormalizedChart }): JSX.Element {
           <text
             key={`cat-${index}`}
             x={r2(xCenter(index))}
-            y={margin.top + plotH + 16}
+            y={margin.top + plotH + CHART_LABEL_FONT_PX + 6}
             textAnchor="middle"
-            fontSize={9}
+            fontSize={CHART_LABEL_FONT_PX}
             fill={COLOR.textSecondary}
           >
             {category}
           </text>
         ))}
       </svg>
+      </div>
 
       {seriesCount > 1 ? (
         <LegendRow
