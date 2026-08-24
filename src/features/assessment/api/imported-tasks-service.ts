@@ -1,4 +1,5 @@
 import { supabaseClient } from '@/shared/api/supabase-client';
+import { fetchAllPages } from '@/shared/api/paged-fetch';
 import { toSafeResult, withRetry } from '@/shared/api/safe-request';
 import { questionBankDataSource } from './question-bank-data-source';
 import type {
@@ -193,6 +194,15 @@ const MOCK_IMPORTED_TASKS: ImportedWritingTask[] = [
   }
 ];
 
+/**
+ * 인박스는 문항 버전 이력이 쌓이는 무손실 원장이라 행 수가 PostgREST
+ * db-max-rows(운영 1000행)를 넘는다. 화면의 집계 카드·컬럼 필터·정렬이 전부
+ * 클라이언트 계산이므로 전량을 range 배치로 끝까지 받아온다. import_id
+ * tie-break 는 range 페이지 경계에서 행 누락/중복을 막는 전순서 보장이다.
+ */
+const INBOX_PAGE_SIZE = 1000;
+const INBOX_MAX_PAGES = 30;
+
 async function loadImportedTasks(
   signal?: AbortSignal
 ): Promise<ImportedWritingTask[]> {
@@ -200,23 +210,32 @@ async function loadImportedTasks(
     return MOCK_IMPORTED_TASKS;
   }
 
-  if (!supabaseClient) {
+  const client = supabaseClient;
+  if (!client) {
     throw new Error('Supabase client not configured');
   }
 
-  const { data, error } = await supabaseClient
-    .from('topik_writing_question_import')
-    .select(SELECT_COLUMNS)
-    .order('item_number', { ascending: true, nullsFirst: false })
-    .order('last_seen_at', { ascending: false });
+  const rows = await fetchAllPages<ImportRow>(
+    async (from, to) => {
+      const { data, error } = await client
+        .from('topik_writing_question_import')
+        .select(SELECT_COLUMNS)
+        .order('item_number', { ascending: true, nullsFirst: false })
+        .order('last_seen_at', { ascending: false })
+        .order('import_id', { ascending: false })
+        .range(from, to);
+      if (error) {
+        throw new Error(error.message);
+      }
+      return (data ?? []) as unknown as ImportRow[];
+    },
+    { pageSize: INBOX_PAGE_SIZE, maxPages: INBOX_MAX_PAGES }
+  );
 
   if (signal?.aborted) {
     throw new DOMException('Request aborted', 'AbortError');
   }
-  if (error) {
-    throw new Error(error.message);
-  }
-  return ((data ?? []) as unknown as ImportRow[]).map(mapRow);
+  return rows.map(mapRow);
 }
 
 export function fetchImportedTasksSafe(signal?: AbortSignal) {
