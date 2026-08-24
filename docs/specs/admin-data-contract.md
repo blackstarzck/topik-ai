@@ -366,7 +366,7 @@
     - Supabase source가 없는 표시값은 임의 생성하지 않고 `-`, `미지정`, 빈 목록 sentinel로 표시합니다(legacy 롤백 소스의 `serviceStatus`=`미지정`, 태그=빈 값 포함).
     - 과거 `raw_payload`를 상세 mapper로 변환할 때 현재 운영 값인 `serviceStatus`를 과거 payload의 상태처럼 노출하지 않습니다. 버전 ID, 원본 생성/수정 시각, content/payload hash, 수신 시각/재수신 정보는 별도 버전 정보로 표시합니다.
     - 수신/승격은 `question_id` advisory transaction lock으로 직렬화하고 각 bulk RPC는 ID 정렬을 유지합니다. API는 50건 적재 청크를 모두 성공한 뒤 50개 ID 승격 청크를 실행하며 재시도는 payload/import 멱등 계약을 사용합니다.
-    - 2026-07-16 상류 실응답 701건의 `updated_at`이 모두 null이라 신규 source timestamp 판정 마이그레이션을 보류했으나, 공급처의 `updated_at` 채움 확정(2026-08-24)에 따라 dev/운영에 적용했습니다. 공급처가 실제로 채우기 전의 신규 수신은 `invalid_timestamp` held로 인박스에 보존됩니다.
+    - 2026-07-16 상류 실응답 701건의 `updated_at`이 모두 null이라 신규 source timestamp 판정 마이그레이션을 보류했으나, 공급처의 `updated_at` 채움 확정(2026-08-24)에 따라 dev/운영에 적용했습니다. 이후 같은 날 실측에서 상류가 내용(situation_summary 699건)을 수정하고도 `updated_at`을 채우지 않은 것이 확인되어, 오너 결정(B안)으로 무시각 수신은 canonical `content_hash` 비교만으로 판정하도록 분기를 추가했습니다(마이그레이션 `20260824120000`, 검수완료 게이트 불변). `updated_at`이 있는 수신은 기존 엄격 판정을 유지하고, 유효한 `updated_at`을 관측한 문항군에 무시각 수신이 다시 오면 회귀로 보류합니다.
     - 버전 요약·이력 조회 실패는 기존 목록/현재 상세 요청과 분리된 safe 조회 경계에서 처리하고, 해당 컬럼·탭만 error/retry 상태로 격리합니다.
     - 이전 버전 대비 자동 필드 diff와 과거 버전 복원·재활성화는 현재 계약 범위가 아닙니다.
     - **[폐기 — 2026-06-11 인바운드 전환]** 구판 계약("`reviewStatus = 검수 완료` → 운영정책 `POL-017`에 따라 상류 `TalkPik AI Service`로 배포(API 업로드)")은 폐기됐습니다. 상류 push(업로드/배포) 트랙 자체가 소멸했고, `POL-017`은 "TOPIK 쓰기 문항 수신·관리 운영정책"으로 재정의됐습니다. 상류 Writing API(`GET /api/writing/tasks`)의 작문 과제는 v13 사용자 노출용이며 admin 배포 대상이 아닙니다. admin의 노출 통제는 `service_status` 컬럼(§12.3), 문항 품질·상태 표현은 태그로만 합니다.
