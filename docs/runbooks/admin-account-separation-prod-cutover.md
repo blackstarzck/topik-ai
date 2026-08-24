@@ -3,7 +3,7 @@
 ## 0. 현재 상태 (2026-07-20)
 
 - 운영 Supabase `topik-prod`(`eymlabowhfgtxbiqwxqh`)에 admin canonical migration 83개와 TOPIK 쓰기 migration 32개를 적용·장부화했다.
-- `20260716052957_topik_writing_source_updated_at_version_tracking.sql`은 공급 API의 `updated_at`이 모두 null인 전제조건 때문에 manifest에서 명시적으로 차단 상태다.
+- `20260716052957_topik_writing_source_updated_at_version_tracking.sql`은 공급 API의 `updated_at`이 모두 null이라 2026-07-16부터 manifest에서 차단했으나, 공급처가 `updated_at`을 채우기로 확정(2026-08-24 오너 결정)되어 차단을 해제하고 dev·운영에 적용했다. 갭 구간(공급처가 실제로 채우기 전)의 신규 수신은 `invalid_timestamp` held로 인박스에 보존된다.
 - 현재 `.env.local`에 설정된 관리자 계정을 Auth 사용자로 사용하고 `admin_accounts`의 active `platform_admin`으로 승격했다.
 - 최종 상태에서 해당 사용자의 `profiles.app_role`은 `learner`로 복원했다. 관리자 권한 SoT는 `admin_accounts`이며 `admin_get_self` 로그인 검증을 통과했다.
 - `admin_bootstrapped` 감사 로그는 계정별 1건으로 멱등 보관한다.
@@ -67,7 +67,7 @@ Admin 적용 순서:
 node scripts/db/admin-migrate.mjs --apply --manifest scripts/db/manifests/admin-production-cutover.json --batch <batch-name>
 ```
 
-TOPIK 쓰기 버전 요약 적용과 기존 장부 채택은 `writing-production-cutover.json`의 `version-summary`, `baseline-applied` batch로 제한한다. 차단 migration은 공급 계약이 충족되기 전 적용하지 않는다.
+TOPIK 쓰기 버전 요약 적용과 기존 장부 채택은 `writing-production-cutover.json`의 `version-summary`, `baseline-applied` batch로 제한한다. 2026-07-16부터 차단했던 `20260716052957`은 공급 `updated_at` 채움 확정(2026-08-24)에 따라 `source-version-tracking` batch로 적용했다(역순 적용이라 `--allow-out-of-order-apply` 필요).
 
 ## 4. 현재 관리자 계정 부트스트랩
 

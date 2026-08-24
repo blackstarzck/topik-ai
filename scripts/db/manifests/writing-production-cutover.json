@@ -3,9 +3,7 @@
   "environment": "production",
   "projectRef": "eymlabowhfgtxbiqwxqh",
   "expectedLocalCount": 39,
-  "blockedMigrations": [
-    "20260716052957_topik_writing_source_updated_at_version_tracking.sql"
-  ],
+  "blockedMigrations": [],
   "batches": {
     "version-summary": {
       "precondition": "../sql/production-writing-version-summary-precondition.sql",
@@ -19,9 +17,30 @@
     },
     "release-all": {
       "from": "20260610200100_topik_writing_topic_master.sql",
-      "to": "20260805100000_topik_writing_institution_exposure_options_read.sql",
-      "exclude": [
+      "to": "20260805100000_topik_writing_institution_exposure_options_read.sql"
+    },
+    "source-version-tracking": {
+      "reason": "공급 API 가 updated_at 을 채우기로 확정(2026-08-24 오너 결정)되어 2026-07-16 부터 차단했던 원본 수정 시각 버전 판정 마이그를 해제한다. 기존 행은 coalesce(updated_at, created_at) 백필로 version_decision='legacy' 가 되고 canonical 포인터는 불변이다. 공급처가 실제로 채우기 전(갭 구간)의 신규 수신은 invalid_timestamp held 로 인박스에 보존되며, 채워지면 payload_hash 가 바뀌어 새 행으로 정상 승격된다. 트래커에 20260805100000 까지 적용된 뒤라 역순 적용이므로 --allow-out-of-order-apply 가 필요하다(이 파일과 객체가 겹치는 후행 마이그 없음은 정적 대조·dev 라이브 예행으로 확인).",
+      "migrations": [
         "20260716052957_topik_writing_source_updated_at_version_tracking.sql"
+      ],
+      "expectPresentAfter": [
+        {
+          "kind": "column",
+          "identity": "public.topik_writing_question_import.source_created_at"
+        },
+        {
+          "kind": "column",
+          "identity": "public.topik_writing_question_import.source_updated_at"
+        },
+        {
+          "kind": "column",
+          "identity": "public.topik_writing_question_import.content_hash"
+        },
+        {
+          "kind": "column",
+          "identity": "public.topik_writing_question_import.version_decision"
+        }
       ]
     },
     "institution-contracts": {

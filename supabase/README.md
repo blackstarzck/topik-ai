@@ -260,7 +260,7 @@ topik-ai 운영면에서 적용하는 전용 러너다. 선례는 v13 `202607071
 ## 5. 2026-07-20 환경 적용 상태
 
 - `topik-prod` admin tracker: canonical 83개 적용, checksum 누락 0.
-- `topik-prod` TOPIK 쓰기 tracker: 32개 적용. `20260716052957_topik_writing_source_updated_at_version_tracking.sql`은 공급 `updated_at` 전제조건 미충족으로 차단.
+- `topik-prod` TOPIK 쓰기 tracker: 32개 적용(2026-07-20 기준. 이후 기관 노출·계약 마이그와 2026-08-24 `20260716052957` 차단 해제 적용으로 39개 — 장부가 진실). `20260716052957`은 공급 `updated_at` 채움 확정(2026-08-24)에 따라 차단 해제·역순 적용(`--allow-out-of-order-apply`, 객체 겹침 없음은 정적 대조·dev 예행으로 확인).
 - `topik-dev` admin tracker: canonical 88개 + superseded remote-only 이력 1개, checksum 누락 0. 백업 관리 3개 migration은 적용됐고 관리자 요약·목록 읽기 함수의 실제 호출을 확인했다. 로컬 canonical 89번째인 `20260723011242` 알림 파이프라인 소유권 이관은 이 시점에는 미적용이었다 — **2026-07-29 실측으로 정정: dev·prod 양쪽에 2026-07-23 CI 적용 완료, checksum 로컬 파일과 일치**(§5.1 참조). 장부가 진실이며 이 절의 날짜 기준 서술을 그대로 인용하지 말 것.
 - `topik-prod`의 백업 관리 3개 migration은 아직 미적용이다. 운영 백업 수신을 켜기 전에 별도 운영 적용과 확인이 필요하다.
 - admin 보안 마이그레이션 `20260716130000`/`20260716131000`은 admin 소유 public 함수의 anon/PUBLIC execute를 회수한다. 운영 검증에서 표본 anon executable admin function은 0건이다.
