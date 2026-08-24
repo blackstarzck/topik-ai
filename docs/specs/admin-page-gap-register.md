@@ -83,7 +83,7 @@
 
 ### 3.7 운영 DB 컷오버와 Vercel 웹 배포 완료 / 서버 워커 환경 교정 필요
 
-- `Resolved(DB)`: 2026-07-16 `topik-prod`에 admin canonical migration 83개와 TOPIK 쓰기 migration 32개를 적용·장부화했다. 공급 `updated_at` 전제조건이 충족되지 않은 writing migration 1개는 manifest에서 명시적으로 차단했다.
+- `Resolved(DB)`: 2026-07-16 `topik-prod`에 admin canonical migration 83개와 TOPIK 쓰기 migration 32개를 적용·장부화했다. 공급 `updated_at` 전제조건이 충족되지 않은 writing migration 1개는 manifest에서 명시적으로 차단했다(2026-08-24 공급 채움 확정으로 차단 해제·적용 완료).
 - `Resolved(Auth)`: 현재 설정된 관리자 계정을 active `platform_admin`으로 승격했다. 최종 `profiles.app_role`은 `learner`이고 `admin_accounts`/`admin_get_self`가 관리자 권한 SoT다. bootstrap 감사 로그와 legacy key 비활성 상태를 검증했다.
 - `Resolved(Security)`: admin 소유 public 함수의 anon execute를 회수했고 운영 표본 쿼리에서 anon executable admin function 0건, 점검 대상 RLS 10/10을 확인했다.
 - `Resolved(CRUD)`: 최신 소스+운영 DB에서 현재 관리자 로그인, 정기 쿠폰 템플릿 생성·상세·수정·삭제, 감사 로그 확인, 삭제 후 업무 행 0건과 저장 2건/삭제 1건 감사를 브라우저와 DB로 검증했다.
@@ -969,7 +969,7 @@ runbook §3(MCP 검증 프로토콜)은 릴리스 담당자가 브라우저를 �
     - **신규 갭 ③ — tag_master 활성/비활성 write 미개방(P5-3 권장)**: 현행 감사 RPC는 문항용 3종뿐이라 tag_master write에는 전용 RPC 신설(마이그레이션)·platform_admin 가드·신규 Target Type(`admin_audit_logs`)·감사 라벨 결정이 필요했다. → **[2026-06-11 같은 날 해소]** 마이그레이션 0014(`admin_update_tag_master_status` — platform_admin 가드·사유 RPC 단 필수) 적용 + 카탈로그 태그 탭 토글 UI(ConfirmAction 사유 필수) + 신규 감사 계약(`AssessmentTagMaster`/`tag_master_status_changed` — 라벨·딥링크 포함) 결선. 동작 확인 프로브 14단계 ALL PASS(가드 3방향 거부 + platform_admin 화면 왕복 + 감사 2행 역추적 + 원복 — `.omx/evidence/p5-3-tag-master-write-report.json`). 분류: `해소`.
     - **신규 갭 ④ — v13 canonical 직접 읽기 이전 단계 증거(2026-07-13~14)**: generated `learner_problem_id`, `canonical_import_id`/`payload_hash`, 번호별 정식 테이블 learner-safe projection을 대상으로 역할별 권한, 700↔700 shadow, 활성 초안 36건 reconciliation, current-content·history/PDF live E2E, Cron 해제·재등록 훈련을 완료했다. 이 결과는 최종 mirror 제거 전 데이터 대사와 회귀 증거이며, legacy/shadow/read mode/rollback sync를 최종 구조에 유지한다는 뜻이 아니다.
     - **신규 갭 ⑤ — v13 identity/FK/snapshot/outbox 최종 교정(2026-07-15, dev 검증 완료·운영 전환 대기)**: v13 `20260714140000`/`20260714141000`/`20260714160000`, Admin `20260714150000`을 dev에 적용해 writing FK를 private identity registry로 이관하고 기존 초안·제출 snapshot을 백필한 뒤 `public.problems` writing 행을 0건으로 만들었습니다. canonical/source-map 700건, identity 704건, draft 328건, submission 280건, snapshot 누락 0건, registry FK 10개를 대사했습니다. migration down/up, outbox 5종 fault-injection, 실제 provider Q54 제출→분석→피드백, 최신 v13 `origin/main` 기반 desktop/mobile headed E2E를 통과했습니다. retained mirror/current legacy/shadow/read mode/rollback sync는 남기지 않습니다. 남은 갭은 운영 DB/Vercel 적용, evidence 기반 활성화와 운영 smoke입니다. 분류: `dev 구현·검증 완료 + 운영 게이트 차단`.
-    - **신규 갭 ⑥ — 공급 `updated_at` 계약 미충족(2026-07-16)**: topik-ai 코드에는 `source_created_at/source_updated_at/content_hash/version_decision`, 문항별 advisory lock, metadata-only/이상 시각 보류, 50건 적재·승격 청크, 관리자 인박스/버전 이력 컬럼을 구현했습니다. 그러나 실응답 701건의 `updated_at`이 모두 null이라 정확한 수정 순서를 확정할 수 없습니다. 공급 API가 UTC ISO-8601 non-null·단조 증가·문항군 `created_at` 불변 계약을 배포하고 사전 검증을 통과하기 전에는 신규 마이그레이션을 dev/운영에 적용하지 않습니다. v13 production 코드/DDL 변경은 없고 canonical 충돌·stale draft 답안 복사·제출 snapshot 관련 단위/마이그레이션 테스트 65건은 통과했습니다. 공급 계약과 guarded 실행 환경을 사용하는 live 교차 E2E만 남습니다. 분류: `코드 구현 완료 + 외부 선행 게이트 차단`.
+    - **신규 갭 ⑥ — 공급 `updated_at` 계약 미충족(2026-07-16)**: topik-ai 코드에는 `source_created_at/source_updated_at/content_hash/version_decision`, 문항별 advisory lock, metadata-only/이상 시각 보류, 50건 적재·승격 청크, 관리자 인박스/버전 이력 컬럼을 구현했습니다. 그러나 실응답 701건의 `updated_at`이 모두 null이라 정확한 수정 순서를 확정할 수 없습니다. 공급처가 `updated_at`을 채우기로 확정(2026-08-24 오너 결정)되어 신규 마이그레이션을 dev/운영에 적용했습니다(기존 행 `legacy` 백필, canonical 포인터 불변). 공급처가 실제로 채우기 전의 신규 수신은 `invalid_timestamp` held로 인박스에 보존되며, 채워지면 `payload_hash` 변경으로 새 행이 되어 정상 승격됩니다. v13 production 코드/DDL 변경은 없고 canonical 충돌·stale draft 답안 복사·제출 snapshot 관련 단위/마이그레이션 테스트 65건은 통과했습니다. 공급 계약과 guarded 실행 환경을 사용하는 live 교차 E2E만 남습니다. 분류: `DB 적용 완료 + 공급 updated_at 실채움 대기(그 전 신규 수신은 invalid_timestamp held)`.
   - `EPS TOPIK`, `레벨 테스트`
     - 여전히 Placeholder이며, 편성/배점/발행/결과 정책의 화면 SoT와 데이터 source 경계가 미정이다.
 - 분류
@@ -979,7 +979,7 @@ runbook §3(MCP 검증 프로토콜)은 릴리스 담당자가 브라우저를 �
   - tag_master 활성/비활성 write: `해소` (P5-3 — 2026-06-11 개방, 신규 갭 ③ 종결 기록 참조)
   - 외부 공급 수신 경로: `해소` (2026-06-23 구현, 2026-07-13 Vercel Node ESM 시작 결함 보완)
   - 검수 표면·컬럼 제거: `해소` (재정의 P3 코드 컷오버 `202f905` + 마이그레이션 `0013` 적용 — 신규 갭 ② 종결 기록 참조)
-  - 문항 버전·상태별 사용자 노출: `관리자 UI/코드 구현 + source updated_at DB 적용 대기 + live 교차 검증 필요` — `canonical_import_id` 포인터, 수정 횟수·확장/상세 이력, 원본 생성/수정 시각과 content hash, 인박스 판정, 50건 청크를 구현했다. 승격 버전만 문항관리 이력에 포함하며 metadata-only/이상 응답은 인박스에 유지한다. 공급 701건 `updated_at` non-null 게이트가 해결되기 전에는 신규 DB 계약을 적용하지 않는다. v13 관련 단위/마이그레이션 65건은 통과했고 후속 갭은 guarded live 교차 E2E와 자동 필드 diff이며 과거 복원은 정책 비범위다.
+  - 문항 버전·상태별 사용자 노출: `관리자 UI/코드/DB 적용 완료(2026-08-24) + 공급 updated_at 실채움 대기 + live 교차 검증 필요` — `canonical_import_id` 포인터, 수정 횟수·확장/상세 이력, 원본 생성/수정 시각과 content hash, 인박스 판정, 50건 청크를 구현했다. 승격 버전만 문항관리 이력에 포함하며 metadata-only/이상 응답은 인박스에 유지한다. 공급처의 `updated_at` 채움 확정(2026-08-24)에 따라 신규 DB 계약을 dev·운영에 적용했다. 공급처가 실제로 채우기 전의 신규 수신은 `invalid_timestamp` held다. v13 관련 단위/마이그레이션 65건은 통과했고 후속 갭은 guarded live 교차 E2E와 자동 필드 diff이며 과거 복원은 정책 비범위다.
   - v13 canonical 읽기·제출 컷오버: `dev 구현·E2E 완료 + 운영 전환 대기` (14:00/14:10/15:00/16:00 dev 적용, down/up·fault-injection·실제 provider canary·desktop/mobile headed browser 완료, 운영 적용과 evidence 활성화 전 fail-close)
 
 ### 4.8 Content

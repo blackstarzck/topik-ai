@@ -120,7 +120,7 @@
 - 이 문서는 확정된 운영·정책 SoT이며, 현재 코드가 모든 항목을 구현했다는 의미는 아니다.
 - `topik-ai`의 현재 버전 포인터는 `topik_writing_question_source_map.canonical_import_id`로 구현돼 있으며, 인박스 `is_latest`를 현재 버전 판별에 사용하지 않는다.
 - 관리자 버전 이력 1차 구현은 `/assessment/question-bank`의 수정 횟수·확장 이력과 `/assessment/question-bank/:questionId`의 현재/과거 버전 탭·과거 payload 상세 조회를 제공한다. 이력에는 원본 생성/수정 시각과 content hash를 함께 표시하며, 집계는 성공적으로 승격된 버전만 대상으로 하고 `raw`·`held`는 제외한다.
-- `topik-ai`에는 `source_created_at`/`source_updated_at`/`content_hash`/`version_decision`, 문항별 advisory lock, 50건 단위 적재·승격을 구현했다. 다만 2026-07-16 사전 점검에서 공급 API 701건의 `updated_at`이 모두 null이므로 이 신규 마이그레이션의 dev/운영 적용은 공급 계약 충족 전까지 보류한다.
+- `topik-ai`에는 `source_created_at`/`source_updated_at`/`content_hash`/`version_decision`, 문항별 advisory lock, 50건 단위 적재·승격을 구현했다. 2026-07-16 사전 점검에서 공급 API 701건의 `updated_at`이 모두 null이라 마이그레이션 적용을 보류했으나, 공급처가 `updated_at`을 채우기로 확정(2026-08-24 오너 결정)되어 dev·운영에 적용했다. 기존 행은 `coalesce(updated_at, created_at)` 백필로 `version_decision='legacy'`가 되고 canonical 포인터는 불변이다. 공급처가 실제로 채우기 전(갭 구간)의 신규 수신은 `invalid_timestamp` held로 인박스에 보존되며, 채워지면 `payload_hash`가 바뀌어 새 행으로 정상 승격된다.
 - `v13` 운영 코드·스키마는 변경하지 않는다. 현재 구현의 canonical import/hash 충돌 가드와 제출 `question_snapshot`/`legacy_cutover_snapshot` 관련 단위·마이그레이션 테스트 65건은 통과했다. `metadata_only` 비승격과 실제 내용 변경 승격을 연결한 live 교차 E2E는 공급 `updated_at` 계약과 guarded 실행 환경이 준비된 뒤 수행한다.
 - 관리자 이력은 조회 전용이다. 과거 버전 복원·재활성화와 이전 버전 대비 자동 필드 diff는 구현하지 않았으며 후속 갭으로 유지한다.
 - `v13`의 북마크·활성 임시저장 최신화, 제출 충돌 차단, 완료 제출 스냅샷은 기존 구현을 유지하며 신규 production 변경 없이 교차 저장소 검증만 보강한다.
