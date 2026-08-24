@@ -67,7 +67,8 @@
 - 동일 `payload_hash` 재수신은 새 행을 만들지 않고 재수신 횟수와 마지막 수신 시각만 갱신한다.
 - 더 최신 `updated_at`과 다른 `content_hash`가 함께 확인된 경우에만 `content_changed` 불변 버전을 추가하고 승격 후보로 둔다. 내용 비교 기준은 가장 최신의 유효한 수신본(`promoted` 또는 검수 완료 수신)이며, 서비스 현재 버전 판별은 계속 canonical 포인터만 사용한다. 따라서 승격 재시도 전에 같은 내용이 더 최신 시각으로 다시 수신돼도 중복 내용 버전을 만들지 않고, 과거 내용으로 되돌린 수정은 직전 유효 수신과 내용이 다르고 시각이 더 최신이면 새 버전이 된다.
 - 더 최신 `updated_at`이지만 `content_hash`가 같으면 `metadata_only` 수신 행으로 보존하되 수정 횟수와 현재 포인터를 바꾸지 않는다.
-- 같거나 과거인 `updated_at`에 내용이 다르면 `timestamp_conflict`/`out_of_order`, 문항군의 `created_at`·번호가 다르면 `identity_conflict`, 시각이 없거나 잘못됐으면 `invalid_timestamp`로 보류한다.
+- 같거나 과거인 `updated_at`에 내용이 다르면 `timestamp_conflict`/`out_of_order`, 문항군의 `created_at`·번호가 다르면 `identity_conflict`로 보류한다. `updated_at`이 존재하는데 형식이 잘못됐거나 `created_at`보다 과거면 `invalid_timestamp`로 보류한다.
+- **`updated_at`이 아예 없는 수신(무시각 수신)은 보류하지 않는다(오너 결정 2026-08-24, B안).** 공급 API는 현재 상태를 당겨오는 pull 방식이므로 무시각 수신은 canonical `content_hash` 비교만으로 판정한다 — 내용이 다르면 `content_changed`(승격 후보), 같으면 `metadata_only`. 유효 수정 시각은 `created_at`으로 기록한다(legacy 백필과 동일 규약). 단, 해당 문항군이 한 번이라도 유효한 `updated_at`을 관측했다면 이후 무시각 수신은 계약 회귀로 보고 `invalid_timestamp`로 보류한다. `updated_at`이 존재하는 수신은 위 엄격 사다리를 그대로 따르며 `검수 완료` 게이트는 두 모드 모두 불변이다.
 - `metadata_only`와 이상 응답은 인박스에서 상태·사유를 확인하며 문항관리의 승격 버전 수에는 포함하지 않는다.
 - 번호별 현재 문항 테이블을 upsert하더라도 이는 최신 조회용 projection으로만 취급한다. 버전 이력의 SoT는 불변 import 버전과 현재 버전 포인터다.
 - `service_status`, 태그, 기관 노출처럼 관리자가 소유하는 운영 값은 외부 문항 내용 버전과 분리해 유지한다. 외부 수정 수신만으로 운영 값이 초기화되어서는 안 된다.
@@ -120,7 +121,7 @@
 - 이 문서는 확정된 운영·정책 SoT이며, 현재 코드가 모든 항목을 구현했다는 의미는 아니다.
 - `topik-ai`의 현재 버전 포인터는 `topik_writing_question_source_map.canonical_import_id`로 구현돼 있으며, 인박스 `is_latest`를 현재 버전 판별에 사용하지 않는다.
 - 관리자 버전 이력 1차 구현은 `/assessment/question-bank`의 수정 횟수·확장 이력과 `/assessment/question-bank/:questionId`의 현재/과거 버전 탭·과거 payload 상세 조회를 제공한다. 이력에는 원본 생성/수정 시각과 content hash를 함께 표시하며, 집계는 성공적으로 승격된 버전만 대상으로 하고 `raw`·`held`는 제외한다.
-- `topik-ai`에는 `source_created_at`/`source_updated_at`/`content_hash`/`version_decision`, 문항별 advisory lock, 50건 단위 적재·승격을 구현했다. 2026-07-16 사전 점검에서 공급 API 701건의 `updated_at`이 모두 null이라 마이그레이션 적용을 보류했으나, 공급처가 `updated_at`을 채우기로 확정(2026-08-24 오너 결정)되어 dev·운영에 적용했다. 기존 행은 `coalesce(updated_at, created_at)` 백필로 `version_decision='legacy'`가 되고 canonical 포인터는 불변이다. 공급처가 실제로 채우기 전(갭 구간)의 신규 수신은 `invalid_timestamp` held로 인박스에 보존되며, 채워지면 `payload_hash`가 바뀌어 새 행으로 정상 승격된다.
+- `topik-ai`에는 `source_created_at`/`source_updated_at`/`content_hash`/`version_decision`, 문항별 advisory lock, 50건 단위 적재·승격을 구현했다. 2026-07-16 사전 점검에서 공급 API 701건의 `updated_at`이 모두 null이라 마이그레이션 적용을 보류했으나, 공급처가 `updated_at`을 채우기로 확정(2026-08-24 오너 결정)되어 dev·운영에 적용했다. 기존 행은 `coalesce(updated_at, created_at)` 백필로 `version_decision='legacy'`가 되고 canonical 포인터는 불변이다. 이후 2026-08-24 실측에서 상류가 `situation_summary` 699건을 재작성하고도 `updated_at`을 채우지 않은 것이 확인되어, 오너 결정(B안)으로 무시각 수신 분기를 추가했다(마이그레이션 `20260824120000`) — §7의 무시각 수신 규칙 참조. 무시각 탓에 보류돼 있던 수신은 같은 마이그레이션이 1회 재판정한다.
 - `v13` 운영 코드·스키마는 변경하지 않는다. 현재 구현의 canonical import/hash 충돌 가드와 제출 `question_snapshot`/`legacy_cutover_snapshot` 관련 단위·마이그레이션 테스트 65건은 통과했다. `metadata_only` 비승격과 실제 내용 변경 승격을 연결한 live 교차 E2E는 공급 `updated_at` 계약과 guarded 실행 환경이 준비된 뒤 수행한다.
 - 관리자 이력은 조회 전용이다. 과거 버전 복원·재활성화와 이전 버전 대비 자동 필드 diff는 구현하지 않았으며 후속 갭으로 유지한다.
 - `v13`의 북마크·활성 임시저장 최신화, 제출 충돌 차단, 완료 제출 스냅샷은 기존 구현을 유지하며 신규 production 변경 없이 교차 저장소 검증만 보강한다.
