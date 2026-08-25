@@ -4,7 +4,12 @@ import { useMemo } from 'react';
 
 import type { AsyncState } from '@/shared/model/async-state';
 import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
+import { createInfoColumnTitle } from '@/shared/ui/table/status-column-title';
 import type { AssessmentQuestionVersionEntry } from '../model/assessment-question-bank-types';
+import {
+  INGEST_COUNT_COLUMN_GUIDE,
+  SOURCE_UPDATED_AT_COLUMN_GUIDE
+} from '../model/question-version-column-guides';
 
 const { Text } = Typography;
 
@@ -49,7 +54,7 @@ export function QuestionVersionHistoryTable({
         render: (value: string) => value || '-'
       },
       {
-        title: '원본 수정 시각',
+        title: createInfoColumnTitle('원본 수정 시각', SOURCE_UPDATED_AT_COLUMN_GUIDE),
         dataIndex: 'sourceUpdatedAt',
         width: 170,
         sorter: (a, b) => a.sourceUpdatedAt.localeCompare(b.sourceUpdatedAt),
@@ -70,9 +75,9 @@ export function QuestionVersionHistoryTable({
         render: (value: string) => value || '-'
       },
       {
-        title: '수신 횟수',
+        title: createInfoColumnTitle('수신 횟수', INGEST_COUNT_COLUMN_GUIDE),
         dataIndex: 'ingestCount',
-        width: 110,
+        width: 130,
         sorter: (a, b) => a.ingestCount - b.ingestCount,
         render: (value: number) => `${value.toLocaleString()}회`
       },
@@ -135,7 +140,7 @@ export function QuestionVersionHistoryTable({
       dataSource={previousVersions}
       loading={state.status === 'pending'}
       pagination={false}
-      scroll={{ x: 1320 }}
+      scroll={{ x: 1340 }}
       tableLayout="fixed"
       onRow={(entry) => ({
         tabIndex: 0,

@@ -55,7 +55,7 @@
 ### 본문 데이터
 - 소스 ID(`source_task_id`), 문항 번호(`item_number`), 제목/주제/난이도/생성 출처(`raw_payload` 파생)
 - 적재 상태(`mapping_status`), 최근 수신본(`is_latest`: 서비스 현재 버전이 아니라 마지막으로 받은 원문), 이력 판정(`version_decision`), 판정/보류 사유(`hold_reason`)
-- 원본 생성 시각(`source_created_at`), 원본 수정 시각(`source_updated_at`), 실제 학습·채점 내용 해시(`content_hash`), 최초/최근 수신과 수신 횟수
+- 원본 생성 시각(`source_created_at`), 원본 수정 시각(`source_updated_at` — 헤더 안내 툴팁으로 "공급처가 갱신하지 않으면 생성 시각과 같은 값이 들어오므로 변경 판정은 `content_hash`" 안내), 실제 학습·채점 내용 해시(`content_hash`), 최초/최근 수신과 수신 횟수
 
 ## 7. 액션 정의
 

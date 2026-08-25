@@ -37,6 +37,7 @@
 - 상태 전환을 스위치로 옮긴 화면에서는 동일한 `숨김/비활성/비공개/처리 완료` 계열 항목을 액션 컬럼 `더보기` 메뉴에 중복 노출하지 않습니다.
 - `더보기` 정리 후 실질 액션이 1개만 남는 액션 컬럼은 드롭다운 대신 직접 실행 가능한 텍스트 또는 아이콘 버튼을 사용합니다.
 - 상태나 레벨처럼 정해진 값 집합을 보여주는 컬럼 제목에는 안내 아이콘 툴팁을 두고, 가능한 상태값과 각 의미를 함께 노출합니다.
+- 값의 뜻을 라벨만으로 오해할 수 있는 계산·수신·집계 컬럼 제목에도 같은 안내 아이콘 툴팁(공용 `createInfoColumnTitle`)을 두고, 무엇을 세는 값인지와 흔한 오독을 함께 적습니다. 같은 컬럼이 2개 이상 화면에 나오면 문구를 화면별로 복사하지 않고 상수로 단일 관리합니다.
 - 입력 Modal, Drawer, 보조 패널의 항목형 UI는 `Descriptions` 기반 입력 테이블을 기본값으로 사용하고, `Form`은 검증과 상태 관리 용도로만 감쌉니다. 단일 본문 에디터처럼 표 구조가 맞지 않는 캔버스형 입력만 예외로 둡니다.
 - `Descriptions` 기반 입력 테이블에서 필수 검증(`required`)이 걸린 항목은 label(`th`) heading에 빨간 `*`를 표시해 향후 DB/API 필수 필드 후보임을 운영자가 즉시 인지할 수 있게 합니다.
 - 행 클릭 상세 Drawer의 헤더/본문/푸터 슬롯 규칙은 `docs/guidelines/admin-detail-drawer-guidelines.md`를 단일 기준으로 사용합니다.
@@ -361,7 +362,7 @@
 - 필터: SearchBar `주제(종합/세부 — 17주제 2단 마스터 기반)`, `유형`, `난이도(1~6)`, `검색` (구 `도메인` 축과 `reviewStatus` 요약 카드 필터는 재정의 P3에서 제거 완료. 태그 필터는 P4 예약 `tag` 키)
 - 컬럼: 문항 번호, 문항 ID, 주제, 난이도, TOPIK 급수, 노출 상태(`service_status` Tag), 태그, 기관 노출, 최근 수정, `버전`, 더보기 (구 `검수 상태` 컬럼은 재정의 P3에서 제거 완료)
   - `버전`은 `topik_writing_question_version_summary_view.revision_count`를 `0회`, `1회` 형식으로 표시하고 숫자 정렬을 지원합니다. 현재 `canonical_import_id`가 없으면 `0회`가 아니라 `버전 연결 없음`으로 표시합니다.
-  - `revision_count>=1`이고 현재 버전 포인터가 있는 행만 확장 아이콘을 표시합니다. 확장 `AdminDataTable`은 현재 버전을 제외한 승격 이력을 최신 `source_updated_at` 순으로 `버전 ID`, `원본 생성 시각`, `원본 수정 시각`, `최초 수신`, `마지막 수신`, `수신 횟수`, `content hash`, `payload hash` 컬럼에 표시하며 행 클릭/키보드 Enter로 과거 상세에 진입합니다. `raw`·`held`·`metadata_only`는 포함하지 않습니다.
+  - `revision_count>=1`이고 현재 버전 포인터가 있는 행만 확장 아이콘을 표시합니다. 확장 `AdminDataTable`은 현재 버전을 제외한 승격 이력을 최신 `source_updated_at` 순으로 `버전 ID`, `원본 생성 시각`, `원본 수정 시각`, `최초 수신`, `마지막 수신`, `수신 횟수`, `content hash`, `payload hash` 컬럼에 표시하며 행 클릭/키보드 Enter로 과거 상세에 진입합니다. `raw`·`held`·`metadata_only`는 포함하지 않습니다. `원본 수정 시각`과 `수신 횟수` 제목에는 안내 아이콘 툴팁을 둡니다. 각각 "공급처가 `updated_at`을 실제로 갱신하지 않으면 원본 생성 시각과 같은 값이 들어오므로 변경 판정은 `content hash`로 한다", "동일 payload 재수신 횟수이며 내용이 달라지면 이 값이 오르지 않고 새 버전 행이 생긴다"를 안내합니다.
   - `상황 요약` 셀: 기본 목록에서는 1줄 말줄임으로 노출한다. hover/focus 시 툴팁에서 상황 요약 전문과 시나리오 유형을 확인하고, 하단 `상세 보기` 버튼(구 `검수하기` — 재정의 P3에서 개명 완료)으로 동일 2depth 상세 페이지에 진입할 수 있다. source는 신규 스키마 `situation_summary`/`scenario_type`이다.
   - `주제(종합/세부)` 셀은 `topic_main`/`topic_detail`을 2단으로 노출한다. `유형/난이도` 셀은 `question_type_name`과 급수·난이도(`target_level`/`difficulty_level`)를 노출한다.
 - 행 클릭/툴팁 `상세 보기`: `/assessment/question-bank/:questionId` 2depth 페이지로 이동 (재정의 P3에서 구 `…/review/:questionId` 개명 완료)
@@ -380,7 +381,7 @@
 
 - 라우트: `/assessment/question-bank/imported`
 - 데이터 범위: `topik_writing_question_import`의 모든 수신 행. 같은 `question_id`의 과거 응답도 보존해 표시하며 `is_latest`는 서비스 현재 버전이 아니라 마지막 수신 원문 표시다.
-- 컬럼: 문항 번호, 소스 ID, 제목, 주제, 난이도, 생성 출처, 적재 상태, 최근 수신본, 이력 판정, 원본 생성 시각, 원본 수정 시각, content hash, 판정 사유, 최근 수신.
+- 컬럼: 문항 번호, 소스 ID, 제목, 주제, 난이도, 생성 출처, 적재 상태, 최근 수신본, 이력 판정, 원본 생성 시각, 원본 수정 시각, content hash, 판정 사유, 최근 수신. `원본 수정 시각` 제목에는 문항 관리 확장 이력과 동일한 안내 아이콘 툴팁을 둡니다(문구 단일 관리).
 - `version_decision`: `legacy`, `initial`, `content_changed`, `metadata_only`, `out_of_order`, `timestamp_conflict`, `identity_conflict`, `invalid_timestamp`. `initial`/`content_changed`만 승격 후보이며 나머지는 인박스 조회 전용이다.
 - `외부에서 가져오기`는 50건 단위 적재를 전부 성공한 뒤 50개 문항 ID 단위 승격을 실행한다. 응답은 `inserted/new_version/metadata_only/held/unchanged/failed`와 `promoted/held`를 분리한다.
 - 상류 `updated_at` 701건 non-null 사전 검증 전에는 신규 판정 마이그레이션을 DB에 적용하지 않는다.

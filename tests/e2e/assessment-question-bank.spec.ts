@@ -89,6 +89,16 @@ test('버전 컬럼에서 수정 이력 행만 확장하고 과거 상세에 키
   await expect(historyTable.getByRole('columnheader', { name: '원본 수정 시각' })).toBeVisible();
   await expect(historyTable.getByRole('columnheader', { name: 'content hash' })).toBeVisible();
 
+  // 오해하기 쉬운 두 컬럼은 헤더 안내 아이콘으로 의미를 노출한다.
+  await historyTable.getByRole('button', { name: '원본 수정 시각 안내' }).hover();
+  await expect(
+    page.getByText('실제 변경 여부는 content hash 비교로 확인하세요.')
+  ).toBeVisible();
+  await historyTable.getByRole('button', { name: '수신 횟수 안내' }).hover();
+  await expect(
+    page.getByText('내용이 달라지면 이 값이 오르지 않고 새 버전 행이 따로 쌓입니다.')
+  ).toBeVisible();
+
   const historyRow = historyTable
     .locator('tbody tr.ant-table-row')
     .filter({ hasText: '#5102' });
