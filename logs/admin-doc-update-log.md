@@ -1107,3 +1107,12 @@
 - Found(재배치가 드러낸 결함 3건, 같은 PR 에서 수리): ①기관 설정 전량 upsert 를 두 폼이 각자 pass-through 해 담당자 폼이 settings 미로드 상태에서 저장하면 정원·초대 기본값·유입 차단이 null/false 로 덮였다 → `patchInstitutionSettingsSafe(current, patch, reason)` 로 병합을 한 곳에 모으고 current 를 non-null 로 강제(전량 경로는 export 제거). ②초대 취소가 `onChanged()` 를 안 불러 좌석 지표가 stale(대기 초대도 좌석을 선점한다). ③노출 옵션 토글 실패 시 확인 모달이 닫히지 않아 같은 사유로 계속 재실패.
 - Found(e2e 함정 2건): ①`toHaveCount(0)` 부정 단언을 Drawer 닫힌 채로 하면 섹션이 없어 무조건 통과하는 vacuous pass 가 된다 → Drawer 를 연 뒤 그 스코프에서 단언. ②antd Drawer 도 `role="dialog"` 라 확인 모달과 겹쳐 strict violation → 모달 접근을 `.ant-modal-content` 로 좁혔다.
 - Not-updated: DB·RPC·감사 계약·탭 키·`?tab=` URL 무변경. 운영 DB 적용 불필요(FE 전용).
+
+## 2026-08-24 버전 이력 컬럼 헤더 안내 툴팁 (원본 수정 시각 · 수신 횟수)
+
+- Updated: src/features/assessment/model/question-version-column-guides.ts(신규), src/features/assessment/ui/question-version-history-table.tsx, src/features/assessment/pages/assessment-imported-tasks-page.tsx, tests/e2e/assessment-question-bank.spec.ts, docs/specs/admin-page-tables.md, docs/specs/page-ia/{assessment-question-bank,assessment-question-bank-imported}-page-ia.md
+- Reason: 문항 관리 확장 이력 표에서 두 컬럼이 라벨만으로 반대로 읽힌다. `원본 수정 시각`이 생성 시각과 같으면 "수정된 적 없음"으로, `수신 횟수 2회`는 "버전이 2개"로 오독된다. 실제로는 공급처가 `updated_at`을 갱신하지 않아 생성 시각이 그대로 복사된 것이고, 수신 횟수는 동일 payload 재수신 카운트(`(source_task_id, payload_hash)` unique 상 같은 행)라 버전 수와 무관하다.
+- Contract: 컬럼 헤더 안내 툴팁 규칙을 상태값 컬럼에서 **계산·수신·집계 컬럼**까지 확장했다(공용 `createInfoColumnTitle` 재사용, 신규 공용 컴포넌트 없음). 같은 컬럼이 2개 이상 화면에 나오면 문구를 화면별로 복사하지 않고 상수 모듈에서 단일 관리한다 — `원본 수정 시각`은 문항 관리 확장 이력과 인박스 목록 두 곳에 동일 문구로 붙는다.
+- Found: 인박스 목록에도 같은 `원본 수정 시각` 컬럼이 있고 그 값이 `이력 판정`(`out_of_order`/`timestamp_conflict`)을 좌우한다. 문항 관리 한 곳만 고치면 오독 위험이 큰 쪽이 남으므로 같은 작업에 포함했다.
+- Validation: red→green 증명(`git stash push -- src/…question-version-history-table.tsx` 상태에서 신규 단언 실패 확인 후 복원) · test:e2e:mock 18/18 · typecheck(`tsc -b --noEmit`) · lint(assessment 전수) · 라이브 DOM 실측(툴팁 문구 렌더, 헤더 `scrollWidth === clientWidth`로 말줄임 없음, 헤더 높이 8칸 39px 균일 = 줄바꿈 없음). 컬럼 폭은 `수신 횟수` 110→130, 확장 표 `scroll.x` 1320→1340.
+- Not-updated: DB·RPC·데이터 계약 무변경(표시 전용). 감사 로그 계약 무영향.

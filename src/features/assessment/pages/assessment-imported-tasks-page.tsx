@@ -5,6 +5,7 @@ import { useCallback, useMemo, useState } from 'react';
 
 import { questionBankDataSource } from '../api/question-bank-data-source';
 import { triggerWritingTaskIngestSafe } from '../api/imported-tasks-service';
+import { SOURCE_UPDATED_AT_COLUMN_GUIDE } from '../model/question-version-column-guides';
 import { useImportedTasks } from '../model/use-imported-tasks';
 import { AssessmentBankTabs } from '../ui/assessment-bank-tabs';
 import type {
@@ -19,6 +20,7 @@ import {
 } from '@/shared/ui/list-summary-cards/list-summary-cards';
 import { PageTitle } from '@/shared/ui/page-title/page-title';
 import { AdminDataTable } from '@/shared/ui/table/admin-data-table';
+import { createInfoColumnTitle } from '@/shared/ui/table/status-column-title';
 import { createTextSorter } from '@/shared/ui/table/table-column-utils';
 import { COLOR, SPACE } from '@/shared/styles/design-tokens';
 
@@ -274,7 +276,7 @@ export default function AssessmentImportedTasksPage(): JSX.Element {
         render: (value: string) => value || '-'
       },
       {
-        title: '원본 수정 시각',
+        title: createInfoColumnTitle('원본 수정 시각', SOURCE_UPDATED_AT_COLUMN_GUIDE),
         dataIndex: 'sourceUpdatedAt',
         width: 170,
         sorter: createTextSorter((record) => record.sourceUpdatedAt),
